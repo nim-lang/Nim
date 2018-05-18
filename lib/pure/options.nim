@@ -104,6 +104,10 @@ proc none*(T: typedesc): Option[T] =
   # the default is the none type
   discard
 
+proc none*[T]: Option[T] =
+  ## Alias for ``none(T)``.
+  none(T)
+
 proc isSome*[T](self: Option[T]): bool {.inline.} =
   when T is SomePointer:
     self.val != nil
@@ -130,7 +134,7 @@ proc get*[T](self: Option[T]): T =
 
 proc get*[T](self: Option[T], otherwise: T): T =
   ## Returns the contents of this option or `otherwise` if the option is none.
-  if self.has:
+  if self.isSome:
     self.val
   else:
     otherwise
@@ -150,7 +154,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
 
 proc flatten*[A](self: Option[Option[A]]): Option[A] =
   ## Remove one level of structure in a nested Option.
-  if self.has:
+  if self.isSome:
     self.val
   else:
     none(A)
@@ -175,14 +179,14 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
   ## or if they have equal values
-  (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
+  (a.isSome and b.isSome and a.val == b.val) or (not a.isSome and not b.isSome)
 
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of this option. If the option has a value,
   ## the result will be `Some(x)` where `x` is the string representation of the contained value.
   ## If the option does not have a value, the result will be `None[T]` where `T` is the name of
   ## the type contained in the option.
-  if self.has:
+  if self.isSome:
     "Some(" & $self.val & ")"
   else:
     "None[" & T.name & "]"
@@ -290,3 +294,7 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
+
+    test "none[T]":
+      check(none[int]().isNone)
+      check(none(int) == none[int]())

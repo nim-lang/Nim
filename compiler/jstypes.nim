@@ -38,7 +38,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
                     makeJSString(field.name.s)]
   of nkRecCase:
     length = sonsLen(n)
-    if (n.sons[0].kind != nkSym): internalError(n.info, "genObjectFields")
+    if (n.sons[0].kind != nkSym): internalError(p.config, n.info, "genObjectFields")
     field = n.sons[0].sym
     s = genTypeInfo(p, field.typ)
     for i in countup(1, length - 1):
@@ -47,7 +47,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
       case b.kind
       of nkOfBranch:
         if sonsLen(b) < 2:
-          internalError(b.info, "genObjectFields; nkOfBranch broken")
+          internalError(p.config, b.info, "genObjectFields; nkOfBranch broken")
         for j in countup(0, sonsLen(b) - 2):
           if u != nil: add(u, ", ")
           if b.sons[j].kind == nkRange:
@@ -57,7 +57,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
             add(u, rope(getOrdValue(b.sons[j])))
       of nkElse:
         u = rope(lengthOrd(field.typ))
-      else: internalError(n.info, "genObjectFields(nkRecCase)")
+      else: internalError(p.config, n.info, "genObjectFields(nkRecCase)")
       if result != nil: add(result, ", " & tnl)
       addf(result, "[setConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
@@ -65,7 +65,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
         "typ: $2, name: $4, sons: [$5]}") % [
         mangleName(p.module, field), s,
         rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
-  else: internalError(n.info, "genObjectFields")
+  else: internalError(p.config, n.info, "genObjectFields")
 
 proc objHasTypeField(t: PType): bool {.inline.} =
   tfInheritable in t.flags or t.sons[0] != nil
@@ -104,7 +104,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
   let length = sonsLen(typ.n)
   var s: Rope = nil
   for i in countup(0, length - 1):
-    if (typ.n.sons[i].kind != nkSym): internalError(typ.n.info, "genEnumInfo")
+    if (typ.n.sons[i].kind != nkSym): internalError(p.config, typ.n.info, "genEnumInfo")
     let field = typ.n.sons[i].sym
     if i > 0: add(s, ", " & tnl)
     let extName = if field.ast == nil: field.name.s else: field.ast.strVal
@@ -121,26 +121,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [name, genTypeInfo(p, typ.sons[0])])
 
-proc genEnumInfoPHP(p: PProc; t: PType): Rope =
-  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
-  result = "$$NTI$1" % [rope(t.id)]
-  p.declareGlobal(t.id, result)
-  if containsOrIncl(p.g.typeInfoGenerated, t.id): return
-
-  let length = sonsLen(t.n)
-  var s: Rope = nil
-  for i in countup(0, length - 1):
-    if (t.n.sons[i].kind != nkSym): internalError(t.n.info, "genEnumInfo")
-    let field = t.n.sons[i].sym
-    if i > 0: add(s, ", " & tnl)
-    let extName = if field.ast == nil: field.name.s else: field.ast.strVal
-    addf(s, "$# => $#$n",
-         [rope(field.position), makeJSString(extName)])
-  prepend(p.g.typeInfo, "$$$# = $#;$n" % [result, s])
-
 proc genTypeInfo(p: PProc, typ: PType): Rope =
-  if p.target == targetPHP:
-    return makeJSString(typeToString(typ, preferModuleInfo))
   let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
@@ -171,5 +152,5 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyTuple: genTupleInfo(p, t, result)
   of tyStatic:
     if t.n != nil: result = genTypeInfo(p, lastSon t)
-    else: internalError("genTypeInfo(" & $t.kind & ')')
-  else: internalError("genTypeInfo(" & $t.kind & ')')
+    else: internalError(p.config, "genTypeInfo(" & $t.kind & ')')
+  else: internalError(p.config, "genTypeInfo(" & $t.kind & ')')

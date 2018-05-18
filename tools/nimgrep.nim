@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.1"
+  Version = "1.2"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -35,6 +35,8 @@ Options:
   --nocolor           output will be given without any colours.
   --oneline           show file on each matched line
   --verbose           be verbose: list every processed file
+  --filenames         find the pattern in the filenames, not in the contents
+                      of the file
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -42,7 +44,7 @@ Options:
 type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle, optVerbose
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -126,7 +128,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
     stdout.write("\n")
     stdout.flushFile()
 
-proc processFile(pattern; filename: string) =
+proc processFile(pattern; filename: string; counter: var int) =
   var filenameShown = false
   template beforeHighlight =
     if not filenameShown and optVerbose notin options and not oneline:
@@ -135,11 +137,14 @@ proc processFile(pattern; filename: string) =
       filenameShown = true
 
   var buffer: string
-  try:
-    buffer = system.readFile(filename)
-  except IOError:
-    echo "cannot open file: ", filename
-    return
+  if optFilenames in options:
+    buffer = filename
+  else:
+    try:
+      buffer = system.readFile(filename)
+    except IOError:
+      echo "cannot open file: ", filename
+      return
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
@@ -161,6 +166,7 @@ proc processFile(pattern; filename: string) =
     var wholeMatch = buffer.substr(t.first, t.last)
 
     beforeHighlight()
+    inc counter
     if optReplace notin options:
       highlight(buffer, wholeMatch, "", t, filename, line, showRepl=false)
     else:
@@ -236,17 +242,17 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(pattern; dir: string) =
+proc walker(pattern; dir: string; counter: var int) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
       if extensions.len == 0 or path.hasRightExt(extensions):
-        processFile(pattern, path)
+        processFile(pattern, path, counter)
     of pcDir:
       if optRecursive in options:
-        walker(pattern, path)
+        walker(pattern, path, counter)
     else: discard
-  if existsFile(dir): processFile(pattern, dir)
+  if existsFile(dir): processFile(pattern, dir, counter)
 
 proc writeHelp() =
   stdout.write(Usage)
@@ -293,6 +299,7 @@ for kind, key, val in getopt():
     of "nocolor": useWriteStyled = false
     of "oneline": oneline = true
     of "verbose": incl(options, optVerbose)
+    of "filenames": incl(options, optFilenames)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: writeHelp()
@@ -304,6 +311,7 @@ when defined(posix):
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
+checkOptions({optFilenames, optReplace}, "filenames", "replace")
 
 if optStdin in options:
   pattern = ask("pattern [ENTER to exit]: ")
@@ -314,6 +322,7 @@ if optStdin in options:
 if pattern.len == 0:
   writeHelp()
 else:
+  var counter = 0
   if filenames.len == 0:
     filenames.add(os.getCurrentDir())
   if optRegex notin options:
@@ -325,7 +334,7 @@ else:
       pattern = "\\i " & pattern
     let pegp = peg(pattern)
     for f in items(filenames):
-      walker(pegp, f)
+      walker(pegp, f, counter)
   else:
     var reflags = {reStudy, reExtended}
     if optIgnoreStyle in options:
@@ -336,5 +345,6 @@ else:
       reflags.incl reIgnoreCase
     let rep = re(pattern, reflags)
     for f in items(filenames):
-      walker(rep, f)
-
+      walker(rep, f, counter)
+  if not oneline:
+    stdout.write($counter & " matches\n")

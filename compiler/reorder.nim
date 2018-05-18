@@ -1,7 +1,8 @@
 
-import 
-  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, 
-  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables
+import
+  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils,
+  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables,
+  configuration
 
 type
   DepN = ref object
@@ -135,13 +136,13 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx, cache)
+  result = syntaxes.parseFile(fileIdx, cache, graph.config)
   graph.addDep(s, fileIdx)
-  graph.addIncludeDep(s.position.int32, fileIdx)
+  graph.addIncludeDep(FileIndex s.position, fileIdx)
 
-proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode, 
+proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
                     modulePath: string, includedFiles: var IntSet,
                     cache: IdentCache): PNode =
   # Parses includes and injects them in the current tree
@@ -151,15 +152,15 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   for a in n:
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
-        var f = checkModuleName(a.sons[i])
+        var f = checkModuleName(graph.config, a.sons[i])
         if f != InvalidFileIDX:
-          if containsOrIncl(includedFiles, f):
-            localError(a.info, errRecursiveDependencyX, f.toFilename)
+          if containsOrIncl(includedFiles, f.int):
+            localError(graph.config, a.info, "recursive dependency: '$1'" % f.toFilename)
           else:
             let nn = includeModule(graph, module, f, cache)
-            let nnn = expandIncludes(graph, module, nn, modulePath, 
+            let nnn = expandIncludes(graph, module, nn, modulePath,
                                       includedFiles, cache)
-            excl(includedFiles, f)
+            excl(includedFiles, f.int)
             for b in nnn:
               result.add b
     else:
@@ -189,7 +190,7 @@ proc haveSameKind(dns: seq[DepN]): bool =
     if dn.pnode.kind != kind:
       return false
 
-proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
+proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
   # Merges typeSections and ConstSections when they form
   # a strong component (ex: circular type definition)
   for c in comps:
@@ -229,7 +230,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
                     wmsg &= "line " & $cs[^1].pnode.info.line &
                       " depends on line " & $cs[j].pnode.info.line &
                       ": " & cs[^1].expls[ci] & "\n"
-          message(cs[0].pnode.info, warnUser, wmsg)
+          message(conf, cs[0].pnode.info, warnUser, wmsg)
 
           var i = 0
           while i < cs.len:
@@ -273,9 +274,9 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
-        for a in n:
-          if a.hasCommand:
-            return true
+    for a in n:
+      if a.hasCommand:
+        return true
   else:
     return false
 
@@ -430,7 +431,7 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
     return n
   var includedFiles = initIntSet()
   let mpath = module.fileIdx.toFullPath
-  let n = expandIncludes(graph, module, n, mpath, 
+  let n = expandIncludes(graph, module, n, mpath,
                           includedFiles, cache).splitSections
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
@@ -441,4 +442,4 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
 
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)
-  mergeSections(comps, result)
+  mergeSections(graph.config, comps, result)

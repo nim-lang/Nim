@@ -3,7 +3,7 @@ discard """
   exitcode: 1
 """
 
-proc returnsNil(): string = return nil
+proc returnsNil(): ref int = return nil
 
 iterator fields*(a, b: int): int =
   if a == b:
@@ -17,6 +17,6 @@ proc main(): string =
   result = ""
   for i in fields(0, 1):
     let x = returnsNil()
-    result &= "string literal " & $x
+    result &= "string literal " & $x[]
 
 echo main()

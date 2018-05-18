@@ -13,9 +13,6 @@ type
   SortOrder* = enum   ## sort order
     Descending, Ascending
 
-{.deprecated: [TSortOrder: SortOrder].}
-
-
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
@@ -69,21 +66,25 @@ proc reversed*[T](a: openArray[T]): seq[T] =
 
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
-  var b = len(a)
-  while result < b:
-    var mid = (result + b) div 2
-    if a[mid] < key: result = mid + 1
-    else: b = mid
-  if result >= len(a) or a[result] != key: result = -1
+  if ((a.len - 1) and a.len) == 0 and a.len > 0:
+    # when `a.len` is a power of 2, a faster div can be used.
+    var step = a.len div 2
+    while step > 0:
+      if a[result or step] <= key:
+        result = result or step
+      step = step shr 1
+    if a[result] != key: result = -1
+  else:
+    var b = len(a)
+    while result < b:
+      var mid = (result + b) div 2
+      if a[mid] < key: result = mid + 1
+      else: b = mid
+    if result >= len(a) or a[result] != key: result = -1
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int =
-  ## ``a.len`` must be a power of 2 for this to work.
-  var step = a.len div 2
-  while step > 0:
-    if a[result or step] <= key:
-      result = result or step
-    step = step shr 1
-  if a[result] != key: result = -1
+proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
+  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
+  binarySearch(a,key)
 
 const
   onlySafeCode = true
@@ -363,10 +364,11 @@ when isMainModule:
   var srt1 = [1,2,3,4,4,4,4,5]
   var srt2 = ["iello","hello"]
   var srt3 = [1.0,1.0,1.0]
-  var srt4: seq[int] = @[]
+  var srt4: seq[int]
   assert srt1.isSorted(cmp) == true
   assert srt2.isSorted(cmp) == false
   assert srt3.isSorted(cmp) == true
+  assert srt4.isSorted(cmp) == true
   var srtseq = newSeq[int]()
   assert srtseq.isSorted(cmp) == true
   # Tests for reversed
@@ -395,7 +397,7 @@ proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
 
   swap(arg[mFirst], arg[next])
   mFirst += 1
-  next  += 1
+  next += 1
   if mFirst == mMiddle:
     mMiddle = next
 
@@ -515,3 +517,23 @@ when isMainModule:
   block fillEmptySeq:
     var s = newSeq[int]()
     s.fill(0)
+
+  block testBinarySearch:
+    var noData: seq[int]
+    doAssert binarySearch(noData, 7) == -1
+    let oneData = @[1]
+    doAssert binarySearch(oneData, 1) == 0
+    doAssert binarySearch(onedata, 7) == -1
+    let someData = @[1,3,4,7]
+    doAssert binarySearch(someData, 1) == 0
+    doAssert binarySearch(somedata, 7) == 3
+    doAssert binarySearch(someData, -1) == -1
+    doAssert binarySearch(someData, 5) == -1
+    doAssert binarySearch(someData, 13) == -1
+    let moreData = @[1,3,5,7,4711]
+    doAssert binarySearch(moreData, -1) == -1
+    doAssert binarySearch(moreData,  1) == 0
+    doAssert binarySearch(moreData,  5) == 2
+    doAssert binarySearch(moreData,  6) == -1
+    doAssert binarySearch(moreData,  4711) == 4
+    doAssert binarySearch(moreData,  4712) == -1

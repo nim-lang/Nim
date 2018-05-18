@@ -14,8 +14,6 @@ import strutils
 type
   Color* = distinct int ## a color stored as RGB
 
-{.deprecated: [TColor: Color].}
-
 proc `==` *(a, b: Color): bool {.borrow.}
   ## compares two colors.
 

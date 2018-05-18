@@ -85,9 +85,6 @@ type
     length*: int
     addrList*: seq[string]
 
-{.deprecated: [TPort: Port, TDomain: Domain, TType: SockType,
-    TProtocol: Protocol, TServent: Servent, THostent: Hostent].}
-
 when useWinVersion:
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
@@ -616,8 +613,12 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when useWinVersion:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    else:
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
@@ -636,7 +637,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} =
+proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated: "use selectRead instead".} =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## read from. The sockets which can be read from will also be removed

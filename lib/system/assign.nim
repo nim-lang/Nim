@@ -74,13 +74,17 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
       for i in 0..seq.len-1:
         genericAssignAux(
-          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
+          cast[pointer](dst +% i *% mt.base.size +% GenericSeqSize),
           cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                       GenericSeqSize),
           mt.base, shallow)
   of tyObject:
-    if mt.base != nil:
-      genericAssignAux(dest, src, mt.base, shallow)
+    var it = mt.base
+    # don't use recursion here on the PNimType because the subtype
+    # check should only be done at the very end:
+    while it != nil:
+      genericAssignAux(dest, src, it.node, shallow)
+      it = it.base
     genericAssignAux(dest, src, mt.node, shallow)
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -89,13 +93,15 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
     #   if p of TB:
     #     var tbObj = TB(p)
     #     tbObj of TC # needs to be false!
+    #c_fprintf(stdout, "%s %s\n", pint[].name, mt.name)
+    chckObjAsgn(cast[ptr PNimType](src)[], mt)
     pint[] = mt # cast[ptr PNimType](src)[]
   of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericAssignAux(cast[pointer](d +% i*% mt.base.size),
-                       cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
+      genericAssignAux(cast[pointer](d +% i *% mt.base.size),
+                       cast[pointer](s +% i *% mt.base.size), mt.base, shallow)
   of tyRef:
     unsureAsgnRef(cast[PPointer](dest), cast[PPointer](s)[])
   of tyOptAsRef:
@@ -160,8 +166,8 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   for i in 0..len-1:
-    genericAssign(cast[pointer](d +% i*% mt.base.size),
-                  cast[pointer](s +% i*% mt.base.size), mt.base)
+    genericAssign(cast[pointer](d +% i *% mt.base.size),
+                  cast[pointer](s +% i *% mt.base.size), mt.base)
 
 proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, benign.}
 proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
@@ -229,7 +235,7 @@ proc genericReset(dest: pointer, mt: PNimType) =
     pint[] = nil
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericReset(cast[pointer](d +% i*% mt.base.size), mt.base)
+      genericReset(cast[pointer](d +% i *% mt.base.size), mt.base)
   else:
     zeroMem(dest, mt.size) # set raw bits to zero
 

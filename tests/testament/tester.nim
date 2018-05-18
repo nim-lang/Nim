@@ -16,7 +16,7 @@ import
 
 const
   resultsFile = "testresults.html"
-  jsonFile = "testresults.json"
+  #jsonFile = "testresults.json" # not used
   Usage = """Usage:
   tester [options] command [arguments]
 
@@ -150,11 +150,11 @@ proc initResults: TResults =
   result.skipped = 0
   result.data = ""
 
-proc readResults(filename: string): TResults =
-  result = marshal.to[TResults](readFile(filename).string)
+#proc readResults(filename: string): TResults = # not used
+#  result = marshal.to[TResults](readFile(filename).string)
 
-proc writeResults(filename: string, r: TResults) =
-  writeFile(filename, $$r)
+#proc writeResults(filename: string, r: TResults) = # not used
+#  writeFile(filename, $$r)
 
 proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &
@@ -212,18 +212,18 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
-  elif expected.line   != given.line   and expected.line   != 0 or
+  elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, $expected.line & ':' & $expected.column,
-                      $given.line    & ':' & $given.column,
+                      $given.line & ':' & $given.column,
                       reLinesDiffer)
   elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
-  elif expected.tline   != given.tline   and expected.tline   != 0 or
+  elif expected.tline != given.tline and expected.tline != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
     r.addResult(test, target, $expected.tline & ':' & $expected.tcolumn,
-                      $given.tline    & ':' & $given.tcolumn,
+                      $given.tline & ':' & $given.tcolumn,
                       reLinesDiffer)
   else:
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
@@ -403,6 +403,21 @@ proc testC(r: var TResults, test: TTest) =
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
     if exitCode != 0: given.err = reExitCodesDiffer
   if given.err == reSuccess: inc(r.passed)
+
+proc testExec(r: var TResults, test: TTest) =
+  # runs executable or script, just goes by exit code
+  inc(r.total)
+  let (outp, errC) = execCmdEx(test.options.strip())
+  var given: TSpec
+  specDefaults(given)
+  if errC == 0:
+    given.err = reSuccess
+  else:
+    given.err = reExitCodesDiffer
+    given.msg = outp.string
+
+  if given.err == reSuccess: inc(r.passed)
+  r.addResult(test, targetC, "", given.msg, given.err)
 
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
               env: string = ""): TTest =

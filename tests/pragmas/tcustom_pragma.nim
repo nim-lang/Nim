@@ -51,6 +51,9 @@ block: # A bit more advanced case
 
   static: assert(hasCustomPragma(myproc, alternativeKey))
 
+  const hasFieldCustomPragma = s.field.hasCustomPragma(defaultValue)
+  static: assert(hasFieldCustomPragma == false)
+
   # pragma on an object
   static:
     assert Subfield.hasCustomPragma(defaultValue)
@@ -70,6 +73,8 @@ block: # ref types
 
     MyFile {.defaultValue: "closed".} = ref object
       path {.defaultValue: "invalid".}: string
+
+    TypeWithoutPragma = object
 
   var s = NodeRef()
 
@@ -91,7 +96,7 @@ block: # ref types
 
   var ptrS = NodePtr(nil)
   const
-    ptrRightSerKey = getCustomPragmaVal(s.right, serializationKey)
+    ptrRightSerKey = getCustomPragmaVal(ptrS.right, serializationKey)
   static:
     assert ptrRightSerKey == "r"
 
@@ -102,6 +107,9 @@ block: # ref types
   static:
     assert fileDefVal == "closed"
     assert filePathDefVal == "invalid"
+
+  static:
+    assert TypeWithoutPragma.hasCustomPragma(defaultValue) == false
 
 block:
   type

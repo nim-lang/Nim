@@ -51,8 +51,6 @@ type
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
 
-{.deprecated: [EInvalidReply: ReplyError, TMessage: Message, TSMTP: Smtp].}
-
 proc debugSend(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
   if smtp.debug:
     echo("C:" & cmd)

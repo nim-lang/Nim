@@ -1,4 +1,4 @@
-## v0.X.X - XX/XX/2018
+## v0.19.X - XX/XX/2018
 
 ### Changes affecting backwards compatibility
 
@@ -11,6 +11,16 @@
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
   to ``charCodeAt``.
+- Assignments that would "slice" an object into its supertype are now prevented
+  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
+  inheritance to prevent this issue.
+- The ``not nil`` type annotation now has to be enabled explicitly
+  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  feature works with Nim's containers.
+- The parser now warns about inconsistent spacing around binary operators as
+  these can easily be confused with unary operators. This warning will likely
+  become an error in the future.
+
 
 #### Breaking changes in the standard library
 
@@ -27,8 +37,12 @@
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
+- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 #### Breaking changes in the compiler
+
+- The undocumented ``#? braces`` parsing mode was removed.
+- The undocumented PHP backend was removed.
 
 ### Library additions
 
@@ -55,6 +69,12 @@
   fields.
 - ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
   correctness.
+- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
+  now joined in ``binarySearch``. ``smartbinarySearch`` is now
+  deprecated.
+- The `terminal` module now exports additional procs for generating ANSI color
+  codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
 
 ### Language additions
 
@@ -76,6 +96,21 @@
   Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
 
+- ``nil`` for strings/seqs is finally gone. Instead the default value for
+  these is ``"" / @[]``.
+
+- Accessing the binary zero terminator in Nim's native strings
+  is now invalid. Internally a Nim string still has the trailing zero for
+  zero-copy interoperability with ``cstring``. Compile your code with the
+  new switch ``--laxStrings:on`` if you need a transition period.
+
+- The command syntax now supports keyword arguments after the first comma.
+
+- Thread-local variables can now be declared inside procs. This implies all
+  the effects of the `global` pragma.
+
+- Nim now supports `except` clause in the export statement.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
@@ -96,5 +131,11 @@
 
 - Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
+
+- The ``deadCodeElim`` option is now always turned on and the switch has no
+  effect anymore, but is recognized for backwards compatibility.
+
+- ``experimental`` is now a pragma / command line switch that can enable specific
+  language extensions, it is not an all-or-nothing switch anymore.
 
 ### Bugfixes

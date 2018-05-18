@@ -40,8 +40,6 @@ type
     offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
     refillChars: set[char]
 
-{.deprecated: [TBaseLexer: BaseLexer].}
-
 const
   chrSize = sizeof(char)
 

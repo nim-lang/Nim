@@ -7,7 +7,7 @@ task "install", "compile and install nake binary":
     for index, dir in pairs(path):
       echo "  ", index, ". ", dir
     echo "Where to install nake binary? (quit with ^C or quit or exit)"
-    let ans = stdin.readLine().toLower
+    let ans = stdin.readLine().toLowerAscii
     var index = 0
     case ans
     of "q", "quit", "x", "exit":

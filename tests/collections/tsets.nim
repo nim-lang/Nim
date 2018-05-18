@@ -1,4 +1,6 @@
 import sets
+import hashes
+import algorithm
 
 block setEquality:
   var
@@ -35,7 +37,7 @@ block setWithSequences:
   doAssert( not s.contains(@[4, 5, 6]) )
 
 block setClearWorked:
-  var s = initSet[char]() 
+  var s = initSet[char]()
 
   for c in "this is a test":
     s.incl(c)
@@ -68,12 +70,54 @@ block orderedSetClearWorked:
   for c in "eat at joes":
     s.incl(c)
 
-  r = "" 
+  r = ""
   for c in items(s):
     add(r, c)
 
   doAssert r == "zeat jos"
 
+block hashForHashedSet:
+  let
+    seq1 = "This is the test."
+    seq2 = "the test is This."
+    s1 = seq1.toSet()
+    s2 = seq2.toSet()
+  var hashSeq: seq[Hash] = @[]
+  doAssert s1 == s2
+  doAssert hash(s1) == hash(s2)
 
+block hashForOrderdSet:
+  let
+    str = "This is the test."
+    rstr = str.reversed
 
+  var
+    s1 = initOrderedSet[char]()
+    s2 = initOrderedSet[char]()
+    r = initOrderedSet[char]()
+    expected: Hash
+    added: seq[char] = @[]
+    reversed: Hash
+    radded: seq[char] = @[]
 
+  expected = 0
+  for c in str:
+    if (not (c in added)):
+      expected = expected !& hash(c)
+      added.add(c)
+    s1.incl(c)
+    s2.incl(c)
+  expected = !$expected
+  doAssert hash(s1) == expected
+  doAssert hash(s1) == hash(s2)
+  doAssert hash(s1) != hash(r)
+
+  reversed = 0
+  for c in rstr:
+    if (not (c in radded)):
+      reversed = reversed !& hash(c)
+      radded.add(c)
+    r.incl(c)
+  reversed = !$reversed
+  doAssert hash(r) == reversed
+  doAssert hash(s1) != reversed

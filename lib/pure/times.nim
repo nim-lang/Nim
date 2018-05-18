@@ -103,7 +103,7 @@ type
 
   Time* = object ## Represents a point in time.
     seconds: int64
-    nanoseconds: NanosecondRange
+    nanosecond: NanosecondRange
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -159,7 +159,7 @@ type
                      ## This type should be prefered over ``TimeInterval`` unless
                      ## non-static time units is needed.
     seconds: int64
-    nanoseconds: NanosecondRange
+    nanosecond: NanosecondRange
 
   TimeUnit* = enum ## Different units of time.
     Nanoseconds, Microseconds, Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years
@@ -191,6 +191,7 @@ const
   secondsInHour = 60*60
   secondsInDay = 60*60*24
   minutesInHour = 60
+  rateDiff = 10000000'i64 # 100 nsecs
   # The number of hectonanoseconds between 1601/01/01 (windows epoch)
   # and 1970/01/01 (unix epoch).
   epochDiff = 116444736000000000'i64
@@ -222,21 +223,21 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
   ## a ``Duration`` or ``Time``. A normalized ``Duration|Time`` has a
   ## positive nanosecond part in the range ``NanosecondRange``.
   result.seconds = seconds + convert(Nanoseconds, Seconds, nanoseconds)
-  var nanoseconds = nanoseconds mod convert(Seconds, Nanoseconds, 1)
-  if nanoseconds < 0:
-    nanoseconds += convert(Seconds, Nanoseconds, 1)
+  var nanosecond = nanoseconds mod convert(Seconds, Nanoseconds, 1)
+  if nanosecond < 0:
+    nanosecond += convert(Seconds, Nanoseconds, 1)
     result.seconds -= 1
-  result.nanoseconds = nanoseconds.int
+  result.nanosecond = nanosecond.int
 
-proc initTime*(unix: int64, nanoseconds: NanosecondRange): Time =
+proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
   ## Create a ``Time`` from a unix timestamp and a nanosecond part.
   result.seconds = unix
-  result.nanoseconds = nanoseconds
+  result.nanosecond = nanosecond
 
-proc nanoseconds*(time: Time): NanosecondRange =
+proc nanosecond*(time: Time): NanosecondRange =
   ## Get the fractional part of a ``Time`` as the number
   ## of nanoseconds of the second.
-  time.nanoseconds
+  time.nanosecond
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
@@ -280,7 +281,7 @@ proc milliseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, milliseconds = 1)
     doAssert dur.milliseconds == 1
-  convert(Nanoseconds, Milliseconds, dur.nanoseconds)
+  convert(Nanoseconds, Milliseconds, dur.nanosecond)
 
 proc microseconds*(dur: Duration): int {.inline.} =
   ## Number of whole microseconds represented by the **fractional**
@@ -288,7 +289,7 @@ proc microseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, microseconds = 1)
     doAssert dur.microseconds == 1
-  convert(Nanoseconds, Microseconds, dur.nanoseconds)
+  convert(Nanoseconds, Microseconds, dur.nanosecond)
 
 proc nanoseconds*(dur: Duration): int {.inline.} =
   ## Number of whole nanoseconds represented by the **fractional**
@@ -296,14 +297,14 @@ proc nanoseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, nanoseconds = 1)
     doAssert dur.nanoseconds == 1
-  dur.nanoseconds
+  dur.nanosecond
 
 proc fractional*(dur: Duration): Duration {.inline.} =
   ## The fractional part of duration, as a duration.
   runnableExamples:
     let dur = initDuration(seconds = 1, nanoseconds = 5)
     doAssert dur.fractional == initDuration(nanoseconds = 5)
-  initDuration(nanoseconds = dur.nanoseconds)
+  initDuration(nanoseconds = dur.nanosecond)
 
 const DurationZero* = initDuration() ## Zero value for durations. Useful for comparisons.
                                      ##
@@ -321,7 +322,7 @@ proc `$`*(dur: Duration): string =
     doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
   var parts = newSeq[string]()
   var remS = dur.seconds
-  var remNs = dur.nanoseconds.int
+  var remNs = dur.nanosecond.int
 
   # Normally ``nanoseconds`` should always be positive, but
   # that makes no sense when printing.
@@ -352,7 +353,9 @@ proc `$`*(dur: Duration): string =
       parts.add $quantity & " " & unitStrings[unit] & "s"
 
   result = ""
-  if parts.len == 1:
+  if parts.len == 0:
+    result.add "0 nanoseconds"
+  elif parts.len == 1:
     result = parts[0]
   elif parts.len == 2:
     result = parts[0] & " and " & parts[1]
@@ -370,6 +373,21 @@ proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.}
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.seconds
+
+proc fromWinTime*(win: int64): Time =
+  ## Convert a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``)
+  ## to a ``Time``.
+  let hnsecsSinceEpoch = (win - epochDiff)
+  var seconds = hnsecsSinceEpoch div rateDiff
+  var nanos = ((hnsecsSinceEpoch mod rateDiff) * 100).int
+  if nanos < 0:
+    nanos += convert(Seconds, Nanoseconds, 1)
+    seconds -= 1
+  result = initTime(seconds, nanos)
+
+proc toWinTime*(t: Time): int64 =
+  ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
+  result = t.seconds * rateDiff + epochDiff + t.nanosecond div 100
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
@@ -455,21 +473,21 @@ proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benig
 {. pragma: operator, rtl, noSideEffect, benign .}
 
 template subImpl[T: Duration|Time](a: Duration|Time, b: Duration|Time): T =
-  normalize[T](a.seconds - b.seconds, a.nanoseconds - b.nanoseconds)
+  normalize[T](a.seconds - b.seconds, a.nanosecond - b.nanosecond)
 
 template addImpl[T: Duration|Time](a: Duration|Time, b: Duration|Time): T =
-  normalize[T](a.seconds + b.seconds, a.nanoseconds + b.nanoseconds)
+  normalize[T](a.seconds + b.seconds, a.nanosecond + b.nanosecond)
 
 template ltImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds < b.seconds or (
-    a.seconds == b.seconds and a.nanoseconds < b.nanoseconds)
+    a.seconds == b.seconds and a.nanosecond < b.nanosecond)
 
 template lqImpl(a: Duration|Time, b: Duration|Time): bool =
-  a.seconds <= b.seconds or (
-    a.seconds == b.seconds and a.nanoseconds <= b.seconds)
+  a.seconds < b.seconds or (
+    a.seconds == b.seconds and a.nanosecond <= b.nanosecond)
 
 template eqImpl(a: Duration|Time, b: Duration|Time): bool =
-  a.seconds == b.seconds and a.nanoseconds == b.nanoseconds
+  a.seconds == b.seconds and a.nanosecond == b.nanosecond
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
   ## Add two durations together.
@@ -489,7 +507,7 @@ proc `-`*(a: Duration): Duration {.operator.} =
   ## Reverse a duration.
   runnableExamples:
     doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
-  normalize[Duration](-a.seconds, -a.nanoseconds)
+  normalize[Duration](-a.seconds, -a.nanosecond)
 
 proc `<`*(a, b: Duration): bool {.operator.} =
   ## Note that a duration can be negative,
@@ -512,7 +530,7 @@ proc `*`*(a: int64, b: Duration): Duration {.operator} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
-  normalize[Duration](a * b.seconds, a * b.nanoseconds)
+  normalize[Duration](a * b.seconds, a * b.nanosecond)
 
 proc `*`*(a: Duration, b: int64): Duration {.operator} =
   ## Multiply a duration by some scalar.
@@ -526,7 +544,7 @@ proc `div`*(a: Duration, b: int64): Duration {.operator} =
     doAssert initDuration(seconds = 3) div 2 == initDuration(milliseconds = 1500)
     doAssert initDuration(nanoseconds = 3) div 2 == initDuration(nanoseconds = 1)
   let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
-  normalize[Duration](a.seconds div b, (a.nanoseconds + carryOver) div b)
+  normalize[Duration](a.seconds div b, (a.nanosecond + carryOver) div b)
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -582,7 +600,7 @@ proc abs*(a: Duration): Duration =
   runnableExamples:
     doAssert initDuration(milliseconds = -1500).abs ==
       initDuration(milliseconds = 1500)
-  initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanoseconds)
+  initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
@@ -632,7 +650,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     hour: hour,
     minute: minute,
     second: second,
-    nanosecond: zt.adjTime.nanoseconds,
+    nanosecond: zt.adjTime.nanosecond,
     weekday: getDayOfWeek(d, m, y),
     yearday: getDayOfYear(d, m, y),
     isDst: zt.isDst,
@@ -791,7 +809,7 @@ else:
     # as a result of offset changes (normally due to dst)
     let utcUnix = adjTime.seconds + utcOffset
     let (finalOffset, dst) = getLocalOffsetAndDst(utcUnix)
-    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanoseconds)
+    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanosecond)
     result.utcOffset = finalOffset
     result.isDst = dst
 
@@ -853,10 +871,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   elif defined(windows):
     var f: FILETIME
     getSystemTimeAsFileTime(f)
-    let nanosSinceEpoch = (rdFileTime(f) - epochDiff) * 100
-    let seconds = convert(Nanoseconds, Seconds, nanosSinceEpoch)
-    let nanos = (nanosSinceEpoch mod convert(Seconds, Nanoseconds, 1)).int
-    result = initTime(seconds, nanos)
+    result = fromWinTime(rdFileTime(f))
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
@@ -1158,12 +1173,16 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
   of "dddd":
     buf.add($dt.weekday)
   of "h":
-    buf.add($(if dt.hour > 12: dt.hour - 12 else: dt.hour))
+    if dt.hour == 0: buf.add("12")
+    else: buf.add($(if dt.hour > 12: dt.hour - 12 else: dt.hour))
   of "hh":
-    let amerHour = if dt.hour > 12: dt.hour - 12 else: dt.hour
-    if amerHour < 10:
-      buf.add('0')
-    buf.add($amerHour)
+    if dt.hour == 0:
+      buf.add("12")
+    else:
+      let amerHour = if dt.hour > 12: dt.hour - 12 else: dt.hour
+      if amerHour < 10:
+        buf.add('0')
+      buf.add($amerHour)
   of "H":
     buf.add($dt.hour)
   of "HH":
@@ -1303,24 +1322,23 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
   result = ""
   var i = 0
   var currentF = ""
-  while true:
+  while i < f.len:
     case f[i]
-    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
+    of ' ', '-', '/', ':', '\'', '(', ')', '[', ']', ',':
       formatToken(dt, currentF, result)
 
       currentF = ""
-      if f[i] == '\0': break
 
       if f[i] == '\'':
         inc(i) # Skip '
-        while f[i] != '\'' and f.len-1 > i:
+        while i < f.len-1 and f[i] != '\'':
           result.add(f[i])
           inc(i)
       else: result.add(f[i])
 
     else:
       # Check if the letter being added matches previous accumulated buffer.
-      if currentF.len < 1 or currentF[high(currentF)] == f[i]:
+      if currentF.len == 0 or currentF[high(currentF)] == f[i]:
         currentF.add(f[i])
       else:
         formatToken(dt, currentF, result)
@@ -1328,6 +1346,7 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
         currentF = ""
 
     inc(i)
+  formatToken(dt, currentF, result)
 
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
@@ -1424,58 +1443,58 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     dt.month = month.Month
   of "MMM":
     case value[j..j+2].toLowerAscii():
-    of "jan": dt.month =  mJan
-    of "feb": dt.month =  mFeb
-    of "mar": dt.month =  mMar
-    of "apr": dt.month =  mApr
-    of "may": dt.month =  mMay
-    of "jun": dt.month =  mJun
-    of "jul": dt.month =  mJul
-    of "aug": dt.month =  mAug
-    of "sep": dt.month =  mSep
-    of "oct": dt.month =  mOct
-    of "nov": dt.month =  mNov
-    of "dec": dt.month =  mDec
+    of "jan": dt.month = mJan
+    of "feb": dt.month = mFeb
+    of "mar": dt.month = mMar
+    of "apr": dt.month = mApr
+    of "may": dt.month = mMay
+    of "jun": dt.month = mJun
+    of "jul": dt.month = mJul
+    of "aug": dt.month = mAug
+    of "sep": dt.month = mSep
+    of "oct": dt.month = mOct
+    of "nov": dt.month = mNov
+    of "dec": dt.month = mDec
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
     j += 3
   of "MMMM":
     if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
-      dt.month =  mJan
+      dt.month = mJan
       j += 7
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("february") == 0:
-      dt.month =  mFeb
+      dt.month = mFeb
       j += 8
     elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("march") == 0:
-      dt.month =  mMar
+      dt.month = mMar
       j += 5
     elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("april") == 0:
-      dt.month =  mApr
+      dt.month = mApr
       j += 5
     elif value.len >= j+3 and value[j..j+2].cmpIgnoreCase("may") == 0:
-      dt.month =  mMay
+      dt.month = mMay
       j += 3
     elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("june") == 0:
-      dt.month =  mJun
+      dt.month = mJun
       j += 4
     elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("july") == 0:
-      dt.month =  mJul
+      dt.month = mJul
       j += 4
     elif value.len >= j+6 and value[j..j+5].cmpIgnoreCase("august") == 0:
-      dt.month =  mAug
+      dt.month = mAug
       j += 6
     elif value.len >= j+9 and value[j..j+8].cmpIgnoreCase("september") == 0:
-      dt.month =  mSep
+      dt.month = mSep
       j += 9
     elif value.len >= j+7 and value[j..j+6].cmpIgnoreCase("october") == 0:
-      dt.month =  mOct
+      dt.month = mOct
       j += 7
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("november") == 0:
-      dt.month =  mNov
+      dt.month = mNov
       j += 8
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("december") == 0:
-      dt.month =  mDec
+      dt.month = mDec
       j += 8
     else:
       raise newException(ValueError,
@@ -1488,11 +1507,15 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     dt.second = value[j..j+1].parseInt()
     j += 2
   of "t":
-    if value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
+    if value[j] == 'A' and dt.hour == 12:
+      dt.hour = 0
+    elif value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 1
   of "tt":
-    if value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
+    if value[j..j+1] == "AM" and dt.hour == 12:
+      dt.hour = 0
+    elif value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 2
   of "yy":
@@ -1506,44 +1529,47 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     j += 4
   of "z":
     dt.isDst = false
-    if value[j] == '+':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+':
       dt.utcOffset = 0 - parseInt($value[j+1]) * secondsInHour
-    elif value[j] == '-':
+    elif ch == '-':
       dt.utcOffset = parseInt($value[j+1]) * secondsInHour
-    elif value[j] == 'Z':
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (z), got: " & value[j])
+        "Couldn't parse timezone offset (z), got: " & ch)
     j += 2
   of "zz":
     dt.isDst = false
-    if value[j] == '+':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+':
       dt.utcOffset = 0 - value[j+1..j+2].parseInt() * secondsInHour
-    elif value[j] == '-':
+    elif ch == '-':
       dt.utcOffset = value[j+1..j+2].parseInt() * secondsInHour
-    elif value[j] == 'Z':
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (zz), got: " & value[j])
+        "Couldn't parse timezone offset (zz), got: " & ch)
     j += 3
   of "zzz":
     dt.isDst = false
     var factor = 0
-    if value[j] == '+': factor = -1
-    elif value[j] == '-': factor = 1
-    elif value[j] == 'Z':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+': factor = -1
+    elif ch == '-': factor = 1
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (zzz), got: " & value[j])
+        "Couldn't parse timezone offset (zzz), got: " & ch)
     dt.utcOffset = factor * value[j+1..j+2].parseInt() * secondsInHour
     j += 4
     dt.utcOffset += factor * value[j..j+1].parseInt() * 60
@@ -1605,20 +1631,18 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   dt.nanosecond = 0
   dt.isDst = true # using this is flag for checking whether a timezone has \
       # been read (because DST is always false when a tz is parsed)
-  while true:
+  while i < layout.len:
     case layout[i]
-    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
+    of ' ', '-', '/', ':', '\'', '(', ')', '[', ']', ',':
       if token.len > 0:
         parseToken(dt, token, value, j)
       # Reset token
       token = ""
-      # Break if at end of line
-      if layout[i] == '\0': break
       # Skip separator and everything between single quotes
       # These are literals in both the layout and the value string
       if layout[i] == '\'':
         inc(i)
-        while layout[i] != '\'' and layout.len-1 > i:
+        while i < layout.len-1 and layout[i] != '\'':
           inc(i)
           inc(j)
         inc(i)
@@ -1627,13 +1651,15 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
         inc(j)
     else:
       # Check if the letter being added matches previous accumulated buffer.
-      if token.len < 1 or token[high(token)] == layout[i]:
+      if token.len == 0 or token[high(token)] == layout[i]:
         token.add(layout[i])
         inc(i)
       else:
         parseToken(dt, token, value, j)
         token = ""
 
+  if i >= layout.len and token.len > 0:
+    parseToken(dt, token, value, j)
   if dt.isDst:
     # No timezone parsed - assume timezone is `zone`
     result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
@@ -1713,17 +1739,6 @@ when not defined(JS):
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
 
-  const
-    rateDiff = 10000000'i64 # 100 nsecs
-
-  proc unixTimeToWinTime*(time: CTime): int64 =
-    ## converts a UNIX `Time` (``time_t``) to a Windows file time
-    result = int64(time) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(time: int64): CTime =
-    ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = CTime((time - epochDiff) div rateDiff)
-
   when not defined(useNimRtl):
     proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time spent that the CPU spent to run the current process in
@@ -1748,7 +1763,7 @@ when not defined(JS):
       when defined(posix):
         var a: Timeval
         gettimeofday(a)
-        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
+        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
         var f: winlean.FILETIME
         getSystemTimeAsFileTime(f)
@@ -1764,6 +1779,19 @@ when defined(JS):
     newDate().getTime() / 1000
 
 # Deprecated procs
+
+when not defined(JS):
+  proc unixTimeToWinTime*(time: CTime): int64 {.deprecated: "Use toWinTime instead".} =
+    ## Converts a UNIX `Time` (``time_t``) to a Windows file time
+    ##
+    ## **Deprecated:** use ``toWinTime`` instead.
+    result = int64(time) * rateDiff + epochDiff
+
+  proc winTimeToUnixTime*(time: int64): CTime {.deprecated: "Use fromWinTime instead".} =
+    ## Converts a Windows time to a UNIX `Time` (``time_t``)
+    ##
+    ## **Deprecated:** use ``fromWinTime`` instead.
+    result = CTime((time - epochDiff) div rateDiff)
 
 proc initInterval*(seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval {.deprecated.} =
@@ -1789,7 +1817,7 @@ proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} 
   ## Returns the time in seconds since the unix epoch.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
-  time.seconds.float + time.nanoseconds / convert(Seconds, Nanoseconds, 1)
+  time.seconds.float + time.nanosecond / convert(Seconds, Nanoseconds, 1)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
@@ -1836,7 +1864,7 @@ when defined(JS):
     ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
     result = (convert(Seconds, Milliseconds, dur.seconds) +
-      convert(Nanoseconds, Milliseconds, dur.nanoseconds)).int
+      convert(Nanoseconds, Milliseconds, dur.nanosecond)).int
 else:
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
     when defined(macosx):

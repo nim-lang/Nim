@@ -53,7 +53,7 @@ proc hashString*(s: string): BiggestInt =
     result = a
 
 var
-  gTypeTable: array[TTypeKind, TIdTable]
+  gTypeTable: array[TTypeKind, TIdTable]  # XXX globals here
   gCanonicalTypes: array[TTypeKind, PType]
 
 proc initTypeTables() =
@@ -210,9 +210,5 @@ proc mangle*(name: string): string =
       requiresUnderscore = true
   if requiresUnderscore:
     result.add "_"
-
-proc emitLazily*(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
 
 initTypeTables()

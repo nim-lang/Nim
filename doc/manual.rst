@@ -1397,10 +1397,10 @@ dereferencing operations for reference types:
 
 Automatic dereferencing is also performed for the first argument of a routine
 call. But currently this feature has to be only enabled
-via ``{.experimental.}``:
+via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
-  {.experimental.}
+  {.experimental: "implicitDeref".}
 
   proc depth(x: NodeObj): int = ...
 
@@ -1471,7 +1471,7 @@ mysterious crashes.
 
 **Note**: The example only works because the memory is initialized to zero
 (``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
-``nil`` which the string assignment can handle. One needs to know low level
+binary zero which the string assignment can handle. One needs to know low level
 details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
@@ -2512,8 +2512,8 @@ char                            '\\0'
 bool                            false
 ref or pointer type             nil
 procedural type                 nil
-sequence                        nil (*not* ``@[]``)
-string                          nil (*not* "")
+sequence                        ``@[]``
+string                          ``""``
 tuple[x: A, y: B, ...]          (default(A), default(B), ...)
                                 (analogous for objects)
 array[0..., T]                  [default(T), ...]
@@ -3487,17 +3487,17 @@ returned value is an l-value and can be modified by the caller:
 .. code-block:: nim
   var g = 0
 
-  proc WriteAccessToG(): var int =
+  proc writeAccessToG(): var int =
     result = g
 
-  WriteAccessToG() = 6
+  writeAccessToG() = 6
   assert g == 6
 
 It is a compile time error if the implicitly introduced pointer could be
 used to access a location beyond its lifetime:
 
 .. code-block:: nim
-  proc WriteAccessToG(): var int =
+  proc writeAccessToG(): var int =
     var g = 0
     result = g # Error!
 
@@ -3510,6 +3510,24 @@ For iterators, a component of a tuple return type can have a ``var`` type too:
 
 In the standard library every name of a routine that returns a ``var`` type
 starts with the prefix ``m`` per convention.
+
+
+.. include:: manual/var_t_return.rst
+
+Future directions
+~~~~~~~~~~~~~~~~~
+
+Later versions of Nim can be more precise about the borrowing rule with
+a syntax like:
+
+.. code-block:: nim
+  proc foo(other: Y; container: var X): var T from container
+
+Here ``var T from container`` explicitly exposes that the
+location is deviated from the second parameter (called
+'container' in this case). The syntax ``var T from p`` specifies a type
+``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
+
 
 
 Overloading of the subscript operator
@@ -4252,7 +4270,7 @@ therefore very useful for type specialization within generic code:
     Table[Key, Value] = object
       keys: seq[Key]
       values: seq[Value]
-      when not (Key is string): # nil value for strings used for optimization
+      when not (Key is string): # empty value for strings used for optimization
         deletedKeys: seq[bool]
 
 
@@ -5241,15 +5259,21 @@ chance to convert it into a sequence.
 Macros
 ======
 
-A macro is a special kind of low level template. Macros can be used
-to implement `domain specific languages`:idx:.
+A macro is a special function that is executed at compile-time.
+Normally the input for a macro is an abstract syntax
+tree (AST) of the code that is passed to it. The macro can then do
+transformations on it and return the transformed AST. The
+transformed AST is then passed to the compiler as if the macro
+invocation would have been replaced by its result in the source
+code. This can be used to implement `domain specific
+languages`:idx:.
 
 While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax. However, this is no real restriction because
 Nim's syntax is flexible enough anyway.
 
 To write macros, one needs to know how the Nim concrete syntax is converted
-to an abstract syntax tree.
+to an AST.
 
 There are two ways to invoke a macro:
 (1) invoking a macro like a procedure call (`expression macros`)
@@ -5269,19 +5293,21 @@ variable number of arguments:
   # ``macros`` module:
   import macros
 
-  macro debug(n: varargs[untyped]): untyped =
-    # `n` is a Nim AST that contains the whole macro invocation
-    # this macro returns a list of statements:
-    result = newNimNode(nnkStmtList, n)
+  macro debug(args: varargs[untyped]): untyped =
+    # `args` is a collection of `NimNode` values that each contain the
+    # AST for an argument of the macro. A macro always has to
+    # return a `NimNode`. A node of kind `nnkStmtList` is suitable for
+    # this use case.
+    result = nnkStmtList.newTree()
     # iterate over any argument that is passed to this macro:
-    for i in 0..n.len-1:
+    for n in args:
       # add a call to the statement list that writes the expression;
       # `toStrLit` converts an AST to its string representation:
-      add(result, newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
+      result.add newCall("write", newIdentNode("stdout"), newLit(n.repr))
       # add a call to the statement list that writes ": "
-      add(result, newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
+      result.add newCall("write", newIdentNode("stdout"), newLit(": "))
       # add a call to the statement list that writes the expressions value:
-      add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
+      result.add newCall("writeLine", newIdentNode("stdout"), n)
 
   var
     a: array[0..10, int]
@@ -5562,7 +5588,7 @@ dot operators
 -------------
 
 **Note**: Dot operators are still experimental and so need to be enabled
-via ``{.experimental.}``.
+via ``{.experimental: "dotOperators".}``.
 
 Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
@@ -6272,6 +6298,9 @@ modules don't need to import a module's dependencies:
   var x: MyObject
   echo $x
 
+When the exported symbol is another module, all of its definitions will
+be forwarded. You can use an ``except`` list to exclude some of the symbols.
+
 Note on paths
 -----------
 In module related statements, if any part of the module name /
@@ -6742,22 +6771,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-deadCodeElim pragma
--------------------
-The ``deadCodeElim`` pragma only applies to whole modules: It tells the
-compiler to activate (or deactivate) dead code elimination for the module the
-pragma appears in.
-
-The ``--deadCodeElim:on`` command line switch has the same effect as marking
-every module with ``{.deadCodeElim:on}``. However, for some modules such as
-the GTK wrapper it makes sense to *always* turn on dead code elimination -
-no matter if it is globally active or not.
-
-Example:
-
-.. code-block:: nim
-  {.deadCodeElim: on.}
-
 
 ..
   NoForward pragma
@@ -6875,17 +6888,12 @@ is uncertain (it may be removed any time).
 Example:
 
 .. code-block:: nim
-  {.experimental.}
-  type
-    FooId = distinct int
-    BarId = distinct int
-  using
-    foo: FooId
-    bar: BarId
+  {.experimental: "parallel".}
 
   proc useUsing(bar, foo) =
-    echo "bar is of type BarId"
-    echo "foo is of type FooId"
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
 
 
 Implementation Specific Pragmas
@@ -7429,8 +7437,8 @@ code generation directly, but their presence can be detected by macros.
 Custom pragmas are defined using templates annotated with pragma ``pragma``:
 
 .. code-block:: nim
-  template dbTable(name: string, table_space: string = nil) {.pragma.}
-  template dbKey(name: string = nil, primary_key: bool = false) {.pragma.}
+  template dbTable(name: string, table_space: string = "") {.pragma.}
+  template dbKey(name: string = "", primary_key: bool = false) {.pragma.}
   template dbForeignKey(t: typedesc) {.pragma.}
   template dbIgnore {.pragma.}
 
@@ -7793,8 +7801,9 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the ``threadvar`` pragma; it is
-a `thread-local`:idx: variable then:
+A variable can be marked with the ``threadvar`` pragma, which makes it a
+`thread-local`:idx: variable; Additionally, this implies all the effects
+of the ``global`` pragma.
 
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]
@@ -7907,7 +7916,7 @@ Example:
 
   # Compute PI in an inefficient way
   import strutils, math, threadpool
-  {.experimental.}
+  {.experimental: "parallel".}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
@@ -8187,5 +8196,3 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
-
-

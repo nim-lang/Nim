@@ -1,5 +1,5 @@
 discard """
-  errormsg: "number 0x123'u8 out of valid range"
+  errormsg: "number out of range: '0x123'u8'"
 """
 
 # Bug #1179

@@ -12,11 +12,11 @@
 
 # included from cgen.nim
 
-proc emulatedThreadVars(): bool =
-  result = {optThreads, optTlsEmulation} <= gGlobalOptions
+proc emulatedThreadVars(conf: ConfigRef): bool =
+  result = {optThreads, optTlsEmulation} <= conf.globalOptions
 
 proc accessThreadLocalVar(p: BProc, s: PSym) =
-  if emulatedThreadVars() and not p.threadVarAccessed:
+  if emulatedThreadVars(p.config) and not p.threadVarAccessed:
     p.threadVarAccessed = true
     incl p.module.flags, usesThreadVars
     addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV_;$n", [])
@@ -37,7 +37,7 @@ var
 # made to be one.
 
 proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
-  if emulatedThreadVars():
+  if emulatedThreadVars(m.config):
     # we gather all thread locals var into a struct; we need to allocate
     # storage for that somehow, can't use the thread local storage
     # allocator for it :-(
@@ -46,7 +46,7 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
       addf(nimtv, "$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.r])
   else:
     if isExtern: add(m.s[cfsVars], "extern ")
-    if optThreads in gGlobalOptions: add(m.s[cfsVars], "NIM_THREADVAR ")
+    if optThreads in m.config.globalOptions: add(m.s[cfsVars], "NIM_THREADVAR ")
     add(m.s[cfsVars], getTypeDesc(m, s.loc.t))
     addf(m.s[cfsVars], " $1;$n", [s.loc.r])
 
@@ -57,7 +57,7 @@ proc generateThreadLocalStorage(m: BModule) =
 
 proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
-    let externc = if gCmd == cmdCompileToCpp or
+    let externc = if m.config.cmd == cmdCompileToCpp or
                        sfCompileToCpp in m.module.flags: "extern \"C\" "
                   else: ""
     addf(m.s[cfsProcs],

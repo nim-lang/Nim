@@ -52,7 +52,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
   if numLines > 0: inc(total, (numLines - 1) * newLine.len)
 
   result = newString(total)
-  var 
+  var
     i = 0
     r = 0
     currLine = 0
@@ -76,7 +76,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
       currLine = 0
 
   if i < s.len-1:
-    let 
+    let
       a = ord(s[i])
       b = ord(s[i+1])
     result[r] = cb64[a shr 2]
@@ -130,11 +130,11 @@ proc decode*(s: string): string =
   # total is an upper bound, as we will skip arbitrary whitespace:
   result = newString(total)
 
-  var 
+  var
     i = 0
     r = 0
   while true:
-    while s[i] in Whitespace: inc(i)
+    while i < s.len and s[i] in Whitespace: inc(i)
     if i < s.len-3:
       let
         a = s[i].decodeByte

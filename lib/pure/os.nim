@@ -10,7 +10,7 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger: off.}
 
@@ -188,7 +188,7 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".}
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastWriteTime)).int64)
+    result = fromWinTime(rdFileTime(f.ftLastWriteTime))
     findClose(h)
 
 proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
@@ -201,7 +201,7 @@ proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastAccessTime)).int64)
+    result = fromWinTime(rdFileTime(f.ftLastAccessTime))
     findClose(h)
 
 proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
@@ -218,7 +218,7 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftCreationTime)).int64)
+    result = fromWinTime(rdFileTime(f.ftCreationTime))
     findClose(h)
 
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
@@ -329,20 +329,21 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       c_free(cast[pointer](r))
 
 when defined(Windows):
-  proc openHandle(path: string, followSymlink=true): Handle =
+  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+    let access = if writeAccess: GENERIC_WRITE else: 0'i32
 
     when useWinUnicode:
       result = createFileW(
-        newWideCString(path), 0'i32,
+        newWideCString(path), access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
     else:
       result = createFileA(
-        path, 0'i32,
+        path, access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
@@ -429,8 +430,6 @@ type
     fpOthersExec,          ## execute access for others
     fpOthersWrite,         ## write access for others
     fpOthersRead           ## read access for others
-
-{.deprecated: [TFilePermission: FilePermission].}
 
 proc getFilePermissions*(filename: string): set[FilePermission] {.
   rtl, extern: "nos$1", tags: [ReadDirEffect].} =
@@ -728,8 +727,6 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
-
-{.deprecated: [TPathComponent: PathComponent].}
 
 
 when defined(posix):
@@ -1059,18 +1056,17 @@ proc parseCmdLine*(c: string): seq[string] {.
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] == ' ' or c[i] == '\t' or c[i] == '\l' or c[i] == '\r' : inc(i)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
     when defined(windows):
       # parse a single argument according to the above rules:
-      if c[i] == '\0': break
       var inQuote = false
-      while true:
+      while i < c.len:
         case c[i]
-        of '\0': break
         of '\\':
           var j = i
-          while c[j] == '\\': inc(j)
-          if c[j] == '"':
+          while j < c.len and c[j] == '\\': inc(j)
+          if j < c.len and c[j] == '"':
             for k in 1..(j-i) div 2: a.add('\\')
             if (j-i) mod 2 == 0:
               i = j
@@ -1083,7 +1079,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         of '"':
           inc(i)
           if not inQuote: inQuote = true
-          elif c[i] == '"':
+          elif i < c.len and c[i] == '"':
             a.add(c[i])
             inc(i)
           else:
@@ -1101,13 +1097,12 @@ proc parseCmdLine*(c: string): seq[string] {.
       of '\'', '\"':
         var delim = c[i]
         inc(i) # skip ' or "
-        while c[i] != '\0' and c[i] != delim:
+        while i < c.len and c[i] != delim:
           add a, c[i]
           inc(i)
-        if c[i] != '\0': inc(i)
-      of '\0': break
+        if i < c.len: inc(i)
       else:
-        while c[i] > ' ':
+        while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
     add(result, a)
@@ -1442,18 +1437,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     if result.len == 0:
       result = getApplHeuristic()
 
-proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the filename of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppFilename``
-  ## instead.
-  result = getAppFilename()
-
-proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the directory of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppDir``
-  ## instead.
-  result = splitFile(getAppFilename()).dir
-
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
   result = splitFile(getAppFilename()).dir
@@ -1511,16 +1494,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e: FILETIME): untyped {.gensym.} =
-      fromUnix(winTimeToUnixTime(rdFileTime(e)).int64) # local templates default to bind semantics
     template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
     formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
-    formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
-    formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
-    formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
+    formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
+    formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
+    formalInfo.creationTime = fromWinTime(rdFileTime(rawInfo.ftCreationTime))
 
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
@@ -1654,3 +1635,18 @@ proc isHidden*(path: string): bool =
         result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}
+
+proc setLastModificationTime*(file: string, t: times.Time) =
+  ## Sets the `file`'s last modification time. `OSError` is raised in case of
+  ## an error.
+  when defined(posix):
+    let unixt = posix.Time(t.toUnix)
+    var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
+    if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
+  else:
+    let h = openHandle(path = file, writeAccess = true)
+    if h == INVALID_HANDLE_VALUE: raiseOSError(osLastError())
+    var ft = t.toWinTime.toFILETIME
+    let res = setFileTime(h, nil, nil, ft.addr)
+    discard h.closeHandle
+    if res == 0'i32: raiseOSError(osLastError())

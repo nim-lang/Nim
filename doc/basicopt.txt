@@ -29,14 +29,13 @@ Options:
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
   --nilChecks:on|off        turn nil checks on|off
-  --deadCodeElim:on|off     whole program dead code elimination on|off
   --opt:none|speed|size     optimize not at all or for speed|size
                             Note: use -d:release for a release build!
   --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  --advanced                show advanced command line switches
+  --fullhelp                show all command line switches
   -h, --help                show this help
 
 Note, single letter options that take an argument require a colon. E.g. -p:PATH.

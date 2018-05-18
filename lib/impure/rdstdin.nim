@@ -13,7 +13,7 @@
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.

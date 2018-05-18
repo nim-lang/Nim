@@ -13,7 +13,8 @@
 import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod,
+  configuration
 
 
 type
@@ -52,30 +53,16 @@ proc makePass*(open: TPassOpen = nil,
 
 # the semantic checker needs these:
 var
-  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
-  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
+  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex; cache: IdentCache): PSym {.nimcall.}
+  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex; cache: IdentCache): PNode {.nimcall.}
 
 # implementation
 
-proc skipCodegen*(n: PNode): bool {.inline.} =
+proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
   # can be used by codegen passes to determine whether they should do
   # something with `n`. Currently, this ignores `n` and uses the global
   # error count instead.
-  result = msgs.gErrorCounter > 0
-
-proc astNeeded*(s: PSym): bool =
-  # The ``rodwrite`` module uses this to determine if the body of a proc
-  # needs to be stored. The passes manager frees s.sons[codePos] when
-  # appropriate to free the procedure body's memory. This is important
-  # to keep memory usage down.
-  if (s.kind in {skMethod, skProc, skFunc}) and
-      ({sfCompilerProc, sfCompileTime} * s.flags == {}) and
-      (s.typ.callConv != ccInline) and
-      (s.ast.sons[genericParamsPos].kind == nkEmpty):
-    result = false
-    # XXX this doesn't really make sense with excessive CTFE
-  else:
-    result = true
+  result = config.errorCounter > 0
 
 const
   maxPasses = 10
@@ -153,20 +140,21 @@ proc closePassesCached(graph: ModuleGraph; a: var TPassContextArray) =
       m = gPasses[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
-proc resolveMod(module, relativeTo: string): int32 =
-  let fullPath = findModule(module, relativeTo)
+proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
+  let fullPath = findModule(conf, module, relativeTo)
   if fullPath.len == 0:
     result = InvalidFileIDX
   else:
-    result = fullPath.fileInfoIdx
+    result = fileInfoIdx(conf, fullPath)
 
-proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
+proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKind,
                       a: var TPassContextArray; m: PSym) =
   # XXX fixme this should actually be relative to the config file!
+  let gCmdLineInfo = newLineInfo(FileIndex(0), 1, 1)
   let relativeTo = m.info.toFullPath
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
-    if m.position != resolveMod(module, relativeTo):
+    if m.position != resolveMod(conf, module, relativeTo).int32:
       var importStmt = newNodeI(nodeKind, gCmdLineInfo)
       var str = newStrNode(nkStrLit, module)
       str.info = gCmdLineInfo
@@ -216,20 +204,20 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
       let filename = fileIdx.toFullPathConsiderDirty
       s = llStreamOpen(filename, fmRead)
       if s == nil:
-        rawMessage(errCannotOpenFile, filename)
+        rawMessage(graph.config, errCannotOpenFile, filename)
         return false
     else:
       s = stream
     while true:
-      openParsers(p, fileIdx, s, cache)
+      openParsers(p, fileIdx, s, cache, graph.config)
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits implicitImports, nkImportStmt, a, module
-        processImplicits implicitIncludes, nkIncludeStmt, a, module
+        processImplicits graph.config, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph.config, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         if graph.stopCompile(): break

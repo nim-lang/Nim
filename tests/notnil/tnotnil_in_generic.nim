@@ -3,6 +3,7 @@ discard """
 """
 
 # bug #2216
+{.experimental: "notnil".}
 
 type
     A[T] = ref object

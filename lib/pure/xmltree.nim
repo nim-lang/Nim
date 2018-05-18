@@ -12,9 +12,9 @@
 import macros, strtabs
 
 type
-  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``PXmlNode``'s.
+  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``XmlNode``'s.
 
-  XmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
+  XmlNodeKind* = enum  ## different kinds of ``XmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
@@ -32,9 +32,6 @@ type
       s: seq[XmlNode]
       fAttr: XmlAttributes
     fClientData: int              ## for other clients
-
-{.deprecated: [PXmlNode: XmlNode, TXmlNodeKind: XmlNodeKind, PXmlAttributes:
-    XmlAttributes, TXmlNode: XmlNodeObj].}
 
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## creates a new ``XmlNode``.
@@ -154,11 +151,6 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## returns the `i`'th child of `n` so that it can be modified
   assert n.k == xnElement
   result = n.s[i]
-
-proc mget*(n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
-  ## returns the `i`'th child of `n` so that it can be modified. Use ```[]```
-  ## instead.
-  n[i]
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## iterates over any child of `n`.
@@ -315,14 +307,12 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
 
-proc xmlConstructor(e: NimNode): NimNode {.compileTime.} =
-  expectLen(e, 2)
-  var a = e[1]
+proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)
-    var newStringTabCall = newCall("newStringTable", attrs,
-                                   newIdentNode("modeCaseSensitive"))
+    var newStringTabCall = newCall(bindSym"newStringTable", attrs,
+                                    bindSym"modeCaseSensitive")
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
       if a[i].kind == nnkExprEqExpr:
@@ -348,7 +338,6 @@ macro `<>`*(x: untyped): untyped =
   ##
   ##  <a href="http://nim-lang.org">Nim rules.</a>
   ##
-  let x = callsite()
   result = xmlConstructor(x)
 
 proc child*(n: XmlNode, name: string): XmlNode =

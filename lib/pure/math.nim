@@ -29,11 +29,21 @@ proc binom*(n, k: int): int {.noSideEffect.} =
   for i in countup(2, k):
     result = (result * (n + 1 - i)) div i
 
-proc fac*(n: int): int {.noSideEffect.} =
+proc createFactTable[N: static[int]]: array[N, int] =
+  result[0] = 1
+  for i in 1 ..< N:
+    result[i] = result[i - 1] * i
+
+proc fac*(n: int): int =
   ## Computes the faculty/factorial function.
-  result = 1
-  for i in countup(2, n):
-    result = result * i
+  const factTable =
+    when sizeof(int) == 4:
+      createFactTable[13]()
+    else:
+      createFactTable[21]()
+  assert(n >= 0, $n & " must not be negative.")
+  assert(n < factTable.len, $n & " is too large to look up in the table")
+  factTable[n]
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
@@ -550,3 +560,14 @@ when isMainModule:
     assert sgn(Inf) == 1
     assert sgn(NaN) == 0
 
+  block: # fac() tests
+    try:
+      discard fac(-1)
+    except AssertionError:
+      discard
+
+    doAssert fac(0) == 1
+    doAssert fac(1) == 1
+    doAssert fac(2) == 2
+    doAssert fac(3) == 6
+    doAssert fac(4) == 24

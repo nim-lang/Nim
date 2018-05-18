@@ -9,18 +9,18 @@
 
 import ast, types, msgs, os, streams, options, idents
 
-proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
+proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
     var filename = parentDir(info.toFullPath) / file
     if not fileExists(filename):
-      filename = file.findFile
+      filename = findFile(conf, file)
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     appendToModule(module, newNode(nkIncludeStmt, info, @[
       newStrNode(nkStrLit, filename)]))
   except IOError:
-    localError(info, errCannotOpenFile, file)
+    localError(conf, info, "cannot open file: " & file)
     result = ""
 
 proc atomicTypeX(name: string; m: TMagic; t: PType; info: TLineInfo): PNode =
@@ -208,7 +208,12 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add mapTypeToAst(t.sons[0], info)
     else:
       result = mapTypeToBracket("ref", mRef, t, info)
-  of tyVar: result = mapTypeToBracket("var", mVar, t, info)
+  of tyVar:
+    if inst:
+      result = newNodeX(nkVarTy)
+      result.add mapTypeToAst(t.sons[0], info)
+    else:
+      result = mapTypeToBracket("var", mVar, t, info)
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
@@ -266,7 +271,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
-  of tyInferred: internalAssert false
+  of tyInferred: assert false
   of tyStatic, tyFromExpr:
     if inst:
       if t.n != nil: result = t.n.copyTree
@@ -276,7 +281,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef: internalError("mapTypeToAstX")
+  of tyUnused, tyOptAsRef: assert(false, "mapTypeToAstX")
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(t, info, false, true)

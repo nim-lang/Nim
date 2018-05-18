@@ -5,7 +5,7 @@ discard """
 type
   PTest = ref object
 
-proc test(x: PTest, y: int) = nil
+proc test(x: PTest, y: int) = discard
 
 var buf: PTest
 buf.test()

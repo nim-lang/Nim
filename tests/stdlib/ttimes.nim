@@ -28,6 +28,12 @@ t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
 
 t.checkFormat("yyyyMMddhhmmss", "20380119031407")
 
+# issue 7620
+let t7620_am = parse("4/15/2017 12:01:02 AM +0", "M/d/yyyy' 'h:mm:ss' 'tt' 'z", utc())
+t7620_am.checkFormat("M/d/yyyy' 'h:mm:ss' 'tt' 'z", "4/15/2017 12:01:02 AM +0")
+let t7620_pm = parse("4/15/2017 12:01:02 PM +0", "M/d/yyyy' 'h:mm:ss' 'tt' 'z", utc())
+t7620_pm.checkFormat("M/d/yyyy' 'h:mm:ss' 'tt' 'z", "4/15/2017 12:01:02 PM +0")
+
 let t2 = fromUnix(160070789).utc # Mon 27 Jan 16:06:29 GMT 1975
 t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
   " ss t tt y yy yyy yyyy yyyyy z zz zzz",
@@ -367,6 +373,10 @@ suite "ttimes":
     check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
     check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
     check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
+    check initDuration(seconds = 1, nanoseconds = 2) <=
+      initDuration(seconds = 1, nanoseconds = 3)
+    check (initDuration(seconds = 1, nanoseconds = 3) <=
+      initDuration(seconds = 1, nanoseconds = 1)).not
 
   test "large/small dates":
     discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())
@@ -410,3 +420,10 @@ suite "ttimes":
     let day = 24.hours
     let tomorrow = now + day
     check tomorrow - now == initDuration(days = 1)
+  
+  test "fromWinTime/toWinTime":
+    check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
+    check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
+    check -1.fromWinTime.toWinTime == -1
+    # One nanosecond is discarded due to differences in time resolution
+    check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100 

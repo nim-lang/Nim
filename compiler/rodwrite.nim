@@ -37,12 +37,13 @@ type
     files: TStringSeq
     origFile: string
     cache: IdentCache
+    config: ConfigRef
 
   PRodWriter = ref TRodWriter
 
-proc getDefines(): string =
+proc getDefines(conf: ConfigRef): string =
   result = ""
-  for d in definedSymbolNames():
+  for d in definedSymbolNames(conf.symbols):
     if result.len != 0: add(result, " ")
     add(result, d)
 
@@ -55,10 +56,12 @@ proc fileIdx(w: PRodWriter, filename: string): int =
   w.files[result] = filename
 
 template filename*(w: PRodWriter): string =
-  w.module.filename
+  toFilename(FileIndex w.module.position)
 
-proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter =
+proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache;
+                  config: ConfigRef): PRodWriter =
   new(result)
+  result.config = config
   result.sstack = @[]
   result.tstack = @[]
   initIiTable(result.index.tab)
@@ -67,8 +70,8 @@ proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter
   result.imports.r = ""
   result.hash = hash
   result.module = module
-  result.defines = getDefines()
-  result.options = options.gOptions
+  result.defines = getDefines(config)
+  result.options = config.options
   result.files = @[]
   result.inclDeps = ""
   result.modDeps = ""
@@ -83,14 +86,14 @@ proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter
 
 proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
-  let resolved = dep.findModule(info.toFullPath)
+  let resolved = findModule(w.config, dep, info.toFullPath)
   encodeVInt(fileIdx(w, resolved), w.modDeps)
 
 const
   rodNL = "\x0A"
 
 proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
-  let resolved = dep.findModule(info.toFullPath)
+  let resolved = findModule(w.config, dep, info.toFullPath)
   encodeVInt(fileIdx(w, resolved), w.inclDeps)
   add(w.inclDeps, " ")
   encodeStr($secureHashFile(resolved), w.inclDeps)
@@ -125,14 +128,14 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
-    encodeVInt(n.info.line, result)
+    encodeVInt(int n.info.line, result)
     result.add(',')
     encodeVInt(fileIdx(w, toFullPath(n.info)), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
-    encodeVInt(n.info.line, result)
+    encodeVInt(int n.info.line, result)
   elif fInfo.col != n.info.col:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -201,7 +204,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     result.add("[]")
     return
   # we need no surrounding [] here because the type is in a line of its own
-  if t.kind == tyForward: internalError("encodeType: tyForward")
+  if t.kind == tyForward: internalError(w.config, "encodeType: tyForward")
   # for the new rodfile viewer we use a preceding [ so that the data section
   # can easily be disambiguated:
   add(result, '[')
@@ -303,7 +306,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add('?')
   if s.info.col != -1'i16: encodeVInt(s.info.col, result)
   result.add(',')
-  if s.info.line != -1'i16: encodeVInt(s.info.line, result)
+  if s.info.line != 0'u16: encodeVInt(int s.info.line, result)
   result.add(',')
   encodeVInt(fileIdx(w, toFullPath(s.info)), result)
   if s.owner != nil:
@@ -454,7 +457,7 @@ proc processStacks(w: PRodWriter, finalPass: bool) =
     oldS = slen
     oldT = tlen
   if finalPass and (oldS != 0 or oldT != 0):
-    internalError("could not serialize some forwarded symbols/types")
+    internalError(w.config, "could not serialize some forwarded symbols/types")
 
 proc rawAddInterfaceSym(w: PRodWriter, s: PSym) =
   pushSym(w, s)
@@ -476,8 +479,8 @@ proc addStmt(w: PRodWriter, n: PNode) =
 proc writeRod(w: PRodWriter) =
   processStacks(w, true)
   var f: File
-  if not open(f, completeGeneratedFilePath(changeFileExt(
-                      w.filename.withPackageName, RodExt)),
+  if not open(f, completeGeneratedFilePath(w.config, changeFileExt(
+                      withPackageName(w.config, w.filename), RodExt)),
               fmWrite):
     #echo "couldn't write rod file for: ", w.filename
     return
@@ -506,12 +509,12 @@ proc writeRod(w: PRodWriter) =
   f.write(rodNL)
 
   var goptions = "GOPTIONS:"
-  encodeVInt(cast[int32](gGlobalOptions), goptions)
+  encodeVInt(cast[int32](w.config.globalOptions), goptions)
   f.write(goptions)
   f.write(rodNL)
 
   var cmd = "CMD:"
-  encodeVInt(cast[int32](gCmd), cmd)
+  encodeVInt(cast[int32](w.config.cmd), cmd)
   f.write(cmd)
   f.write(rodNL)
 
@@ -587,17 +590,17 @@ proc process(c: PPassContext, n: PNode): PNode =
   of nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
     let s = n.sons[namePos].sym
-    if s == nil: internalError(n.info, "rodwrite.process")
+    if s == nil: internalError(w.config, n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
-      internalError(n.info, "rodwrite.process: body is nil")
+      internalError(w.config, n.info, "rodwrite.process: body is nil")
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
   of nkMethodDef:
     let s = n.sons[namePos].sym
-    if s == nil: internalError(n.info, "rodwrite.process")
+    if s == nil: internalError(w.config, n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
-      internalError(n.info, "rodwrite.process: body is nil")
+      internalError(w.config, n.info, "rodwrite.process: body is nil")
     if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
         sfForward notin s.flags:
       pushSym(w, s)
@@ -612,7 +615,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
       if a.kind == nkCommentStmt: continue
-      if a.sons[0].kind != nkSym: internalError(a.info, "rodwrite.process")
+      if a.sons[0].kind != nkSym: internalError(w.config, a.info, "rodwrite.process")
       var s = a.sons[0].sym
       addInterfaceSym(w, s)
       # this takes care of enum fields too
@@ -627,22 +630,22 @@ proc process(c: PPassContext, n: PNode): PNode =
       #        end
   of nkImportStmt:
     for i in countup(0, sonsLen(n) - 1):
-      addModDep(w, getModuleName(n.sons[i]), n.info)
+      addModDep(w, getModuleName(w.config, n.sons[i]), n.info)
     addStmt(w, n)
   of nkFromStmt, nkImportExceptStmt:
-    addModDep(w, getModuleName(n.sons[0]), n.info)
+    addModDep(w, getModuleName(w.config, n.sons[0]), n.info)
     addStmt(w, n)
   of nkIncludeStmt:
     for i in countup(0, sonsLen(n) - 1):
-      addInclDep(w, getModuleName(n.sons[i]), n.info)
+      addInclDep(w, getModuleName(w.config, n.sons[i]), n.info)
   of nkPragma:
     addStmt(w, n)
   else:
     discard
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
-  if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(rodread.getHash module.fileIdx, module, cache)
+  if module.id < 0: internalError(g.config, "rodwrite: module ID not set")
+  var w = newRodWriter(rodread.getHash FileIndex module.position, module, cache, g.config)
   rawAddInterfaceSym(w, module)
   result = w
 
@@ -650,7 +653,7 @@ proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)
-  idgen.saveMaxIds(options.gProjectPath / options.gProjectName)
+  idgen.saveMaxIds(graph.config, graph.config.projectPath / graph.config.projectName)
 
 const rodwritePass* = makePass(open = myOpen, close = myClose, process = process)
 

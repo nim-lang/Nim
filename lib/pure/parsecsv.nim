@@ -66,8 +66,6 @@ type
   CsvError* = object of IOError ## exception that is raised if
                                 ## a parsing error occurs
 
-{.deprecated: [TCsvRow: CsvRow, TCsvParser: CsvParser, EInvalidCsv: CsvError].}
-
 proc raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
   var e: ref CsvError
