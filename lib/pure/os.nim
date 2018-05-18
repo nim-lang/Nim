@@ -653,7 +653,7 @@ proc pathMatches*(path, pattern: string): bool {.rtl, extern: "nos$1"} =
       dynlib: "shlwapi", importc.}
 
     when useWinUnicode:
-      wrapBinary(res, PathMatchSpecW, path, pattern)
+      wrapBinary(res, PathMatchSpecW, path, newWideCString(pattern))
       return res == 1
     else:
       var res = PathMatchSpecA(path, pattern)
