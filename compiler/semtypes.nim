@@ -66,7 +66,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     base = semTypeNode(c, n.sons[0].sons[0], nil)
     if base.kind != tyEnum:
       localError(c.config, n.sons[0].info, "inheritance only works with an enum")
-    counter = lastOrd(base) + 1
+    counter = lastOrd(c.config, base) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
   var symbols: TStrTable
@@ -133,7 +133,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     if base.kind != tyGenericParam:
       if not isOrdinalType(base):
         localError(c.config, n.info, errOrdinalTypeExpected)
-      elif lengthOrd(base) > MaxSetElements:
+      elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "set")
@@ -553,7 +553,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         inc(covered)
       else:
         if r.kind == nkCurly:
-          r = r.deduplicate
+          r = deduplicate(c.config, r)
 
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
@@ -584,10 +584,10 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   if not isOrdinalType(typ):
     localError(c.config, n.info, "selector must be of an ordinal type")
-  elif firstOrd(typ) != 0:
+  elif firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
                                      ") must be 0 for discriminant")
-  elif lengthOrd(typ) > 0x00007FFF:
+  elif lengthOrd(c.config, typ) > 0x00007FFF:
     localError(c.config, n.info, "len($1) must be less than 32768" % a.sons[0].sym.name.s)
   var chckCovered = true
   for i in countup(1, sonsLen(n) - 1):
@@ -603,7 +603,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else: illFormedAst(n, c.config)
     delSon(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
-  if chckCovered and covered != lengthOrd(a.sons[0].typ):
+  if chckCovered and covered != lengthOrd(c.config, a.sons[0].typ):
     localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
@@ -1585,7 +1585,7 @@ when false:
     result = semTypeNodeInner(c, n, prev)
     instAllTypeBoundOp(c, n.info)
 
-proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
+proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   # source : https://en.wikipedia.org/wiki/Data_structure_alignment#x86
   m.typ.kind = kind
   m.typ.size = size
@@ -1596,10 +1596,10 @@ proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
 
   # FIXME: proper support for clongdouble should be added.
   # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
-  if targetCPU == cpuI386 and size == 8:
+  if conf.target.targetCPU == cpuI386 and size == 8:
     #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
     if kind in {tyFloat64, tyFloat} and
-       targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
+        conf.target.targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
       m.typ.align = 4
     # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
     elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
@@ -1609,73 +1609,73 @@ proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
 
 proc processMagicType(c: PContext, m: PSym) =
   case m.magic
-  of mInt: setMagicType(m, tyInt, intSize)
-  of mInt8: setMagicType(m, tyInt8, 1)
-  of mInt16: setMagicType(m, tyInt16, 2)
-  of mInt32: setMagicType(m, tyInt32, 4)
-  of mInt64: setMagicType(m, tyInt64, 8)
-  of mUInt: setMagicType(m, tyUInt, intSize)
-  of mUInt8: setMagicType(m, tyUInt8, 1)
-  of mUInt16: setMagicType(m, tyUInt16, 2)
-  of mUInt32: setMagicType(m, tyUInt32, 4)
-  of mUInt64: setMagicType(m, tyUInt64, 8)
-  of mFloat: setMagicType(m, tyFloat, floatSize)
-  of mFloat32: setMagicType(m, tyFloat32, 4)
-  of mFloat64: setMagicType(m, tyFloat64, 8)
-  of mFloat128: setMagicType(m, tyFloat128, 16)
-  of mBool: setMagicType(m, tyBool, 1)
-  of mChar: setMagicType(m, tyChar, 1)
+  of mInt: setMagicType(c.config, m, tyInt, c.config.target.intSize)
+  of mInt8: setMagicType(c.config, m, tyInt8, 1)
+  of mInt16: setMagicType(c.config, m, tyInt16, 2)
+  of mInt32: setMagicType(c.config, m, tyInt32, 4)
+  of mInt64: setMagicType(c.config, m, tyInt64, 8)
+  of mUInt: setMagicType(c.config, m, tyUInt, c.config.target.intSize)
+  of mUInt8: setMagicType(c.config, m, tyUInt8, 1)
+  of mUInt16: setMagicType(c.config, m, tyUInt16, 2)
+  of mUInt32: setMagicType(c.config, m, tyUInt32, 4)
+  of mUInt64: setMagicType(c.config, m, tyUInt64, 8)
+  of mFloat: setMagicType(c.config, m, tyFloat, c.config.target.floatSize)
+  of mFloat32: setMagicType(c.config, m, tyFloat32, 4)
+  of mFloat64: setMagicType(c.config, m, tyFloat64, 8)
+  of mFloat128: setMagicType(c.config, m, tyFloat128, 16)
+  of mBool: setMagicType(c.config, m, tyBool, 1)
+  of mChar: setMagicType(c.config, m, tyChar, 1)
   of mString:
-    setMagicType(m, tyString, ptrSize)
+    setMagicType(c.config, m, tyString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mCstring:
-    setMagicType(m, tyCString, ptrSize)
+    setMagicType(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
-  of mPointer: setMagicType(m, tyPointer, ptrSize)
+  of mPointer: setMagicType(c.config, m, tyPointer, c.config.target.ptrSize)
   of mEmptySet:
-    setMagicType(m, tySet, 1)
+    setMagicType(c.config, m, tySet, 1)
     rawAddSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: setMagicType(m, tyRange, intSize)
-  of mNil: setMagicType(m, tyNil, ptrSize)
+  of mIntSetBaseType: setMagicType(c.config, m, tyRange, c.config.target.intSize)
+  of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
   of mExpr:
     if m.name.s == "auto":
-      setMagicType(m, tyAnything, 0)
+      setMagicType(c.config, m, tyAnything, 0)
     else:
-      setMagicType(m, tyExpr, 0)
+      setMagicType(c.config, m, tyExpr, 0)
       if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
   of mStmt:
-    setMagicType(m, tyStmt, 0)
+    setMagicType(c.config, m, tyStmt, 0)
     if m.name.s == "stmt": m.typ.flags.incl tfOldSchoolExprStmt
   of mTypeDesc:
-    setMagicType(m, tyTypeDesc, 0)
+    setMagicType(c.config, m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType:
-    setMagicType(m, tyVoid, 0)
+    setMagicType(c.config, m, tyVoid, 0)
   of mArray:
-    setMagicType(m, tyArray, 0)
+    setMagicType(c.config, m, tyArray, 0)
   of mOpenArray:
-    setMagicType(m, tyOpenArray, 0)
+    setMagicType(c.config, m, tyOpenArray, 0)
   of mVarargs:
-    setMagicType(m, tyVarargs, 0)
+    setMagicType(c.config, m, tyVarargs, 0)
   of mRange:
-    setMagicType(m, tyRange, 0)
+    setMagicType(c.config, m, tyRange, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mSet:
-    setMagicType(m, tySet, 0)
+    setMagicType(c.config, m, tySet, 0)
   of mSeq:
-    setMagicType(m, tySequence, 0)
+    setMagicType(c.config, m, tySequence, 0)
   of mOpt:
-    setMagicType(m, tyOpt, 0)
+    setMagicType(c.config, m, tyOpt, 0)
   of mOrdinal:
-    setMagicType(m, tyOrdinal, 0)
+    setMagicType(c.config, m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
   of mException: discard
   of mBuiltinType:
     case m.name.s
-    of "lent": setMagicType(m, tyLent, ptrSize)
-    of "sink": setMagicType(m, tySink, 0)
+    of "lent": setMagicType(c.config, m, tyLent, c.config.target.ptrSize)
+    of "sink": setMagicType(c.config, m, tySink, 0)
     else: localError(c.config, m.info, errTypeExpected)
   else: localError(c.config, m.info, errTypeExpected)
 

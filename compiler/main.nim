@@ -91,7 +91,7 @@ proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
-  setTarget(osJS, cpuJS)
+  setTarget(graph.config.target, osJS, cpuJS)
   #initDefines()
   defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
   defineSymbol(graph.config.symbols, "js")

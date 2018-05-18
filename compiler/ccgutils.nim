@@ -27,9 +27,9 @@ proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
 proc stmtsContainPragma*(n: PNode, w: TSpecialWord): bool =
   result = getPragmaStmt(n, w) != nil
 
-proc hashString*(s: string): BiggestInt =
+proc hashString*(conf: ConfigRef; s: string): BiggestInt =
   # has to be the same algorithm as system.hashString!
-  if CPU[targetCPU].bit == 64:
+  if CPU[conf.target.targetCPU].bit == 64:
     # we have to use the same bitwidth
     # as the target CPU
     var b = 0'i64

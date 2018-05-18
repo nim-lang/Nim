@@ -217,11 +217,6 @@ proc ropeConcat*(a: varargs[Rope]): Rope =
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
-var
-  rnl* = tnl.newRope
-  softRnl* = tnl.newRope
-  noRnl* = "".newRope
-
 proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
   var length = len(frmt)
@@ -265,10 +260,10 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
         else:
           add(result, args[j-1])
       of 'n':
-        add(result, softRnl)
+        add(result, "\n")
         inc(i)
       of 'N':
-        add(result, rnl)
+        add(result, "\n")
         inc(i)
       else:
         doAssert false, "invalid format string: " & frmt

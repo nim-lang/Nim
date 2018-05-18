@@ -136,8 +136,8 @@ proc checkLe(c: AnalysisCtx; a, b: PNode) =
     localError(c.graph.config, a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
-  checkLe(c, arr.lowBound, idx)
-  checkLe(c, idx, arr.highBound(c.guards.o))
+  checkLe(c, lowBound(c.graph.config, arr), idx)
+  checkLe(c, idx, highBound(c.graph.config, arr, c.guards.o))
 
 proc addLowerBoundAsFacts(c: var AnalysisCtx) =
   for v in c.locals:

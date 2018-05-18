@@ -27,7 +27,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     localError(conf, info, "invalid pragma: acyclic")
   elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
-  elif computeSize(t) == szIllegalRecursion:
+  elif computeSize(conf, t) == szIllegalRecursion:
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
   when false:
     if t.kind == tyObject and t.sons[0] != nil:

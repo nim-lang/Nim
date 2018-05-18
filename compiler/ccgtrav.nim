@@ -70,7 +70,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
      tySink:
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
-    let arraySize = lengthOrd(typ.sons[0])
+    let arraySize = lengthOrd(c.p.config, typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
     let oldCode = p.s(cpsStmts)
@@ -122,7 +122,6 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
   var typ = origTyp.skipTypes(abstractInst)
-  if typ.kind == tyOpt: typ = optLowering(typ)
 
   let header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [result]
 

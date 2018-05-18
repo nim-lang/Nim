@@ -28,9 +28,9 @@ proc registerGcRoot(p: BProc, v: PSym) =
       appcg(p.module, p.module.initProc.procSec(cpsInit),
         "#nimRegisterGlobalMarker($1);$n", [prc])
 
-proc isAssignedImmediately(n: PNode): bool {.inline.} =
+proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
-  if isInvalidReturnType(n.typ):
+  if isInvalidReturnType(conf, n.typ):
     # var v = f()
     # is transformed into: var v;  f(addr v)
     # where 'f' **does not** initialize the result!
@@ -65,7 +65,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       registerGcRoot(p, v)
     else:
       assignLocalVar(p, vn)
-      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(n[L-1]))
+      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[L-1]))
     initLoc(field, locExpr, vn, tup.storage)
     if t.kind == tyTuple:
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
@@ -168,7 +168,7 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
   p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet_;$n", [])
-  var statesCounter = lastOrd(n.sons[0].typ)
+  var statesCounter = lastOrd(p.config, n.sons[0].typ)
   if n.len >= 2 and n[1].kind == nkIntLit:
     statesCounter = n[1].intVal
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
@@ -227,7 +227,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
-    let imm = isAssignedImmediately(value)
+    let imm = isAssignedImmediately(p.config, value)
     if imm and p.module.compileToCpp and p.splitDecls == 0 and
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
@@ -401,12 +401,12 @@ proc genComputedGoto(p: BProc; n: PNode) =
         localError(p.config, it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
-      let aSize = lengthOrd(it.sons[0].typ)
+      let aSize = lengthOrd(p.config, it.sons[0].typ)
       if aSize > 10_000:
         localError(p.config, it.info,
             "case statement has too many cases for computed goto"); return
       arraySize = aSize.int
-      if firstOrd(it.sons[0].typ) != 0:
+      if firstOrd(p.config, it.sons[0].typ) != 0:
         localError(p.config, it.info,
             "case statement has to start at 0 for computed goto"); return
   if casePos < 0:
@@ -650,7 +650,7 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
     assert(b.sons[i].kind != nkRange)
     initLocExpr(p, b.sons[i], x)
     assert(b.sons[i].kind in {nkStrLit..nkTripleStrLit})
-    var j = int(hashString(b.sons[i].strVal) and high(branches))
+    var j = int(hashString(p.config, b.sons[i].strVal) and high(branches))
     appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
          [rdLoc(e), rdLoc(x), labl])
 
@@ -974,14 +974,14 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       if x[j] in {'"', ':'}:
         # don't modify the line if already in quotes or
         # some clobber register list:
-        add(result, x); add(result, tnl)
+        add(result, x); add(result, "\L")
       elif x[j] != '\0':
         # ignore empty lines
         add(result, "\"")
         add(result, x)
         add(result, "\\n\"\n")
   else:
-    res.add(tnl)
+    res.add("\L")
     result = res.rope
 
 proc genAsmStmt(p: BProc, t: PNode) =
@@ -1037,7 +1037,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
   initLocExpr(p, n.sons[1], a)
   let typ = skipTypes(n.sons[1].typ, abstractVarRange)
   lineCg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
-        [a.addrLoc, makeCString(renderTree(n.sons[1])),
+        [addrLoc(p.config, a), makeCString(renderTree(n.sons[1])),
         genTypeInfo(p.module, typ, n.info)])
 
 proc genPragma(p: BProc, n: PNode) =
@@ -1068,7 +1068,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
   discard genTypeInfo(p.module, t, a.lode.info)
-  var L = lengthOrd(field.typ)
+  var L = lengthOrd(p.config, field.typ)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           discriminatorTableDecl(p.module, t, field))

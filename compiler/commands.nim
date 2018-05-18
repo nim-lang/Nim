@@ -56,21 +56,21 @@ const
     x
   AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
 
-proc getCommandLineDesc(): string =
-  result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
-                           CPU[platform.hostCPU].name, CompileDate]) &
+proc getCommandLineDesc(conf: ConfigRef): string =
+  result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
+                           CPU[conf.target.hostCPU].name, CompileDate]) &
                            Usage
 
 proc helpOnError(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(conf, getCommandLineDesc(), {msgStdout})
+    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
     msgQuit(0)
 
 proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, (HelpMessage % [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]) &
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]) &
                                  AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -78,8 +78,8 @@ proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
 proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]) &
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]) &
                                  Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -87,8 +87,8 @@ proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
 proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]),
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
@@ -103,7 +103,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
 
 proc writeCommandLineUsage*(conf: ConfigRef; helpWritten: var bool) =
   if not helpWritten:
-    msgWriteln(conf, getCommandLineDesc(), {msgStdout})
+    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
     helpWritten = true
 
 proc addPrefix(switch: string): string =
@@ -344,8 +344,6 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
-    theOS: TSystemOS
-    cpu: TSystemCPU
     key, val: string
   case switch.normalize
   of "path", "p":
@@ -592,17 +590,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "os":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
-      theOS = platform.nameToOS(arg)
+      let theOS = platform.nameToOS(arg)
       if theOS == osNone: localError(conf, info, "unknown OS: '$1'" % arg)
-      elif theOS != platform.hostOS:
-        setTarget(theOS, targetCPU)
+      elif theOS != conf.target.hostOS:
+        setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
-      cpu = platform.nameToCPU(arg)
+      let cpu = platform.nameToCPU(arg)
       if cpu == cpuNone: localError(conf, info, "unknown CPU: '$1'" % arg)
-      elif cpu != platform.hostCPU:
-        setTarget(targetOS, cpu)
+      elif cpu != conf.target.hostCPU:
+        setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optRun)

@@ -174,7 +174,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType):
     discard
   elif parType.kind == tySet:
-    result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
+    result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)
   else:
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
@@ -208,10 +208,6 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
-
-proc isStrangeArray(t: PType): bool =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tyArray and t.firstOrd != 0
 
 proc semOf(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 3:

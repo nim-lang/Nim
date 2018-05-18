@@ -410,8 +410,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
       result = transformSons(c, n)
-    elif firstOrd(n.typ) <= firstOrd(n.sons[1].typ) and
-        lastOrd(n.sons[1].typ) <= lastOrd(n.typ):
+    elif firstOrd(c.graph.config, n.typ) <= firstOrd(c.graph.config, n.sons[1].typ) and
+        lastOrd(c.graph.config, n.sons[1].typ) <= lastOrd(c.graph.config, n.typ):
       # BUGFIX: simply leave n as it is; we need a nkConv node,
       # but no range check:
       result = transformSons(c, n)
@@ -423,8 +423,8 @@ proc transformConv(c: PTransf, n: PNode): PTransNode =
         result = newTransNode(nkChckRange, n, 3)
       dest = skipTypes(n.typ, abstractVar)
       result[0] = transform(c, n.sons[1])
-      result[1] = newIntTypeNode(nkIntLit, firstOrd(dest), dest).PTransNode
-      result[2] = newIntTypeNode(nkIntLit, lastOrd(dest), dest).PTransNode
+      result[1] = newIntTypeNode(nkIntLit, firstOrd(c.graph.config, dest), dest).PTransNode
+      result[2] = newIntTypeNode(nkIntLit, lastOrd(c.graph.config, dest), dest).PTransNode
   of tyFloat..tyFloat128:
     # XXX int64 -> float conversion?
     if skipTypes(n.typ, abstractVar).kind == tyRange:

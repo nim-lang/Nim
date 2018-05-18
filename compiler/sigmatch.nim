@@ -376,8 +376,10 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     if k == f.kind: result = isSubrange
     elif k == tyInt and f.kind in {tyRange, tyInt8..tyInt64,
                                    tyUInt..tyUInt64} and
-        isIntLit(ab) and ab.n.intVal >= firstOrd(f) and
-                         ab.n.intVal <= lastOrd(f):
+        isIntLit(ab) and ab.n.intVal >= firstOrd(nil, f) and
+                         ab.n.intVal <= lastOrd(nil, f):
+      # passing 'nil' to firstOrd/lastOrd here as type checking rules should
+      # not depent on the target integer size configurations!
       # integer literal in the proper range; we want ``i16 + 4`` to stay an
       # ``int16`` operation so we declare the ``4`` pseudo-equal to int16
       result = isFromIntLit
@@ -387,8 +389,10 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
       result = isConvertible
     elif a.kind == tyRange and a.sons[0].kind in {tyInt..tyInt64,
                                                   tyUInt8..tyUInt32} and
-                         a.n[0].intVal >= firstOrd(f) and
-                         a.n[1].intVal <= lastOrd(f):
+                         a.n[0].intVal >= firstOrd(nil, f) and
+                         a.n[1].intVal <= lastOrd(nil, f):
+      # passing 'nil' to firstOrd/lastOrd here as type checking rules should
+      # not depent on the target integer size configurations!
       result = isConvertible
     else: result = isNone
     #elif f.kind == tyInt and k in {tyInt..tyInt32}: result = isIntConv
@@ -634,10 +638,10 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   let
-    a0 = firstOrd(a)
-    a1 = lastOrd(a)
-    f0 = firstOrd(f)
-    f1 = lastOrd(f)
+    a0 = firstOrd(nil, a)
+    a1 = lastOrd(nil, a)
+    f0 = firstOrd(nil, f)
+    f1 = lastOrd(nil, f)
   if a0 == f0 and a1 == f1:
     result = isEqual
   elif a0 >= f0 and a1 <= f1:
@@ -887,17 +891,17 @@ proc inferStaticsInRange(c: var TCandidate,
     if inferStaticParam(c, exp, rhs):
       return isGeneric
     else:
-      failureToInferStaticParam(c.c.graph.config, exp)
+      failureToInferStaticParam(c.c.config, exp)
 
   if lowerBound.kind == nkIntLit:
     if upperBound.kind == nkIntLit:
-      if lengthOrd(concrete) == upperBound.intVal - lowerBound.intVal + 1:
+      if lengthOrd(c.c.config, concrete) == upperBound.intVal - lowerBound.intVal + 1:
         return isGeneric
       else:
         return isNone
-    doInferStatic(upperBound, lengthOrd(concrete) + lowerBound.intVal - 1)
+    doInferStatic(upperBound, lengthOrd(c.c.config, concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
-    doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(concrete))
+    doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(c.c.config, concrete))
 
 template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}:
@@ -1176,7 +1180,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
       else:
-        if lengthOrd(fRange) != lengthOrd(aRange):
+        if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
@@ -1342,7 +1346,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       if a.len == 1:
         let pointsTo = a.sons[0].skipTypes(abstractInst)
         if pointsTo.kind == tyChar: result = isConvertible
-        elif pointsTo.kind == tyArray and firstOrd(pointsTo.sons[0]) == 0 and
+        elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo.sons[0]) == 0 and
             skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
             pointsTo.sons[1].kind == tyChar:
           result = isConvertible

@@ -87,7 +87,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyString: result = sysTypeFromName("string")
     of tyCString: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
-    of tyNil: result = newSysType(g, tyNil, ptrSize)
+    of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)
     g.sysTypes[kind] = result
   if result.kind != kind:
@@ -139,7 +139,7 @@ proc addSonSkipIntLit*(father, son: PType) =
 
 proc setIntLitType*(g: ModuleGraph; result: PNode) =
   let i = result.intVal
-  case platform.intSize
+  case g.config.target.intSize
   of 8: result.typ = getIntLitType(g, result)
   of 4:
     if i >= low(int32) and i <= high(int32):

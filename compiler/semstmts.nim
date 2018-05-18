@@ -90,12 +90,12 @@ proc semWhile(c: PContext, n: PNode): PNode =
   if n.sons[1].typ == enforceVoidContext:
     result.typ = enforceVoidContext
 
-proc toCover(t: PType): BiggestInt =
+proc toCover(c: PContext, t: PType): BiggestInt =
   var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2):
     result = sonsLen(t2.n)
   else:
-    result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
+    result = lengthOrd(c.config, skipTypes(t, abstractVar-{tyTypeDesc}))
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -230,7 +230,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     else:
       illFormedAst(x, c.config)
   if chckCovered:
-    if covered == toCover(n.sons[0].typ):
+    if covered == toCover(c, n.sons[0].typ):
       hasElse = true
     else:
       localError(c.config, n.info, "not all cases are covered")

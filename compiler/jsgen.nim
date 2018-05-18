@@ -606,11 +606,11 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   var length = sonsLen(n)
   var catchBranchesExist = length > 1 and n.sons[i].kind == nkExceptBranch
   if catchBranchesExist:
-    add(p.body, "++excHandler;" & tnl)
+    add(p.body, "++excHandler;\L")
   var tmpFramePtr = rope"F"
   if optStackTrace notin p.options:
     tmpFramePtr = p.getTemp(true)
-    line(p, tmpFramePtr & " = framePtr;" & tnl)
+    line(p, tmpFramePtr & " = framePtr;\L")
   lineF(p, "try {$n", [])
   var a: TCompRes
   gen(p, n.sons[0], a)
@@ -648,15 +648,15 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   if catchBranchesExist:
     if not generalCatchBranchExists:
       useMagic(p, "reraiseException")
-      line(p, "else {" & tnl)
-      line(p, "\treraiseException();" & tnl)
-      line(p, "}" & tnl)
+      line(p, "else {\L")
+      line(p, "\treraiseException();\L")
+      line(p, "}\L")
     addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
-  line(p, "} finally {" & tnl)
+  line(p, "} finally {\L")
   line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < length and n.sons[i].kind == nkFinally:
     genStmt(p, n.sons[i].sons[0])
-  line(p, "}" & tnl)
+  line(p, "}\L")
 
 proc genRaiseStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
@@ -669,7 +669,7 @@ proc genRaiseStmt(p: PProc, n: PNode) =
              [a.rdLoc, makeJSString(typ.sym.name.s)])
   else:
     useMagic(p, "reraiseException")
-    line(p, "reraiseException();" & tnl)
+    line(p, "reraiseException();\L")
 
 proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -775,7 +775,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
       var r: TCompRes
       gen(p, it, r)
       p.body.add(r.rdLoc)
-  p.body.add tnl
+  p.body.add "\L"
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
   var cond, stmt: TCompRes
@@ -798,7 +798,7 @@ proc genIf(p: PProc, n: PNode, r: var TCompRes) =
       p.nested: gen(p, it.sons[0], stmt)
     moveInto(p, stmt, r)
     lineF(p, "}$n", [])
-  line(p, repeat('}', toClose) & tnl)
+  line(p, repeat('}', toClose) & "\L")
 
 proc generateHeader(p: PProc, typ: PType): Rope =
   result = nil
@@ -969,7 +969,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   internalAssert p.config, a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind == tyArray: first = firstOrd(typ.sons[0])
+  if typ.kind == tyArray: first = firstOrd(p.config, typ.sons[0])
   else: first = 0
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
@@ -1366,7 +1366,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyBool:
     result = putToSeq("false", indirect)
   of tyArray:
-    let length = int(lengthOrd(t))
+    let length = int(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
     if not jsTyp.isNil:
@@ -1680,7 +1680,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mIsNil: unaryExpr(p, n, r, "", "($1 === null)")
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
-  of mSizeOf: r.res = rope(getSize(n.sons[1].typ))
+  of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr:
@@ -1901,7 +1901,7 @@ proc frameCreate(p: PProc; procname, filename: Rope): Rope =
   result.add p.indentLine(ropes.`%`("framePtr = F;$n", []))
 
 proc frameDestroy(p: PProc): Rope =
-  result = p.indentLine rope(("framePtr = F.prev;") & tnl)
+  result = p.indentLine rope(("framePtr = F.prev;") & "\L")
 
 proc genProcBody(p: PProc, prc: PSym): Rope =
   if hasFrameInfo(p):
@@ -1926,7 +1926,7 @@ proc optionaLine(p: Rope): Rope =
   if p == nil:
     return nil
   else:
-    return p & tnl
+    return p & "\L"
 
 proc genProc(oldProc: PProc, prc: PSym): Rope =
   var
@@ -1968,7 +1968,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionaLine(genProcBody(p, prc)),
               optionaLine(p.indentLine(returnStmt))]
   else:
-    result = ~tnl
+    result = ~"\L"
 
     if optHotCodeReloading in p.config.options:
       # Here, we introduce thunks that create the equivalent of a jump table

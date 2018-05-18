@@ -207,7 +207,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       if t.kind == tySequence:
         # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
-      let i = declareCounter(c, body, firstOrd(t))
+      let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),

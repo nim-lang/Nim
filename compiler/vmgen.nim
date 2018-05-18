@@ -550,7 +550,7 @@ proc genField(c: PCtx; n: PNode): TRegister =
   result = s.position
 
 proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
-  if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(arr);
+  if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(c.config, arr);
       x != 0):
     let tmp = c.genx(n)
     # freeing the temporary here means we can produce:  regA = regA - Imm
@@ -767,12 +767,12 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
   var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
-  let src_size = src.getSize
+  let src_size = getSize(c.config, src)
 
-  if platform.intSize < 8:
+  if c.config.target.intSize < 8:
     signedIntegers.incl(tyInt)
     unsignedIntegers.incl(tyUInt)
-  if src_size == dst.getSize and src.kind in allowedIntegers and
+  if src_size == getSize(c.config, dst) and src.kind in allowedIntegers and
                                  dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
     var tmp2 = c.getTemp(n.sons[1].typ)
@@ -1574,7 +1574,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     getNullValueAux(t.n, result, conf)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in countup(0, int(lengthOrd(t)) - 1):
+    for i in countup(0, int(lengthOrd(conf, t)) - 1):
       addSon(result, getNullValue(elemType(t), info, conf))
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)

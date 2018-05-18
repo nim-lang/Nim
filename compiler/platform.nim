@@ -210,44 +210,40 @@ const
     (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
 
-var
-  targetCPU*, hostCPU*: TSystemCPU
-  targetOS*, hostOS*: TSystemOS
+type
+  Target* = object
+    targetCPU*, hostCPU*: TSystemCPU
+    targetOS*, hostOS*: TSystemOS
+    intSize*: int
+    floatSize*: int
+    ptrSize*: int
+    tnl*: string                # target newline
 
-proc nameToOS*(name: string): TSystemOS
-proc nameToCPU*(name: string): TSystemCPU
-
-var
-  intSize*: int
-  floatSize*: int
-  ptrSize*: int
-  tnl*: string                # target newline
-
-proc setTarget*(o: TSystemOS, c: TSystemCPU) =
+proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   assert(c != cpuNone)
   assert(o != osNone)
   #echo "new Target: OS: ", o, " CPU: ", c
-  targetCPU = c
-  targetOS = o
-  intSize = CPU[c].intSize div 8
-  floatSize = CPU[c].floatSize div 8
-  ptrSize = CPU[c].bit div 8
-  tnl = OS[o].newLine
+  t.targetCPU = c
+  t.targetOS = o
+  # assume no cross-compiling
+  t.hostCPU = c
+  t.hostOS = o
+  t.intSize = CPU[c].intSize div 8
+  t.floatSize = CPU[c].floatSize div 8
+  t.ptrSize = CPU[c].bit div 8
+  t.tnl = OS[o].newLine
 
-proc nameToOS(name: string): TSystemOS =
+proc nameToOS*(name: string): TSystemOS =
   for i in countup(succ(osNone), high(TSystemOS)):
     if cmpIgnoreStyle(name, OS[i].name) == 0:
       return i
   result = osNone
 
-proc nameToCPU(name: string): TSystemCPU =
+proc nameToCPU*(name: string): TSystemCPU =
   for i in countup(succ(cpuNone), high(TSystemCPU)):
     if cmpIgnoreStyle(name, CPU[i].name) == 0:
       return i
   result = cpuNone
 
-hostCPU = nameToCPU(system.hostCPU)
-hostOS = nameToOS(system.hostOS)
-
-setTarget(hostOS, hostCPU) # assume no cross-compiling
-
+proc setTargetFromSystem*(t: var Target) =
+  t.setTarget(nameToOS(system.hostOS), nameToCPU(system.hostCPU))

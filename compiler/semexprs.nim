@@ -137,7 +137,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     else:
       discard
 
-proc isCastable(dst, src: PType): bool =
+proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   ## Checks whether the source type can be cast to the destination type.
   ## Casting is very unrestrictive; casts are allowed as long as
   ## castDest.size >= src.size, and typeAllowed(dst, skParam)
@@ -152,8 +152,8 @@ proc isCastable(dst, src: PType): bool =
     return false
 
   var dstSize, srcSize: BiggestInt
-  dstSize = computeSize(dst)
-  srcSize = computeSize(src)
+  dstSize = computeSize(conf, dst)
+  srcSize = computeSize(conf, src)
   if dstSize < 0:
     result = false
   elif srcSize < 0:
@@ -167,7 +167,7 @@ proc isCastable(dst, src: PType): bool =
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
         (skipTypes(src, abstractInst-{tyTypeDesc}).kind in IntegralTypes)
   if result and src.kind == tyNil:
-    result = dst.size <= platform.ptrSize
+    result = dst.size <= conf.target.ptrSize
 
 proc isSymChoice(n: PNode): bool {.inline.} =
   result = n.kind in nkSymChoices
@@ -251,7 +251,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   let castedExpr = semExprWithType(c, n.sons[1])
   if tfHasMeta in targetType.flags:
     localError(c.config, n.sons[0].info, "cannot cast to a non concrete type: '$1'" % $targetType)
-  if not isCastable(targetType, castedExpr.typ):
+  if not isCastable(c.config, targetType, castedExpr.typ):
     let tar = $targetType
     let alt = typeToString(targetType, preferDesc)
     let msg = if tar != alt: tar & "=" & alt else: tar
@@ -407,7 +407,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
   of nkCharLit..nkUInt64Lit:
     if check and n.kind != nkUInt64Lit:
       let value = n.intVal
-      if value < firstOrd(newType) or value > lastOrd(newType):
+      if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
                                          " to " & typeToString(newType))
   else: discard
@@ -2043,7 +2043,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     if not isOrdinalType(typ):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
-    elif lengthOrd(typ) > MaxSetElements:
+    elif lengthOrd(c.config, typ) > MaxSetElements:
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1):

@@ -515,7 +515,7 @@ proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
 
 proc genHigh*(g: ModuleGraph; n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind == tyArray:
-    result = newIntLit(g, n.info, lastOrd(skipTypes(n.typ, abstractVar)))
+    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)))
   else:
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)
@@ -581,7 +581,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
                                     useShallowCopy=true)
       slice.sons[3] = threadLocal.newSymNode
       call.add slice
-    elif (let size = computeSize(argType); size < 0 or size > 16) and
+    elif (let size = computeSize(g.config, argType); size < 0 or size > 16) and
         n.getRoot != nil:
       # it is more efficient to pass a pointer instead:
       let a = genAddrOf(n)

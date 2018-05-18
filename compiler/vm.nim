@@ -370,7 +370,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(desttyp) or dest.intVal > lastOrd(desttyp):
+      if dest.intVal < firstOrd(c.config, desttyp) or dest.intVal > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
       if dest.kind != rkInt:
@@ -700,12 +700,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       addSon(b, regs[rb].regToNode)
-      var r = diffSets(regs[ra].node, b)
+      var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
       for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
     of opcCard:
       decodeB(rkInt)
-      regs[ra].intVal = nimsets.cardSet(regs[rb].node)
+      regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
     of opcMulInt:
       decodeBC(rkInt)
       let
@@ -853,35 +853,35 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(regs[rb].node.strVal < regs[rc].node.strVal)
     of opcLeSet:
       decodeBC(rkInt)
-      regs[ra].intVal = ord(containsSets(regs[rb].node, regs[rc].node))
+      regs[ra].intVal = ord(containsSets(c.config, regs[rb].node, regs[rc].node))
     of opcEqSet:
       decodeBC(rkInt)
-      regs[ra].intVal = ord(equalSets(regs[rb].node, regs[rc].node))
+      regs[ra].intVal = ord(equalSets(c.config, regs[rb].node, regs[rc].node))
     of opcLtSet:
       decodeBC(rkInt)
       let a = regs[rb].node
       let b = regs[rc].node
-      regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
+      regs[ra].intVal = ord(containsSets(c.config, a, b) and not equalSets(c.config, a, b))
     of opcMulSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-            nimsets.intersectSets(regs[rb].node, regs[rc].node).sons)
+            nimsets.intersectSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcPlusSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.unionSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.unionSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcMinusSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.diffSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.diffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcSymdiffSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.symdiffSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.symdiffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]

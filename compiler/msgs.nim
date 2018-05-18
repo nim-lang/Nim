@@ -83,7 +83,7 @@ proc makeCString*(s: string): Rope =
   for i in countup(0, len(s) - 1):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
-      add(res, tnl)
+      add(res, '\L')
       add(res, '\"')
     add(res, toCChar(s[i]))
   add(res, '\"')

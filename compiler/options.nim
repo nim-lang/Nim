@@ -136,6 +136,7 @@ type
   CfileList* = seq[Cfile]
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
+    target*: Target
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions
     globalOptions*: TGlobalOptions
@@ -264,6 +265,7 @@ proc newConfigRef*(): ConfigRef =
     ccompilerpath: "",
     toCompile: @[]
   )
+  setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
@@ -285,39 +287,39 @@ proc cppDefine*(c: ConfigRef; define: string) =
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
     result = conf.symbols[symbol] != "false"
-  elif cmpIgnoreStyle(symbol, CPU[targetCPU].name) == 0:
+  elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
-  elif cmpIgnoreStyle(symbol, platform.OS[targetOS].name) == 0:
+  elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
     result = true
   else:
     case symbol.normalize
-    of "x86": result = targetCPU == cpuI386
-    of "itanium": result = targetCPU == cpuIa64
-    of "x8664": result = targetCPU == cpuAmd64
+    of "x86": result = conf.target.targetCPU == cpuI386
+    of "itanium": result = conf.target.targetCPU == cpuIa64
+    of "x8664": result = conf.target.targetCPU == cpuAmd64
     of "posix", "unix":
-      result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
+      result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx,
                             osAndroid}
     of "linux":
-      result = targetOS in {osLinux, osAndroid}
+      result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
-      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
+      result = conf.target.targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
     of "emulatedthreadvars":
-      result = platform.OS[targetOS].props.contains(ospLacksThreadVars)
-    of "msdos": result = targetOS == osDos
-    of "mswindows", "win32": result = targetOS == osWindows
-    of "macintosh": result = targetOS in {osMacos, osMacosx}
-    of "sunos": result = targetOS == osSolaris
-    of "littleendian": result = CPU[targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[targetCPU].endian == platform.bigEndian
-    of "cpu8": result = CPU[targetCPU].bit == 8
-    of "cpu16": result = CPU[targetCPU].bit == 16
-    of "cpu32": result = CPU[targetCPU].bit == 32
-    of "cpu64": result = CPU[targetCPU].bit == 64
+      result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
+    of "msdos": result = conf.target.targetOS == osDos
+    of "mswindows", "win32": result = conf.target.targetOS == osWindows
+    of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
+    of "sunos": result = conf.target.targetOS == osSolaris
+    of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
+    of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
+    of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
+    of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
+    of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
+    of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+      result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: discard
 

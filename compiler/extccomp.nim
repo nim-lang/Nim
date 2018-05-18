@@ -331,8 +331,8 @@ const
 
   hExt* = ".h"
 
-proc libNameTmpl(): string {.inline.} =
-  result = if targetOS == osWindows: "$1.lib" else: "lib$1.a"
+proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+  result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
 
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
@@ -355,10 +355,10 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     else:
       suffix
 
-  if (platform.hostOS != targetOS or platform.hostCPU != targetCPU) and
+  if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
       optCompileOnly notin conf.globalOptions:
-    let fullCCname = platform.CPU[targetCPU].name & '.' &
-                     platform.OS[targetOS].name & '.' &
+    let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
+                     platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
     result = getConfigVar(conf, fullCCname)
     if result.len == 0:
@@ -439,7 +439,7 @@ proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
 proc generateScript(conf: ConfigRef; projectFile: string, script: Rope) =
   let (dir, name, ext) = splitFile(projectFile)
   let filename = getNimcacheDir(conf) / addFileExt("compile_" & name,
-                                     platform.OS[targetOS].scriptExt)
+                                     platform.OS[conf.target.targetOS].scriptExt)
   if writeRope(script, filename):
     copyFile(conf.libpath / "nimbase.h", getNimcacheDir(conf) / "nimbase.h")
   else:
@@ -500,8 +500,8 @@ proc getLinkOptions(conf: ConfigRef): string =
     result.add(join([CC[conf.cCompiler].linkDirCmd, libDir.quoteShell]))
 
 proc needsExeExt(conf: ConfigRef): bool {.inline.} =
-  result = (optGenScript in conf.globalOptions and targetOS == osWindows) or
-           (platform.hostOS == osWindows)
+  result = (optGenScript in conf.globalOptions and conf.target.targetOS == osWindows) or
+           (conf.target.hostOS == osWindows)
 
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: string): string =
   result = if conf.cmd == cmdCompileToCpp and not cfile.endsWith(".c"):
@@ -526,7 +526,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
   if optGenDynLib in conf.globalOptions and
-      ospNeedsPIC in platform.OS[targetOS].props:
+      ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     add(options, ' ' & CC[c].pic)
 
   var includeCmd, compilePattern: string
@@ -573,8 +573,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
     $secureHashFile(cfile.cname) &
-    platform.OS[targetOS].name &
-    platform.CPU[targetCPU].name &
+    platform.OS[conf.target.targetOS].name &
+    platform.CPU[conf.target.targetCPU].name &
     extccomp.CC[conf.cCompiler].name &
     getCompileCFileCmd(conf, cfile))
 
@@ -619,7 +619,7 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
       add(prettyCmds, "CC: " & name)
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
-      add(script, tnl)
+      add(script, "\n")
 
 proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
   if optGenStaticLib in conf.globalOptions:
@@ -629,7 +629,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
       if not libname.isAbsolute():
         libname = getCurrentDir() / libname
     else:
-      libname = (libNameTmpl() % splitFile(conf.projectName).name)
+      libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
     result = CC[conf.cCompiler].buildLib % ["libfile", libname,
                                        "objfiles", objfiles]
   else:
@@ -643,10 +643,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
                    else: ""
     var exefile, builddll: string
     if optGenDynLib in conf.globalOptions:
-      exefile = platform.OS[targetOS].dllFrmt % splitFile(projectfile).name
+      exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
       builddll = CC[conf.cCompiler].buildDll
     else:
-      exefile = splitFile(projectfile).name & platform.OS[targetOS].exeExt
+      exefile = splitFile(projectfile).name & platform.OS[conf.target.targetOS].exeExt
       builddll = ""
     if conf.outFile.len > 0:
       exefile = conf.outFile.expandTilde
@@ -758,7 +758,7 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
     linkCmd = ""
   if optGenScript in conf.globalOptions:
     add(script, linkCmd)
-    add(script, tnl)
+    add(script, "\n")
     generateScript(conf, projectfile, script)
 
 #from json import escapeJson
