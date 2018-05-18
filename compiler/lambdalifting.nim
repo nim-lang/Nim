@@ -279,7 +279,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   let s = n.sym
   if illegalCapture(s):
     localError(g.config, n.info, "illegal capture '$1' of type <$2> which is declared here: $3" %
-      [s.name.s, typeToString(s.typ), $s.info])
+      [s.name.s, typeToString(s.typ), g.config$s.info])
   elif owner.typ.callConv notin {ccClosure, ccDefault}:
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])

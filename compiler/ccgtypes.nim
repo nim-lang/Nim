@@ -912,7 +912,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     var typename = typeToString(if origType.typeInst != nil: origType.typeInst
                                 else: origType, preferName)
     if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
-      typename = "anon ref object from " & $origType.skipTypes(skipPtrs).sym.info
+      typename = "anon ref object from " & m.config$origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
         [name, makeCstring typename])
     discard cgsym(m, "nimTypeRoot")

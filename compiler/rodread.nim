@@ -792,7 +792,8 @@ proc findSomeWhere(id: int) =
     if rd != nil:
       var d = iiTableGet(rd.index.tab, id)
       if d != InvalidKey:
-        echo "found id ", id, " in ", gMods[i].filename
+        when declared(echo):
+          echo "found id ", id, " in ", gMods[i].filename
 
 proc getReader(moduleId: int): PRodReader =
   # we can't index 'gMods' here as it's indexed by a *file index* which is not

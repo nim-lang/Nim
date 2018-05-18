@@ -734,7 +734,8 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
-    echo prettyCmds[idx]
+    when declared(echo):
+      echo prettyCmds[idx]
   compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
@@ -846,14 +847,16 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: string) =
       add(prettyCmds, "CC: " & name)
 
     let prettyCb = proc (idx: int) =
-      echo prettyCmds[idx]
+      when declared(echo):
+        echo prettyCmds[idx]
     execCmdsInParallel(conf, cmds, prettyCb)
 
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
     execLinkCmd(conf, linkCmd.getStr)
   except:
-    echo getCurrentException().getStackTrace()
+    when declared(echo):
+      echo getCurrentException().getStackTrace()
     quit "error evaluating JSON file: " & jsonFile
 
 proc genMappingFiles(conf: ConfigRef; list: CFileList): Rope =

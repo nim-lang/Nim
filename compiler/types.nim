@@ -102,7 +102,7 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
+proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
   result = sym.owner.name.s & '.' & sym.name.s & '('
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1):
@@ -118,7 +118,7 @@ proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
   if n.sons[0].typ != nil:
     result.add(": " & typeToString(n.sons[0].typ, prefer))
   result.add "[declared in "
-  result.add($sym.info)
+  result.add(conf$sym.info)
   result.add "]"
 
 proc elemType*(t: PType): PType =

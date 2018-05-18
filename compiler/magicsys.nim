@@ -187,7 +187,7 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
     strTableAdd(g.exposed, s)
   else:
     localError(g.config, s.info,
-      "symbol conflicts with other .exportNims symbol at: " & $conflict.info)
+      "symbol conflicts with other .exportNims symbol at: " & g.config$conflict.info)
 
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(name))

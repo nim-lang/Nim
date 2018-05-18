@@ -282,6 +282,8 @@ proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
+proc `$`*(info: TLineInfo): string {.error.} = discard
+
 proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in toFilename(conf, info)

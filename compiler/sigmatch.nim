@@ -253,7 +253,7 @@ proc complexDisambiguation(a, b: PType): int =
     result = x - y
 
 proc writeMatches*(c: TCandidate) =
-  echo "Candidate '", c.calleeSym.name.s, "' at ", c.calleeSym.info
+  echo "Candidate '", c.calleeSym.name.s, "' at ", c.c.config $ c.calleeSym.info
   echo "  exact matches: ", c.exactMatches
   echo "  generic matches: ", c.genericMatches
   echo "  subtype matches: ", c.subtypeMatches

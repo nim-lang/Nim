@@ -100,15 +100,16 @@ proc searchInScopes*(c: PContext, s: PIdent): PSym =
     if result != nil: return
   result = nil
 
-proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
-  var i = 0
-  for scope in walkScopes(c.currentScope):
-    echo "scope ", i
-    for h in 0 .. high(scope.symbols.data):
-      if scope.symbols.data[h] != nil:
-        echo scope.symbols.data[h].name.s
-    if i == limit: break
-    inc i
+when declared(echo):
+  proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
+    var i = 0
+    for scope in walkScopes(c.currentScope):
+      echo "scope ", i
+      for h in 0 .. high(scope.symbols.data):
+        if scope.symbols.data[h] != nil:
+          echo scope.symbols.data[h].name.s
+      if i == limit: break
+      inc i
 
 proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
   for scope in walkScopes(c.currentScope):
@@ -147,10 +148,10 @@ type
     scope*: PScope
     inSymChoice: IntSet
 
-proc getSymRepr*(s: PSym): string =
+proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
   of skProc, skFunc, skMethod, skConverter, skIterator:
-    result = getProcHeader(s)
+    result = getProcHeader(conf, s)
   else:
     result = s.name.s
 
@@ -164,7 +165,8 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
-        localError(c.config, s.info, "implementation of '$1' expected" % getSymRepr(s))
+        localError(c.config, s.info, "implementation of '$1' expected" %
+            getSymRepr(c.config, s))
       inc missingImpls
     elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options:
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
@@ -172,7 +174,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(s))
+          message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(c.config, s))
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string) =

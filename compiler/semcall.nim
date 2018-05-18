@@ -170,7 +170,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
-      add(candidates, err.sym.getProcHeader(prefer))
+      add(candidates, getProcHeader(c.config, err.sym, prefer))
     add(candidates, "\n")
     if err.firstMismatch != 0 and n.len > 1:
       let cond = n.len > 2
@@ -344,7 +344,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       add(args, ")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
+        getProcHeader(c.config, result.calleeSym),
+        getProcHeader(c.config, alt.calleeSym),
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =

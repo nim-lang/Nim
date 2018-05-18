@@ -184,7 +184,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
-                       "' to method defined here: " & $witness.info)
+                       "' to method defined here: " & g.config$witness.info)
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 

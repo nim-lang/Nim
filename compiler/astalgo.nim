@@ -61,11 +61,12 @@ type
 proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym
 proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
 
-# these are for debugging only: They are not really deprecated, but I want
-# the warning so that release versions do not contain debugging statements:
-proc debug*(conf: ConfigRef; n: PSym) {.deprecated.}
-proc debug*(conf: ConfigRef; n: PType) {.deprecated.}
-proc debug*(conf: ConfigRef; n: PNode) {.deprecated.}
+when declared(echo):
+  # these are for debugging only: They are not really deprecated, but I want
+  # the warning so that release versions do not contain debugging statements:
+  proc debug*(conf: ConfigRef; n: PSym) {.deprecated.}
+  proc debug*(conf: ConfigRef; n: PType) {.deprecated.}
+  proc debug*(conf: ConfigRef; n: PNode) {.deprecated.}
 
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
@@ -445,22 +446,23 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
           addf(result, "$N$1]", [istr])
     addf(result, "$N$1}", [rspaces(indent)])
 
-proc debug(conf: ConfigRef; n: PSym) =
-  if n == nil:
-    echo("null")
-  elif n.kind == skUnknown:
-    echo("skUnknown")
-  else:
-    #writeLine(stdout, $symToYaml(n, 0, 1))
-    echo("$1_$2: $3, $4, $5, $6" % [
-      n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
-      $lineInfoToStr(conf, n.info), $n.kind])
+when declared(echo):
+  proc debug(conf: ConfigRef; n: PSym) =
+    if n == nil:
+      echo("null")
+    elif n.kind == skUnknown:
+      echo("skUnknown")
+    else:
+      #writeLine(stdout, $symToYaml(n, 0, 1))
+      echo("$1_$2: $3, $4, $5, $6" % [
+        n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
+        $lineInfoToStr(conf, n.info), $n.kind])
 
-proc debug(conf: ConfigRef; n: PType) =
-  echo($debugType(conf, n))
+  proc debug(conf: ConfigRef; n: PType) =
+    echo($debugType(conf, n))
 
-proc debug(conf: ConfigRef; n: PNode) =
-  echo($debugTree(conf, n, 0, 100))
+  proc debug(conf: ConfigRef; n: PNode) =
+    echo($debugTree(conf, n, 0, 100))
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash

@@ -144,7 +144,7 @@ proc discardCheck(c: PContext, result: PNode) =
           result.typ.typeToString & "' and has to be discarded"
       if result.info.line != n.info.line or
           result.info.fileIndex != n.info.fileIndex:
-        s.add "; start of expression here: " & $result.info
+        s.add "; start of expression here: " & c.config$result.info
       if result.typ.kind == tyProc:
         s.add "; for a function call use ()"
       localError(c.config, n.info, s)
@@ -696,7 +696,8 @@ proc handleForLoopMacro(c: PContext; n: PNode): PNode =
             match = symx
           else:
             localError(c.config, n.info, errAmbiguousCallXYZ % [
-              getProcHeader(match), getProcHeader(symx), $iterExpr])
+              getProcHeader(c.config, match),
+              getProcHeader(c.config, symx), $iterExpr])
       symx = nextOverloadIter(o, c, headSymbol)
 
     if match == nil: return
@@ -832,7 +833,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
               typsym.info = s.info
             else:
               localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
-                      "previous type completion was here: " & $typsym.info)
+                      "previous type completion was here: " & c.config$typsym.info)
             s = typsym
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
@@ -1541,7 +1542,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # linking names do agree:
       if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
-          ("'" & proto.name.s & "' from " & $proto.info))
+          ("'" & proto.name.s & "' from " & c.config$proto.info))
     if sfForward notin proto.flags:
       wrongRedefinition(c, n.info, proto.name.s)
     excl(proto.flags, sfForward)
