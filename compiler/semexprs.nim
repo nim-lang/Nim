@@ -58,7 +58,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # do not produce another redundant error message:
     #raiseRecoverableError("")
     result = errorNode(c, n)
-  if result.typ == nil or result.typ == enforceVoidContext:
+  if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -1450,7 +1450,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       rhs = semExprWithType(c, n.sons[1],
         if lhsIsResult: {efAllowDestructor} else: {})
     if lhsIsResult:
-      n.typ = enforceVoidContext
+      n.typ = c.enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
         var rhsTyp = rhs.typ
         if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:

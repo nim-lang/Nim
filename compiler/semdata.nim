@@ -75,6 +75,7 @@ type
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
+    enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
@@ -212,6 +213,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
 
 proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
   new(result)
+  result.enforceVoidContext = PType(kind: tyStmt)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]

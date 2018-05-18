@@ -36,8 +36,6 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
 
-var enforceVoidContext = PType(kind: tyStmt) # XXX global variable here
-
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1, c.config)
@@ -87,8 +85,8 @@ proc semWhile(c: PContext, n: PNode): PNode =
   n.sons[1] = semStmt(c, n.sons[1])
   dec(c.p.nestedLoopCounter)
   closeScope(c)
-  if n.sons[1].typ == enforceVoidContext:
-    result.typ = enforceVoidContext
+  if n.sons[1].typ == c.enforceVoidContext:
+    result.typ = c.enforceVoidContext
 
 proc toCover(c: PContext, t: PType): BiggestInt =
   var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
@@ -173,7 +171,7 @@ proc semIf(c: PContext, n: PNode): PNode =
     for it in n: discardCheck(c, it.lastSon)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
-    if typ == enforceVoidContext: result.typ = enforceVoidContext
+    if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
   else:
     for it in n:
       let j = it.len-1
@@ -238,8 +236,8 @@ proc semCase(c: PContext, n: PNode): PNode =
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     # propagate any enforced VoidContext:
-    if typ == enforceVoidContext:
-      result.typ = enforceVoidContext
+    if typ == c.enforceVoidContext:
+      result.typ = c.enforceVoidContext
   else:
     for i in 1..n.len-1:
       var it = n.sons[i]
@@ -318,8 +316,8 @@ proc semTry(c: PContext, n: PNode): PNode =
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
     discardCheck(c, n.sons[0])
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
-    if typ == enforceVoidContext:
-      result.typ = enforceVoidContext
+    if typ == c.enforceVoidContext:
+      result.typ = c.enforceVoidContext
   else:
     if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon)
     n.sons[0] = fitNode(c, typ, n.sons[0], n.sons[0].info)
@@ -746,8 +744,8 @@ proc semFor(c: PContext, n: PNode): PNode =
   else:
     result = semForVars(c, n)
   # propagate any enforced VoidContext:
-  if n.sons[length-1].typ == enforceVoidContext:
-    result.typ = enforceVoidContext
+  if n.sons[length-1].typ == c.enforceVoidContext:
+    result.typ = c.enforceVoidContext
   closeScope(c)
 
 proc semRaise(c: PContext, n: PNode): PNode =
@@ -1834,9 +1832,9 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
           localError(c.config, result.info, "concept predicate failed")
       of tyUnknown: continue
       else: discard
-    if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
+    if n.sons[i].typ == c.enforceVoidContext: #or usesResult(n.sons[i]):
       voidContext = true
-      n.typ = enforceVoidContext
+      n.typ = c.enforceVoidContext
     if i == last and (length == 1 or efWantValue in flags):
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
