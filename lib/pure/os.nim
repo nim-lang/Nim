@@ -647,6 +647,11 @@ proc pathMatches*(path, pattern: string): bool {.rtl, extern: "nos$1"} =
   ## **Warning**:
   ## The matching is case-insensitive.
   when defined(windows):
+    proc PathMatchSpecA(pszFile: LPCSTR, pszSpec: LPCSTR): WINBOOL {.stdcall,
+      dynlib: "shlwapi", importc.}
+    proc PathMatchSpecW(pszFile: LPCWSTR, pszSpec: LPCWSTR): WINBOOL {.stdcall,
+      dynlib: "shlwapi", importc.}
+
     when useWinUnicode:
       wrapBinary(res, PathMatchSpecW, path, pattern)
       return res == 1
