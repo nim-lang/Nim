@@ -152,7 +152,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   for candidate in split(path, PathSep):
     if candidate.len == 0: continue
     when defined(windows):
-      var x = (if candidate.len > 2 and candidate[0] == '"' and candidate[^1] == '"':
+      var x = (if candidate[0] == '"' and candidate[^1] == '"':
                 substr(candidate, 1, candidate.len-2) else: candidate) /
               exe
     else:
