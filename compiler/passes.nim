@@ -13,7 +13,8 @@
 import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod,
+  configuration
 
 
 type
@@ -57,11 +58,11 @@ var
 
 # implementation
 
-proc skipCodegen*(n: PNode): bool {.inline.} =
+proc skipCodegen*(config: ConfigRef; n: PNode): bool {.inline.} =
   # can be used by codegen passes to determine whether they should do
   # something with `n`. Currently, this ignores `n` and uses the global
   # error count instead.
-  result = msgs.gErrorCounter > 0
+  result = config.errorCounter > 0
 
 const
   maxPasses = 10
@@ -139,20 +140,21 @@ proc closePassesCached(graph: ModuleGraph; a: var TPassContextArray) =
       m = gPasses[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
-proc resolveMod(module, relativeTo: string): FileIndex =
-  let fullPath = findModule(module, relativeTo)
+proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
+  let fullPath = findModule(conf, module, relativeTo)
   if fullPath.len == 0:
     result = InvalidFileIDX
   else:
-    result = fullPath.fileInfoIdx
+    result = fileInfoIdx(conf, fullPath)
 
-proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
+proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKind,
                       a: var TPassContextArray; m: PSym) =
   # XXX fixme this should actually be relative to the config file!
+  let gCmdLineInfo = newLineInfo(FileIndex(0), 1, 1)
   let relativeTo = m.info.toFullPath
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
-    if m.position != resolveMod(module, relativeTo).int32:
+    if m.position != resolveMod(conf, module, relativeTo).int32:
       var importStmt = newNodeI(nodeKind, gCmdLineInfo)
       var str = newStrNode(nkStrLit, module)
       str.info = gCmdLineInfo
@@ -202,7 +204,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
       let filename = fileIdx.toFullPathConsiderDirty
       s = llStreamOpen(filename, fmRead)
       if s == nil:
-        rawMessage(errCannotOpenFile, filename)
+        rawMessage(graph.config, errCannotOpenFile, filename)
         return false
     else:
       s = stream
@@ -214,8 +216,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits implicitImports, nkImportStmt, a, module
-        processImplicits implicitIncludes, nkIncludeStmt, a, module
+        processImplicits graph.config, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph.config, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         if graph.stopCompile(): break

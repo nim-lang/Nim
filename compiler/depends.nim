@@ -19,6 +19,7 @@ proc generateDot*(project: string)
 type
   TGen = object of TPassContext
     module*: PSym
+    config: ConfigRef
   PGen = ref TGen
 
 var gDotGraph: Rope # the generated DOT file; we need a global variable
@@ -33,10 +34,10 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   case n.kind
   of nkImportStmt:
     for i in countup(0, sonsLen(n) - 1):
-      var imported = getModuleName(n.sons[i])
+      var imported = getModuleName(g.config, n.sons[i])
       addDependencyAux(g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
-    var imported = getModuleName(n.sons[0])
+    var imported = getModuleName(g.config, n.sons[0])
     addDependencyAux(g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
     for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
@@ -52,6 +53,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module
+  g.config = graph.config
   result = g
 
 const gendependPass* = makePass(open = myOpen, process = addDotDependency)

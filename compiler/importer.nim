@@ -11,16 +11,16 @@
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes, renderer, modulepaths, sigmatch
+  semdata, passes, renderer, modulepaths, sigmatch, configuration
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
 
-proc readExceptSet*(n: PNode): IntSet =
+proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
   for i in 1 ..< n.len:
-    let ident = lookups.considerQuotedIdent(n[i])
+    let ident = lookups.considerQuotedIdent(c.config, n[i])
     result.incl(ident.id)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
@@ -47,7 +47,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
       for j in countup(0, sonsLen(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
         if e.kind != skEnumField:
-          internalError(s.info, "rawImportSymbol")
+          internalError(c.config, s.info, "rawImportSymbol")
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
           # BUGFIX: but only iff they are the same symbols!
@@ -69,14 +69,14 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if hasPattern(s): addPattern(c, s)
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
-  let ident = lookups.considerQuotedIdent(n)
+  let ident = lookups.considerQuotedIdent(c.config, n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if s.kind == skStub: loadStub(s)
     if s.kind notin ExportableSymKinds:
-      internalError(n.info, "importSymbol: 2")
+      internalError(c.config, n.info, "importSymbol: 2")
     # for an enumeration we have to add all identifiers
     case s.kind
     of skProcKinds:
@@ -84,7 +84,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
       var it: TIdentIter
       var e = initIdentIter(it, fromMod.tab, s.name)
       while e != nil:
-        if e.name.id != s.name.id: internalError(n.info, "importSymbol: 3")
+        if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         rawImportSymbol(c, e)
         e = nextIdentIter(it, fromMod.tab)
     else: rawImportSymbol(c, s)
@@ -96,7 +96,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
     if s.kind != skModule:
       if s.kind != skEnumField:
         if s.kind notin ExportableSymKinds:
-          internalError(s.info, "importAllSymbols: " & $s.kind)
+          internalError(c.config, s.info, "importAllSymbols: " & $s.kind)
         if exceptSet.isNil or s.name.id notin exceptSet:
           rawImportSymbol(c, s)
     s = nextIter(i, fromMod.tab)
@@ -117,22 +117,23 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet) =
       elif exceptSet.isNil or s.name.id notin exceptSet:
         rawImportSymbol(c, s)
   of nkExportExceptStmt:
-    localError(n.info, errGenerated, "'export except' not implemented")
+    localError(c.config, n.info, "'export except' not implemented")
   else:
     for i in 0..safeLen(n)-1:
       importForwarded(c, n.sons[i], exceptSet)
 
-proc importModuleAs(n: PNode, realModule: PSym): PSym =
+proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n.sons[1].kind != nkIdent:
-    localError(n.info, errGenerated, "module alias must be an identifier")
+    localError(c.config, n.info, "module alias must be an identifier")
   elif n.sons[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, n.sons[1].ident, realModule.info)
+    result = createModuleAlias(realModule, n.sons[1].ident, realModule.info,
+                               c.config.options)
 
 proc myImportModule(c: PContext, n: PNode): PSym =
-  var f = checkModuleName(n)
+  var f = checkModuleName(c.config, n)
   if f != InvalidFileIDX:
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
@@ -145,7 +146,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
         err.add toFullPath(c.graph.importStack[i]) & " imports " &
                 toFullPath(c.graph.importStack[i+1])
       c.recursiveDep = err
-    result = importModuleAs(n, gImportModule(c.graph, c.module, f, c.cache))
+    result = importModuleAs(c, n, gImportModule(c.graph, c.module, f, c.cache))
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
@@ -153,13 +154,13 @@ proc myImportModule(c: PContext, n: PNode): PSym =
     when true:
       if result.info.fileIndex == c.module.info.fileIndex and
           result.info.fileIndex == n.info.fileIndex:
-        localError(n.info, errGenerated, "A module cannot import itself")
+        localError(c.config, n.info, "A module cannot import itself")
     if sfDeprecated in result.flags:
       if result.constraint != nil:
-        message(n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
+        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
       else:
-        message(n.info, warnDeprecated, result.name.s)
-    suggestSym(n.info, result, c.graph.usageSym, false)
+        message(c.config, n.info, warnDeprecated, result.name.s)
+    suggestSym(c.config, n.info, result, c.graph.usageSym, false)
 
 proc impMod(c: PContext; it: PNode) =
   let m = myImportModule(c, it)
@@ -189,7 +190,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
 
 proc evalFrom(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 2)
+  checkMinSonsLen(n, 2, c.config)
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
@@ -200,10 +201,10 @@ proc evalFrom(c: PContext, n: PNode): PNode =
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = n
-  checkMinSonsLen(n, 2)
+  checkMinSonsLen(n, 2, c.config)
   var m = myImportModule(c, n.sons[0])
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    importAllSymbolsExcept(c, m, readExceptSet(n))
+    importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet)

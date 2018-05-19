@@ -47,7 +47,6 @@ Boot options:
   -d:release               produce a release version of the compiler
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
-  -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
 
 Commands for core developers:
   web [options]            generates the website and the full documentation
