@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nim representation.
 
 import
-  lexer, options, idents, strutils, ast, msgs
+  lexer, options, idents, strutils, ast, msgs, configuration
 
 type
   TRenderFlag* = enum
@@ -40,6 +40,7 @@ type
     when defined(nimpretty):
       pendingNewlineCount: int
     fid*: FileIndex
+    config*: ConfigRef
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -90,7 +91,7 @@ const
   MaxLineLen = 80
   LineCommentColumn = 30
 
-proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
+proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.comStack = @[]
   g.tokens = @[]
   g.indent = 0
@@ -102,6 +103,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.pendingNL = -1
   g.pendingWhitespace = -1
   g.inGenericParams = false
+  g.config = config
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
   var length = len(g.tokens)
@@ -377,7 +379,7 @@ proc atom(g: TSrcGen; n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
-    internalError("rnimsyn.atom " & $n.kind)
+    internalError(g.config, "rnimsyn.atom " & $n.kind)
     result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
@@ -1422,11 +1424,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gTypeClassTy(g, n)
   else:
     #nkNone, nkExplicitTypeListCall:
-    internalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   var g: TSrcGen
-  initSrcGen(g, renderFlags)
+  initSrcGen(g, renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that
   # writeFile("file.nim", repr n)
   # produces working Nim code:
@@ -1444,7 +1446,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
   var
     f: File
     g: TSrcGen
-  initSrcGen(g, renderFlags)
+  initSrcGen(g, renderFlags, newPartialConfigRef())
   g.fid = fid
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
@@ -1454,16 +1456,14 @@ proc renderModule*(n: PNode, infile, outfile: string,
        nkCommentStmt: putNL(g)
     else: discard
   gcoms(g)
-  if optStdout in gGlobalOptions:
-    write(stdout, g.buf)
-  elif open(f, outfile, fmWrite):
+  if open(f, outfile, fmWrite):
     write(f, g.buf)
     close(f)
   else:
-    rawMessage(errCannotOpenFile, outfile)
+    rawMessage(g.config, errGenerated, "cannot open file: " & outfile)
 
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
-  initSrcGen(r, renderFlags)
+  initSrcGen(r, renderFlags, newPartialConfigRef())
   gsub(r, n)
 
 proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =

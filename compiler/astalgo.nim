@@ -180,7 +180,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(n.info, "lookupInRecord")
+    if (n.sons[0].kind != nkSym): return nil
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return
     for i in countup(1, sonsLen(n) - 1):
@@ -188,10 +188,10 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), field)
         if result != nil: return
-      else: internalError(n.info, "lookupInRecord(record case branch)")
+      else: return nil
   of nkSym:
     if n.sym.name.id == field.id: result = n.sym
-  else: internalError(n.info, "lookupInRecord()")
+  else: return nil
 
 proc getModule(s: PSym): PSym =
   result = s
@@ -203,7 +203,7 @@ proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
-    else: internalError(list.info, "getSymFromList")
+    else: return nil
   result = nil
 
 proc hashNode(p: RootRef): Hash =

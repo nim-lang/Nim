@@ -35,32 +35,8 @@ options:
   By default a debug version is created, passing this option will
   force a release build, which is much faster and should be preferred
   unless you are debugging the compiler.
--d:useGnuReadline
-  Includes the `rdstdin module <rdstdin.html>`_ for `interactive
-  mode <nimc.html#nim-interactive-mode>`_ (aka ``nim i``).
-  This is not needed on Windows. On other platforms this may
-  incorporate the GNU readline library.
--d:nativeStacktrace
-  Use native stack traces (only for Mac OS X or Linux).
--d:avoidTimeMachine
-  Only for Mac OS X, activating this switch will force excluding
-  the generated ``nimcache`` directories from Time Machine backups.
-  By default ``nimcache`` directories will be included in backups,
-  and just for the Nim compiler itself it means backing up 20MB
-  of generated files each time you update the compiler. Using this
-  option will make the compiler invoke the `tmutil
-  <https://developer.apple.com/library/mac/documentation/Darwin/Reference/Manpages/man8/tmutil.8.html>`_
-  command on all ``nimcache`` directories, setting their backup
-  exclusion bit.
-
-  You can use the following command to locate all ``nimcache``
-  directories and check their backup exclusion bit::
-
-    $ find . -type d -name nimcache -exec tmutil isexcluded \{\} \;
---gc:refc|v2|markAndSweep|boehm|go|none
-  Selects which garbage collection strategy to use for the compiler
-  and generated code. See the `Nim's Garbage Collector <gc.html>`_
-  documentation for more information.
+-d:useLinenoise
+  Use the linenoise library for interactive mode (not needed on Windows).
 
 After compilation is finished you will hopefully end up with the nim
 compiler in the ``bin`` directory. You can add Nim's ``bin`` directory to
@@ -104,8 +80,3 @@ be rerun in serial fashion so that meaninful error output can be gathered for
 inspection. The ``--parallelBuild:n`` switch or configuration option can be
 used to force a specific number of parallel jobs or run everything serially
 from the start (``n == 1``).
-
-zip command
------------
-
-The `zip`:idx: command builds the installation ZIP package.

@@ -116,7 +116,8 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, rodread, tables
+  strutils, options, dfa, lowerings, rodread, tables, modulegraphs,
+  configuration
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -130,6 +131,7 @@ type
     tmp: PSym
     destroys, topLevelVars: PNode
     toDropBit: Table[int, PSym]
+    graph: ModuleGraph
 
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   # XXX why are temps fields in an object here?
@@ -222,21 +224,21 @@ proc patchHead(s: PSym) =
 template genOp(opr, opname) =
   let op = opr
   if op == nil:
-    globalError(dest.info, "internal error: '" & opname & "' operator not found for type " & typeToString(t))
+    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
-    globalError(dest.info, "internal error: '" & opname & "' operator is generic")
+    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
   result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
 
-proc genSink(t: PType; dest: PNode): PNode =
+proc genSink(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink")
 
-proc genCopy(t: PType; dest: PNode): PNode =
+proc genCopy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.assignment, "=")
 
-proc genDestroy(t: PType; dest: PNode): PNode =
+proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.destructor, "=destroy")
 
@@ -249,14 +251,14 @@ proc dropBit(c: var Con; s: PSym): PSym =
 
 proc registerDropBit(c: var Con; s: PSym) =
   let result = newSym(skTemp, getIdent(s.name.s & "_AliveBit"), c.owner, s.info)
-  result.typ = getSysType(tyBool)
+  result.typ = getSysType(c.graph, s.info, tyBool)
   let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
   c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, emptyNode, trueVal)
   c.toDropBit[s.id] = result
   # generate:
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
   c.destroys.add newTree(nkIfStmt,
-    newTree(nkElifBranch, newSymNode result, genDestroy(s.typ, newSymNode s)))
+    newTree(nkElifBranch, newSymNode result, genDestroy(c, s.typ, newSymNode s)))
 
 proc p(n: PNode; c: var Con): PNode
 
@@ -274,36 +276,36 @@ proc destructiveMoveSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let bit = newSymNode dropBit(c, n.sym)
   if optMoveCheck in c.owner.options:
-    result.add callCodegenProc("chckMove", bit)
+    result.add callCodegenProc(c.graph, "chckMove", bit)
   result.add newTree(nkAsgn, bit,
-    newIntTypeNode(nkIntLit, 0, getSysType(tyBool)))
+    newIntTypeNode(nkIntLit, 0, getSysType(c.graph, n.info, tyBool)))
   result.add n
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   if ri.kind in constrExprs:
-    result = genSink(ri.typ, dest)
+    result = genSink(c, ri.typ, dest)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
     recurse(ri, ri2)
     result.add ri2
   elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
-    result = genSink(ri.typ, dest)
+    result = genSink(c, ri.typ, dest)
     result.add p(ri, c)
   elif ri.kind == nkSym and isSinkParam(ri.sym):
-    result = genSink(ri.typ, dest)
+    result = genSink(c, ri.typ, dest)
     result.add destructiveMoveSink(ri, c)
   else:
-    result = genCopy(ri.typ, dest)
+    result = genCopy(c, ri.typ, dest)
     result.add p(ri, c)
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
   if hasDestructor(n.typ):
-    var m = genCopy(n.typ, tmp)
+    var m = genCopy(c, n.typ, tmp)
     m.add p(n, c)
     result.add m
-    message(n.info, hintPerformance,
+    message(c.graph.config, n.info, hintPerformance,
       "passing '$1' to a sink parameter introduces an implicit copy; " &
       "use 'move($1)' to prevent it" % $n)
   else:
@@ -312,7 +314,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
 
 proc genReset(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic("reset", mReset)))
+  result.add(newSymNode(createMagic(c.graph, "reset", mReset)))
   # The mReset builtin does not take the address:
   result.add n
 
@@ -345,7 +347,7 @@ proc p(n: PNode; c: var Con): PNode =
       let L = it.len-1
       let ri = it[L]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
-        let x = lowerTupleUnpacking(it, c.owner)
+        let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
         for j in 0..L-2:
@@ -354,7 +356,7 @@ proc p(n: PNode; c: var Con): PNode =
           # move the variable declaration to the top of the frame:
           c.addTopVar v
           # make sure it's destroyed at the end of the proc:
-          c.destroys.add genDestroy(v.typ, v)
+          c.destroys.add genDestroy(c, v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -400,11 +402,11 @@ proc p(n: PNode; c: var Con): PNode =
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
-      var sinkExpr = genSink(n.typ, tmp)
+      var sinkExpr = genSink(c, n.typ, tmp)
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp
-      c.destroys.add genDestroy(n.typ, tmp)
+      c.destroys.add genDestroy(c, n.typ, tmp)
     else:
       result = n
   of nkAsgn, nkFastAsgn:
@@ -420,17 +422,18 @@ proc p(n: PNode; c: var Con): PNode =
     result = copyNode(n)
     recurse(n, result)
 
-proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
+proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   when defined(nimDebugDestroys):
     echo "injecting into ", n
   var c: Con
   c.owner = owner
   c.tmp = newSym(skTemp, getIdent":d", owner, n.info)
-  c.tmpObj = createObj(owner, n.info)
+  c.tmpObj = createObj(g, owner, n.info)
   c.tmp.typ = c.tmpObj
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.toDropBit = initTable[int, PSym]()
+  c.graph = g
   let cfg = constructCfg(owner, n)
   shallowCopy(c.g, cfg)
   c.jumpTargets = initIntSet()

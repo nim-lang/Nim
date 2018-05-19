@@ -27,7 +27,7 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options
+  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, configuration
 
 type
   TParser* = object            # A TParser object represents a file that
@@ -97,7 +97,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef;
                  strongSpaces=false) =
-  openParser(p, filename.fileInfoIdx, inputStream, cache, config, strongSpaces)
+  openParser(p, fileInfoIdx(config, filename), inputStream, cache, config, strongSpaces)
 
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.
@@ -107,9 +107,13 @@ proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
   lexMessageTok(p.lex, msg, p.tok, arg)
 
-proc parMessage(p: TParser, msg: TMsgKind, tok: TToken) =
+proc parMessage(p: TParser, msg: string, tok: TToken) =
   ## Produce and emit a parser message to output about the token `tok`
-  parMessage(p, msg, prettyTok(tok))
+  parMessage(p, errGenerated, msg % prettyTok(tok))
+
+proc parMessage(p: TParser, arg: string) =
+  ## Produce and emit the parser message `arg` to output.
+  lexMessageTok(p.lex, errGenerated, p.tok, arg)
 
 template withInd(p, body: untyped) =
   let oldInd = p.currInd
@@ -142,6 +146,12 @@ proc skipComment(p: var TParser, node: PNode) =
 proc flexComment(p: var TParser, node: PNode) =
   if p.tok.indent < 0 or realInd(p): rawSkipComment(p, node)
 
+const
+  errInvalidIndentation = "invalid indentation"
+  errIdentifierExpected = "identifier expected, but got '$1'"
+  errExprExpected = "expression expected, but found '$1'"
+  errTokenExpected = "'$1' expected"
+
 proc skipInd(p: var TParser) =
   if p.tok.indent >= 0:
     if not realInd(p): parMessage(p, errInvalidIndentation)
@@ -160,11 +170,11 @@ proc getTokNoInd(p: var TParser) =
 
 proc expectIdentOrKeyw(p: TParser) =
   if p.tok.tokType != tkSymbol and not isKeyword(p.tok.tokType):
-    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
+    lexMessage(p.lex, errGenerated, errIdentifierExpected % prettyTok(p.tok))
 
 proc expectIdent(p: TParser) =
   if p.tok.tokType != tkSymbol:
-    lexMessage(p.lex, errIdentifierExpected, prettyTok(p.tok))
+    lexMessage(p.lex, errGenerated, errIdentifierExpected % prettyTok(p.tok))
 
 proc eat(p: var TParser, tokType: TTokType) =
   ## Move the parser to the next token if the current token is of type
@@ -172,7 +182,8 @@ proc eat(p: var TParser, tokType: TTokType) =
   if p.tok.tokType == tokType:
     getTok(p)
   else:
-    lexMessageTok(p.lex, errTokenExpected, p.tok, TokTypeToStr[tokType])
+    lexMessage(p.lex, errGenerated,
+      "expected: '" & TokTypeToStr[tokType] & "', but got: '" & prettyTok(p.tok) & "'")
 
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -886,7 +897,7 @@ proc parsePragma(p: var TParser): PNode =
       skipComment(p, a)
   optPar(p)
   if p.tok.tokType in {tkCurlyDotRi, tkCurlyRi}: getTok(p)
-  else: parMessage(p, errTokenExpected, ".}")
+  else: parMessage(p, "expected '.}'")
   dec p.inPragma
 
 proc identVis(p: var TParser; allowDot=false): PNode =
@@ -947,7 +958,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
   else:
     addSon(result, newNodeP(nkEmpty, p))
     if p.tok.tokType != tkEquals and withBothOptional notin flags:
-      parMessage(p, errColonOrEqualsExpected, p.tok)
+      parMessage(p, "':' or '=' expected, but got '$1'", p.tok)
   if p.tok.tokType == tkEquals:
     getTok(p)
     optInd(p, result)
@@ -1020,7 +1031,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
         parMessage(p, errGenerated, "the syntax is 'parameter: var T', not 'var parameter: T'")
         break
       else:
-        parMessage(p, errTokenExpected, ")")
+        parMessage(p, "expected closing ')'")
         break
       addSon(result, a)
       if p.tok.tokType notin {tkComma, tkSemiColon}: break
@@ -1181,7 +1192,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     if mode == pmTypeDef:
       result = parseTypeClass(p)
     else:
-      parMessage(p, errInvalidToken, p.tok)
+      parMessage(p, "the 'concept' keyword is only valid in 'type' sections")
   of tkStatic:
     let info = parLineInfo(p)
     getTokNoInd(p)
@@ -1291,7 +1302,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
       if nextBlock.kind == nkElse: break
   else:
     if openingParams.kind != nkEmpty:
-      parMessage(p, errTokenExpected, ":")
+      parMessage(p, "expected ':'")
 
 proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr
@@ -1527,7 +1538,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
     addSon(b, parseStmt(p))
     addSon(result, b)
     if b.kind == nkFinally: break
-  if b == nil: parMessage(p, errTokenExpected, "except")
+  if b == nil: parMessage(p, "expected 'except'")
 
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
   #| exceptBlock = 'except' colcom stmt
@@ -1582,7 +1593,7 @@ proc parseAsm(p: var TParser): PNode =
   of tkTripleStrLit: addSon(result,
                             newStrNodeP(nkTripleStrLit, p.tok.literal, p))
   else:
-    parMessage(p, errStringLiteralExpected)
+    parMessage(p, "the 'asm' statement takes a string literal")
     addSon(result, ast.emptyNode)
     return
   getTok(p)
@@ -1761,7 +1772,7 @@ proc parseEnum(p: var TParser): PNode =
         p.tok.tokType == tkEof:
       break
   if result.len <= 1:
-    lexMessageTok(p.lex, errIdentifierExpected, p.tok, prettyTok(p.tok))
+    parMessage(p, errIdentifierExpected, p.tok)
 
 proc parseObjectPart(p: var TParser): PNode
 proc parseObjectWhen(p: var TParser): PNode =
@@ -2124,7 +2135,7 @@ proc parseStmt(p: var TParser): PNode =
     case p.tok.tokType
     of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkFunc,
        tkIterator, tkMacro, tkType, tkConst, tkWhen, tkVar:
-      parMessage(p, errComplexStmtRequiresInd)
+      parMessage(p, "complex statement requires indentation")
       result = ast.emptyNode
     else:
       if p.inSemiStmtList > 0:

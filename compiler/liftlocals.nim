@@ -52,17 +52,17 @@ proc lookupParam(params, dest: PNode): PSym =
     if params[i].kind == nkSym and params[i].sym.name.id == dest.ident.id:
       return params[i].sym
 
-proc liftLocalsIfRequested*(prc: PSym; n: PNode): PNode =
+proc liftLocalsIfRequested*(prc: PSym; n: PNode; conf: ConfigRef): PNode =
   let liftDest = getPragmaVal(prc.ast, wLiftLocals)
   if liftDest == nil: return n
   let partialParam = lookupParam(prc.typ.n, liftDest)
   if partialParam.isNil:
-    localError(liftDest.info, "'$1' is not a parameter of '$2'" %
+    localError(conf, liftDest.info, "'$1' is not a parameter of '$2'" %
               [$liftDest, prc.name.s])
     return n
   let objType = partialParam.typ.skipTypes(abstractPtrs)
   if objType.kind != tyObject or tfPartial notin objType.flags:
-    localError(liftDest.info, "parameter '$1' is not a pointer to a partial object" % $liftDest)
+    localError(conf, liftDest.info, "parameter '$1' is not a pointer to a partial object" % $liftDest)
     return n
   var c = Ctx(partialParam: partialParam, objType: objType)
   let w = newTree(nkStmtList, n)
