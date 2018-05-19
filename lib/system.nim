@@ -3805,6 +3805,8 @@ template assert*(cond: bool, msg = "") =
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
+  bind instantiationInfo
+  {.line: instantiationInfo().}:
   if not cond:
     raiseAssert(astToStr(cond) & ' ' &
                 instantiationInfo(-1, false).fileName & '(' &
