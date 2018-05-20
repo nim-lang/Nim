@@ -64,27 +64,49 @@ proc reversed*[T](a: openArray[T]): seq[T] =
   ## returns the reverse of the array `a`.
   reversed(a, 0, a.high)
 
+proc binarySearch*[T, K](a: openArray[T], key: K,
+              cmp: proc (x: T, y: K): int {.closure.}): int =
+  ## binary search for `key` in `a`. Returns -1 if not found.
+  ##
+  ## `cmp` is the comparator function to use, the expected return values are
+  ## the same as that of system.cmp.
+  if a.len == 0:
+    return -1
+
+  let len = a.len
+
+  if len == 1:
+    if cmp(a[0], key) == 0:
+      return 0
+    else:
+      return -1
+
+  if (len and (len - 1)) == 0:
+    # when `len` is a power of 2, a faster shr can be used.
+    var step = len shr 1
+    while step > 0:
+      let i = result or step
+      if cmp(a[i], key) < 1:
+        result = i
+      step = step shr 1
+    if cmp(a[result], key) != 0: result = -1
+  else:
+    var b = len
+    while result < b:
+      var mid = (result + b) shr 1
+      if cmp(a[mid], key) < 0:
+        result = mid + 1
+      else:
+        b = mid
+    if result >= len or cmp(a[result], key) != 0: result = -1
+
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
-  if ((a.len - 1) and a.len) == 0 and a.len > 0:
-    # when `a.len` is a power of 2, a faster div can be used.
-    var step = a.len div 2
-    while step > 0:
-      if a[result or step] <= key:
-        result = result or step
-      step = step shr 1
-    if a[result] != key: result = -1
-  else:
-    var b = len(a)
-    while result < b:
-      var mid = (result + b) div 2
-      if a[mid] < key: result = mid + 1
-      else: b = mid
-    if result >= len(a) or a[result] != key: result = -1
+  binarySearch(a, key, cmp[T])
 
 proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
   ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
-  binarySearch(a,key)
+  binarySearch(a, key, cmp[T])
 
 const
   onlySafeCode = true
@@ -108,7 +130,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   var count = a.high - a.low + 1
   var step, pos: int
   while count != 0:
-    step = count div 2
+    step = count shr 1
     pos = result + step
     if cmp(a[pos], key) < 0:
       result = pos + 1
