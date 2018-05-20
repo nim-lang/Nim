@@ -454,16 +454,34 @@ proc `^`*[T](x: T, y: Natural): T =
       break
     x *= x
 
+proc trailingZeros[T](n: T): T =
+  var order = 0
+  var n = n
+  while (n and 1) == 0:
+    inc(order)
+    n = n shr 1
+  order
+
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common divisor of ``x`` and ``y``.
   ## Note that for floats, the result cannot always be interpreted as
   ## "greatest decimal `z` such that ``z*N == x and z*M == y``
   ## where N and M are positive integers."
-  var (x,y) = (x,y)
-  while y != 0:
-    x = x mod y
-    swap x, y
-  abs x
+  if x == 0:
+    return abs(y)
+  if y == 0:
+    return abs(x)
+  let zx = trailingZeros(x)
+  let zy = trailingZeros(y)
+  let k = min(zx, zy)
+  var u = abs(x shr zx)
+  var v = abs(y shr zy)
+  while u != v:
+    if u > v:
+      swap u, v
+    v -= u
+    v = v shr trailingZeros(v)
+  u shl k
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
