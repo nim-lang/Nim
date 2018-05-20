@@ -509,7 +509,7 @@ proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]``.
   assert(obj.kind == JObject)
   if not obj.fields.hasKey(key):
-    raise newException(IndexError, "key not in object")
+    raise newException(KeyError, "key not in object")
   obj.fields.del(key)
 
 proc copy*(p: JsonNode): JsonNode =
@@ -1496,18 +1496,18 @@ when isMainModule:
   # Bounds checking
   try:
     let a = testJson["a"][9]
-    doAssert(false, "EInvalidIndex not thrown")
+    doAssert(false, "IndexError not thrown")
   except IndexError:
     discard
   try:
     let a = testJson["a"][-1]
-    doAssert(false, "EInvalidIndex not thrown")
+    doAssert(false, "IndexError not thrown")
   except IndexError:
     discard
   try:
     doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
   except:
-    doAssert(false, "EInvalidIndex thrown for valid index")
+    doAssert(false, "IndexError thrown for valid index")
 
   doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
