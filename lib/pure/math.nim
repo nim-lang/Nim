@@ -21,6 +21,8 @@ include "system/inclrtl"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
+import bitops
+
 proc binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the binomial coefficient
   if k <= 0: return 1
@@ -454,25 +456,19 @@ proc `^`*[T](x: T, y: Natural): T =
       break
     x *= x
 
-proc trailingZeros[T](n: T): T =
-  var order = 0
-  var n = n
-  while (n and 1) == 0:
-    inc(order)
-    n = n shr 1
-  order
-
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common divisor of ``x`` and ``y``.
   ## Note that for floats, the result cannot always be interpreted as
   ## "greatest decimal `z` such that ``z*N == x and z*M == y``
   ## where N and M are positive integers."
+  ##
+  ## Using binary GCD (aka Stein's) algorithm.
   if x == 0:
     return abs(y)
   if y == 0:
     return abs(x)
-  let zx = trailingZeros(x)
-  let zy = trailingZeros(y)
+  let zx = countTrailingZeroBits(x)
+  let zy = countTrailingZeroBits(y)
   let k = min(zx, zy)
   var u = abs(x shr zx)
   var v = abs(y shr zy)
@@ -480,7 +476,7 @@ proc gcd*[T](x, y: T): T =
     if u > v:
       swap u, v
     v -= u
-    v = v shr trailingZeros(v)
+    v = v shr countTrailingZeroBits(v)
   u shl k
 
 proc lcm*[T](x, y: T): T =
