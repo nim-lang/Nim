@@ -56,6 +56,7 @@
 - Added the type ``times.Duration`` for representing fixed durations of time.
 - Added the proc ``times.convert`` for converting between different time units,
   e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
 
 ### Library changes
 
