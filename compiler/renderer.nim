@@ -811,8 +811,8 @@ proc gident(g: var TSrcGen, n: PNode) =
 
   var t: TTokType
   var s = atom(g, n)
-  if (s[0] in lexer.SymChars):
-    if (n.kind == nkIdent):
+  if s.len > 0 and s[0] in lexer.SymChars:
+    if n.kind == nkIdent:
       if (n.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
         t = tkSymbol
