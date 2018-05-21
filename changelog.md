@@ -38,6 +38,7 @@
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
+- `await` and derivatives have been renamed to `waitFor` in `threadpool` module.
 
 #### Breaking changes in the compiler
 

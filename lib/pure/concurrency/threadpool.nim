@@ -30,7 +30,7 @@ proc destroySemaphore(cv: var Semaphore) {.inline.} =
   deinitCond(cv.c)
   deinitLock(cv.L)
 
-proc await(cv: var Semaphore) =
+proc waitFor(cv: var Semaphore) =
   acquire(cv.L)
   while cv.counter <= 0:
     wait(cv.c, cv.L)
@@ -81,7 +81,7 @@ proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
     fence()
     b.interest = true
     fence()
-    while b.left != b.entered: await(b.cv)
+    while b.left != b.entered: waitFor(b.cv)
     destroySemaphore(b.cv)
 
 {.pop.}
@@ -91,16 +91,16 @@ proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
 type
   foreign* = object ## a region that indicates the pointer comes from a
                     ## foreign thread heap.
-  AwaitInfo = object
+  WaitForInfo = object
     cv: Semaphore
     idx: int
 
   FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
   FlowVarBaseObj = object of RootObj
-    ready, usesSemaphore, awaited: bool
+    ready, usesSemaphore, isBlocked: bool
     cv: Semaphore #\
-    # for 'awaitAny' support
-    ai: ptr AwaitInfo
+    # for 'waitForAny' support
+    ai: ptr WaitForInfo
     idx: int
     data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
                    # be RootRef here otherwise the wrong GC keeps track of it!
@@ -130,12 +130,12 @@ type
     q: ToFreeQueue
     readyForTask: Semaphore
 
-proc await*(fv: FlowVarBase) =
+proc waitFor*(fv: FlowVarBase) =
   ## waits until the value for the flowVar arrives. Usually it is not necessary
   ## to call this explicitly.
-  if fv.usesSemaphore and not fv.awaited:
-    fv.awaited = true
-    await(fv.cv)
+  if fv.usesSemaphore and not fv.isBlocked:
+    fv.isBlocked = true
+    waitFor(fv.cv)
     destroySemaphore(fv.cv)
 
 proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
@@ -143,7 +143,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
     w.data = data
     w.f = fn
     signal(w.taskArrived)
-    await(w.taskStarted)
+    waitFor(w.taskStarted)
     result = true
 
 proc cleanFlowVars(w: ptr Worker) =
@@ -178,11 +178,11 @@ proc attach(fv: FlowVarBase; i: int): bool =
   release(fv.cv.L)
 
 proc finished(fv: FlowVarBase) =
-  doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
+  doAssert fv.ai.isNil, "flowVar is still attached to an 'waitForAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
   # anything to it:
-  await(fv)
+  waitFor(fv)
   if fv.data.isNil: return
   let owner = cast[ptr Worker](fv.owner)
   let q = addr(owner.q)
@@ -191,7 +191,7 @@ proc finished(fv: FlowVarBase) =
     #echo "EXHAUSTED!"
     release(q.lock)
     wakeupWorkerToProcessQueue(owner)
-    await(q.empty)
+    waitFor(q.empty)
     acquire(q.lock)
   q.data[q.len] = cast[pointer](fv.data)
   inc q.len
@@ -217,48 +217,49 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
   if fv.usesSemaphore:
     signal(fv.cv)
 
-proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
+proc waitForAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## blocks until the ``fv`` is available and then passes its value
   ## to ``action``. Note that due to Nim's parameter passing semantics this
-  ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
+  ## means that ``T`` doesn't need to be copied and so ``waitForAndThen`` can
   ## sometimes be more efficient than ``^``.
-  await(fv)
+  waitFor(fv)
   when T is string or T is seq:
     action(cast[T](fv.data))
   elif T is ref:
-    {.error: "'awaitAndThen' not available for FlowVar[ref]".}
+    {.error: "'waitForAndThen' not available for FlowVar[ref]".}
   else:
     action(fv.blob)
   finished(fv)
 
 proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
   ## blocks until the value is available and then returns this value.
-  await(fv)
+  waitFor(fv)
   result = cast[foreign ptr T](fv.data)
 
 proc `^`*[T](fv: FlowVar[ref T]): ref T =
   ## blocks until the value is available and then returns this value.
-  await(fv)
+  waitFor(fv)
   let src = cast[ref T](fv.data)
   deepCopy result, src
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## blocks until the value is available and then returns this value.
-  await(fv)
+  waitFor(fv)
   when T is string or T is seq:
     # XXX closures? deepCopy?
     result = cast[T](fv.data)
   else:
     result = fv.blob
 
-proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
-  ## awaits any of the given flowVars. Returns the index of one flowVar for
-  ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
-  ## the same time. That means if you awaitAny([a,b]) and awaitAny([b,c]) the second
-  ## call will only await 'c'. If there is no flowVar left to be able to wait
+proc waitForAny*(flowVars: openArray[FlowVarBase]): int =
+  ## blocks on any of the given flowVars. Returns the index of one flowVar for
+  ## which a value arrived. A flowVar only supports one call to 'waitForAny' at
+  ## the same time. That means if you
+  ## waitForAny([a,b]) and waitForAny([b,c]) the second
+  ## call will only waitFor 'c'. If there is no flowVar left to be able to wait
   ## on, -1 is returned.
   ## **Note**: This results in non-deterministic behaviour and should be avoided.
-  var ai: AwaitInfo
+  var ai: WaitForInfo
   ai.cv.initSemaphore()
   var conflicts = 0
   result = -1
@@ -271,7 +272,7 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
       inc conflicts
   if conflicts < flowVars.len:
     if result < 0:
-      await(ai.cv)
+      waitFor(ai.cv)
       result = ai.idx
     for i in 0 .. flowVars.high:
       discard cas(addr flowVars[i].ai, addr ai, nil)
@@ -280,8 +281,8 @@ proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
 proc isReady*(fv: FlowVarBase): bool =
   ## Determines whether the specified ``FlowVarBase``'s value is available.
   ##
-  ## If ``true`` awaiting ``fv`` will not block.
-  if fv.usesSemaphore and not fv.awaited:
+  ## If ``true`` reading ``fv`` will not block.
+  if fv.usesSemaphore and not fv.isBlocked:
     acquire(fv.cv.L)
     result = fv.cv.counter > 0
     release(fv.cv.L)
@@ -328,7 +329,7 @@ proc slave(w: ptr Worker) {.thread.} =
       w.ready = true
     readyWorker = w
     signal(gSomeReady)
-    await(w.taskArrived)
+    waitFor(w.taskArrived)
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
     when not defined(vcc) and not defined(tcc): assert(not w.ready)
@@ -353,7 +354,7 @@ proc distinguishedSlave(w: ptr Worker) {.thread.} =
     else:
       w.ready = true
     signal(w.readyForTask)
-    await(w.taskArrived)
+    waitFor(w.taskArrived)
     assert(not w.ready)
     w.f(w, w.data)
     if w.q.len != 0: w.cleanFlowVars
@@ -501,7 +502,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
         # on the current thread instead.
         var self = addr(workersData[localThreadId-1])
         fn(self, data)
-        await(self.taskStarted)
+        waitFor(self.taskStarted)
         return
 
     if isSlave:
@@ -526,7 +527,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
 
         inc numSlavesWaiting
 
-    await(gSomeReady)
+    waitFor(gSomeReady)
 
     if isSlave:
       withLock numSlavesLock:
@@ -544,7 +545,7 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
   release(distinguishedLock)
   while true:
     if selectWorker(addr(distinguishedData[id]), fn, data): break
-    await(distinguishedData[id].readyForTask)
+    waitFor(distinguishedData[id].readyForTask)
 
 
 proc sync*() =
@@ -557,7 +558,7 @@ proc sync*() =
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break
-    await(gSomeReady)
+    waitFor(gSomeReady)
     inc toRelease
 
   for i in 0 ..< toRelease:
