@@ -467,33 +467,21 @@ proc gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-proc gcd*(x, y: SomeUnsignedInt): SomeUnsignedInt =
+proc gcd*(x, y: SomeInteger): SomeInteger =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ## Using binary GCD (aka Stein's) algorithm.
-  if x == 0:
-    return y
-  if y == 0:
-    return x
-  let zx = countTrailingZeroBits(x)
-  let zy = countTrailingZeroBits(y)
-  let k = min(zx, zy)
-  var u = x shr zx
-  var v = y shr zy
-  while u != v:
-    if u > v:
-      swap u, v
-    v -= u
-    v = v shr countTrailingZeroBits(v)
-  u shl k
+  # Nim's bit shift right is logical shift (not arithmetic shift)
+  # therefore x > 0 and y > 0 are required.
+  when x is SomeSignedInt:
+    let x = abs(x)
+  when y is SomeSignedInt:
+    let y = abs(y)
 
-proc gcd*(x, y: SomeSignedInt): SomeSignedInt =
-  ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
-  ## Using binary GCD (aka Stein's) algorithm.
-  let (x, y) = (abs(x), abs(y))
   if x == 0:
     return y
   if y == 0:
     return x
+
   let zx = countTrailingZeroBits(x)
   let zy = countTrailingZeroBits(y)
   let k = min(zx, zy)
