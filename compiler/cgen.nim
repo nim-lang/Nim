@@ -1116,8 +1116,8 @@ proc registerModuleToMain(g: BModuleList; m: PSym) =
   var
     init = m.getInitName
     datInit = m.getDatInitName
-  addf(g.mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [init])
-  addf(g.mainModProcs, "NIM_EXTERNC N_NOINLINE(void, $1)(void);$N", [datInit])
+  addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
+  addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
   if sfSystemModule notin m.flags:
     addf(g.mainDatInit, "\t$1();$N", [datInit])
     let initCall = "\t$1();$N" % [init]
@@ -1128,7 +1128,7 @@ proc registerModuleToMain(g: BModuleList; m: PSym) =
 
 proc genInitCode(m: BModule) =
   var initname = getInitName(m.module)
-  var prc = "NIM_EXTERNC N_NOINLINE(void, $1)(void) {$N" % [initname]
+  var prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" % [initname]
   if m.typeNodes > 0:
     appcg(m, m.s[cfsTypeInit1], "static #TNimNode $1[$2];$n",
           [m.typeNodesName, rope(m.typeNodes)])
@@ -1170,7 +1170,7 @@ proc genInitCode(m: BModule) =
   add(prc, deinitGCFrame(m.initProc))
   addf(prc, "}$N$N", [])
 
-  prc.addf("NIM_EXTERNC N_NOINLINE(void, $1)(void) {$N",
+  prc.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N",
            [getDatInitName(m.module)])
 
   for i in cfsTypeInit1..cfsDynLibInit:

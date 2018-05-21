@@ -2527,7 +2527,7 @@ The implicit initialization can be avoided for optimization reasons with the
 
 .. code-block:: nim
   var
-    a {.noInit.}: array [0..1023, char]
+    a {.noInit.}: array[0..1023, char]
 
 If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 ``result`` variable:
@@ -6632,7 +6632,7 @@ Syntactically it has to be used as a statement inside the loop:
       enumA, enumB, enumC, enumD, enumE
 
   proc vm() =
-    var instructions: array [0..100, MyEnum]
+    var instructions: array[0..100, MyEnum]
     instructions[2] = enumC
     instructions[3] = enumD
     instructions[4] = enumA

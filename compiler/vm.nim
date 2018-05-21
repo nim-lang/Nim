@@ -441,7 +441,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
       node.sons[i] = newNodeI(typeKind, info)
 
 const
-  errIndexOutOfBounds = "index ouf of bounds"
+  errIndexOutOfBounds = "index out of bounds"
   errNilAccess = "attempt to access a nil address"
   errOverOrUnderflow = "over- or underflow"
   errConstantDivisionByZero = "division by zero"

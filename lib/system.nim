@@ -3808,7 +3808,9 @@ template doAssert*(cond: bool, msg = "") =
   bind instantiationInfo
   {.line: instantiationInfo().}:
     if not cond:
-      raiseAssert(astToStr(cond) & ' ' & msg)
+      raiseAssert(astToStr(cond) & ' ' &
+                  instantiationInfo(-1, false).fileName & '(' &
+                  $instantiationInfo(-1, false).line & ") " & msg)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
