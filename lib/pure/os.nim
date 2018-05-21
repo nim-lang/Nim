@@ -139,6 +139,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
   ## If the system supports symlinks it also resolves them until it
   ## meets the actual file. This behavior can be disabled if desired.
+  if exe.len == 0: return
   template checkCurrentDir() =
     for ext in extensions:
       result = addFileExt(exe, ext)
@@ -149,6 +150,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     checkCurrentDir()
   let path = string(getEnv("PATH"))
   for candidate in split(path, PathSep):
+    if candidate.len == 0: continue
     when defined(windows):
       var x = (if candidate[0] == '"' and candidate[^1] == '"':
                 substr(candidate, 1, candidate.len-2) else: candidate) /

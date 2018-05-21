@@ -57,6 +57,7 @@
 - Added the proc ``times.convert`` for converting between different time units,
   e.g days to seconds.
 - Added the proc ``os.pathMatches`` for matching a path with a specified pattern.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
 
 ### Library changes
 
