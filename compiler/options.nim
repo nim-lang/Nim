@@ -221,7 +221,8 @@ proc newConfigRef*(): ConfigRef =
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
-    docSeeSrcUrl: ""
+    docSeeSrcUrl: "",
+    arguments: ""
   )
   # enable colors by default on terminals
   if terminal.isatty(stderr):

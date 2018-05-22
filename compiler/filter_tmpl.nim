@@ -65,7 +65,7 @@ proc parseLine(p: var TTmplParser) =
   var j = 0
   let hi = p.x.len - 1
 
-  if hi == 0:
+  if hi < 0:
     return
 
   while j <= hi and p.x[j] == ' ': inc(j)
