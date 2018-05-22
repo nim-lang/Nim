@@ -13,9 +13,10 @@ IF DEFINED ARCH (
 ) ELSE (
   ECHO Detecting %CC% arch
   ECHO int main^(^) { return sizeof^(void *^); } | gcc -xc - -o archtest && archtest
-  IF ERRORLEVEL 4 (SET ARCH=32) ELSE (SET ARCH=64)
+  IF ERRORLEVEL 4 SET ARCH=32
+  IF ERRORLEVEL 8 SET ARCH=64
   del archtest.*
-) 
+)
 ECHO Building with %ARCH% bit %CC%
 
 if EXIST ..\koch.nim SET BIN_DIR=..\bin
@@ -61,7 +62,7 @@ IF %ARCH% EQU 32 (
   CALL %LINKER% -o ?{"%BIN_DIR%"\toLowerAscii(c.name)}.exe ?linkCmd %LINK_FLAGS%
 
 #  end block
-) 
+)
 
 :END
 IF ERRORLEVEL 1 (
@@ -74,5 +75,5 @@ IF ERRORLEVEL 1 (
     ECHO Use build.bat to autodetect the compiler architecture.
 ) ELSE (
     ECHO SUCCESS
-) 
+)
 exit /b %ERRORLEVEL%
