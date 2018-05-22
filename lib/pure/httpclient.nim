@@ -362,16 +362,6 @@ when not defined(ssl):
   type SSLContext = ref object
 var defaultSSLContext {.threadvar.}: SSLContext
 
-when defined(ssl):
-  defaultSSLContext = newContext(verifyMode = CVerifyNone)
-  template contextOrDefault(ctx: SSLContext): SSLContext =
-    var result = ctx
-    if ctx == nil:
-      if defaultSSLContext == nil:
-        defaultSSLContext = newContext(verifyMode = CVerifyNone)
-      result = defaultSSLContext
-    result
-
 proc getDefaultSSL(): SSLContext =
   result = defaultSslContext
   when defined(ssl):
@@ -852,7 +842,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newStringStream()
   result.getBody = true
   when defined(ssl):
-    result.sslContext = contextOrDefault(sslContext)
+    result.sslContext = sslContext
 
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
@@ -884,7 +874,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
   when defined(ssl):
-    result.sslContext = contextOrDefault(sslContext)
+    result.sslContext = sslContext
 
 proc close*(client: HttpClient | AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
