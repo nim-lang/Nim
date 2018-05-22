@@ -319,6 +319,8 @@ proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
       if a[i].kind == nnkExprEqExpr:
+        # In order to support attributes like `data-lang` we have to
+        # replace whitespace because `toStrLit` gives `data - lang`.
         let attrName = toStrLit(a[i][0]).strVal.replace(" ", "")
         attrs.add(newStrLitNode(attrName))
         attrs.add(a[i][1])
