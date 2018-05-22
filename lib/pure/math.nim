@@ -470,29 +470,28 @@ proc gcd*[T](x, y: T): T =
 proc gcd*(x, y: SomeInteger): SomeInteger =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ## Using binary GCD (aka Stein's) algorithm.
-  # Nim's bit shift right is logical shift (not arithmetic shift)
-  # therefore x > 0 and y > 0 are required.
   when x is SomeSignedInt:
-    let x = abs(x)
+    var x = abs(x)
+  else:
+    var x = x
   when y is SomeSignedInt:
-    let y = abs(y)
+    var y = abs(y)
+  else:
+    var y = y
 
   if x == 0:
     return y
   if y == 0:
     return x
 
-  let zx = countTrailingZeroBits(x)
-  let zy = countTrailingZeroBits(y)
-  let k = min(zx, zy)
-  var u = x shr zx
-  var v = y shr zy
-  while u != v:
-    if u > v:
-      swap u, v
-    v -= u
-    v = v shr countTrailingZeroBits(v)
-  u shl k
+  let shift = countTrailingZeroBits(x or y)
+  y = y shr countTrailingZeroBits(y)
+  while x != 0:
+    x = x shr countTrailingZeroBits(x)
+    if y > x:
+      swap y, x
+    x -= y
+  y shl shift
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
