@@ -372,6 +372,14 @@ when defined(ssl):
       result = defaultSSLContext
     result
 
+proc getDefaultSSL(): SSLContext =
+  result = defaultSslContext
+  when defined(ssl):
+    if result == nil:
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
+      result = defaultSSLContext
+      doAssert result != nil, "failure to initialize the SSL context"
+
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
   result = Proxy(url: parseUri(url), auth: auth)
@@ -480,9 +488,9 @@ proc format(p: MultipartData): tuple[contentType, body: string] =
   result.body.add("--" & bound & "--\c\L")
 
 proc request*(url: string, httpMethod: string, extraHeaders = "",
-              body = "", sslContext = defaultSSLContext, timeout = -1,
+              body = "", sslContext = getDefaultSSL(), timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response
-              {.deprecated.} =
+              {.deprecated: "use HttpClient.request instead".} =
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
@@ -580,7 +588,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   result = parseResponse(s, httpMethod != "HEAD", timeout)
 
 proc request*(url: string, httpMethod = HttpGET, extraHeaders = "",
-              body = "", sslContext = defaultSSLContext, timeout = -1,
+              body = "", sslContext = getDefaultSSL(), timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response
               {.deprecated.} =
   ## | Requests ``url`` with the specified ``httpMethod``.
@@ -611,7 +619,7 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
     result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
-          sslContext: SSLContext = defaultSSLContext,
+          sslContext: SSLContext = getDefaultSSL(),
           timeout = -1, userAgent = defUserAgent,
           proxy: Proxy = nil): Response {.deprecated.} =
   ## | GETs the ``url`` and returns a ``Response`` object
@@ -632,7 +640,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
       lastURL = redirectTo
 
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
-                 sslContext: SSLContext = defaultSSLContext,
+                 sslContext: SSLContext = getDefaultSSL(),
                  timeout = -1, userAgent = defUserAgent,
                  proxy: Proxy = nil): string {.deprecated.} =
   ## | GETs the body and returns it as a string.
@@ -651,7 +659,7 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
 
 proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
-           sslContext: SSLContext = defaultSSLContext,
+           sslContext: SSLContext = getDefaultSSL(),
            timeout = -1, userAgent = defUserAgent,
            proxy: Proxy = nil,
            multipart: MultipartData = nil): Response {.deprecated.} =
@@ -694,7 +702,7 @@ proc post*(url: string, extraHeaders = "", body = "",
 
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
-                  sslContext: SSLContext = defaultSSLContext,
+                  sslContext: SSLContext = getDefaultSSL(),
                   timeout = -1, userAgent = defUserAgent,
                   proxy: Proxy = nil,
                   multipart: MultipartData = nil): string
@@ -717,7 +725,7 @@ proc postContent*(url: string, extraHeaders = "", body = "",
     return r.body
 
 proc downloadFile*(url: string, outputFilename: string,
-                   sslContext: SSLContext = defaultSSLContext,
+                   sslContext: SSLContext = getDefaultSSL(),
                    timeout = -1, userAgent = defUserAgent,
                    proxy: Proxy = nil) {.deprecated.} =
   ## | Downloads ``url`` and saves it to ``outputFilename``
@@ -817,7 +825,7 @@ type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext, proxy: Proxy = nil,
+    maxRedirects = 5, sslContext = getDefaultSSL(), proxy: Proxy = nil,
     timeout = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
@@ -852,7 +860,7 @@ type
 {.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext,
+    maxRedirects = 5, sslContext = getDefaultSSL(),
     proxy: Proxy = nil): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
