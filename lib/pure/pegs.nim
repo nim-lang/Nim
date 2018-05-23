@@ -1125,7 +1125,7 @@ proc handleCR(L: var PegLexer, pos: int): int =
   assert(L.buf[pos] == '\c')
   inc(L.lineNumber)
   result = pos+1
-  if L.buf[result] == '\L': inc(result)
+  if result < L.buf.len and L.buf[result] == '\L': inc(result)
   L.lineStart = result
 
 proc handleLF(L: var PegLexer, pos: int): int =
@@ -1221,7 +1221,7 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
 proc skip(c: var PegLexer) =
   var pos = c.bufpos
   var buf = c.buf
-  while true:
+  while pos < c.buf.len:
     case buf[pos]
     of ' ', '\t':
       inc(pos)
@@ -1242,7 +1242,7 @@ proc getString(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
   var buf = c.buf
   var quote = buf[pos-1]
-  while true:
+  while pos < c.buf.len:
     case buf[pos]
     of '\\':
       c.bufpos = pos
@@ -1265,7 +1265,7 @@ proc getDollar(c: var PegLexer, tok: var Token) =
   if buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
-    while buf[pos] in {'0'..'9'}:
+    while pos < c.buf.len and buf[pos] in {'0'..'9'}:
       tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
       inc(pos)
   else:
@@ -1281,7 +1281,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   if buf[pos] == '^':
     inc(pos)
     caret = true
-  while true:
+  while pos < c.buf.len:
     var ch: char
     case buf[pos]
     of ']':
@@ -1300,7 +1300,7 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
       inc(pos)
     incl(tok.charset, ch)
     if buf[pos] == '-':
-      if buf[pos+1] == ']':
+      if pos+1 < c.buf.len and buf[pos+1] == ']':
         incl(tok.charset, '-')
         inc(pos)
       else:
@@ -1326,10 +1326,10 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
 proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
   var buf = c.buf
-  while true:
+  while pos < c.buf.len:
     add(tok.literal, buf[pos])
     inc(pos)
-    if buf[pos] notin strutils.IdentChars: break
+    if pos < buf.len and buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
@@ -1451,8 +1451,8 @@ proc getTok(c: var PegLexer, tok: var Token) =
 proc arrowIsNextTok(c: PegLexer): bool =
   # the only look ahead we need
   var pos = c.bufpos
-  while c.buf[pos] in {'\t', ' '}: inc(pos)
-  result = c.buf[pos] == '<' and c.buf[pos+1] == '-'
+  while pos < c.buf.len and c.buf[pos] in {'\t', ' '}: inc(pos)
+  result = c.buf[pos] == '<' and (pos+1 < c.buf.len) and c.buf[pos+1] == '-'
 
 # ----------------------------- parser ----------------------------------------
 
@@ -1475,7 +1475,7 @@ proc pegError(p: PegParser, msg: string, line = -1, col = -1) =
 
 proc getTok(p: var PegParser) =
   getTok(p, p.tok)
-  if p.tok.kind == tkInvalid: pegError(p, "invalid token")
+  if p.tok.kind == tkInvalid: pegError(p, "'" & p.tok.literal & "' is invalid token")
 
 proc eat(p: var PegParser, kind: TokKind) =
   if p.tok.kind == kind: getTok(p)
