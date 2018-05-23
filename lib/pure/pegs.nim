@@ -1010,14 +1010,18 @@ proc replace*(s: string, sub: Peg, cb: proc(
       inc(m)
   add(result, substr(s, i))
 
-proc transformFile*(infile, outfile: string,
-                    subs: varargs[tuple[pattern: Peg, repl: string]]) {.
-                    rtl, extern: "npegs$1".} =
-  ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
-  ## error occurs. This is supposed to be used for quick scripting.
-  var x = readFile(infile).string
-  writeFile(outfile, x.parallelReplace(subs))
+when not defined(js):
+  proc transformFile*(infile, outfile: string,
+                      subs: varargs[tuple[pattern: Peg, repl: string]]) {.
+                      rtl, extern: "npegs$1".} =
+    ## reads in the file `infile`, performs a parallel replacement (calls
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## error occurs. This is supposed to be used for quick scripting.
+    ##
+    ## **Note**: this proc does not exist while using the JS backend.
+    var x = readFile(infile).string
+    writeFile(outfile, x.parallelReplace(subs))
+
 
 iterator split*(s: string, sep: Peg): string =
   ## Splits the string `s` into substrings.
