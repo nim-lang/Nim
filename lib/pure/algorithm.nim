@@ -94,7 +94,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
       if cmpRes < 1:
         result = i
       step = step shr 1
-    if cmpRes != 0: result = -1
+    if cmp(a[result], key) != 0: result = -1
   else:
     var b = len
     var cmpRes: int
@@ -108,7 +108,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
         result = mid + 1
       else:
         b = mid
-    if result >= len or cmpRes != 0: result = -1
+    if result >= len or cmp(a[result], key) != 0: result = -1
 
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
