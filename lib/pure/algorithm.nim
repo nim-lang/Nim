@@ -86,6 +86,9 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     var step = len shr 1
     while step > 0:
       let i = result or step
+      if cmp(a[i], key) == 0:
+        return i
+
       if cmp(a[i], key) < 1:
         result = i
       step = step shr 1
@@ -94,6 +97,9 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     var b = len
     while result < b:
       var mid = (result + b) shr 1
+      if cmp(a[mid], key) == 0:
+        return mid
+
       if cmp(a[mid], key) < 0:
         result = mid + 1
       else:
