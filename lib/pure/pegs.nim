@@ -1010,20 +1010,15 @@ proc replace*(s: string, sub: Peg, cb: proc(
       inc(m)
   add(result, substr(s, i))
 
-proc transformFile*(infile, outfile: string,
-                    subs: varargs[tuple[pattern: Peg, repl: string]]) {.
-                    rtl, extern: "npegs$1".} =
-  ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
-  ## error occurs. This is supposed to be used for quick scripting.
-  ##
-  ## **Note**: this function warns at compile time if using the JS backend
-  ## because Javascript has no concept of a file system. It will compile as
-  ## a no-op in this situation.
-  when defined(js):
-    {.warning: "Since you are compiling with a JS backend, any file IO will be silently discarded.".}
-    discard
-  else:
+when not defined(js):
+  proc transformFile*(infile, outfile: string,
+                      subs: varargs[tuple[pattern: Peg, repl: string]]) {.
+                      rtl, extern: "npegs$1".} =
+    ## reads in the file `infile`, performs a parallel replacement (calls
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## error occurs. This is supposed to be used for quick scripting.
+    ##
+    ## **Note**: this proc does not exist while using the JS backend.
     var x = readFile(infile).string
     writeFile(outfile, x.parallelReplace(subs))
 
