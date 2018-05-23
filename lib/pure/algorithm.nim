@@ -84,27 +84,31 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
   if (len and (len - 1)) == 0:
     # when `len` is a power of 2, a faster shr can be used.
     var step = len shr 1
+    var cmpRes: int
     while step > 0:
       let i = result or step
-      if cmp(a[i], key) == 0:
+      cmpRes = cmp(a[i], key)
+      if cmpRes == 0:
         return i
 
-      if cmp(a[i], key) < 1:
+      if cmpRes < 1:
         result = i
       step = step shr 1
-    if cmp(a[result], key) != 0: result = -1
+    if cmpRes != 0: result = -1
   else:
     var b = len
+    var cmpRes: int
     while result < b:
       var mid = (result + b) shr 1
-      if cmp(a[mid], key) == 0:
+      cmpRes = cmp(a[mid], key)
+      if cmpRes == 0:
         return mid
 
-      if cmp(a[mid], key) < 0:
+      if cmpRes < 0:
         result = mid + 1
       else:
         b = mid
-    if result >= len or cmp(a[result], key) != 0: result = -1
+    if result >= len or cmpRes != 0: result = -1
 
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
