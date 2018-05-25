@@ -132,7 +132,7 @@ proc write*(s: Stream, x: string) =
   when nimvm:
     writeData(s, cstring(x), x.len)
   else:
-    if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
+    if x.len > 0: writeData(s, cstring(x), x.len)
 
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
@@ -252,14 +252,14 @@ proc readStr*(s: Stream, length: int): TaintedString =
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = readData(s, addr(string(result)[0]), length)
+  var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## peeks a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = peekData(s, addr(string(result)[0]), length)
+  var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
