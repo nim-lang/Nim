@@ -395,3 +395,6 @@ proc getTotalMem*(r: MemRegion): int =
   result = r.totalSize
 
 proc setStackBottom(theStackBottom: pointer) = discard
+
+proc nimGCref(x: pointer) {.compilerProc.} = discard
+proc nimGCunref(x: pointer) {.compilerProc.} = discard
