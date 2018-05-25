@@ -86,19 +86,20 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc readAll*(s: Stream): string =
-  ## Reads all available data.
-  const bufferSize = 1024
-  var buffer {.noinit.}: array[bufferSize, char]
-  while true:
-    let readBytes = readData(s, addr(buffer[0]), bufferSize)
-    if readBytes == 0:
-      break
-    let prevLen = result.len
-    result.setLen(prevLen + readBytes)
-    copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
-    if readBytes < bufferSize:
-      break
+when not defined(js):
+  proc readAll*(s: Stream): string =
+    ## Reads all available data.
+    const bufferSize = 1024
+    var buffer {.noinit.}: array[bufferSize, char]
+    while true:
+      let readBytes = readData(s, addr(buffer[0]), bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+      if readBytes < bufferSize:
+        break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size
