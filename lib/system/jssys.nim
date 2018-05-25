@@ -332,7 +332,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
     return `a`.length - `b`.length;
   """
 
-proc cmp(x, y: string): int = 
+proc cmp(x, y: string): int =
   return cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
@@ -750,3 +750,16 @@ when defined(nodejs):
 else:
   # Deprecated. Use `alert` defined in dom.nim
   proc alert*(s: cstring) {.importc, nodecl, deprecated.}
+
+# Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
+# 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
+when not defined(nodejs):
+  {.emit: """
+  if (!Math.trunc) {
+    Math.trunc = function(v) {
+      v = +v;
+      if (!isFinite(v)) return v;
+
+      return (v - v % 1)   ||   (v < 0 ? -0 : v === 0 ? v : 0);
+    };
+  }""".}
