@@ -89,7 +89,6 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
 proc readAll*(s: Stream): string =
   ## Reads all available data.
   const bufferSize = 1024
-  result = newString(bufferSize)
   var buffer {.noinit.}: array[bufferSize, char]
   while true:
     let readBytes = readData(s, addr(buffer[0]), bufferSize)
