@@ -200,7 +200,7 @@ when declared(threadType):
     if threadType == ThreadType.None:
       initAllocator()
       var stackTop {.volatile.}: pointer
-      setStackBottom(addr(stackTop))
+      nimGC_setStackBottom(addr(stackTop))
       initGC()
       threadType = ThreadType.ForeignThread
 
@@ -257,7 +257,7 @@ when nimCoroutines:
     gch.activeStack.setPosition(addr(sp))
 
 when not defined(useNimRtl):
-  proc setStackBottom(theStackBottom: pointer) =
+  proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
     when nimCoroutines:
       if gch.stack.next == nil:
