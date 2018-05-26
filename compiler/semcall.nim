@@ -254,6 +254,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   var f = n.sons[0]
   if f.kind == nkBracketExpr:
     # fill in the bindings:
+    semOpAux(c, f)
     initialBinding = f
     f = f.sons[0]
   else:
