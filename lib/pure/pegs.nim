@@ -1010,14 +1010,18 @@ proc replace*(s: string, sub: Peg, cb: proc(
       inc(m)
   add(result, substr(s, i))
 
-proc transformFile*(infile, outfile: string,
-                    subs: varargs[tuple[pattern: Peg, repl: string]]) {.
-                    rtl, extern: "npegs$1".} =
-  ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
-  ## error occurs. This is supposed to be used for quick scripting.
-  var x = readFile(infile).string
-  writeFile(outfile, x.parallelReplace(subs))
+when not defined(js):
+  proc transformFile*(infile, outfile: string,
+                      subs: varargs[tuple[pattern: Peg, repl: string]]) {.
+                      rtl, extern: "npegs$1".} =
+    ## reads in the file `infile`, performs a parallel replacement (calls
+    ## `parallelReplace`) and writes back to `outfile`. Raises ``EIO`` if an
+    ## error occurs. This is supposed to be used for quick scripting.
+    ##
+    ## **Note**: this proc does not exist while using the JS backend.
+    var x = readFile(infile).string
+    writeFile(outfile, x.parallelReplace(subs))
+
 
 iterator split*(s: string, sep: Peg): string =
   ## Splits the string `s` into substrings.
@@ -1121,7 +1125,7 @@ proc handleCR(L: var PegLexer, pos: int): int =
   assert(L.buf[pos] == '\c')
   inc(L.lineNumber)
   result = pos+1
-  if L.buf[result] == '\L': inc(result)
+  if result < L.buf.len and L.buf[result] == '\L': inc(result)
   L.lineStart = result
 
 proc handleLF(L: var PegLexer, pos: int): int =
@@ -1217,12 +1221,13 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
 proc skip(c: var PegLexer) =
   var pos = c.bufpos
   var buf = c.buf
-  while true:
+  while pos < c.buf.len:
     case buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#':
-      while not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
+      while (pos < c.buf.len) and
+             not (buf[pos] in {'\c', '\L', '\0'}): inc(pos)
     of '\c':
       pos = handleCR(c, pos)
       buf = c.buf
@@ -1238,7 +1243,7 @@ proc getString(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
   var buf = c.buf
   var quote = buf[pos-1]
-  while true:
+  while pos < c.buf.len:
     case buf[pos]
     of '\\':
       c.bufpos = pos
@@ -1261,7 +1266,7 @@ proc getDollar(c: var PegLexer, tok: var Token) =
   if buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
-    while buf[pos] in {'0'..'9'}:
+    while pos < c.buf.len and buf[pos] in {'0'..'9'}:
       tok.index = tok.index * 10 + ord(buf[pos]) - ord('0')
       inc(pos)
   else:
@@ -1277,11 +1282,11 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   if buf[pos] == '^':
     inc(pos)
     caret = true
-  while true:
+  while pos < c.buf.len:
     var ch: char
     case buf[pos]
     of ']':
-      inc(pos)
+      if pos < c.buf.len: inc(pos)
       break
     of '\\':
       c.bufpos = pos
@@ -1296,11 +1301,14 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
       inc(pos)
     incl(tok.charset, ch)
     if buf[pos] == '-':
-      if buf[pos+1] == ']':
+      if pos+1 < c.buf.len and buf[pos+1] == ']':
         incl(tok.charset, '-')
         inc(pos)
       else:
-        inc(pos)
+        if pos+1 < c.buf.len:
+          inc(pos)
+        else:
+          break
         var ch2: char
         case buf[pos]
         of '\\':
@@ -1312,8 +1320,11 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
           tok.kind = tkInvalid
           break
         else:
-          ch2 = buf[pos]
-          inc(pos)
+          if pos+1 < c.buf.len:
+            ch2 = buf[pos]
+            inc(pos)
+          else:
+            break
         for i in ord(ch)+1 .. ord(ch2):
           incl(tok.charset, chr(i))
   c.bufpos = pos
@@ -1322,15 +1333,15 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
 proc getSymbol(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos
   var buf = c.buf
-  while true:
+  while pos < c.buf.len:
     add(tok.literal, buf[pos])
     inc(pos)
-    if buf[pos] notin strutils.IdentChars: break
+    if pos < buf.len and buf[pos] notin strutils.IdentChars: break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
 proc getBuiltin(c: var PegLexer, tok: var Token) =
-  if c.buf[c.bufpos+1] in strutils.Letters:
+  if c.bufpos+1 < c.buf.len and c.buf[c.bufpos+1] in strutils.Letters:
     inc(c.bufpos)
     getSymbol(c, tok)
     tok.kind = tkBuiltin
@@ -1343,10 +1354,12 @@ proc getTok(c: var PegLexer, tok: var Token) =
   tok.modifier = modNone
   setLen(tok.literal, 0)
   skip(c)
+
   case c.buf[c.bufpos]
   of '{':
     inc(c.bufpos)
-    if c.buf[c.bufpos] == '@' and c.buf[c.bufpos+1] == '}':
+    if c.buf[c.bufpos] == '@' and c.bufpos+2 < c.buf.len and
+      c.buf[c.bufpos+1] == '}':
       tok.kind = tkCurlyAt
       inc(c.bufpos, 2)
       add(tok.literal, "{@}")
@@ -1379,13 +1392,11 @@ proc getTok(c: var PegLexer, tok: var Token) =
     getBuiltin(c, tok)
   of '\'', '"': getString(c, tok)
   of '$': getDollar(c, tok)
-  of '\0':
-    tok.kind = tkEof
-    tok.literal = "[EOF]"
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
     if c.buf[c.bufpos] in {'\'', '"'} or
-        c.buf[c.bufpos] == '$' and c.buf[c.bufpos+1] in {'0'..'9'}:
+        c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
+        c.buf[c.bufpos+1] in {'0'..'9'}:
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
@@ -1406,7 +1417,7 @@ proc getTok(c: var PegLexer, tok: var Token) =
     inc(c.bufpos)
     add(tok.literal, '+')
   of '<':
-    if c.buf[c.bufpos+1] == '-':
+    if c.bufpos+2 < c.buf.len and c.buf[c.bufpos+1] == '-':
       inc(c.bufpos, 2)
       tok.kind = tkArrow
       add(tok.literal, "<-")
@@ -1441,14 +1452,17 @@ proc getTok(c: var PegLexer, tok: var Token) =
     inc(c.bufpos)
     add(tok.literal, '^')
   else:
+    if c.bufpos >= c.buf.len:
+      tok.kind = tkEof
+      tok.literal = "[EOF]"
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
 
 proc arrowIsNextTok(c: PegLexer): bool =
   # the only look ahead we need
   var pos = c.bufpos
-  while c.buf[pos] in {'\t', ' '}: inc(pos)
-  result = c.buf[pos] == '<' and c.buf[pos+1] == '-'
+  while pos < c.buf.len and c.buf[pos] in {'\t', ' '}: inc(pos)
+  result = c.buf[pos] == '<' and (pos+1 < c.buf.len) and c.buf[pos+1] == '-'
 
 # ----------------------------- parser ----------------------------------------
 
@@ -1471,7 +1485,7 @@ proc pegError(p: PegParser, msg: string, line = -1, col = -1) =
 
 proc getTok(p: var PegParser) =
   getTok(p, p.tok)
-  if p.tok.kind == tkInvalid: pegError(p, "invalid token")
+  if p.tok.kind == tkInvalid: pegError(p, "'" & p.tok.literal & "' is invalid token")
 
 proc eat(p: var PegParser, kind: TokKind) =
   if p.tok.kind == kind: getTok(p)

@@ -144,7 +144,7 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   r.tail = fresh
   r.remaining = s - sizeof(BaseChunk)
 
-proc alloc(r: var MemRegion; size: int): pointer =
+proc allocFast(r: var MemRegion; size: int): pointer =
   if size <= MaxSmallObject:
     var it = r.freeLists[size div MemAlign]
     if it != nil:
@@ -270,7 +270,7 @@ proc isOnHeap*(r: MemRegion; p: pointer): bool =
     it = it.next
 
 proc rawNewObj(r: var MemRegion, typ: PNimType, size: int): pointer =
-  var res = cast[ptr ObjHeader](alloc(r, size + sizeof(ObjHeader)))
+  var res = cast[ptr ObjHeader](allocFast(r, size + sizeof(ObjHeader)))
   res.typ = typ
   if typ.finalizer != nil:
     res.nextFinal = r.head.head
@@ -278,7 +278,7 @@ proc rawNewObj(r: var MemRegion, typ: PNimType, size: int): pointer =
   result = res +! sizeof(ObjHeader)
 
 proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
-  var res = cast[ptr SeqHeader](alloc(r, size + sizeof(SeqHeader)))
+  var res = cast[ptr SeqHeader](allocFast(r, size + sizeof(SeqHeader)))
   res.typ = typ
   res.region = addr(r)
   result = res +! sizeof(SeqHeader)
@@ -351,6 +351,11 @@ proc alloc0(r: var MemRegion; size: Natural): pointer =
   # but incorrect in general. XXX
   result = alloc0(size)
 
+proc alloc(r: var MemRegion; size: Natural): pointer =
+  # ignore the region. That is correct for the channels module
+  # but incorrect in general. XXX
+  result = alloc(size)
+
 proc dealloc(r: var MemRegion; p: pointer) = dealloc(p)
 
 proc allocShared(size: Natural): pointer =
@@ -390,3 +395,6 @@ proc getTotalMem*(r: MemRegion): int =
   result = r.totalSize
 
 proc setStackBottom(theStackBottom: pointer) = discard
+
+proc nimGCref(x: pointer) {.compilerProc.} = discard
+proc nimGCunref(x: pointer) {.compilerProc.} = discard
