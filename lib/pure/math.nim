@@ -21,6 +21,8 @@ include "system/inclrtl"
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
+import bitops
+
 proc binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the binomial coefficient
   if k <= 0: return 1
@@ -455,15 +457,41 @@ proc `^`*[T](x: T, y: Natural): T =
     x *= x
 
 proc gcd*[T](x, y: T): T =
-  ## Computes the greatest common divisor of ``x`` and ``y``.
+  ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ## Note that for floats, the result cannot always be interpreted as
   ## "greatest decimal `z` such that ``z*N == x and z*M == y``
   ## where N and M are positive integers."
-  var (x,y) = (x,y)
+  var (x, y) = (x, y)
   while y != 0:
     x = x mod y
     swap x, y
   abs x
+
+proc gcd*(x, y: SomeInteger): SomeInteger =
+  ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
+  ## Using binary GCD (aka Stein's) algorithm.
+  when x is SomeSignedInt:
+    var x = abs(x)
+  else:
+    var x = x
+  when y is SomeSignedInt:
+    var y = abs(y)
+  else:
+    var y = y
+
+  if x == 0:
+    return y
+  if y == 0:
+    return x
+
+  let shift = countTrailingZeroBits(x or y)
+  y = y shr countTrailingZeroBits(y)
+  while x != 0:
+    x = x shr countTrailingZeroBits(x)
+    if y > x:
+      swap y, x
+    x -= y
+  y shl shift
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
