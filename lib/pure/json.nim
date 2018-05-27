@@ -558,6 +558,8 @@ proc escapeJson*(s: string; result: var string) =
     of '\t': result.add("\\t")
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
+    of '\0'..'\7': result.add("\\u000" & $ord(c))
+    of '\14'..'\31': result.add("\\u00" & $ord(c))
     of '\\': result.add("\\\\")
     else: result.add(c)
   result.add("\"")
