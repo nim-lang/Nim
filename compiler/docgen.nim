@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, configuration
+  typesrenderer, astalgo, modulepaths, lineinfos
 
 type
   TSections = array[TSymKind, Rope]

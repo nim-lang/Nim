@@ -26,10 +26,10 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   markUsed(c.config, n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
-  pushInfoContext(n.info)
+  pushInfoContext(c.config, n.info)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
-  popInfoContext()
+  popInfoContext(c.config)
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
@@ -742,7 +742,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if errorOutputs == {}:
+      if c.config.m.errorOutputs == {}:
         # speed up error generation:
         globalError(c.config, n.info, "type mismatch")
         return c.graph.emptyNode
@@ -1082,7 +1082,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   when defined(nimsuggest):
     if c.config.cmd == cmdIdeTools:
       suggestExpr(c, n)
-      if exactEquals(gTrackPos, n[1].info): suggestExprNoCheck(c, n)
+      if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
@@ -1783,9 +1783,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   openScope(c)
   let oldOwnerLen = len(c.graph.owners)
   let oldGenerics = c.generics
-  let oldErrorOutputs = errorOutputs
-  if efExplain notin flags: errorOutputs = {}
-  let oldContextLen = msgs.getInfoContextLen()
+  let oldErrorOutputs = c.config.m.errorOutputs
+  if efExplain notin flags: c.config.m.errorOutputs = {}
+  let oldContextLen = msgs.getInfoContextLen(c.config)
 
   let oldInGenericContext = c.inGenericContext
   let oldInUnrolledContext = c.inUnrolledContext
@@ -1807,10 +1807,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.inGenericInst = oldInGenericInst
   c.inStaticContext = oldInStaticContext
   c.p = oldProcCon
-  msgs.setInfoContextLen(oldContextLen)
+  msgs.setInfoContextLen(c.config, oldContextLen)
   setLen(c.graph.owners, oldOwnerLen)
   c.currentScope = oldScope
-  errorOutputs = oldErrorOutputs
+  c.config.m.errorOutputs = oldErrorOutputs
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
 
@@ -2309,7 +2309,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # check if it is an expression macro:
     checkMinSonsLen(n, 1, c.config)
     #when defined(nimsuggest):
-    #  if gIdeCmd == ideCon and gTrackPos == n.info: suggestExprNoCheck(c, n)
+    #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil:

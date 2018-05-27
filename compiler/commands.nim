@@ -26,7 +26,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, configuration
+  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -178,11 +178,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
-    let x = findStr(configuration.HintsToStr, id)
+    let x = findStr(lineinfos.HintsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
     else: localError(conf, info, "unknown hint: " & id)
   else:
-    let x = findStr(configuration.WarningsToStr, id)
+    let x = findStr(lineinfos.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(conf, info, "unknown warning: " & id)
   case substr(arg, i).normalize
@@ -324,7 +324,7 @@ proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   if dirtyOriginalIdx.int32 >= 0:
     msgs.setDirtyFile(conf, dirtyOriginalIdx, a[0])
 
-  gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
+  conf.m.trackPos = newLineInfo(dirtyOriginalIdx, line, column)
 
 proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
@@ -334,7 +334,7 @@ proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
     localError(conf, info, errInvalidNumber % a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
     localError(conf, info, errInvalidNumber % a[2])
-  gTrackPos = newLineInfo(conf, a[0], line, column)
+  conf.m.trackPos = newLineInfo(conf, a[0], line, column)
 
 proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:

@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  nimfix.pretty
+  nimfix / pretty, lineinfos
 
 when not defined(noDocgen):
   import docgen
@@ -722,7 +722,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       addDecl(c, param)
 
   var
-    oldWriteHook: type(writelnHook)
+    oldWriteHook: type(m.c.config.writelnHook)
     diagnostics: seq[string]
     errorPrefix: string
     flags: TExprFlags = {}
@@ -730,12 +730,12 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
                          sfExplain in typeClass.sym.flags
 
   if collectDiagnostics:
-    oldWriteHook = writelnHook
+    oldWriteHook = m.c.config.writelnHook
     # XXX: we can't write to m.diagnostics directly, because
     # Nim doesn't support capturing var params in closures
     diagnostics = @[]
     flags = {efExplain}
-    writelnHook = proc (s: string) =
+    m.c.config.writelnHook = proc (s: string) =
       if errorPrefix == nil: errorPrefix = typeClass.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
@@ -744,7 +744,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var checkedBody = c.semTryExpr(c, body.copyTree, flags)
 
   if collectDiagnostics:
-    writelnHook = oldWriteHook
+    m.c.config.writelnHook = oldWriteHook
     for msg in diagnostics:
       m.diagnostics.safeAdd msg
       m.diagnosticsEnabled = true

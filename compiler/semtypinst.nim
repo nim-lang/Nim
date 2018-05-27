@@ -9,7 +9,8 @@
 
 # This module does the instantiation of generic types.
 
-import ast, astalgo, msgs, types, magicsys, semdata, renderer, options
+import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
+  lineinfos
 
 const
   tfInstClearedFlags = {tfHasMeta, tfUnresolved}
@@ -568,35 +569,35 @@ proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
-  pushInfoContext(n.info)
+  pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n)
-  popInfoContext()
+  popInfoContext(p.config)
 
 proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
                             original, new: PSym): PNode =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), n.info, original)
   idTablePut(cl.symMap, original, new)
-  pushInfoContext(n.info)
+  pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n)
-  popInfoContext()
+  popInfoContext(p.config)
 
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), info, nil)
-  pushInfoContext(info)
+  pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
-  popInfoContext()
+  popInfoContext(p.config)
 
 proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
                                  t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(p, addr(typeMap), info, nil)
   cl.allowMetaTypes = true
-  pushInfoContext(info)
+  pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
-  popInfoContext()
+  popInfoContext(p.config)
 
 template generateTypeInstance*(p: PContext, pt: TIdTable, arg: PNode,
                                t: PType): untyped =

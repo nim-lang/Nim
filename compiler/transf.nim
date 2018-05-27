@@ -22,7 +22,7 @@ import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
   lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals,
-  modulegraphs
+  modulegraphs, lineinfos
 
 type
   PTransNode* = distinct PNode
@@ -598,7 +598,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       idNodeTablePut(newC.mapping, formal, temp)
 
   var body = iter.getBody.copyTree
-  pushInfoContext(n.info)
+  pushInfoContext(c.graph.config, n.info)
   # XXX optimize this somehow. But the check "c.inlining" is not correct:
   var symMap: TIdTable
   initIdTable symMap
@@ -608,7 +608,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   add(stmtList, transform(c, body))
   #findWrongOwners(c, stmtList.pnode)
   dec(c.inlining)
-  popInfoContext()
+  popInfoContext(c.graph.config)
   popTransCon(c)
   # echo "transformed: ", stmtList.PNode.renderTree
 

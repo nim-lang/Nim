@@ -12,7 +12,8 @@
 const
   genPrefix* = ":tmp"         # prefix for generated names
 
-import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs
+import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
+  lineinfos
 from trees import getMagic
 
 proc newDeref*(n: PNode): PNode {.inline.} =

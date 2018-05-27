@@ -14,7 +14,7 @@
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
   condsyms, ropes, idents, std / sha1, rodread, passes, idgen,
-  rodutils, modulepaths
+  rodutils, modulepaths, lineinfos
 
 from modulegraphs import ModuleGraph
 

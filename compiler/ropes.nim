@@ -56,7 +56,7 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  platform, hashes
+  hashes
 
 type
   FormatStr* = string  # later we may change it to CString for better
@@ -69,8 +69,6 @@ type
     left*, right*: Rope
     length*: int
     data*: string             # != nil if a leaf
-
-  RopeSeq* = seq[Rope]
 
 proc len*(a: Rope): int =
   ## the rope's length
@@ -93,7 +91,7 @@ proc freezeMutableRope*(r: Rope) {.inline.} =
   r.length = r.data.len
 
 var
-  cache: array[0..2048*2 - 1, Rope]
+  cache: array[0..2048*2 - 1, Rope] # XXX Global here!
 
 proc resetRopeCache* =
   for i in low(cache)..high(cache):

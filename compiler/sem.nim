@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active, rod, configuration
+  semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
 
 from modulegraphs import ModuleGraph
 
@@ -52,10 +52,10 @@ proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
 
-template semIdeForTemplateOrGenericCheck(n, requiresCheck) =
+template semIdeForTemplateOrGenericCheck(conf, n, requiresCheck) =
   # we check quickly if the node is where the cursor is
   when defined(nimsuggest):
-    if n.info.fileIndex == gTrackPos.fileIndex and n.info.line == gTrackPos.line:
+    if n.info.fileIndex == conf.m.trackPos.fileIndex and n.info.line == conf.m.trackPos.line:
       requiresCheck = true
 
 template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
@@ -307,9 +307,9 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
-  let oldErrorOutputs = errorOutputs
+  let oldErrorOutputs = c.config.m.errorOutputs
 
-  errorOutputs = {}
+  c.config.m.errorOutputs = {}
   c.config.errorMax = high(int)
 
   try:
@@ -324,7 +324,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
 
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
-  errorOutputs = oldErrorOutputs
+  c.config.m.errorOutputs = oldErrorOutputs
 
 const
   errConstExprExpected = "constant expression expected"
@@ -340,9 +340,9 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
     result = evalConstExpr(c.module, c.cache, c.graph, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
-        pushInfoContext(n.info)
+        pushInfoContext(c.config, n.info)
         localError(c.config, e.info, errConstExprExpected)
-        popInfoContext()
+        popInfoContext(c.config)
       else:
         localError(c.config, e.info, errConstExprExpected)
       # error correction:
@@ -380,8 +380,8 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   ## coherence, making sure that variables declared with 'let' aren't
   ## reassigned, and binding the unbound identifiers that the macro output
   ## contains.
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > evalTemplateLimit:
+  inc(c.config.evalTemplateCounter)
+  if c.config.evalTemplateCounter > evalTemplateLimit:
     globalError(c.config, s.info, "template instantiation too nested")
   c.friendModules.add(s.owner.getModule)
 
@@ -420,8 +420,8 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
 
       result = semExpr(c, result, flags)
       result = fitNode(c, retType, result, result.info)
-      #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
-  dec(evalTemplateCounter)
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+  dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
 const
@@ -429,7 +429,7 @@ const
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
-  pushInfoContext(nOrig.info)
+  pushInfoContext(c.config, nOrig.info)
 
   markUsed(c.config, n.info, sym, c.graph.usageSym)
   styleCheckUse(n.info, sym)
@@ -449,7 +449,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   result = wrapInComesFrom(nOrig.info, sym, result)
-  popInfoContext()
+  popInfoContext(c.config)
 
 proc forceBool(c: PContext, n: PNode): PNode =
   result = fitNode(c, getSysType(c.graph, n.info, tyBool), n, n.info)
@@ -582,14 +582,14 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
   else:
-    let oldContextLen = msgs.getInfoContextLen()
+    let oldContextLen = msgs.getInfoContextLen(c.config)
     let oldInGenericInst = c.inGenericInst
     try:
       result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
-      msgs.setInfoContextLen(oldContextLen)
+      msgs.setInfoContextLen(c.config, oldContextLen)
       if getCurrentException() of ESuggestDone:
         c.suggestionsMade = true
         result = nil

@@ -8,7 +8,8 @@
 #
 
 import
-  os, strutils, strtabs, osproc, sets, configuration, platform
+  os, strutils, strtabs, osproc, sets, lineinfos, platform,
+  prefixmatches
 
 from terminal import isatty
 
@@ -135,11 +136,33 @@ type
     flags*: set[CFileFlag]
   CfileList* = seq[Cfile]
 
+  Suggest* = ref object
+    section*: IdeCmd
+    qualifiedPath*: seq[string]
+    name*: ptr string         # not used beyond sorting purposes; name is also
+                              # part of 'qualifiedPath'
+    filePath*: string
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    doc*: string           # Not escaped (yet)
+    forth*: string               # type
+    quality*: range[0..100]   # matching quality
+    isGlobal*: bool # is a global variable
+    contextFits*: bool # type/non-type context matches
+    prefix*: PrefixMatch
+    symkind*: byte
+    scope*, localUsages*, globalUsages*: int # more usages is better
+    tokenLen*: int
+    version*: int
+  Suggestions* = seq[Suggest]
+
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     target*: Target
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions
     globalOptions*: TGlobalOptions
+    m*: MsgConfig
+    evalTemplateCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
     selectedGC*: TGCMode       # the selected GC
@@ -202,6 +225,13 @@ type
     compileOptions*: string
     ccompilerpath*: string
     toCompile*: CfileList
+    suggestionResultHook*: proc (result: Suggest) {.closure.}
+    suggestVersion*: int
+    suggestMaxResults*: int
+    lastLineInfo*: TLineInfo
+    writelnHook*: proc (output: string) {.closure.}
+    structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
+                                severity: Severity) {.closure.}
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -229,6 +259,7 @@ proc newConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
@@ -264,7 +295,8 @@ proc newConfigRef*(): ConfigRef =
     compileOptions: "",
     ccompilerpath: "",
     toCompile: @[],
-    arguments: ""
+    arguments: "",
+    suggestMaxResults: 10_000
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals

@@ -12,7 +12,7 @@
 import
   ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
-  configuration
+  lineinfos
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
@@ -118,8 +118,8 @@ proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
 
 proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
   if graph.systemModule == nil:
-    systemFileIdx = fileInfoIdx(graph.config, graph.config.libpath / "system.nim")
-    discard graph.compileModule(systemFileIdx, cache, {sfSystemModule})
+    graph.config.m.systemFileIdx = fileInfoIdx(graph.config, graph.config.libpath / "system.nim")
+    discard graph.compileModule(graph.config.m.systemFileIdx, cache, {sfSystemModule})
 
 proc wantMainModule*(conf: ConfigRef) =
   if conf.projectFull.len == 0:

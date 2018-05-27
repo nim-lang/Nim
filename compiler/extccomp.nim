@@ -9,12 +9,12 @@
 
 # Module providing functions for calling the different external C compilers
 # Uses some hard-wired facts about each C/C++ compiler, plus options read
-# from a configuration file, to provide generalized procedures to compile
+# from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  configuration, std / sha1, streams
+  lineinfos, std / sha1, streams
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:

@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options, rodread,
-  renderer, wordrecg, idgen, nimfix.prettybase, configuration, strutils
+  renderer, wordrecg, idgen, nimfix.prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 

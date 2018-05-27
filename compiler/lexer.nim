@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, configuration
+  wordrecg, lineinfos
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -273,10 +273,10 @@ template tokenBegin(tok, pos) {.dirty.} =
 template tokenEnd(tok, pos) {.dirty.} =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)+1
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.InToken
-      gTrackPos.col = colA.int16
+      L.config.m.trackPos.col = colA.int16
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -284,10 +284,10 @@ template tokenEnd(tok, pos) {.dirty.} =
 template tokenEndIgnore(tok, pos) =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
-      gTrackPos.fileIndex = trackPosInvalidFileIdx
-      gTrackPos.line = 0'u16
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+      L.config.m.trackPos.fileIndex = trackPosInvalidFileIdx
+      L.config.m.trackPos.line = 0'u16
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -298,11 +298,11 @@ template tokenEndPrevious(tok, pos) =
     # to the token that came before that, but only if we haven't detected
     # the cursor in a string literal or comment:
     let colB = getColNumber(L, pos)
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.BeforeToken
-      gTrackPos = L.previousToken
-      gTrackPosAttached = true
+      L.config.m.trackPos = L.previousToken
+      L.config.m.trackPosAttached = true
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -1121,9 +1121,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       else:
         tok.tokType = tkParLe
         when defined(nimsuggest):
-          if L.fileIdx == gTrackPos.fileIndex and tok.col < gTrackPos.col and
-                    tok.line == gTrackPos.line.int and L.config.ideCmd == ideCon:
-            gTrackPos.col = tok.col.int16
+          if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col < L.config.m.trackPos.col and
+                    tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideCon:
+            L.config.m.trackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
       inc(L.bufpos)
@@ -1142,11 +1142,11 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
-            tok.line == gTrackPos.line.int and L.config.ideCmd == ideSug:
+        if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col+1 == L.config.m.trackPos.col and
+            tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken
-          gTrackPos.col = tok.col.int16
+          L.config.m.trackPos.col = tok.col.int16
           inc(L.bufpos)
           atTokenEnd()
           return

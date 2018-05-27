@@ -10,7 +10,7 @@
 # this unit handles Nim sets; it implements symbolic sets
 
 import
-  ast, astalgo, trees, nversion, msgs, platform, bitsets, types, renderer,
+  ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
   options
 
 proc inSet*(s: PNode, elem: PNode): bool =

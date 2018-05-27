@@ -14,7 +14,7 @@ import
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
   magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
-  modulegraphs, configuration
+  modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing

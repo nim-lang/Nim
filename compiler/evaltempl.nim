@@ -11,7 +11,7 @@
 
 import
   strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  rodread
+  rodread, lineinfos
 
 type
   TemplCtx = object
@@ -114,7 +114,6 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
 
 # to prevent endless recursion in template instantiation
 const evalTemplateLimit* = 1000
-var evalTemplateCounter* = 0 # XXX remove this global
 
 proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:
@@ -140,8 +139,8 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef; fromHlo=false): PNode =
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > evalTemplateLimit:
+  inc(conf.evalTemplateCounter)
+  if conf.evalTemplateCounter > evalTemplateLimit:
     globalError(conf, n.info, errTemplateInstantiationTooNested)
     result = n
 
@@ -170,5 +169,5 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
-  dec(evalTemplateCounter)
+  dec(conf.evalTemplateCounter)
 

@@ -21,7 +21,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt, service,
-  nodejs, scriptconfig, idents, modulegraphs, configuration
+  nodejs, scriptconfig, idents, modulegraphs, lineinfos
 
 when hasTinyCBackend:
   import tccgen

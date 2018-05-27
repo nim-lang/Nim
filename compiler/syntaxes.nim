@@ -11,7 +11,7 @@
 
 import
   strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
-  filters, filter_tmpl, renderer, configuration
+  filters, filter_tmpl, renderer, lineinfos
 
 type
   TFilterKind* = enum

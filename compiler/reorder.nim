@@ -2,7 +2,7 @@
 import
   intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils,
   sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables,
-  configuration
+  lineinfos
 
 type
   DepN = ref object

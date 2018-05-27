@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, rod, msgs, hashes, idents
+import ast, intsets, tables, options, rod, lineinfos, hashes, idents
 
 type
   ModuleGraph* = ref object

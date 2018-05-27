@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, configuration,
+  wordrecg, strutils, options, guards, writetracking, lineinfos,
   modulegraphs
 
 when defined(useDfa):
@@ -859,9 +859,9 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!
-      pushInfoContext(spec.info)
+      pushInfoContext(g.config, spec.info)
       localError(g.config, r.info, errGenerated, msg & typeToString(r.typ))
-      popInfoContext()
+      popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
     for s in 0 ..< spec.len:

@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread,
-  modulegraphs
+  modulegraphs, lineinfos
 
 export createMagic
 

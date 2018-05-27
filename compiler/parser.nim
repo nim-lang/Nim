@@ -27,7 +27,7 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, configuration
+  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos
 
 type
   TParser* = object            # A TParser object represents a file that

@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nim representation.
 
 import
-  lexer, options, idents, strutils, ast, msgs, configuration
+  lexer, options, idents, strutils, ast, msgs, lineinfos
 
 type
   TRenderFlag* = enum

@@ -19,7 +19,7 @@ import ast except getstr
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, configuration
+  vmmarshal, gorgeimpl, lineinfos
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate

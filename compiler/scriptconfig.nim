@@ -13,7 +13,7 @@
 import
   ast, modules, idents, passes, passaux, condsyms,
   options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, configuration
+  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains

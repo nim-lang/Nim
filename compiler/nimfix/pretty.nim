@@ -14,7 +14,7 @@ import
   strutils, os, intsets, strtabs
 
 import ".." / [options, ast, astalgo, msgs, semdata, ropes, idents,
-  configuration]
+  lineinfos]
 import prettybase
 
 type

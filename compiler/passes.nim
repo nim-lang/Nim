@@ -14,7 +14,7 @@ import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
   nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod,
-  configuration
+  lineinfos
 
 
 type

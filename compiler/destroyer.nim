@@ -117,7 +117,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings, rodread, tables, modulegraphs,
-  configuration
+  lineinfos
 
 const
   InterestingSyms = {skVar, skResult, skLet}

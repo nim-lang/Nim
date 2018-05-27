@@ -10,7 +10,7 @@
 ## implements some little helper passes
 
 import
-  strutils, ast, astalgo, passes, idents, msgs, options, idgen, configuration
+  strutils, ast, astalgo, passes, idents, msgs, options, idgen, lineinfos
 
 from modulegraphs import ModuleGraph
 

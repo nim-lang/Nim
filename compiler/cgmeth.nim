@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs, configuration
+  sempass2, strutils, modulegraphs, lineinfos
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)

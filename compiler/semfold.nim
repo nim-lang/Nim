@@ -13,7 +13,7 @@
 import
   strutils, options, ast, astalgo, trees, treetab, nimsets, times,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands, magicsys, modulegraphs, strtabs
+  commands, magicsys, modulegraphs, strtabs, lineinfos
 
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind

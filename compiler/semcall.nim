@@ -213,7 +213,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if errorOutputs == {}:
+  if c.config.m.errorOutputs == {}:
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
   if errors.len == 0:
@@ -332,7 +332,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert c.config, result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if errorOutputs == {}:
+    if c.config.m.errorOutputs == {}:
       # quick error message for performance of 'compiles' built-in:
       globalError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:

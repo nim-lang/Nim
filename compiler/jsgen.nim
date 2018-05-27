@@ -32,7 +32,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings, sighashes, configuration
+  intsets, cgmeth, lowerings, sighashes, lineinfos
 
 from modulegraphs import ModuleGraph
 

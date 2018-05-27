@@ -14,12 +14,12 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi
+  lowerings, semparallel, tables, sets, ndi, lineinfos
 
 import strutils except `%` # collides with ropes.`%`
 
 from modulegraphs import ModuleGraph
-from configuration import
+from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
@@ -949,8 +949,8 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
 proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
-  for i in 0..<fileInfos.len:
-    result.addf("dbgRegisterFilename($1);$N", [fileInfos[i].projPath.makeCString])
+  for i in 0..<m.config.m.fileInfos.len:
+    result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
 
 proc genMainProc(m: BModule) =
   const

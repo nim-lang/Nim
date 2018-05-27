@@ -11,7 +11,7 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen
+  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos
 
 from modulegraphs import ModuleGraph
 

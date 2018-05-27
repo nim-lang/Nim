@@ -89,7 +89,7 @@ proc semWhile(c: PContext, n: PNode): PNode =
     result.typ = c.enforceVoidContext
 
 proc toCover(c: PContext, t: PType): BiggestInt =
-  var t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
+  let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
   if t2.kind == tyEnum and enumHasHoles(t2):
     result = sonsLen(t2.n)
   else:
@@ -201,7 +201,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   for i in countup(1, sonsLen(n) - 1):
     var x = n.sons[i]
     when defined(nimsuggest):
-      if c.config.ideCmd == ideSug and exactEquals(gTrackPos, x.info) and caseTyp.kind == tyEnum:
+      if c.config.ideCmd == ideSug and exactEquals(c.config.m.trackPos, x.info) and caseTyp.kind == tyEnum:
         suggestEnum(c, x, caseTyp)
     case x.kind
     of nkOfBranch:
@@ -1396,14 +1396,14 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(c.config, n.info, errGenerated,
                  "'destroy' or 'deepCopy' expected for 'override'")
 
-proc cursorInProcAux(n: PNode): bool =
-  if inCheckpoint(n.info) != cpNone: return true
+proc cursorInProcAux(conf: ConfigRef; n: PNode): bool =
+  if inCheckpoint(n.info, conf.m.trackPos) != cpNone: return true
   for i in 0..<n.safeLen:
-    if cursorInProcAux(n[i]): return true
+    if cursorInProcAux(conf, n[i]): return true
 
-proc cursorInProc(n: PNode): bool =
-  if n.info.fileIndex == gTrackPos.fileIndex:
-    result = cursorInProcAux(n)
+proc cursorInProc(conf: ConfigRef; n: PNode): bool =
+  if n.info.fileIndex == conf.m.trackPos.fileIndex:
+    result = cursorInProcAux(conf, n)
 
 type
   TProcCompilationSteps = enum
@@ -1583,7 +1583,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # only used for overload resolution (there is no instantiation of
     # the symbol, so we must process the body now)
     if not usePseudoGenerics and c.config.ideCmd in {ideSug, ideCon} and not
-        cursorInProc(n.sons[bodyPos]):
+        cursorInProc(c.config, n.sons[bodyPos]):
       discard "speed up nimsuggest"
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     else:

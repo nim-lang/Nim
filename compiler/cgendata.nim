@@ -11,9 +11,8 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi
+  tables, ndi, lineinfos
 
-from msgs import TLineInfo
 from modulegraphs import ModuleGraph
 
 type

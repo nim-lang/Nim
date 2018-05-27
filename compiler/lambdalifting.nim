@@ -12,7 +12,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, magicsys, rodread, lowerings, tables,
-  modulegraphs
+  modulegraphs, lineinfos
 
 discard """
   The basic approach is that captured vars need to be put on the heap and

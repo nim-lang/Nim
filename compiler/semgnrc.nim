@@ -55,7 +55,7 @@ template macroToExpandSym(s): untyped =
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; fromDotExpr=false): PNode =
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
   of skUnknown:
@@ -129,7 +129,7 @@ proc newDot(n, b: PNode): PNode =
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
                  ctx: var GenericCtx; isMacro: var bool): PNode =
   assert n.kind == nkDotExpr
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   let luf = if withinMixin notin flags: {checkUndeclared, checkModule} else: {checkModule}
 
@@ -170,7 +170,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if withinTypeDesc in flags: inc c.inTypeContext
 
   #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind
   of nkIdent, nkAccQuoted:

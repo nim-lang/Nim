@@ -8,7 +8,7 @@
 #
 
 import strutils, lexbase, streams
-import ".." / [ast, msgs, idents, options]
+import ".." / [ast, msgs, lineinfos, idents, options]
 from os import splitFile
 
 type

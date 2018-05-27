@@ -16,7 +16,7 @@ import
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs, tables, rod, configuration
+  modulegraphs, tables, rod, lineinfos
 
 from magicsys import resetSysTypes
 

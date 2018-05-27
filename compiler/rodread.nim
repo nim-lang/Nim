@@ -91,7 +91,7 @@
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
   ropes, idents, std / sha1, idgen, types, rodutils, memfiles, tables,
-  configuration
+  lineinfos
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -899,7 +899,7 @@ proc checkDep(fileIdx: FileIndex; cache: IdentCache; conf: ConfigRef): TReasonFo
       # NOTE: we need to process the entire module graph so that no ID will
       # be used twice! However, compilation speed does not suffer much from
       # this, since results are cached.
-      var res = checkDep(systemFileIdx, cache, conf)
+      var res = checkDep(conf.m.systemFileIdx, cache, conf)
       if res != rrNone: result = rrModDeps
       for i in countup(0, high(r.modDeps)):
         res = checkDep(r.modDeps[i], cache, conf)

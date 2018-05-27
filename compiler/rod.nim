@@ -9,7 +9,7 @@
 
 ## This module implements the canonalization for the various caching mechanisms.
 
-import ast, idgen, msgs
+import ast, idgen, lineinfos, msgs
 
 when not defined(nimSymbolfiles):
   template setupModuleCache* = discard

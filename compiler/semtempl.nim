@@ -305,7 +305,7 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
-  semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.c.config, n, c.cursorInBody)
   case n.kind
   of nkIdent:
     if n.ident.id in c.toInject: return n
@@ -518,7 +518,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
 
 proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
   result = n
-  semIdeForTemplateOrGenericCheck(n, c.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.c.config, n, c.cursorInBody)
   case n.kind
   of nkIdent:
     let s = qualifiedLookUp(c.c, n, {})

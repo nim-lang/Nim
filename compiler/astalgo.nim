@@ -12,7 +12,8 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, msgs, ropes, idents, rodutils
+  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  msgs
 
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
@@ -22,44 +23,6 @@ proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = 
 proc typeToYaml*(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope
 proc symToYaml*(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
 proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
-
-# ----------------------- node sets: ---------------------------------------
-proc objectSetContains*(t: TObjectSet, obj: RootRef): bool
-  # returns true whether n is in t
-proc objectSetIncl*(t: var TObjectSet, obj: RootRef)
-  # include an element n in the table t
-proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool
-  # more are not needed ...
-
-# ----------------------- str table -----------------------------------------
-proc strTableContains*(t: TStrTable, n: PSym): bool
-proc strTableAdd*(t: var TStrTable, n: PSym)
-proc strTableGet*(t: TStrTable, name: PIdent): PSym
-
-type
-  TTabIter*{.final.} = object # consider all fields here private
-    h*: Hash                  # current hash
-
-proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym
-proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
-  # usage:
-  # var
-  #   i: TTabIter
-  #   s: PSym
-  # s = InitTabIter(i, table)
-  # while s != nil:
-  #   ...
-  #   s = NextIter(i, table)
-  #
-
-type
-  TIdentIter*{.final.} = object # iterator over all syms with same identifier
-    h*: Hash                    # current hash
-    name*: PIdent
-
-
-proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym
-proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
 
 when declared(echo):
   # these are for debugging only: They are not really deprecated, but I want
@@ -470,7 +433,7 @@ proc nextTry(h, maxHash: Hash): Hash =
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
 
-proc objectSetContains(t: TObjectSet, obj: RootRef): bool =
+proc objectSetContains*(t: TObjectSet, obj: RootRef): bool =
   # returns true whether n is in t
   var h: Hash = hashNode(obj) and high(t.data) # start with real hash value
   while t.data[h] != nil:
@@ -494,12 +457,12 @@ proc objectSetEnlarge(t: var TObjectSet) =
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
-proc objectSetIncl(t: var TObjectSet, obj: RootRef) =
+proc objectSetIncl*(t: var TObjectSet, obj: RootRef) =
   if mustRehash(len(t.data), t.counter): objectSetEnlarge(t)
   objectSetRawInsert(t.data, obj)
   inc(t.counter)
 
-proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
+proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
   # returns true if obj is already in the string table:
   var h: Hash = hashNode(obj) and high(t.data)
   while true:
@@ -517,7 +480,7 @@ proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
   inc(t.counter)
   result = false
 
-proc strTableContains(t: TStrTable, n: PSym): bool =
+proc strTableContains*(t: TStrTable, n: PSym): bool =
   var h: Hash = n.name.h and high(t.data) # start with real hash value
   while t.data[h] != nil:
     if (t.data[h] == n):
@@ -573,7 +536,7 @@ proc strTableEnlarge(t: var TStrTable) =
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
-proc strTableAdd(t: var TStrTable, n: PSym) =
+proc strTableAdd*(t: var TStrTable, n: PSym) =
   if mustRehash(len(t.data), t.counter): strTableEnlarge(t)
   strTableRawInsert(t.data, n)
   inc(t.counter)
@@ -609,7 +572,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
   inc(t.counter)
   result = false
 
-proc strTableGet(t: TStrTable, name: PIdent): PSym =
+proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   var h: Hash = name.h and high(t.data)
   while true:
     result = t.data[h]
@@ -617,13 +580,13 @@ proc strTableGet(t: TStrTable, name: PIdent): PSym =
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
 
-proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
-  ti.h = s.h
-  ti.name = s
-  if tab.counter == 0: result = nil
-  else: result = nextIdentIter(ti, tab)
 
-proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
+type
+  TIdentIter* = object # iterator over all syms with same identifier
+    h*: Hash           # current hash
+    name*: PIdent
+
+proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   var h = ti.h and high(tab.data)
   var start = h
   result = tab.data[h]
@@ -635,6 +598,12 @@ proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
       break
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
+
+proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
+  ti.h = s.h
+  ti.name = s
+  if tab.counter == 0: result = nil
+  else: result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
                          excluding: IntSet): PSym =
@@ -659,19 +628,32 @@ proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
   if tab.counter == 0: result = nil
   else: result = nextIdentExcluding(ti, tab, excluding)
 
-proc initTabIter(ti: var TTabIter, tab: TStrTable): PSym =
-  ti.h = 0                    # we start by zero ...
-  if tab.counter == 0:
-    result = nil              # FIX 1: removed endless loop
-  else:
-    result = nextIter(ti, tab)
+type
+  TTabIter* = object
+    h: Hash
 
-proc nextIter(ti: var TTabIter, tab: TStrTable): PSym =
+proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym =
+  # usage:
+  # var
+  #   i: TTabIter
+  #   s: PSym
+  # s = InitTabIter(i, table)
+  # while s != nil:
+  #   ...
+  #   s = NextIter(i, table)
+  #
   result = nil
   while (ti.h <= high(tab.data)):
     result = tab.data[ti.h]
     inc(ti.h)                 # ... and increment by one always
     if result != nil: break
+
+proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
+  ti.h = 0
+  if tab.counter == 0:
+    result = nil
+  else:
+    result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
   var it: TTabIter

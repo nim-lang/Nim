@@ -11,7 +11,7 @@
 
 import
   times, commands, options, msgs, nimconf,
-  extccomp, strutils, os, platform, parseopt, idents, configuration
+  extccomp, strutils, os, platform, parseopt, idents, lineinfos
 
 when useCaas:
   import net
@@ -71,7 +71,7 @@ proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}; conf
       var inp = "".TaintedString
       server.listen()
       var stdoutSocket = newSocket()
-      msgs.writelnHook = proc (line: string) =
+      config.writelnHook = proc (line: string) =
         stdoutSocket.send(line & "\c\L")
 
       while true:

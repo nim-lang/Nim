@@ -11,7 +11,7 @@
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes, renderer, modulepaths, sigmatch, configuration
+  semdata, passes, renderer, modulepaths, sigmatch, lineinfos
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode

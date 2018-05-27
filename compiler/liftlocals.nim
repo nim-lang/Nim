@@ -11,7 +11,7 @@
 
 import
   intsets, strutils, options, ast, astalgo, msgs,
-  idents, renderer, types, lowerings
+  idents, renderer, types, lowerings, lineinfos
 
 from pragmas import getPragmaVal
 from wordrecg import wLiftLocals

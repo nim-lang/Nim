@@ -10,7 +10,8 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options
+  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
+  lineinfos
 
 type
   TPreferedDesc* = enum

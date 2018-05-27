@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  rodread, types, lookups, configuration
+  rodread, types, lookups, lineinfos
 
 const
   FirstCallConv* = wNimcall
@@ -549,7 +549,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       localError(c.config, n.info, "tuple expected")
   else:
     # sensible default:
-    n.info = getInfoContext(-1)
+    n.info = getInfoContext(c.config, -1)
 
 proc processPragma(c: PContext, n: PNode, i: int) =
   let it = n[i]
@@ -1047,13 +1047,13 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
     for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil:
-        pushInfoContext(n.info)
+        pushInfoContext(c.config, n.info)
         var i = 0
         while i < o.len():
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
-        popInfoContext()
+        popInfoContext(c.config)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, n.info, ".dynlib requires .exportc")

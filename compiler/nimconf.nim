@@ -11,7 +11,7 @@
 
 import
   llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer,
-  options, idents, wordrecg, strtabs, configuration
+  options, idents, wordrecg, strtabs, lineinfos
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work

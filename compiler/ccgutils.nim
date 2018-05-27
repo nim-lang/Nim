@@ -57,7 +57,7 @@ template getUniqueType*(key: PType): PType = key
 proc makeSingleLineCString*(s: string): string =
   result = "\""
   for c in items(s):
-    result.add(c.toCChar)
+    c.toCChar(result)
   result.add('\"')
 
 proc mangle*(name: string): string =
