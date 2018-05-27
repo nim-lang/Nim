@@ -390,7 +390,7 @@ proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not useWinVersion and not defined(macosx) and not defined(android):
+when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -404,7 +404,7 @@ when not useWinVersion and not defined(macosx) and not defined(android):
     if p != nil: dealloc(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx) and not defined(android):
+  when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.

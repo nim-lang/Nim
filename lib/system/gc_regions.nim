@@ -70,8 +70,9 @@ type
     bump: pointer
     head, tail: Chunk
     nextChunkSize, totalSize: int
-    freeLists: array[MaxSmallObject div MemAlign, FreeEntry]
-    holes: SizedFreeEntry
+    when false:
+      freeLists: array[MaxSmallObject div MemAlign, FreeEntry]
+      holes: SizedFreeEntry
     when hasThreadSupport:
       lock: SysLock
 
@@ -145,21 +146,22 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   r.remaining = s - sizeof(BaseChunk)
 
 proc allocFast(r: var MemRegion; size: int): pointer =
-  if size <= MaxSmallObject:
-    var it = r.freeLists[size div MemAlign]
-    if it != nil:
-      r.freeLists[size div MemAlign] = it.next
-      return pointer(it)
-  else:
-    var it = r.holes
-    var prev: SizedFreeEntry = nil
-    while it != nil:
-      if it.size >= size:
-        if prev != nil: prev.next = it.next
-        else: r.holes = it.next
+  when false:
+    if size <= MaxSmallObject:
+      var it = r.freeLists[size div MemAlign]
+      if it != nil:
+        r.freeLists[size div MemAlign] = it.next
         return pointer(it)
-      prev = it
-      it = it.next
+    else:
+      var it = r.holes
+      var prev: SizedFreeEntry = nil
+      while it != nil:
+        if it.size >= size:
+          if prev != nil: prev.next = it.next
+          else: r.holes = it.next
+          return pointer(it)
+        prev = it
+        it = it.next
   if size > r.remaining:
     allocSlowPath(r, size)
   sysAssert(size <= r.remaining, "size <= r.remaining")
@@ -184,15 +186,16 @@ proc dealloc(r: var MemRegion; p: pointer; size: int) =
   # it is benefitial to not use the free lists here:
   if r.bump -! size == p:
     dec r.bump, size
-  elif size <= MaxSmallObject:
-    let it = cast[FreeEntry](p)
-    it.next = r.freeLists[size div MemAlign]
-    r.freeLists[size div MemAlign] = it
-  else:
-    let it = cast[SizedFreeEntry](p)
-    it.size = size
-    it.next = r.holes
-    r.holes = it
+  when false:
+    if size <= MaxSmallObject:
+      let it = cast[FreeEntry](p)
+      it.next = r.freeLists[size div MemAlign]
+      r.freeLists[size div MemAlign] = it
+    else:
+      let it = cast[SizedFreeEntry](p)
+      it.size = size
+      it.next = r.holes
+      r.holes = it
 
 proc deallocAll(r: var MemRegion; head: Chunk) =
   var it = head
@@ -220,9 +223,10 @@ proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   if sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
-    # better leak this memory than be sorry:
-    for i in 0..high(r.freeLists): r.freeLists[i] = nil
-    r.holes = nil
+    when false:
+      # better leak this memory than be sorry:
+      for i in 0..high(r.freeLists): r.freeLists[i] = nil
+      r.holes = nil
   #else:
   #  deallocAll(r, r.head)
   #  r.head = nil
