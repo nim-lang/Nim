@@ -48,7 +48,7 @@ proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   compileProject(graph, cache)
   let project = graph.config.projectFull
   writeDepsFile(graph, project)
-  generateDot(project)
+  generateDot(graph, project)
   execExternalProgram(graph.config, "dot -Tpng -o" & changeFileExt(project, "png") &
       ' ' & changeFileExt(project, "dot"))
 
