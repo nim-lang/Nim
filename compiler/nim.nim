@@ -79,7 +79,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       conf.projectName = p.name
     else:
       conf.projectPath = canonicalizePath(conf, getCurrentDir())
-    loadConfigs(DefaultConfig, conf) # load all config files
+    loadConfigs(DefaultConfig, cache, conf) # load all config files
     let scriptFile = conf.projectFull.changeFileExt("nims")
     if fileExists(scriptFile):
       runNimScript(cache, scriptFile, freshDefines=false, conf)

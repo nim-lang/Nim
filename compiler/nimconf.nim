@@ -253,7 +253,3 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
       if not fileExists(projectConfig):
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig, cache, conf)
-
-proc loadConfigs*(cfg: string; conf: ConfigRef) =
-  # for backwards compatibility only.
-  loadConfigs(cfg, newIdentCache(), conf)

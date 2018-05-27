@@ -261,7 +261,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "parse":
     conf.cmd = cmdParse
     wantMainModule(conf)
-    discard parseFile(FileIndex conf.projectMainIdx, cache, conf)
+    discard parseFile(conf.projectMainIdx, cache, conf)
   of "scan":
     conf.cmd = cmdScan
     wantMainModule(conf)

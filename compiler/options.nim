@@ -204,7 +204,7 @@ type
     projectPath*: string # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: string # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    projectMainIdx*: int32 # the canonical path id of the main module
+    projectMainIdx*: FileIndex # the canonical path id of the main module
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     keepComments*: bool # whether the parser needs to keep comments
@@ -278,7 +278,7 @@ proc newConfigRef*(): ConfigRef =
     projectPath: "", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: "", # projectPath/projectName
     projectIsStdin: false, # whether we're compiling from stdin
-    projectMainIdx: 0'i32, # the canonical path id of the main module
+    projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     keepComments: true, # whether the parser needs to keep comments

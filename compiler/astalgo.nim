@@ -33,22 +33,22 @@ when declared(echo):
 
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
-    c.module.fileIdx.int32 == c.config.projectMainIdx
+    c.module.fileIdx == c.config.projectMainIdx
   elif compiles(c.c.module):
-    c.c.module.fileIdx.int32 == c.c.config.projectMainIdx
+    c.c.module.fileIdx == c.c.config.projectMainIdx
   elif compiles(m.c.module):
-    m.c.module.fileIdx.int32 == m.c.config.projectMainIdx
+    m.c.module.fileIdx == m.c.config.projectMainIdx
   elif compiles(cl.c.module):
-    cl.c.module.fileIdx.int32 == cl.c.config.projectMainIdx
+    cl.c.module.fileIdx == cl.c.config.projectMainIdx
   elif compiles(p):
     when compiles(p.lex):
-      p.lex.fileIdx.int32 == p.lex.config.projectMainIdx
+      p.lex.fileIdx == p.lex.config.projectMainIdx
     else:
-      p.module.module.fileIdx.int32 == p.config.projectMainIdx
+      p.module.module.fileIdx == p.config.projectMainIdx
   elif compiles(m.module.fileIdx):
-    m.module.fileIdx.int32 == m.config.projectMainIdx
+    m.module.fileIdx == m.config.projectMainIdx
   elif compiles(L.fileIdx):
-    L.fileIdx.int32 == L.config.projectMainIdx
+    L.fileIdx == L.config.projectMainIdx
   else:
     error()
 

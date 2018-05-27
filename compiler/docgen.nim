@@ -807,7 +807,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
       discard "fixme: error report"
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
-  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
+  var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
@@ -857,7 +857,7 @@ proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
   commandRstAux(cache, conf, conf.projectFull, TexExt)
 
 proc commandJson*(cache: IdentCache, conf: ConfigRef) =
-  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
+  var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
@@ -874,7 +874,7 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
       rawMessage(conf, errCannotOpenFile, filename)
 
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
-  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
+  var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true

@@ -124,7 +124,7 @@ proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
 proc wantMainModule*(conf: ConfigRef) =
   if conf.projectFull.len == 0:
     fatal(conf, newLineInfo(conf, "command line", 1, 1), errGenerated, "command expects a filename")
-  conf.projectMainIdx = int32 fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
+  conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
 passes.gIncludeFile = includeModule
 passes.gImportModule = importModule
@@ -134,7 +134,7 @@ proc compileProject*(graph: ModuleGraph; cache: IdentCache;
   let conf = graph.config
   wantMainModule(conf)
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / "system.nim")
-  let projectFile = if projectFileIdx == InvalidFileIDX: FileIndex(conf.projectMainIdx) else: projectFileIdx
+  let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, cache, {sfMainModule, sfSystemModule})
