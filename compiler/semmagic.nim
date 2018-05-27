@@ -279,7 +279,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mRoof:
     localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
-    let plugin = getPlugin(n[0].sym)
+    let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
       localError(c.config, n.info, "cannot find plugin " & n[0].sym.name.s)
       result = n

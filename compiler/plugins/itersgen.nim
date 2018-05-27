@@ -9,11 +9,11 @@
 
 ## Plugin to transform an inline iterator into a data structure.
 
-import ".." / [pluginsupport, ast, astalgo,
+import ".." / [ast, astalgo,
   magicsys, lookups, semdata,
   lambdalifting, rodread, msgs]
 
-proc iterToProcImpl(c: PContext, n: PNode): PNode =
+proc iterToProcImpl*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   let iter = n[1]
   if iter.kind != nkSym or iter.sym.kind != skIterator:
@@ -46,5 +46,3 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
 
   prc.ast.add iter.sym.ast.sons[resultPos]
   addInterfaceDecl(c, prc)
-
-registerPlugin("stdlib", "system", "iterToProc", iterToProcImpl)

@@ -11,11 +11,11 @@ type
     onStack: bool
     kids: seq[DepN]
     hAQ, hIS, hB, hCmd: int
-    when not defined(release):
+    when defined(debugReorder):
       expls: seq[string]
   DepG = seq[DepN]
 
-when not defined(release):
+when defined(debugReorder):
   var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
@@ -30,7 +30,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
   result.hIS = -1
   result.hB = -1
   result.hCmd = -1
-  when not defined(release):
+  when defined(debugReorder):
     result.expls = @[]
 
 proc accQuoted(n: PNode): PIdent =
@@ -49,16 +49,16 @@ proc addDecl(n: PNode; declares: var IntSet) =
   of nkPragmaExpr: addDecl(n[0], declares)
   of nkIdent:
     declares.incl n.ident.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[n.ident.id] = n.ident.s
   of nkSym:
     declares.incl n.sym.name.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[n.sym.name.id] = n.sym.name.s
   of nkAccQuoted:
     let a = accQuoted(n)
     declares.incl a.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[a.id] = a.s
   of nkEnumFieldDef:
     addDecl(n[0], declares)
@@ -216,7 +216,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
           # consecutive type and const sections
           var wmsg = "Circular dependency detected. reorder pragma may not be able to" &
             " reorder some nodes properely"
-          when not defined(release):
+          when defined(debugReorder):
             wmsg &= ":\n"
             for i in 0..<cs.len-1:
                 for j in i..<cs.len:
@@ -355,13 +355,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
       if j < i and nj.hasCommand and niHasCmd:
         # Preserve order for commands and calls
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "both have commands and one comes after the other"
       elif j < i and nj.hasImportStmt:
         # Every node that comes after an import statement must
         # depend on that import
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "parent is, or contains, an import statement and child comes after it"
       elif j < i and niHasBody and nj.hasAccQuotedDef:
         # Every function, macro, template... with a body depends
@@ -369,13 +369,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         # That's because it is hard to detect the use of functions
         # like "[]=", "[]", "or" ... in their bodies.
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "one declares a quoted identifier and the other has a body and comes after it"
       elif j < i and niHasBody and not nj.hasBody and
         intersects(deps[i][0], declares):
           # Keep function declaration before function definition
           ni.kids.add nj
-          when not defined(release):
+          when defined(debugReorder):
             for dep in deps[i][0]:
               if dep in declares:
                 ni.expls.add "one declares \"" & idNames[dep] & "\" and the other defines it"
@@ -383,7 +383,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         for d in declares:
           if uses.contains(d):
             ni.kids.add nj
-            when not defined(release):
+            when defined(debugReorder):
               ni.expls.add "one declares \"" & idNames[d] & "\" and the other uses it"
 
 proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
