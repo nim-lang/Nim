@@ -462,8 +462,10 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template test*(testDesc, body) {.dirty.} =
-  ## Define a single test case identified by `testDesc`.
+template exceptionTypeName*(e: typed): string = $e.name
+
+template test*(name, body) {.dirty.} =
+  ## Define a single test case identified by `name`.
   ##
   ## .. code-block:: nim
   ##
@@ -480,12 +482,12 @@ template test*(testDesc, body) {.dirty.} =
 
   ensureInitialized()
 
-  if shouldRun(when declared(testSuiteName): testSuiteName else: "", testDesc):
+  if shouldRun(when declared(testSuiteName): testSuiteName else: "", name):
     checkpoints = @[]
     var testStatusIMPL {.inject.} = OK
 
     for formatter in formatters:
-      formatter.testStarted(testDesc)
+      formatter.testStarted(name)
 
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
@@ -496,7 +498,7 @@ template test*(testDesc, body) {.dirty.} =
     except:
       when not defined(js):
         let e = getCurrentException()
-        let eTypeDesc = "[" & $e.name & "]"
+        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
         checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
         var stackTrace {.inject.} = e.getStackTrace()
       fail()
@@ -506,7 +508,7 @@ template test*(testDesc, body) {.dirty.} =
         programResult += 1
       let testResult = TestResult(
         suiteName: when declared(testSuiteName): testSuiteName else: nil,
-        testName: testDesc,
+        testName: name,
         status: testStatusIMPL
       )
       testEnded(testResult)
