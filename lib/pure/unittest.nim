@@ -462,7 +462,7 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName*(e: typed): string = $e.name
+template exceptionTypeName(e: typed): string = $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -478,7 +478,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
 
   ensureInitialized()
 
