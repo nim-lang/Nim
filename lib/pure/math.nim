@@ -193,6 +193,14 @@ when not defined(JS):
   proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
     ## Computes the hyperbolic tangent of `x`
 
+  proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
+    ## Computes the cotangent of `x`
+
+  proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
+    ## Computes the secant of `x`.
+  proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
+    ## Computes the cosecant of `x`
+
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
@@ -346,6 +354,10 @@ else:
   proc tanh*[T: float32|float64](x: T): T =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
+  proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
+  proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
+  proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
+
 
 proc round*[T: float32|float64](x: T, places: int = 0): T =
   ## Round a floating point number.
