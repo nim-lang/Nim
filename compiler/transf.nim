@@ -94,7 +94,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
@@ -221,7 +221,7 @@ proc hasContinue(n: PNode): bool =
 
 proc newLabel(c: PTransf, n: PNode): PSym =
   result = newSym(skLabel, nil, getCurrOwner(c), n.info)
-  result.name = getIdent(genPrefix & $result.id)
+  result.name = getIdent(c.graph.cache, genPrefix & $result.id)
 
 proc freshLabels(c: PTransf, n: PNode; symMap: var TIdTable) =
   if n.kind in {nkBlockStmt, nkBlockExpr}:
@@ -981,7 +981,7 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
     when useEffectSystem: trackProc(g, prc, result)
-    result = liftLocalsIfRequested(prc, result, g.config)
+    result = liftLocalsIfRequested(prc, result, g.cache, g.config)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
     incl(result.flags, nfTransf)

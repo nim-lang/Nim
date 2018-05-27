@@ -157,7 +157,7 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
     if sonsLen(n) == 3:
-      result.n = newIdentNode(considerQuotedIdent(c.config, n.sons[2]), n.sons[2].info)
+      result.n = newIdentNode(considerQuotedIdent(c, n.sons[2]), n.sons[2].info)
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c))
@@ -267,7 +267,7 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
           n.sons[1].floatVal < 0.0:
         incl(result.flags, tfNeedsInit)
     else:
-      if n[1].kind == nkInfix and considerQuotedIdent(c.config, n[1][0]).s == "..<":
+      if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
       else:
         localError(c.config, n.sons[0].info, "expected range")
@@ -462,7 +462,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       # for gensym'ed identifiers the identifier may already have been
       # transformed to a symbol and we need to use that here:
       result = newSymG(kind, n.sons[1], c)
-      var v = considerQuotedIdent(c.config, n.sons[0])
+      var v = considerQuotedIdent(c, n.sons[0])
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
@@ -770,7 +770,7 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
   semRecordNodeAux(c, n.sons[2], check, pos, result.n, result)
   if n.sons[0].kind != nkEmpty:
     # dummy symbol for `pragma`:
-    var s = newSymS(skType, newIdentNode(getIdent("dummy"), n.info), c)
+    var s = newSymS(skType, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)
     s.typ = result
     pragma(c, s, n.sons[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
@@ -804,8 +804,6 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   else:
     if sfGenSym notin param.flags: addDecl(c, param)
 
-let typedescId = getIdent"typedesc"
-
 template shouldHaveMeta(t) =
   internalAssert c.config, tfHasMeta in t.flags
   # result.lastSon.flags.incl tfHasMeta
@@ -815,13 +813,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                    info: TLineInfo, anon = false): PType =
   if paramType == nil: return # (e.g. proc return type)
 
-  proc addImplicitGenericImpl(typeClass: PType, typId: PIdent): PType =
+  proc addImplicitGenericImpl(c: PContext; typeClass: PType, typId: PIdent): PType =
     if genericParams == nil:
       # This happens with anonymous proc types appearing in signatures
       # XXX: we need to lift these earlier
       return
     let finalTypId = if typId != nil: typId
-                     else: getIdent(paramName & ":type")
+                     else: getIdent(c.cache, paramName & ":type")
     # is this a bindOnce type class already present in the param list?
     for i in countup(0, genericParams.len - 1):
       if genericParams.sons[i].sym.name.id == finalTypId.id:
@@ -852,11 +850,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     (if lifted != nil: lifted else: typ)
 
   template addImplicitGeneric(e): untyped =
-    addImplicitGenericImpl(e, paramTypId)
+    addImplicitGenericImpl(c, e, paramTypId)
 
   case paramType.kind:
   of tyAnything:
-    result = addImplicitGenericImpl(newTypeS(tyGenericParam, c), nil)
+    result = addImplicitGenericImpl(c, newTypeS(tyGenericParam, c), nil)
 
   of tyStatic:
     # proc(a: expr{string}, b: expr{nkLambda})
@@ -873,7 +871,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if tfUnresolved notin paramType.flags:
       # naked typedescs are not bindOnce types
       if paramType.base.kind == tyNone and paramTypId != nil and
-         paramTypId.id == typedescId.id: paramTypId = nil
+          paramTypId.id == getIdent(c.cache, "typedesc").id:
+        # XXX Why doesn't this check for tyTypeDesc instead?
+        paramTypId = nil
       result = addImplicitGeneric(
         c.newTypeWithSons(tyTypeDesc, @[paramType.base]))
 
@@ -1322,7 +1322,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   # start with 'ccClosure', but of course pragmas can overwrite this:
   result.callConv = ccClosure
   # dummy symbol for `pragma`:
-  var s = newSymS(kind, newIdentNode(getIdent("dummy"), n.info), c)
+  var s = newSymS(kind, newIdentNode(getIdent(c.cache, "dummy"), n.info), c)
   s.typ = result
   if n.sons[1].kind != nkEmpty and n.sons[1].len > 0:
     pragma(c, s, n.sons[1], procTypePragmas)
@@ -1345,7 +1345,7 @@ proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
   if n.kind == nkType:
-    result = symFromType(n.typ, n.info)
+    result = symFromType(c, n.typ, n.info)
   else:
     localError(c.config, n.info, errTypeExpected)
     result = errorSym(c, n)
@@ -1393,7 +1393,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     elif n[0].kind notin nkIdentKinds:
       result = semTypeExpr(c, n, prev)
     else:
-      let op = considerQuotedIdent(c.config, n.sons[0])
+      let op = considerQuotedIdent(c, n.sons[0])
       if op.id in {ord(wAnd), ord(wOr)} or op.s == "|":
         checkSonsLen(n, 3, c.config)
         var

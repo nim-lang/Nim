@@ -41,7 +41,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   if result.isNil:
     let x = copyTree(n)
-    x.sons[0] = newIdentNode(getIdent"[]", n.info)
+    x.sons[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
     bracketNotFoundError(c, x)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
@@ -194,7 +194,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     localError(c.config, n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
 
-  let id = newIdentNode(getIdent(sl.strVal), n.info)
+  let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:

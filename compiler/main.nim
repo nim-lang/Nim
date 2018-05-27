@@ -189,7 +189,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     wantMainModule(conf)
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
-    commandDoc(conf)
+    commandDoc(cache, conf)
   of "doc2", "doc":
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
@@ -198,18 +198,18 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "rst2html":
     conf.cmd = cmdRst2html
     loadConfigs(DocConfig, cache, conf)
-    commandRst2Html(conf)
+    commandRst2Html(cache, conf)
   of "rst2tex":
     conf.cmd = cmdRst2tex
     loadConfigs(DocTexConfig, cache, conf)
-    commandRst2TeX(conf)
+    commandRst2TeX(cache, conf)
   of "jsondoc0":
     wantMainModule(conf)
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
     wantMainModule(conf)
     defineSymbol(conf.symbols, "nimdoc")
-    commandJson(conf)
+    commandJson(cache, conf)
   of "jsondoc2", "jsondoc":
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
@@ -221,11 +221,11 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
     defineSymbol(conf.symbols, "nimdoc")
-    commandTags(conf)
+    commandTags(cache, conf)
   of "buildindex":
     conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache, conf)
-    commandBuildIndex(conf)
+    commandBuildIndex(cache, conf)
   of "gendepend":
     conf.cmd = cmdGenDepend
     commandGenDepend(graph, cache)

@@ -768,11 +768,11 @@ proc shouldSkipDistinct(m: TCandidate; rules: PNode, callIdent: PIdent): bool =
   # XXX This is bad as 'considerQuotedIdent' can produce an error!
   if rules.kind == nkWith:
     for r in rules:
-      if considerQuotedIdent(m.c.graph.config, r) == callIdent: return true
+      if considerQuotedIdent(m.c, r) == callIdent: return true
     return false
   else:
     for r in rules:
-      if considerQuotedIdent(m.c.graph.config, r) == callIdent: return false
+      if considerQuotedIdent(m.c, r) == callIdent: return false
     return true
 
 proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
@@ -2126,10 +2126,10 @@ proc prepareOperand(c: PContext; a: PNode): PNode =
     result = a
     considerGenSyms(c, result)
 
-proc prepareNamedParam(a: PNode; conf: ConfigRef) =
+proc prepareNamedParam(a: PNode; c: PContext) =
   if a.sons[0].kind != nkIdent:
     var info = a.sons[0].info
-    a.sons[0] = newIdentNode(considerQuotedIdent(conf, a.sons[0]), info)
+    a.sons[0] = newIdentNode(considerQuotedIdent(c, a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
@@ -2194,7 +2194,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
-      prepareNamedParam(n.sons[a], c.config)
+      prepareNamedParam(n.sons[a], c)
       if n.sons[a].sons[0].kind != nkIdent:
         localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
         m.state = csNoMatch

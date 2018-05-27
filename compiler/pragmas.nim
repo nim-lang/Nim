@@ -480,7 +480,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "":
-        var e = searchInScopes(con, getIdent(sub))
+        var e = searchInScopes(con, getIdent(con.cache, sub))
         if e != nil:
           if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
@@ -634,7 +634,7 @@ proc deprecatedStmt(c: PContext; outerPragma: PNode) =
       let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
       if dest == nil or dest.kind in routineKinds:
         localError(c.config, n.info, warnUser, "the .deprecated pragma is unreliable for routines")
-      let src = considerQuotedIdent(c.config, n[0])
+      let src = considerQuotedIdent(c, n[0])
       let alias = newSym(skAlias, src, dest, n[0].info, c.config.options)
       incl(alias.flags, sfExported)
       if sfCompilerProc in dest.flags: markCompilerProc(c, alias)
@@ -657,7 +657,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # We return a dummy symbol; later passes over the type will repair it.
       # Generic instantiation needs to know about this too. But we're lazy
       # and perform the lookup on demand instead.
-      result = newSym(skUnknown, considerQuotedIdent(c.config, n), nil, n.info,
+      result = newSym(skUnknown, considerQuotedIdent(c, n), nil, n.info,
         c.config.options)
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
@@ -710,7 +710,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   elif key.kind notin nkIdentKinds:
     n.sons[i] = semCustomPragma(c, it)
     return
-  let ident = considerQuotedIdent(c.config, key)
+  let ident = considerQuotedIdent(c, key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
     # number of pragmas increase/decrease with user pragma expansion
@@ -1017,9 +1017,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processExperimental(c, it, sym)
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
-          c.selfName = considerQuotedIdent(c.config, it[1])
+          c.selfName = considerQuotedIdent(c, it[1])
         elif it.kind == nkIdent or it.len == 1:
-          c.selfName = getIdent("self")
+          c.selfName = getIdent(c.cache, "self")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:

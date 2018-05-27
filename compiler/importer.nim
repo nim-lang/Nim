@@ -20,7 +20,7 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
   for i in 1 ..< n.len:
-    let ident = lookups.considerQuotedIdent(c.config, n[i])
+    let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
@@ -69,7 +69,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if hasPattern(s): addPattern(c, s)
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
-  let ident = lookups.considerQuotedIdent(c.config, n)
+  let ident = lookups.considerQuotedIdent(c, n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)

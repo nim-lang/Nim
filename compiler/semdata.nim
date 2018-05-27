@@ -211,7 +211,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.dynlib = nil
   result.notes = conf.notes
 
-proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
+proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.enforceVoidContext = PType(kind: tyStmt)
   result.ambiguousSymbols = initIntSet()
@@ -227,7 +227,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
-  result.cache = cache
+  result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
   result.typesWithOps = @[]

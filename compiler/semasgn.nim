@@ -162,7 +162,7 @@ proc addVar(father, v, value: PNode) =
   addSon(father, vpart)
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
-  var temp = newSym(skTemp, getIdent(lowerings.genPrefix), c.fn, c.info)
+  var temp = newSym(skTemp, getIdent(c.c.cache, lowerings.genPrefix), c.fn, c.info)
   temp.typ = getSysType(c.c.graph, body.info, tyInt)
   incl(temp.flags, sfFromGeneric)
 
@@ -268,17 +268,17 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   a.kind = kind
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
-                 of attachedAsgn: getIdent"="
-                 of attachedSink: getIdent"=sink"
-                 of attachedDeepCopy: getIdent"=deepcopy"
-                 of attachedDestructor: getIdent"=destroy"
+                 of attachedAsgn: getIdent(c.cache, "=")
+                 of attachedSink: getIdent(c.cache, "=sink")
+                 of attachedDeepCopy: getIdent(c.cache, "=deepcopy")
+                 of attachedDestructor: getIdent(c.cache, "=destroy")
 
   result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
   a.asgnForType = typ
 
-  let dest = newSym(skParam, getIdent"dest", result, info)
-  let src = newSym(skParam, getIdent"src", result, info)
+  let dest = newSym(skParam, getIdent(c.cache, "dest"), result, info)
+  let src = newSym(skParam, getIdent(c.cache, "src"), result, info)
   dest.typ = makeVarType(c, typ)
   src.typ = typ
 

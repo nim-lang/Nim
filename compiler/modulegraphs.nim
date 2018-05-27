@@ -40,6 +40,7 @@ type
                                   # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
+    cache*: IdentCache
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
@@ -60,20 +61,18 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = doStopCompile != nil and doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo(), {})
+  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
   result.magic = m
 
-proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
+proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
-  if config.isNil:
-    result.config = newConfigRef()
-  else:
-    result.config = config
+  result.config = config
+  result.cache = cache
   result.owners = @[]
   result.methods = @[]
   initStrTable(result.compilerprocs)
@@ -106,7 +105,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   if suggestMode:
     deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when quering the graph lazily.
-    # this improve efficiency quite a lot:
+    # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =

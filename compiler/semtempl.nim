@@ -99,7 +99,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
   for i in 0 ..< n.len:
-    toMixin.incl(considerQuotedIdent(c.config, n.sons[i]).id)
+    toMixin.incl(considerQuotedIdent(c, n.sons[i]).id)
   result = newNodeI(nkEmpty, n.info)
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
@@ -166,7 +166,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c.config, n), c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -206,7 +206,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       #
       # We need to ensure that both 'a' produce the same gensym'ed symbol.
       # So we need only check the *current* scope.
-      let s = localSearchInScope(c.c, considerQuotedIdent(c.c.config, ident))
+      let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
       if s != nil and s.owner == c.owner and sfGenSym in s.flags:
         styleCheckUse(n.info, s)
         replaceIdentBySym(c.c, n, newSymNode(s, n.info))
@@ -460,14 +460,14 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         x.sons[1] = semTemplBody(c, x.sons[1])
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("[]"), n.info)
+    result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     let n0 = semTemplBody(c, n.sons[0])
     withBracketExpr c, n0:
       result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("{}"), n.info)
+    result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     result = semTemplBodySons(c, result)
   of nkAsgn, nkFastAsgn:
@@ -479,7 +479,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     case k
     of nkBracketExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("[]="), n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
       let a0 = semTemplBody(c, a.sons[0])
@@ -487,7 +487,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("{}="), n.info)
+      result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
       result = semTemplBodySons(c, result)

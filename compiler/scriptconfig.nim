@@ -154,7 +154,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   rawMessage(conf, hintConf, scriptName)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
-  let graph = newModuleGraph(conf)
+  let graph = newModuleGraph(cache, conf)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")

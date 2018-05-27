@@ -111,32 +111,32 @@ proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
     system.shallowCopy(gSourceFiles[info.fileIndex.int].lines[info.line.int-1], x)
     gSourceFiles[info.fileIndex.int].dirty = true
 
-proc checkStyle(conf: ConfigRef; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
+proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
     if gStyleCheck == StyleCheck.Auto:
-      sym.name = getIdent(beau)
+      sym.name = getIdent(cache, beau)
       replaceInFile(conf, info, beau)
     else:
       message(conf, info, hintName, beau)
 
-proc styleCheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
+proc styleCheckDefImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
-    checkStyle(conf, info, s.name.s, k, s)
+    checkStyle(conf, cache, info, s.name.s, k, s)
 
 template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, info, s, k)
+    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)
 
 template styleCheckDef*(info: TLineInfo; s: PSym) =
   styleCheckDef(info, s, s.kind)
 template styleCheckDef*(s: PSym) =
   styleCheckDef(s.info, s, s.kind)
 
-proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
+proc styleCheckUseImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -152,4 +152,4 @@ proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)
+    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, cache, info, s)

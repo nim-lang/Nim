@@ -483,7 +483,7 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent"barrier", owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)

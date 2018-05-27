@@ -30,6 +30,7 @@ type
     types: TStrTable
     isPureRst: bool
     conf*: ConfigRef
+    cache*: IdentCache
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -86,10 +87,11 @@ proc parseRst(text, filename: string,
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
-proc newDocumentor*(filename: string, conf: ConfigRef): PDoc =
+proc newDocumentor*(filename: string; cache: IdentCache; conf: ConfigRef): PDoc =
   declareClosures()
   new(result)
   result.conf = conf
+  result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
@@ -349,18 +351,18 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   else:
     result = ""
 
-proc getNameIdent(n: PNode): PIdent =
+proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
   case n.kind
-  of nkPostfix: result = getNameIdent(n.sons[1])
-  of nkPragmaExpr: result = getNameIdent(n.sons[0])
+  of nkPostfix: result = getNameIdent(cache, n.sons[1])
+  of nkPragmaExpr: result = getNameIdent(cache, n.sons[0])
   of nkSym: result = n.sym.name
   of nkIdent: result = n.ident
   of nkAccQuoted:
     var r = ""
-    for i in 0..<n.len: r.add(getNameIdent(n[i]).s)
-    result = getIdent(r)
+    for i in 0..<n.len: r.add(getNameIdent(cache, n[i]).s)
+    result = getIdent(cache, r)
   of nkOpenSymChoice, nkClosedSymChoice:
-    result = getNameIdent(n[0])
+    result = getNameIdent(cache, n[0])
   else:
     result = nil
 
@@ -586,21 +588,21 @@ proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skProc)
   of nkFuncDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skMethod)
   of nkIteratorDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skIterator)
   of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
   of nkConverterDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     genItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
@@ -630,23 +632,23 @@ proc generateJson*(d: PDoc, n: PNode) =
       d.add %{ "comment": %stripped, "line": %n.info.line.int,
                "col": %n.info.col }
   of nkProcDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
   of nkFuncDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skMethod)
   of nkIteratorDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skIterator)
   of nkMacroDef:
     d.add genJsonItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef:
     d.add genJsonItem(d, n, n.sons[namePos], skTemplate)
   of nkConverterDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
@@ -673,23 +675,23 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
       let stripped = n.comment.substr(2).strip
       r.add stripped
   of nkProcDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skProc)
   of nkFuncDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skMethod)
   of nkIteratorDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skIterator)
   of nkMacroDef:
     r.add genTagsItem(d, n, n.sons[namePos], skMacro)
   of nkTemplateDef:
     r.add genTagsItem(d, n, n.sons[namePos], skTemplate)
   of nkConverterDef:
-    when useEffectSystem: documentRaises(n)
+    when useEffectSystem: documentRaises(d.cache, n)
     r.add genTagsItem(d, n, n.sons[namePos], skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in countup(0, sonsLen(n) - 1):
@@ -804,18 +806,18 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
     else:
       discard "fixme: error report"
 
-proc commandDoc*(conf: ConfigRef) =
+proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
   generateDoc(d, ast)
   writeOutput(d, conf.projectFull, HtmlExt)
   generateIndex(d)
 
-proc commandRstAux(conf: ConfigRef; filename, outExt: string) =
+proc commandRstAux(cache: IdentCache, conf: ConfigRef; filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, conf)
+  var d = newDocumentor(filen, cache, conf)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     var outp: string
@@ -847,17 +849,17 @@ proc commandRstAux(conf: ConfigRef; filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc commandRst2Html*(conf: ConfigRef) =
-  commandRstAux(conf, conf.projectFull, HtmlExt)
+proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
+  commandRstAux(cache, conf, conf.projectFull, HtmlExt)
 
-proc commandRst2TeX*(conf: ConfigRef) =
+proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
   splitter = "\\-"
-  commandRstAux(conf, conf.projectFull, TexExt)
+  commandRstAux(cache, conf, conf.projectFull, TexExt)
 
-proc commandJson*(conf: ConfigRef) =
+proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
   generateJson(d, ast)
   let json = d.jArray
@@ -871,10 +873,10 @@ proc commandJson*(conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename)
 
-proc commandTags*(conf: ConfigRef) =
+proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(conf.projectFull, conf)
+  var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
   var
     content: Rope
@@ -888,7 +890,7 @@ proc commandTags*(conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename)
 
-proc commandBuildIndex*(conf: ConfigRef) =
+proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull).rope
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",

@@ -293,7 +293,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       orig.sons[0..1] = [nil, orig[1], f]
 
       template tryOp(x) =
-        let op = newIdentNode(getIdent(x), n.info)
+        let op = newIdentNode(getIdent(c.cache, x), n.info)
         n.sons[0] = op
         orig.sons[0] = op
         pickBest(op)
@@ -306,17 +306,17 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
       # we need to strip away the trailing '=' here:
-      let calleeName = newIdentNode(getIdent(f.ident.s[0..f.ident.s.len-2]), n.info)
-      let callOp = newIdentNode(getIdent".=", n.info)
+      let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..f.ident.s.len-2]), n.info)
+      let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c.config, f, n).s)
+        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
       else:
-        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c.config, f, n).s)
+        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:

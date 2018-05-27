@@ -353,7 +353,7 @@ proc semOpAux(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2:
       let info = a.sons[0].info
-      a.sons[0] = newIdentNode(considerQuotedIdent(c.config, a.sons[0], a), info)
+      a.sons[0] = newIdentNode(considerQuotedIdent(c, a.sons[0], a), info)
       a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
@@ -361,7 +361,7 @@ proc semOpAux(c: PContext, n: PNode) =
 
 proc overloadedCallOpr(c: PContext, n: PNode): PNode =
   # quick check if there is *any* () operator overloaded:
-  var par = getIdent("()")
+  var par = getIdent(c.cache, "()")
   if searchInScopes(c, par) == nil:
     result = nil
   else:
@@ -802,7 +802,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:
   result = newNodeI(nkCall, n.info)
-  var e = strTableGet(c.graph.systemModule.tab, getIdent"echo")
+  var e = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "echo"))
   if e != nil:
     add(result, newSymNode(e))
   else:
@@ -1097,7 +1097,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
-  var i = considerQuotedIdent(c.config, n.sons[1], n)
+  var i = considerQuotedIdent(c, n.sons[1], n)
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
@@ -1217,7 +1217,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[1])
     addSon(result, copyTree(n[0]))
   else:
-    var i = considerQuotedIdent(c.config, n.sons[1], n)
+    var i = considerQuotedIdent(c, n.sons[1], n)
     result = newNodeI(nkDotCall, n.info)
     result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
@@ -1328,11 +1328,11 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
-    result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "[]")))
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
-  var id = considerQuotedIdent(c.config, a[1], a)
-  var setterId = newIdentNode(getIdent(id.s & '='), n.info)
+  var id = considerQuotedIdent(c, a[1], a)
+  var setterId = newIdentNode(getIdent(c.cache, id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
@@ -1409,7 +1409,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     # --> `[]=`(a, i, x)
     a = semSubscript(c, a, {efLValue})
     if a == nil:
-      result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
+      result = buildOverloadedSubscripts(n.sons[0], getIdent(c.cache, "[]="))
       add(result, n[1])
       if mode == noOverloadedSubscript:
         bracketNotFoundError(c, result)
@@ -1419,7 +1419,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         return result
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
-    result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
+    result = buildOverloadedSubscripts(n.sons[0], getIdent(c.cache, "{}="))
     add(result, n[1])
     return semExprNoType(c, result)
   of nkPar, nkTupleConstr:
@@ -1427,7 +1427,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
-      return semStmt(c, lowerTupleUnpackingForAsgn(n, c.p.owner))
+      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.p.owner))
     else:
       a = semExprWithType(c, a, {efLValue})
   else:
@@ -1593,13 +1593,13 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     checkSonsLen(n, 2, c.config)
     var m = lookUpForDefined(c, n.sons[0], onlyCurrentScope)
     if m != nil and m.kind == skModule:
-      let ident = considerQuotedIdent(c.config, n[1], n)
+      let ident = considerQuotedIdent(c, n[1], n)
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
         result = strTableGet(m.tab, ident)
   of nkAccQuoted:
-    result = lookUpForDefined(c, considerQuotedIdent(c.config, n), onlyCurrentScope)
+    result = lookUpForDefined(c, considerQuotedIdent(c, n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -1612,7 +1612,7 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2, c.config)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if not onlyCurrentScope and considerQuotedIdent(c.config, n[0], n).s == "defined":
+  if not onlyCurrentScope and considerQuotedIdent(c, n[0], n).s == "defined":
     if n.sons[1].kind != nkIdent:
       localError(c.config, n.info, "obsolete usage of 'defined', use 'declared' instead")
     elif isDefined(c.config, n.sons[1].ident.s):
@@ -1711,7 +1711,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
                        ids: var seq[PNode]) =
   template returnQuote(q) =
     quotes.add q
-    n = newIdentNode(getIdent($quotes.len), n.info)
+    n = newIdentNode(getIdent(c.cache, $quotes.len), n.info)
     ids.add n
     return
 
@@ -1722,7 +1722,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
       if examinedOp == op:
         returnQuote n[1]
       elif examinedOp.startsWith(op):
-        n.sons[0] = newIdentNode(getIdent(examinedOp.substr(op.len)), n.info)
+        n.sons[0] = newIdentNode(getIdent(c.cache, examinedOp.substr(op.len)), n.info)
   elif n.kind == nkAccQuoted and op == "``":
     returnQuote n[0]
 
@@ -2366,12 +2366,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 1, c.config)
     result = semArrayAccess(c, n, flags)
   of nkCurlyExpr:
-    result = semExpr(c, buildOverloadedSubscripts(n, getIdent"{}"), flags)
+    result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "{}")), flags)
   of nkPragmaExpr:
     var
       expr = n[0]
       pragma = n[1]
-      pragmaName = considerQuotedIdent(c.config, pragma[0])
+      pragmaName = considerQuotedIdent(c, pragma[0])
       flags = flags
 
     case whichKeyword(pragmaName)

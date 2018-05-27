@@ -26,27 +26,17 @@ proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModule.tab, getIdent(name))
+  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(name), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, g.systemModule)
   if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
 
-when false:
-  proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-    result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-    result.magic = m
-
-when false:
-  let
-    opNot* = createMagic("not", mNot)
-    opContains* = createMagic("contains", mInSet)
-
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   var ti: TIdentIter
-  let id = getIdent(name)
+  let id = getIdent(g.cache, name)
   var r = initIdentIter(ti, g.systemModule.tab, id)
   while r != nil:
     if r.kind == skStub: loadStub(r)
@@ -167,7 +157,7 @@ proc setIntLitType*(g: ModuleGraph; result: PNode) =
     internalError(g.config, result.info, "invalid int size")
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
-  let ident = getIdent(name)
+  let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
   when false:
     if result == nil:
@@ -190,6 +180,6 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
       "symbol conflicts with other .exportNims symbol at: " & g.config$conflict.info)
 
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
-  strTableGet(g.exposed, getIdent(name))
+  strTableGet(g.exposed, getIdent(g.cache, name))
 
 proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)

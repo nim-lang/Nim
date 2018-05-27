@@ -33,7 +33,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
   when defined(debugReorder):
     result.expls = @[]
 
-proc accQuoted(n: PNode): PIdent =
+proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
   for i in 0 ..< n.len:
     let x = n[i]
@@ -41,12 +41,12 @@ proc accQuoted(n: PNode): PIdent =
     of nkIdent: id.add(x.ident.s)
     of nkSym: id.add(x.sym.name.s)
     else: discard
-  result = getIdent(id)
+  result = getIdent(cache, id)
 
-proc addDecl(n: PNode; declares: var IntSet) =
+proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
   case n.kind
-  of nkPostfix: addDecl(n[1], declares)
-  of nkPragmaExpr: addDecl(n[0], declares)
+  of nkPostfix: addDecl(cache, n[1], declares)
+  of nkPragmaExpr: addDecl(cache, n[0], declares)
   of nkIdent:
     declares.incl n.ident.id
     when defined(debugReorder):
@@ -56,18 +56,18 @@ proc addDecl(n: PNode; declares: var IntSet) =
     when defined(debugReorder):
       idNames[n.sym.name.id] = n.sym.name.s
   of nkAccQuoted:
-    let a = accQuoted(n)
+    let a = accQuoted(cache, n)
     declares.incl a.id
     when defined(debugReorder):
       idNames[a.id] = a.s
   of nkEnumFieldDef:
-    addDecl(n[0], declares)
+    addDecl(cache, n[0], declares)
   else: discard
 
-proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
-  template deps(n) = computeDeps(n, declares, uses, false)
+proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLevel: bool) =
+  template deps(n) = computeDeps(cache, n, declares, uses, false)
   template decl(n) =
-    if topLevel: addDecl(n, declares)
+    if topLevel: addDecl(cache, n, declares)
   case n.kind
   of procDefs, nkMacroDef, nkTemplateDef:
     decl(n[0])
@@ -93,11 +93,11 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
       deps(n[i])
   of nkIdent: uses.incl n.ident.id
   of nkSym: uses.incl n.sym.name.id
-  of nkAccQuoted: uses.incl accQuoted(n).id
+  of nkAccQuoted: uses.incl accQuoted(cache, n).id
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n.sons[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
-    for i in 0..<len(n): computeDeps(n[i], declares, uses, topLevel)
+    for i in 0..<len(n): computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
     let a = n.sons[0]
     if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and
@@ -439,7 +439,7 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
   for i in 0..<n.len:
     deps[i][0] = initIntSet()
     deps[i][1] = initIntSet()
-    computeDeps(n[i], deps[i][0], deps[i][1], true)
+    computeDeps(cache, n[i], deps[i][0], deps[i][1], true)
 
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)

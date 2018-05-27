@@ -627,7 +627,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     extccomp.initVars(conf)
     processCmdLine(passCmd2, "", conf)
 
-    let graph = newModuleGraph(conf)
+    let graph = newModuleGraph(cache, conf)
     graph.suggestMode = true
     mainCommand(graph, cache)
 

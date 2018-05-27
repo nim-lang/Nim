@@ -1291,7 +1291,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # getType opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
       of 1:
@@ -1305,14 +1305,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # getTypeInst opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeInstToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
       else:
         # getTypeImpl opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeImplToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
     of opcNStrVal:
@@ -1453,7 +1453,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
-        regs[ra].node.ident = getIdent(regs[rb].node.strVal)
+        regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.config, c.debug[pc], "cannot set type")
@@ -1566,7 +1566,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  else: regs[rc].node.strVal
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
-      var sym = newSym(k.TSymKind, name.getIdent, c.module.owner, c.debug[pc])
+      var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.module.owner, c.debug[pc])
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
     of opcTypeTrait:
@@ -1583,7 +1583,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       inc pc
       let typ = c.types[c.code[pc].regBx - wordExcess]
-      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.config))
+      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.cache, c.config))
     of opcMarshalStore:
       decodeB(rkNode)
       inc pc

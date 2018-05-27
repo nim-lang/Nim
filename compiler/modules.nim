@@ -24,7 +24,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   result.id = -1             # for better error checking
   result.kind = skModule
   let filename = toFullPath(graph.config, fileIdx)
-  result.name = getIdent(splitFile(filename).name)
+  result.name = getIdent(graph.cache, splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
 
@@ -32,10 +32,10 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let
     pck = getPackageName(graph.config, filename)
     pck2 = if pck.len > 0: pck else: "unknown"
-    pack = getIdent(pck2)
+    pack = getIdent(graph.cache, pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
   if packSym == nil:
-    packSym = newSym(skPackage, getIdent(pck2), nil, result.info)
+    packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
 

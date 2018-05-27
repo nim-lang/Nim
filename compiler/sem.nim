@@ -96,7 +96,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
-var commonTypeBegin = PType(kind: tyExpr)
+template commonTypeBegin*(): PType = PType(kind: tyExpr)
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -181,7 +181,7 @@ proc commonType*(x: PType, y: PNode): PType =
   commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(c.config, n), getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c, n), getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -205,7 +205,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(c.config, n), getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c, n), getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -240,14 +240,14 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode
 
-proc symFromType(t: PType, info: TLineInfo): PSym =
+proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent"AnonType", t.owner, info)
+  result = newSym(skType, getIdent(c.cache, "AnonType"), t.owner, info)
   result.flags.incl sfAnon
   result.typ = t
 
 proc symNodeFromType(c: PContext, t: PType, info: TLineInfo): PNode =
-  result = newSymNode(symFromType(t, info), info)
+  result = newSymNode(symFromType(c, t, info), info)
   result.typ = makeTypeDesc(c, t)
 
 when false:
@@ -483,7 +483,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
   c.lastGenericIdx = c.generics.len
 
 proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
-  var c = newContext(graph, module, cache)
+  var c = newContext(graph, module)
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr

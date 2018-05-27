@@ -440,10 +440,10 @@ proc makeDeref(n: PNode): PNode =
 proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
   if n.len == 2:
     let x = semExprWithType(c, n[0])
-    let y = considerQuotedIdent(c.config, n[1])
+    let y = considerQuotedIdent(c, n[1])
     let obj = x.typ.skipTypes(abstractPtrs)
     if obj.kind == tyObject and tfPartial in obj.flags:
-      let field = newSym(skField, getIdent(y.s), obj.sym, n[1].info)
+      let field = newSym(skField, getIdent(c.cache, y.s), obj.sym, n[1].info)
       field.typ = skipIntLit(typ)
       field.position = sonsLen(obj.n)
       addSon(obj.n, newSymNode(field))
@@ -664,7 +664,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
 
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
-  result.add(newIdentNode(it.getIdent, arg.info))
+  result.add(newIdentNode(getIdent(c.cache, it), arg.info))
   if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
     result.add newDeref(arg)
   else:
@@ -796,8 +796,8 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     let name = a.sons[0]
     var s: PSym
     if name.kind == nkDotExpr and a[2].kind == nkObjectTy:
-      let pkgName = considerQuotedIdent(c.config, name[0])
-      let typName = considerQuotedIdent(c.config, name[1])
+      let pkgName = considerQuotedIdent(c, name[0])
+      let typName = considerQuotedIdent(c, name[1])
       let pkg = c.graph.packageSyms.strTableGet(pkgName)
       if pkg.isNil or pkg.kind != skPackage:
         localError(c.config, name.info, "unknown package name: " & pkgName.s)
@@ -989,7 +989,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert c.config, st.kind in {tyPtr, tyRef}
       internalAssert c.config, st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
-      let obj = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+      let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                               getCurrOwner(c), s.info)
       obj.typ = st.lastSon
       st.lastSon.sym = obj
@@ -1131,7 +1131,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
 
 proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
   if t != nil:
-    var s = newSym(skResult, getIdent"result", getCurrOwner(c), info)
+    var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), info)
     s.typ = t
     incl(s.flags, sfUsed)
     addParamOrResult(c, s, owner)
@@ -1150,7 +1150,7 @@ proc lookupMacro(c: PContext, n: PNode): PSym =
     result = n.sym
     if result.kind notin {skMacro, skTemplate}: result = nil
   else:
-    result = searchInScopes(c, considerQuotedIdent(c.config, n), {skMacro, skTemplate})
+    result = searchInScopes(c, considerQuotedIdent(c, n), {skMacro, skTemplate})
 
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
@@ -1162,7 +1162,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
-        if considerQuotedIdent(c.config, prc.sons[namePos]).s == "()":
+        if considerQuotedIdent(c, prc.sons[namePos]).s == "()":
           prc.sons[namePos] = newIdentNode(c.cache.idDelegator, prc.info)
           prc.sons[pragmasPos] = copyExcept(n, i)
         else:
@@ -1605,7 +1605,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
-          addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
+          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
 
         openScope(c)
         n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
