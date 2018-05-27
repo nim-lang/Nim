@@ -44,6 +44,7 @@ type
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
+    hintGlobalVar,
     hintUser, hintUserRaw
 
 const
@@ -113,6 +114,7 @@ const
     hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
+    hintGlobalVar: "global variable declared here",
     hintUser: "$1",
     hintUserRaw: "$1"]
 
@@ -134,7 +136,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats",
+    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
     "User", "UserRaw"]
 
 const
@@ -166,7 +168,7 @@ const
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
-                                         hintGCStats},
+                                         hintGlobalVar, hintGCStats},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
@@ -174,7 +176,7 @@ const
                                          hintDependency,
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
-                                         hintGCStats},
+                                         hintGlobalVar, hintGCStats},
     {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 

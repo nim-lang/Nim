@@ -569,6 +569,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.sons[j] = newSymNode(v)
       checkNilable(c, v)
       if sfCompileTime in v.flags: hasCompileTime = true
+      if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
+        message(c.config, v.info, hintGlobalVar)
   if hasCompileTime:
     vm.setupCompileTimeVar(c.module, c.cache, c.graph, result)
 
