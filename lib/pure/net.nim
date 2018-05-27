@@ -803,6 +803,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   else:
     address = ret[1]
     client.fd = sock
+    client.domain = getSockDomain(sock)
     client.isBuffered = server.isBuffered
 
     # Handle SSL.
