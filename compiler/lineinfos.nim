@@ -194,7 +194,7 @@ type
     quotedFullName*: Rope      # cached quoted full name for codegen
                                # purposes
 
-    lines*: seq[Rope]          # the source code of the module
+    lines*: seq[string]        # the source code of the module
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
@@ -202,6 +202,7 @@ type
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
+    dirty*: bool               # for 'nimfix' / 'nimpretty' like tooling
     when defined(nimpretty):
       fullContent*: string
   FileIndex* = distinct int32

@@ -27,19 +27,19 @@ var
 
 proc overwriteFiles*(conf: ConfigRef) =
   let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
-  for i in 0 .. high(gSourceFiles):
-    if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
-        (not gOnlyMainfile or gSourceFiles[i].fileIdx == conf.projectMainIdx.FileIndex):
-      let newFile = if gOverWrite: gSourceFiles[i].fullpath
-                    else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
+  for i in 0 .. high(conf.m.fileInfos):
+    if conf.m.fileInfos[i].dirty and
+        (not gOnlyMainfile or FileIndex(i) == conf.projectMainIdx):
+      let newFile = if gOverWrite: conf.m.fileInfos[i].fullpath
+                    else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
       try:
         var f = open(newFile, fmWrite)
-        for line in gSourceFiles[i].lines:
+        for line in conf.m.fileInfos[i].lines:
           if doStrip:
             f.write line.strip(leading = false, trailing = true)
           else:
             f.write line
-          f.write(gSourceFiles[i].newline)
+          f.write(conf.m.fileInfos[i], "\L")
         f.close
       except IOError:
         rawMessage(conf, errGenerated, "cannot open file: " & newFile)
@@ -94,9 +94,7 @@ proc beautifyName(s: string, k: TSymKind): string =
     inc i
 
 proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
-  loadFile(conf, info)
-
-  let line = gSourceFiles[info.fileIndex.int].lines[info.line.int-1]
+  let line = conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
@@ -108,8 +106,8 @@ proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
   if differ(line, first, last, newName):
     # last-first+1 != newName.len or
     var x = line.substr(0, first-1) & newName & line.substr(last+1)
-    system.shallowCopy(gSourceFiles[info.fileIndex.int].lines[info.line.int-1], x)
-    gSourceFiles[info.fileIndex.int].dirty = true
+    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1], x)
+    conf.m.fileInfos[info.fileIndex.int].dirty = true
 
 proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)

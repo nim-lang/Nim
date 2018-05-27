@@ -105,7 +105,6 @@ proc newLineInfo*(conf: ConfigRef; filename: string, line, col: int): TLineInfo 
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
-proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope
 
 proc concat(strings: openarray[string]): string =
   var totalLen = 0
@@ -409,6 +408,24 @@ proc resetAttributes*(conf: ConfigRef) =
   if {optUseColors, optStdout} * conf.globalOptions == {optUseColors}:
     terminal.resetAttributes(stderr)
 
+proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
+  conf.m.fileInfos[fileIdx.int32].lines.add line
+
+proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
+  if i.fileIndex.int32 < 0: return ""
+
+  if not optPreserveOrigSource(conf) and conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
+    try:
+      for line in lines(toFullPath(conf, i)):
+        addSourceLine conf, i.fileIndex, line.string
+    except IOError:
+      discard
+  assert i.fileIndex.int32 < conf.m.fileInfos.len
+  # can happen if the error points to EOF:
+  if i.line.int > conf.m.fileInfos[i.fileIndex.int32].lines.len: return ""
+
+  result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
+
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
   msgWriteln(conf, indent & $sourceLine(conf, info))
@@ -517,24 +534,6 @@ template assertNotNil*(conf: ConfigRef; e): untyped =
 
 template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
-
-proc addSourceLine*(conf: ConfigRef; fileIdx: FileIndex, line: string) =
-  conf.m.fileInfos[fileIdx.int32].lines.add line.rope
-
-proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope =
-  if i.fileIndex.int32 < 0: return nil
-
-  if not optPreserveOrigSource(conf) and conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
-    try:
-      for line in lines(toFullPath(conf, i)):
-        addSourceLine conf, i.fileIndex, line.string
-    except IOError:
-      discard
-  assert i.fileIndex.int32 < conf.m.fileInfos.len
-  # can happen if the error points to EOF:
-  if i.line.int > conf.m.fileInfos[i.fileIndex.int32].lines.len: return nil
-
-  result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
   assert i.fileIndex.int32 >= 0

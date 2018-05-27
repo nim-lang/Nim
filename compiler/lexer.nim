@@ -714,11 +714,6 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     if col > MaxLineLength:
       lexMessagePos(L, hintLineTooLong, pos)
 
-    if optEmbedOrigSrc in L.config.globalOptions:
-      let lineStart = cast[ByteAddress](L.buf) + L.lineStart
-      let line = newString(cast[cstring](lineStart), col)
-      addSourceLine(L.config, L.fileIdx, line)
-
   case L.buf[pos]
   of CR:
     registerLine()
