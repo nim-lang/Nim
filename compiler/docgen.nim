@@ -853,7 +853,6 @@ proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
   commandRstAux(cache, conf, conf.projectFull, HtmlExt)
 
 proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
-  splitter = "\\-"
   commandRstAux(cache, conf, conf.projectFull, TexExt)
 
 proc commandJson*(cache: IdentCache, conf: ConfigRef) =
