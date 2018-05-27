@@ -65,7 +65,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
     var rd: PRodReader
     result.flags = result.flags + flags
     if sfMainModule in result.flags:
-      gMainPackageId = result.owner.id
+      graph.config.mainPackageId = result.owner.id
 
     when false:
       if conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
@@ -107,7 +107,7 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   graph.config.notes =
-      if s.owner.id == gMainPackageId: graph.config.mainPackageNotes
+      if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
       else: graph.config.foreignPackageNotes
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;

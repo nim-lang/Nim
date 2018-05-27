@@ -186,6 +186,7 @@ type
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds
     mainPackageNotes*: TNoteKinds
+    mainPackageId*: int
     errorCounter*: int
     hintCounter*: int
     warnCounter*: int

@@ -330,14 +330,15 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
+    doAssert g.config != nil, "g.config not initialized!"
     let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
-                    " " & fileSection(g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
+                    " " & fileSection(g.config, g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
                   else:
                     ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return fileSection(g.fid, n.info.offsetA, n.info.offsetB) & comment
+      return fileSection(g.config, g.fid, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""

@@ -20,7 +20,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt, service,
+  extccomp, strutils, os, osproc, platform, main, parseopt,
   nodejs, scriptconfig, idents, modulegraphs, lineinfos
 
 when hasTinyCBackend:
@@ -36,6 +36,25 @@ proc prependCurDir(f: string): string =
     else: result = "./" & f
   else:
     result = f
+
+proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
+  var p = parseopt.initOptParser(cmd)
+  var argsCount = 0
+  while true:
+    parseopt.next(p)
+    case p.kind
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
+      if p.key == " ":
+        p.key = "-"
+        if processArgument(pass, p, argsCount, config): break
+      else:
+        processSwitch(pass, p, config)
+    of cmdArgument:
+      if processArgument(pass, p, argsCount, config): break
+  if pass == passCmd2:
+    if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
+      rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   condsyms.initDefines(conf.symbols)

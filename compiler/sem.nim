@@ -505,7 +505,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
     graph.systemModule = module
   c.topLevelScope = openScope(c)
   # don't be verbose unless the module belongs to the main package:
-  if module.owner.id == gMainPackageId:
+  if module.owner.id == graph.config.mainPackageId:
     graph.config.notes = graph.config.mainPackageNotes
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
