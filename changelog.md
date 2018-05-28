@@ -76,6 +76,8 @@
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from ``test`` block of ``unittest`` now show its type in
+  error message
 
 ### Language additions
 

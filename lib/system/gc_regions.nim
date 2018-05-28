@@ -162,6 +162,7 @@ proc allocFast(r: var MemRegion; size: int): pointer =
           return pointer(it)
         prev = it
         it = it.next
+  let size = roundup(size, MemAlign)
   if size > r.remaining:
     allocSlowPath(r, size)
   sysAssert(size <= r.remaining, "size <= r.remaining")
@@ -288,11 +289,13 @@ proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
   result = res +! sizeof(SeqHeader)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  sysAssert typ.kind notin {tySequence, tyString}, "newObj cannot be used to construct seqs"
   result = rawNewObj(tlRegion, typ, size)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
 proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
+  sysAssert typ.kind notin {tySequence, tyString}, "newObj cannot be used to construct seqs"
   result = rawNewObj(tlRegion, typ, size)
   when defined(memProfiler): nimProfile(size)
 

@@ -70,7 +70,8 @@ when defined(windows):
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect].} =
-  ## Returns true if the file exists, false otherwise.
+  ## Returns true if `filename` exists and is a regular file or symlink.
+  ## (directories, device files, named pipes and sockets return false)
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, filename)
