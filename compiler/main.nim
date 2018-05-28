@@ -22,14 +22,14 @@ from magicsys import resetSysTypes
 
 proc rodPass(g: ModuleGraph) =
   if g.config.symbolFiles in {enabledSf, writeOnlySf}:
-    registerPass(rodwritePass)
+    registerPass(g, rodwritePass)
 
-proc codegenPass =
-  registerPass cgenPass
+proc codegenPass(g: ModuleGraph) =
+  registerPass g, cgenPass
 
-proc semanticPasses =
-  registerPass verbosePass
-  registerPass semPass
+proc semanticPasses(g: ModuleGraph) =
+  registerPass g, verbosePass
+  registerPass g, semPass
 
 proc writeDepsFile(g: ModuleGraph; project: string) =
   let f = open(changeFileExt(project, "deps"), fmWrite)
@@ -42,8 +42,8 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
   f.close()
 
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
-  semanticPasses()
-  registerPass(gendependPass)
+  semanticPasses(graph)
+  registerPass(graph, gendependPass)
   #registerPass(cleanupPass)
   compileProject(graph, cache)
   let project = graph.config.projectFull
@@ -55,15 +55,15 @@ proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
 proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
-  semanticPasses()            # use an empty backend for semantic checking only
+  semanticPasses(graph)  # use an empty backend for semantic checking only
   rodPass(graph)
   compileProject(graph, cache)
 
 proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
   graph.config.errorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  if json: registerPass(docgen2JsonPass)
-  else: registerPass(docgen2Pass)
+  semanticPasses(graph)
+  if json: registerPass(graph, docgen2JsonPass)
+  else: registerPass(graph, docgen2Pass)
   #registerPass(cleanupPass())
   compileProject(graph, cache)
   finishDoc2Pass(graph.config.projectName)
@@ -71,8 +71,8 @@ proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
 proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   let conf = graph.config
   extccomp.initVars(conf)
-  semanticPasses()
-  registerPass(cgenPass)
+  semanticPasses(graph)
+  registerPass(graph, cgenPass)
   rodPass(graph)
   #registerPass(cleanupPass())
 
@@ -95,17 +95,17 @@ proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #initDefines()
   defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
   defineSymbol(graph.config.symbols, "js")
-  semanticPasses()
-  registerPass(JSgenPass)
+  semanticPasses(graph)
+  registerPass(graph, JSgenPass)
   compileProject(graph, cache)
 
 proc interactivePasses(graph: ModuleGraph; cache: IdentCache) =
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
-  registerPass(verbosePass)
-  registerPass(semPass)
-  registerPass(evalPass)
+  registerPass(graph, verbosePass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
 
 proc commandInteractive(graph: ModuleGraph; cache: IdentCache) =
   graph.config.errorMax = high(int)  # do not stop after first error
@@ -156,7 +156,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   setupModuleCache()
   # In "nim serve" scenario, each command must reset the registered passes
-  clearPasses()
+  clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
@@ -300,5 +300,3 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
                                        ffDecimal, 3)
 
   resetAttributes(conf)
-
-#proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

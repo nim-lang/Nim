@@ -74,10 +74,10 @@ var
   gPasses: array[0..maxPasses - 1, TPass]
   gPassesLen*: int
 
-proc clearPasses* =
+proc clearPasses*(g: ModuleGraph) =
   gPassesLen = 0
 
-proc registerPass*(p: TPass) =
+proc registerPass*(g: ModuleGraph; p: TPass) =
   gPasses[gPassesLen] = p
   inc(gPassesLen)
 

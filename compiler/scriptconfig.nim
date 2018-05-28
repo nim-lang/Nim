@@ -152,15 +152,14 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 proc runNimScript*(cache: IdentCache; scriptName: string;
                    freshDefines=true; conf: ConfigRef) =
   rawMessage(conf, hintConf, scriptName)
-  passes.gIncludeFile = includeModule
-  passes.gImportModule = importModule
+
   let graph = newModuleGraph(cache, conf)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(semPass)
-  registerPass(evalPass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
 
   conf.searchPaths.add(conf.libpath)
 
