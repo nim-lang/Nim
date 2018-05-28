@@ -1059,8 +1059,12 @@ proc commonSuperclass*(a, b: PType): PType =
     x = x.sons[0]
   var y = b
   while y != nil:
+    var t = y # bug #7818, save type before skip
     y = skipTypes(y, skipPtrs)
-    if ancestors.contains(y.id): return y
+    if ancestors.contains(y.id):
+      # bug #7818, defer the previous skipTypes
+      if t.kind != tyGenericInst: t = t.skipTypes(skipPtrs)
+      return t
     y = y.sons[0]
 
 type
