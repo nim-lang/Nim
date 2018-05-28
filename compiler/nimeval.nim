@@ -19,7 +19,7 @@ proc execute*(program: string) =
   loadConfigs(DefaultConfig)
 
   initDefines()
-  defineSymbol("nimrodvm")
+  defineSymbol("nimvm")
   defineSymbol("nimscript")
   when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)

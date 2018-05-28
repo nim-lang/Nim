@@ -100,8 +100,6 @@ proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   compileProject(graph, cache)
 
 proc interactivePasses(graph: ModuleGraph; cache: IdentCache) =
-  #incl(gGlobalOptions, optSafeCode)
-  #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines(graph.config.symbols)
   defineSymbol(graph.config.symbols, "nimscript")
   when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
