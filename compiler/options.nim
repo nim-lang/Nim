@@ -163,6 +163,7 @@ type
     globalOptions*: TGlobalOptions
     m*: MsgConfig
     evalTemplateCounter*: int
+    evalMacroCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
     selectedGC*: TGCMode       # the selected GC

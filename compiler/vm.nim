@@ -1748,13 +1748,12 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
-var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
-  inc(evalMacroCounter)
-  if evalMacroCounter > evalMacroLimit:
+  inc(g.config.evalMacroCounter)
+  if g.config.evalMacroCounter > evalMacroLimit:
     globalError(g.config, n.info, "macro instantiation too nested")
 
   # immediate macros can bypass any type and arity checking so we check the
@@ -1795,12 +1794,12 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
       if idx < n.len:
         tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
       else:
-        dec(evalMacroCounter)
+        dec(g.config.evalMacroCounter)
         c.callsite = nil
         localError(c.config, n.info, "expected " & $gp.len &
                    " generic parameter(s)")
     elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
-      dec(evalMacroCounter)
+      dec(g.config.evalMacroCounter)
       c.callsite = nil
       globalError(c.config, n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
@@ -1808,5 +1807,5 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
-  dec(evalMacroCounter)
+  dec(g.config.evalMacroCounter)
   c.callsite = nil
