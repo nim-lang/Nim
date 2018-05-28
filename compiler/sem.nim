@@ -158,7 +158,7 @@ proc commonType*(x, y: PType): PType =
       a = a.lastSon.skipTypes({tyGenericInst})
       b = b.lastSon.skipTypes({tyGenericInst})
     if a.kind == tyObject and b.kind == tyObject:
-      result = commonSuperclass(a, b)
+      result = commonSuperclass(a, b, k)
       # this will trigger an error later:
       if result.isNil or result == a: return x
       if result == b: return y

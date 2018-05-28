@@ -1043,7 +1043,7 @@ proc inheritanceDiff*(a, b: PType): int =
     inc(result)
   result = high(int)
 
-proc commonSuperclass*(a, b: PType): PType =
+proc commonSuperclass*(a, b: PType, k: TTypeKind): PType =
   # quick check: are they the same?
   if sameObjectTypes(a, b): return a
 
@@ -1063,7 +1063,7 @@ proc commonSuperclass*(a, b: PType): PType =
     y = skipTypes(y, skipPtrs)
     if ancestors.contains(y.id):
       # bug #7818, defer the previous skipTypes
-      if t.kind != tyGenericInst: t = t.skipTypes(skipPtrs)
+      if k in {tyRef, tyPtr}: t = t.skipTypes(skipPtrs)
       return t
     y = y.sons[0]
 
