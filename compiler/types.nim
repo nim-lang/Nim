@@ -1063,7 +1063,7 @@ proc commonSuperclass*(a, b: PType, k: TTypeKind): PType =
     y = skipTypes(y, skipPtrs)
     if ancestors.contains(y.id):
       # bug #7818, defer the previous skipTypes
-      if k in {tyRef, tyPtr}: t = t.skipTypes(skipPtrs)
+      if k in {tyRef, tyPtr}: t = y
       return t
     y = y.sons[0]
 
