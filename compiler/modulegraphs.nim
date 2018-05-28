@@ -41,6 +41,8 @@ type
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     cache*: IdentCache
+    vm*: RootRef # unfortunately the 'vm' state is shared project-wise, this will
+                 # be clarified in later compiler implementations.
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]

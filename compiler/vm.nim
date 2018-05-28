@@ -1654,18 +1654,12 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-# for now we share the 'globals' environment. XXX Coming soon: An API for
-# storing&loading the 'globals' environment to get what a component system
-# requires.
-var
-  globalCtx*: PCtx
-
 proc setupGlobalCtx(module: PSym; cache: IdentCache; graph: ModuleGraph) =
-  if globalCtx.isNil:
-    globalCtx = newCtx(module, cache, graph)
-    registerAdditionalOps(globalCtx)
+  if graph.vm.isNil:
+    graph.vm = newCtx(module, cache, graph)
+    registerAdditionalOps(PCtx graph.vm)
   else:
-    refresh(globalCtx, module)
+    refresh(PCtx graph.vm, module)
 
 proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   #var c = newEvalContext(module, emRepl)
@@ -1674,9 +1668,9 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
 
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, cache, graph)
-  result = globalCtx
+  result = PCtx graph.vm
   when hasFFI:
-    globalCtx.features = {allowFFI, allowCast}
+    PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
@@ -1698,7 +1692,7 @@ proc evalConstExprAux(module: PSym; cache: IdentCache;
                       mode: TEvalMode): PNode =
   let n = transformExpr(g, module, n)
   setupGlobalCtx(module, cache, g)
-  var c = globalCtx
+  var c = PCtx g.vm
   let oldMode = c.mode
   defer: c.mode = oldMode
   c.mode = mode
@@ -1763,7 +1757,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
         n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
 
   setupGlobalCtx(module, cache, g)
-  var c = globalCtx
+  var c = PCtx g.vm
   c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig

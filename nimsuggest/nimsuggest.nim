@@ -438,7 +438,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
   #echo "recompiling full project"
   resetSystemArtifacts(graph)
-  vm.globalCtx = nil
+  graph.vm = nil
   graph.resetAllModules()
   GC_fullcollect()
   compileProject(graph, cache)

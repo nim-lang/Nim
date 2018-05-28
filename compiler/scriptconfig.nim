@@ -166,14 +166,13 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, cache, scriptName, graph)
+  graph.vm = setupVM(m, cache, scriptName, graph)
 
   graph.compileSystemModule(cache)
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)
-  vm.globalCtx = nil
   # do not remove the defined symbols
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
