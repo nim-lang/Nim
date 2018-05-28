@@ -72,7 +72,7 @@ type
                              # has been used (i.e. the label should be emitted)
     isLoop: bool             # whether it's a 'block' or 'while'
 
-  TGlobals = object
+  PGlobals = ref object of RootObj
     typeInfo, constants, code: Rope
     forwarded: seq[PSym]
     generatedSyms: IntSet
@@ -80,7 +80,6 @@ type
     classes: seq[(PType, Rope)]
     unique: int    # for temp identifier generation
 
-  PGlobals = ref TGlobals
   PProc = ref TProc
   TProc = object
     procDef: PNode
@@ -2170,14 +2169,14 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     discard "XXX to implement for better stack traces"
   else: internalError(p.config, n.info, "gen: unknown node type: " & $n.kind)
 
-var globals: PGlobals # XXX global variable here
-
-proc newModule(module: PSym): BModule =
+proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
   result.sigConflicts = initCountTable[SigHash]()
-  if globals == nil:
-    globals = newGlobals()
+  if g.backend == nil:
+    g.backend = newGlobals()
+  result.graph = g
+  result.config = g.config
 
 proc genHeader(): Rope =
   result = (
@@ -2210,6 +2209,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   let m = BModule(b)
   if passes.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
+  let globals = PGlobals(m.graph.backend)
   var p = newProc(globals, m, nil, m.module.options)
   p.unique = globals.unique
   genModule(p, n)
@@ -2217,6 +2217,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   add(p.g.code, p.body)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
+  let globals = PGlobals(graph.backend)
   for prc in globals.forwarded:
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newProc(globals, m, nil, m.module.options)
@@ -2261,6 +2262,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
+    let globals = PGlobals(graph.backend)
     let ext = "js"
     let f = if globals.classes.len == 0: toFilename(m.config, FileIndex m.module.position)
             else: "nimsystem"
@@ -2280,10 +2282,7 @@ proc myOpenCached(graph: ModuleGraph; s: PSym, rd: PRodReader): PPassContext =
   result = nil
 
 proc myOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
-  var r = newModule(s)
-  r.graph = graph
-  r.config = graph.config
-  result = r
+  result = newModule(graph, s)
 
 const JSgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
 
