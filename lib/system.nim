@@ -2914,6 +2914,14 @@ when not defined(JS): #and not defined(nimscript):
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
     {.pop.}
 
+    proc initNimThread*() =
+      # Should this have the `rtl` pragma?
+      # If I include it, I get a
+      # could not import: nimrtl_initNimThread
+      initStackBottom()
+      when not defined(gcRegions):
+         initGC()
+
 
   # ----------------- IO Part ------------------------------------------------
   type
