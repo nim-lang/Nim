@@ -844,7 +844,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNewStringOfCap:
     # we ignore the 'cap' argument and translate it as 'newString(0)'.
     # eval n.sons[1] for possible side effects:
-    var tmp = c.genx(n.sons[1])
+    c.freeTemp(c.genx(n.sons[1]))
+    var tmp = c.getTemp(n.sons[1].typ)
     c.gABx(n, opcLdImmInt, tmp, 0)
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcNewStr, dest, tmp)

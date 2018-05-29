@@ -82,3 +82,11 @@ block:
 
     assert fileExists("MISSINGFILE") == false
     assert dirExists("MISSINGDIR") == false
+
+# #7210
+block:
+  static:
+    proc f(size: int): int =
+      var some = newStringOfCap(size)
+      result = size
+    doAssert f(4) == 4
