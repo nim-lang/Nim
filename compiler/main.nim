@@ -9,6 +9,9 @@
 
 # implements the command dispatcher and several commands
 
+when not defined(nimcore):
+  {.error: "nimcore MUST be defined for Nim's core tooling".}
+
 import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
   os, condsyms, rodread, rodwrite, times,

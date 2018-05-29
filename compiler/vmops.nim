@@ -107,15 +107,16 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(ceil)
   wrap2f_math(fmod)
 
-  wrap2s(getEnv, ospathsop)
-  wrap1s(existsEnv, ospathsop)
-  wrap2svoid(putEnv, ospathsop)
-  wrap1s(dirExists, osop)
-  wrap1s(fileExists, osop)
-  wrap2svoid(writeFile, systemop)
-  wrap1s(readFile, systemop)
-  systemop getCurrentExceptionMsg
-  registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
-    setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-  systemop gorgeEx
+  when defined(nimcore):
+    wrap2s(getEnv, ospathsop)
+    wrap1s(existsEnv, ospathsop)
+    wrap2svoid(putEnv, ospathsop)
+    wrap1s(dirExists, osop)
+    wrap1s(fileExists, osop)
+    wrap2svoid(writeFile, systemop)
+    wrap1s(readFile, systemop)
+    systemop getCurrentExceptionMsg
+    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    systemop gorgeEx
   macrosop getProjectPath

@@ -1,6 +1,7 @@
 discard """
   output: '''top level statements are executed!
 2.0
+my secret
 '''
 """
 
@@ -16,7 +17,7 @@ proc main() =
     quit "cannot find Nim's standard library"
 
   var intr = createInterpreter("myscript.nim", [std, getAppDir()])
-  intr.declareRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
+  intr.implementRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
     setResult(a, getFloat(a, 0) + getFloat(a, 1) + getFloat(a, 2))
   )
 
@@ -31,6 +32,16 @@ proc main() =
     echo res.floatVal
   else:
     echo "bug!"
+
+  let foreignValue = selectUniqueSymbol(intr, "hostProgramWantsThis")
+  if foreignValue == nil:
+    quit "script does not export a global of the name: hostProgramWantsThis"
+  let val = intr.getGlobalValue(foreignValue)
+  if val.kind in {nkStrLit..nkTripleStrLit}:
+    echo val.strVal
+  else:
+    echo "bug!"
+
   destroyInterpreter(intr)
 
 main()

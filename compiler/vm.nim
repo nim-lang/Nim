@@ -972,7 +972,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         when hasFFI:
           let prcValue = c.globals.sons[prc.position-1]
           if prcValue.kind == nkEmpty:
-            globalError(c.config, c.debug[pc], "canot run " & prc.name.s)
+            globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
           let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
@@ -1336,14 +1336,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      decodeBC(rkNode)
-      inc pc
-      let rd = c.code[pc].regA
+      when defined(nimcore):
+        decodeBC(rkNode)
+        inc pc
+        let rd = c.code[pc].regA
 
-      createStr regs[ra]
-      regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc], c.config)[0]
+        createStr regs[ra]
+        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                      regs[rc].node.strVal, regs[rd].node.strVal,
+                                      c.debug[pc], c.config)[0]
+      else:
+        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError:
       decodeB(rkNode)
       let a = regs[ra].node

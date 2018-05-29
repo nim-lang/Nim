@@ -9,6 +9,9 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
+when not defined(nimcore):
+  {.error: "nimcore MUST be defined for Nim's core tooling".}
+
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to wierd bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
@@ -486,9 +489,9 @@ var
 
 proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   let conf = graph.config
-  clearPasses()
-  registerPass verbosePass
-  registerPass semPass
+  clearPasses(graph)
+  registerPass graph, verbosePass
+  registerPass graph, semPass
   conf.cmd = cmdIdeTools
   incl conf.globalOptions, optCaasEnabled
   wantMainModule(conf)

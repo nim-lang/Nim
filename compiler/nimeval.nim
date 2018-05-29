@@ -29,7 +29,7 @@ iterator exportedSymbols*(i: Interpreter): PSym =
     s = nextIter(it, i.mainModule.tab)
 
 proc selectUniqueSymbol*(i: Interpreter; name: string;
-                         symKinds: set[TSymKind]): PSym =
+                         symKinds: set[TSymKind] = {skLet, skVar}): PSym =
   ## Can be used to access a unique symbol of ``name`` and
   ## the given ``symKinds`` filter.
   assert i != nil
@@ -55,8 +55,11 @@ proc callRoutine*(i: Interpreter; routine: PSym; args: openArray[PNode]): PNode 
   assert i != nil
   result = vm.execProc(PCtx i.graph.vm, routine, args)
 
-proc declareRoutine*(i: Interpreter; pkg, module, name: string;
-                     impl: proc (a: VmArgs) {.closure, gcsafe.}) =
+proc getGlobalValue*(i: Interpreter; letOrVar: PSym): PNode =
+  result = vm.getGlobalValue(PCtx i.graph.vm, letOrVar)
+
+proc implementRoutine*(i: Interpreter; pkg, module, name: string;
+                       impl: proc (a: VmArgs) {.closure, gcsafe.}) =
   assert i != nil
   let vm = PCtx(i.graph.vm)
   vm.registerCallback(pkg & "." & module & "." & name, impl)
