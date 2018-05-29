@@ -370,6 +370,21 @@ proc round*[T: float32|float64](x: T, places: int = 0): T =
     var mult = pow(10.0, places.T)
     result = round0(x*mult)/mult
 
+proc floorDiv*[T: SomeInteger](x, y: T): T =
+  ## Floor division is conceptually defined as ``floor(x / y)``.
+  ## This is different from the ``div`` operator, which is defined
+  ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
+  ## rounds down.
+  result = x div y
+  let r = x mod y
+  if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
+
+proc floorMod*[T: SomeNumber](x, y: T): T =
+  ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y).
+  ## This proc behaves the same as the ``%`` operator in python.
+  result = x mod y
+  if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
+
 when not defined(JS):
   proc c_frexp*(x: float32, exponent: var int32): float32 {.
     importc: "frexp", header: "<math.h>".}
@@ -598,3 +613,19 @@ when isMainModule:
     doAssert fac(2) == 2
     doAssert fac(3) == 6
     doAssert fac(4) == 24
+
+  block: # floorMod/floorDiv
+    doAssert floorDiv(8, 3) == 2
+    doAssert floorMod(8, 3) == 2
+    
+    doAssert floorDiv(8, -3) == -3
+    doAssert floorMod(8, -3) == -1
+
+    doAssert floorDiv(-8, 3) == -3
+    doAssert floorMod(-8, 3) == 1
+
+    doAssert floorDiv(-8, -3) == 2
+    doAssert floorMod(-8, -3) == -2
+
+    doAssert floorMod(8.0, -3.0) ==~ -1.0
+    doAssert floorMod(-8.5, 3.0) ==~ 0.5
