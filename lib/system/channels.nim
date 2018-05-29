@@ -32,8 +32,6 @@ type
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
   Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
-{.deprecated: [TRawChannel: RawChannel, TLoadStoreMode: LoadStoreMode,
-              TChannel: Channel].}
 
 const ChannelDeadMask = -2
 

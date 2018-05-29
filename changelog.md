@@ -77,11 +77,13 @@
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from ``test`` block of ``unittest`` now shows its type in
+  the error message
 
 ### Language additions
 
 - Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See

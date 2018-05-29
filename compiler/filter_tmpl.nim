@@ -42,8 +42,7 @@ proc newLine(p: var TTmplParser) =
 
 proc scanPar(p: var TTmplParser, d: int) =
   var i = d
-  let hi = p.x.len - 1
-  while i <= hi:
+  while i < p.x.len:
     case p.x[i]
     of '(': inc(p.par)
     of ')': dec(p.par)
@@ -63,22 +62,19 @@ const
 
 proc parseLine(p: var TTmplParser) =
   var j = 0
-  let hi = p.x.len - 1
+  let len = p.x.len
 
-  if hi == 0:
-    return
+  while j < len and p.x[j] == ' ': inc(j)
 
-  while j <= hi and p.x[j] == ' ': inc(j)
-
-  if p.x.len >= 2 and p.x[0] == p.nimDirective and p.x[1] == '?':
+  if len >= 2 and p.x[0] == p.nimDirective and p.x[1] == '?':
     newLine(p)
-  elif j < p.x.len and p.x[j] == p.nimDirective:
+  elif j < len and p.x[j] == p.nimDirective:
     newLine(p)
     inc(j)
-    while j <= hi and p.x[j] == ' ': inc(j)
+    while j < len and p.x[j] == ' ': inc(j)
     let d = j
     var keyw = ""
-    while j <= hi and p.x[j] in PatternChars:
+    while j < len and p.x[j] in PatternChars:
       add(keyw, p.x[j])
       inc(j)
 
@@ -132,7 +128,7 @@ proc parseLine(p: var TTmplParser) =
       llStreamWrite(p.outp, "(\"")
       inc(p.emitPar)
     p.state = psTempl
-    while j <= hi:
+    while j < len:
       case p.x[j]
       of '\x01'..'\x1F', '\x80'..'\xFF':
         llStreamWrite(p.outp, "\\x")
@@ -160,7 +156,7 @@ proc parseLine(p: var TTmplParser) =
             llStreamWrite(p.outp, '(')
             inc(j)
             var curly = 0
-            while j <= hi:
+            while j < len:
               case p.x[j]
               of '{':
                 inc(j)
@@ -185,7 +181,7 @@ proc parseLine(p: var TTmplParser) =
             llStreamWrite(p.outp, p.conc)
             llStreamWrite(p.outp, p.toStr)
             llStreamWrite(p.outp, '(')
-            while j <= hi and p.x[j] in PatternChars:
+            while j < len and p.x[j] in PatternChars:
               llStreamWrite(p.outp, p.x[j])
               inc(j)
             llStreamWrite(p.outp, ')')

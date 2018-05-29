@@ -221,7 +221,8 @@ proc newConfigRef*(): ConfigRef =
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
-    docSeeSrcUrl: ""
+    docSeeSrcUrl: "",
+    arguments: ""
   )
   # enable colors by default on terminals
   if terminal.isatty(stderr):
@@ -518,20 +519,6 @@ proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
 proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = optDynlibOverrideAll in conf.globalOptions or
      conf.dllOverrides.hasKey(lib.canonDynlibName)
-
-proc binaryStrSearch*(x: openArray[string], y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmpIgnoreCase(x[mid], y)
-    if c < 0:
-      a = mid + 1
-    elif c > 0:
-      b = mid - 1
-    else:
-      return mid
-  result = - 1
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:

@@ -561,13 +561,16 @@ else:
 
 when not declared(nimNewSeqOfCap):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-    let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
-    when declared(newObjNoInit):
-      result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
+    when defined(gcRegions):
+      result = newStr(typ, cap, ntfNoRefs notin typ.base.flags)
     else:
-      result = newObj(typ, s)
-    cast[PGenericSeq](result).len = 0
-    cast[PGenericSeq](result).reserved = cap
+      let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
+      when declared(newObjNoInit):
+        result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
+      else:
+        result = newObj(typ, s)
+      cast[PGenericSeq](result).len = 0
+      cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
 

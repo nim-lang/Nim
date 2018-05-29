@@ -462,6 +462,8 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
+template exceptionTypeName(e: typed): string = $e.name
+
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
@@ -476,7 +478,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
 
   ensureInitialized()
 
@@ -495,8 +497,10 @@ template test*(name, body) {.dirty.} =
 
     except:
       when not defined(js):
-        checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
-        var stackTrace {.inject.} = getCurrentException().getStackTrace()
+        let e = getCurrentException()
+        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+        checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
+        var stackTrace {.inject.} = e.getStackTrace()
       fail()
 
     finally:
