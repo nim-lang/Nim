@@ -122,14 +122,14 @@ const
   onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## same as binarySearch except that if key is not in `a` then this
-  ## returns the location where `key` would be if it were. In other
-  ## words if you have a sorted sequence and you call
+  ## Returns a position to the first element in the `a` that is greater than `key`, or last
+  ## if no such element is found. In other words if you have a sorted sequence and you call
   ## insert(thing, elm, lowerBound(thing, elm))
   ## the sequence will still be sorted.
   ##
-  ## `cmp` is the comparator function to use, the expected return values are
+  ## The first version uses `cmp` to compare the elements. The expected return values are
   ## the same as that of system.cmp.
+  ## The second version uses the default comparison function `cmp`.
   ##
   ## example::
   ##
@@ -151,14 +151,15 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 
 proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## same as binarySearch except that if key is not in `a` then this
-  ## returns the location where `key` would be if it were. In other
-  ## words if you have a sorted sequence and you call
+  ## Returns a position to the first element in the `a` that is not less
+  ## (i.e. greater or equal to) than `key`, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
   ## insert(thing, elm, upperBound(thing, elm))
   ## the sequence will still be sorted.
   ##
-  ## `cmp` is the comparator function to use, the expected return values are
+  ## The first version uses `cmp` to compare the elements. The expected return values are
   ## the same as that of system.cmp.
+  ## The second version uses the default comparison function `cmp`.
   ##
   ## example::
   ##
