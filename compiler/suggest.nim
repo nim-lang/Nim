@@ -115,7 +115,7 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
       result.forth = typeToString(s.typ)
     else:
       result.forth = ""
-    when not defined(noDocgen):
+    when defined(nimsuggest) and not defined(noDocgen):
       result.doc = s.extractDocComment
   let infox = if section in {ideUse, ideHighlight, ideOutline}: info else: s.info
   result.filePath = toFullPath(conf, infox)
@@ -153,7 +153,7 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     result.add($suggest.column)
     result.add(sep)
-    when not defined(noDocgen):
+    when defined(nimsuggest) and not defined(noDocgen):
       result.add(suggest.doc.escape)
     if suggest.version == 0:
       result.add(sep)
