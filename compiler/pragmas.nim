@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  rodread, types, lookups, lineinfos
+  types, lookups, lineinfos
 
 const
   FirstCallConv* = wNimcall
@@ -482,7 +482,8 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if sub != "":
         var e = searchInScopes(con, getIdent(con.cache, sub))
         if e != nil:
-          if e.kind == skStub: loadStub(e)
+          when false:
+            if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:

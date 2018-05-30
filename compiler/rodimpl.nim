@@ -43,7 +43,7 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
   return false
 
 proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
-  if g.config.symbolFiles != v2Sf: return getID()
+  if g.config.symbolFiles in {disabledSf, writeOnlySf}: return getID()
   let module = g.incr.db.getRow(
     sql"select id, fullHash from modules where fullpath = ?", fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
@@ -57,6 +57,7 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
       doAssert(result != 0)
       var cycleCheck = initIntSet()
       if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
+        echo "cached successfully! ", fullpath
         return -result
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
@@ -342,17 +343,21 @@ proc storeSym(g: ModuleGraph; s: PSym) =
   encodeSym(g, s, buf)
   # XXX only store the name for exported symbols in order to speed up lookup
   # times once we enable the skStub logic.
+  let m = getModule(s)
+  let mid = if m == nil: 0 else: abs(m.id)
   db.exec(sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)",
-    s.id, abs(getModule(s).id), s.name.s, buf, ord(sfExported in s.flags))
+    s.id, mid, s.name.s, buf, ord(sfExported in s.flags))
 
 proc storeType(g: ModuleGraph; t: PType) =
   var buf = newStringOfCap(160)
   encodeType(g, t, buf)
+  let m = if t.owner != nil: getModule(t.owner) else: nil
+  let mid = if m == nil: 0 else: abs(m.id)
   db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
-    t.id, abs(getModule(t.owner).id), buf)
+    t.id, mid, buf)
 
 proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
-  if g.config.symbolFiles != v2Sf: return
+  if g.config.symbolFiles == disabledSf: return
   var buf = newStringOfCap(160)
   encodeNode(g, module.info, n, buf)
   db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
@@ -377,11 +382,14 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
     inc i
 
 proc storeRemaining*(g: ModuleGraph; module: PSym) =
-  if g.config.symbolFiles != v2Sf: return
+  if g.config.symbolFiles == disabledSf: return
+  var stillForwarded: seq[PSym] = @[]
   for s in w.forwardedSyms:
-    assert sfForward notin s.flags
-    storeSym(g, s)
-  w.forwardedSyms.setLen 0
+    if sfForward notin s.flags:
+      storeSym(g, s)
+    else:
+      stillForwarded.add s
+  swap w.forwardedSyms, stillForwarded
 
 # ---------------- decoder -----------------------------------
 
@@ -529,6 +537,8 @@ proc loadBlob(g; query: SqlQuery; id: int): BlobReader =
     internalError(g.config, "symbolfiles: cannot find ID " & $ id)
   result = BlobReader(pos: 0)
   shallowCopy(result.s, blob)
+  # ensure we can read without index checks:
+  result.s.add '\0'
 
 proc loadType(g; id: int; info: TLineInfo): PType =
   result = g.incr.r.types.getOrDefault(id)
@@ -742,6 +752,8 @@ proc loadModuleSymTab(g; module: PSym) =
     if s == nil:
       var b = BlobReader(pos: 0)
       shallowCopy(b.s, row[1])
+      # ensure we can read without index checks:
+      b.s.add '\0'
       s = loadSymFromBlob(g, b, module.info)
     assert s != nil
     strTableAdd(module.tab, s)
@@ -749,7 +761,6 @@ proc loadModuleSymTab(g; module: PSym) =
     g.systemModule = module
 
 proc loadNode*(g: ModuleGraph; module: PSym; index: int): PNode =
-  assert g.config.symbolFiles == v2Sf
   if index == 0:
     loadModuleSymTab(g, module)
     #index = parseInt db.getValue(
@@ -763,7 +774,7 @@ proc loadNode*(g: ModuleGraph; module: PSym; index: int): PNode =
   result = decodeNode(g, b, module.info)
 
 proc setupModuleCache*(g: ModuleGraph) =
-  if g.config.symbolFiles != v2Sf: return
+  if g.config.symbolFiles == disabledSf: return
   let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
   if not fileExists(dbfile):
     db = open(connection=dbfile, user="nim", password="",

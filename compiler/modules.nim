@@ -10,7 +10,7 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
+  ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos
 
@@ -42,7 +42,9 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   result.owner = packSym
   result.position = int fileIdx
 
-  growCache graph.modules, int fileIdx
+  if int(fileIdx) >= graph.modules.len:
+    setLen(graph.modules, int(fileIdx) + 1)
+  #growCache graph.modules, int fileIdx
   graph.modules[result.position] = result
 
   incl(result.flags, sfUsed)

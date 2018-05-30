@@ -14,7 +14,7 @@ when not defined(nimcore):
 
 import
   llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
-  os, condsyms, rodread, rodwrite, times,
+  os, condsyms, times,
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
@@ -22,10 +22,6 @@ import
   modulegraphs, tables, rod, lineinfos
 
 from magicsys import resetSysTypes
-
-proc rodPass(g: ModuleGraph) =
-  if g.config.symbolFiles in {enabledSf, writeOnlySf}:
-    registerPass(g, rodwritePass)
 
 proc codegenPass(g: ModuleGraph) =
   registerPass g, cgenPass
@@ -47,7 +43,6 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses(graph)
   registerPass(graph, gendependPass)
-  #registerPass(cleanupPass)
   compileProject(graph, cache)
   let project = graph.config.projectFull
   writeDepsFile(graph, project)
@@ -59,7 +54,6 @@ proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
-  rodPass(graph)
   compileProject(graph, cache)
 
 proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
@@ -67,7 +61,6 @@ proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
   semanticPasses(graph)
   if json: registerPass(graph, docgen2JsonPass)
   else: registerPass(graph, docgen2Pass)
-  #registerPass(cleanupPass())
   compileProject(graph, cache)
   finishDoc2Pass(graph.config.projectName)
 
@@ -76,8 +69,6 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
-  rodPass(graph)
-  #registerPass(cleanupPass())
 
   compileProject(graph, cache)
   cgenWriteModules(graph.backend, conf)

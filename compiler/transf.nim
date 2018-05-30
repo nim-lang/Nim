@@ -20,7 +20,7 @@
 
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
-  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
+  idents, renderer, types, passes, semfold, magicsys, cgmeth,
   lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals,
   modulegraphs, lineinfos
 
@@ -916,7 +916,7 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
-  if c.rd != nil or nfTransf in n.flags: return n
+  if nfTransf in n.flags: return n
   pushTransCon(c, newTransCon(owner))
   result = PNode(transform(c, n))
   popTransCon(c)

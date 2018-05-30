@@ -13,13 +13,13 @@
 import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod,
+  nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
   lineinfos
 
 
 type
+  PRodReader* = ref object
   TPassContext* = object of RootObj # the pass's context
-    rd*: PRodReader  # != nil if created by "openCached"
 
   PPassContext* = ref TPassContext
 
@@ -107,8 +107,6 @@ proc openPassesCached(g: ModuleGraph; a: var TPassContextArray, module: PSym,
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].openCached):
       a[i] = gPasses[i].openCached(g, module, rd)
-      if a[i] != nil:
-        a[i].rd = rd
     else:
       a[i] = nil
 
@@ -198,7 +196,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
       if not isNil(gPasses[i].close) and not gPasses[i].isFrontend:
         m = gPasses[i].close(graph, a[i], m)
       a[i] = nil
-  elif rd == nil:
+  else:
     openPasses(graph, a, module, cache)
     if stream == nil:
       let filename = toFullPathConsiderDirty(graph.config, fileIdx)
@@ -241,11 +239,4 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     closePasses(graph, a)
     # id synchronization point for more consistent code generation:
     idSynchronizationPoint(1000)
-  else:
-    openPassesCached(graph, a, module, rd)
-    var n = loadInitSection(rd)
-    for i in countup(0, sonsLen(n) - 1):
-      if graph.stopCompile(): break
-      processTopLevelStmtCached(n.sons[i], a)
-    closePassesCached(graph, a)
   result = true

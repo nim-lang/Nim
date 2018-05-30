@@ -626,9 +626,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "help", "h":
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
-  of "symbolfiles":
+  of "symbolfiles", "incremental":
     case arg.normalize
-    of "on": conf.symbolFiles = enabledSf
+    of "on": conf.symbolFiles = v2Sf
     of "off": conf.symbolFiles = disabledSf
     of "writeonly": conf.symbolFiles = writeOnlySf
     of "readonly": conf.symbolFiles = readOnlySf

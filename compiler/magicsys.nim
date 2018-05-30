@@ -10,7 +10,7 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread,
+  ast, astalgo, hashes, msgs, platform, nversion, times, idents,
   modulegraphs, lineinfos
 
 export createMagic
@@ -31,7 +31,6 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
     localError(g.config, info, "system module needs: " & name)
     result = newSym(skError, getIdent(g.cache, name), g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, g.systemModule)
-  if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
@@ -39,7 +38,6 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   let id = getIdent(g.cache, name)
   var r = initIdentIter(ti, g.systemModule.tab, id)
   while r != nil:
-    if r.kind == skStub: loadStub(r)
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ.sons[0] != nil and r.typ.sons[0].kind == tyInt: return r
@@ -159,13 +157,6 @@ proc setIntLitType*(g: ModuleGraph; result: PNode) =
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
-  when false:
-    if result == nil:
-      result = strTableGet(g.rodCompilerprocs, ident)
-      if result != nil:
-        strTableAdd(g.compilerprocs, result)
-        if result.kind == skStub: loadStub(result)
-        if result.kind == skAlias: result = result.owner
 
 proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
   strTableAdd(g.compilerprocs, s)

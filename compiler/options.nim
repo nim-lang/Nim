@@ -121,7 +121,7 @@ type
     notnil
 
   SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
@@ -362,7 +362,7 @@ proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc,
 proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  conf.symbolFiles in {enabledSf, writeOnlySf}
+  conf.symbolFiles in {v2Sf, writeOnlySf}
 #  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =

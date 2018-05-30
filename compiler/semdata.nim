@@ -13,7 +13,7 @@ import
   strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
+  magicsys, nversion, nimsets, parser, times, passes, vmdef,
   modulegraphs, lineinfos
 
 type

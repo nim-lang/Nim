@@ -116,7 +116,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, rodread, tables, modulegraphs,
+  strutils, options, dfa, lowerings, tables, modulegraphs,
   lineinfos
 
 const

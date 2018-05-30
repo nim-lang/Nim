@@ -12,7 +12,7 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
+  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel, tables, sets, ndi, lineinfos
 
@@ -1306,7 +1306,9 @@ proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
 proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
-  growCache g.modules, module.position
+  if module.position >= g.modules.len:
+    setLen(g.modules, module.position + 1)
+  #growCache g.modules, module.position
   g.modules[module.position] = result
 
 template injectG() {.dirty.} =
@@ -1417,7 +1419,7 @@ proc writeModule(m: BModule, pending: bool) =
   # generate code for the init statements of the module:
   let cfile = getCFile(m)
 
-  if m.rd == nil or optForceFullMake in m.config.globalOptions:
+  if true or optForceFullMake in m.config.globalOptions:
     genInitCode(m)
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
@@ -1476,7 +1478,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   # if the module is cached, we don't regenerate the main proc
   # nor the dispatchers? But if the dispatchers changed?
   # XXX emit the dispatchers into its own .c file?
-  if b.rd != nil: return
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genStmts(m.initProc, n)
@@ -1499,13 +1500,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):
-      if m.rd == nil:
-        finishModule(m)
+      finishModule(m)
   for m in cgenModules(g):
-    if m.rd != nil:
-      m.updateCachedModule
-    else:
-      m.writeModule(pending=true)
+    m.writeModule(pending=true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 

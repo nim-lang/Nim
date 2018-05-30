@@ -11,7 +11,7 @@
 
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
-  idents, renderer, types, magicsys, rodread, lowerings, tables,
+  idents, renderer, types, magicsys, lowerings, tables,
   modulegraphs, lineinfos
 
 discard """

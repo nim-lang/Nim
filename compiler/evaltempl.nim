@@ -11,7 +11,7 @@
 
 import
   strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  rodread, lineinfos
+  lineinfos
 
 type
   TemplCtx = object

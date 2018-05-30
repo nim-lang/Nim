@@ -11,7 +11,7 @@
 
 import ".." / [ast, astalgo,
   magicsys, lookups, semdata,
-  lambdalifting, rodread, msgs]
+  lambdalifting, msgs]
 
 proc iterToProcImpl*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)

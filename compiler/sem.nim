@@ -13,7 +13,7 @@ import
   ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
+  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
   semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
@@ -513,10 +513,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   result = c
 
 proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
-  result = myOpen(graph, module, rd.cache)
-
-proc replayMethodDefs(graph: ModuleGraph; rd: PRodReader) =
-  for m in items(rd.methods): methodDef(graph, m, true)
+  result = myOpen(graph, module, graph.cache)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
@@ -623,8 +620,6 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)
-  if c.rd != nil:
-    replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
   storeRemaining(c.graph, c.module)

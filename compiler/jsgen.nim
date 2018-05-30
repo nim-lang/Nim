@@ -31,8 +31,8 @@ implements the required case distinction.
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
-  times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings, sighashes, lineinfos
+  times, ropes, math, passes, ccgutils, wordrecg, renderer,
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils
 
 from modulegraphs import ModuleGraph
 

@@ -10,7 +10,7 @@
 # This module implements the symbol importing mechanism.
 
 import
-  intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
+  intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
   semdata, passes, renderer, modulepaths, sigmatch, lineinfos
 
 proc evalImport*(c: PContext, n: PNode): PNode
@@ -74,7 +74,8 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
-    if s.kind == skStub: loadStub(s)
+    when false:
+      if s.kind == skStub: loadStub(s)
     if s.kind notin ExportableSymKinds:
       internalError(c.config, n.info, "importSymbol: 2")
     # for an enumeration we have to add all identifiers
