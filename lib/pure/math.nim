@@ -130,7 +130,7 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   for i in items(x): result = result + i
 
 {.push noSideEffect.}
-when not defined(JS):
+when not defined(JS): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## Computes the square root of `x`.
@@ -144,11 +144,32 @@ when not defined(JS):
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of `x`
-  proc log2*[T: float32|float64](x: T): T = return ln(x) / ln(2.0)
+  proc log2*(x: float32): float32 {.importc: "log2f", header: "<math.h>".}
+  proc log2*(x: float64): float64 {.importc: "log2", header: "<math.h>".}
     ## Computes the binary logarithm (base 2) of `x`
   proc exp*(x: float32): float32 {.importc: "expf", header: "<math.h>".}
   proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
     ## Computes the exponential function of `x` (pow(E, x))
+
+  proc sin*(x: float32): float32 {.importc: "sinf", header: "<math.h>".}
+  proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
+    ## Computes the sine of `x`
+  proc cos*(x: float32): float32 {.importc: "cosf", header: "<math.h>".}
+  proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
+    ## Computes the cosine of `x`
+  proc tan*(x: float32): float32 {.importc: "tanf", header: "<math.h>".}
+  proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
+    ## Computes the tangent of `x`
+
+  proc sinh*(x: float32): float32 {.importc: "sinhf", header: "<math.h>".}
+  proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
+    ## Computes the hyperbolic sine of `x`
+  proc cosh*(x: float32): float32 {.importc: "coshf", header: "<math.h>".}
+  proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
+    ## Computes the hyperbolic cosine of `x`
+  proc tanh*(x: float32): float32 {.importc: "tanhf", header: "<math.h>".}
+  proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
+    ## Computes the hyperbolic tangent of `x`
 
   proc arccos*(x: float32): float32 {.importc: "acosf", header: "<math.h>".}
   proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
@@ -166,32 +187,79 @@ when not defined(JS):
     ## results even when the resulting angle is near pi/2 or -pi/2
     ## (`x` near 0).
 
-  proc cos*(x: float32): float32 {.importc: "cosf", header: "<math.h>".}
-  proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
-    ## Computes the cosine of `x`
+  proc arcsinh*(x: float32): float32 {.importc: "asinhf", header: "<math.h>".}
+  proc arcsinh*(x: float64): float64 {.importc: "asinh", header: "<math.h>".}
+    ## Computes the inverse hyperbolic sine of `x`
+  proc arccosh*(x: float32): float32 {.importc: "acoshf", header: "<math.h>".}
+  proc arccosh*(x: float64): float64 {.importc: "acosh", header: "<math.h>".}
+    ## Computes the inverse hyperbolic cosine of `x`
+  proc arctanh*(x: float32): float32 {.importc: "atanhf", header: "<math.h>".}
+  proc arctanh*(x: float64): float64 {.importc: "atanh", header: "<math.h>".}
+    ## Computes the inverse hyperbolic tangent of `x`
 
-  proc cosh*(x: float32): float32 {.importc: "coshf", header: "<math.h>".}
-  proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
-    ## Computes the hyperbolic cosine of `x`
+else: # JS
+  proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
+  proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
 
+  proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
+  proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
+  proc log10*(x: float32): float32 {.importc: "Math.log10", nodecl.}
+  proc log10*(x: float64): float64 {.importc: "Math.log10", nodecl.}
+  proc log2*(x: float32): float32 {.importc: "Math.log2", nodecl.}
+  proc log2*(x: float64): float64 {.importc: "Math.log2", nodecl.}
+  proc exp*(x: float32): float32 {.importc: "Math.exp", nodecl.}
+  proc exp*(x: float64): float64 {.importc: "Math.exp", nodecl.}
+
+  proc sin*[T: float32|float64](x: T): T {.importc: "Math.sin", nodecl.}
+  proc cos*[T: float32|float64](x: T): T {.importc: "Math.cos", nodecl.}
+  proc tan*[T: float32|float64](x: T): T {.importc: "Math.tan", nodecl.}
+
+  proc sinh*[T: float32|float64](x: T): T {.importc: "Math.sinh", nodecl.}
+  proc cosh*[T: float32|float64](x: T): T {.importc: "Math.cosh", nodecl.}
+  proc tanh*[T: float32|float64](x: T): T {.importc: "Math.tanh", nodecl.}
+
+  proc arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
+  proc arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
+  proc arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
+  proc arctan2*[T: float32|float64](y, x: T): T {.importC: "Math.atan2", nodecl.}
+
+  proc arcsinh*[T: float32|float64](x: T): T {.importc: "Math.asinh", nodecl.}
+  proc arccosh*[T: float32|float64](x: T): T {.importc: "Math.acosh", nodecl.}
+  proc arctanh*[T: float32|float64](x: T): T {.importc: "Math.atanh", nodecl.}
+
+proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
+  ## Computes the cotangent of `x`
+proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
+  ## Computes the secant of `x`.
+proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
+  ## Computes the cosecant of `x`
+
+proc coth*[T: float32|float64](x: T): T = 1.0 / tanh(x)
+  ## Computes the hyperbolic cotangent of `x`
+proc sech*[T: float32|float64](x: T): T = 1.0 / cosh(x)
+  ## Computes the hyperbolic secant of `x`
+proc csch*[T: float32|float64](x: T): T = 1.0 / sinh(x)
+  ## Computes the hyperbolic cosecant of `x`
+
+proc arccot*[T: float32|float64](x: T): T = arctan(1.0 / x)
+  ## Computes the inverse cotangent of `x`
+proc arcsec*[T: float32|float64](x: T): T = arccos(1.0 / x)
+  ## Computes the inverse secant of `x`
+proc arccsc*[T: float32|float64](x: T): T = arcsin(1.0 / x)
+  ## Computes the inverse cosecant of `x`
+
+proc arccoth*[T: float32|float64](x: T): T = arctanh(1.0 / x)
+  ## Computes the inverse hyperbolic cotangent of `x`
+proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
+  ## Computes the inverse hyperbolic secant of `x`
+proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
+  ## Computes the inverse hyperbolic cosecant of `x`
+
+when not defined(JS): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## Computes the hypotenuse of a right-angle triangle with `x` and
     ## `y` as its base and height. Equivalent to ``sqrt(x*x + y*y)``.
-
-  proc sinh*(x: float32): float32 {.importc: "sinhf", header: "<math.h>".}
-  proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
-    ## Computes the hyperbolic sine of `x`
-  proc sin*(x: float32): float32 {.importc: "sinf", header: "<math.h>".}
-  proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
-    ## Computes the sine of `x`
-
-  proc tan*(x: float32): float32 {.importc: "tanf", header: "<math.h>".}
-  proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
-    ## Computes the tangent of `x`
-  proc tanh*(x: float32): float32 {.importc: "tanhf", header: "<math.h>".}
-  proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
-    ## Computes the hyperbolic tangent of `x`
 
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
@@ -305,51 +373,17 @@ when not defined(JS):
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
     ## Computes the modulo operation for float operators. 
-
-else:
-  proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
-  proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
+else: # JS
+  proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
+  proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
+  proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   proc ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-
-  proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
-  proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
-  proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
-  proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
-  proc log10*[T: float32|float64](x: T): T = return ln(x) / ln(10.0)
-  proc log2*[T: float32|float64](x: T): T = return ln(x) / ln(2.0)
-
-  proc exp*(x: float32): float32 {.importc: "Math.exp", nodecl.}
-  proc exp*(x: float64): float64 {.importc: "Math.exp", nodecl.}
   proc round0(x: float): float {.importc: "Math.round", nodecl.}
-
-  proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
-  proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
-
-  proc arccos*(x: float32): float32 {.importc: "Math.acos", nodecl.}
-  proc arccos*(x: float64): float64 {.importc: "Math.acos", nodecl.}
-  proc arcsin*(x: float32): float32 {.importc: "Math.asin", nodecl.}
-  proc arcsin*(x: float64): float64 {.importc: "Math.asin", nodecl.}
-  proc arctan*(x: float32): float32 {.importc: "Math.atan", nodecl.}
-  proc arctan*(x: float64): float64 {.importc: "Math.atan", nodecl.}
-  proc arctan2*(y, x: float32): float32 {.importC: "Math.atan2", nodecl.}
-  proc arctan2*(y, x: float64): float64 {.importc: "Math.atan2", nodecl.}
-
-  proc cos*(x: float32): float32 {.importc: "Math.cos", nodecl.}
-  proc cos*(x: float64): float64 {.importc: "Math.cos", nodecl.}
-  proc cosh*(x: float32): float32 = return (exp(x)+exp(-x))*0.5
-  proc cosh*(x: float64): float64 = return (exp(x)+exp(-x))*0.5
-  proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
-  proc sinh*[T: float32|float64](x: T): T = return (exp(x)-exp(-x))*0.5
-  proc sin*(x: float32): float32 {.importc: "Math.sin", nodecl.}
-  proc sin*(x: float64): float64 {.importc: "Math.sin", nodecl.}
-  proc tan*(x: float32): float32 {.importc: "Math.tan", nodecl.}
-  proc tan*(x: float64): float64 {.importc: "Math.tan", nodecl.}
-  proc tanh*[T: float32|float64](x: T): T =
-    var y = exp(2.0*x)
-    return (y-1.0)/(y+1.0)
+  proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
+  proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 
   proc `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
   proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
