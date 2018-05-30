@@ -40,7 +40,7 @@
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
-  (previously it used floor division like Python).
+  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
 #### Breaking changes in the compiler
 
@@ -61,6 +61,7 @@
   e.g days to seconds.
 - Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
 - Added the proc ``algorithm.upperBound``.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 
 ### Library changes
 
