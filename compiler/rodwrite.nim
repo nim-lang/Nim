@@ -622,12 +622,6 @@ proc process(c: PPassContext, n: PNode): PNode =
       # Note: The check for ``s.typ.kind = tyEnum`` is wrong for enum
       # type aliasing! Otherwise the same enum symbol would be included
       # several times!
-      #
-      #        if (a.sons[2] <> nil) and (a.sons[2].kind = nkEnumTy) then begin
-      #          a := s.typ.n;
-      #          for j := 0 to sonsLen(a)-1 do
-      #            addInterfaceSym(w, a.sons[j].sym);
-      #        end
   of nkImportStmt:
     for i in countup(0, sonsLen(n) - 1):
       addModDep(w, getModuleName(w.config, n.sons[i]), n.info)

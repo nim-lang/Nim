@@ -157,7 +157,7 @@ const
 proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   let conf = graph.config
 
-  setupModuleCache()
+  setupModuleCache(graph)
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses(graph)
   conf.lastCmdTime = epochTime()

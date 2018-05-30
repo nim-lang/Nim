@@ -180,7 +180,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     var stmtIndex = 0
     var doContinue = true
     while doContinue:
-      let n = loadNode(module, stmtIndex)
+      let n = loadNode(graph, module, stmtIndex)
       if n == nil or graph.stopCompile(): break
       #if n.kind == nkImportStmt:
       #  echo "yes and it's ", n

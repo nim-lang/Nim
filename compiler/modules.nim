@@ -75,7 +75,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
           return
       else:
         discard
-    result.id = getModuleId(fileIdx, toFullPath(graph.config, fileIdx))
+    result.id = getModuleId(graph, fileIdx, toFullPath(graph.config, fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)
@@ -107,8 +107,8 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   graph.config.notes =
-      if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
-      else: graph.config.foreignPackageNotes
+    if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
+    else: graph.config.foreignPackageNotes
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =

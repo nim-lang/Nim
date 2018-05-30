@@ -597,7 +597,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  rod.storeNode(c.module, result)
+  rod.storeNode(c.graph, c.module, result)
 
 proc testExamples(c: PContext) =
   let inp = toFullPath(c.config, c.module.info)
@@ -627,7 +627,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
-  storeRemaining(c.module)
+  storeRemaining(c.graph, c.module)
   if c.runnableExamples != nil: testExamples(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,

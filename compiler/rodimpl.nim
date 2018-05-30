@@ -22,15 +22,10 @@ import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
 ## - Depencency computation should use signature hashes in order to
 ##   avoid recompiling dependent modules.
 
-var db: DbConn
+template db(): DbConn = g.incr.db
 
-proc hashFileCached(fileIdx: int32; fullpath: string): string =
-  result = msgs.getHash(fileIdx)
-  if result.len == 0:
-    result = $secureHashFile(fullpath)
-    msgs.setHash(fileIdx, result)
-
-proc needsRecompile(fileIdx: int32; fullpath: string; cycleCheck: var IntSet): bool =
+proc needsRecompile(g: ModuleGraph; fileIdx: int32; fullpath: string;
+                    cycleCheck: var IntSet): bool =
   let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
     fullpath)
   if root[0].len == 0: return true
@@ -43,11 +38,11 @@ proc needsRecompile(fileIdx: int32; fullpath: string; cycleCheck: var IntSet): b
   for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
                          root[0]):
     let dep = row[0]
-    if needsRecompile(dep.fileInfoIdx, dep, cycleCheck):
+    if needsRecompile(g, dep.fileInfoIdx, dep, cycleCheck):
       return true
   return false
 
-proc getModuleId*(fileIdx: int32; fullpath: string): int =
+proc getModuleId*(g: ModuleGraph; fileIdx: int32; fullpath: string): int =
   if gSymbolFiles != v2Sf: return getID()
   let module = db.getRow(
     sql"select id, fullHash from modules where fullpath = ?", fullpath)
@@ -102,27 +97,6 @@ proc pushType(w: PRodWriter, t: PType) =
 proc pushSym(w: PRodWriter, s: PSym) =
   if not containsOrIncl(w.smarks, s.id):
     w.sstack.add(s)
-
-proc toDbFileId(fileIdx: int32): int =
-  if fileIdx == -1: return -1
-  let fullpath = fileIdx.toFullPath
-  let row = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
-    fullpath)
-  let id = row[0]
-  let fullhash = hashFileCached(fileIdx, fullpath)
-  if id.len == 0:
-    result = int db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
-      fullpath, fullhash)
-  else:
-    if row[1] != fullhash:
-      db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
-    result = parseInt(id)
-
-proc fromDbFileId(dbId: int): int32 =
-  if dbId == -1: return -1
-  let fullpath = db.getValue(sql"select fullpath from filenames where id = ?", dbId)
-  doAssert fullpath.len > 0, "cannot find file name for DB ID " & $dbId
-  result = fileInfoIdx(fullpath)
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
                 result: var string) =
@@ -395,7 +369,7 @@ proc storeType(w: PRodWriter; t: PType) =
 
 var w = initRodWriter(nil)
 
-proc storeNode*(module: PSym; n: PNode) =
+proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
   if gSymbolFiles != v2Sf: return
   w.module = module
   var buf = newStringOfCap(160)
@@ -421,7 +395,7 @@ proc storeNode*(module: PSym; n: PNode) =
       break
     inc i
 
-proc storeRemaining*(module: PSym) =
+proc storeRemaining*(g: ModuleGraph; module: PSym) =
   if gSymbolFiles != v2Sf: return
   w.module = module
   for s in w.forwardedSyms:
@@ -437,7 +411,7 @@ type
     #tstack: seq[(PType, ptr PType)]     # a stack of types to process
 
     #tmarks, smarks: IntSet
-    syms: Table[int, PSym] ## XXX make this more efficients
+    syms: Table[int, PSym] ## XXX make this more efficient
     types: Table[int, PType]
     cache: IdentCache
 
@@ -813,7 +787,7 @@ proc loadModuleSymTab(r; module: PSym) =
   if sfSystemModule in module.flags:
     magicsys.systemModule = module
 
-proc loadNode*(module: PSym; index: int): PNode =
+proc loadNode*(g: ModuleGraph; module: PSym; index: int): PNode =
   assert gSymbolFiles == v2Sf
   if index == 0:
     loadModuleSymTab(gr, module)
@@ -828,110 +802,9 @@ proc loadNode*(module: PSym; index: int): PNode =
   gr.module = module
   result = decodeNode(gr, b, module.info)
 
-proc addModuleDep*(module, fileIdx: int32; isIncludeFile: bool) =
+proc setupModuleCache*(g: ModuleGraph) =
   if gSymbolFiles != v2Sf: return
-
-  let a = toDbFileId(module)
-  let b = toDbFileId(fileIdx)
-
-  db.exec(sql"insert into deps(module, dependency, isIncludeFile) values (?, ?, ?)",
-    a, b, ord(isIncludeFile))
-
-# --------------- Database model ---------------------------------------------
-
-proc createDb() =
-  db.exec(sql"""
-    create table if not exists controlblock(
-      idgen integer not null
-    );
-  """)
-
-  db.exec(sql"""
-    create table if not exists filenames(
-      id integer primary key,
-      fullpath varchar(8000) not null,
-      fullHash varchar(256) not null
-    );
-  """)
-  db.exec sql"create index if not exists FilenameIx on filenames(fullpath);"
-
-  db.exec(sql"""
-    create table if not exists modules(
-      id integer primary key,
-      fullpath varchar(8000) not null,
-      interfHash varchar(256) not null,
-      fullHash varchar(256) not null,
-
-      created timestamp not null default (DATETIME('now'))
-    );""")
-  db.exec(sql"""create unique index if not exists SymNameIx on modules(fullpath);""")
-
-  db.exec(sql"""
-    create table if not exists deps(
-      id integer primary key,
-      module integer not null,
-      dependency integer not null,
-      isIncludeFile integer not null,
-      foreign key (module) references filenames(id),
-      foreign key (dependency) references filenames(id)
-    );""")
-  db.exec(sql"""create index if not exists DepsIx on deps(module);""")
-
-  db.exec(sql"""
-    create table if not exists types(
-      id integer primary key,
-      nimid integer not null,
-      module integer not null,
-      data blob not null,
-      foreign key (module) references module(id)
-    );
-  """)
-  db.exec sql"create index TypeByModuleIdx on types(module);"
-  db.exec sql"create index TypeByNimIdIdx on types(nimid);"
-
-  db.exec(sql"""
-    create table if not exists syms(
-      id integer primary key,
-      nimid integer not null,
-      module integer not null,
-      name varchar(256) not null,
-      data blob not null,
-      exported int not null,
-      foreign key (module) references module(id)
-    );
-  """)
-  db.exec sql"create index if not exists SymNameIx on syms(name);"
-  db.exec sql"create index SymByNameAndModuleIdx on syms(name, module);"
-  db.exec sql"create index SymByModuleIdx on syms(module);"
-  db.exec sql"create index SymByNimIdIdx on syms(nimid);"
-
-
-  db.exec(sql"""
-    create table if not exists toplevelstmts(
-      id integer primary key,
-      position integer not null,
-      module integer not null,
-      data blob not null,
-      foreign key (module) references module(id)
-    );
-  """)
-  db.exec sql"create index TopLevelStmtByModuleIdx on toplevelstmts(module);"
-  db.exec sql"create index TopLevelStmtByPositionIdx on toplevelstmts(position);"
-
-  db.exec(sql"""
-    create table if not exists statics(
-      id integer primary key,
-      module integer not null,
-      data blob not null,
-      foreign key (module) references module(id)
-    );
-  """)
-  db.exec sql"create index StaticsByModuleIdx on toplevelstmts(module);"
-  db.exec sql"insert into controlblock(idgen) values (0)"
-
-proc setupModuleCache* =
-  if gSymbolFiles != v2Sf: return
-  let dbfile = getNimcacheDir() / "rodfiles.db"
+  let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
   if not fileExists(dbfile):
     db = open(connection=dbfile, user="nim", password="",
               database="nim")
