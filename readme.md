@@ -16,6 +16,8 @@ the latest release, check out [Nim's website][nim-site].
   Also where most development decisions get made.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
+* [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
+  is the official Telegram channel.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
 * [Github Wiki][nim-wiki] - Misc user-contributed content.
@@ -192,6 +194,7 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
+[nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
