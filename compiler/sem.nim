@@ -158,11 +158,12 @@ proc commonType*(x, y: PType): PType =
       a = a.lastSon.skipTypes({tyGenericInst})
       b = b.lastSon.skipTypes({tyGenericInst})
     if a.kind == tyObject and b.kind == tyObject:
-      result = commonSuperclass(a, b, k)
+      result = commonSuperclass(a, b)
       # this will trigger an error later:
       if result.isNil or result == a: return x
       if result == b: return y
-      if k != tyNone:
+      # bug #7906
+      if k != tyNone and x.kind != tyGenericInst:
         let r = result
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
