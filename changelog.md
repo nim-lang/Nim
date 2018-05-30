@@ -58,6 +58,8 @@
   e.g days to seconds.
 - Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
 - Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
 
 ### Library changes
 
