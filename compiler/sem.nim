@@ -607,7 +607,7 @@ proc testExamples(c: PContext) =
                 elif isDefined(c.config, "cpp"): "cpp"
                 elif isDefined(c.config, "objc"): "objc"
                 else: "c"
-  if os.execShellCmd("nim " & backend & " -r " & outp) != 0:
+  if os.execShellCmd(os.getAppFilename() & " " & backend & " -r " & outp) != 0:
     quit "[Examples] failed"
   removeFile(outp)
 
