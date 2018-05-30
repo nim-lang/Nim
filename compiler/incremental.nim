@@ -15,7 +15,8 @@ const nimIncremental* = defined(nimIncremental)
 import options, lineinfos
 
 when nimIncremental:
-  import ast, intsets, btrees, db_sqlite
+  import ast, msgs, intsets, btrees, db_sqlite, std / sha1
+  from strutils import parseInt
 
   type
     Writer* = object
@@ -44,30 +45,29 @@ when nimIncremental:
 
 
   proc hashFileCached*(conf: ConfigRef; fileIdx: FileIndex; fullpath: string): string =
-    result = msgs.getHash(fileIdx)
+    result = msgs.getHash(conf, fileIdx)
     if result.len == 0:
       result = $secureHashFile(fullpath)
-      msgs.setHash(fileIdx, result)
+      msgs.setHash(conf, fileIdx, result)
 
-
-  proc toDbFileId*(fileIdx: int32): int =
-    if fileIdx == -1: return -1
-    let fullpath = fileIdx.toFullPath
-    let row = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
+  proc toDbFileId*(incr: var IncrementalCtx; conf: ConfigRef; fileIdx: FileIndex): int =
+    if fileIdx == FileIndex(-1): return -1
+    let fullpath = toFullPath(conf, fileIdx)
+    let row = incr.db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
       fullpath)
     let id = row[0]
-    let fullhash = hashFileCached(fileIdx, fullpath)
+    let fullhash = hashFileCached(conf, fileIdx, fullpath)
     if id.len == 0:
-      result = int db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
+      result = int incr.db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
         fullpath, fullhash)
     else:
       if row[1] != fullhash:
-        db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
+        incr.db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
       result = parseInt(id)
 
   proc fromDbFileId*(incr: var IncrementalCtx; conf: ConfigRef; dbId: int): FileIndex =
-    if dbId == -1: return -1
-    let fullpath = db.getValue(sql"select fullpath from filenames where id = ?", dbId)
+    if dbId == -1: return FileIndex(-1)
+    let fullpath = incr.db.getValue(sql"select fullpath from filenames where id = ?", dbId)
     doAssert fullpath.len > 0, "cannot find file name for DB ID " & $dbId
     result = fileInfoIdx(conf, fullpath)
 
