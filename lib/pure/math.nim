@@ -363,13 +363,16 @@ when not defined(JS): # C
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
 
-  proc fmod*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float32): float32 {.deprecated, importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated, importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of `x` divided by `y`
     ##
     ## .. code-block:: nim
     ##  echo fmod(-2.5, 0.3) ## -0.1
 
+  proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
+  proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
+    ## Computes the modulo operation for float operators. 
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
@@ -381,6 +384,10 @@ else: # JS
   proc round0(x: float): float {.importc: "Math.round", nodecl.}
   proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
+
+  proc `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
+  proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
+  ## Computes the modulo operation for float operators.
 
 proc round*[T: float32|float64](x: T, places: int = 0): T =
   ## Round a floating point number.
@@ -396,6 +403,21 @@ proc round*[T: float32|float64](x: T, places: int = 0): T =
   else:
     var mult = pow(10.0, places.T)
     result = round0(x*mult)/mult
+
+proc floorDiv*[T: SomeInteger](x, y: T): T =
+  ## Floor division is conceptually defined as ``floor(x / y)``.
+  ## This is different from the ``div`` operator, which is defined
+  ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
+  ## rounds down.
+  result = x div y
+  let r = x mod y
+  if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
+
+proc floorMod*[T: SomeNumber](x, y: T): T =
+  ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y).
+  ## This proc behaves the same as the ``%`` operator in python.
+  result = x mod y
+  if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
 when not defined(JS):
   proc c_frexp*(x: float32, exponent: var int32): float32 {.
@@ -460,15 +482,6 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
   ## `NaN`.
   ord(T(0) < x) - ord(x < T(0))
-
-proc `mod`*[T: float32|float64](x, y: T): T =
-  ## Computes the modulo operation for float operators. Equivalent
-  ## to ``x - y * floor(x/y)``. Note that the remainder will always
-  ## have the same sign as the divisor.
-  ##
-  ## .. code-block:: nim
-  ##  echo (4.0 mod -3.1) # -2.2
-  result = if y == 0.0: x else: x - y * (x/y).floor
 
 {.pop.}
 {.pop.}
@@ -634,3 +647,19 @@ when isMainModule:
     doAssert fac(2) == 2
     doAssert fac(3) == 6
     doAssert fac(4) == 24
+
+  block: # floorMod/floorDiv
+    doAssert floorDiv(8, 3) == 2
+    doAssert floorMod(8, 3) == 2
+    
+    doAssert floorDiv(8, -3) == -3
+    doAssert floorMod(8, -3) == -1
+
+    doAssert floorDiv(-8, 3) == -3
+    doAssert floorMod(-8, 3) == 1
+
+    doAssert floorDiv(-8, -3) == 2
+    doAssert floorMod(-8, -3) == -2
+
+    doAssert floorMod(8.0, -3.0) ==~ -1.0
+    doAssert floorMod(-8.5, 3.0) ==~ 0.5
