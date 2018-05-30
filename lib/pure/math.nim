@@ -651,7 +651,7 @@ when isMainModule:
   block: # floorMod/floorDiv
     doAssert floorDiv(8, 3) == 2
     doAssert floorMod(8, 3) == 2
-    
+
     doAssert floorDiv(8, -3) == -3
     doAssert floorMod(8, -3) == -1
 
