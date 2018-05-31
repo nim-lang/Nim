@@ -26,7 +26,7 @@ type
     ## a complex number, consisting of a real and an imaginary part
 
 proc toComplex*(x: float): Complex =
-  ## Convert `x` to a complex number.
+  ## Convert ``x`` to a complex number.
   result.re = x
   result.im = 0.0
 
