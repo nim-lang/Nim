@@ -35,7 +35,7 @@
                       # of the standard library!
 
 import
-  strutils, parseutils
+  strutils, parseutils, algorithm
 
 include "system/inclrtl"
 
@@ -184,6 +184,8 @@ type
     isDst*: bool    ## Determines whether DST is in effect.
 
   DurationParts* = array[FixedTimeUnit, int64] # Array of Duration parts starts
+  TimeIntervalParts* = array[TimeUnit, int] # Array of Duration parts starts
+
 
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
@@ -1013,6 +1015,37 @@ proc `$`*(m: Month): string =
       "April", "May", "June", "July", "August", "September", "October",
       "November", "December"]
   return lookup[m]
+
+
+proc toParts* (ti: TimeInterval): TimeIntervalParts =
+  ## Converts a `TimeInterval` into an array consisting of its time units,
+  ## starting with nanoseconds and ending with years
+  ##
+  ## This procedure is useful for converting ``TimeInterval`` values to strings.
+  ## E.g. then you need to implement custom interval printing
+  runnableExamples:
+    var tp = toParts(initTimeInterval(years=1, nanoseconds=123))
+    doAssert tp[Years] == 1
+    doAssert tp[Nanoseconds] == 123
+
+  var index = 0
+  for name, value in fieldPairs(ti):
+    result[index.TimeUnit()] = value
+    index += 1
+
+proc `$`*(ti: TimeInterval): string =
+  ## Get string representation of `TimeInterval`
+  runnableExamples:
+    doAssert $initTimeInterval(years=1, nanoseconds=123) == "1 year and 123 nanoseconds"
+    doAssert $initTimeInterval() == "0 nanoseconds"
+
+  var parts: seq[string] = @[]
+  var tiParts = toParts(ti)
+  for unit in countdown(Years, Nanoseconds):
+    if tiParts[unit] != 0:
+      parts.add(stringifyUnit(tiParts[unit], $unit))
+
+  result = humanizeParts(parts)
 
 proc nanoseconds*(nanos: int): TimeInterval {.inline.} =
   ## TimeInterval of ``nanos`` nanoseconds.
