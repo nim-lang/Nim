@@ -525,7 +525,13 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
   if value >= 0.0 and spec.sign != '-':
-    f = spec.sign & f
+    if  value == 0.0:
+      if 1.0 / value == Inf:
+        # only add the sign if value != negZero
+        f = spec.sign & f
+    else:
+      f = spec.sign & f
+
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
   let result = alignString(f, spec.minimumWidth,
