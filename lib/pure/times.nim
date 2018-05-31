@@ -183,6 +183,9 @@ type
                     ## The point in time represented by ``ZonedTime`` is ``adjTime + utcOffset.seconds``.
     isDst*: bool    ## Determines whether DST is in effect.
 
+  DurationParts* = array[FixedTimeUnit, int64] # Array of Duration parts starts
+
+
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
 
@@ -451,44 +454,55 @@ const DurationZero* = initDuration() ## \
   ##   doAssert initDuration(seconds = 1) > DurationZero
   ##   doAssert initDuration(seconds = 0) == DurationZero
 
-proc `$`*(dur: Duration): string =
-  ## Human friendly string representation of ``dur``.
+proc toParts*(dur: Duration): DurationParts =
+  ## Converts a duration into an array consisting of fixed time units.
+  ##
+  ## Each value in the array gives information about a specific unit of
+  ## time, for example ``result[Days]`` gives a count of days.
+  ##
+  ## This procedure is useful for converting ``Duration`` values to strings.
   runnableExamples:
-    doAssert $initDuration(seconds = 2) == "2 seconds"
-    doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
-    doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) == "1 hour, 2 minutes, and 3 seconds"
-    doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
-  var parts = newSeq[string]()
+    var dp = toParts(initDuration(weeks=2, days=1))
+    doAssert dp[Days] == 1
+    doAssert dp[Weeks] == 2
+    dp = toParts(initDuration(days = -1))
+    doAssert dp[Days] == -1
+
   var remS = dur.seconds
   var remNs = dur.nanosecond.int
 
-  # Normally ``nanoseconds`` should always be positive, but
-  # that makes no sense when printing.
-  if remS < 0:
+  # Ensure the same sign for seconds and nanoseconds
+  if remS < 0 and remNs != 0:
     remNs -= convert(Seconds, Nanoseconds, 1)
     remS.inc 1
-
-  const unitStrings: array[FixedTimeUnit, string] = [
-    "nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
-  ]
 
   for unit in countdown(Weeks, Seconds):
     let quantity = convert(Seconds, unit, remS)
     remS = remS mod convert(unit, Seconds, 1)
 
-    if quantity.abs == 1:
-      parts.add $quantity & " " & unitStrings[unit]
-    elif quantity != 0:
-      parts.add $quantity & " " & unitStrings[unit] & "s"
+    result[unit] = quantity
 
   for unit in countdown(Milliseconds, Nanoseconds):
     let quantity = convert(Nanoseconds, unit, remNs)
     remNs = remNs mod convert(unit, Nanoseconds, 1)
 
-    if quantity.abs == 1:
-      parts.add $quantity & " " & unitStrings[unit]
-    elif quantity != 0:
-      parts.add $quantity & " " & unitStrings[unit] & "s"
+    result[unit] = quantity
+
+proc stringifyUnit*(value: int | int64, unit: string): string =
+  ## Stringify time unit with it's name, lowercased
+  runnableExamples:
+    doAssert stringifyUnit(2, "Seconds") == "2 seconds"
+    doAssert stringifyUnit(1, "Years") == "1 year"
+  result = ""
+  result.add($value)
+  result.add(" ")
+  if abs(value) != 1:
+    result.add(unit.toLowerAscii())
+  else:
+    result.add(unit[0..^2].toLowerAscii())
+
+proc humanizeParts(parts: seq[string]): string =
+  ## Make date string parts human-readable
 
   result = ""
   if parts.len == 0:
@@ -501,6 +515,23 @@ proc `$`*(dur: Duration): string =
     for part in parts[0..high(parts)-1]:
       result.add part & ", "
     result.add "and " & parts[high(parts)]
+
+proc `$`*(dur: Duration): string =
+  ## Human friendly string representation of ``Duration``.
+  runnableExamples:
+    doAssert $initDuration(seconds = 2) == "2 seconds"
+    doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
+    doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) == "1 hour, 2 minutes, and 3 seconds"
+    doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
+  var parts = newSeq[string]()
+  var numParts = toParts(dur)
+
+  for unit in countdown(Weeks, Nanoseconds):
+    let quantity = numParts[unit]
+    if quantity != 0.int64:
+      parts.add(stringifyUnit(quantity, $unit))
+  
+  result = humanizeParts(parts)
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
   ## Add two durations together.
