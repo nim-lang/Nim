@@ -25,10 +25,14 @@ type
   Complex* = tuple[re, im: float]
     ## a complex number, consisting of a real and an imaginary part
 
-proc toComplex*(x: SomeInteger): Complex =
-  ## Convert some integer ``x`` to a complex number.
+proc toComplex*(x: float): Complex =
+  ## Convert `x` to a complex number.
   result.re = x
-  result.im = 0
+  result.im = 0.0
+
+proc toComplex*(x: SomeInteger): Complex =
+  result.re = float(x)
+  result.im = 0.0
 
 proc `==` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` for equality.
