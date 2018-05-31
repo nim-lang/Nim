@@ -13,3 +13,6 @@ doAssert fmt"{o}" == "foobar"
 doAssert fmt"{o:10}" == "foobar    "
 
 doAssert fmt"{-0.0:g}" == "-0"
+doassert fmt"{-0.0:+g}" == "-0"
+doAssert fmt"{0.0:g}" == "0"
+doAssert fmt"{0.0:+g}" == "+0"
