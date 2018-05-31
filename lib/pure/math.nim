@@ -280,7 +280,7 @@ when not defined(JS): # C
   proc tgamma*(x: float32): float32 {.deprecated, importc: "tgammaf", header: "<math.h>".}
   proc tgamma*(x: float64): float64 {.deprecated, importc: "tgamma", header: "<math.h>".}
     ## The gamma function
-    ## **Deprecated since version x.xx.x**: Use ``gamma`` instead.
+    ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
   proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
   proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
     ## Natural log of the gamma function
