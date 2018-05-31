@@ -274,12 +274,16 @@ when not defined(JS): # C
   proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
     ## The complementary error function
 
+  proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
+  proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
+    ## The gamma function
+  proc tgamma*(x: float32): float32 {.deprecated, importc: "tgammaf", header: "<math.h>".}
+  proc tgamma*(x: float64): float64 {.deprecated, importc: "tgamma", header: "<math.h>".}
+    ## The gamma function
+    ## **Deprecated since version x.xx.x**: Use ``gamma`` instead.
   proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
   proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
     ## Natural log of the gamma function
-  proc tgamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
-  proc tgamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
-    ## The gamma function
 
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
@@ -372,7 +376,7 @@ when not defined(JS): # C
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
-    ## Computes the modulo operation for float operators. 
+    ## Computes the modulo operation for float operators.
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
@@ -551,6 +555,7 @@ when isMainModule and not defined(JS):
     return sqrt(num)
 
   # check gamma function
+  assert(gamma(5.0) == 24.0) # 4!
   assert($tgamma(5.0) == $24.0) # 4!
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
