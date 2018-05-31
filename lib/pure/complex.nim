@@ -25,7 +25,7 @@ type
   Complex* = tuple[re, im: float]
     ## a complex number, consisting of a real and an imaginary part
 
-proc toComplex*(x: float): Complex =
+proc toComplex*(x: SomeFloat): Complex =
   ## Convert ``x`` to a complex number.
   result.re = x
   result.im = 0.0
