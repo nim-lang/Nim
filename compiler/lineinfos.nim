@@ -246,10 +246,10 @@ const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no sugges
                                    # are produced within comments and string literals
 
 type
-  MsgConfig* = object
+  MsgConfig* = object ## does not need to be stored in the incremental cache
     trackPos*: TLineInfo
-    trackPosAttached*: bool ## whether the tracking position was attached to some
-                            ## close token.
+    trackPosAttached*: bool ## whether the tracking position was attached to
+                            ## some close token.
 
     errorOutputs*: TErrorOutputs
     msgContext*: seq[TLineInfo]

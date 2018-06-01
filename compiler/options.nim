@@ -156,24 +156,27 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
-  ConfigRef* = ref object ## eventually all global configuration should be moved here
-    target*: Target
+  ConfigRef* = ref object ## every global configuration
+                          ## fields marked with '*' are subject to
+                          ## the incremental compilation mechanisms
+                          ## (+) means "part of the dependency"
+    target*: Target       # (+)
     linesCompiled*: int  # all lines that have been compiled
-    options*: TOptions
-    globalOptions*: TGlobalOptions
+    options*: TOptions    # (+)
+    globalOptions*: TGlobalOptions # (+)
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
-    selectedGC*: TGCMode       # the selected GC
+    selectedGC*: TGCMode       # the selected GC (+)
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     evalExpr*: string          # expression for idetools --eval
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
 
-    cppDefines*: HashSet[string]
+    cppDefines*: HashSet[string] # (*)
     headerFile*: string
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
@@ -220,13 +223,13 @@ type
     cLinkedLibs*: seq[string]  # libraries to link
 
     externalToLink*: seq[string]  # files to link in addition to the file
-                                  # we compiled
+                                  # we compiled (*)
     linkOptionsCmd*: string
     compileOptionsCmd*: seq[string]
-    linkOptions*: string
-    compileOptions*: string
+    linkOptions*: string          # (*)
+    compileOptions*: string       # (*)
     ccompilerpath*: string
-    toCompile*: CfileList
+    toCompile*: CfileList         # (*)
     suggestionResultHook*: proc (result: Suggest) {.closure.}
     suggestVersion*: int
     suggestMaxResults*: int
