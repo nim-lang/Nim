@@ -548,8 +548,8 @@ proc format*(value: string; specifier: string; res: var string) =
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
   if spec.precision != -1:
-    if spec.precision < len(value):
-      value = value[0..<spec.precision]
+    if spec.precision < runelen(value):
+      value = value.runeSubstr(0, spec.precision)
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
 when isMainModule:
