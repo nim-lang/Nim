@@ -395,6 +395,8 @@ when isMainModule:
   var tt = (10.0, 20.0)
   var ipi = (0.0, -PI)
 
+  assert(real(one) == 1.0)
+  assert(imag(im) == 1.0)
   assert( a == a )
   assert( (a-a) == z )
   assert( (a+b) == z )
