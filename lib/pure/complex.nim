@@ -34,6 +34,11 @@ proc toComplex*(x: SomeInteger): Complex =
   result.re = x
   result.im = 0
 
+proc real*(z: Complex): float = z.re
+  ## Return the real part of the complex number ``z``.
+proc imag*(z: Complex): float = z.im
+  ## Return the imaginary part of the complex number ``z``.
+
 proc `==` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` for equality.
   result = x.re == y.re and x.im == y.im
