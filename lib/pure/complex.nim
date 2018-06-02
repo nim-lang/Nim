@@ -29,12 +29,13 @@ const
   im*: Complex = (re: 0.0, im: 1.0)
     ## The imaginary unit. √-1.
 
-proc toComplex*(x: SomeInteger): Complex =
-  ## Convert some integer ``x`` to a complex number.
+proc toComplex*(x: SomeInteger|SomeFloat): Complex =
+  ## Convert some float ``x`` to a complex number.
   result.re = x
   result.im = 0.0
 
 proc toComplex*(x: SomeInteger): Complex =
+  ## Convert some integer ``x`` to a complex number.
   result.re = float(x)
   result.im = 0.0
 
@@ -408,8 +409,12 @@ when isMainModule:
   assert( abs(oo) == sqrt(2.0) )
   assert( conjugate(a) == (1.0, -2.0) )
   assert( sqrt(m1) == i )
-  assert( exp(ipi) =~ m1 )
 
+  block: # toComplex tests
+    doAssert toComplex(1.0) == (1.0, 0.0)
+    doAssert toComplex(1) == (1.0, 0.0)
+
+  assert( exp(ipi) =~ m1 )
   assert( pow(a,b) =~ (-3.72999124927876, -1.68815826725068) )
   assert( pow(z,a) =~ (0.0, 0.0) )
   assert( pow(z,z) =~ (1.0, 0.0) )
