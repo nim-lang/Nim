@@ -154,6 +154,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   rawMessage(conf, hintConf, scriptName)
 
   let graph = newModuleGraph(cache, conf)
+  connectCallbacks(graph)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")
@@ -167,8 +168,8 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName, graph)
 
-  graph.compileSystemModule(cache)
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
+  graph.compileSystemModule()
+  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

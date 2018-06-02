@@ -1657,20 +1657,20 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-proc setupGlobalCtx(module: PSym; cache: IdentCache; graph: ModuleGraph) =
+proc setupGlobalCtx(module: PSym; graph: ModuleGraph) =
   if graph.vm.isNil:
-    graph.vm = newCtx(module, cache, graph)
+    graph.vm = newCtx(module, graph.cache, graph)
     registerAdditionalOps(PCtx graph.vm)
   else:
     refresh(PCtx graph.vm, module)
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
-  setupGlobalCtx(module, cache, graph)
+  setupGlobalCtx(module, graph)
   result = PCtx graph.vm
   when hasFFI:
     PCtx(graph.vm).features = {allowFFI, allowCast}
@@ -1688,13 +1688,13 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
 proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   myProcess(c, n)
 
-const evalPass* = makePass(myOpen, nil, myProcess, myClose)
+const evalPass* = makePass(myOpen, myProcess, myClose)
 
-proc evalConstExprAux(module: PSym; cache: IdentCache;
+proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   let n = transformExpr(g, module, n)
-  setupGlobalCtx(module, cache, g)
+  setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
   defer: c.mode = oldMode
@@ -1709,17 +1709,17 @@ proc evalConstExprAux(module: PSym; cache: IdentCache;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
 
-proc evalConstExpr*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode): PNode =
-  result = evalConstExprAux(module, cache, g, nil, e, emConst)
+proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
+  result = evalConstExprAux(module, g, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode, prc: PSym): PNode =
-  result = evalConstExprAux(module, cache, g, prc, e, emStaticExpr)
+proc evalStaticExpr*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym): PNode =
+  result = evalConstExprAux(module, g, prc, e, emStaticExpr)
 
-proc evalStaticStmt*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode, prc: PSym) =
-  discard evalConstExprAux(module, cache, g, prc, e, emStaticStmt)
+proc evalStaticStmt*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym) =
+  discard evalConstExprAux(module, g, prc, e, emStaticStmt)
 
-proc setupCompileTimeVar*(module: PSym; cache: IdentCache, g: ModuleGraph; n: PNode) =
-  discard evalConstExprAux(module, cache, g, nil, n, emStaticStmt)
+proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
+  discard evalConstExprAux(module, g, nil, n, emStaticStmt)
 
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
@@ -1746,7 +1746,7 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
-proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
+proc evalMacroCall*(module: PSym; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(g.config.evalMacroCounter)
@@ -1759,7 +1759,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
         n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
 
-  setupGlobalCtx(module, cache, g)
+  setupGlobalCtx(module, g)
   var c = PCtx g.vm
   c.comesFromHeuristic.line = 0'u16
 

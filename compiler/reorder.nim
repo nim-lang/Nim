@@ -136,15 +136,13 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
-                    cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx, cache, graph.config)
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+  result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(FileIndex s.position, fileIdx)
 
 proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
-                    modulePath: string, includedFiles: var IntSet,
-                    cache: IdentCache): PNode =
+                    modulePath: string, includedFiles: var IntSet): PNode =
   # Parses includes and injects them in the current tree
   if not n.hasIncludes:
     return n
@@ -158,9 +156,9 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
             localError(graph.config, a.info, "recursive dependency: '$1'" %
               toFilename(graph.config, f))
           else:
-            let nn = includeModule(graph, module, f, cache)
+            let nn = includeModule(graph, module, f)
             let nnn = expandIncludes(graph, module, nn, modulePath,
-                                      includedFiles, cache)
+                                      includedFiles)
             excl(includedFiles, f.int)
             for b in nnn:
               result.add b
@@ -427,19 +425,19 @@ proc hasForbiddenPragma(n: PNode): bool =
         a[0].ident.s == "push":
           return true
 
-proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PNode =
+proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   if n.hasForbiddenPragma:
     return n
   var includedFiles = initIntSet()
   let mpath = toFullPath(graph.config, module.fileIdx)
   let n = expandIncludes(graph, module, n, mpath,
-                          includedFiles, cache).splitSections
+                          includedFiles).splitSections
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
     deps[i][0] = initIntSet()
     deps[i][1] = initIntSet()
-    computeDeps(cache, n[i], deps[i][0], deps[i][1], true)
+    computeDeps(graph.cache, n[i], deps[i][0], deps[i][1], true)
 
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)

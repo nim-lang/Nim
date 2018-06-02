@@ -56,6 +56,9 @@ type
     opContains*, opNot*: PSym
     emptyNode*: PNode
     incr*: IncrementalCtx
+    importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
+    includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
+    recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -85,6 +88,8 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
   init(result.incr)
+  result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
+    discard
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)

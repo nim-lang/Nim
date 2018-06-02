@@ -1316,7 +1316,7 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
@@ -1360,11 +1360,12 @@ proc getCFile(m: BModule): string =
       else: ".c"
   result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
-proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
-  injectG()
-  var m = newModule(g, module, graph.config)
-  readMergeInfo(getCFile(m), m)
-  result = m
+when false:
+  proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
+    injectG()
+    var m = newModule(g, module, graph.config)
+    readMergeInfo(getCFile(m), m)
+    result = m
 
 proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n
@@ -1506,4 +1507,4 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 
-const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const cgenPass* = makePass(myOpen, myProcess, myClose)

@@ -84,6 +84,13 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
 
+proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
+  var recorded = newNodeI(nkCommentStmt, n.info)
+  recorded.add newStrNode(key, n.info)
+  recorded.add newStrNode(val, n.info)
+  if val2.len > 0: recorded.add newStrNode(val2, n.info)
+  c.graph.recordStmt(c.graph, c.module, recorded)
+
 const
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
@@ -227,7 +234,7 @@ proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
-    var sw = whichKeyword(n.sons[1].ident)
+    let sw = whichKeyword(n.sons[1].ident)
     case sw
     of FirstCallConv..LastCallConv:
       c.optionStack[^1].defaultCC = wordToCallConv(sw)
@@ -412,6 +419,10 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
       if result.len == 0: result = s
 
 proc processCompile(c: PContext, n: PNode) =
+  proc docompile(c: PContext; it: PNode; src, dest: string) =
+    var cf = Cfile(cname: src, obj: dest, flags: {CfileFlag.External})
+    extccomp.addExternalFileToCompile(c.config, cf)
+    recordPragma(c, it, "compile", src, dest)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n.sons[i] = c.semConstExpr(c, n[i])
@@ -428,11 +439,8 @@ proc processCompile(c: PContext, n: PNode) =
     let dest = getStrLit(c, it, 1)
     var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
-      let nameOnly = extractFilename(f)
-      var cf = Cfile(cname: f,
-          obj: completeCFilePath(c.config, dest % nameOnly),
-          flags: {CfileFlag.External})
-      extccomp.addExternalFileToCompile(c.config, cf)
+      let obj = completeCFilePath(c.config, dest % extractFilename(f))
+      docompile(c, it, f, obj)
   else:
     let s = expectStrLit(c, n)
     var found = parentDir(toFullPath(c.config, n.info)) / s
@@ -441,15 +449,19 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.len == 0: found = s
-    extccomp.addExternalFileToCompile(c.config, found)
+    let obj = toObjFile(c.config, completeCFilePath(c.config, changeFileExt(found, ""), false))
+    docompile(c, it, found, obj)
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
   case feature
-  of linkNormal: extccomp.addExternalFileToLink(c.config, found)
+  of linkNormal:
+    extccomp.addExternalFileToLink(c.config, found)
+    recordPragma(c, n, "link", found)
   of linkSys:
-    extccomp.addExternalFileToLink(c.config,
-      c.config.libpath / completeCFilePath(c.config, found, false))
+    let dest = c.config.libpath / completeCFilePath(c.config, found, false)
+    extccomp.addExternalFileToLink(c.config, dest)
+    recordPragma(c, n, "link", dest)
   else: internalError(c.config, n.info, "processCommonLink")
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =
@@ -724,7 +736,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
     dec c.instCounter
   else:
-    var k = whichKeyword(ident)
+    let k = whichKeyword(ident)
     if k in validPragmas:
       case k
       of wExportc:
@@ -891,8 +903,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
         else: incl(sym.typ.flags, tfPacked)
-      of wHint: message(c.config, it.info, hintUser, expectStrLit(c, it))
-      of wWarning: message(c.config, it.info, warnUser, expectStrLit(c, it))
+      of wHint:
+        let s = expectStrLit(c, it)
+        recordPragma(c, it, "hint", s)
+        message(c.config, it.info, hintUser, s)
+      of wWarning:
+        let s = expectStrLit(c, it)
+        recordPragma(c, it, "warning", s)
+        message(c.config, it.info, warnUser, s)
       of wError:
         if sym != nil and sym.isRoutine:
           # This is subtle but correct: the error *statement* is only
@@ -902,7 +920,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           noVal(c, it)
           incl(sym.flags, sfError)
         else:
-          localError(c.config, it.info, errUser, expectStrLit(c, it))
+          let s = expectStrLit(c, it)
+          recordPragma(c, it, "error", s)
+          localError(c.config, it.info, errUser, s)
       of wFatal: fatal(c.config, it.info, errUser, expectStrLit(c, it))
       of wDefine: processDefine(c, it)
       of wUndef: processUndef(c, it)
@@ -1066,8 +1086,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
-  if n == nil or n.sons == nil:
-    return false
+  if n == nil: return false
 
   for p in n:
     var key = if p.kind in nkPragmaCallKinds and p.len > 1: p[0] else: p
@@ -1079,7 +1098,7 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
 proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   var i = 0
-  while i < n.len():
+  while i < n.len:
     if singlePragma(c, sym, n, i, validPragmas): break
     inc i
 

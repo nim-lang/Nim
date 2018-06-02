@@ -10,7 +10,7 @@
 ## This module implements the new compilation cache.
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
-  renderer, rodutils, idents, astalgo, btrees, magicsys
+  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp
 
 ## Todo:
 ## - Implement the 'import' replay logic so that the codegen runs over
@@ -18,7 +18,7 @@ import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
 ## - Make conditional symbols and the configuration part of a module's
 ##   dependencies.
 ## - Test multi methods.
-## - Implement the limited VM support based on sets.
+## - Implement the limited VM support based on replays.
 ## - Depencency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 
@@ -381,6 +381,9 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
       break
     inc i
 
+proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
+  storeNode(g, module, n)
+
 proc storeRemaining*(g: ModuleGraph; module: PSym) =
   if g.config.symbolFiles == disabledSf: return
   var stillForwarded: seq[PSym] = @[]
@@ -399,7 +402,6 @@ type
     pos: int
 
 using
-  r: var Reader
   b: var BlobReader
   g: ModuleGraph
 
@@ -760,21 +762,68 @@ proc loadModuleSymTab(g; module: PSym) =
   if sfSystemModule in module.flags:
     g.systemModule = module
 
-proc loadNode*(g: ModuleGraph; module: PSym; index: int): PNode =
-  if index == 0:
-    loadModuleSymTab(g, module)
-    #index = parseInt db.getValue(
-    #  sql"select min(id) from toplevelstmts where module = ?", abs module.id)
-  var b = BlobReader(pos: 0)
-  b.s = db.getValue(sql"select data from toplevelstmts where position = ? and module = ?",
-                    index, abs module.id)
-  if b.s.len == 0:
-    db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
-    return nil # end marker
-  result = decodeNode(g, b, module.info)
+proc replay(g: ModuleGraph; module: PSym; n: PNode) =
+  case n.kind
+  of nkStaticStmt:
+    #evalStaticStmt()
+    discard "XXX to implement"
+  of nkVarSection, nkLetSection:
+    #setupCompileTimeVar()
+    discard "XXX to implement"
+  of nkMethodDef:
+    methodDef(g, n[namePos].sym, fromCache=true)
+  of nkCommentStmt:
+    # pragmas are complex and can be user-overriden via templates. So
+    # instead of using the original ``nkPragma`` nodes, we rely on the
+    # fact that pragmas.nim was patched to produce specialized recorded
+    # statements for us in the form of ``nkCommentStmt`` with (key, value)
+    # pairs. Ordinary nkCommentStmt nodes never have children so this is
+    # not ambiguous.
+    # Fortunately only a tiny subset of the available pragmas need to
+    # be replayed here. This is always a subset of ``pragmas.stmtPragmas``.
+    if n.len >= 2:
+      internalAssert g.config, n[0].kind == nkStrLit and n[1].kind == nkStrLit
+      case n[0].strVal
+      of "hint": message(g.config, n.info, hintUser, n[1].strVal)
+      of "warning": message(g.config, n.info, warnUser, n[1].strVal)
+      of "error": localError(g.config, n.info, errUser, n[1].strVal)
+      of "compile":
+        internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
+        var cf = Cfile(cname: n[1].strVal, obj: n[2].strVal,
+                       flags: {CfileFlag.External})
+        extccomp.addExternalFileToCompile(g.config, cf)
+      of "link":
+        extccomp.addExternalFileToLink(g.config, n[1].strVal)
+      else:
+        internalAssert g.config, false
+  of nkImportStmt:
+    for x in n:
+      if x.kind == nkStrLit:
+        # XXX check that importModuleCallback implements the right logic
+        let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, n[0].strVal))
+        internalAssert g.config, imported.id < 0
+  of nkStmtList, nkStmtListExpr:
+    for x in n: replay(g, module, x)
+  else: discard "nothing to do for this node"
+
+proc loadNode*(g: ModuleGraph; module: PSym): PNode =
+  loadModuleSymTab(g, module)
+  result = newNodeI(nkStmtList, module.info)
+  for row in db.rows(sql"select data from toplevelstmts where module = ? order by position asc",
+                        abs module.id):
+
+    var b = BlobReader(pos: 0)
+    shallowCopy b.s, row[0]
+    # ensure we can read without index checks:
+    b.s.add '\0'
+    result.add decodeNode(g, b, module.info)
+
+  db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
+  replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf: return
+  g.recordStmt = recordStmt
   let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
   if not fileExists(dbfile):
     db = open(connection=dbfile, user="nim", password="",

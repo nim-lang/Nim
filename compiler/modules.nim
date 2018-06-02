@@ -58,52 +58,30 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
 
-proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, flags: TSymFlags): PSym =
+proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
   result = graph.getModule(fileIdx)
   if result == nil:
-    #growCache gMemCacheData, fileIdx
-    #gMemCacheData[fileIdx].needsRecompile = Probing
     result = newModule(graph, fileIdx)
-    var rd: PRodReader
     result.flags = result.flags + flags
     if sfMainModule in result.flags:
       graph.config.mainPackageId = result.owner.id
 
-    when false:
-      if conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
-        rd = handleSymbolFile(result, cache)
-        if result.id < 0:
-          internalError("handleSymbolFile should have set the module's ID")
-          return
-      else:
-        discard
     result.id = getModuleId(graph, fileIdx, toFullPath(graph.config, fileIdx))
     discard processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
-      rd, cache)
-    #if optCaasEnabled in gGlobalOptions:
-    #  gMemCacheData[fileIdx].needsRecompile = Recompiled
-    #  if validFile: doHash fileIdx
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
     discard processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
-      nil, cache)
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
     graph.markClientsDirty(fileIdx)
-    when false:
-      if checkDepMem(fileIdx) == Yes:
-        result = compileModule(fileIdx, cache, flags)
-      else:
-        result = gCompiledModules[fileIdx]
 
-proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
-                   cache: IdentCache): PSym {.procvar.} =
+proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.procvar.} =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  result = compileModule(graph, fileIdx, cache, {})
+  result = compileModule(graph, fileIdx, {})
   graph.addDep(s, fileIdx)
   #if sfSystemModule in result.flags:
   #  localError(result.info, errAttemptToRedefine, result.name.s)
@@ -112,37 +90,37 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
     if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
     else: graph.config.foreignPackageNotes
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
-                    cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx, cache, graph.config)
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+  result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(s.position.FileIndex, fileIdx)
 
-proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
+proc compileSystemModule*(graph: ModuleGraph) =
   if graph.systemModule == nil:
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config, graph.config.libpath / "system.nim")
-    discard graph.compileModule(graph.config.m.systemFileIdx, cache, {sfSystemModule})
+    discard graph.compileModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
 proc wantMainModule*(conf: ConfigRef) =
   if conf.projectFull.len == 0:
     fatal(conf, newLineInfo(conf, "command line", 1, 1), errGenerated, "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
-passes.gIncludeFile = includeModule
-passes.gImportModule = importModule
+proc connectCallbacks*(graph: ModuleGraph) =
+  graph.includeFileCallback = includeModule
+  graph.importModuleCallback = importModule
 
-proc compileProject*(graph: ModuleGraph; cache: IdentCache;
-                     projectFileIdx = InvalidFileIDX) =
+proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
+  connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / "system.nim")
   let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
-    discard graph.compileModule(projectFile, cache, {sfMainModule, sfSystemModule})
+    discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})
   else:
-    graph.compileSystemModule(cache)
-    discard graph.compileModule(projectFile, cache, {sfMainModule})
+    graph.compileSystemModule()
+    discard graph.compileModule(projectFile, {sfMainModule})
 
 proc makeModule*(graph: ModuleGraph; filename: string): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))

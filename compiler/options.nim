@@ -238,6 +238,19 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure.}
 
+template depConfigFields*(fn) {.dirty.} =
+  fn(target)
+  fn(options)
+  fn(globalOptions)
+  fn(selectedGC)
+
+template serializeConfigFields(fn) {.dirty.} =
+  fn(cppDefines)
+  fn(externalToLink)
+  fn(linkOptions)
+  fn(compileOptions)
+  fn(toCompile)
+
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 const

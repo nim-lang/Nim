@@ -159,7 +159,7 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
     result = findNode(m.ast, trackPos)
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
-             graph: ModuleGraph; cache: IdentCache) =
+             graph: ModuleGraph) =
   let conf = graph.config
   myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
         "[" & $line & ":" & $col & "]")
@@ -184,7 +184,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
-    graph.compileProject(cache)
+    graph.compileProject()
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.len == 0:
     discard "no need to recompile anything"
@@ -193,7 +193,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
     if conf.ideCmd != ideMod:
-      graph.compileProject(cache, modIdx)
+      graph.compileProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
@@ -202,7 +202,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
-                graph: ModuleGraph; cache: IdentCache) =
+                graph: ModuleGraph) =
   let
     file = args[0].getStr
     line = args[1].getNum
@@ -210,7 +210,7 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   var dirtyfile = ""
   if len(args) > 3:
     dirtyfile = args[3].getStr(nil)
-  execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
+  execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
@@ -379,7 +379,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
                          "unexpected call: " & epcAPI
       quit errMessage
 
-proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: CachedMsgs) =
+proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   let conf = graph.config
 
   template sentinel() =
@@ -435,19 +435,19 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-    execute(conf.ideCmd, orig, dirtyfile, line, col, graph, cache)
+    execute(conf.ideCmd, orig, dirtyfile, line, col, graph)
   sentinel()
 
-proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
+proc recompileFullProject(graph: ModuleGraph) =
   #echo "recompiling full project"
   resetSystemArtifacts(graph)
   graph.vm = nil
   graph.resetAllModules()
   GC_fullcollect()
-  compileProject(graph, cache)
+  compileProject(graph)
   #echo GC_getStatistics()
 
-proc mainThread(graph: ModuleGraph; cache: IdentCache) =
+proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
   if gLogging:
     for it in conf.searchPaths:
@@ -469,7 +469,7 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
     if hasData:
       conf.writelnHook = wrHook
       conf.suggestionResultHook = sugResultHook
-      execCmd(req, graph, cache, cachedMsgs)
+      execCmd(req, graph, cachedMsgs)
       idle = 0
     else:
       os.sleep 250
@@ -482,12 +482,12 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
         cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
       conf.suggestionResultHook = proc (s: Suggest) = discard
-      recompileFullProject(graph, cache)
+      recompileFullProject(graph)
 
 var
   inputThread: Thread[ThreadParams]
 
-proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
+proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   clearPasses(graph)
   registerPass graph, verbosePass
@@ -509,7 +509,7 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
 
   # compile the project before showing any input so that we already
   # can answer questions right away:
-  compileProject(graph, cache)
+  compileProject(graph)
 
   open(requests)
   open(results)
@@ -522,7 +522,7 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
                             (gPort, "sug \"" & conf.projectFull & "\":" & gAddress))
   of mcmdcon: createThread(inputThread, replCmdline,
                             (gPort, "con \"" & conf.projectFull & "\":" & gAddress))
-  mainThread(graph, cache)
+  mainThread(graph)
   joinThread(inputThread)
   close(requests)
   close(results)
@@ -632,6 +632,6 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
     let graph = newModuleGraph(cache, conf)
     graph.suggestMode = true
-    mainCommand(graph, cache)
+    mainCommand(graph)
 
 handleCmdline(newIdentCache(), newConfigRef())

@@ -95,6 +95,7 @@ proc createInterpreter*(scriptName: string;
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
+  connectCallbacks(graph)
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")

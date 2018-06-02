@@ -2277,12 +2277,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)
 
-proc myOpenCached(graph: ModuleGraph; s: PSym, rd: PRodReader): PPassContext =
-  internalError(graph.config, "symbol files are not possible with the JS code generator")
-  result = nil
-
-proc myOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 
-const JSgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const JSgenPass* = makePass(myOpen, myProcess, myClose)
 

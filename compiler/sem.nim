@@ -314,7 +314,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   c.config.errorMax = high(int)
 
   try:
-    result = evalConstExpr(c.module, c.cache, c.graph, e)
+    result = evalConstExpr(c.module, c.graph, e)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -338,7 +338,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, c.cache, c.graph, e)
+    result = evalConstExpr(c.module, c.graph, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(c.config, n.info)
@@ -446,7 +446,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-  result = evalMacroCall(c.module, c.cache, c.graph, n, nOrig, sym)
+  result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   result = wrapInComesFrom(nOrig.info, sym, result)
@@ -482,7 +482,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var c = newContext(graph, module)
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
@@ -511,9 +511,6 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
     graph.config.notes = graph.config.foreignPackageNotes
   result = c
-
-proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
-  result = myOpen(graph, module, graph.cache)
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
   if g.systemModule == nil: return false
@@ -625,5 +622,5 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   storeRemaining(c.graph, c.module)
   if c.runnableExamples != nil: testExamples(c)
 
-const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,
+const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

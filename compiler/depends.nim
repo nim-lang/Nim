@@ -51,7 +51,7 @@ proc generateDot*(graph: ModuleGraph; project: string) =
       rope(changeFileExt(extractFilename(project), "")), b.dotGraph],
             changeFileExt(project, "dot"))
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module

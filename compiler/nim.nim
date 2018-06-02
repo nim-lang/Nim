@@ -94,7 +94,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     processCmdLine(passCmd2, "", conf)
     if conf.command == "":
       rawMessage(conf, errGenerated, "command missing")
-    mainCommand(newModuleGraph(cache, conf), cache)
+    mainCommand(newModuleGraph(cache, conf))
     if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if conf.errorCounter == 0:

@@ -1058,22 +1058,6 @@ proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
     result.info = children[0].info
   result.sons = @children
 
-proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
-  result = newNode(kind)
-  result.intVal = intVal
-
-proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
-  result = newIntNode(kind, intVal)
-  result.typ = typ
-
-proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
-  result = newNode(kind)
-  result.floatVal = floatVal
-
-proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
-  result = newNode(kind)
-  result.strVal = strVal
-
 template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
@@ -1220,6 +1204,26 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result = newNode(kind)
   result.info = info
   result.typ = typ
+
+proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
+  result = newNode(kind)
+  result.intVal = intVal
+
+proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
+  result = newIntNode(kind, intVal)
+  result.typ = typ
+
+proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
+  result = newNode(kind)
+  result.floatVal = floatVal
+
+proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newStrNode*(strVal: string; info: TLineInfo): PNode =
+  result = newNodeI(nkStrLit, info)
+  result.strVal = strVal
 
 proc addSon*(father, son: PNode) =
   assert son != nil

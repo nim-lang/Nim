@@ -572,7 +572,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
   if hasCompileTime:
-    vm.setupCompileTimeVar(c.module, c.cache, c.graph, result)
+    vm.setupCompileTimeVar(c.module, c.graph, result)
+    c.graph.recordStmt(c.graph, c.module, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -1059,7 +1060,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
           if containsOrIncl(c.includedFiles, f.int):
             localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
           else:
-            let code = gIncludeFile(c.graph, c.module, f, c.cache)
+            let code = c.graph.includeFileCallback(c.graph, c.module, f)
             gatherStmts c, code, result
             excl(c.includedFiles, f.int)
     of nkStmtList:
@@ -1741,7 +1742,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       if containsOrIncl(c.includedFiles, f.int):
         localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
       else:
-        addSon(result, semStmt(c, gIncludeFile(c.graph, c.module, f, c.cache)))
+        addSon(result, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f)))
         excl(c.includedFiles, f.int)
 
 proc setLine(n: PNode, info: TLineInfo) =
@@ -1770,7 +1771,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   let a = semStmt(c, n.sons[0])
   dec c.inStaticContext
   n.sons[0] = a
-  evalStaticStmt(c.module, c.cache, c.graph, a, c.p.owner)
+  evalStaticStmt(c.module, c.graph, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = c.graph.emptyNode
 

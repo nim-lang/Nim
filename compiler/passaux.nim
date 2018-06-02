@@ -18,7 +18,7 @@ type
   VerboseRef = ref object of TPassContext
     config: ConfigRef
 
-proc verboseOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
+proc verboseOpen(graph: ModuleGraph; s: PSym): PPassContext =
   #MessageOut('compiling ' + s.name.s);
   result = VerboseRef(config: graph.config)
   rawMessage(graph.config, hintProcessing, s.name.s)

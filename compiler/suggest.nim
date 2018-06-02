@@ -323,7 +323,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         # error: no known module name:
         typ = nil
       else:
-        let m = gImportModule(c.graph, c.module, fileInfoIdx(c.config, fullpath), c.cache)
+        let m = c.graph.importModuleCallback(c.graph, c.module, fileInfoIdx(c.config, fullpath))
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
