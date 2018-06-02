@@ -524,8 +524,26 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
-  if value >= 0.0 and spec.sign != '-':
-    f = spec.sign & f
+  var sign = false
+  if value >= 0.0:
+    if spec.sign != '-':
+      f = spec.sign & f
+      sign = true
+  else:
+    sign = true
+
+  if spec.padWithZero:
+    var sign_str = ""
+    if sign:
+      sign_str = $f[0]
+      f = f[1..^1]
+
+    let toFill = spec.minimumWidth - f.len - ord(sign)
+    if toFill > 0:
+      f = repeat('0', toFill) & f
+    if sign:
+      f = sign_str & f
+
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
   let result = alignString(f, spec.minimumWidth,
