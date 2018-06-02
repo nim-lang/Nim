@@ -3443,6 +3443,14 @@ when not defined(nimNoArrayToString):
     ## generic ``$`` operator for arrays that is lifted from the components
     collectionToString(x, "[", ", ", "]")
 
+proc `$`*[T](x: openarray[T]): string =
+  ## generic ``$`` operator for openarrays that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  collectionToString(x, "[", ", ", "]")
+
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
   echo(errormsg)
