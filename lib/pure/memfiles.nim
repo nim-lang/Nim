@@ -245,6 +245,19 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if close(result.handle) == 0:
         result.handle = -1
 
+proc flush*(f: var MemFile): bool =
+  when defined(windows):
+    result = flushViewOfFile(f.mem, f.size.int32) == 0
+    if not result:
+      let lastErr = osLastError()
+      if lastErr != ERROR_LOCK_VIOLATION.OSErrorCode:
+        raiseOSError(lastErr)
+  else:
+    let errCode = msync(f.mem, f.size, MS_SYNC)
+    result = errCode == 0
+    if not result:
+      raiseOSError(osLastError(), "error flushing mapping")
+
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.

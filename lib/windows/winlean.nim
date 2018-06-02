@@ -695,6 +695,7 @@ const
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
+  ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
@@ -762,6 +763,9 @@ when not useWinUnicode:
 
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
+
+proc flushViewOfFile*(lpBaseAddress: pointer, dwNumberOfBytesToFlush: DWORD): WINBOOL {.
+  stdcall, dynlib: "kernel32", importc: "FlushViewOfFile".}
 
 type
   OVERLAPPED* {.pure, inheritable.} = object
