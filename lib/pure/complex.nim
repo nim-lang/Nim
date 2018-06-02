@@ -29,8 +29,8 @@ const
   im*: Complex = (re: 0.0, im: 1.0)
     ## The imaginary unit. √-1.
 
-proc toComplex*(x: SomeInteger|SomeFloat): Complex =
-  ## Convert some float ``x`` to a complex number.
+proc toComplex*(x: float): Complex =
+  ## Convert float ``x`` to a complex number.
   result.re = x
   result.im = 0.0
 
