@@ -120,11 +120,11 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.mem = nil
     result.size = 0
 
+  when defined(windows):
     let desiredAccess = GENERIC_READ
     let shareMode = FILE_SHARE_READ
     let flags = FILE_FLAG_RANDOM_ACCESS
 
-  when defined(windows):
     template fail(errCode: OSErrorCode, msg: untyped) =
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
