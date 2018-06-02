@@ -65,6 +65,7 @@
 - Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
 - Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
 
 ### Library changes
