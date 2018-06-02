@@ -120,6 +120,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.mem = nil
     result.size = 0
 
+    let desiredAccess = GENERIC_READ
+    let shareMode = FILE_SHARE_READ
+    let flags = FILE_FLAG_RANDOM_ACCESS
+
   when defined(windows):
     template fail(errCode: OSErrorCode, msg: untyped) =
       rollback()
@@ -133,11 +137,11 @@ proc open*(filename: string, mode: FileMode = fmRead,
       winApiProc(
         filename,
         # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
-        if readonly: GENERIC_READ else: GENERIC_READ or GENERIC_WRITE,
-        FILE_SHARE_READ,
+        if readonly: desiredAccess else: desiredAccess or GENERIC_WRITE,
+        if readonly: shareMode else: shareMode or FILE_SHARE_WRITE,
         nil,
         if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
-        if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
+        if readonly: FILE_ATTRIBUTE_READONLY or flags else: FILE_ATTRIBUTE_NORMAL or flags,
         0)
 
     when useWinUnicode:
