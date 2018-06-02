@@ -25,6 +25,10 @@ type
   Complex* = tuple[re, im: float]
     ## a complex number, consisting of a real and an imaginary part
 
+const
+  im*: Complex = (re: 0.0, im: 1.0)
+    ## The imaginary unit. √-1.
+
 proc toComplex*(x: SomeInteger): Complex =
   ## Convert some integer ``x`` to a complex number.
   result.re = x

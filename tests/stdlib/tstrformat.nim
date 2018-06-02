@@ -37,3 +37,12 @@ doAssert fmt"^7.0 :: {str:^7.0}" == "^7.0 ::        "
 # this is actually wrong, but the unicode module has no support for graphemes
 doAssert fmt"^7.4 :: {str:^7.4}" == "^7.4 ::  äöüe  "
 doAssert fmt"^7.9 :: {str:^7.9}" == "^7.9 :: äöüe\u0309\u0319o\u0307\u0359"
+
+# see issue #7932
+doAssert fmt"{15:08}" == "00000015" # int, works
+doAssert fmt"{1.5:08}" == "000001.5" # float, works
+doAssert fmt"{1.5:0>8}" == "000001.5" # workaround using fill char works for positive floats
+doAssert fmt"{-1.5:0>8}" == "0000-1.5" # even that does not work for negative floats  
+doAssert fmt"{-1.5:08}" == "-00001.5" # works
+doAssert fmt"{1.5:+08}" == "+00001.5" # works
+doAssert fmt"{1.5: 08}" == " 00001.5" # works

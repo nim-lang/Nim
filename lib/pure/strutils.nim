@@ -1854,6 +1854,10 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ##
   ## If ``precision == -1``, it tries to format it nicely.
   when defined(js):
+    var precision = precision
+    if precision == -1:
+      # use the same default precision as c_sprintf
+      precision = 6
     var res: cstring
     case format
     of ffDefault:
@@ -1863,6 +1867,9 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
     of ffScientific:
       {.emit: "`res` = `f`.toExponential(`precision`);".}
     result = $res
+    if 1.0 / f == -Inf:
+      # JavaScript removes the "-" from negative Zero, add it back here
+      result = "-" & $res
     for i in 0 ..< result.len:
       # Depending on the locale either dot or comma is produced,
       # but nothing else is possible:
