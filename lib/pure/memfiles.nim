@@ -251,7 +251,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
 proc flush*(f: var MemFile): bool =
   when defined(windows):
-    result = flushViewOfFile(f.mem, f.size.int32) == 0
+    result = flushViewOfFile(f.mem, 0) != 0
     if not result:
       let lastErr = osLastError()
       if lastErr != ERROR_LOCK_VIOLATION.OSErrorCode:
