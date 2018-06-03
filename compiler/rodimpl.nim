@@ -10,16 +10,12 @@
 ## This module implements the new compilation cache.
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
-  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp
+  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp, vm
 
 ## Todo:
-## - Implement the 'import' replay logic so that the codegen runs over
-##   dependent modules.
 ## - Make conditional symbols and the configuration part of a module's
-##   dependencies.
-## - Test multi methods.
-## - Implement the limited VM support based on replays.
-## - Depencency computation should use *signature* hashes in order to
+##   dependencies. Also include the rodfile "version".
+## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 
 template db(): DbConn = g.incr.db
@@ -157,8 +153,6 @@ proc encodeLoc(g: ModuleGraph; loc: TLoc, result: var string) =
   if loc.lode != nil:
     add(result, '^')
     encodeNode(g, unknownLineInfo(), loc.lode, result)
-    #encodeVInt(cast[int32](loc.t.id), result)
-    #pushType(w, loc.t)
   if loc.r != nil:
     add(result, '!')
     encodeStr($loc.r, result)
@@ -765,11 +759,9 @@ proc loadModuleSymTab(g; module: PSym) =
 proc replay(g: ModuleGraph; module: PSym; n: PNode) =
   case n.kind
   of nkStaticStmt:
-    #evalStaticStmt()
-    discard "XXX to implement"
-  of nkVarSection, nkLetSection:
-    #setupCompileTimeVar()
-    discard "XXX to implement"
+    evalStaticStmt(module, g, n[0], module)
+    #of nkVarSection, nkLetSection:
+    #  nkVarSections are already covered by the vmgen which produces nkStaticStmt
   of nkMethodDef:
     methodDef(g, n[namePos].sym, fromCache=true)
   of nkCommentStmt:
@@ -798,10 +790,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         internalAssert g.config, false
   of nkImportStmt:
     for x in n:
-      if x.kind == nkStrLit:
-        # XXX check that importModuleCallback implements the right logic
-        let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, n[0].strVal))
-        internalAssert g.config, imported.id < 0
+      internalAssert g.config, x.kind == nkStrLit
+      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, n[0].strVal))
+      internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
   else: discard "nothing to do for this node"

@@ -804,6 +804,17 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers of same size")
 
+proc genVoidABC(c: PCtx, n: PNode, dest: TRegister, opcode: TOpcode)
+  unused(c, n, dest)
+  var
+    tmp1 = c.genx(n.sons[1])
+    tmp2 = c.genx(n.sons[2])
+    tmp3 = c.genx(n.sons[3])
+  c.gABC(n, opcode, tmp1, tmp2, tmp3)
+  c.freeTemp(tmp1)
+  c.freeTemp(tmp2)
+  c.freeTemp(tmp3)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1067,20 +1078,25 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
-  of mNSetChild, mNDel:
-    unused(c, n, dest)
-    var
-      tmp1 = c.genx(n.sons[1])
-      tmp2 = c.genx(n.sons[2])
-      tmp3 = c.genx(n.sons[3])
-    c.gABC(n, if m == mNSetChild: opcNSetChild else: opcNDel, tmp1, tmp2, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
+  of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
+  of mNDel: genVoidABC(c, n, dest, opcNDel)
   of mNAdd: genBinaryABC(c, n, dest, opcNAdd)
   of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
   of mNKind: genUnaryABC(c, n, dest, opcNKind)
   of mNSymKind: genUnaryABC(c, n, dest, opcNSymKind)
+
+  of mNccValue: genUnaryABC(c, n, dest, opcNccValue)
+  of mNccInc: genBinaryABC(c, n, dest, opcNccInc)
+  of mNcsAdd: genBinaryABC(c, n, dest, opcNcsAdd
+  of mNcsIncl: genBinaryABC(c, n, dest, opcNcsIncl
+  of mNcsLen: genUnaryABC(c, n, dest, opcNcsLen)
+  of mNcsAt: genBinaryABC(c, n, dest, opcNcsAt)
+  of mNctPut: genVoidABC(c, n, dest, opcNctPut)
+  of mNctLen: genUnaryABC(c, n, dest, opcNctLen)
+  of mNctGet: genBinaryABC(c, n, dest, opcNctGet)
+  of mNctHasNext: genBinaryABC(c, n, dest, opcNctHasNext)
+  of mNctNext: genBinaryABC(c, n, dest, opcNctNext)
+
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
@@ -1795,6 +1811,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.magic != mNone:
         genMagic(c, n, dest, s.magic)
       elif matches(s, "stdlib", "marshal", "to"):
+        # XXX marshal load&store should not be opcodes, but use the
+        # general callback mechanisms.
         genMarshalLoad(c, n, dest)
       elif matches(s, "stdlib", "marshal", "$$"):
         genMarshalStore(c, n, dest)

@@ -634,14 +634,18 @@ type
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
-    mNKind, mNSymKind
+    mNKind, mNSymKind,
+
+    mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
+    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
+
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
+    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo, mNGenSym,
+    mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
     mException, mBuiltinType
 

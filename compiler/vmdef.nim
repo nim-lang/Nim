@@ -10,7 +10,8 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos
+import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos,
+  tables, btrees
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -90,6 +91,9 @@ type
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
+
+    opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
+    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext,
 
     opcSlurp,
     opcGorge,
@@ -209,6 +213,9 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    cacheSeqs*: Table[string, PNode]
+    cacheCounters*: Table[string, BiggestInt]
+    cacheTables*: Table[string, BTree[string, PNode]]
 
   TPosition* = distinct int
 
@@ -219,7 +226,10 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g)
+    cache: cache, config: g.config, graph: g,
+    cacheSeqs: initTable[string, PNode]()
+    cacheCounters: initTable[string, BiggestInt]()
+    cacheTables: initTable[string, BTree[string, PNode]]())
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
