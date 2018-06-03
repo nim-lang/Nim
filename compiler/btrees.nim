@@ -26,7 +26,6 @@ type
       links: array[M, Node[Key, Val]]
   BTree*[Key, Val] = object
     root: Node[Key, Val]
-    height: int
     entries: int      ## number of key-value pairs
 
 proc initBTree*[Key, Val](): BTree[Key, Val] =
@@ -45,6 +44,18 @@ proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   assert(not x.isInternal)
   for j in 0 ..< x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
+
+proc contains*[Key, Val](b: BTree[Key, Val], key: Key): bool =
+  var x = b.root
+  while x.isInternal:
+    for j in 0 ..< x.entries:
+      if j+1 == x.entries or less(key, x.keys[j+1]):
+        x = x.links[j]
+        break
+  assert(not x.isInternal)
+  for j in 0 ..< x.entries:
+    if eq(key, x.keys[j]): return true
+  return false
 
 proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
   for j in 0 ..< Mhalf:
@@ -106,7 +117,6 @@ proc add*[Key, Val](b: var BTree[Key, Val]; key: Key; val: Val) =
   t.keys[1] = u.keys[0]
   t.links[1] = u
   b.root = t
-  inc b.height
 
 proc toString[Key, Val](h: Node[Key, Val], indent: string; result: var string) =
   if not h.isInternal:
@@ -155,6 +165,8 @@ iterator pairs*[Key, Val](b: BTree[Key, Val]): (Key, Val) =
     i = i2
     yield (k, v)
 
+proc len*[Key, Val](b: BTree[Key, Val]): int {.inline.} = b.entries
+
 when isMainModule:
 
   import random, tables
@@ -200,7 +212,6 @@ when isMainModule:
         if x != $(iters - i):
           echo "got ", x, ", but expected ", iters - i
       echo b2.entries
-      echo b2.height
 
     when true:
       var b2 = initBTree[int, string]()
