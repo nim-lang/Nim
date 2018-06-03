@@ -573,7 +573,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         message(c.config, v.info, hintGlobalVar)
   if hasCompileTime:
     vm.setupCompileTimeVar(c.module, c.graph, result)
-    c.graph.recordStmt(c.graph, c.module, result)
+    # handled by the VM codegen:
+    #c.graph.recordStmt(c.graph, c.module, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -1772,8 +1773,10 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   dec c.inStaticContext
   n.sons[0] = a
   evalStaticStmt(c.module, c.graph, a, c.p.owner)
-  result = newNodeI(nkDiscardStmt, n.info, 1)
-  result.sons[0] = c.graph.emptyNode
+  # for incremental replays, keep the AST as required for replays:
+  result = n
+  #result = newNodeI(nkDiscardStmt, n.info, 1)
+  #result.sons[0] = c.graph.emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,

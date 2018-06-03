@@ -863,7 +863,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         # ensure that e.g. discard "some comment" gets optimized away
         # completely:
         result = PTransNode(newNode(nkCommentStmt))
-  of nkCommentStmt, nkTemplateDef:
+  of nkCommentStmt, nkTemplateDef, nkImportStmt, nkStaticStmt:
     return n.PTransNode
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``

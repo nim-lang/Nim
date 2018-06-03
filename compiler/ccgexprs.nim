@@ -2306,7 +2306,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     genTypeSection(p.module, n)
   of nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef:
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt:
     discard
   of nkPragma: genPragma(p, n)
   of nkPragmaBlock: expr(p, n.lastSon, d)

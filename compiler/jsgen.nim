@@ -2155,7 +2155,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef: discard
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
