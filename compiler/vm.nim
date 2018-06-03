@@ -1576,86 +1576,98 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNccValue:
       decodeB(rkInt)
       let destKey = regs[rb].node.strVal
-      regs[ra].intVal = getOrDefault(c.cacheCounters, destKey)
+      regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
-      let rb = instr.regB
+      let g = c.graph
       let destKey = regs[ra].node.strVal
-      let by = regs[rb].intVal
-      let v = getOrDefault(c.cacheCounters, destKey)
-      c.cacheCounters[destKey] = v+by
+      let by = regs[instr.regB].intVal
+      let v = getOrDefault(g.cacheCounters, destKey)
+      g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
+      let g = c.graph
       let destKey = regs[ra].node.strVal
       let val = regs[instr.regB].node
-      if not contains(c.cacheSeqs, destKey):
-        c.cacheSeqs[destKey] = newTree(nkStmtList, val)
+      if not contains(g.cacheSeqs, destKey):
+        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
         # newNodeI(nkStmtList, c.debug[pc])
       else:
-        c.cacheSeqs[destKey].add val
+        g.cacheSeqs[destKey].add val
       recordAdd(c, c.debug[pc], destKey, val)
     of opcNcsIncl:
+      let g = c.graph
       let destKey = regs[ra].node.strVal
       let val = regs[instr.regB].node
-      if not contains(c.cacheSeqs, destKey):
-        c.cacheSeqs[destKey] = newTree(nkStmtList, val)
+      if not contains(g.cacheSeqs, destKey):
+        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
       else:
         block search:
-          for existing in c.cacheSeqs[destKey]:
+          for existing in g.cacheSeqs[destKey]:
             if exprStructuralEquivalent(existing, val, strictSymEquality=true):
               break search
-          c.cacheSeqs[destKey].add val
+          g.cacheSeqs[destKey].add val
       recordIncl(c, c.debug[pc], destKey, val)
     of opcNcsLen:
+      let g = c.graph
       decodeB(rkInt)
       let destKey = regs[rb].node.strVal
       regs[ra].intVal =
-        if contains(c.cacheSeqs, destKey): c.cacheSeqs[destKey].len else: 0
+        if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
     of opcNcsAt:
+      let g = c.graph
       decodeBC(rkNode)
       let idx = regs[rc].intVal
       let destKey = regs[rb].node.strVal
-      if contains(c.cacheSeqs, destKey) and idx <% c.cacheSeqs[destKey].len:
-        regs[ra].node = c.cacheSeqs[destKey][idx.int]
+      if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
+        regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNctPut:
+      let g = c.graph
       let destKey = regs[ra].node.strVal
       let key = regs[instr.regB].node.strVal
       let val = regs[instr.regC].node
-      if not contains(c.cacheTables, destKey):
-        c.cacheTables[destKey] = initBTree[string, PNode]()
-      if not contains(c.cacheTables[destKey], key):
-        c.cacheTables[destKey].add(key, val)
+      if not contains(g.cacheTables, destKey):
+        g.cacheTables[destKey] = initBTree[string, PNode]()
+      if not contains(g.cacheTables[destKey], key):
+        g.cacheTables[destKey].add(key, val)
         recordPut(c, c.debug[pc], destKey, key, val)
       else:
         stackTrace(c, tos, pc, "key already exists: " & key)
     of opcNctLen:
+      let g = c.graph
       decodeB(rkInt)
       let destKey = regs[rb].node.strVal
       regs[ra].intVal =
-        if contains(c.cacheTables, destKey): c.cacheTables[destKey].len else: 0
+        if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
     of opcNctGet:
+      let g = c.graph
       decodeBC(rkNode)
       let destKey = regs[rb].node.strVal
       let key = regs[rc].node.strVal
-      if contains(c.cacheTables, destKey):
-        if contains(c.cacheTables[destKey], key):
-          regs[ra].node = getOrDefault(c.cacheTables[destKey], key)
+      if contains(g.cacheTables, destKey):
+        if contains(g.cacheTables[destKey], key):
+          regs[ra].node = getOrDefault(g.cacheTables[destKey], key)
         else:
           stackTrace(c, tos, pc, "key does not exist: " & key)
       else:
         stackTrace(c, tos, pc, "key does not exist: " & destKey)
     of opcNctHasNext:
+      let g = c.graph
       decodeBC(rkInt)
       let destKey = regs[rb].node.strVal
       regs[ra].intVal =
-        btrees.hasNext(c.cacheTables[destKey], regs[rc].intVal.int) else: 0
+        if g.cacheTables.contains(destKey):
+          ord(btrees.hasNext(g.cacheTables[destKey], regs[rc].intVal.int))
+        else:
+          0
     of opcNctNext:
+      let g = c.graph
       decodeBC(rkNode)
       let destKey = regs[rb].node.strVal
       let index = regs[rc].intVal
-      if contains(c.cacheTables, destKey):
-        let (k, v, nextIndex) = btrees.next(c.cacheTables[destKey], index.int)
+      if contains(g.cacheTables, destKey):
+        let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
         regs[ra].node = newTree(nkTupleConstr, newStrNode(k, c.debug[pc]), v,
                                 newIntNode(nkIntLit, nextIndex))
       else:

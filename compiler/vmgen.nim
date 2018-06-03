@@ -804,12 +804,12 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers of same size")
 
-proc genVoidABC(c: PCtx, n: PNode, dest: TRegister, opcode: TOpcode)
+proc genVoidABC(c: PCtx, n: PNode, dest: TRegister, opcode: TOpcode) =
   unused(c, n, dest)
   var
-    tmp1 = c.genx(n.sons[1])
-    tmp2 = c.genx(n.sons[2])
-    tmp3 = c.genx(n.sons[3])
+    tmp1 = c.genx(n[1])
+    tmp2 = c.genx(n[2])
+    tmp3 = c.genx(n[3])
   c.gABC(n, opcode, tmp1, tmp2, tmp3)
   c.freeTemp(tmp1)
   c.freeTemp(tmp2)
@@ -1087,8 +1087,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
 
   of mNccValue: genUnaryABC(c, n, dest, opcNccValue)
   of mNccInc: genBinaryABC(c, n, dest, opcNccInc)
-  of mNcsAdd: genBinaryABC(c, n, dest, opcNcsAdd
-  of mNcsIncl: genBinaryABC(c, n, dest, opcNcsIncl
+  of mNcsAdd: genBinaryABC(c, n, dest, opcNcsAdd)
+  of mNcsIncl: genBinaryABC(c, n, dest, opcNcsIncl)
   of mNcsLen: genUnaryABC(c, n, dest, opcNcsLen)
   of mNcsAt: genBinaryABC(c, n, dest, opcNcsAt)
   of mNctPut: genVoidABC(c, n, dest, opcNctPut)

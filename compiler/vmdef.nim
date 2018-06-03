@@ -213,9 +213,6 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
-    cacheSeqs*: Table[string, PNode]
-    cacheCounters*: Table[string, BiggestInt]
-    cacheTables*: Table[string, BTree[string, PNode]]
 
   TPosition* = distinct int
 
@@ -226,10 +223,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g,
-    cacheSeqs: initTable[string, PNode]()
-    cacheCounters: initTable[string, BiggestInt]()
-    cacheTables: initTable[string, BTree[string, PNode]]())
+    cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module

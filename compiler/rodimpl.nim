@@ -10,7 +10,8 @@
 ## This module implements the new compilation cache.
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
-  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp, vm
+  renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
+  btrees, trees
 
 ## Todo:
 ## - Make conditional symbols and the configuration part of a module's
@@ -757,9 +758,10 @@ proc loadModuleSymTab(g; module: PSym) =
     g.systemModule = module
 
 proc replay(g: ModuleGraph; module: PSym; n: PNode) =
+  # XXX check if we need to replay nkStaticStmt here.
   case n.kind
-  of nkStaticStmt:
-    evalStaticStmt(module, g, n[0], module)
+  #of nkStaticStmt:
+    #evalStaticStmt(module, g, n[0], module)
     #of nkVarSection, nkLetSection:
     #  nkVarSections are already covered by the vmgen which produces nkStaticStmt
   of nkMethodDef:
@@ -786,6 +788,39 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
         extccomp.addExternalFileToLink(g.config, n[1].strVal)
+      of "inc":
+        let destKey = n[1].strVal
+        let by = n[2].intVal
+        let v = getOrDefault(g.cacheCounters, destKey)
+        g.cacheCounters[destKey] = v+by
+      of "put":
+        let destKey = n[1].strVal
+        let key = n[2].strVal
+        let val = n[3]
+        if not contains(g.cacheTables, destKey):
+          g.cacheTables[destKey] = initBTree[string, PNode]()
+        if not contains(g.cacheTables[destKey], key):
+          g.cacheTables[destKey].add(key, val)
+        else:
+          internalError(g.config, n.info, "key already exists: " & key)
+      of "incl":
+        let destKey = n[1].strVal
+        let val = n[2]
+        if not contains(g.cacheSeqs, destKey):
+          g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+        else:
+          block search:
+            for existing in g.cacheSeqs[destKey]:
+              if exprStructuralEquivalent(existing, val, strictSymEquality=true):
+                break search
+            g.cacheSeqs[destKey].add val
+      of "add":
+        let destKey = n[1].strVal
+        let val = n[2]
+        if not contains(g.cacheSeqs, destKey):
+          g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+        else:
+          g.cacheSeqs[destKey].add val
       else:
         internalAssert g.config, false
   of nkImportStmt:

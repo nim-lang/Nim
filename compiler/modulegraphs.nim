@@ -26,7 +26,7 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental
+  incremental, btrees
 
 type
   ModuleGraph* = ref object
@@ -59,6 +59,9 @@ type
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
+    cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
+    cacheCounters*: Table[string, BiggestInt]
+    cacheTables*: Table[string, BTree[string, PNode]]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -90,6 +93,9 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   init(result.incr)
   result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
     discard
+  result.cacheSeqs = initTable[string, PNode]()
+  result.cacheCounters = initTable[string, BiggestInt]()
+  result.cacheTables = initTable[string, BTree[string, PNode]]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
