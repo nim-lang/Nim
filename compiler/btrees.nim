@@ -122,6 +122,39 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
+proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool =
+  result = index < b.entries
+
+proc countSubTree[Key, Val](it: Node[Key, Val]): int =
+  if it.isInternal:
+    result = 0
+    for k in 0..<it.entries:
+      inc result, countSubTree(it.links[k])
+  else:
+    result = it.entries
+
+proc next*[Key, Val](b: BTree[Key, Val]; index: int): (Key, Val, int) =
+  var it = b.root
+  var i = index
+  # navigate to the right leaf:
+  while it.isInternal:
+    var sum = 0
+    for k in 0..<it.entries:
+      let c = countSubTree(it.links[k])
+      inc sum, c
+      if sum > i:
+        it = it.links[k]
+        dec i, (sum - c)
+        break
+  result = (it.keys[i], it.vals[i], index+1)
+
+iterator pairs*[Key, Val](b: BTree[Key, Val]): (Key, Val) =
+  var i = 0
+  while hasNext(b, i):
+    let (k, v, i2) = next(b, i)
+    i = i2
+    yield (k, v)
+
 when isMainModule:
 
   import random, tables
@@ -153,6 +186,9 @@ when isMainModule:
     assert st.getOrDefault("www.ebay.com") == "66.135.192.87"
     assert st.getOrDefault("www.dell.com") == "143.166.224.230"
     assert(st.entries == 16)
+
+    for k, v in st:
+      echo k, ": ", v
 
     when false:
       var b2 = initBTree[string, string]()
