@@ -86,7 +86,6 @@
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
 - An exception raised from ``test`` block of ``unittest`` now shows its type in
   the error message
-- ``complex.toComplex`` now accepts float.
 
 ### Language additions
 
@@ -151,5 +150,3 @@
   language extensions, it is not an all-or-nothing switch anymore.
 
 ### Bugfixes
-
-- Fixed `complex.toComplex` for integer.
