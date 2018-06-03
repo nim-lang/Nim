@@ -456,7 +456,7 @@ proc `[]=`*(p: var MultipartData, name: string,
   ##     "<html><head></head><body><p>test</p></body></html>")
   p.add(name, file.content, file.name, file.contentType)
 
-proc format(p: MultipartData): tuple[contentType, body: string] =
+proc format*(p: MultipartData): tuple[contentType, body: string] =
   if p == nil or p.content == nil or p.content.len == 0:
     return ("", "")
 
