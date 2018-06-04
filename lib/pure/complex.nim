@@ -26,7 +26,7 @@ type
     ## a complex number, consisting of a real and an imaginary part
 
 const
-  im*: Complex = (re: 0.0, im: 1.0)
+  iota*: Complex = (re: 0.0, im: 1.0)
     ## The imaginary unit. √-1.
 
 proc toComplex*(x: SomeInteger): Complex =
