@@ -558,12 +558,16 @@ proc format*(value: string; specifier: string; res: var string) =
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
+  var value = value
   case spec.typ
   of 's', '\0': discard
   else:
     raise newException(ValueError,
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
+  if spec.precision != -1:
+    if spec.precision < runelen(value):
+      setLen(value, runeOffset(value, spec.precision))
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
 when isMainModule:
