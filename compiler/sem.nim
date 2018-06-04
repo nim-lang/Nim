@@ -162,7 +162,8 @@ proc commonType*(x, y: PType): PType =
       # this will trigger an error later:
       if result.isNil or result == a: return x
       if result == b: return y
-      # bug #7906
+      # bug #7906, tyRef/tyPtr + tyGenericInst of ref/ptr object ->
+      # ill-formed AST, no need for additional tyRef/tyPtr
       if k != tyNone and x.kind != tyGenericInst:
         let r = result
         result = newType(k, r.owner)
