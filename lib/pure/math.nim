@@ -148,14 +148,13 @@ else: # JS
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
 
-proc log*[X, B: SomeFloat](x: X, base: B): auto =
+proc log*[T: SomeFloat](x, base: T): T =
   ## Computes the logarithm ``base`` of ``x``
-  when B is float64 or X is float64:
-    var r: float64
-  else:
-    var r: float32
-  r = ln(x) / ln(base)
-  return r
+  ln(x) / ln(base)
+proc log*(x: float64, base: float32): float64 =
+  ln(x) / ln(base)
+proc log*(x: float32, base: float64): float64 =
+  ln(x) / ln(base)
 
 when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
