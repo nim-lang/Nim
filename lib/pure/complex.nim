@@ -98,9 +98,18 @@ proc `==`*[X: Complex, Y: SomeFloat](x: X, y: Y): bool =
   ## Compare complex number ``x`` and float number ``y`` for equality.
   x.re == y and x.im == 0.0
 
+
 proc `=~`*(x, y: Complex): bool =
-  ## Compare two complex numbers `x` and `y` approximately.
-  result = abs(x.re-y.re)<EPS and abs(x.im-y.im)<EPS
+  ## Compare two complex numbers ``x`` and ``y`` approximately.
+  abs(x.re - y.re) < EPS and abs(x.im - y.im) < EPS
+
+proc `=~`*(x: SomeFloat, y: Complex): bool =
+  ## Compare float number ``x`` and complex number ``y`` approximately.
+  abs(x - y.re) < EPS and abs(y.im) < EPS
+
+proc `=~`*(x: Complex, y: SomeFloat): bool =
+  ## Compare complex number ``x`` and float number ``y`` approximately.
+  abs(x.re - y) < EPS and abs(x.im) < EPS
 
 
 proc `+`*(z: Complex): Complex = z
