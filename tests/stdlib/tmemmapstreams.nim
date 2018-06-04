@@ -12,9 +12,10 @@ Readed line: Hello!
 Position after reading line: 7'''
 """
 import os, streams
+const
+  fn = "test.mmapstream"
 var
   mms: MemMapFileStream
-  fn = "test.mmapstream"
 
 if fileExists(fn): removeFile(fn)
 
