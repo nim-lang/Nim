@@ -1523,7 +1523,6 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
 when not defined(JS) and not defined(nimscript) and hasAlloc:
-  proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -2639,6 +2638,11 @@ when not defined(nimscript) and hasAlloc:
     proc GC_unref*(x: string) {.magic: "GCunref", benign.}
       ## see the documentation of `GC_ref`.
 
+    when not defined(JS) and not defined(nimscript) and hasAlloc:
+      proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+      ## Expands operating GC stack range to `theStackBottom`. Does nothing
+      ## if current stack bottom is already lower than `theStackBottom`.
+
   else:
     template GC_disable* =
       {.warning: "GC_disable is a no-op in JavaScript".}
@@ -2898,16 +2902,16 @@ when not defined(JS): #and not defined(nimscript):
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
       # way round.
-      when declared(setStackBottom):
+      when declared(nimGC_setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
-        setStackBottom(locals)
+        nimGC_setStackBottom(locals)
 
     proc initStackBottomWith(locals: pointer) {.inline, compilerproc.} =
       # We need to keep initStackBottom around for now to avoid
       # bootstrapping problems.
-      when declared(setStackBottom):
-        setStackBottom(locals)
+      when declared(nimGC_setStackBottom):
+        nimGC_setStackBottom(locals)
 
     {.push profiler: off.}
     var
@@ -3442,6 +3446,14 @@ when not defined(nimNoArrayToString):
   proc `$`*[T, IDX](x: array[IDX, T]): string =
     ## generic ``$`` operator for arrays that is lifted from the components
     collectionToString(x, "[", ", ", "]")
+
+proc `$`*[T](x: openarray[T]): string =
+  ## generic ``$`` operator for openarrays that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
