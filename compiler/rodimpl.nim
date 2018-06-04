@@ -839,12 +839,12 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
                         abs module.id):
 
     var b = BlobReader(pos: 0)
-    shallowCopy b.s, row[0]
     # ensure we can read without index checks:
-    b.s.add '\0'
+    b.s = row[0] & '\0'
     result.add decodeNode(g, b, module.info)
 
   db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
+  echo result
   replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
