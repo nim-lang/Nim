@@ -527,8 +527,13 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
   var sign = false
   if value >= 0.0:
     if spec.sign != '-':
-      f = spec.sign & f
       sign = true
+      if  value == 0.0:
+        if 1.0 / value == Inf:
+          # only add the sign if value != negZero
+          f = spec.sign & f
+      else:
+        f = spec.sign & f
   else:
     sign = true
 
