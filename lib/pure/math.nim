@@ -141,6 +141,8 @@ when not defined(JS): # C
   proc ln*(x: float32): float32 {.importc: "logf", header: "<math.h>".}
   proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
     ## Computes the natural log of `x`
+  proc log*(b, x: float32): float32 = ln(x) / ln(b)
+    ## Computes the logarithm base ``b`` of ``x``
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of `x`
@@ -372,7 +374,7 @@ when not defined(JS): # C
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
-    ## Computes the modulo operation for float operators. 
+    ## Computes the modulo operation for float operators.
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
