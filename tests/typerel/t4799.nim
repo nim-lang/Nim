@@ -142,7 +142,7 @@ block test_t4799_6:
   #doAssert(testS([b, c, a]) == "rc2rd3base1")
   #doAssert(testS([c, b, a]) == "rd3rc2base1")
 
-proc test_inproc() =  
+proc test_inproc() =
   block test_inproc_1:
     var rgv = GRBase[int](val: 3)
     var rgc = GRC[int](val: 4)
@@ -153,7 +153,7 @@ proc test_inproc() =
     doAssert(testGR([rgb, rgc, rgv]) == "243")
     doAssert(testGR([rgc, rgv, rgb]) == "432")
     doAssert(testGR([rgv, rgb, rgc]) == "324")
-  
+
   block test_inproc_2:
     var pgv = PRBase[int](val: 3)
     var pgc = PRC[int](val: 4)
@@ -164,6 +164,82 @@ proc test_inproc() =
     doAssert(testPR([pgb.addr, pgc.addr, pgv.addr]) == "243")
     doAssert(testPR([pgc.addr, pgv.addr, pgb.addr]) == "432")
     doAssert(testPR([pgv.addr, pgb.addr, pgc.addr]) == "324")
-  
+
 test_inproc()
+
+template reject(x) =
+  static: assert(not compiles(x))
+
+block test_t4799_7:
+  type
+    Vehicle[T] = ref object of RootObj
+      tire: T
+    Car[T] = object of Vehicle[T]
+    Bike[T] = object of Vehicle[T]
+
+  proc testVehicle[T](x: varargs[Vehicle[T]]): string {.used.} =
+    result = ""
+    for c in x:
+      result.add $c.tire
+
+  var v = Vehicle[int](tire: 3)
+  var c = Car[int](tire: 4)
+  var b = Bike[int](tire: 2)
+
+  reject:
+    echo testVehicle b, c, v
+
+block test_t4799_8:
+  type
+    Vehicle = ref object of RootObj
+      tire: int
+    Car = object of Vehicle
+    Bike = object of Vehicle
+
+  proc testVehicle(x: varargs[Vehicle]): string {.used.} =
+    result = ""
+    for c in x:
+      result.add $c.tire
+
+  var v = Vehicle(tire: 3)
+  var c = Car(tire: 4)
+  var b = Bike(tire: 2)
+
+  reject:
+    echo testVehicle b, c, v
+
+type
+  PGVehicle[T] = ptr object of RootObj
+    tire: T
+  PGCar[T] = object of PGVehicle[T]
+  PGBike[T] = object of PGVehicle[T]
+
+proc testVehicle[T](x: varargs[PGVehicle[T]]): string {.used.} =
+  result = ""
+  for c in x:
+    result.add $c.tire
+
+var pgc = PGCar[int](tire: 4)
+var pgb = PGBike[int](tire: 2)
+
+reject:
+  echo testVehicle pgb, pgc
+
+type
+  RVehicle = ptr object of RootObj
+    tire: int
+  RCar = object of RVehicle
+  RBike = object of RVehicle
+
+proc testVehicle(x: varargs[RVehicle]): string {.used.} =
+  result = ""
+  for c in x:
+    result.add $c.tire
+
+var rc = RCar(tire: 4)
+var rb = RBike(tire: 2)
+
+reject:
+  echo testVehicle rb, rc
+
 echo "OK"
