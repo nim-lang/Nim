@@ -129,6 +129,12 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## If `x` is empty, 0 is returned.
   for i in items(x): result = result + i
 
+proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
+  ## Computes the product of the elements in ``x``.
+  ## If ``x`` is empty, 1 is returned.
+  result = 1.T
+  for i in items(x): result = result * i
+
 {.push noSideEffect.}
 when not defined(JS): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
@@ -372,7 +378,7 @@ when not defined(JS): # C
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
-    ## Computes the modulo operation for float operators. 
+    ## Computes the modulo operation for float operators.
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
@@ -559,6 +565,12 @@ when isMainModule and not defined(JS):
 when isMainModule:
   # Function for approximate comparison of floats
   proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+
+  block: # prod
+    doAssert prod([1, 2, 3, 4]) == 24
+    doAssert prod([1.5, 3.4]) == 5.1
+    let x: seq[float] = @[]
+    doAssert prod(x) == 1.0
 
   block: # round() tests
     # Round to 0 decimal places

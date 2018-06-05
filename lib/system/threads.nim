@@ -440,7 +440,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
       # init the GC for refc/markandsweep
-      setStackBottom(addr(p))
+      nimGC_setStackBottom(addr(p))
       initGC()
       when declared(threadType):
         threadType = ThreadType.NimThread
