@@ -87,6 +87,7 @@
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
 - An exception raised from ``test`` block of ``unittest`` now shows its type in
   the error message
+- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
 
 ### Language additions
 
