@@ -86,18 +86,20 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc readAll*(s: Stream): string =
-  ## Reads all available data.
-  const bufferSize = 1000
-  result = newString(bufferSize)
-  var r = 0
-  while true:
-    let readBytes = readData(s, addr(result[r]), bufferSize)
-    if readBytes < bufferSize:
-      setLen(result, r+readBytes)
-      break
-    inc r, bufferSize
-    setLen(result, r+bufferSize)
+when not defined(js):
+  proc readAll*(s: Stream): string =
+    ## Reads all available data.
+    const bufferSize = 1024
+    var buffer {.noinit.}: array[bufferSize, char]
+    while true:
+      let readBytes = readData(s, addr(buffer[0]), bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+      if readBytes < bufferSize:
+        break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size
@@ -131,7 +133,7 @@ proc write*(s: Stream, x: string) =
   when nimvm:
     writeData(s, cstring(x), x.len)
   else:
-    if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
+    if x.len > 0: writeData(s, cstring(x), x.len)
 
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
@@ -251,14 +253,14 @@ proc readStr*(s: Stream, length: int): TaintedString =
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = readData(s, addr(string(result)[0]), length)
+  var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## peeks a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = peekData(s, addr(string(result)[0]), length)
+  var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =

@@ -17,7 +17,6 @@ proc renderPlainSymbolName*(n: PNode): string =
   ## Use this on documentation name nodes to extract the *raw* symbol name,
   ## without decorations, parameters, or anything. That can be used as the base
   ## for the HTML hyperlinks.
-  result = ""
   case n.kind
   of nkPostfix, nkAccQuoted:
     result = renderPlainSymbolName(n[n.len-1])
@@ -28,7 +27,8 @@ proc renderPlainSymbolName*(n: PNode): string =
   of nkPragmaExpr:
     result = renderPlainSymbolName(n[0])
   else:
-    internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
+    result = ""
+    #internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
   assert(not result.isNil)
 
 proc renderType(n: PNode): string =
@@ -105,7 +105,8 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
     for i in 0 ..< typePos:
       found.add(typeStr)
   else:
-    internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
+    found.add($n)
+    #internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
 
 proc renderParamTypes*(n: PNode, sep = defaultParamSeparator): string =
   ## Returns the types contained in `n` joined by `sep`.

@@ -11,7 +11,7 @@
 
 import
   strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
-  filters, filter_tmpl, renderer
+  filters, filter_tmpl, renderer, configuration
 
 type
   TFilterKind* = enum
@@ -30,12 +30,14 @@ type
     skin*: TParserKind
     parser*: TParser
 
+template config(p: TParsers): ConfigRef = p.parser.lex.config
+
 proc parseAll*(p: var TParsers): PNode =
   case p.skin
   of skinStandard, skinStrongSpaces:
     result = parser.parseAll(p.parser)
   of skinEndX:
-    internalError("parser to implement")
+    internalError(p.config, "parser to implement")
     result = ast.emptyNode
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
@@ -43,7 +45,7 @@ proc parseTopLevelStmt*(p: var TParsers): PNode =
   of skinStandard, skinStrongSpaces:
     result = parser.parseTopLevelStmt(p.parser)
   of skinEndX:
-    internalError("parser to implement")
+    internalError(p.config, "parser to implement")
     result = ast.emptyNode
 
 proc utf8Bom(s: string): int =
@@ -86,42 +88,44 @@ proc getFilter(ident: PIdent): TFilterKind =
       return i
   result = filtNone
 
-proc getParser(ident: PIdent): TParserKind =
+proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
   for i in countup(low(TParserKind), high(TParserKind)):
     if cmpIgnoreStyle(ident.s, parserNames[i]) == 0:
       return i
-  rawMessage(errInvalidDirectiveX, ident.s)
+  localError(conf, n.info, "unknown parser: " & ident.s)
 
-proc getCallee(n: PNode): PIdent =
+proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   if n.kind in nkCallKinds and n.sons[0].kind == nkIdent:
     result = n.sons[0].ident
   elif n.kind == nkIdent:
     result = n.ident
   else:
-    rawMessage(errXNotAllowedHere, renderTree(n))
+    localError(conf, n.info, "invalid filter: " & renderTree(n))
 
 proc applyFilter(p: var TParsers, n: PNode, filename: string,
                  stdin: PLLStream): PLLStream =
-  var ident = getCallee(n)
+  var ident = getCallee(p.config, n)
   var f = getFilter(ident)
   case f
   of filtNone:
-    p.skin = getParser(ident)
+    p.skin = getParser(p.config, n, ident)
     result = stdin
   of filtTemplate:
-    result = filterTmpl(stdin, filename, n)
+    result = filterTmpl(stdin, filename, n, p.config)
   of filtStrip:
-    result = filterStrip(stdin, filename, n)
+    result = filterStrip(p.config, stdin, filename, n)
   of filtReplace:
-    result = filterReplace(stdin, filename, n)
+    result = filterReplace(p.config, stdin, filename, n)
   if f != filtNone:
-    if hintCodeBegin in gNotes:
-      rawMessage(hintCodeBegin, [])
-      msgWriteln(result.s)
-      rawMessage(hintCodeEnd, [])
+    assert p.config != nil
+    if hintCodeBegin in p.config.notes:
+      rawMessage(p.config, hintCodeBegin, [])
+      msgWriteln(p.config, result.s)
+      rawMessage(p.config, hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string,
               start: PLLStream): PLLStream =
+  assert p.config != nil
   result = start
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
@@ -137,10 +141,12 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
 
 proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache; config: ConfigRef) =
+  assert config != nil
   var s: PLLStream
   p.skin = skinStandard
   let filename = fileIdx.toFullPathConsiderDirty
   var pipe = parsePipe(filename, inputstream, cache, config)
+  p.config() = config
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
   else: s = inputstream
   case p.skin
@@ -158,7 +164,7 @@ proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode
     f: File
   let filename = fileIdx.toFullPathConsiderDirty
   if not open(f, filename):
-    rawMessage(errCannotOpenFile, filename)
+    rawMessage(config, errGenerated, "cannot open file: " & filename)
     return
   openParsers(p, fileIdx, llStreamOpen(f), cache, config)
   result = parseAll(p)

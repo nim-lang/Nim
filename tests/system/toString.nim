@@ -6,6 +6,7 @@ doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
 doAssert """["", "foo", "bar"]""" ==  $(["", "foo", "bar"])
+doAssert """["", "foo", "bar"]""" ==  $(@["", "foo", "bar"].toOpenArray(0, 2))
 
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}

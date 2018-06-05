@@ -163,13 +163,13 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
-proc inc*(c: var CritBitTree[int]; key: string) =
-  ## counts the 'key'.
+proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
+  ## increments `c[key]` by `val`.
   let oldCount = c.count
   var n = rawInsert(c, key)
-  if c.count == oldCount:
+  if c.count == oldCount or oldCount == 0:
     # not a new key:
-    inc n.val
+    inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
@@ -352,3 +352,13 @@ when isMainModule:
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
   assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
+  var c = CritBitTree[int]()
+
+  c.inc("a")
+  assert c["a"] == 1
+
+  c.inc("a", 4)
+  assert c["a"] == 5
+
+  c.inc("a", -5)
+  assert c["a"] == 0

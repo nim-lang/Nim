@@ -25,8 +25,8 @@ template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
   #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
-  if (g.module.owner.id == gMainPackageId and gWholeProject) or
-    sfMainModule in g.module.flags:
+  if (g.module.owner.id == gMainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+      sfMainModule in g.module.flags:
     body
     try:
       generateIndex(g.doc)
@@ -55,7 +55,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(module.filename, options.gConfigVars)
+  var d = newDocumentor(module.filename, graph.config)
   d.hasToc = true
   g.doc = d
   result = g

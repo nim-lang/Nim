@@ -16,12 +16,12 @@ import
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs, tables, rod
+  modulegraphs, tables, rod, configuration
 
-from magicsys import systemModule, resetSysTypes
+from magicsys import resetSysTypes
 
-proc rodPass =
-  if gSymbolFiles in {enabledSf, writeOnlySf}:
+proc rodPass(g: ModuleGraph) =
+  if g.config.symbolFiles in {enabledSf, writeOnlySf}:
     registerPass(rodwritePass)
 
 proc codegenPass =
@@ -46,54 +46,55 @@ proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   registerPass(gendependPass)
   #registerPass(cleanupPass)
   compileProject(graph, cache)
-  writeDepsFile(graph, gProjectFull)
-  generateDot(gProjectFull)
-  execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
-      ' ' & changeFileExt(gProjectFull, "dot"))
+  let project = graph.config.projectFull
+  writeDepsFile(graph, project)
+  generateDot(project)
+  execExternalProgram(graph.config, "dot -Tpng -o" & changeFileExt(project, "png") &
+      ' ' & changeFileExt(project, "dot"))
 
 proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  defineSymbol("nimcheck")
+  graph.config.errorMax = high(int)  # do not stop after first error
+  defineSymbol(graph.config.symbols, "nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
-  rodPass()
+  rodPass(graph)
   compileProject(graph, cache)
 
 proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
+  graph.config.errorMax = high(int)  # do not stop after first error
   semanticPasses()
   if json: registerPass(docgen2JsonPass)
   else: registerPass(docgen2Pass)
   #registerPass(cleanupPass())
   compileProject(graph, cache)
-  finishDoc2Pass(gProjectName)
+  finishDoc2Pass(graph.config.projectName)
 
 proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
-  extccomp.initVars()
+  let conf = graph.config
+  extccomp.initVars(conf)
   semanticPasses()
   registerPass(cgenPass)
-  rodPass()
+  rodPass(graph)
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules(graph.backend, graph.config)
-  if gCmd != cmdRun:
-    let proj = changeFileExt(gProjectFull, "")
-    extccomp.callCCompiler(proj)
-    extccomp.writeJsonBuildInstructions(proj)
-    if optGenScript in gGlobalOptions:
-      writeDepsFile(graph, toGeneratedFile(proj, ""))
+  cgenWriteModules(graph.backend, conf)
+  if conf.cmd != cmdRun:
+    let proj = changeFileExt(conf.projectFull, "")
+    extccomp.callCCompiler(conf, proj)
+    extccomp.writeJsonBuildInstructions(conf, proj)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
 
 proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
-  let proj = changeFileExt(gProjectFull, "")
-  extccomp.runJsonBuildInstructions(proj)
+  let proj = changeFileExt(graph.config.projectFull, "")
+  extccomp.runJsonBuildInstructions(graph.config, proj)
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
   #initDefines()
-  defineSymbol("nimrod") # 'nimrod' is always defined
-  defineSymbol("ecmascript") # For backward compatibility
-  defineSymbol("js")
+  defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+  defineSymbol(graph.config.symbols, "js")
   semanticPasses()
   registerPass(JSgenPass)
   compileProject(graph, cache)
@@ -101,19 +102,19 @@ proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
 proc interactivePasses(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
-  initDefines()
-  defineSymbol("nimscript")
-  when hasFFI: defineSymbol("nimffi")
+  initDefines(graph.config.symbols)
+  defineSymbol(graph.config.symbols, "nimscript")
+  when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
   registerPass(verbosePass)
   registerPass(semPass)
   registerPass(evalPass)
 
 proc commandInteractive(graph: ModuleGraph; cache: IdentCache) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
+  graph.config.errorMax = high(int)  # do not stop after first error
   interactivePasses(graph, cache)
   compileSystemModule(graph, cache)
-  if commandArgs.len > 0:
-    discard graph.compileModule(fileInfoIdx(gProjectFull), cache, {})
+  if graph.config.commandArgs.len > 0:
+    discard graph.compileModule(fileInfoIdx(graph.config, graph.config.projectFull), cache, {})
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
@@ -125,7 +126,7 @@ proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym; cache: IdentCache) 
   carryPasses(graph, nodes, module, cache, evalPasses)
 
 proc commandEval(graph: ModuleGraph; cache: IdentCache; exp: string) =
-  if systemModule == nil:
+  if graph.systemModule == nil:
     interactivePasses(graph, cache)
     compileSystemModule(graph, cache)
   let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
@@ -133,7 +134,7 @@ proc commandEval(graph: ModuleGraph; cache: IdentCache; exp: string) =
     makeStdinModule(graph), cache)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(mainCommandArg(), NimExt)
+  var f = addFileExt(mainCommandArg(config), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
@@ -143,159 +144,153 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     openLexer(L, f, stream, cache, config)
     while true:
       rawGetTok(L, tok)
-      printTok(tok)
+      printTok(config, tok)
       if tok.tokType == tkEof: break
     closeLexer(L)
   else:
-    rawMessage(errCannotOpenFile, f)
+    rawMessage(config, errGenerated, "cannot open file: " & f)
 
 const
-  SimulateCaasMemReset = false
   PrintRopeCacheStats = false
 
 proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
-  when SimulateCaasMemReset:
-    gGlobalOptions.incl(optCaasEnabled)
+  let conf = graph.config
 
   setupModuleCache()
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses()
-  gLastCmdTime = epochTime()
-  searchPaths.add(options.libpath)
-  when false: # gProjectFull.len != 0:
-    # current path is always looked first for modules
-    prependStr(searchPaths, gProjectPath)
+  conf.lastCmdTime = epochTime()
+  conf.searchPaths.add(conf.libpath)
   setId(100)
-  case command.normalize
+  case conf.command.normalize
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
-    gCmd = cmdCompileToC
+    conf.cmd = cmdCompileToC
     commandCompileToC(graph, cache)
   of "cpp", "compiletocpp":
-    gCmd = cmdCompileToCpp
-    defineSymbol("cpp")
+    conf.cmd = cmdCompileToCpp
+    defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph, cache)
   of "objc", "compiletooc":
-    gCmd = cmdCompileToOC
-    defineSymbol("objc")
+    conf.cmd = cmdCompileToOC
+    defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph, cache)
   of "run":
-    gCmd = cmdRun
+    conf.cmd = cmdRun
     when hasTinyCBackend:
       extccomp.setCC("tcc")
       commandCompileToC(graph, cache)
     else:
-      rawMessage(errInvalidCommandX, command)
+      rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of "js", "compiletojs":
-    gCmd = cmdCompileToJS
+    conf.cmd = cmdCompileToJS
     commandCompileToJS(graph, cache)
   of "doc0":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    commandDoc()
+    wantMainModule(conf)
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    commandDoc(conf)
   of "doc2", "doc":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    defineSymbol("nimdoc")
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, false)
   of "rst2html":
-    gCmd = cmdRst2html
-    loadConfigs(DocConfig, cache)
-    commandRst2Html()
+    conf.cmd = cmdRst2html
+    loadConfigs(DocConfig, cache, conf)
+    commandRst2Html(conf)
   of "rst2tex":
-    gCmd = cmdRst2tex
-    loadConfigs(DocTexConfig, cache)
-    commandRst2TeX()
+    conf.cmd = cmdRst2tex
+    loadConfigs(DocTexConfig, cache, conf)
+    commandRst2TeX(conf)
   of "jsondoc0":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
-    commandJson()
+    wantMainModule(conf)
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    wantMainModule(conf)
+    defineSymbol(conf.symbols, "nimdoc")
+    commandJson(conf)
   of "jsondoc2", "jsondoc":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    wantMainModule(conf)
+    defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, true)
   of "ctags":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
-    commandTags()
+    wantMainModule(conf)
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    defineSymbol(conf.symbols, "nimdoc")
+    commandTags(conf)
   of "buildindex":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    commandBuildIndex()
+    conf.cmd = cmdDoc
+    loadConfigs(DocConfig, cache, conf)
+    commandBuildIndex(conf)
   of "gendepend":
-    gCmd = cmdGenDepend
+    conf.cmd = cmdGenDepend
     commandGenDepend(graph, cache)
   of "dump":
-    gCmd = cmdDump
-    if getConfigVar("dump.format") == "json":
-      wantMainModule()
+    conf.cmd = cmdDump
+    if getConfigVar(conf, "dump.format") == "json":
+      wantMainModule(conf)
 
       var definedSymbols = newJArray()
-      for s in definedSymbolNames(): definedSymbols.elems.add(%s)
+      for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in searchPaths: libpaths.elems.add(%dir)
+      for dir in conf.searchPaths: libpaths.elems.add(%dir)
 
       var dumpdata = % [
         (key: "version", val: %VersionAsString),
-        (key: "project_path", val: %gProjectFull),
+        (key: "project_path", val: %conf.projectFull),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: libpaths)
       ]
 
-      msgWriteln($dumpdata, {msgStdout, msgSkipHook})
+      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
     else:
-      msgWriteln("-- list of currently defined symbols --",
+      msgWriteln(conf, "-- list of currently defined symbols --",
                  {msgStdout, msgSkipHook})
-      for s in definedSymbolNames(): msgWriteln(s, {msgStdout, msgSkipHook})
-      msgWriteln("-- end of list --", {msgStdout, msgSkipHook})
+      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
+      msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
-      for it in searchPaths: msgWriteln(it)
+      for it in conf.searchPaths: msgWriteln(conf, it)
   of "check":
-    gCmd = cmdCheck
+    conf.cmd = cmdCheck
     commandCheck(graph, cache)
   of "parse":
-    gCmd = cmdParse
-    wantMainModule()
-    discard parseFile(FileIndex gProjectMainIdx, cache, graph.config)
+    conf.cmd = cmdParse
+    wantMainModule(conf)
+    discard parseFile(FileIndex conf.projectMainIdx, cache, conf)
   of "scan":
-    gCmd = cmdScan
-    wantMainModule()
-    commandScan(cache, graph.config)
-    msgWriteln("Beware: Indentation tokens depend on the parser's state!")
+    conf.cmd = cmdScan
+    wantMainModule(conf)
+    commandScan(cache, conf)
+    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of "secret":
-    gCmd = cmdInteractive
+    conf.cmd = cmdInteractive
     commandInteractive(graph, cache)
   of "e":
-    commandEval(graph, cache, mainCommandArg())
+    commandEval(graph, cache, mainCommandArg(conf))
   of "nop", "help":
     # prevent the "success" message:
-    gCmd = cmdDump
+    conf.cmd = cmdDump
   of "jsonscript":
-    gCmd = cmdJsonScript
+    conf.cmd = cmdJsonScript
     commandJsonScript(graph, cache)
   else:
-    rawMessage(errInvalidCommandX, command)
+    rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if msgs.gErrorCounter == 0 and
-     gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+  if conf.errorCounter == 0 and
+     conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
     when declared(system.getMaxMem):
       let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:
       let usedMem = formatSize(getTotalMem())
-    rawMessage(hintSuccessX, [$graph.config.linesCompiled,
-               formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
+    rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
+               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
-               if condSyms.isDefined("release"): "Release Build"
+               if isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])
 
   when PrintRopeCacheStats:
@@ -306,9 +301,6 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
                                        ffDecimal, 3)
 
-  when SimulateCaasMemReset:
-    resetMemory()
+  resetAttributes(conf)
 
-  resetAttributes()
-
-proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())
+#proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## Note: Import ``std/sha1`` to use this module
+
 import strutils
 
 const Sha1DigestSize = 20

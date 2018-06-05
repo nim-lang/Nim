@@ -128,7 +128,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      if args[a] == nil:
+      if args[a].isNil:
         add(result, "NULL")
       else:
         add(result, dbQuote(args[a]))

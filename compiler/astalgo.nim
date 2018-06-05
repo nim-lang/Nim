@@ -69,22 +69,22 @@ proc debug*(n: PNode) {.deprecated.}
 
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
-    c.module.fileIdx.int32 == gProjectMainIdx
+    c.module.fileIdx.int32 == c.config.projectMainIdx
   elif compiles(c.c.module):
-    c.c.module.fileIdx.int32 == gProjectMainIdx
+    c.c.module.fileIdx.int32 == c.c.config.projectMainIdx
   elif compiles(m.c.module):
-    m.c.module.fileIdx.int32 == gProjectMainIdx
+    m.c.module.fileIdx.int32 == m.c.config.projectMainIdx
   elif compiles(cl.c.module):
-    cl.c.module.fileIdx.int32 == gProjectMainIdx
+    cl.c.module.fileIdx.int32 == cl.c.config.projectMainIdx
   elif compiles(p):
     when compiles(p.lex):
-      p.lex.fileIdx.int32 == gProjectMainIdx
+      p.lex.fileIdx.int32 == p.lex.config.projectMainIdx
     else:
-      p.module.module.fileIdx.int32 == gProjectMainIdx
+      p.module.module.fileIdx.int32 == p.config.projectMainIdx
   elif compiles(m.module.fileIdx):
-    m.module.fileIdx.int32 == gProjectMainIdx
+    m.module.fileIdx.int32 == m.config.projectMainIdx
   elif compiles(L.fileIdx):
-    L.fileIdx.int32 == gProjectMainIdx
+    L.fileIdx.int32 == L.config.projectMainIdx
   else:
     error()
 
@@ -180,7 +180,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(n.info, "lookupInRecord")
+    if (n.sons[0].kind != nkSym): return nil
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return
     for i in countup(1, sonsLen(n) - 1):
@@ -188,10 +188,10 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), field)
         if result != nil: return
-      else: internalError(n.info, "lookupInRecord(record case branch)")
+      else: return nil
   of nkSym:
     if n.sym.name.id == field.id: result = n.sym
-  else: internalError(n.info, "lookupInRecord()")
+  else: return nil
 
 proc getModule(s: PSym): PSym =
   result = s
@@ -203,7 +203,7 @@ proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
-    else: internalError(list.info, "getSymFromList")
+    else: return nil
   result = nil
 
 proc hashNode(p: RootRef): Hash =

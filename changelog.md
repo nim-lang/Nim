@@ -39,6 +39,9 @@
   The proc is no longer deprecated.
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
+- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
+  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -56,6 +59,13 @@
 - Added the type ``times.Duration`` for representing fixed durations of time.
 - Added the proc ``times.convert`` for converting between different time units,
   e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
+- Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
+- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
 
 ### Library changes
 
@@ -74,11 +84,14 @@
   deprecated.
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from ``test`` block of ``unittest`` now shows its type in
+  the error message
 
 ### Language additions
 
 - Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
