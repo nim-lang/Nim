@@ -11,7 +11,7 @@
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
-## <manual.html#set-type>`_. Sets allow you to store any value that can be
+## <manual.html#types-set-type>`_. Sets allow you to store any value that can be
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
@@ -119,6 +119,13 @@ iterator items*[A](s: HashSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
+
+proc hash*[A](s: HashSet[A]): Hash =
+  ## hashing of HashSet
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    result = result xor s.data[h].hcode
+  result = !$result
 
 const
   growthFactor = 2
@@ -689,6 +696,13 @@ iterator items*[A](s: OrderedSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
+
+proc hash*[A](s: OrderedSet[A]): Hash =
+  ## hashing of OrderedSet
+  assert s.isValid, "The set needs to be initialized."
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
+  result = !$result
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   assert s.isValid, "The set needs to be initialized"

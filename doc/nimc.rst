@@ -115,7 +115,7 @@ The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
 1) ``$nim/config/nim.cfg``, ``/etc/nim.cfg`` (UNIX) or ``%NIMROD%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
-2) ``/home/$user/.config/nim.cfg`` (UNIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
+2) ``$HOME/.config/nim.cfg`` (POSIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
 5) A project can also have a project specific configuration file named ``$project.nim.cfg`` that resides in the same directory as ``$project.nim``. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -181,7 +181,7 @@ generated; use the ``--symbolFiles:on`` command line switch to activate them.
 
 Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
 to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even when dead code elimination is turned on. So
+might contain some cruft even with dead code elimination. So
 the final release build should be done with ``--symbolFiles:off``.
 
 Due to the aggregation of C code it is also recommended that each project
@@ -278,12 +278,12 @@ Define               Effect
                      what's in the Nim file with what's in the C header
                      (requires a C compiler with _Static_assert support, like
                      any C11 compiler)
-``tempDir``          This symbol takes a string as its value, like 
+``tempDir``          This symbol takes a string as its value, like
                      ``--define:tempDir:/some/temp/path`` to override the
                      temporary directory returned by ``os.getTempDir()``.
-                     The value **should** end with a directory separator 
+                     The value **should** end with a directory separator
                      character. (Relevant for the Android platform)
-``useShPath``        This symbol takes a string as its value, like 
+``useShPath``        This symbol takes a string as its value, like
                      ``--define:useShPath:/opt/sh/bin/sh`` to override the
                      path for the ``sh`` binary, in cases where it is not
                      located in the default location ``/bin/sh``
@@ -325,6 +325,46 @@ Debugger option
 The ``debugger`` option enables or disables the *Embedded Nim Debugger*.
 See the documentation of endb_ for further information.
 
+Hot code reloading
+------------------
+**Note:** At the moment hot code reloading is supported only in
+JavaScript projects.
+
+The `hotCodeReloading`:idx: option enables special compilation mode where changes in
+the code can be applied automatically to a running program. The code reloading
+happens at the granularity of an individual module. When a module is reloaded,
+Nim will preserve the state of all global variables which are initialized with
+a standard variable declaration in the code. All other top level code will be
+executed repeatedly on each reload. If you want to prevent this behavior, you
+can guard a block of code with the ``once`` construct:
+
+.. code-block:: Nim
+  var settings = initTable[string, string]()
+
+  once:
+    myInit()
+
+    for k, v in loadSettings():
+      settings[k] = v
+
+If you want to reset the state of a global variable on each reload, just
+re-assign a value anywhere within the top-level code:
+
+.. code-block:: Nim
+  var lastReload: Time
+
+  lastReload = now()
+  resetProgramState()
+
+**Known limitations:** In the JavaScript target, global variables using the
+``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
+initialization with a `once` block to work-around this.
+
+**Usage in JavaScript projects:**
+
+Once your code is compiled for hot reloading, you can use a framework such
+as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
+to implement the actual reloading behavior in your project.
 
 Breakpoint pragma
 -----------------
@@ -399,7 +439,7 @@ target.
 
 For example, to generate code for an `AVR`:idx: processor use this command::
 
-  nim c --cpu:avr --os:standalone --deadCodeElim:on --genScript x.nim
+  nim c --cpu:avr --os:standalone --genScript x.nim
 
 For the ``standalone`` target one needs to provide
 a file ``panicoverride.nim``.

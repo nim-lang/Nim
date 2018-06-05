@@ -1,5 +1,4 @@
 discard """
-  disabled: true
   output: '''
 x
 e
@@ -18,6 +17,8 @@ proc e: int {.discardable.} =
 
 proc x(e: int): Future[void] {.async.} =
   var s = await y(e)
+  if e > 2:
+    return
   echo s
   e()
 

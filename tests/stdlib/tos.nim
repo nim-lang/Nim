@@ -42,6 +42,7 @@ Raises
 true
 true
 true
+true
 '''
 """
 # test os path creation, iteration, and deletion
@@ -129,3 +130,12 @@ echo fileExists("../dest/a/b/file.txt")
 
 echo fileExists("../dest/a/b/c/fileC.txt")
 removeDir("../dest")
+
+# Test get/set modification times
+# Should support at least microsecond resolution
+import times
+let tm = fromUnix(0) + 100.microseconds
+writeFile("a", "")
+setLastModificationTime("a", tm)
+echo getLastModificationTime("a") == tm
+removeFile("a")

@@ -15,13 +15,14 @@ when haveZipLib:
 
 import
   os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  securehash
+  std / sha1
 
 const
   maxOS = 20 # max number of OSes
   maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
-  buildBatFile32 = "build.bat"
+  buildBatFile = "build.bat"
+  buildBatFile32 = "build32.bat"
   buildBatFile64 = "build64.bat"
   makeFile = "makefile"
   installShFile = "install.sh"
@@ -542,12 +543,13 @@ proc srcdist(c: var ConfigData) =
   inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
   if winIndex >= 0:
+    if intel32Index >= 0 or intel64Index >= 0:
+      writeFile(getOutputDir(c) / buildBatFile,
+                generateBuildBatchScript(c, winIndex, intel32Index, intel64Index), "\13\10")
     if intel32Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile32,
-                generateBuildBatchScript(c, winIndex, intel32Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile32, "SET ARCH=32\nCALL build.bat\n")
     if intel64Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile64,
-                generateBuildBatchScript(c, winIndex, intel64Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile64, "SET ARCH=64\nCALL build.bat\n")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
@@ -593,6 +595,7 @@ when haveZipLib:
     else: n = c.outdir / n
     var z: ZipArchive
     if open(z, n, fmWrite):
+      addFile(z, proj / buildBatFile, "build" / buildBatFile)
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
       addFile(z, proj / buildShFile, "build" / buildShFile)
@@ -631,11 +634,12 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
-  if not windowsZip and not existsFile("build" / buildBatFile32):
+  if not windowsZip and not existsFile("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
          "./koch csource -d:release.")
 
   if not windowsZip:
+    processFile(proj / buildBatFile, "build" / buildBatFile)
     processFile(proj / buildBatFile32, "build" / buildBatFile32)
     processFile(proj / buildBatFile64, "build" / buildBatFile64)
     processFile(proj / buildShFile, "build" / buildShFile)

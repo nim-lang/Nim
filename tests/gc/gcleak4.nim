@@ -38,7 +38,7 @@ proc newPlus(a, b: ref TExpr): ref TPlusExpr =
   result.b = b
   result.op2 = $getOccupiedMem()
 
-const Limit = when compileOption("gc", "markAndSweep"): 5*1024*1024 else: 500_000
+const Limit = when compileOption("gc", "markAndSweep") or compileOption("gc", "boehm"): 5*1024*1024 else: 500_000
 
 for i in 0..100_000:
   var s: array[0..11, ref TExpr]

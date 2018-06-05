@@ -39,8 +39,8 @@ do
   esac
 done
 
-CC="gcc"
-LINKER="gcc"
+CC="${CC:-gcc}"
+LINKER="${LD:-gcc}"
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""

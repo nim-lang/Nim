@@ -76,3 +76,12 @@ block: # String case of
   case s
   of "Привет!": discard
   else: doAssert(false)
+
+block: # String cmp
+  var a, b: string
+  doAssert(cmp(a, b) == 0)
+  doAssert(cmp("foo", "foo") == 0)
+  doAssert(cmp("foobar", "foo") == 3)
+  doAssert(cmp("foo", "foobar") == -3)
+  doAssert(cmp("fooz", "foog") == 19)
+  doAssert(cmp("foog", "fooz") == -19)

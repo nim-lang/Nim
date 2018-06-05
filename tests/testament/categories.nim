@@ -17,11 +17,12 @@ const
   rodfilesDir = "tests/rodfiles"
 
 proc delNimCache(filename, options: string) =
-  let dir = nimcacheDir(filename, options)
-  try:
-    removeDir(dir)
-  except OSError:
-    echo "[Warning] could not delete: ", dir
+  for target in low(TTarget)..high(TTarget):
+    let dir = nimcacheDir(filename, options, target)
+    try:
+      removeDir(dir)
+    except OSError:
+      echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
@@ -62,6 +63,26 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
   test "gtkex1", true
   test "gtkex2"
 
+# --------------------- flags tests -------------------------------------------
+
+proc flagTests(r: var TResults, cat: Category, options: string) =
+  # --genscript
+  const filename = "tests"/"flags"/"tgenscript"
+  const genopts = " --genscript"
+  let nimcache = nimcacheDir(filename, genopts, targetC)
+  testSpec r, makeTest(filename, genopts, cat)
+
+  when defined(windows):
+    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
+                         " && compile_tgenscript.bat", cat)
+
+  when defined(linux):
+    testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
+                         " && sh compile_tgenscript.sh\"", cat)
+
+  # Run
+  testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
+
 # --------------------- DLL generation tests ----------------------------------
 
 proc safeCopyFile(src, dest: string) =
@@ -90,7 +111,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
+    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv("LD_LIBRARY_PATH", libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
@@ -147,7 +168,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
@@ -166,9 +187,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
-    let cOptions = "gcc -ldl -DWIN"
+    let cOptions = "-ldl -DWIN"
   else:
-    let cOptions = "gcc -ldl"
+    let cOptions = "-ldl"
 
   var c = initResults()
   # According to ioTests, this should compile the file
@@ -225,7 +246,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
@@ -321,7 +343,7 @@ var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  packageDir = nimbleDir / "pkgs"
+  #packageDir = nimbleDir / "pkgs" # not used
   packageIndex = nimbleDir / "packages.json"
 
 proc waitForExitEx(p: Process): int =
@@ -405,9 +427,9 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startswith(a): b else: a & b
 
-proc `&?.`(a, b: string): string =
+#proc `&?.`(a, b: string): string = # not used
   # candidate for the stdlib?
-  result = if a.endswith(b): a else: a & b
+  #result = if a.endswith(b): a else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
@@ -419,13 +441,16 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
-    when false: compileRodFiles(r, cat, options)
-    runRodFiles(r, cat, options)
+    when false:
+      compileRodFiles(r, cat, options)
+      runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
+  of "flags":
+    flagTests(r, cat, options)
   of "gc":
     gcTests(r, cat, options)
   of "longgc":

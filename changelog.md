@@ -1,192 +1,154 @@
-## v0.18.0 - dd/mm/yyyy
+## v0.19.X - XX/XX/2018
 
 ### Changes affecting backwards compatibility
 
+- The stdlib module ``future`` has been renamed to ``sugar``.
+- ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
+  parameters this became unnecessary.
+- Anonymous tuples with a single element can now be written as ``(1,)`` with a
+  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
+  to deal with!
+- Indexing into a ``cstring`` for the JS target is now mapped
+  to ``charCodeAt``.
+- Assignments that would "slice" an object into its supertype are now prevented
+  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
+  inheritance to prevent this issue.
+- The ``not nil`` type annotation now has to be enabled explicitly
+  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  feature works with Nim's containers.
+- The parser now warns about inconsistent spacing around binary operators as
+  these can easily be confused with unary operators. This warning will likely
+  become an error in the future.
 
-- Arrays of char cannot be converted to ``cstring`` anymore, pointers to
-  arrays of char can! This means ``$`` for arrays can finally exist
-  in ``system.nim`` and do the right thing.
-- ``echo`` now works with strings that contain ``\0`` (the binary zero is not
-  shown) and ``nil`` strings are equal to empty strings.
-- JSON: Deprecated `getBVal`, `getFNum`, and `getNum` in favour to
-  `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
-- `reExtended` is no longer default for the `re` constructor in the `re`
-  module.
-- The overloading rules changed slightly so that constrained generics are
-  preferred over unconstrained generics. (Bug #6526)
-- It is now possible to forward declare object types so that mutually
-  recursive types can be created across module boundaries. See
-  [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
-  for more information.
-- The **unary** ``<`` is now deprecated, for ``.. <`` use ``..<`` for other usages
-  use the ``pred`` proc.
-- We changed how array accesses "from backwards" like ``a[^1]`` or ``a[0..^1]`` are
-  implemented. These are now implemented purely in ``system.nim`` without compiler
-  support. There is a new "heterogenous" slice type ``system.HSlice`` that takes 2
-  generic parameters which can be ``BackwardsIndex`` indices. ``BackwardsIndex`` is
-  produced by ``system.^``.
-  This means if you overload ``[]`` or ``[]=`` you need to ensure they also work
-  with ``system.BackwardsIndex`` (if applicable for the accessors).
-- ``mod`` and bitwise ``and`` do not produce ``range`` subtypes anymore. This
-  turned out to be more harmful than helpful and the language is simpler
-  without this special typing rule.
-- Added ``algorithm.rotateLeft``.
-- ``rationals.toRational`` now uses an algorithm based on continued fractions.
-  This means its results are more precise and it can't run into an infinite loop
-  anymore.
-- Added ``typetraits.$`` as an alias for ``typetraits.name``.
-- ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
-  what to return if the environment variable does not exist.
-- Bodies of ``for`` loops now get their own scope:
 
-```nim
-  # now compiles:
-  for i in 0..4:
-    let i = i + 1
-    echo i
-```
+#### Breaking changes in the standard library
 
-- The parsing rules of ``if`` expressions were changed so that multiple
-  statements are allowed in the branches. We found few code examples that
-  now fail because of this change, but here is one:
+- ``re.split`` for empty regular expressions now yields every character in
+  the string which is what other programming languages chose to do.
+- The returned tuple of ``system.instantiationInfo`` now has a third field
+  containing the column of the instantiation.
 
-```nim
-  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
-```
+- ``cookies.setCookie` no longer assumes UTC for the expiration date.
+- ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
+  strings anymore for its ``unit`` parameter. Instead the space is controlled
+  by a new parameter ``useUnitSpace``.
 
-This now needs to be written as:
+- ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
+  to ``times.Duration`` in order to support higher time resolutions.
+  The proc is no longer deprecated.
+- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
-```nim
-  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
-```
+- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
+  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
-- To make Nim even more robust the system iterators ``..`` and ``countup``
-  now only accept a single generic type ``T``. This means the following code
-  doesn't die with an "out of range" error anymore:
+#### Breaking changes in the compiler
 
-```nim
-  var b = 5.Natural
-  var a = -5
-  for i in a..b:
-    echo i
-```
+- The undocumented ``#? braces`` parsing mode was removed.
+- The undocumented PHP backend was removed.
 
-- ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
-  precision digits. The previous ``precision = 0`` behavior (default formatting)
-  is now available via ``precision = -1``.
-- The ``nim doc`` command is now an alias for ``nim doc2``, the second version of
-  the documentation generator. The old version 1 can still be accessed
-  via the new ``nim doc0`` command.
-- Added ``system.getStackTraceEntries`` that allows you to access the stack
-  trace in a structured manner without string parsing.
-- Added ``sequtils.mapLiterals`` for easier construction of array and tuple
-  literals.
-- Added ``parseutils.parseSaturatedNatural``.
-- ``atomic`` and ``generic`` are no longer keywords in Nim. ``generic`` used to be
-  an alias for ``concept``, ``atomic`` was not used for anything.
-- Moved from stdlib into Nimble packages:
-  - [``basic2d``](https://github.com/nim-lang/basic2d)
-    _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
-  - [``basic3d``](https://github.com/nim-lang/basic3d)
-    _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
-  - [``gentabs``](https://github.com/lcrees/gentabs)
-  - [``libuv``](https://github.com/lcrees/libuv)
-  - [``numeric``](https://github.com/lcrees/polynumeric)
-  - [``poly``](https://github.com/lcrees/polynumeric)
-  - [``pdcurses``](https://github.com/lcrees/pdcurses)
-  - [``romans``](https://github.com/lcrees/romans)
+### Library additions
 
-- Added ``system.runnableExamples`` to make examples in Nim's documentation easier
-  to write and test. The examples are tested as the last step of
-  ``nim doc``.
-- Nim's ``rst2html`` command now supports the testing of code snippets via an RST
-  extension that we called ``:test:``::
+- ``re.split`` now also supports the ``maxsplit`` parameter for consistency
+  with ``strutils.split``.
+- Added ``system.toOpenArray`` in order to support zero-copy slicing
+  operations. This is currently not yet available for the JavaScript target.
+- Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
+  ``nimscript``.
+- The ``times`` module now supports up to nanosecond time resolution when available.
+- Added the type ``times.Duration`` for representing fixed durations of time.
+- Added the proc ``times.convert`` for converting between different time units,
+  e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
+- Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
+- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
 
-  ```rst
-    .. code-block:: nim
-        :test:
-      # shows how the 'if' statement works
-      if true: echo "yes"
-  ```
-- The ``[]`` proc for strings now raises an ``IndexError`` exception when
-  the specified slice is out of bounds. See issue
-  [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
-  You can use ``substr(str, start, finish)`` to get the old behaviour back,
-  see [this commit](https://github.com/nim-lang/nimbot/commit/98cc031a27ea89947daa7f0bb536bcf86462941f) for an example.
-- ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
-  separator now returns that empty string.
-  See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
-- The experimental overloading of the dot ``.`` operators now take
-  an ``untyped``` parameter as the field name, it used to be
-  a ``static[string]``. You can use ``when defined(nimNewDot)`` to make
-  your code work with both old and new Nim versions.
-  See [special-operators](https://nim-lang.org/docs/manual.html#special-operators)
-  for more information.
-- Added ``macros.unpackVarargs``.
-- The memory manager now uses a variant of the TLSF algorithm that has much
-  better memory fragmentation behaviour. According
-  to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
-  fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
-  ``dealloc`` became O(1) operations.
-- The behavior of ``$`` has been changed for all standard library collections. The
-  collection-to-string implementations now perform proper quoting and escaping of
-  strings and chars.
-- The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
-  the new ``rand`` procs. The module now exports the state of the random
-  number generator as type ``Rand`` so multiple threads can easily use their
-  own random number generators that do not require locking. For more information
-  about this rename see issue [#6934](https://github.com/nim-lang/Nim/issues/6934)
-- The compiler is now more consistent in its treatment of ambiguous symbols:
-  Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
-- ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
-  in an array, seq or object constructor and is now prevented at compile-time.
-- For string formatting / interpolation a new module
-  called [strformat](https://nim-lang.org/docs/strformat.html) has been added
-  to the stdlib.
-- codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
-  function return type placeholders.
-- Asynchronous programming for the JavaScript backend using the `asyncjs` module.
-- Extra semantic checks for procs with noreturn pragma: return type is not allowed,
-  statements after call to noreturn procs are no longer allowed.
-- Noreturn proc calls and raising exceptions branches are now skipped during common type
-  deduction in if and case expressions. The following code snippets now compile:
-```nim
-import strutils
-let str = "Y"
-let a = case str:
-  of "Y": true
-  of "N": false
-  else: raise newException(ValueError, "Invalid boolean")
-let b = case str:
-  of nil, "": raise newException(ValueError, "Invalid boolean")
-  elif str.startsWith("Y"): true
-  elif str.startsWith("N"): false
-  else: false
-let c = if str == "Y": true
-  elif str == "N": false
-  else:
-    echo "invalid bool"
-    quit("this is the end")
-```
-- Proc [toCountTable](https://nim-lang.org/docs/tables.html#toCountTable,openArray[A]) now produces a `CountTable` with values correspoding to the number of occurrences of the key in the input. It used to produce a table with all values set to `1`.
+### Library changes
 
-Counting occurrences in a sequence used to be:
+- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
+  now escapes the content of string literals consistently.
+- ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
+  of the more general ``NimNode``.
+- ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
+- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
+  also support ``ref`` and ``ptr`` types, pragmas on types and variant
+  fields.
+- ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
+  correctness.
+- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
+  now joined in ``binarySearch``. ``smartbinarySearch`` is now
+  deprecated.
+- The `terminal` module now exports additional procs for generating ANSI color
+  codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from ``test`` block of ``unittest`` now shows its type in
+  the error message
+- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
 
-```nim
-let mySeq = @[1, 2, 1, 3, 1, 4]
-var myCounter = initCountTable[int]()
+### Language additions
 
-for item in mySeq:
-  myCounter.inc item
-```
+- Dot calls combined with explicit generic instantiations can now be written
+  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
+- ``func`` is now an alias for ``proc {.noSideEffect.}``.
+- In order to make ``for`` loops and iterators more flexible to use Nim now
+  supports so called "for-loop macros". See
+  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
 
-Now, you can simply do:
+### Language changes
 
-```nim
-let
-  mySeq = @[1, 2, 1, 3, 1, 4]
-  myCounter = mySeq.toCountTable()
-```
+- The `importcpp` pragma now allows importing the listed fields of generic
+  C++ types. Support for numeric parameters have also been added through
+  the use of `static[T]` types.
+  (#6415)
 
-- Added support for casting between integers of same bitsize in VM (compile time and nimscript).
-  This allow to among other things to reinterpret signed integers as unsigned.
+- Native C++ exceptions can now be imported with `importcpp` pragma.
+  Imported exceptions can be raised and caught just like Nim exceptions.
+  More details in language manual.
+
+- ``nil`` for strings/seqs is finally gone. Instead the default value for
+  these is ``"" / @[]``.
+
+- Accessing the binary zero terminator in Nim's native strings
+  is now invalid. Internally a Nim string still has the trailing zero for
+  zero-copy interoperability with ``cstring``. Compile your code with the
+  new switch ``--laxStrings:on`` if you need a transition period.
+
+- The command syntax now supports keyword arguments after the first comma.
+
+- Thread-local variables can now be declared inside procs. This implies all
+  the effects of the `global` pragma.
+
+- Nim now supports `except` clause in the export statement.
+
+### Tool changes
+
+- ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
+  ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
+
+### Compiler changes
+
+- The VM's instruction count limit was raised to 1 billion instructions in
+  order to support more complex computations at compile-time.
+
+- Support for hot code reloading has been implemented for the JavaScript
+  target. To use it, compile your code with `--hotCodeReloading:on` and use a
+  helper library such as LiveReload or BrowserSync.
+
+- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
+  into the namespace "Nim" in order to avoid naming conflicts with existing
+  C++ code. This is done for all Nim code - internal and exported.
+
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
+  machine.
+
+- The ``deadCodeElim`` option is now always turned on and the switch has no
+  effect anymore, but is recognized for backwards compatibility.
+
+- ``experimental`` is now a pragma / command line switch that can enable specific
+  language extensions, it is not an all-or-nothing switch anymore.
+
+### Bugfixes

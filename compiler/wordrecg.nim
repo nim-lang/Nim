@@ -52,10 +52,11 @@ type
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks,
-    wFloatchecks, wNanChecks, wInfChecks,
+    wFloatchecks, wNanChecks, wInfChecks, wMoveChecks,
     wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
-    wDeadCodeElim, wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
+    wDeadCodeElimUnused,  # deprecated, dead code elim always happens
+    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
     wPragma,
     wCompileTime, wNoInit,
     wPassc, wPassl, wBorrow, wDiscardable,
@@ -139,11 +140,12 @@ const
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks",
+    "floatchecks", "nanchecks", "infchecks", "movechecks",
 
     "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
-    "deadcodeelim", "safecode", "package", "noforward", "reorder", "norewrite",
+    "deadcodeelim",  # deprecated, dead code elim always happens
+    "safecode", "package", "noforward", "reorder", "norewrite",
     "pragma",
     "compiletime", "noinit",
     "passc", "passl", "borrow", "discardable", "fieldchecks",

@@ -87,7 +87,7 @@ which we then use in our scanf pattern to help us in the matching process:
   proc someSep(input: string; start: int; seps: set[char] = {':','-','.'}): int =
     # Note: The parameters and return value must match to what ``scanf`` requires
     result = 0
-    while input[start+result] in seps: inc result
+    while start+result < input.len and input[start+result] in seps: inc result
 
   if scanf(input, "$w$[someSep]$w", key, value):
     ...
@@ -231,7 +231,7 @@ is performed.
     var i = start
     var u = 0
     while true:
-      if s[i] == '\0' or s[i] == unless:
+      if i >= s.len or s[i] == unless:
         return 0
       elif s[i] == until[0]:
         u = 1
@@ -315,6 +315,11 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
     conds.add resLen.notZero
     conds.add resLen
 
+  template at(s: string; i: int): char = (if i < s.len: s[i] else: '\0')
+  template matchError() =
+    error("type mismatch between pattern '$" & pattern[p] & "' (position: " & $p & ") and " & $getType(results[i]) &
+          " var '" & repr(results[i]) & "'")
+
   var i = 0
   var p = 0
   var idx = genSym(nskVar, "idx")
@@ -336,37 +341,37 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
         else:
-          error("no string var given for $w")
+          matchError
         inc i
       of 'b':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseBin"
         else:
-          error("no int var given for $b")
+          matchError
         inc i
       of 'o':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseOct"
         else:
-          error("no int var given for $o")
+          matchError
         inc i
       of 'i':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseInt"
         else:
-          error("no int var given for $i")
+          matchError
         inc i
       of 'h':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseHex"
         else:
-          error("no int var given for $h")
+          matchError
         inc i
       of 'f':
         if i < results.len and getType(results[i]).typeKind == ntyFloat:
           matchBind "parseFloat"
         else:
-          error("no float var given for $f")
+          matchError
         inc i
       of 's':
         conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", inp, idx))
@@ -390,14 +395,14 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           conds.add newCall(bindSym"!=", resLen, newLit min)
           conds.add resLen
         else:
-          error("no string var given for $" & pattern[p])
+          matchError
         inc i
       of '{':
         inc p
         var nesting = 0
         let start = p
         while true:
-          case pattern[p]
+          case pattern.at(p)
           of '{': inc nesting
           of '}':
             if nesting == 0: break
@@ -412,14 +417,14 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           conds.add newCall(bindSym"!=", resLen, newLit 0)
           conds.add resLen
         else:
-          error("no var given for $" & expr)
+          error("no var given for $" & expr & " (position: " & $p & ")")
         inc i
       of '[':
         inc p
         var nesting = 0
         let start = p
         while true:
-          case pattern[p]
+          case pattern.at(p)
           of '[': inc nesting
           of ']':
             if nesting == 0: break
@@ -451,10 +456,12 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
 
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
-  input[idx] == c
+  idx < input.len and input[idx] == c
 
 template atom*(input: string; idx: int; s: set[char]): bool =
-  input[idx] in s
+  idx < input.len and input[idx] in s
+
+template hasNxt*(input: string; idx: int): bool = idx < input.len
 
 #template prepare*(input: string): int = 0
 template success*(x: int): bool = x != 0
@@ -462,7 +469,7 @@ template success*(x: int): bool = x != 0
 template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
 
 macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
-  ## ``scanp`` is currently undocumented.
+  ## See top level documentation of his module of how ``scanf`` works.
   type StmtTriple = tuple[init, cond, action: NimNode]
 
   template interf(x): untyped = bindSym(x, brForceOpen)
@@ -508,8 +515,8 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
                 !!newCall(interf"nxt", input, idx, resLen))
     of nnkCallKinds:
       # *{'A'..'Z'} !! s.add(!_)
-      template buildWhile(init, cond, action): untyped =
-        while true:
+      template buildWhile(input, idx, init, cond, action): untyped =
+        while hasNxt(input, idx):
           init
           if not cond: break
           action
@@ -528,11 +535,11 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
                   !!newCall(interf"nxt", input, idx, it[2]))
       elif it.kind == nnkPrefix and it[0].eqIdent"*":
         let (init, cond, action) = atm(it[1], input, idx, attached)
-        result = (getAst(buildWhile(init, cond, action)),
+        result = (getAst(buildWhile(input, idx, init, cond, action)),
                   newEmptyNode(), newEmptyNode())
       elif it.kind == nnkPrefix and it[0].eqIdent"+":
         # x+  is the same as  xx*
-        result = atm(newTree(nnkPar, it[1], newTree(nnkPrefix, ident"*", it[1])),
+        result = atm(newTree(nnkTupleConstr, it[1], newTree(nnkPrefix, ident"*", it[1])),
                       input, idx, attached)
       elif it.kind == nnkPrefix and it[0].eqIdent"?":
         # optional.
@@ -583,18 +590,18 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
       result = (newEmptyNode(), newCall(interf"atom", input, idx, it), !!newCall(interf"nxt", input, idx))
     of nnkCurlyExpr:
       if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
-        var h = newTree(nnkPar, it[0])
+        var h = newTree(nnkTupleConstr, it[0])
         for count in 2i64 .. it[1].intVal: h.add(it[0])
         for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
         result = atm(h, input, idx, attached)
       elif it.len == 2 and it[1].kind == nnkIntLit:
-        var h = newTree(nnkPar, it[0])
+        var h = newTree(nnkTupleConstr, it[0])
         for count in 2i64 .. it[1].intVal: h.add(it[0])
         result = atm(h, input, idx, attached)
       else:
         error("invalid pattern")
-    of nnkPar:
-      if it.len == 1:
+    of nnkPar, nnkTupleConstr:
+      if it.len == 1 and it.kind == nnkPar:
         result = atm(it[0], input, idx, attached)
       else:
         # concatenation:
@@ -621,7 +628,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
 
 when isMainModule:
   proc twoDigits(input: string; x: var int; start: int): int =
-    if input[start] == '0' and input[start+1] == '0':
+    if start+1 < input.len and input[start] == '0' and input[start+1] == '0':
       result = 2
       x = 13
     else:
@@ -629,10 +636,10 @@ when isMainModule:
 
   proc someSep(input: string; start: int; seps: set[char] = {';',',','-','.'}): int =
     result = 0
-    while input[start+result] in seps: inc result
+    while start+result < input.len and input[start+result] in seps: inc result
 
   proc demangle(s: string; res: var string; start: int): int =
-    while s[result+start] in {'_', '@'}: inc result
+    while result+start < s.len and s[result+start] in {'_', '@'}: inc result
     res = ""
     while result+start < s.len and s[result+start] > ' ' and s[result+start] != '_':
       res.add s[result+start]
@@ -652,7 +659,7 @@ when isMainModule:
       var info = ""
       if scanp(resp, idx, *`whites`, '#', *`digits`, +`whites`, ?("0x", *`hexdigits`, " in "),
                demangle($input, prc, $index), *`whites`, '(', * ~ ')', ')',
-                *`whites`, "at ", +(~{'\C', '\L', '\0'} -> info.add($_)) ):
+                *`whites`, "at ", +(~{'\C', '\L'} -> info.add($_)) ):
         result.add prc & " " & info
       else:
         break
@@ -713,7 +720,7 @@ when isMainModule:
           "NimMainInner c:/users/anwender/projects/nim/lib/system.nim:2605",
           "NimMain c:/users/anwender/projects/nim/lib/system.nim:2613",
           "main c:/users/anwender/projects/nim/lib/system.nim:2620"]
-  doAssert parseGDB(gdbOut) == result
+  #doAssert parseGDB(gdbOut) == result
 
   # bug #6487
   var count = 0

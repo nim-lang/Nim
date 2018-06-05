@@ -1,7 +1,7 @@
 discard """
   file: "tnamedparams.nim"
   line: 8
-  errormsg: "type mismatch: got (input: string, filename: string, line: int literal(1), col: int literal(23))"
+  errormsg: "type mismatch: got <input: string, filename: string, line: int literal(1), col: int literal(23)>"
 """
 import pegs
 

@@ -440,7 +440,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
       # init the GC for refc/markandsweep
-      setStackBottom(addr(p))
+      nimGC_setStackBottom(addr(p))
       initGC()
       when declared(threadType):
         threadType = ThreadType.NimThread
@@ -642,7 +642,10 @@ when defined(windows):
 
 elif defined(linux):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: int
+  when defined(amd64):
+    const NR_gettid = clong(186)
+  else:
+    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.

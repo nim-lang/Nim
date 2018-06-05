@@ -315,6 +315,36 @@ when isMainModule:
     doAssert noYearDeser.year.isNone
     doAssert noYearDeser.engine.name == "V8"
 
+    # Issue #7433
+    type
+      Obj2 = object
+        n1: int
+        n2: Option[string]
+        n3: bool
+
+    var j = %*[ { "n1": 4, "n2": "ABC", "n3": true },
+                { "n1": 1, "n3": false },
+                { "n1": 1, "n2": "XYZ", "n3": false } ]
+
+    let jDeser = j.to(seq[Obj2])
+    doAssert jDeser[0].n2.get() == "ABC"
+    doAssert jDeser[1].n2.isNone()
+
+    # Issue #6902
+    type
+      Obj = object
+        n1: int
+        n2: Option[int]
+        n3: Option[string]
+        n4: Option[bool]
+        
+    var j0 = parseJson("""{"n1": 1, "n2": null, "n3": null, "n4": null}""")
+    let j0Deser = j0.to(Obj)
+    doAssert j0Deser.n1 == 1
+    doAssert j0Deser.n2.isNone()
+    doAssert j0Deser.n3.isNone()
+    doAssert j0Deser.n4.isNone()
+
   # Table[T, Y] support.
   block:
     type
@@ -381,3 +411,10 @@ when isMainModule:
     doAssert dataDeser.a == 1
     doAssert dataDeser.f == 6
     doAssert dataDeser.i == 9.9'f32
+  
+  # deserialize directly into a table
+  block:
+    let s = """{"a": 1, "b": 2}"""
+    let t = parseJson(s).to(Table[string, int])
+    doAssert t["a"] == 1
+    doAssert t["b"] == 2

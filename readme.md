@@ -16,6 +16,8 @@ the latest release, check out [Nim's website][nim-site].
   Also where most development decisions get made.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
+* [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
+  is the official Telegram channel.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
 * [Github Wiki][nim-wiki] - Misc user-contributed content.
@@ -52,6 +54,10 @@ Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
 of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
 ``build64.bat`` on x86_64 Windows):
 
+**Note: The following commands are for the development version of the compiler.**
+For most users, installing the latest stable version is enough. Check out
+the installation instructions on the website to do so: https://nim-lang.org/install.html.
+
 ```
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
@@ -61,6 +67,7 @@ sh build.sh
 cd ../
 bin/nim c koch
 ./koch boot -d:release
+./koch tools # Compile Nimble and other tools.
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
@@ -80,11 +87,9 @@ For more information on the ``koch`` build tool please see the documentation
 within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Nimble
-``nimble`` is Nim's package manager and it can be acquired from the
-[``nim-lang/nimble``][nimble-repo] repository. Assuming that you added Nim's
-``bin`` directory to your PATH, you may install Nimble from source by running
-``koch nimble`` within the root of the cloned repository.
 
+``nimble`` is Nim's package manager. To learn more about it, see the
+[``nim-lang/nimble``][nimble-repo] repository.
 
 ## Contributors
 
@@ -92,9 +97,10 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 <a href="https://github.com/nim-lang/Nim/graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
 
 ## Contributing
-[![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors) [![Contribute to Nim via Gratipay][badge-nim-gratipay]][nim-gratipay]
+[![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors)
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
+[![Open Source Helpers](https://www.codetriage.com/nim-lang/nim/badges/users.svg)](https://www.codetriage.com/nim-lang/nim)
 
 We welcome all contributions to Nim regardless of how small or large
 they are. Everything from spelling fixes to new modules to be included in the
@@ -137,7 +143,6 @@ You can also help with the development of Nim by making donations. Donations can
 made using:
 
 * [Open Collective](https://opencollective.com/nim)
-* [Gratipay][nim-gratipay]
 * [Bountysource][nim-bountysource]
 * [Bitcoin][nim-bitcoin]
 
@@ -177,7 +182,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2018 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -189,7 +194,7 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
-[nim-gratipay]: https://gratipay.com/nim/
+[nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
@@ -201,7 +206,6 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [badge-nim-forum-gethelp]: https://img.shields.io/badge/Forum-get%20help-4eb899.svg?style=flat-square
 [badge-nim-twitter]: https://img.shields.io/twitter/follow/nim_lang.svg?style=social
 [badge-nim-stackoverflow]: https://img.shields.io/badge/stackoverflow-nim_tag-yellow.svg?style=flat-square
-[badge-nim-gratipay]: https://img.shields.io/gratipay/team/nim.svg?style=flat-square
 [badge-nim-bountysource]: https://img.shields.io/bountysource/team/nim/activity.svg?style=flat-square
 [badge-nim-bitcoin]: https://img.shields.io/badge/bitcoin-1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ-D69134.svg?style=flat-square
 [pull-request-instructions]: https://help.github.com/articles/using-pull-requests/

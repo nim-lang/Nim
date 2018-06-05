@@ -8,18 +8,22 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils
+import strutils, math
 
 proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
-  if f != f:
+  case classify(f)
+  of fcNaN:
     result = "NAN"
-  elif f == 0.0:
+  of fcNegZero:
+    result = "-0.0" & literalPostfix
+  of fcZero:
     result = "0.0" & literalPostfix
-  elif f == 0.5 * f:
-    if f > 0.0: result = "INF"
-    else: result = "-INF"
+  of fcInf:
+    result = "INF"
+  of fcNegInf:
+    result = "-INF"
   else:
     when defined(nimNoArrayToCstringConversion):
       result = newString(81)
@@ -62,6 +66,8 @@ proc decodeStr*(s: cstring, pos: var int): string =
 
 const
   chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+{.push overflowChecks: off.}
 
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
@@ -126,6 +132,8 @@ proc decodeVInt*(s: cstring, pos: var int): int =
 
 proc decodeVBiggestInt*(s: cstring, pos: var int): BiggestInt =
   decodeIntImpl()
+
+{.pop.}
 
 iterator decodeVIntArray*(s: cstring): int =
   var i = 0

@@ -64,8 +64,6 @@ type
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError].}
-
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
   var e: ref CgiError
@@ -97,11 +95,10 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   var name = ""
   var value = ""
   # decode everything in one pass:
-  while data[i] != '\0':
+  while i < data.len:
     setLen(name, 0) # reuse memory
-    while true:
+    while i < data.len:
       case data[i]
-      of '\0': break
       of '%':
         var x = 0
         handleHexChar(data[i+1], x)
@@ -112,15 +109,16 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
       of '=', '&': break
       else: add(name, data[i])
       inc(i)
-    if data[i] != '=': cgiError("'=' expected")
+    if i >= data.len or data[i] != '=': cgiError("'=' expected")
     inc(i) # skip '='
     setLen(value, 0) # reuse memory
-    while true:
+    while i < data.len:
       case data[i]
       of '%':
         var x = 0
-        handleHexChar(data[i+1], x)
-        handleHexChar(data[i+2], x)
+        if i+2 < data.len:
+          handleHexChar(data[i+1], x)
+          handleHexChar(data[i+2], x)
         inc(i, 2)
         add(value, chr(x))
       of '+': add(value, ' ')
@@ -128,9 +126,9 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
       else: add(value, data[i])
       inc(i)
     yield (name.TaintedString, value.TaintedString)
-    if data[i] == '&': inc(i)
-    elif data[i] == '\0': break
-    else: cgiError("'&' expected")
+    if i < data.len:
+      if data[i] == '&': inc(i)
+      else: cgiError("'&' expected")
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =

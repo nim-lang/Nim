@@ -16,7 +16,7 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(n.info, errExprHasNoAddress)
+    localError(c.config, n.info, errExprHasNoAddress)
   result.add x
   result.typ = makePtrType(c, x.typ)
 
@@ -43,7 +43,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
     let x = copyTree(n)
     x.sons[0] = newIdentNode(getIdent"[]", n.info)
     bracketNotFoundError(c, x)
-    #localError(n.info, "could not resolve: " & $n)
+    #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
@@ -64,25 +64,28 @@ proc semAsgnOpr(c: PContext; n: PNode): PNode =
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
-  result = newIntNodeT(ord(r), n)
+  result = newIntNodeT(ord(r), n, c.graph)
 
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: localError(n.info, errIntLiteralExpected)
+  else: localError(c.config, n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeIT(nkTupleConstr, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
-  var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
+  var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
   filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
-  var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
+  var line = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   line.intVal = toLinenumber(info)
+  var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
+  column.intVal = toColumn(info)
   result.add(filename)
   result.add(line)
+  result.add(column)
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
@@ -107,10 +110,10 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t.sons[1]
     else: t
 
-proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
-  const skippedTypes = {tyTypeDesc, tyAlias}
+proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
+  const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
-  internalAssert trait.kind == nkSym
+  internalAssert c.config, trait.kind == nkSym
   var operand = operand.skipTypes(skippedTypes)
 
   template operand2: PType =
@@ -137,7 +140,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "genericHead":
     var res = uninstantiate(operand)
     if res == operand and res.kind notin tyMagicGenerics:
-      localError(traitCall.info,
+      localError(c.config, traitCall.info,
         "genericHead expects a generic type. The given type was " &
         typeToString(operand))
       return newType(tyError, context).toNode(traitCall.info)
@@ -145,22 +148,22 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
-    result = newIntNodeT(ord(not complexObj), traitCall)
+    result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait")
     result = emptyNode
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
-  checkMinSonsLen(n, 2)
+  checkMinSonsLen(n, 2, c.config)
   let t = n.sons[1].typ
-  internalAssert t != nil and t.kind == tyTypeDesc
+  internalAssert c.config, t != nil and t.kind == tyTypeDesc
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n, t, getCurrOwner(c))
+    result = evalTypeTrait(c, n, t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
@@ -173,7 +176,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
   else:
-    localError(n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
@@ -182,13 +185,13 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    localError(n.sons[1].info, errStringLiteralExpected)
+    localError(c.config, n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
 
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    localError(n.sons[2].info, errConstExprExpected)
+    localError(c.config, n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
 
   let id = newIdentNode(getIdent(sl.strVal), n.info)
@@ -196,6 +199,10 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+    if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+      # inside regular code, bindSym resolves to the sym-choice
+      # nodes (see tinspectsymbol)
+      return sc
     result.add(sc)
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
@@ -218,9 +225,9 @@ proc semOf(c: PContext, n: PNode): PNode =
     let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
 
     if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, "'of' takes object types")
     elif b.kind != tyObject or a.kind != tyObject:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, "'of' takes object types")
     else:
       let diff = inheritanceDiff(a, b)
       # | returns: 0 iff `a` == `b`
@@ -229,26 +236,26 @@ proc semOf(c: PContext, n: PNode): PNode =
       # | returns: `maxint` iff `a` and `b` are not compatible at all
       if diff <= 0:
         # optimize to true:
-        message(n.info, hintConditionAlwaysTrue, renderTree(n))
+        message(c.config, n.info, hintConditionAlwaysTrue, renderTree(n))
         result = newIntNode(nkIntLit, 1)
         result.info = n.info
-        result.typ = getSysType(tyBool)
+        result.typ = getSysType(c.graph, n.info, tyBool)
         return result
       elif diff == high(int):
-        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+        localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
   else:
-    localError(n.info, errXExpectsTwoArguments, "of")
-  n.typ = getSysType(tyBool)
+    localError(c.config, n.info, "'of' takes 2 arguments")
+  n.typ = getSysType(c.graph, n.info, tyBool)
   result = n
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
   of mAddr:
-    checkSonsLen(n, 2)
+    checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2)
+    checkSonsLen(n, 2, c.config)
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
@@ -260,8 +267,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
-    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
-    result.typ = getSysType(tyString)
+    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, c.graph)
+    result.typ = getSysType(c.graph, n.info, tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
   of mOf: result = semOf(c, n)
@@ -274,11 +281,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDotDot:
     result = n
   of mRoof:
-    localError(n.info, "builtin roof operator is not supported anymore")
+    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:
-      localError(n.info, "cannot find plugin " & n[0].sym.name.s)
+      localError(c.config, n.info, "cannot find plugin " & n[0].sym.name.s)
       result = n
     else:
       result = plugin(c, n)

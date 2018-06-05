@@ -27,8 +27,6 @@ type
   EncodingError* = object of ValueError ## exception that is raised
                                         ## for encoding errors
 
-{.deprecated: [EInvalidEncoding: EncodingError, PConverter: EncodingConverter].}
-
 when defined(windows):
   proc eqEncodingNames(a, b: string): bool =
     var i = 0
@@ -36,7 +34,7 @@ when defined(windows):
     while i < a.len and j < b.len:
       if a[i] in {'-', '_'}: inc i
       if b[j] in {'-', '_'}: inc j
-      if a[i].toLower != b[j].toLower: return false
+      if i < a.len and j < b.len and a[i].toLowerAscii != b[j].toLowerAscii: return false
       inc i
       inc j
     result = i == a.len and j == b.len

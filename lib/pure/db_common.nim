@@ -83,9 +83,6 @@ type
     foreignKey*: bool  ## is this a foreign key?
   DbColumns* = seq[DbColumn]
 
-{.deprecated: [EDb: DbError, TSqlQuery: SqlQuery, FDb: DbEffect,
-              FReadDb: ReadDbEffect, FWriteDb: WriteDbEffect].}
-
 template sql*(query: string): SqlQuery =
   ## constructs a SqlQuery from the string `query`. This is supposed to be
   ## used as a raw-string-literal modifier:

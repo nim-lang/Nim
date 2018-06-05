@@ -35,7 +35,7 @@ proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefin
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   if not typ.node.sons[e].isUndefined:
-    result = $typ.node.sons[e].name
+    result = makeNimstrLit(typ.node.sons[e].name)
   else:
     result = $e & " (invalid data!)"
 
@@ -55,11 +55,11 @@ proc reprStrAux(result: var string, s: cstring, len: int) =
     case c
     of '"': add(result, "\\\"")
     of '\\': add(result, "\\\\")
-    of '\10': add(result, "\\10\"\n\"")
-    of '\127'..'\255', '\0'..'\9', '\11'..'\31':
-      add( result, "\\" & reprInt(ord(c)) )
+    #of '\10': add(result, "\\10\"\n\"")
+    of '\127'..'\255', '\0'..'\31':
+      add(result, "\\" & reprInt(ord(c)))
     else:
-      add( result, reprInt(ord(c)) ) # Not sure about this.
+      add(result, c)
   add(result, "\"")
 
 proc reprStr(s: string): string {.compilerRtl.} =

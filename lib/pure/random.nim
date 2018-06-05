@@ -115,6 +115,7 @@ proc rand*(r: var Rand; max: int): int {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
+  if max == 0: return
   while true:
     let x = next(r)
     if x <= randMax - (randMax mod ui(max)):
@@ -190,8 +191,8 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    let time = int64(times.epochTime() * 1_000_000_000)
-    randomize(time)
+    let now = times.getTime()
+    randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
 {.pop.}
 
@@ -213,4 +214,8 @@ when isMainModule:
     shuffle(a)
     doAssert a[0] == 1
     doAssert a[1] == 0
+
+    doAssert rand(0) == 0
+    doAssert rand("a") == 'a'
+
   main()

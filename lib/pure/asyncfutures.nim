@@ -27,8 +27,6 @@ type
   FutureError* = object of Exception
     cause*: FutureBase
 
-{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
-
 when not defined(release):
   var currentID = 0
 
@@ -177,7 +175,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
 
-proc clearCallbacks(future: FutureBase) =
+proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
@@ -324,12 +322,12 @@ proc mget*[T](future: FutureVar[T]): var T =
   ## Future has not been finished.
   result = Future[T](future).value
 
-proc finished*[T](future: Future[T] | FutureVar[T]): bool =
+proc finished*(future: FutureBase | FutureVar): bool =
   ## Determines whether ``future`` has completed.
   ##
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
-  when future is FutureVar[T]:
-    result = (Future[T](future)).finished
+  when future is FutureVar:
+    result = (FutureBase(future)).finished
   else:
     result = future.finished
 
@@ -342,6 +340,7 @@ proc asyncCheck*[T](future: Future[T]) =
   ## finished with an error.
   ##
   ## This should be used instead of ``discard`` to discard void futures.
+  assert(not future.isNil, "Future is nil")
   future.callback =
     proc () =
       if future.failed:

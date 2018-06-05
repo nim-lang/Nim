@@ -57,8 +57,6 @@ type
       tags: [WriteIOEffect], gcsafe.}
     flushImpl*: proc (s: Stream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
 
-{.deprecated: [PStream: Stream, TStream: StreamObj].}
-
 proc flush*(s: Stream) =
   ## flushes the buffers that the stream `s` might use.
   if not isNil(s.flushImpl): s.flushImpl(s)
@@ -76,16 +74,7 @@ proc atEnd*(s: Stream): bool =
   ## been read.
   result = s.atEndImpl(s)
 
-proc atEnd*(s, unused: Stream): bool {.deprecated.} =
-  ## checks if more data can be read from `f`. Returns true if all data has
-  ## been read.
-  result = s.atEndImpl(s)
-
 proc setPosition*(s: Stream, pos: int) =
-  ## sets the position `pos` of the stream `s`.
-  s.setPositionImpl(s, pos)
-
-proc setPosition*(s, unused: Stream, pos: int) {.deprecated.} =
   ## sets the position `pos` of the stream `s`.
   s.setPositionImpl(s, pos)
 
@@ -93,31 +82,24 @@ proc getPosition*(s: Stream): int =
   ## retrieves the current position in the stream `s`.
   result = s.getPositionImpl(s)
 
-proc getPosition*(s, unused: Stream): int {.deprecated.} =
-  ## retrieves the current position in the stream `s`.
-  result = s.getPositionImpl(s)
-
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc readAll*(s: Stream): string =
-  ## Reads all available data.
-  const bufferSize = 1000
-  result = newString(bufferSize)
-  var r = 0
-  while true:
-    let readBytes = readData(s, addr(result[r]), bufferSize)
-    if readBytes < bufferSize:
-      setLen(result, r+readBytes)
-      break
-    inc r, bufferSize
-    setLen(result, r+bufferSize)
-
-proc readData*(s, unused: Stream, buffer: pointer,
-               bufLen: int): int {.deprecated.} =
-  ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
-  result = s.readDataImpl(s, buffer, bufLen)
+when not defined(js):
+  proc readAll*(s: Stream): string =
+    ## Reads all available data.
+    const bufferSize = 1024
+    var buffer {.noinit.}: array[bufferSize, char]
+    while true:
+      let readBytes = readData(s, addr(buffer[0]), bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+      if readBytes < bufferSize:
+        break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size
@@ -151,12 +133,7 @@ proc write*(s: Stream, x: string) =
   when nimvm:
     writeData(s, cstring(x), x.len)
   else:
-    if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
-
-proc writeLn*(s: Stream, args: varargs[string, `$`]) {.deprecated.} =
-  ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
-  for str in args: write(s, str)
-  write(s, "\n")
+    if x.len > 0: writeData(s, cstring(x), x.len)
 
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
@@ -276,14 +253,14 @@ proc readStr*(s: Stream, length: int): TaintedString =
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = readData(s, addr(string(result)[0]), length)
+  var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## peeks a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
-  var L = peekData(s, addr(string(result)[0]), length)
+  var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
@@ -321,6 +298,8 @@ proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
   ## `EIO` if an error occurred.
   result = TaintedString""
+  if s.atEnd:
+    raise newEIO("cannot read from stream")
   while true:
     var c = readChar(s)
     if c == '\c':
@@ -345,8 +324,6 @@ when not defined(js):
     StringStreamObj* = object of StreamObj
       data*: string
       pos: int
-
-  {.deprecated: [PStringStream: StringStream, TStringStream: StringStreamObj].}
 
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
@@ -407,7 +384,6 @@ when not defined(js):
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
     FileStreamObj* = object of Stream
       f: File
-  {.deprecated: [PFileStream: FileStream, TFileStream: FileStreamObj].}
 
   proc fsClose(s: Stream) =
     if FileStream(s).f != nil:
@@ -447,9 +423,19 @@ when not defined(js):
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available FileMode enums.
+    ## **This function returns nil in case of failure. To prevent unexpected
+    ## behavior and ensure proper error handling, use openFileStream instead.**
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
+  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): FileStream =
+    ## creates a new stream from the file named `filename` with the mode `mode`.
+    ## If the file cannot be opened, an IO exception is raised.
+    var f: File
+    if open(f, filename, mode, bufSize):
+      return newFileStream(f)
+    else:
+      raise newEIO("cannot open file")
 
 when true:
   discard
@@ -459,9 +445,6 @@ else:
     FileHandleStreamObj* = object of Stream
       handle*: FileHandle
       pos: int
-
-  {.deprecated: [PFileHandleStream: FileHandleStream,
-     TFileHandleStream: FileHandleStreamObj].}
 
   proc newEOS(msg: string): ref OSError =
     new(result)

@@ -29,11 +29,6 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
-    FReadDir: ReadDirEffect,
-    FWriteDir: WriteDirEffect,
-    TOSErrorCode: OSErrorCode
-].}
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
@@ -196,7 +191,7 @@ proc joinPath*(head, tail: string): string {.
     else:
       result = head & tail
   else:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & tail
     else:
       result = head & DirSep & tail
@@ -477,7 +472,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
 
     var i = start
     while i < len(path): # ../../../ --> ::::
-      if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
         # parent directory
         when defined(macos):
           if result[high(result)] == ':':

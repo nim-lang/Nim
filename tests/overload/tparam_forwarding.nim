@@ -6,6 +6,10 @@ output: '''baz
 a
 b
 c
+x: 1, y: test 1
+x: 2, y: test 2
+x: 10, y: test 3
+x: 4, y: test 4
 '''
 """
 
@@ -34,4 +38,16 @@ templateForwarding stringVarargs, 10 < 21, "baz"
 templateForwarding fooVarargs, "test".len > 3, Foo(x: 10), Foo(x: 100), Foo(x: 1000)
 
 procForwarding "a", "b", "c"
+
+proc hasKeywordArgs(x = 10, y = "y") =
+  echo "x: ", x, ", y: ", y
+
+proc hasRegularArgs(x: int, y: string) =
+  echo "x: ", x, ", y: ", y
+
+templateForwarding(hasRegularArgs, true, 1, "test 1")
+templateForwarding hasKeywordArgs, true, 2, "test 2"
+
+templateForwarding(hasKeywordArgs, true, y = "test 3")
+templateForwarding hasKeywordArgs, true, y = "test 4", x = 4
 

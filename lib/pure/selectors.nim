@@ -54,9 +54,9 @@ when defined(nimdoc):
       Timer,       ## Timer descriptor is completed
       Signal,      ## Signal is raised
       Process,     ## Process is finished
-      Vnode,       ## BSD specific file change happens
+      Vnode,       ## BSD specific file change
       User,        ## User event is raised
-      Error,       ## Error happens while waiting, for descriptor
+      Error,       ## Error occurred while waiting for descriptor
       VnodeWrite,  ## NOTE_WRITE (BSD specific, write to file occurred)
       VnodeDelete, ## NOTE_DELETE (BSD specific, unlink of file occurred)
       VnodeExtend, ## NOTE_EXTEND (BSD specific, file extended)
@@ -69,6 +69,8 @@ when defined(nimdoc):
       ## An object which holds result for descriptor
       fd* : int ## file/socket descriptor
       events*: set[Event] ## set of events
+      errorCode*: OSErrorCode ## additional error code information for
+                              ## Error events
 
     SelectEvent* = object
       ## An object which holds user defined event
@@ -79,13 +81,14 @@ when defined(nimdoc):
   proc close*[T](s: Selector[T]) =
     ## Closes the selector.
 
-  proc registerHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event],
-                          data: T) =
+  proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
+                          events: set[Event], data: T) =
     ## Registers file/socket descriptor ``fd`` to selector ``s``
     ## with events set in ``events``. The ``data`` is application-defined
     ## data, which will be passed when an event is triggered.
 
-  proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
+  proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
+                        events: set[Event]) =
     ## Update file/socket descriptor ``fd``, registered in selector
     ## ``s`` with new events set ``event``.
 
@@ -221,10 +224,14 @@ when defined(nimdoc):
   proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     ## Determines whether selector contains a file descriptor.
 
+  proc getFd*[T](s: Selector[T]): int =
+    ## Retrieves the underlying selector's file descriptor.
+    ##
+    ## For *poll* and *select* selectors ``-1`` is returned.
+
 else:
   when hasThreadSupport:
     import locks
-
 
     type
       SharedArray[T] = UncheckedArray[T]
@@ -234,7 +241,6 @@ else:
 
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
-
   type
     Event* {.pure.} = enum
       Read, Write, Timer, Signal, Process, Vnode, User, Error, Oneshot,
@@ -247,6 +253,7 @@ else:
     ReadyKey* = object
       fd* : int
       events*: set[Event]
+      errorCode*: OSErrorCode
 
     SelectorKey[T] = object
       ident: int
@@ -308,6 +315,21 @@ else:
   else:
     include ioselects/ioselectors_poll
 
-{.deprecated: [setEvent: trigger].}
-{.deprecated: [register: registerHandle].}
-{.deprecated: [update: updateHandle].}
+proc register*[T](s: Selector[T], fd: int | SocketHandle,
+                  events: set[Event], data: T) {.deprecated: "use registerHandle instead".} =
+  ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
+  s.registerHandle(fd, events, data)
+
+proc setEvent*(ev: SelectEvent) {.deprecated: "use trigger instead".} =
+  ## Trigger event ``ev``.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+  ev.trigger()
+
+proc update*[T](s: Selector[T], fd: int | SocketHandle,
+                events: set[Event]) {.deprecated: "use updateHandle instead".} =
+  ## Update file/socket descriptor ``fd``, registered in selector
+  ## ``s`` with new events set ``event``.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``updateHandle`` instead.
+  s.updateHandle()

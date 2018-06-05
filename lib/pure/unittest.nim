@@ -121,9 +121,16 @@ type
   ConsoleOutputFormatter* = ref object of OutputFormatter
     colorOutput: bool
       ## Have test results printed in color.
-      ## Default is true for the non-js target
-      ## unless, the environment variable
-      ## ``NIMTEST_NO_COLOR`` is set.
+      ## Default is true for the non-js target,
+      ## for which ``stdout`` is a tty.
+      ## Setting the environment variable
+      ## ``NIMTEST_COLOR`` to ``always`` or
+      ## ``never`` changes the default for the
+      ## non-js target to true or false respectively.
+      ## The deprecated environment variable
+      ## ``NIMTEST_NO_COLOR``, when set,
+      ## changes the defualt to true, if
+      ## ``NIMTEST_COLOR`` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
       ## Default is ``PRINT_ALL``, unless
@@ -150,6 +157,7 @@ var
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
+  disabledParamFiltering {.threadvar.}: bool
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -185,7 +193,15 @@ proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
     # Reading settings
     # On a terminal this branch is executed
     var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-    var colorOutput  = not existsEnv("NIMTEST_NO_COLOR")
+    var colorOutput  = isatty(stdout)
+    if existsEnv("NIMTEST_COLOR"):
+      let colorEnv = getenv("NIMTEST_COLOR")
+      if colorEnv == "never":
+        colorOutput = false
+      elif colorEnv == "always":
+        colorOutput = true
+    elif existsEnv("NIMTEST_NO_COLOR"):
+      colorOutput = false
     var outputLevel = PRINT_ALL
     if envOutLvl.len > 0:
       for opt in countup(low(OutputLevel), high(OutputLevel)):
@@ -379,7 +395,7 @@ proc ensureInitialized() =
   if formatters == nil:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
-  if not testsFilters.isValid:
+  if not disabledParamFiltering and not testsFilters.isValid:
     testsFilters.init()
     when declared(paramCount):
       # Read tests to run from the command line.
@@ -446,6 +462,8 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
+template exceptionTypeName(e: typed): string = $e.name
+
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
   ##
@@ -460,7 +478,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
 
   ensureInitialized()
 
@@ -479,8 +497,10 @@ template test*(name, body) {.dirty.} =
 
     except:
       when not defined(js):
-        checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
-        var stackTrace {.inject.} = getCurrentException().getStackTrace()
+        let e = getCurrentException()
+        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+        checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
+        var stackTrace {.inject.} = e.getStackTrace()
       fail()
 
     finally:
@@ -701,3 +721,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     errorTypes.add(exp[i])
 
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
+
+proc disableParamFiltering* =
+  ## disables filtering tests with the command line params
+  disabledParamFiltering = true

@@ -6,6 +6,7 @@ doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
 doAssert """["", "foo", "bar"]""" ==  $(["", "foo", "bar"])
+doAssert """["", "foo", "bar"]""" ==  $(@["", "foo", "bar"].toOpenArray(0, 2))
 
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}
@@ -51,3 +52,59 @@ import strutils
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
 doAssert $cstring(unsafeAddr arr) == "Hello World!"
+
+proc takes(c: cstring) =
+  doAssert c == ""
+
+proc testm() =
+  var x: string
+  # nil is mapped to "":
+  takes(x)
+
+testm()
+
+# nil tests
+var xx: seq[string]
+var yy: string
+doAssert xx == @[]
+doAssert yy == ""
+
+proc bar(arg: cstring): void =
+  doAssert arg[0] == '\0'
+
+proc baz(arg: openarray[char]): void =
+  doAssert arg.len == 0
+
+proc stringCompare(): void =
+  var a,b,c,d,e,f,g: string
+  a.add 'a'
+  doAssert a == "a"
+  b.add "bee"
+  doAssert b == "bee"
+  b.add g
+  doAssert b == "bee"
+  c.add 123.456
+  doAssert c == "123.456"
+  d.add 123456
+  doAssert d == "123456"
+
+  doAssert e == ""
+  doAssert "" == e
+  doAssert nil == e
+  doAssert e == nil
+  doAssert f == g
+  doAssert "" == ""
+  doAssert "" == nil
+  doAssert nil == ""
+
+  g.setLen(10)
+  doAssert g == "\0\0\0\0\0\0\0\0\0\0"
+  doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
+
+  var nilstring: string
+  bar(nilstring)
+  baz(nilstring)
+
+stringCompare()
+static:
+  stringCompare()

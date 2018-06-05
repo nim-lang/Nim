@@ -24,7 +24,7 @@ const
 Usage:
   nimpretty [options] file.nim
 Options:
-  --backup:ON|OFF     create a backup file before overwritting (default: ON)
+  --backup:on|off     create a backup file before overwritting (default: ON)
   --version           show the version
   --help              show this help
 """
@@ -43,7 +43,7 @@ proc prettyPrint(infile: string) =
   let fileIdx = fileInfoIdx(infile)
   let tree = parseFile(fileIdx, newIdentCache())
   let outfile = changeFileExt(infile, ".pretty.nim")
-  renderModule(tree, infile, outfile, {})
+  renderModule(tree, infile, outfile, {}, fileIdx)
 
 proc main =
   var infile: string

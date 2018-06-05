@@ -1,6 +1,6 @@
 discard """
   line: 16
-  errormsg: "type mismatch: got (BPtr) but expected 'APtr = ptr[RegionA, int]'"
+  errormsg: "type mismatch: got <BPtr> but expected 'APtr = ptr[RegionA, int]'"
 """
 
 type

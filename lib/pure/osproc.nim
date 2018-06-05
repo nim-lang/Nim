@@ -61,9 +61,6 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-{.deprecated: [TProcess: ProcessObj, PProcess: Process,
-  TProcessOption: ProcessOption].}
-
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
@@ -306,7 +303,7 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
-        result = max(result, q[rexit].peekExitCode())
+        result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
         close(q[rexit])
         if i < len(cmds):
@@ -331,7 +328,7 @@ proc execProcesses*(cmds: openArray[string],
       if beforeRunEvent != nil:
         beforeRunEvent(i)
       var p = startProcess(cmds[i], options=options + {poEvalCommand})
-      result = max(waitForExit(p), result)
+      result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
@@ -373,17 +370,15 @@ template streamAccess(p) =
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
-    PFileHandleStream = ref FileHandleStream
-    FileHandleStream = object of StreamObj
+    FileHandleStream = ref object of StreamObj
       handle: Handle
       atTheEnd: bool
-  {.deprecated: [TFileHandleStream: FileHandleStream].}
 
   proc hsClose(s: Stream) = discard # nothing to do here
-  proc hsAtEnd(s: Stream): bool = return PFileHandleStream(s).atTheEnd
+  proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
   proc hsReadData(s: Stream, buffer: pointer, bufLen: int): int =
-    var s = PFileHandleStream(s)
+    var s = FileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
     var a = winlean.readFile(s.handle, buffer, bufLen.cint, addr br, nil)
@@ -395,13 +390,13 @@ when defined(Windows) and not defined(useNimRtl):
     result = br
 
   proc hsWriteData(s: Stream, buffer: pointer, bufLen: int) =
-    var s = PFileHandleStream(s)
+    var s = FileHandleStream(s)
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen.cint,
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): PFileHandleStream =
+  proc newFileHandleStream(handle: Handle): FileHandleStream =
     new(result)
     result.handle = handle
     result.closeImpl = hsClose
@@ -494,7 +489,7 @@ when defined(Windows) and not defined(useNimRtl):
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
     sa.bInheritHandle = 1
-    if createPipe(rdHandle, wrHandle, sa, 1024) == 0'i32:
+    if createPipe(rdHandle, wrHandle, sa, 0) == 0'i32:
       raiseOSError(osLastError())
 
   proc fileClose(h: Handle) {.inline.} =
@@ -524,6 +519,12 @@ when defined(Windows) and not defined(useNimRtl):
           he = ho
         else:
           createPipeHandles(he, si.hStdError)
+          if setHandleInformation(he, DWORD(1), DWORD(0)) == 0'i32:
+            raiseOsError(osLastError())
+        if setHandleInformation(hi, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())
+        if setHandleInformation(ho, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)
@@ -746,14 +747,14 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  type StartProcessData = object
-    sysCommand: string
-    sysArgs: cstringArray
-    sysEnv: cstringArray
-    workingDir: cstring
-    pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
-    options: set[ProcessOption]
-  {.deprecated: [TStartProcessData: StartProcessData].}
+  type
+    StartProcessData = object
+      sysCommand: string
+      sysArgs: cstringArray
+      sysEnv: cstringArray
+      workingDir: cstring
+      pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
+      options: set[ProcessOption]
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
                              not defined(useClone) and not defined(linux)
@@ -995,13 +996,21 @@ elif not defined(useNimRtl):
   {.pop}
 
   proc close(p: Process) =
-    if p.inStream != nil: close(p.inStream)
-    if p.outStream != nil: close(p.outStream)
-    if p.errStream != nil: close(p.errStream)
     if poParentStreams notin p.options:
-      discard close(p.inHandle)
-      discard close(p.outHandle)
-      discard close(p.errHandle)
+      if p.inStream != nil:
+        close(p.inStream)
+      else:
+        discard close(p.inHandle)
+
+      if p.outStream != nil:
+        close(p.outStream)
+      else:
+        discard close(p.outHandle)
+
+      if p.errStream != nil:
+        close(p.errStream)
+      else:
+        discard close(p.errHandle)
 
   proc suspend(p: Process) =
     if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())
@@ -1275,7 +1284,7 @@ elif not defined(useNimRtl):
 
   proc select(readfds: var seq[Process], timeout = 500): int =
     var tv: Timeval
-    tv.tv_sec = 0
+    tv.tv_sec = posix.Time(0)
     tv.tv_usec = timeout * 1000
 
     var rd: TFdSet

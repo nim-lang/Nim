@@ -12,7 +12,7 @@ import sockets, strutils, parseutils, times, os, asyncio
 
 from asyncnet import nil
 from nativesockets import nil
-from asyncdispatch import PFuture
+from asyncdispatch import Future
 ## **Note**: This module is deprecated since version 0.11.3.
 ## You should use the async version of this module
 ## `asyncftpclient <asyncftpclient.html>`_.

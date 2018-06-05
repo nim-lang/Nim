@@ -1,15 +1,15 @@
 import macros, macro_dsl, estreams
 from strutils import format
 
-template newLenName(): stmt {.immediate.} =
+template newLenName() =
   let lenName {.inject.} = ^("len"& $lenNames)
   inc(lenNames)
 
-template defPacketImports*(): stmt {.immediate, dirty.} =
+template defPacketImports*() {.dirty.} =
   import macros, macro_dsl, estreams
   from strutils import format
 
-macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
+macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
   result = newNimNode(nnkStmtList)
   let
     typeName = quoted2ident(typeNameN)
@@ -60,7 +60,7 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
     let
       name = typeFields[i][0]
       dotName = packetID.dot(name)
-      resName = newIdentNode(!"result").dot(name)
+      resName = newIdentNode("result").dot(name)
     case typeFields[i][1].kind
     of nnkBracketExpr: #ex: paddedstring[32, '\0'], array[range, type]
       case $typeFields[i][1][0].ident
@@ -141,7 +141,7 @@ macro defPacket*(typeNameN: expr, typeFields: expr): stmt {.immediate.} =
 
   const emptyFields = {nnkEmpty, nnkNilLit}
   var objFields = newNimNode(nnkRecList)
-  for i in 0.. < len(typeFields):
+  for i in 0 ..< len(typeFields):
     let fname = typeFields[i][0]
     constructorParams.add(newNimNode(nnkIdentDefs).und(
       fname,
@@ -200,7 +200,7 @@ proc iddefs*(a: string; b: NimNode): NimNode {.compileTime.} =
 proc varTy*(a: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkVarTy).und(a)
 
-macro forwardPacket*(typeName: expr, underlyingType: expr): stmt {.immediate.} =
+macro forwardPacket*(typeName: untyped, underlyingType: untyped): untyped =
   var
     packetID = ^"p"
     streamID = ^"s"
@@ -234,7 +234,7 @@ macro forwardPacket*(typeName: expr, underlyingType: expr): stmt {.immediate.} =
     echo "unknown type:", repr(underlyingtype)
   echo(repr(result))
 
-template forwardPacketT*(typeName: expr; underlyingType: expr): stmt {.dirty, immediate.} =
+template forwardPacketT*(typeName: untyped; underlyingType: untyped) {.dirty.} =
   proc `read typeName`*(buffer: PBuffer): typeName =
     #discard readData(s, addr result, sizeof(result))
     var res: underlyingType

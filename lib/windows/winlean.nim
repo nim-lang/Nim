@@ -10,7 +10,7 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 import dynlib
 
@@ -481,6 +481,13 @@ type
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
 
+  Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
+                      header: "winsock2.h".} = object
+    ss_family*: int16
+    ss_pad1: array[6, byte]
+    ss_align: int64
+    ss_pad2: array[112, byte]
+
   Servent* = object
     s_name*: cstring
     s_aliases*: cstringArray
@@ -666,6 +673,7 @@ const
   CREATE_ALWAYS* = 2'i32
   CREATE_NEW* = 1'i32
   OPEN_EXISTING* = 3'i32
+  OPEN_ALWAYS* = 4'i32
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
@@ -686,6 +694,7 @@ const
   ERROR_FILE_NOT_FOUND* = 2
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
+  ERROR_NO_MORE_FILES* = 18
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
@@ -695,6 +704,11 @@ proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
+
+proc setHandleInformation*(hObject: HANDLE, dwMask: DWORD,
+                           dwFlags: DWORD): WINBOOL {.stdcall,
+    dynlib: "kernel32", importc: "SetHandleInformation".}
+
 proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
@@ -1072,3 +1086,14 @@ proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, d
 proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
+
+proc toFILETIME*(t: int64): FILETIME =
+  ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
+  result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
+
+type
+  LPFILETIME* = ptr FILETIME
+
+proc setFileTime*(hFile: HANDLE, lpCreationTime: LPFILETIME,
+                 lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
+     {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}

@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths
+  typesrenderer, astalgo, modulepaths, configuration
 
 type
   TSections = array[TSymKind, Rope]
@@ -29,6 +29,7 @@ type
     jArray: JsonNode
     types: TStrTable
     isPureRst: bool
+    conf*: ConfigRef
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -53,42 +54,47 @@ proc attachToType(d: PDoc; p: PSym): PSym =
   if params.len > 0: check(0)
   for i in 2..<params.len: check(i)
 
-proc compilerMsgHandler(filename: string, line, col: int,
-                        msgKind: rst.MsgKind, arg: string) {.procvar.} =
-  # translate msg kind:
-  var k: msgs.TMsgKind
-  case msgKind
-  of meCannotOpenFile: k = errCannotOpenFile
-  of meExpected: k = errXExpected
-  of meGridTableNotImplemented: k = errGridTableNotImplemented
-  of meNewSectionExpected: k = errNewSectionExpected
-  of meGeneralParseError: k = errGeneralParseError
-  of meInvalidDirective: k = errInvalidDirectiveX
-  of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
-  of mwUnknownSubstitution: k = warnUnknownSubstitutionX
-  of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-  of mwUnsupportedField: k = warnFieldXNotSupported
-  globalError(newLineInfo(filename, line, col), k, arg)
+template declareClosures =
+  proc compilerMsgHandler(filename: string, line, col: int,
+                          msgKind: rst.MsgKind, arg: string) {.procvar.} =
+    # translate msg kind:
+    var k: TMsgKind
+    case msgKind
+    of meCannotOpenFile: k = errCannotOpenFile
+    of meExpected: k = errXExpected
+    of meGridTableNotImplemented: k = errGridTableNotImplemented
+    of meNewSectionExpected: k = errNewSectionExpected
+    of meGeneralParseError: k = errGeneralParseError
+    of meInvalidDirective: k = errInvalidDirectiveX
+    of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
+    of mwUnknownSubstitution: k = warnUnknownSubstitutionX
+    of mwUnsupportedLanguage: k = warnLanguageXNotSupported
+    of mwUnsupportedField: k = warnFieldXNotSupported
+    globalError(conf, newLineInfo(conf, filename, line, col), k, arg)
 
-proc docgenFindFile(s: string): string {.procvar.} =
-  result = options.findFile(s)
-  if result.len == 0:
-    result = getCurrentDir() / s
-    if not existsFile(result): result = ""
+  proc docgenFindFile(s: string): string {.procvar.} =
+    result = options.findFile(conf, s)
+    if result.len == 0:
+      result = getCurrentDir() / s
+      if not existsFile(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: RstParseOptions): PRstNode =
+              rstOptions: RstParseOptions;
+              conf: ConfigRef): PRstNode =
+  declareClosures()
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
-proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
+proc newDocumentor*(filename: string, conf: ConfigRef): PDoc =
+  declareClosures()
   new(result)
-  initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
-                   options.gConfigVars, filename, {roSupportRawDirective},
+  result.conf = conf
+  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
+                   conf.configVars, filename, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
 
-  if config.hasKey("doc.googleAnalytics"):
+  if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """
 <script>
   (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -100,7 +106,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   ga('send', 'pageview');
 
 </script>
-    """ % [config.getOrDefault"doc.googleAnalytics"]
+    """ % [conf.configVars.getOrDefault"doc.googleAnalytics"]
   else:
     result.analytics = ""
 
@@ -109,10 +115,10 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.jArray = newJArray()
   initStrTable result.types
   result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    localError(newLineInfo(d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
+    localError(conf, newLineInfo(conf, d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
-proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
-  if gCmd != cmdRst2tex: addf(dest, xml, args)
+proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
+  if conf.cmd != cmdRst2tex: addf(dest, xml, args)
   else: addf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
@@ -121,7 +127,8 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
       return i
   result = -1
 
-proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
+proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
+                         varnames: openArray[string],
                          varvalues: openArray[Rope]): Rope =
   var i = 0
   var L = len(frmt)
@@ -144,7 +151,8 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
           j = (j * 10) + ord(frmt[i]) - ord('0')
           inc(i)
           if (i > L + 0 - 1) or not (frmt[i] in {'0'..'9'}): break
-        if j > high(varvalues) + 1: internalError("ropeFormatNamedVars")
+        if j > high(varvalues) + 1:
+          rawMessage(conf, errGenerated, "Invalid format string; too many $s: " & frmt)
         num = j
         add(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF':
@@ -155,20 +163,23 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
         var idx = getVarIdx(varnames, id)
         if idx >= 0: add(result, varvalues[idx])
-        else: rawMessage(errUnknownSubstitionVar, id)
+        else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
       of '{':
         var id = ""
         inc(i)
-        while frmt[i] != '}':
-          if frmt[i] == '\0': rawMessage(errTokenExpected, "}")
+        while i < frmt.len and frmt[i] != '}':
           add(id, frmt[i])
           inc(i)
-        inc(i)                # skip }
-                              # search for the variable:
-        var idx = getVarIdx(varnames, id)
+        if i >= frmt.len:
+          rawMessage(conf, errGenerated, "expected closing '}'")
+        else:
+          inc(i)                # skip }
+        # search for the variable:
+        let idx = getVarIdx(varnames, id)
         if idx >= 0: add(result, varvalues[idx])
-        else: rawMessage(errUnknownSubstitionVar, id)
-      else: internalError("ropeFormatNamedVars")
+        else: rawMessage(conf, errGenerated, "unknown substition variable: " & id)
+      else:
+        add(result, "$")
     var start = i
     while i < L:
       if frmt[i] != '$': inc(i)
@@ -181,7 +192,7 @@ proc genComment(d: PDoc, n: PNode): string =
   if n.comment != nil:
     renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
                                toLinenumber(n.info), toColumn(n.info),
-                               dummyHasToc, d.options), result)
+                               dummyHasToc, d.options, d.conf), result)
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -220,45 +231,46 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkEof:
       break
     of tkComment:
-      dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
+      dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
             [rope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh:
-      dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
+      dispA(d.conf, result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
             [rope(literal)])
     of tkOpr:
-      dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
+      dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
             [rope(esc(d.target, literal))])
     of tkStrLit..tkTripleStrLit:
-      dispA(result, "<span class=\"StringLit\">$1</span>",
+      dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
             "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
     of tkCharLit:
-      dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
+      dispA(d.conf, result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
             [rope(esc(d.target, literal))])
     of tkIntLit..tkUInt64Lit:
-      dispA(result, "<span class=\"DecNumber\">$1</span>",
+      dispA(d.conf, result, "<span class=\"DecNumber\">$1</span>",
             "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
     of tkFloatLit..tkFloat128Lit:
-      dispA(result, "<span class=\"FloatNumber\">$1</span>",
+      dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>",
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
-      dispA(result, "<span class=\"Identifier\">$1</span>",
+      dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
             "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+      dispA(d.conf, result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
-      dispA(result, "</div><span class=\"Other pragmaend\">$1</span>",
+      dispA(d.conf, result, "</div><span class=\"Other pragmaend\">$1</span>",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
        tkAccent, tkColonColon,
-       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
-      dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
+       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+       tkBracketLeColon:
+      dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
@@ -266,7 +278,7 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   of nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      dispA(dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+      dispA(d.conf, dest, "\n<strong class=\"examples_text\">$1</strong>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter
@@ -335,7 +347,6 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getName(d, n[0], splitAfter)
   else:
-    internalError(n.info, "getName()")
     result = ""
 
 proc getNameIdent(n: PNode): PIdent =
@@ -365,7 +376,6 @@ proc getRstName(n: PNode): PRstNode =
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
-    internalError(n.info, "getRstName()")
     result = nil
 
 proc newUniquePlainSymbol(d: PDoc, original: string): string =
@@ -489,22 +499,22 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
 
   var seeSrcRope: Rope = nil
-  let docItemSeeSrc = getConfigVar("doc.item.seesrc")
+  let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
-    let cwd = getCurrentDir().canonicalizePath()
+    let cwd = canonicalizePath(d.conf, getCurrentDir())
     var path = n.info.toFullPath
     if path.startsWith(cwd):
       path = path[cwd.len+1 .. ^1].replace('\\', '/')
-    let gitUrl = getConfigVar("git.url")
+    let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      var commit = getConfigVar("git.commit")
+      var commit = getConfigVar(d.conf, "git.commit")
       if commit.len == 0: commit = "master"
-      dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(docItemSeeSrc,
+      dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
           ["path", "line", "url", "commit"], [rope path,
           rope($n.info.line), rope gitUrl,
           rope commit])])
 
-  add(d.section[k], ropeFormatNamedVars(getConfigVar("doc.item"),
+  add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc"],
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
@@ -515,7 +525,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     let att = attachToType(d, nameNode.sym)
     if att != nil:
       attype = rope esc(d.target, att.name.s)
-  add(d.toc[k], ropeFormatNamedVars(getConfigVar("doc.item.toc"),
+  add(d.toc[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
@@ -543,7 +553,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
 
-  result = %{ "name": %name, "type": %($k), "line": %n.info.line,
+  result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
   if comm != nil and comm != "":
     result["description"] = %comm
@@ -568,9 +578,9 @@ proc traceDeps(d: PDoc, it: PNode) =
       traceDeps(d, a)
   else:
     if d.section[k] != nil: add(d.section[k], ", ")
-    dispA(d.section[k],
+    dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-          "$1", [rope(getModuleName(it))])
+          "$1", [rope(getModuleName(d.conf, it))])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -617,7 +627,7 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkCommentStmt:
     if n.comment != nil and startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped, "line": %n.info.line,
+      d.add %{ "comment": %stripped, "line": %n.info.line.int,
                "col": %n.info.col }
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
@@ -703,10 +713,10 @@ proc genSection(d: PDoc, kind: TSymKind) =
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope
-  d.section[kind] = ropeFormatNamedVars(getConfigVar("doc.section"), [
+  d.section[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.section[kind]])
-  d.toc[kind] = ropeFormatNamedVars(getConfigVar("doc.section.toc"), [
+  d.toc[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
@@ -722,7 +732,7 @@ proc genOutFile(d: PDoc): Rope =
     genSection(d, i)
     add(toc, d.toc[i])
   if toc != nil:
-    toc = ropeFormatNamedVars(getConfigVar("doc.toc"), ["content"], [toc])
+    toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
   for i in countup(low(TSymKind), high(TSymKind)): add(code, d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
@@ -736,13 +746,13 @@ proc genOutFile(d: PDoc): Rope =
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
-  content = ropeFormatNamedVars(getConfigVar(bodyname), ["title",
+  content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code])
-  if optCompileOnly notin gGlobalOptions:
+  if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
-    code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
+    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics"],
         [title.rope, toc, d.modDesc, rope(getDateStr()),
@@ -753,60 +763,60 @@ proc genOutFile(d: PDoc): Rope =
   result = code
 
 proc generateIndex*(d: PDoc) =
-  if optGenIndex in gGlobalOptions:
-    writeIndexFile(d[], splitFile(options.outFile).dir /
+  if optGenIndex in d.conf.globalOptions:
+    writeIndexFile(d[], splitFile(d.conf.outFile).dir /
                         splitFile(d.filename).name & IndexExt)
 
-proc getOutFile2(filename, ext, dir: string): string =
-  if gWholeProject:
-    let d = if options.outFile != "": options.outFile else: dir
+proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
+  if optWholeProject in conf.globalOptions:
+    let d = if conf.outFile != "": conf.outFile else: dir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   else:
-    result = getOutFile(filename, ext)
+    result = getOutFile(conf, filename, ext)
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    writeRope(content, getOutFile2(filename, outExt, "htmldocs"), useWarning)
+    writeRope(content, getOutFile2(d.conf, filename, outExt, "htmldocs"), useWarning)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
   let content = %*{"orig": d.filename,
-    "nimble": getPackageName(d.filename),
+    "nimble": getPackageName(d.conf, d.filename),
     "entries": d.jArray}
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     write(stdout, $content)
   else:
     var f: File
-    if open(f, getOutFile2(splitFile(filename).name,
+    if open(f, getOutFile2(d.conf, splitFile(filename).name,
             outExt, "jsondocs"), fmWrite):
       write(f, $content)
       close(f)
     else:
       discard "fixme: error report"
 
-proc commandDoc*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+proc commandDoc*(conf: ConfigRef) =
+  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(gProjectFull, options.gConfigVars)
+  var d = newDocumentor(conf.projectFull, conf)
   d.hasToc = true
   generateDoc(d, ast)
-  writeOutput(d, gProjectFull, HtmlExt)
+  writeOutput(d, conf.projectFull, HtmlExt)
   generateIndex(d)
 
-proc commandRstAux(filename, outExt: string) =
+proc commandRstAux(conf: ConfigRef; filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, options.gConfigVars)
+  var d = newDocumentor(filen, conf)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     var outp: string
     if filename.len == 0:
       inc(d.id)
       let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir() / nameOnly
+      let subdir = getNimcacheDir(conf) / nameOnly
       createDir(subdir)
       outp = subdir / (nameOnly & "_snippet_" & $d.id & ".nim")
     elif isAbsolute(filename):
@@ -815,14 +825,14 @@ proc commandRstAux(filename, outExt: string) =
       # Nim's convention: every path is relative to the file it was written in:
       outp = splitFile(d.filename).dir / filename
     writeFile(outp, content)
-    let cmd = unescape(cmd) % quoteShell(outp)
-    rawMessage(hintExecuting, cmd)
+    let cmd = cmd % quoteShell(outp)
+    rawMessage(conf, hintExecuting, cmd)
     if execShellCmd(cmd) != status:
-      rawMessage(errExecutionOfProgramFailed, cmd)
+      rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
 
   d.isPureRst = true
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
-                     {roSupportRawDirective})
+                     {roSupportRawDirective}, conf)
   var modDesc = newStringOfCap(30_000)
   #d.modDesc = newMutableRope(30_000)
   renderRstToOut(d[], rst, modDesc)
@@ -831,50 +841,50 @@ proc commandRstAux(filename, outExt: string) =
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
-proc commandRst2Html*() =
-  commandRstAux(gProjectFull, HtmlExt)
+proc commandRst2Html*(conf: ConfigRef) =
+  commandRstAux(conf, conf.projectFull, HtmlExt)
 
-proc commandRst2TeX*() =
+proc commandRst2TeX*(conf: ConfigRef) =
   splitter = "\\-"
-  commandRstAux(gProjectFull, TexExt)
+  commandRstAux(conf, conf.projectFull, TexExt)
 
-proc commandJson*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+proc commandJson*(conf: ConfigRef) =
+  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(gProjectFull, options.gConfigVars)
+  var d = newDocumentor(conf.projectFull, conf)
   d.hasToc = true
   generateJson(d, ast)
   let json = d.jArray
   let content = rope(pretty(json))
 
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, JsonExt)
-    writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
+    writeRope(content, getOutFile(conf, conf.projectFull, JsonExt), useWarning = false)
 
-proc commandTags*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+proc commandTags*(conf: ConfigRef) =
+  var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
   if ast == nil: return
-  var d = newDocumentor(gProjectFull, options.gConfigVars)
+  var d = newDocumentor(conf.projectFull, conf)
   d.hasToc = true
   var
     content: Rope
   generateTags(d, ast, content)
 
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, TagsExt)
-    writeRope(content, getOutFile(gProjectFull, TagsExt), useWarning = false)
+    writeRope(content, getOutFile(conf, conf.projectFull, TagsExt), useWarning = false)
 
-proc commandBuildIndex*() =
-  var content = mergeIndexes(gProjectFull).rope
+proc commandBuildIndex*(conf: ConfigRef) =
+  var content = mergeIndexes(conf.projectFull).rope
 
-  let code = ropeFormatNamedVars(getConfigVar("doc.file"), ["title",
+  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
       ["Index".rope, nil, nil, rope(getDateStr()),
                    rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
-  writeRope(code, getOutFile("theindex", HtmlExt))
+  writeRope(code, getOutFile(conf, "theindex", HtmlExt))

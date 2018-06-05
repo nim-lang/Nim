@@ -10,7 +10,7 @@
 ## Implements type sanity checking for ASTs resulting from macros. Lots of
 ## room for improvement here.
 
-import ast, astalgo, msgs, types
+import ast, astalgo, msgs, types, options
 
 proc ithField(n: PNode, field: var int): PSym =
   result = nil
@@ -20,7 +20,7 @@ proc ithField(n: PNode, field: var int): PSym =
       result = ithField(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
-    if n.sons[0].kind != nkSym: internalError(n.info, "ithField")
+    if n.sons[0].kind != nkSym: return
     result = ithField(n.sons[0], field)
     if result != nil: return
     for i in countup(1, sonsLen(n) - 1):
@@ -28,13 +28,13 @@ proc ithField(n: PNode, field: var int): PSym =
       of nkOfBranch, nkElse:
         result = ithField(lastSon(n.sons[i]), field)
         if result != nil: return
-      else: internalError(n.info, "ithField(record case branch)")
+      else: discard
   of nkSym:
     if field == 0: result = n.sym
     else: dec(field)
   else: discard
 
-proc annotateType*(n: PNode, t: PType) =
+proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   let x = t.skipTypes(abstractInst+{tyRange})
   # Note: x can be unequal to t and we need to be careful to use 't'
   # to not to skip tyGenericInst
@@ -46,50 +46,50 @@ proc annotateType*(n: PNode, t: PType) =
       var j = i-1
       let field = x.n.ithField(j)
       if field.isNil:
-        globalError n.info, "invalid field at index " & $i
+        globalError conf, n.info, "invalid field at index " & $i
       else:
-        internalAssert(n.sons[i].kind == nkExprColonExpr)
-        annotateType(n.sons[i].sons[1], field.typ)
-  of nkPar:
+        internalAssert(conf, n.sons[i].kind == nkExprColonExpr)
+        annotateType(n.sons[i].sons[1], field.typ, conf)
+  of nkPar, nkTupleConstr:
     if x.kind == tyTuple:
       n.typ = t
       for i in 0 ..< n.len:
-        if i >= x.len: globalError n.info, "invalid field at index " & $i
-        else: annotateType(n.sons[i], x.sons[i])
+        if i >= x.len: globalError conf, n.info, "invalid field at index " & $i
+        else: annotateType(n.sons[i], x.sons[i], conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
     else:
-      globalError(n.info, "() must have a tuple type")
+      globalError(conf, n.info, "() must have a tuple type")
   of nkBracket:
     if x.kind in {tyArray, tySequence, tyOpenArray}:
       n.typ = t
-      for m in n: annotateType(m, x.elemType)
+      for m in n: annotateType(m, x.elemType, conf)
     else:
-      globalError(n.info, "[] must have some form of array type")
+      globalError(conf, n.info, "[] must have some form of array type")
   of nkCurly:
     if x.kind in {tySet}:
       n.typ = t
-      for m in n: annotateType(m, x.elemType)
+      for m in n: annotateType(m, x.elemType, conf)
     else:
-      globalError(n.info, "{} must have the set type")
+      globalError(conf, n.info, "{} must have the set type")
   of nkFloatLit..nkFloat128Lit:
     if x.kind in {tyFloat..tyFloat128}:
       n.typ = t
     else:
-      globalError(n.info, "float literal must have some float type")
+      globalError(conf, n.info, "float literal must have some float type")
   of nkCharLit..nkUInt64Lit:
     if x.kind in {tyInt..tyUInt64, tyBool, tyChar, tyEnum}:
       n.typ = t
     else:
-      globalError(n.info, "integer literal must have some int type")
+      globalError(conf, n.info, "integer literal must have some int type")
   of nkStrLit..nkTripleStrLit:
     if x.kind in {tyString, tyCString}:
       n.typ = t
     else:
-      globalError(n.info, "string literal must be of some string type")
+      globalError(conf, n.info, "string literal must be of some string type")
   of nkNilLit:
     if x.kind in NilableTypes:
       n.typ = t
     else:
-      globalError(n.info, "nil literal must be of some pointer type")
+      globalError(conf, n.info, "nil literal must be of some pointer type")
   else: discard

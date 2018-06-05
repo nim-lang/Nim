@@ -16,7 +16,7 @@ import
 
 const
   resultsFile = "testresults.html"
-  jsonFile = "testresults.json"
+  #jsonFile = "testresults.json" # not used
   Usage = """Usage:
   tester [options] command [arguments]
 
@@ -71,14 +71,15 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc nimcacheDir(filename, options: string): string =
+proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
-  return "nimcache" / (filename & '_' & options.getMD5)
+  let hashInput = options & $target
+  return "nimcache" / (filename & '_' & hashInput.getMD5)
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
-  let nimcache = nimcacheDir(filename, options)
-  let options = options & " --nimCache:" & nimcache.quoteShell & extraOptions
+  let nimcache = nimcacheDir(filename, options, target)
+  let options = options & " " & ("--nimCache:" & nimcache).quoteShell & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
@@ -149,11 +150,11 @@ proc initResults: TResults =
   result.skipped = 0
   result.data = ""
 
-proc readResults(filename: string): TResults =
-  result = marshal.to[TResults](readFile(filename).string)
+#proc readResults(filename: string): TResults = # not used
+#  result = marshal.to[TResults](readFile(filename).string)
 
-proc writeResults(filename: string, r: TResults) =
-  writeFile(filename, $$r)
+#proc writeResults(filename: string, r: TResults) = # not used
+#  writeFile(filename, $$r)
 
 proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &
@@ -211,18 +212,18 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
-  elif expected.line   != given.line   and expected.line   != 0 or
+  elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, $expected.line & ':' & $expected.column,
-                      $given.line    & ':' & $given.column,
+                      $given.line & ':' & $given.column,
                       reLinesDiffer)
   elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
-  elif expected.tline   != given.tline   and expected.tline   != 0 or
+  elif expected.tline != given.tline and expected.tline != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
     r.addResult(test, target, $expected.tline & ':' & $expected.tcolumn,
-                      $given.tline    & ':' & $given.tcolumn,
+                      $given.tline & ':' & $given.tcolumn,
                       reLinesDiffer)
   else:
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
@@ -231,7 +232,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
 proc generatedFile(test: TTest, target: TTarget): string =
   let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options) /
+  result = nimcacheDir(test.name, test.options, target) /
     (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
@@ -293,7 +294,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
-  inc(r.total)
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -304,12 +304,14 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
   if expected.err == reIgnored:
     r.addResult(test, target, "", "", reIgnored)
     inc(r.skipped)
+    inc(r.total)
     return
 
   if expected.targets == {}:
     expected.targets.incl(target)
 
   for target in expected.targets:
+    inc(r.total)
     if target notin targets:
       r.addResult(test, target, "", "", reIgnored)
       inc(r.skipped)
@@ -334,7 +336,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       var exeFile: string
       if isJsTarget:
         let (_, file, _) = splitFile(tname)
-        exeFile = nimcacheDir(test.name, test.options) / file & ".js"
+        exeFile = nimcacheDir(test.name, test.options, target) / file & ".js"
       else:
         exeFile = changeFileExt(tname, ExeExt)
 
@@ -402,6 +404,21 @@ proc testC(r: var TResults, test: TTest) =
     if exitCode != 0: given.err = reExitCodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
+proc testExec(r: var TResults, test: TTest) =
+  # runs executable or script, just goes by exit code
+  inc(r.total)
+  let (outp, errC) = execCmdEx(test.options.strip())
+  var given: TSpec
+  specDefaults(given)
+  if errC == 0:
+    given.err = reSuccess
+  else:
+    given.err = reExitCodesDiffer
+    given.msg = outp.string
+
+  if given.err == reSuccess: inc(r.passed)
+  r.addResult(test, targetC, "", given.msg, given.err)
+
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
               env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
@@ -425,7 +442,7 @@ include categories
 #                 if status: reSuccess else: reOutputsDiffer)
 
 proc main() =
-  os.putenv "NIMTEST_NO_COLOR", "1"
+  os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
   backend.open()
@@ -489,7 +506,7 @@ proc main() =
     else: echo r, r.data
   backend.close()
   var failed = r.total - r.passed - r.skipped
-  if failed > 0:
+  if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
     quit(QuitFailure)
 

@@ -53,7 +53,7 @@ proc hashString*(s: string): BiggestInt =
     result = a
 
 var
-  gTypeTable: array[TTypeKind, TIdTable]
+  gTypeTable: array[TTypeKind, TIdTable]  # XXX globals here
   gCanonicalTypes: array[TTypeKind, PType]
 
 proc initTypeTables() =
@@ -110,13 +110,13 @@ proc getUniqueType*(key: PType): PType =
     of tyDistinct:
       if key.deepCopy != nil: result = key
       else: result = getUniqueType(lastSon(key))
-    of tyGenericInst, tyOrdinal, tyStatic, tyAlias, tyInferred:
+    of tyGenericInst, tyOrdinal, tyStatic, tyAlias, tySink, tyInferred:
       result = getUniqueType(lastSon(key))
       #let obj = lastSon(key)
       #if obj.sym != nil and obj.sym.name.s == "TOption":
       #  echo "for ", typeToString(key), " I returned "
       #  debug result
-    of tyPtr, tyRef, tyVar:
+    of tyPtr, tyRef, tyVar, tyLent:
       let elemType = lastSon(key)
       if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
         # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
@@ -210,9 +210,5 @@ proc mangle*(name: string): string =
       requiresUnderscore = true
   if requiresUnderscore:
     result.add "_"
-
-proc emitLazily*(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
 
 initTypeTables()

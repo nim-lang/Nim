@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   output: '''Check passed
 Check passed'''
 """

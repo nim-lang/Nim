@@ -107,7 +107,7 @@ proc executeCgi(server: var TServer, client: Socket, path, query: string,
       dataAvail = recvLine(client, buf)
       if buf.len == 0:
         break
-      var L = toLower(buf)
+      var L = toLowerAscii(buf)
       if L.startsWith("content-length:"):
         var i = len("content-length:")
         while L[i] in Whitespace: inc(i)
@@ -205,7 +205,7 @@ proc acceptRequest(server: var TServer, client: Socket) =
     client.close()
   else:
     when defined(Windows):
-      var ext = splitFile(path).ext.toLower
+      var ext = splitFile(path).ext.toLowerAscii
       if ext == ".exe" or ext == ".cgi":
         # XXX: extract interpreter information here?
         cgi = true

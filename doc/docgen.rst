@@ -84,26 +84,13 @@ Document Types
 HTML
 ----
 
-Generation of HTML documents is done via both the ``doc`` and ``doc2``
-commands. These command take either a single .nim file, outputting a single
-.html file with the same base filename, or multiple .nim files, outputting
-multiple .html files and, optionally, an index file.
+Generation of HTML documents is done via the ``doc`` command. This command
+takes either a single .nim file, outputting a single .html file with the same
+base filename, or multiple .nim files, outputting multiple .html files and,
+optionally, an index file.
 
 The ``doc`` command::
   nim doc sample
-
-Partial Output::
-  ...
-  proc helloWorld*(times: int)
-  ...
-
-Output can be viewed in full here: `docgen_sample.html <docgen_sample.html>`_.
-The next command, called ``doc2``, is very similar to the ``doc`` command, but
-will be run after the compiler performs semantic checking on the input nim
-module(s), which allows it to process macros.
-
-The ``doc2`` command::
-  nim doc2 sample
 
 Partial Output::
   ...
@@ -111,23 +98,57 @@ Partial Output::
   ...
 
 The full output can be seen here: `docgen_sample2.html <docgen_sample2.html>`_.
-As you can see, the tool has extracted additional information provided to it by
-the compiler beyond what the ``doc`` command provides, such as pragmas attached
-implicitly by the compiler. This type of information is not available from
-looking at the AST (Abstract Syntax Tree) prior to semantic checking, as the
-``doc`` command does.
+
+The older version of the ``doc`` command, now renamed ``doc0`` runs before
+semantic checking which means it lacks some of the things ``doc`` will output.
+
+The ``doc0`` command::
+  nim doc0 sample
+
+Partial Output::
+  ...
+  proc helloWorld*(times: int)
+  ...
+
+Output can be viewed in full here: `docgen_sample.html <docgen_sample.html>`_.
+As you can see, the tool has extracted less information than what the ``doc``
+command provides, such as pragmas attached implicitly by the compiler. This type
+of information is not available from looking at the AST (Abstract Syntax Tree)
+prior to semantic checking, which is why ``doc0`` doesn't show it.
 
 
 JSON
 ----
 
 Generation of JSON documents is done via the ``jsondoc`` command. This command
-takes in a .nim file, and outputs a .json file with the same base filename.
-Note that this tool is built off of the ``doc`` command, and therefore is
-performed before semantic checking.
+takes in a .nim file, and outputs a .json file with the same base filename. Note
+that this tool is built off of the ``doc`` command (previously ``doc2``), and
+contains the same information.
 
 The ``jsondoc`` command::
   nim jsondoc sample
+
+Output::
+  {
+    "orig": "docgen_sample.nim",
+    "nimble": "",
+    "entries": [
+      {
+        "name": "helloWorld",
+        "type": "skProc",
+        "line": 5,
+        "col": 0,
+        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+        "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
+      }
+    ]
+  }
+
+Similarly to the old ``doc`` command the old ``jsondoc`` command has been
+renamed ``jsondoc0``.
+ 
+The ``jsondoc0`` command::
+  nim jsondoc0 sample
 
 Output::
   [
@@ -142,6 +163,8 @@ Output::
     }
   ]
 
+Note that the ``jsondoc`` command outputs it's JSON without pretty-printing it,
+while ``jsondoc0`` outputs pretty-printed JSON.
 
 Related Options
 ===============

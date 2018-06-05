@@ -265,9 +265,15 @@ when defined(windows) or defined(nimdoc):
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
+  proc getIoHandler*(disp: PDispatcher): Handle =
+    ## Returns the underlying IO Completion Port handle (Windows) or selector
+    ## (Unix) for the specified dispatcher.
+    return disp.ioPort
+
   proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
     let p = getGlobalDispatcher()
+
     if createIoCompletionPort(fd.Handle, p.ioPort,
                               cast[CompletionKey](fd), 1) == 0:
       raiseOSError(osLastError())
@@ -757,6 +763,9 @@ when defined(windows) or defined(nimdoc):
     ## Unregisters ``fd``.
     getGlobalDispatcher().handles.excl(fd)
 
+  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
+    return fd in disp.handles
+
   {.push stackTrace:off.}
   proc waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL): void {.stdcall.} =
@@ -977,7 +986,7 @@ when defined(windows) or defined(nimdoc):
   proc newAsyncEvent*(): AsyncEvent =
     ## Creates a new thread-safe ``AsyncEvent`` object.
     ##
-    ## New ``AsyncEvent`` object is not automatically registered with             # TODO: Why? -- DP
+    ## New ``AsyncEvent`` object is not automatically registered with
     ## dispatcher like ``AsyncSocket``.
     var sa = SECURITY_ATTRIBUTES(
       nLength: sizeof(SECURITY_ATTRIBUTES).cint,
@@ -1095,6 +1104,9 @@ else:
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
+  proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
+    return disp.selector
+
   proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
     var data = newAsyncData()
@@ -1110,6 +1122,9 @@ else:
 
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
+  
+  proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
+    return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
@@ -1498,7 +1513,7 @@ proc poll*(timeout = 500) =
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
 
-proc sleepAsync*(ms: int): Future[void] =
+proc sleepAsync*(ms: int | float): Future[void] =
   ## Suspends the execution of the current async procedure for the next
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1633,4 +1648,8 @@ proc waitFor*[T](fut: Future[T]): T =
 
   fut.read
 
-{.deprecated: [setEvent: trigger].}
+proc setEvent*(ev: AsyncEvent) {.deprecated.} =
+  ## Set event ``ev`` to signaled state.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+  ev.trigger()

@@ -59,7 +59,7 @@ type
     of Projectile:
       bullet*: PBulletRecord
     else:
-      nil
+      discard
   PBulletRecord* = ref TBulletRecord
   TBulletRecord* = object
     id*: int16
@@ -115,10 +115,10 @@ var
   cfg: PZoneSettings
   SpriteSheets* = initTable[string, PSpriteSheet](64)
   SoundCache  * = initTable[string, PSoundRecord](64)
-  nameToVehID*: TTable[string, int]
-  nameToItemID*: TTable[string, int]
-  nameToObjID*: TTable[string, int]
-  nameToBulletID*: TTable[string, int]
+  nameToVehID*: Table[string, int]
+  nameToItemID*: Table[string, int]
+  nameToObjID*: Table[string, int]
+  nameToBulletID*: Table[string, int]
   activeState = Lobby
 
 proc newSprite*(filename: string; errors: var seq[string]): PSpriteSheet
@@ -126,7 +126,7 @@ proc load*(ss: PSpriteSheet): bool {.discardable.}
 proc newSound*(filename: string; errors: var seq[string]): PSoundRecord
 proc load*(s: PSoundRecord): bool {.discardable.}
 
-proc validateSettings*(settings: PJsonNode; errors: var seq[string]): bool
+proc validateSettings*(settings: JsonNode; errors: var seq[string]): bool
 proc loadSettings*(rawJson: string, errors: var seq[string]): bool
 proc loadSettingsFromFile*(filename: string, errors: var seq[string]): bool
 
@@ -135,17 +135,17 @@ proc fetchItm*(itm: string): PItemRecord
 proc fetchObj*(name: string): PObjectRecord
 proc fetchBullet(name: string): PBulletRecord
 
-proc importLevel(data: PJsonNode; errors: var seq[string]): PLevelSettings
-proc importVeh(data: PJsonNode; errors: var seq[string]): PVehicleRecord
-proc importObject(data: PJsonNode; errors: var seq[string]): PObjectRecord
-proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord
-proc importPhys(data: PJsonNode): TPhysicsRecord
-proc importAnim(data: PJsonNode; errors: var seq[string]): PAnimationRecord
-proc importHandling(data: PJsonNode): THandlingRecord
-proc importBullet(data: PJsonNode; errors: var seq[string]): PBulletRecord
-proc importSoul(data: PJsonNode): TSoulRecord
-proc importExplosion(data: PJsonNode; errors: var seq[string]): TExplosionRecord
-proc importSound*(data: PJsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord
+proc importLevel(data: JsonNode; errors: var seq[string]): PLevelSettings
+proc importVeh(data: JsonNode; errors: var seq[string]): PVehicleRecord
+proc importObject(data: JsonNode; errors: var seq[string]): PObjectRecord
+proc importItem(data: JsonNode; errors: var seq[string]): PItemRecord
+proc importPhys(data: JsonNode): TPhysicsRecord
+proc importAnim(data: JsonNode; errors: var seq[string]): PAnimationRecord
+proc importHandling(data: JsonNode): THandlingRecord
+proc importBullet(data: JsonNode; errors: var seq[string]): PBulletRecord
+proc importSoul(data: JsonNode): TSoulRecord
+proc importExplosion(data: JsonNode; errors: var seq[string]): TExplosionRecord
+proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord
 
 ## this is the only pipe between lobby and main.nim
 proc getActiveState*(): TGameState =
@@ -203,7 +203,7 @@ iterator playableVehicles*(): PVehicleRecord =
     if v.playable:
       yield v
 
-template allAssets*(body: stmt) {.dirty.}=
+template allAssets*(body: untyped) {.dirty.}=
   block:
     var assetType = FGraphics
     for file, asset in pairs(SpriteSheets):
@@ -212,7 +212,7 @@ template allAssets*(body: stmt) {.dirty.}=
     for file, asset in pairs(SoundCache):
       body
 
-template cacheImpl(procName, cacheName, resultType: expr; body: stmt) {.dirty, immediate.} =
+template cacheImpl(procName, cacheName, resultType, body: untyped) {.dirty.} =
   proc procName*(filename: string; errors: var seq[string]): resulttype =
     if hasKey(cacheName, filename):
       return cacheName[filename]
@@ -220,7 +220,7 @@ template cacheImpl(procName, cacheName, resultType: expr; body: stmt) {.dirty, i
     body
     cacheName[filename] = result
 
-template checkFile(path: expr): stmt {.dirty, immediate.} =
+template checkFile(path: untyped) {.dirty.} =
   if not existsFile(path):
     errors.add("File missing: "& path)
 
@@ -243,7 +243,7 @@ proc expandPath*(assetType: TAssetType; fileName: string): string =
   case assetType
   of FGraphics: result.add "gfx/"
   of FSound:    result.add "sfx/"
-  else: nil
+  else: discard
   result.add fileName
 proc expandPath*(fc: ScFileChallenge): string {.inline.} =
   result = expandPath(fc.assetType, fc.file)
@@ -280,10 +280,10 @@ else:
     if not s.soundBuf.isNil:
       result = true
 
-template addError(e: expr): stmt {.immediate.} =
+template addError(e: untyped) =
   errors.add(e)
   result = false
-proc validateSettings*(settings: PJsonNode, errors: var seq[string]): bool =
+proc validateSettings*(settings: JsonNode, errors: var seq[string]): bool =
   result = true
   if settings.kind != JObject:
     addError("Settings root must be an object")
@@ -328,10 +328,10 @@ proc loadSettingsFromFile*(filename: string, errors: var seq[string]): bool =
     result = loadSettings(readFile(filename), errors)
 
 proc loadSettings*(rawJson: string, errors: var seq[string]): bool =
-  var settings: PJsonNode
+  var settings: JsonNode
   try:
     settings = parseJson(rawJson)
-  except EJsonParsingError:
+  except JsonParsingError:
     errors.add("JSON parsing error: "& getCurrentExceptionMsg())
     return
   except:
@@ -407,21 +407,21 @@ proc fetchObj*(name: string): PObjectRecord =
 proc fetchBullet(name: string): PBulletRecord =
   return cfg.bullets[nameToBulletID[name]]
 
-proc getField(node: PJsonNode, field: string, target: var float) =
+proc getField(node: JsonNode, field: string, target: var float) =
   if not node.hasKey(field):
     return
   if node[field].kind == JFloat:
     target = node[field].fnum
   elif node[field].kind == JInt:
     target = node[field].num.float
-proc getField(node: PJsonNode, field: string, target: var int) =
+proc getField(node: JsonNode, field: string, target: var int) =
   if not node.hasKey(field):
     return
   if node[field].kind == JInt:
     target = node[field].num.int
   elif node[field].kind == JFloat:
     target = node[field].fnum.int
-proc getField(node: PJsonNode; field: string; target: var bool) =
+proc getField(node: JsonNode; field: string; target: var bool) =
   if not node.hasKey(field):
     return
   case node[field].kind
@@ -431,19 +431,19 @@ proc getField(node: PJsonNode; field: string; target: var bool) =
     target = (node[field].num != 0)
   of JFloat:
     target = (node[field].fnum != 0.0)
-  else: nil
+  else: discard
 
-template checkKey(node: expr; key: string): stmt =
+template checkKey(node: untyped; key: string) =
   if not hasKey(node, key):
     return
 
-proc importTrail(data: PJsonNode; errors: var seq[string]): TTrailRecord =
+proc importTrail(data: JsonNode; errors: var seq[string]): TTrailRecord =
   checkKey(data, "trail")
   result.anim = importAnim(data["trail"], errors)
   result.timer = 1000.0
   getField(data["trail"], "timer", result.timer)
   result.timer /= 1000.0
-proc importLevel(data: PJsonNode; errors: var seq[string]): PLevelSettings =
+proc importLevel(data: JsonNode; errors: var seq[string]): PLevelSettings =
   new(result)
   result.size = vec2i(5000, 5000)
   result.starfield = @[]
@@ -456,7 +456,7 @@ proc importLevel(data: PJsonNode; errors: var seq[string]): PLevelSettings =
   if level.hasKey("starfield"):
     for star in level["starfield"].items:
       result.starfield.add(newSprite(star.str, errors))
-proc importPhys(data: PJsonNode): TPhysicsRecord =
+proc importPhys(data: JsonNode): TPhysicsRecord =
   result.radius = 20.0
   result.mass = 10.0
 
@@ -466,7 +466,7 @@ proc importPhys(data: PJsonNode): TPhysicsRecord =
     phys.getField("mass", result.mass)
   when not defined(NoChipmunk):
     result.moment = momentForCircle(result.mass, 0.0, result.radius, VectorZero) * MomentMult
-proc importHandling(data: PJsonNode): THandlingRecord =
+proc importHandling(data: JsonNode): THandlingRecord =
   result.thrust = 45.0
   result.topSpeed = 100.0 #unused
   result.reverse = 30.0
@@ -483,7 +483,7 @@ proc importHandling(data: PJsonNode): THandlingRecord =
   hand.getField("reverse", result.reverse)
   hand.getField("strafe", result.strafe)
   hand.getField("rotation", result.rotation)
-proc importAnim(data: PJsonNode, errors: var seq[string]): PAnimationRecord =
+proc importAnim(data: JsonNode, errors: var seq[string]): PAnimationRecord =
   new(result)
   result.angle = 0.0
   result.delay = 1000.0
@@ -502,26 +502,26 @@ proc importAnim(data: PJsonNode, errors: var seq[string]): PAnimationRecord =
 
   result.angle = radians(result.angle) ## comes in as degrees
   result.delay /= 1000 ## delay comes in as milliseconds
-proc importSoul(data: PJsonNode): TSoulRecord =
+proc importSoul(data: JsonNode): TSoulRecord =
   result.energy = 10000
   result.health = 1
   checkKey(data, "soul")
   let soul = data["soul"]
   soul.getField("energy", result.energy)
   soul.getField("health", result.health)
-proc importExplosion(data: PJsonNode; errors: var seq[string]): TExplosionRecord =
+proc importExplosion(data: JsonNode; errors: var seq[string]): TExplosionRecord =
   checkKey(data, "explode")
   let expl = data["explode"]
   result.anim = importAnim(expl, errors)
   result.sound = importSound(expl, errors, "sound")
-proc importSound*(data: PJsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord =
+proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord =
   if data.kind == JObject:
     checkKey(data, fieldName)
     result = newSound(data[fieldName].str, errors)
   elif data.kind == JString:
     result = newSound(data.str, errors)
 
-proc importVeh(data: PJsonNode; errors: var seq[string]): PVehicleRecord =
+proc importVeh(data: JsonNode; errors: var seq[string]): PVehicleRecord =
   new(result)
   result.playable = false
   if data.kind != JArray or data.len != 2 or
@@ -538,7 +538,7 @@ proc importVeh(data: PJsonNode; errors: var seq[string]): PVehicleRecord =
   vehdata.getField("playable", result.playable)
   if result.anim.spriteSheet.isNil and result.playable:
     result.playable = false
-proc importObject(data: PJsonNode; errors: var seq[string]): PObjectRecord =
+proc importObject(data: JsonNode; errors: var seq[string]): PObjectRecord =
   new(result)
   if data.kind != JArray or data.len != 2:
     result.name = "(broken)"
@@ -546,7 +546,7 @@ proc importObject(data: PJsonNode; errors: var seq[string]): PObjectRecord =
   result.name = data[0].str
   result.anim = importAnim(data[1], errors)
   result.physics = importPhys(data[1])
-proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord =
+proc importItem(data: JsonNode; errors: var seq[string]): PItemRecord =
   new(result)
   if data.kind != JArray or data.len != 3:
     result.name = "(broken)"
@@ -562,7 +562,7 @@ proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord =
 
   result.useSound = importSound(data[2], errors, "useSound")
 
-  case data[1].str.toLower
+  case data[1].str.toLowerAscii
   of "projectile":
     result.kind = Projectile
     if data[2]["bullet"].kind == JString:
@@ -576,15 +576,15 @@ proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord =
   of "ammo":
     result.kind = Ammo
   of "utility":
-    nil
+    discard
   else:
     errors.add "Invalid item type \""&data[1].str&"\" for item "&result.name
 
-proc importBullet(data: PJsonNode; errors: var seq[string]): PBulletRecord =
+proc importBullet(data: JsonNode; errors: var seq[string]): PBulletRecord =
   new(result)
   result.id = -1
 
-  var bdata: PJsonNode
+  var bdata: JsonNode
   if data.kind == JArray:
     result.name = data[0].str
     bdata = data[1]

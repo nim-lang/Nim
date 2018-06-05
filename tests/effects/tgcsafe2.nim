@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''type mismatch: got (proc (s: string){.locks: 0.})'''
+  errormsg: '''type mismatch: got <proc (s: string){.locks: 0.}>'''
   line: 11
 """
 #5620

@@ -7,7 +7,6 @@ Advanced commands:
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
-  //jsondoc2                extract the documentation to a json file (uses doc2)
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
@@ -32,11 +31,12 @@ Advanced options:
   --nimcache:PATH           set the path used for generated files
   --header:FILE             the compiler should produce a .h file (FILE
                             is optional)
-  -c, --compileOnly         compile only; do not assemble or link
-  --noLinking               compile but do not link
+  -c, --compileOnly         compile Nim files only; do not assemble or link
+  --noLinking               compile Nim and generated files but do not link
   --noMain                  do not generate a main procedure
   --genScript               generate a compile script (in the 'nimcache'
-                            subdirectory named 'compile_$project$scriptext')
+                            subdirectory named 'compile_$$project$$scriptext'),
+                            implies --compileOnly
   --genDeps                 generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
@@ -61,8 +61,13 @@ Advanced options:
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
   --memTracker:on|off       turn memory tracker on|off
+  --hotCodeReloading:on|off
+                            turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
+  --laxStrings:on|off       when turned on, accessing the zero terminator in
+                            strings is allowed; only for backwards compatibility
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
@@ -74,6 +79,7 @@ Advanced options:
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --noCppExceptions         use default exception handling with C++ backend
+  --cppCompileToNamespace   use namespace "Nim" for the generated C++ code
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
@@ -85,5 +91,6 @@ Advanced options:
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
-  --experimental            enable experimental language features
+  --experimental:$1
+                            enable experimental language feature
   -v, --version             show detailed version information

@@ -158,9 +158,10 @@ proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
              graph: ModuleGraph; cache: IdentCache) =
+  let conf = graph.config
   myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
         "[" & $line & ":" & $col & "]")
-  gIdeCmd = cmd
+  conf.ideCmd = cmd
   if cmd == ideChk:
     msgs.structuredErrorHook = errorHook
     msgs.writelnHook = myLog
@@ -170,33 +171,33 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if cmd == ideUse and suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
-  let dirtyIdx = file.fileInfoIdx(isKnownFile)
+  let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
   if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
   else: msgs.setDirtyFile(dirtyIdx, nil)
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gTrackPosAttached = false
-  gErrorCounter = 0
+  conf.errorCounter = 0
   if suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(cache)
-  if suggestVersion == 0 and gIdeCmd in {ideUse, ideDus} and
+  if suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.len == 0:
     discard "no need to recompile anything"
   else:
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
-    if gIdeCmd != ideMod:
+    if conf.ideCmd != ideMod:
       graph.compileProject(cache, modIdx)
-  if gIdeCmd in {ideUse, ideDus}:
+  if conf.ideCmd in {ideUse, ideDus}:
     let u = if suggestVersion != 1: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
-      listUsages(u)
+      listUsages(conf, u)
     else:
-      localError(gTrackPos, "found no symbol at this position " & $gTrackPos)
+      localError(conf, gTrackPos, "found no symbol at this position " & $gTrackPos)
 
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
                 graph: ModuleGraph; cache: IdentCache) =
@@ -257,7 +258,7 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
 
 template setVerbosity(level: typed) =
   gVerbosity = level
-  gNotes = NotesVerbosity[gVerbosity]
+  conf.notes = NotesVerbosity[gVerbosity]
 
 proc connectToNextFreePort(server: Socket, host: string): Port =
   server.bindaddr(Port(0), host)
@@ -349,16 +350,18 @@ proc replEpc(x: ThreadParams) {.thread.} =
     of "call":
       let
         uid = message[1].getNum
+        cmd = message[2].getSymbol
         args = message[3]
 
-      gIdeCmd = parseIdeCmd(message[2].getSymbol)
-      case gIdeCmd
-      of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
-        setVerbosity(0)
-      else: discard
-      let cmd = $gIdeCmd & " " & args.argsToStr
-      myLog "MSG CMD: " & cmd
-      requests.send(cmd)
+      when false:
+        x.ideCmd[] = parseIdeCmd(message[2].getSymbol)
+        case x.ideCmd[]
+        of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
+          setVerbosity(0)
+        else: discard
+      let fullCmd = cmd & " " & args.argsToStr
+      myLog "MSG CMD: " & fullCmd
+      requests.send(fullCmd)
       toEpc(client, uid)
     of "methods":
       returnEpc(client, message[1].getNum, listEpc())
@@ -375,15 +378,17 @@ proc replEpc(x: ThreadParams) {.thread.} =
       quit errMessage
 
 proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: CachedMsgs) =
+  let conf = graph.config
+
   template sentinel() =
     # send sentinel for the input reading thread:
     results.send(Suggest(section: ideNone))
 
   template toggle(sw) =
-    if sw in gGlobalOptions:
-      excl(gGlobalOptions, sw)
+    if sw in conf.globalOptions:
+      excl(conf.globalOptions, sw)
     else:
-      incl(gGlobalOptions, sw)
+      incl(conf.globalOptions, sw)
     sentinel()
     return
 
@@ -395,21 +400,21 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   var opc = ""
   var i = parseIdent(cmd, opc, 0)
   case opc.normalize
-  of "sug": gIdeCmd = ideSug
-  of "con": gIdeCmd = ideCon
-  of "def": gIdeCmd = ideDef
-  of "use": gIdeCmd = ideUse
-  of "dus": gIdeCmd = ideDus
-  of "mod": gIdeCmd = ideMod
-  of "chk": gIdeCmd = ideChk
-  of "highlight": gIdeCmd = ideHighlight
-  of "outline": gIdeCmd = ideOutline
+  of "sug": conf.ideCmd = ideSug
+  of "con": conf.ideCmd = ideCon
+  of "def": conf.ideCmd = ideDef
+  of "use": conf.ideCmd = ideUse
+  of "dus": conf.ideCmd = ideDus
+  of "mod": conf.ideCmd = ideMod
+  of "chk": conf.ideCmd = ideChk
+  of "highlight": conf.ideCmd = ideHighlight
+  of "outline": conf.ideCmd = ideOutline
   of "quit":
     sentinel()
     quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
-  of "known": gIdeCmd = ideKnown
+  of "known": conf.ideCmd = ideKnown
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -423,17 +428,17 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  if gIdeCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(orig))))
+  if conf.ideCmd == ideKnown:
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, orig))))
   else:
-    if gIdeCmd == ideChk:
+    if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
-    execute(gIdeCmd, orig, dirtyfile, line, col, graph, cache)
+    execute(conf.ideCmd, orig, dirtyfile, line, col, graph, cache)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
   #echo "recompiling full project"
-  resetSystemArtifacts()
+  resetSystemArtifacts(graph)
   vm.globalCtx = nil
   graph.resetAllModules()
   GC_fullcollect()
@@ -441,8 +446,9 @@ proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
   #echo GC_getStatistics()
 
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
+  let conf = graph.config
   if gLogging:
-    for it in searchPaths:
+    for it in conf.searchPaths:
       log(it)
 
   proc wrHook(line: string) {.closure.} =
@@ -468,7 +474,7 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       idle += 1
     if idle == 20 and gRefresh:
       # we use some nimsuggest activity to enable a lazy recompile:
-      gIdeCmd = ideChk
+      conf.ideCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
       cachedMsgs.setLen 0
       msgs.structuredErrorHook = proc (info: TLineInfo; msg: string; sev: Severity) =
@@ -480,20 +486,21 @@ var
   inputThread: Thread[ThreadParams]
 
 proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
+  let conf = graph.config
   clearPasses()
   registerPass verbosePass
   registerPass semPass
-  gCmd = cmdIdeTools
-  incl gGlobalOptions, optCaasEnabled
-  wantMainModule()
+  conf.cmd = cmdIdeTools
+  incl conf.globalOptions, optCaasEnabled
+  wantMainModule(conf)
 
-  if not fileExists(gProjectFull):
-    quit "cannot find file: " & gProjectFull
+  if not fileExists(conf.projectFull):
+    quit "cannot find file: " & conf.projectFull
 
-  add(searchPaths, options.libpath)
+  add(conf.searchPaths, conf.libpath)
 
   # do not stop after the first error:
-  msgs.gErrorMax = high(int)
+  conf.errorMax = high(int)
   # do not print errors, but log them
   msgs.writelnHook = proc (s: string) = log(s)
   msgs.structuredErrorHook = nil
@@ -510,15 +517,15 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
   of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
   of mcmdsug: createThread(inputThread, replCmdline,
-                            (gPort, "sug \"" & options.gProjectFull & "\":" & gAddress))
+                            (gPort, "sug \"" & conf.projectFull & "\":" & gAddress))
   of mcmdcon: createThread(inputThread, replCmdline,
-                            (gPort, "con \"" & options.gProjectFull & "\":" & gAddress))
+                            (gPort, "con \"" & conf.projectFull & "\":" & gAddress))
   mainThread(graph, cache)
   joinThread(inputThread)
   close(requests)
   close(results)
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
+proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   while true:
     parseopt.next(p)
@@ -526,7 +533,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdEnd: break
     of cmdLongoption, cmdShortOption:
       case p.key.normalize
-      of "help":
+      of "help", "h":
         stdout.writeline(Usage)
         quit()
       of "port":
@@ -539,15 +546,15 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       of "cmdsug":
         gMode = mcmdsug
         gAddress = p.val
-        incl(gGlobalOptions, optIdeDebug)
+        incl(conf.globalOptions, optIdeDebug)
       of "cmdcon":
         gMode = mcmdcon
         gAddress = p.val
-        incl(gGlobalOptions, optIdeDebug)
+        incl(conf.globalOptions, optIdeDebug)
       of "epc":
         gMode = mepc
-        gVerbosity = 0          # Port number gotta be first.
-      of "debug": incl(gGlobalOptions, optIdeDebug)
+        conf.verbosity = 0          # Port number gotta be first.
+      of "debug": incl(conf.globalOptions, optIdeDebug)
       of "v2": suggestVersion = 0
       of "v1": suggestVersion = 1
       of "tester":
@@ -562,66 +569,67 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
           gRefresh = true
       of "maxresults":
         suggestMaxResults = parseInt(p.val)
-      else: processSwitch(pass, p)
+      else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
       if dirExists(a) and not fileExists(a.addFileExt("nim")):
-        options.gProjectName = findProjectNimFile(a)
+        conf.projectName = findProjectNimFile(conf, a)
         # don't make it worse, report the error the old way:
-        if options.gProjectName.len == 0: options.gProjectName = a
+        if conf.projectName.len == 0: conf.projectName = a
       else:
-        options.gProjectName = a
+        conf.projectName = a
       # if processArgument(pass, p, argsCount): break
 
-proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
+proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  condsyms.initDefines(conf.symbols)
+  defineSymbol conf.symbols, "nimsuggest"
+
   if paramCount() == 0:
     stdout.writeline(Usage)
   else:
-    processCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "", conf)
     if gMode != mstdin:
       msgs.writelnHook = proc (msg: string) = discard
-    if gProjectName != "":
+    if conf.projectName != "":
       try:
-        gProjectFull = canonicalizePath(gProjectName)
+        conf.projectFull = canonicalizePath(conf, conf.projectName)
       except OSError:
-        gProjectFull = gProjectName
-      var p = splitFile(gProjectFull)
-      gProjectPath = canonicalizePath p.dir
-      gProjectName = p.name
+        conf.projectFull = conf.projectName
+      var p = splitFile(conf.projectFull)
+      conf.projectPath = canonicalizePath(conf, p.dir)
+      conf.projectName = p.name
     else:
-      gProjectPath = canonicalizePath getCurrentDir()
+      conf.projectPath = canonicalizePath(conf, getCurrentDir())
 
     # Find Nim's prefix dir.
     let binaryPath = findExe("nim")
     if binaryPath == "":
       raise newException(IOError,
           "Cannot find Nim standard library: Nim compiler not in PATH")
-    gPrefixDir = binaryPath.splitPath().head.parentDir()
-    if not dirExists(gPrefixDir / "lib"): gPrefixDir = ""
+    conf.prefixDir = binaryPath.splitPath().head.parentDir()
+    if not dirExists(conf.prefixDir / "lib"): conf.prefixDir = ""
 
     #msgs.writelnHook = proc (line: string) = log(line)
-    myLog("START " & gProjectFull)
+    myLog("START " & conf.projectFull)
 
-    loadConfigs(DefaultConfig, cache, config) # load all config files
+    loadConfigs(DefaultConfig, cache, conf) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
-    options.command = "nimsuggest"
-    let scriptFile = gProjectFull.changeFileExt("nims")
+    conf.command = "nimsuggest"
+    let scriptFile = conf.projectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false, config)
-      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if scriptFile == gProjectFull: return
-    elif fileExists(gProjectPath / "config.nims"):
+      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file:
+      if scriptFile != conf.projectFull:
+        runNimScript(cache, scriptFile, freshDefines=false, conf)
+    elif fileExists(conf.projectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
+      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
 
-    extccomp.initVars()
-    processCmdLine(passCmd2, "")
+    extccomp.initVars(conf)
+    processCmdLine(passCmd2, "", conf)
 
-    let graph = newModuleGraph(config)
+    let graph = newModuleGraph(conf)
     graph.suggestMode = true
     mainCommand(graph, cache)
 
-condsyms.initDefines()
-defineSymbol "nimsuggest"
 handleCmdline(newIdentCache(), newConfigRef())

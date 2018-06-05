@@ -1,21 +1,31 @@
-template newAsyncNativeSocketImpl(domain, sockType, protocol) =
+template createAsyncNativeSocketImpl(domain, sockType, protocol) =
   let handle = newNativeSocket(domain, sockType, protocol)
   if handle == osInvalidSocket:
-    raiseOSError(osLastError())
+    return osInvalidSocket.AsyncFD
   handle.setBlocking(false)
   when defined(macosx) and not defined(nimdoc):
     handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
   result = handle.AsyncFD
   register(result)
 
-proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+proc createAsyncNativeSocket*(domain: cint, sockType: cint,
                            protocol: cint): AsyncFD =
-  newAsyncNativeSocketImpl(domain, sockType, protocol)
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
+                           sockType: SockType = SOCK_STREAM,
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+                           protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
                            sockType: SockType = SOCK_STREAM,
-                           protocol: Protocol = IPPROTO_TCP): AsyncFD =
-  newAsyncNativeSocketImpl(domain, sockType, protocol)
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD
+                           {.deprecated: "use createAsyncNativeSocket instead".} =
+  createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 when defined(windows) or defined(nimdoc):
   proc bindToDomain(handle: SocketHandle, domain: Domain) =

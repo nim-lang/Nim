@@ -54,10 +54,13 @@ proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
   rawHandleSelf(c, owner)
 
+const
+  errCannotInstantiateX = "cannot instantiate: '$1'"
+
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
-  internalAssert n.kind == nkGenericParams
+  internalAssert c.config, n.kind == nkGenericParams
   for i, a in n.pairs:
-    internalAssert a.kind == nkSym
+    internalAssert c.config, a.kind == nkSym
     var q = a.sym
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
@@ -71,10 +74,10 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
         # later by semAsgn in return type inference scenario
         t = q.typ
       else:
-        localError(a.info, errCannotInstantiateX, s.name.s)
+        localError(c.config, a.info, errCannotInstantiateX % s.name.s)
         t = errorType(c)
     elif t.kind == tyGenericParam:
-      localError(a.info, errCannotInstantiateX, q.name.s)
+      localError(c.config, a.info, errCannotInstantiateX % q.name.s)
       t = errorType(c)
     elif t.kind == tyGenericInvocation:
       #t = instGenericContainer(c, a, t)
@@ -145,7 +148,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
-    n.sons[bodyPos] = transformBody(c.module, b, result)
+    n.sons[bodyPos] = transformBody(c.graph, c.module, b, result)
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     dec c.inGenericInst
@@ -174,6 +177,8 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
+  internalAssert c.config, header.kind == tyGenericInvocation
+
   var
     typeMap: LayeredIdTable
     cl: TReplTypeVars
@@ -185,7 +190,35 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
+
+  # We must add all generic params in scope, because the generic body
+  # may include tyFromExpr nodes depending on these generic params.
+  # XXX: This looks quite similar to the code in matchUserTypeClass,
+  # perhaps the code can be extracted in a shared function.
+  openScope(c)
+  let genericTyp = header.base
+  for i in 0 .. (genericTyp.len - 2):
+    let genParam = genericTyp[i]
+    var param: PSym
+
+    template paramSym(kind): untyped =
+      newSym(kind, genParam.sym.name, genericTyp.sym, genParam.sym.info)
+
+    if genParam.kind == tyStatic:
+      param = paramSym skConst
+      param.ast = header[i+1].n
+      param.typ = header[i+1]
+    else:
+      param = paramSym skType
+      param.typ = makeTypeDesc(c, header[i+1])
+
+    # this scope was not created by the user,
+    # unused params shoudn't be reported.
+    param.flags.incl sfUsed
+    addDecl(c, param)
+
   result = replaceTypeVarsT(cl, header)
+  closeScope(c)
 
 proc instantiateProcType(c: PContext, pt: TIdTable,
                          prc: PSym, info: TLineInfo) =
@@ -203,14 +236,12 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc.
   #addDecl(c, prc)
-
   pushInfoContext(info)
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(c, addr(typeMap), info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-
   for i in 1 ..< result.len:
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > 1:
@@ -218,7 +249,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       resetIdTable(cl.localCache)
     result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.sons[i])
-    internalAssert originalParams[i].kind == nkSym
+    internalAssert c.config, originalParams[i].kind == nkSym
     when true:
       let oldParam = originalParams[i].sym
       let param = copySym(oldParam)
@@ -255,9 +286,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
   # no need to instantiate generic templates/macros:
-  internalAssert fn.kind notin {skMacro, skTemplate}
+  internalAssert c.config, fn.kind notin {skMacro, skTemplate}
   # generates an instantiated proc
-  if c.instCounter > 1000: internalError(fn.ast.info, "nesting too deep")
+  if c.instCounter > 1000: internalError(c.config, fn.ast.info, "nesting too deep")
   inc(c.instCounter)
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
@@ -276,7 +307,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   openScope(c)
   let gp = n.sons[genericParamsPos]
-  internalAssert gp.kind != nkEmpty
+  internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
   pushInfoContext(info)
   var entry = TInstantiation.new
@@ -316,7 +347,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
-    paramsTypeCheck(c, result.typ)
+    if result.magic != mSlice:
+      # 'toOpenArray' is special and it is allowed to return 'openArray':
+      paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc
   popProcCon(c)

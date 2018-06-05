@@ -32,7 +32,7 @@
 ##   import parsecsv
 ##   import os
 ##   # Prepare a file
-##   var content = """One,Two,Three,Four
+##   let content = """One,Two,Three,Four
 ##   1,2,3,4
 ##   10,20,30,40
 ##   100,200,300,400
@@ -65,8 +65,6 @@ type
 
   CsvError* = object of IOError ## exception that is raised if
                                 ## a parsing error occurs
-
-{.deprecated: [TCsvRow: CsvRow, TCsvParser: CsvParser, EInvalidCsv: CsvError].}
 
 proc raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
@@ -123,7 +121,7 @@ proc parseField(my: var CsvParser, a: var string) =
   if buf[pos] == my.quote and my.quote != '\0':
     inc(pos)
     while true:
-      var c = buf[pos]
+      let c = buf[pos]
       if c == '\0':
         my.bufpos = pos # can continue after exception?
         error(my, pos, my.quote & " expected")
@@ -153,7 +151,7 @@ proc parseField(my: var CsvParser, a: var string) =
           inc(pos)
   else:
     while true:
-      var c = buf[pos]
+      let c = buf[pos]
       if c == my.sep: break
       if c in {'\c', '\l', '\0'}: break
       add(a, c)
@@ -171,9 +169,9 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ##
   ## Blank lines are skipped.
   var col = 0 # current column
-  var oldpos = my.bufpos
+  let oldpos = my.bufpos
   while my.buf[my.bufpos] != '\0':
-    var oldlen = my.row.len
+    let oldlen = my.row.len
     if oldlen < col+1:
       setLen(my.row, col+1)
       my.row[col] = ""
@@ -208,16 +206,16 @@ proc close*(my: var CsvParser) {.inline.} =
 proc readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
   ## See also `rowEntry <#rowEntry.CsvParser.string>`_.
-  var present = my.readRow()
+  let present = my.readRow()
   if present:
     my.headers = my.row
 
-proc rowEntry*(my: var CsvParser, entry: string): string =
-  ## Reads a specified `entry` from the current row.
+proc rowEntry*(my: var CsvParser, entry: string): var string =
+  ## Acceses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow.CsvParser>`_ has already been
   ## called.
-  var index = my.headers.find(entry)
+  let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
 
@@ -237,14 +235,14 @@ when isMainModule:
   import os
   import strutils
   block: # Tests for reading the header row
-    var content = "One,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
+    let content = "One,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
     writeFile("temp.csv", content)
 
     var p: CsvParser
     p.open("temp.csv")
     p.readHeaderRow()
     while p.readRow():
-      var zeros = repeat('0', p.currRow-2)
+      let zeros = repeat('0', p.currRow-2)
       doAssert p.rowEntry("One") == "1" & zeros
       doAssert p.rowEntry("Two") == "2" & zeros
       doAssert p.rowEntry("Three") == "3" & zeros
