@@ -19,9 +19,9 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, lookups,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals,
+  lambdalifting, sempass2, lowerings, destroyer, liftlocals, closureiters,
   modulegraphs
 
 type
@@ -984,6 +984,10 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     result = liftLocalsIfRequested(prc, result, g.config)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
+
+    if prc.isIterator and oldIterTransf notin g.config.features:
+      result = g.transformClosureIterator(prc, result)
+
     incl(result.flags, nfTransf)
       #if prc.name.s == "testbody":
     #  echo renderTree(result)

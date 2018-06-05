@@ -131,6 +131,10 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
       quitOrDebug()
     prev.up = cur.up
 
+proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
+  if not e.isNil:
+    currException = e
+
 # some platforms have native support for stack traces:
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and

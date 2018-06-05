@@ -2326,7 +2326,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState: genGotoState(p, n)
-  of nkBreakState: genBreakState(p, n)
+  of nkBreakState: genBreakState(p, n, d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): Rope =
