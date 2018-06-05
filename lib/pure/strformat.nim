@@ -530,10 +530,10 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
       sign = true
       if  value == 0.0:
         if 1.0 / value == Inf:
-          # only add the sign if value != negZero
-          f = spec.sign & f
+          # only insert the sign if value != negZero
+          f.insert($spec.sign, 0)
       else:
-        f = spec.sign & f
+        f.insert($spec.sign, 0)
   else:
     sign = true
 
