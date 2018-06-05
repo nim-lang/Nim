@@ -2,6 +2,7 @@
 # http://nim-lang.org/docs/nims.html
 
 import algorithm
+import base16
 import base64
 import colors
 import hashes
