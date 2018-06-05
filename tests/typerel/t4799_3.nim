@@ -1,5 +1,5 @@
 discard """
-errormsg: "Error: type mismatch: got <Bike>"
+errormsg: "type mismatch: got <Bike>"
 nimout: '''t4799_3.nim(24, 18) Error: type mismatch: got <Bike>
 but expected one of:
 proc testVehicle(x: varargs[Vehicle]): string
