@@ -351,7 +351,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len_0);$n",
+           # bug #4799, keep the memcpy for a while
+           #"memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len_0);$n",
+           "$1 = $2;$n",
            rdLoc(dest), rdLoc(src))
   of tySet:
     if mapType(ty) == ctArray:

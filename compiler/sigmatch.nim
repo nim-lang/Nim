@@ -2013,6 +2013,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           if r == isGeneric:
             result.typ = getInstantiatedType(c, arg, m, base(f))
           m.baseTypeMatch = true
+        # bug #4799, varargs accepting subtype relation object
+        elif r == isSubtype:
+          inc(m.subtypeMatches)
+          if f.kind == tyTypeDesc:
+            result = arg
+          else:
+            result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+          m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
