@@ -328,14 +328,14 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
       result.add(toJson(x[i]))
-    result = newCall(bindSym"%", result)
+    result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
       result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
-    result = newCall(bindSym"%", result)
+    result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)
     result = newCall(bindSym"newJObject")
@@ -343,9 +343,9 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
     result = newCall(bindSym"newJNull")
   of nnkPar:
     if x.len == 1: result = toJson(x[0])
-    else: result = newCall(bindSym"%", x)
+    else: result = newCall(bindSym("%", brOpen), x)
   else:
-    result = newCall(bindSym"%", x)
+    result = newCall(bindSym("%", brOpen), x)
 
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
