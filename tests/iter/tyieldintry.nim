@@ -368,5 +368,29 @@ block: # Short cirquits
 
   test(it, 1, 0, 0)
 
+block: #7969
+  type
+    SomeObj = object
+      id: int
+
+  iterator it(): int {.closure.} =
+    template yieldAndSomeObj: SomeObj =
+      var s: SomeObj
+      s.id = 2
+      yield 1
+      s
+
+    checkpoint(yieldAndSomeObj().id)
+
+    var i = 5
+    case i
+    of 0:
+      checkpoint(123)
+    of 1, 2, 5:
+      checkpoint(3)
+    else:
+      checkpoint(123)
+
+  test(it, 1, 2, 3)
 
 echo "ok"

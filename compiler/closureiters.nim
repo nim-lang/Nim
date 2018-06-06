@@ -735,6 +735,19 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
 
         n[0] = newSymNode(ctx.g.getSysSym(n[0].info, "true"))
         n[1] = newBody
+
+  of nkDotExpr:
+    var ns = false
+    n[0] = ctx.lowerStmtListExprs(n[0], ns)
+    if ns:
+      needsSplit = true
+      result = newNodeI(nkStmtListExpr, n.info)
+      result.typ = n.typ
+      let (st, ex) = exprToStmtList(n[0])
+      result.add(st)
+      n[0] = ex
+      result.add(n)
+
   else:
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], needsSplit)
@@ -843,8 +856,8 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
       result[0] = ctx.transformClosureIteratorBody(result[0], gotoOut)
 
     of nkElifBranch, nkElifExpr, nkOfBranch:
-      result[1] = addGotoOut(result[1], gotoOut)
-      result[1] = ctx.transformClosureIteratorBody(result[1], gotoOut)
+      result[^1] = addGotoOut(result[^1], gotoOut)
+      result[^1] = ctx.transformClosureIteratorBody(result[^1], gotoOut)
 
     of nkIfStmt, nkCaseStmt:
       for i in 0 ..< n.len:
