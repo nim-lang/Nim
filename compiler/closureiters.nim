@@ -442,7 +442,6 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
 
     if ns:
-      assert(n[0].kind == nkStmtListExpr)
       result = newNodeI(nkStmtList, n.info)
       let (st, ex) = exprToStmtList(n[0])
       result.add(st)
@@ -662,7 +661,6 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       c[^1] = ctx.lowerStmtListExprs(c[^1], ns)
       if ns:
         needsSplit = true
-        assert(c[^1].kind == nkStmtListExpr)
         let (st, ex) = exprToStmtList(c[^1])
         result.add(st)
         c[^1] = ex
@@ -747,6 +745,20 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result.add(st)
       n[0] = ex
       result.add(n)
+
+  of nkBlockExpr:
+    var ns = false
+    n[1] = ctx.lowerStmtListExprs(n[1], ns)
+    if ns:
+      needsSplit = true
+      result = newNodeI(nkStmtListExpr, n.info)
+      result.typ = n.typ
+      let (st, ex) = exprToStmtList(n[1])
+      n.kind = nkBlockStmt
+      n.typ = nil
+      n[1] = st
+      result.add(n)
+      result.add(ex)
 
   else:
     for i in 0 ..< n.len:
