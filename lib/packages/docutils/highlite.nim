@@ -130,7 +130,7 @@ proc nimNumber(g: var GeneralTokenizer, position: int): int =
 
 const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
-              '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
+              '|', '=', '%', '&', '$', '@', '~', ':'}
 
 proc nimNextToken(g: var GeneralTokenizer) =
   const
