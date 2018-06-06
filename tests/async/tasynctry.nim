@@ -9,7 +9,7 @@ Multiple except branches
 Multiple except branches 2
 '''
 """
-import asyncdispatch
+import asyncdispatch, strutils
 
 # Here we are testing the ability to catch exceptions.
 
@@ -22,7 +22,7 @@ proc catch() {.async.} =
   try:
     await foobar()
   except:
-    echo("Generic except: ", getCurrentExceptionMsg())
+    echo("Generic except: ", getCurrentExceptionMsg().splitLines[0])
 
   try:
     await foobar()
