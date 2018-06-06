@@ -2681,7 +2681,7 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_unref is a no-op in JavaScript".}
 
     template GC_getStatistics*(): string =
-      {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
+      {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
 template accumulateResult*(iter: untyped) =
