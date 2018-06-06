@@ -42,6 +42,10 @@
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
   (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
+- For string input ``str``, now ``strutils.isUpperAscii(str)`` and
+  ``strutils.isLowerAscii(str)`` do the upper/lower-case checks only for
+  alphabetical characters present in ``str``.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
