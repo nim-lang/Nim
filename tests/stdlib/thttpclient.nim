@@ -154,20 +154,8 @@ proc ipv6Test() =
   serverFd.closeSocket()
   client.close()
 
-proc longTimeoutTest() =
-# Issue #2753
-  try:
-    var client = newHttpClient(timeout = 1000)
-    var resp = client.request("https://au.yahoo.com")
-    client.close()
-  except AssertionError:
-    doAssert false, "Exceptions should not be raised"
-  except:
-    discard
-
 syncTest()
 waitFor(asyncTest())
 ipv6Test()
-longTimeoutTest()
 
 echo "OK"
