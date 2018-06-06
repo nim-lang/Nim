@@ -873,21 +873,26 @@ proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   putIntoDest(p, d, n,
               ropecg(p.module, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
 
-proc genIndexCheck(p: BProc; arr, idx: TLoc) =
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   let ty = skipTypes(arr.t, abstractVarRange)
   case ty.kind
   of tyOpenArray, tyVarargs:
-    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError();$n",
-            rdLoc(idx), rdLoc(arr))
+    linefmt(p, cpsStmts,
+      "if ($2-$1 != -1 && " &
+      "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))) #raiseIndexError();$n",
+      rdLoc(a), rdLoc(b), rdLoc(arr))
   of tyArray:
     let first = intLiteral(firstOrd(ty))
     if tfUncheckedArray notin ty.flags:
-      linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError();$n",
-              rdCharLoc(idx), first, intLiteral(lastOrd(ty)))
+      linefmt(p, cpsStmts,
+        "if ($2-$1 != -1 && " &
+        "($2-$1 < -1 || $1 < $3 || $1 > $4 || $2 < $3 || $2 > $4)) #raiseIndexError();$n",
+        rdCharLoc(a), rdCharLoc(b), first, intLiteral(lastOrd(ty)))
   of tySequence, tyString:
     linefmt(p, cpsStmts,
-          "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
-          rdLoc(idx), rdLoc(arr), lenField(p))
+      "if ($2-$1 != -1 && " &
+      "(!$3 || (NU)($1) >= (NU)($3->$4) || (NU)($2) >= (NU)($3->$4))) #raiseIndexError();$n",
+      rdLoc(a), rdLoc(b), rdLoc(arr), lenField(p))
   else: discard
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
@@ -2326,7 +2331,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkParForStmt: genParForStmt(p, n)
   of nkState: genState(p, n)
   of nkGotoState: genGotoState(p, n)
-  of nkBreakState: genBreakState(p, n)
+  of nkBreakState: genBreakState(p, n, d)
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode): Rope =

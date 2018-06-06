@@ -57,7 +57,7 @@
 ##
 ##  import db_sqlite, math
 ##
-##  let theDb = open("mytest.db", nil, nil, nil)
+##  let theDb = open("mytest.db", "", "", "")
 ##
 ##  theDb.exec(sql"Drop table if exists myTestTbl")
 ##  theDb.exec(sql("""create table myTestTbl (
