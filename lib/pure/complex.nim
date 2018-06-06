@@ -34,6 +34,11 @@ proc toComplex*(x: SomeInteger): Complex =
   result.re = x
   result.im = 0
 
+proc real*(z: Complex): float = z.re
+  ## Return the real part of the complex number ``z``.
+proc imag*(z: Complex): float = z.im
+  ## Return the imaginary part of the complex number ``z``.
+
 proc `==` *(x, y: Complex): bool =
   ## Compare two complex numbers `x` and `y` for equality.
   result = x.re == y.re and x.im == y.im
@@ -390,6 +395,8 @@ when isMainModule:
   var tt = (10.0, 20.0)
   var ipi = (0.0, -PI)
 
+  assert(real(one) == 1.0)
+  assert(imag(im) == 1.0)
   assert( a == a )
   assert( (a-a) == z )
   assert( (a+b) == z )

@@ -66,6 +66,8 @@
 - Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
 - Added the proc ``math.prod`` for product of elements in openArray.
+- Added the procs ``rationals.real`` and ``rationals.imag`` for returning real
+  and imaginary part of a complex number.
 
 ### Library changes
 
