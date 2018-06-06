@@ -187,7 +187,7 @@ block test_t4799_7:
   var b = Bike[int](tire: 2)
 
   reject:
-    echo testVehicle b, c, v
+    echo testVehicle(b, c, v)
 
 block test_t4799_8:
   type
@@ -206,7 +206,7 @@ block test_t4799_8:
   var b = Bike(tire: 2)
 
   reject:
-    echo testVehicle b, c, v
+    echo testVehicle(b, c, v)
 
 type
   PGVehicle[T] = ptr object of RootObj
@@ -223,7 +223,7 @@ var pgc = PGCar[int](tire: 4)
 var pgb = PGBike[int](tire: 2)
 
 reject:
-  echo testVehicle pgb, pgc
+  echo testVehicle(pgb, pgc)
 
 type
   RVehicle = ptr object of RootObj
@@ -240,6 +240,6 @@ var rc = RCar(tire: 4)
 var rb = RBike(tire: 2)
 
 reject:
-  echo testVehicle rb, rc
+  echo testVehicle(rb, rc)
 
 echo "OK"
