@@ -42,6 +42,10 @@
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
   (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
+- For string input ``str``, now ``unicode.isUpper(str)`` and
+  ``unicode.isLower(str)`` do the upper/lower-case checks only for alphabetical
+  Runes present in ``str``.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
