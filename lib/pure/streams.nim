@@ -449,7 +449,7 @@ when not defined(js):
     MemMapFileStream(s).pos = -1
     close(MemMapFileStream(s).mf)
 
-  proc mmsFlush(s: Stream) = discard flush(MemMapFileStream(s).mf)
+  proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
 
   proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
                                    (MemMapFileStream(s).pos < 0)

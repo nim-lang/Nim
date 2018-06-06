@@ -249,17 +249,28 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if close(result.handle) == 0:
         result.handle = -1
 
-proc flush*(f: var MemFile): bool =
+proc flush*(f: var MemFile; attempts: int = 3) =
+  ## Flushes `f`'s buffer for the number of attempts equal to `attempts`.
+  ## If were errors an exception `OSError` will be raised.
   when defined(windows):
-    result = flushViewOfFile(f.mem, 0) != 0
-    if not result:
-      let lastErr = osLastError()
-      if lastErr != ERROR_LOCK_VIOLATION.OSErrorCode:
-        raiseOSError(lastErr)
+    var retry = 0
+    var res = false
+    while retry <= attempts:
+      res = flushViewOfFile(f.mem, 0) != 0
+      if res:
+        break
+      retry.inc
+    if not res:
+      raiseOSError(osLastError())
   else:
-    let errCode = msync(f.mem, f.size, MS_SYNC)
-    result = errCode == 0
-    if not result:
+    var retry = 0
+    var res = false
+    while retry <= attempts:
+      res = msync(f.mem, f.size, MS_SYNC) == 0
+      if res:
+        break
+      retry.inc
+    if not res:
       raiseOSError(osLastError(), "error flushing mapping")
 
 proc close*(f: var MemFile) =
