@@ -155,6 +155,10 @@ type
     nearestFinally: int # Index of the nearest finally block. For try/except it
                     # is their finally. For finally it is parent finally. Otherwise -1
 
+const
+  nkSkip = { nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
+            nkCommentStmt } + procDefs
+
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:
     result = rawIndirectAccess(newSymNode(getEnvParam(ctx.fn)),
@@ -247,8 +251,7 @@ proc hasYields(n: PNode): bool =
   case n.kind
   of nkYieldStmt:
     result = true
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   else:
     for c in n:
@@ -259,8 +262,7 @@ proc hasYields(n: PNode): bool =
 proc transformBreaksAndContinuesInWhile(ctx: var Ctx, n: PNode, before, after: PNode): PNode =
   result = n
   case n.kind
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   of nkWhileStmt: discard # Do not recurse into nested whiles
   of nkContinueStmt:
@@ -279,8 +281,7 @@ proc transformBreaksAndContinuesInWhile(ctx: var Ctx, n: PNode, before, after: P
 proc transformBreaksInBlock(ctx: var Ctx, n: PNode, label, after: PNode): PNode =
   result = n
   case n.kind
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   of nkBlockStmt, nkWhileStmt:
     inc ctx.blockLevel
@@ -380,8 +381,7 @@ proc getFinallyNode(n: PNode): PNode =
 
 proc hasYieldsInExpressions(n: PNode): bool =
   case n.kind
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   of nkStmtListExpr:
     if isEmptyType(n.typ):
@@ -433,8 +433,7 @@ proc newNotCall(g: ModuleGraph; e: PNode): PNode =
 proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
   result = n
   case n.kind
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
 
   of nkYieldStmt:
@@ -797,8 +796,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     let goto = newTree(nkGotoState, ctx.g.newIntLit(n.info, ctx.nearestFinally))
     result.add(goto)
 
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   else:
     for i in 0 ..< n.len:
@@ -807,8 +805,7 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
 proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode =
   result = n
   case n.kind:
-    of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-        nkSym, nkIdent, procDefs, nkTemplateDef:
+    of nkSkip:
       discard
 
     of nkStmtList, nkStmtListExpr:
@@ -1013,8 +1010,7 @@ proc tranformStateAssignments(ctx: var Ctx, n: PNode): PNode =
       for i in 0 ..< n.len:
         n[i] = ctx.tranformStateAssignments(n[i])
 
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
 
   of nkReturnStmt:
@@ -1066,8 +1062,7 @@ proc skipEmptyStates(ctx: Ctx, stateIdx: int): int =
 proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode =
   result = n
   case n.kind
-  of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
-      nkSym, nkIdent, procDefs, nkTemplateDef:
+  of nkSkip:
     discard
   of nkGotoState:
     result = copyTree(n)
