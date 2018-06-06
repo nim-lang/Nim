@@ -12,6 +12,9 @@ discard """
 3
 4
 2
+1
+2
+3
 '''
 """
 
@@ -72,3 +75,14 @@ oaEmpty(toOpenArray(seqq, 0, -1))
 oaEmpty(toOpenArray(seqq, 1, 0))
 oaEmpty(toOpenArray(seqq, 1, 2))
 oaFirstElm(toOpenArray(seqq, 1, seqq.len-1))
+
+var arrNeg: array[-3 .. -1, int] = [1, 2, 3]
+foo(toOpenArray(arrNeg, -3, -1))
+foo(toOpenArray(arrNeg, 0, -1))
+foo(toOpenArray(arrNeg, -3, -4))
+doAssertRaises(IndexError):
+  foo(toOpenArray(arrNeg, -4, -1))
+doAssertRaises(IndexError):
+  foo(toOpenArray(arrNeg, -1, 0))
+doAssertRaises(IndexError):
+  foo(toOpenArray(arrNeg, -1, -3))
