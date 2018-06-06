@@ -98,9 +98,6 @@ type
     filename: string
     options: set[XmlParseOption]
 
-{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOption,
-    TXmlError: XmlErrorKind, TXmlEventKind: XmlEventKind].}
-
 const
   errorMessages: array[XmlErrorKind, string] = [
     "no error",

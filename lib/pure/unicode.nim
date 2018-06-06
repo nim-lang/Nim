@@ -9,7 +9,7 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 include "system/inclrtl"
 
@@ -1826,8 +1826,8 @@ when isMainModule:
   doAssert(runeSubStr(s, 17, 1) == "€")
   # echo runeStrAtPos(s, 18) # index error
 
-  doAssert(runeSubStr(s, 0) ==  "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -18) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 0) == "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -18) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 10) == ": 10,00€")
   doAssert(runeSubStr(s, 18) == "")
   doAssert(runeSubStr(s, 0, 10) == "Hänsel  ««")
@@ -1840,7 +1840,7 @@ when isMainModule:
   doAssert(runeSubStr(s, -6, 5) == "10,00")
   doAssert(runeSubStr(s, -6, -1) == "10,00")
 
-  doAssert(runeSubStr(s, 0, 100) ==  "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 0, 100) == "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -100, 100) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")

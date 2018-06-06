@@ -12,7 +12,7 @@ type
   EIO2 = ref object of EIO
 
 proc q() {.tags: [FIO].} =
-  nil
+  discard
 
 proc raiser(): int =
   writeLine stdout, "arg"

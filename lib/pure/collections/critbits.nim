@@ -74,18 +74,19 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var newByte = 0
     block blockX:
       while newbyte < key.len:
-        if it.key[newbyte] != key[newbyte]:
-          newotherbits = it.key[newbyte].ord xor key[newbyte].ord
+        let ch = if newbyte < it.key.len: it.key[newbyte] else: '\0'
+        if ch != key[newbyte]:
+          newotherbits = ch.ord xor key[newbyte].ord
           break blockX
         inc newbyte
-      if it.key[newbyte] != '\0':
+      if newbyte < it.key.len:
         newotherbits = it.key[newbyte].ord
       else:
         return it
     while (newOtherBits and (newOtherBits-1)) != 0:
       newOtherBits = newOtherBits and (newOtherBits-1)
     newOtherBits = newOtherBits xor 255
-    let ch = it.key[newByte]
+    let ch = if newByte < it.key.len: it.key[newByte] else: '\0'
     let dir = (1 + (ord(ch) or newOtherBits)) shr 8
 
     var inner: Node[T]
@@ -162,13 +163,13 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
-proc inc*(c: var CritBitTree[int]; key: string) =
-  ## counts the 'key'.
+proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
+  ## increments `c[key]` by `val`.
   let oldCount = c.count
   var n = rawInsert(c, key)
-  if c.count == oldCount:
+  if c.count == oldCount or oldCount == 0:
     # not a new key:
-    inc n.val
+    inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
@@ -351,3 +352,13 @@ when isMainModule:
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
   assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
+  var c = CritBitTree[int]()
+
+  c.inc("a")
+  assert c["a"] == 1
+
+  c.inc("a", 4)
+  assert c["a"] == 5
+
+  c.inc("a", -5)
+  assert c["a"] == 0

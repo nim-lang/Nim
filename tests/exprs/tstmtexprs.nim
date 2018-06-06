@@ -81,7 +81,7 @@ semiProblem()
 # bug #844
 
 import json
-proc parseResponse(): PJsonNode =
+proc parseResponse(): JsonNode =
   result = % { "key1": % { "key2": % "value" } }
   for key, val in result["key1"]:
     var excMsg = key & "("

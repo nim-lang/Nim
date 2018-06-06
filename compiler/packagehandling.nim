@@ -15,23 +15,16 @@ iterator myParentDirs(p: string): string =
     if current.len == 0: break
     yield current
 
-template newPackageCache(): untyped =
-  newStringTable(when FileSystemCaseSensitive:
-                   modeCaseInsensitive
-                 else:
-                   modeCaseSensitive)
+proc resetPackageCache*(conf: ConfigRef) =
+  conf.packageCache = newPackageCache()
 
-var packageCache = newPackageCache()
-
-proc resetPackageCache*() = packageCache = newPackageCache()
-
-proc getPackageName*(path: string): string =
+proc getPackageName*(conf: ConfigRef; path: string): string =
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
-      if packageCache.hasKey(d):
+      if conf.packageCache.hasKey(d):
         #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
-        return packageCache[d]
+        return conf.packageCache[d]
       inc parents
       for file in walkFiles(d / "*.nimble"):
         result = file.splitFile.name
@@ -43,12 +36,12 @@ proc getPackageName*(path: string): string =
   if result.isNil: result = ""
   for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
-    packageCache[d] = result
+    conf.packageCache[d] = result
     dec parents
     if parents <= 0: break
 
-proc withPackageName*(path: string): string =
-  let x = path.getPackageName
+proc withPackageName*(conf: ConfigRef; path: string): string =
+  let x = getPackageName(conf, path)
   if x.len == 0:
     result = path
   else:

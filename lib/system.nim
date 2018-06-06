@@ -105,11 +105,13 @@ type
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
 
-  SomeReal* = float|float32|float64
+  SomeFloat* = float|float32|float64
     ## type class matching all floating point number types
 
-  SomeNumber* = SomeInteger|SomeReal
+  SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
+
+{.deprecated: [SomeReal: SomeFloat].}
 
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -128,7 +130,7 @@ when defined(nimalias):
     TSignedInt: SomeSignedInt,
     TUnsignedInt: SomeUnsignedInt,
     TInteger: SomeInteger,
-    TReal: SomeReal,
+    TReal: SomeFloat,
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
@@ -144,7 +146,7 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # missing it.
 
 when defined(useNimRtl):
-  {.deadCodeElim: on.}
+  {.deadCodeElim: on.}  # dce option deprecated
 
 proc definedInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
@@ -483,6 +485,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -647,6 +650,11 @@ when defined(nimNewRuntime):
   EFloatOverflow: FloatOverflowError,
   ESynch: Exception
 ].}
+
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -1272,15 +1280,13 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
-  ## a size, use ``newSeq`` instead.
+  ## ``s`` will be truncated.
 
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
-  ## a size, use ``newString`` instead.
+  ## ``s`` will be truncated.
   ##
   ## .. code-block:: Nim
   ##  var myS = "Nim is great!!"
@@ -1377,7 +1383,8 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el",
+    ## "riscv64".
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1516,7 +1523,6 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
 when not defined(JS) and not defined(nimscript) and hasAlloc:
-  proc setStackBottom(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
 proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
@@ -2164,8 +2170,8 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeReal]): T = Inf
-proc low*(T: typedesc[SomeReal]): T = NegInf
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
@@ -2395,7 +2401,7 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if x.isNil and y.isNil:
       return true
   else:
-    when not defined(JS) or defined(nimphp):
+    when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
     else:
@@ -2405,8 +2411,9 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if seqToPtr(x) == seqToPtr(y):
       return true
 
-  if x.isNil or y.isNil:
-    return false
+  when not defined(nimNoNil):
+    if x.isNil or y.isNil:
+      return false
 
   if x.len != y.len:
     return false
@@ -2631,6 +2638,11 @@ when not defined(nimscript) and hasAlloc:
     proc GC_unref*(x: string) {.magic: "GCunref", benign.}
       ## see the documentation of `GC_ref`.
 
+    when not defined(JS) and not defined(nimscript) and hasAlloc:
+      proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+      ## Expands operating GC stack range to `theStackBottom`. Does nothing
+      ## if current stack bottom is already lower than `theStackBottom`.
+
   else:
     template GC_disable* =
       {.warning: "GC_disable is a no-op in JavaScript".}
@@ -2669,7 +2681,7 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_unref is a no-op in JavaScript".}
 
     template GC_getStatistics*(): string =
-      {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
+      {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
 template accumulateResult*(iter: untyped) =
@@ -2757,17 +2769,14 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    when defined(nimphp):
-      asm """`x` .= `y`;"""
-    else:
-      asm """
-        var len = `x`[0].length-1;
-        for (var i = 0; i < `y`.length; ++i) {
-          `x`[0][len] = `y`.charCodeAt(i);
-          ++len;
-        }
-        `x`[0][len] = 0
-      """
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
@@ -2893,16 +2902,16 @@ when not defined(JS): #and not defined(nimscript):
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
       # way round.
-      when declared(setStackBottom):
+      when declared(nimGC_setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
-        setStackBottom(locals)
+        nimGC_setStackBottom(locals)
 
     proc initStackBottomWith(locals: pointer) {.inline, compilerproc.} =
       # We need to keep initStackBottom around for now to avoid
       # bootstrapping problems.
-      when declared(setStackBottom):
-        setStackBottom(locals)
+      when declared(nimGC_setStackBottom):
+        nimGC_setStackBottom(locals)
 
     {.push profiler: off.}
     var
@@ -3218,7 +3227,7 @@ when not defined(JS): #and not defined(nimscript):
     when declared(initGC): initGC()
 
   when not defined(nimscript):
-    proc setControlCHook*(hook: proc () {.noconv.} not nil)
+    proc setControlCHook*(hook: proc () {.noconv.})
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
@@ -3437,6 +3446,14 @@ when not defined(nimNoArrayToString):
   proc `$`*[T, IDX](x: array[IDX, T]): string =
     ## generic ``$`` operator for arrays that is lifted from the components
     collectionToString(x, "[", ", ", "]")
+
+proc `$`*[T](x: openarray[T]): string =
+  ## generic ``$`` operator for openarrays that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
+  collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
@@ -3735,7 +3752,7 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## for debugging.
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
+  filename: string, line: int, column: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
@@ -3803,7 +3820,9 @@ template doAssert*(cond: bool, msg = "") =
   bind instantiationInfo
   {.line: instantiationInfo().}:
     if not cond:
-      raiseAssert(astToStr(cond) & ' ' & msg)
+      raiseAssert(astToStr(cond) & ' ' &
+                  instantiationInfo(-1, false).fileName & '(' &
+                  $instantiationInfo(-1, false).line & ") " & msg)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -3927,29 +3946,48 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any ``\`` by ``\\``
   ## * replaces any ``'`` by ``\'``
   ## * replaces any ``"`` by ``\"``
-  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
+  ## * replaces any ``\a`` by ``\\a``
+  ## * replaces any ``\b`` by ``\\b``
+  ## * replaces any ``\t`` by ``\\t``
+  ## * replaces any ``\n`` by ``\\n``
+  ## * replaces any ``\v`` by ``\\v``
+  ## * replaces any ``\f`` by ``\\f``
+  ## * replaces any ``\c`` by ``\\c``
+  ## * replaces any ``\e`` by ``\\e``
+  ## * replaces any other character not in the set ``{'\21..'\126'}
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ## **Note**: This is not correct for producing Ansi C code!
   case c
-  of '\0'..'\31', '\127'..'\255':
-    add(s, "\\x")
+  of '\a': s.add "\\a" # \x07
+  of '\b': s.add "\\b" # \x08
+  of '\t': s.add "\\t" # \x09
+  of '\n': s.add "\\n" # \x0A
+  of '\v': s.add "\\v" # \x0B
+  of '\f': s.add "\\f" # \x0C
+  of '\c': s.add "\\c" # \x0D
+  of '\e': s.add "\\e" # \x1B
+  of '\\': s.add("\\\\")
+  of '\'': s.add("\\'")
+  of '\"': s.add("\\\"")
+  of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
+  else:
+    s.add("\\x")
     const HexChars = "0123456789ABCDEF"
     let n = ord(c)
     s.add(HexChars[int((n and 0xF0) shr 4)])
     s.add(HexChars[int(n and 0xF)])
-  of '\\': add(s, "\\\\")
-  of '\'': add(s, "\\'")
-  of '\"': add(s, "\\\"")
-  else: add(s, c)
 
 proc addQuoted*[T](s: var string, x: T) =
   ## Appends `x` to string `s` in place, applying quoting and escaping
   ## if `x` is a string or char. See
   ## `addEscapedChar <system.html#addEscapedChar>`_
-  ## for the escaping scheme.
+  ## for the escaping scheme. When `x` is a string, characters in the
+  ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
+  ## characters are untouched (note that this behavior is different from
+  ## ``addEscapedChar``).
   ##
   ## The Nim standard library uses this function on the elements of
   ## collections when producing a string representation of a collection.
@@ -3968,7 +4006,12 @@ proc addQuoted*[T](s: var string, x: T) =
   when T is string:
     s.add("\"")
     for c in x:
-      s.addEscapedChar(c)
+      # Only ASCII chars are escaped to avoid butchering
+      # multibyte UTF-8 characters.
+      if c <= 127.char:
+        s.addEscapedChar(c)
+      else:
+        s.add c
     s.add("\"")
   elif T is char:
     s.add("'")
@@ -3982,18 +4025,18 @@ proc addQuoted*[T](s: var string, x: T) =
 
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
-  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
 
-  proc safeAdd*(x: var string, y: char) =
+  proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
     if x == nil: x = ""
     x.add(y)
 
-  proc safeAdd*(x: var string, y: string) =
+  proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
     if x == nil: x = y
@@ -4078,6 +4121,25 @@ template closureScope*(body: untyped): untyped =
   ##   myClosure() # outputs 3
   (proc() = body)()
 
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
@@ -4111,20 +4173,22 @@ template doAssertRaises*(exception, code: untyped): typed =
   runnableExamples:
     doAssertRaises(ValueError):
       raise newException(ValueError, "Hello World")
-
+  var wrong = false
   try:
-    block:
-      code
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+    code
+    wrong = true
   except exception:
     discard
   except Exception as exc:
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+  if wrong:
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
-when defined(cpp) and appType != "lib" and not defined(js) and
-    not defined(nimscript) and hostOS != "standalone":
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
   setTerminate proc() {.noconv.} =
@@ -4146,3 +4210,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
     magic: "Slice".}
+
+
+type
+  ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
+                                         ## as a `for-loop macro`:idx:

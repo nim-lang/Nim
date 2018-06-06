@@ -49,4 +49,34 @@ var t = stack.pop()
 echo "came here"
 
 
+# another regression:
+type
+  LexerToken* = enum
+    ltYamlDirective, ltYamlVersion, ltTagDirective, ltTagShorthand,
+    ltTagUri, ltUnknownDirective, ltUnknownDirectiveParams, ltEmptyLine,
+    ltDirectivesEnd, ltDocumentEnd, ltStreamEnd, ltIndentation, ltQuotedScalar,
+    ltScalarPart, ltBlockScalarHeader, ltBlockScalar, ltSeqItemInd, ltMapKeyInd,
+    ltMapValInd, ltBraceOpen, ltBraceClose, ltBracketOpen, ltBracketClose,
+    ltComma, ltLiteralTag, ltTagHandle, ltAnchor, ltAlias
 
+const tokensWithValue =
+    {ltScalarPart, ltQuotedScalar, ltYamlVersion, ltTagShorthand, ltTagUri,
+     ltUnknownDirective, ltUnknownDirectiveParams, ltLiteralTag, ltAnchor,
+     ltAlias, ltBlockScalar}
+
+type
+  TokenWithValue = object
+    case kind: LexerToken
+    of tokensWithValue:
+      value: string
+    of ltIndentation:
+      indentation: int
+    of ltTagHandle:
+      handle, suffix: string
+    else: discard
+
+proc sp(v: string): TokenWithValue =
+  # test.nim(27, 17) Error: a case selecting discriminator 'kind' with value 'ltScalarPart' appears in the object construction, but the field(s) 'value' are in conflict with this value.
+  TokenWithValue(kind: ltScalarPart, value: v)
+
+let a = sp("test")

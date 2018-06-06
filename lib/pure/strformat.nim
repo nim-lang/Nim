@@ -278,7 +278,7 @@ template callFormatOption(res, arg, option) {.dirty.} =
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "& only works with string literals", pattern
+    error "string formatting (fmt(), &) only works with string literals", pattern
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
@@ -375,7 +375,7 @@ type
                       ## ``parseStandardFormatSpecifier`` returned.
 
 proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
-  ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
+  ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
   ## with ``fill`` char.
@@ -503,8 +503,8 @@ proc format*(value: SomeInteger; specifier: string; res: var string) =
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   res.add formatInt(value, radix, spec)
 
-proc format*(value: SomeReal; specifier: string; res: var string) =
-  ## Standard format implementation for ``SomeReal``. It makes little
+proc format*(value: SomeFloat; specifier: string; res: var string) =
+  ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
@@ -524,8 +524,31 @@ proc format*(value: SomeReal; specifier: string; res: var string) =
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
-  if value >= 0.0 and spec.sign != '-':
-    f = spec.sign & f
+  var sign = false
+  if value >= 0.0:
+    if spec.sign != '-':
+      sign = true
+      if  value == 0.0:
+        if 1.0 / value == Inf:
+          # only insert the sign if value != negZero
+          f.insert($spec.sign, 0)
+      else:
+        f.insert($spec.sign, 0)
+  else:
+    sign = true
+
+  if spec.padWithZero:
+    var sign_str = ""
+    if sign:
+      sign_str = $f[0]
+      f = f[1..^1]
+
+    let toFill = spec.minimumWidth - f.len - ord(sign)
+    if toFill > 0:
+      f = repeat('0', toFill) & f
+    if sign:
+      f = sign_str & f
+
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
   let result = alignString(f, spec.minimumWidth,
@@ -540,12 +563,16 @@ proc format*(value: string; specifier: string; res: var string) =
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
+  var value = value
   case spec.typ
   of 's', '\0': discard
   else:
     raise newException(ValueError,
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
+  if spec.precision != -1:
+    if spec.precision < runelen(value):
+      setLen(value, runeOffset(value, spec.precision))
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
 when isMainModule:

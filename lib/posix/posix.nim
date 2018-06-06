@@ -27,10 +27,10 @@
 ## resulting C code will just ``#include <XYZ.h>`` and *not* define the
 ## symbols declared here.
 
-# This ensures that we don't accidentally generate #includes for files that
-# might not exist on a specific platform! The user will get an error only
-# if they actualy try to use the missing declaration
-{.deadCodeElim: on.}
+# Dead code elimination ensures that we don't accidentally generate #includes
+# for files that might not exist on a specific platform! The user will get an
+# error only if they actualy try to use the missing declaration
+{.deadCodeElim: on.}  # dce option deprecated
 
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
@@ -82,6 +82,14 @@ const
 # Special types
 type Sighandler = proc (a: cint) {.noconv.}
 
+const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
+    defined(openbsd) or defined(dragonfly) ## \
+  ## Boolean flag that indicates if the system supports nanosecond time
+  ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
+  ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
+  ## without checking this flag, because this module defines fallback procs
+  ## when they are not available.
+
 # Platform specific stuff
 
 when defined(linux) and defined(amd64):
@@ -92,9 +100,9 @@ else:
 # There used to be this name in posix.nim a long time ago, not sure why!
 {.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
-when not defined(macosx) and not defined(android):
+when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =
-    ## Second-granularity time of last access
+    ## Second-granularity time of last access.
     result = s.st_atim.tv_sec
   proc st_mtime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last data modification.
@@ -102,6 +110,16 @@ when not defined(macosx) and not defined(android):
   proc st_ctime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
+else:
+  proc st_atim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last access.
+    result.tv_sec = s.st_atime
+  proc st_mtim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last data modification.
+    result.tv_sec = s.st_mtime
+  proc st_ctim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last data modification.
+    result.tv_sec = s.st_ctime
 
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
@@ -973,3 +991,19 @@ template onSignal*(signals: varargs[cint], body: untyped) =
       proc (sig: cint) {.noconv.} =
         body
     )
+
+type
+  RLimit* {.importc: "struct rlimit",
+            header: "<sys/resource.h>", pure, final.} = object
+    rlim_cur*: int
+    rlim_max*: int
+  ## The getrlimit() and setrlimit() system calls get and set resource limits respectively.
+  ## Each resource has an associated soft and hard limit, as defined by the RLimit structure
+
+proc setrlimit*(resource: cint, rlp: var RLimit): cint
+      {.importc: "setrlimit",header: "<sys/resource.h>".}
+  ## The setrlimit() system calls sets resource limits.
+
+proc getrlimit*(resource: cint, rlp: var RLimit): cint
+      {.importc: "getrlimit",header: "<sys/resource.h>".}
+  ## The getrlimit() system call gets resource limits.

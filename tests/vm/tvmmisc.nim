@@ -1,5 +1,8 @@
 # bug #4462
 import macros
+import os
+import ospaths
+import strutils
 
 block:
   proc foo(t: typedesc) {.compileTime.} =
@@ -18,7 +21,7 @@ block:
 # #6379
 static:
   import algorithm
-  
+
   var numArray = [1, 2, 3, 4, -1]
   numArray.sort(cmp)
   assert numArray == [-1, 1, 2, 3, 4]
@@ -57,10 +60,33 @@ block:
     result = @[0]
     result.setLen(2)
     var tmp: int
-      
-    for i in 0 .. <2:
+
+    for i in 0 ..< 2:
       inc tmp
       result[i] = tmp
 
   const fact1000 = abc()
   assert fact1000 == @[1, 2]
+
+# Tests for VM ops
+block:
+  static:
+    assert "vm" in getProjectPath()
+
+    let b = getEnv("UNSETENVVAR")
+    assert b == ""
+    assert existsEnv("UNSERENVVAR") == false
+    putEnv("UNSETENVVAR", "VALUE")
+    assert getEnv("UNSETENVVAR") == "VALUE"
+    assert existsEnv("UNSETENVVAR") == true
+
+    assert fileExists("MISSINGFILE") == false
+    assert dirExists("MISSINGDIR") == false
+
+# #7210
+block:
+  static:
+    proc f(size: int): int =
+      var some = newStringOfCap(size)
+      result = size
+    doAssert f(4) == 4

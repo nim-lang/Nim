@@ -3,6 +3,7 @@ discard """
 """
 
 # bug #6682
+{.experimental: "notnil".}
 
 type
     Fields = enum

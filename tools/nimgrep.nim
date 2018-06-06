@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.1"
+  Version = "1.2"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -33,7 +33,10 @@ Options:
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
   --nocolor           output will be given without any colours.
+  --oneline           show file on each matched line
   --verbose           be verbose: list every processed file
+  --filenames         find the pattern in the filenames, not in the contents
+                      of the file
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -41,7 +44,7 @@ Options:
 type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle, optVerbose
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -56,6 +59,7 @@ var
   extensions: seq[string] = @[]
   options: TOptions = {optRegex}
   useWriteStyled = true
+  oneline = false
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -103,9 +107,12 @@ proc writeColored(s: string) =
     stdout.write(s)
 
 proc highlight(s, match, repl: string, t: tuple[first, last: int],
-               line: int, showRepl: bool) =
+               filename:string, line: int, showRepl: bool) =
   const alignment = 6
-  stdout.write(line.`$`.align(alignment), ": ")
+  if oneline:
+    stdout.write(filename, ":", line, ": ")
+  else:
+    stdout.write(line.`$`.align(alignment), ": ")
   var x = beforePattern(s, t.first)
   var y = afterPattern(s, t.last)
   for i in x .. t.first-1: stdout.write(s[i])
@@ -121,20 +128,23 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
     stdout.write("\n")
     stdout.flushFile()
 
-proc processFile(pattern; filename: string) =
+proc processFile(pattern; filename: string; counter: var int) =
   var filenameShown = false
   template beforeHighlight =
-    if not filenameShown and optVerbose notin options:
+    if not filenameShown and optVerbose notin options and not oneline:
       stdout.writeLine(filename)
       stdout.flushFile()
       filenameShown = true
 
   var buffer: string
-  try:
-    buffer = system.readFile(filename)
-  except IOError:
-    echo "cannot open file: ", filename
-    return
+  if optFilenames in options:
+    buffer = filename
+  else:
+    try:
+      buffer = system.readFile(filename)
+    except IOError:
+      echo "cannot open file: ", filename
+      return
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
@@ -156,12 +166,13 @@ proc processFile(pattern; filename: string) =
     var wholeMatch = buffer.substr(t.first, t.last)
 
     beforeHighlight()
+    inc counter
     if optReplace notin options:
-      highlight(buffer, wholeMatch, "", t, line, showRepl=false)
+      highlight(buffer, wholeMatch, "", t, filename, line, showRepl=false)
     else:
       let r = replace(wholeMatch, pattern, replacement % matches)
       if optConfirm in options:
-        highlight(buffer, wholeMatch, r, t, line, showRepl=true)
+        highlight(buffer, wholeMatch, r, t, filename, line, showRepl=true)
         case confirm()
         of ceAbort: quit(0)
         of ceYes: reallyReplace = true
@@ -174,7 +185,7 @@ proc processFile(pattern; filename: string) =
           reallyReplace = false
           options.excl(optConfirm)
       else:
-        highlight(buffer, wholeMatch, r, t, line, showRepl=reallyReplace)
+        highlight(buffer, wholeMatch, r, t, filename, line, showRepl=reallyReplace)
       if reallyReplace:
         result.add(buffer.substr(i, t.first-1))
         result.add(r)
@@ -231,17 +242,17 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(pattern; dir: string) =
+proc walker(pattern; dir: string; counter: var int) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
       if extensions.len == 0 or path.hasRightExt(extensions):
-        processFile(pattern, path)
+        processFile(pattern, path, counter)
     of pcDir:
       if optRecursive in options:
-        walker(pattern, path)
+        walker(pattern, path, counter)
     else: discard
-  if existsFile(dir): processFile(pattern, dir)
+  if existsFile(dir): processFile(pattern, dir, counter)
 
 proc writeHelp() =
   stdout.write(Usage)
@@ -286,7 +297,9 @@ for kind, key, val in getopt():
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
     of "ext": extensions.add val.split('|')
     of "nocolor": useWriteStyled = false
+    of "oneline": oneline = true
     of "verbose": incl(options, optVerbose)
+    of "filenames": incl(options, optFilenames)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: writeHelp()
@@ -298,6 +311,7 @@ when defined(posix):
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
+checkOptions({optFilenames, optReplace}, "filenames", "replace")
 
 if optStdin in options:
   pattern = ask("pattern [ENTER to exit]: ")
@@ -308,6 +322,7 @@ if optStdin in options:
 if pattern.len == 0:
   writeHelp()
 else:
+  var counter = 0
   if filenames.len == 0:
     filenames.add(os.getCurrentDir())
   if optRegex notin options:
@@ -319,7 +334,7 @@ else:
       pattern = "\\i " & pattern
     let pegp = peg(pattern)
     for f in items(filenames):
-      walker(pegp, f)
+      walker(pegp, f, counter)
   else:
     var reflags = {reStudy, reExtended}
     if optIgnoreStyle in options:
@@ -330,5 +345,6 @@ else:
       reflags.incl reIgnoreCase
     let rep = re(pattern, reflags)
     for f in items(filenames):
-      walker(rep, f)
-
+      walker(rep, f, counter)
+  if not oneline:
+    stdout.write($counter & " matches\n")

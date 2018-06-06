@@ -1,7 +1,7 @@
 
 # bug 2007
 
-import asyncdispatch, asyncnet, logging, json, uri, strutils, future
+import asyncdispatch, asyncnet, logging, json, uri, strutils, sugar
 
 type
   Builder = ref object
@@ -27,7 +27,7 @@ proc newBuild*(onProgress: ProgressCB): Build =
   result.onProgress = onProgress
 
 proc start(build: Build, repo, hash: string) {.async.} =
-  let path = repo.parseUri().path.toLower()
+  let path = repo.parseUri().path.toLowerAscii()
 
 proc onProgress(builder: Builder, message: string) {.async.} =
   debug($message)

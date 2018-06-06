@@ -200,9 +200,9 @@ proc write(f: File, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
 proc write(f: File, r: float32) =
-  if c_fprintf(f, "%g", r) < 0: checkErr(f)
+  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
 proc write(f: File, r: BiggestFloat) =
-  if c_fprintf(f, "%g", r) < 0: checkErr(f)
+  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
 
 proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =

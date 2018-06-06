@@ -15,6 +15,6 @@ type TFoo = object
 converter toPtr*(some: var TFoo): ptr TFoo = (addr some)
 
 
-proc zoot(x: ptr TFoo) = nil
+proc zoot(x: ptr TFoo) = discard
 var x: Tfoo
 zoot(x)

@@ -82,7 +82,7 @@ Async traceback:
     asyncmacro\.nim\(\d+?\)\s+?a
     asyncmacro\.nim\(\d+?\)\s+?a_continue
       ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?aIter
+    tasync_traceback\.nim\(\d+?\)\s+?aIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: b failure
@@ -110,7 +110,7 @@ Async traceback:
       ## Executes pending callbacks
     asyncmacro\.nim\(\d+?\)\s+?foo_continue
       ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?fooIter
+    tasync_traceback\.nim\(\d+?\)\s+?fooIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: bar failure

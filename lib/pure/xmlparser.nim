@@ -16,8 +16,6 @@ type
                                    ## for invalid XML.
     errors*: seq[string]           ## All detected parsing errors.
 
-{.deprecated: [EInvalidXml: XmlError].}
-
 proc raiseInvalidXml(errors: seq[string]) =
   var e: ref XmlError
   new(e)

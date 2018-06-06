@@ -9,12 +9,12 @@
 
 ## A simple XML tree. More efficient and simpler than the DOM.
 
-import macros, strtabs
+import macros, strtabs, strutils
 
 type
-  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``PXmlNode``'s.
+  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``XmlNode``'s.
 
-  XmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
+  XmlNodeKind* = enum  ## different kinds of ``XmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
@@ -32,9 +32,6 @@ type
       s: seq[XmlNode]
       fAttr: XmlAttributes
     fClientData: int              ## for other clients
-
-{.deprecated: [PXmlNode: XmlNode, TXmlNodeKind: XmlNodeKind, PXmlAttributes:
-    XmlAttributes, TXmlNode: XmlNodeObj].}
 
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## creates a new ``XmlNode``.
@@ -155,11 +152,6 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   assert n.k == xnElement
   result = n.s[i]
 
-proc mget*(n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
-  ## returns the `i`'th child of `n` so that it can be modified. Use ```[]```
-  ## instead.
-  n[i]
-
 iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## iterates over any child of `n`.
   assert n.k == xnElement
@@ -225,8 +217,9 @@ proc escape*(s: string): string =
   result = newStringOfCap(s.len)
   addEscaped(result, s)
 
-proc addIndent(result: var string, indent: int) =
-  result.add("\n")
+proc addIndent(result: var string, indent: int, addNewLines: bool) =
+  if addNewLines:
+    result.add("\n")
   for i in 1..indent: result.add(' ')
 
 proc noWhitespace(n: XmlNode): bool =
@@ -235,7 +228,8 @@ proc noWhitespace(n: XmlNode): bool =
   for i in 0..n.len-1:
     if n[i].kind in {xnText, xnEntity}: return true
 
-proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
+proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
+          addNewLines=true) =
   ## adds the textual representation of `n` to `result`.
 
   proc addEscapedAttr(result: var string, s: string) =
@@ -268,14 +262,15 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
           # for mixed leaves, we cannot output whitespace for readability,
           # because this would be wrong. For example: ``a<b>b</b>`` is
           # different from ``a <b>b</b>``.
-          for i in 0..n.len-1: result.add(n[i], indent+indWidth, indWidth)
+          for i in 0..n.len-1:
+            result.add(n[i], indent+indWidth, indWidth, addNewLines)
         else:
           for i in 0..n.len-1:
-            result.addIndent(indent+indWidth)
-            result.add(n[i], indent+indWidth, indWidth)
-          result.addIndent(indent)
+            result.addIndent(indent+indWidth, addNewLines)
+            result.add(n[i], indent+indWidth, indWidth, addNewLines)
+          result.addIndent(indent, addNewLines)
       else:
-        result.add(n[0], indent+indWidth, indWidth)
+        result.add(n[0], indent+indWidth, indWidth, addNewLines)
       result.add("</")
       result.add(n.fTag)
       result.add(">")
@@ -315,18 +310,19 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
 
-proc xmlConstructor(e: NimNode): NimNode {.compileTime.} =
-  expectLen(e, 2)
-  var a = e[1]
+proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)
-    var newStringTabCall = newCall("newStringTable", attrs,
-                                   newIdentNode("modeCaseSensitive"))
+    var newStringTabCall = newCall(bindSym"newStringTable", attrs,
+                                    bindSym"modeCaseSensitive")
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
       if a[i].kind == nnkExprEqExpr:
-        attrs.add(toStrLit(a[i][0]))
+        # In order to support attributes like `data-lang` we have to
+        # replace whitespace because `toStrLit` gives `data - lang`.
+        let attrName = toStrLit(a[i][0]).strVal.replace(" ", "")
+        attrs.add(newStrLitNode(attrName))
         attrs.add(a[i][1])
         #echo repr(attrs)
       else:
@@ -348,7 +344,6 @@ macro `<>`*(x: untyped): untyped =
   ##
   ##  <a href="http://nim-lang.org">Nim rules.</a>
   ##
-  let x = callsite()
   result = xmlConstructor(x)
 
 proc child*(n: XmlNode, name: string): XmlNode =

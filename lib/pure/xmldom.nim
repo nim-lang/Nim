@@ -232,10 +232,10 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     raise newException(EInvalidCharacterErr, "Invalid character")
   # Exceptions
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -311,10 +311,10 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
   ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -533,13 +533,13 @@ proc `prefix=`*(n: PNode, value: string) =
 
   if isNil(n.fNamespaceURI):
     raise newException(ENamespaceErr, "namespaceURI cannot be nil")
-  elif value.toLower() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
+  elif value.toLowerAscii() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
-  elif value.toLower() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
+  elif value.toLowerAscii() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xmlns\" namespaceURI has to be \"http://www.w3.org/2000/xmlns/\"")
-  elif value.toLower() == "xmlns" and n.fNodeType == AttributeNode:
+  elif value.toLowerAscii() == "xmlns" and n.fNodeType == AttributeNode:
     raise newException(ENamespaceErr, "An AttributeNode cannot have a prefix of \"xmlns\"")
 
   n.fNodeName = value & ":" & n.fLocalName
@@ -1069,17 +1069,15 @@ proc splitData*(textNode: PText, offset: int): PText =
     var newNode: PText = textNode.fOwnerDocument.createTextNode(right)
     return newNode
 
-
 # ProcessingInstruction
 proc target*(pi: PProcessingInstruction): string =
   ## Returns the Processing Instructions target
 
   return pi.fTarget
 
-
-# --Other stuff--
-# Writer
-proc addEscaped(s: string): string =
+proc escapeXml*(s: string; result: var string) =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
   result = ""
   for c in items(s):
     case c
@@ -1089,11 +1087,20 @@ proc addEscaped(s: string): string =
     of '"': result.add("&quot;")
     else: result.add(c)
 
+proc escapeXml*(s: string): string =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
+  result = newStringOfCap(s.len + s.len shr 4)
+  escapeXml(s, result)
+
+# --Other stuff--
+# Writer
+
 proc nodeToXml(n: PNode, indent: int = 0): string =
   result = spaces(indent) & "<" & n.nodeName
   if not isNil(n.attributes):
     for i in items(n.attributes):
-      result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
+      result.add(" " & i.name & "=\"" & escapeXml(i.value) & "\"")
 
   if isNil(n.childNodes) or n.childNodes.len() == 0:
     result.add("/>") # No idea why this doesn't need a \n :O
@@ -1106,7 +1113,7 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
         result.add(spaces(indent * 2))
-        result.add(addEscaped(i.nodeValue))
+        result.add(escapeXml(i.nodeValue))
       of CDataSectionNode:
         result.add(spaces(indent * 2))
         result.add("<![CDATA[" & i.nodeValue & "]]>")

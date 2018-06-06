@@ -70,26 +70,55 @@
 import typetraits
 
 type
+  SomePointer = ref | ptr | pointer
+
+type
   Option*[T] = object
     ## An optional type that stores its value and state separately in a boolean.
-    val: T
-    has: bool
+    when T is SomePointer:
+      val: T
+    else:
+      val: T
+      has: bool
+
   UnpackError* = ref object of ValueError
 
 proc some*[T](val: T): Option[T] =
   ## Returns a ``Option`` that has this value.
-  result.has = true
+  when T is SomePointer:
+    assert val != nil
+    result.val = val
+  else:
+    result.has = true
+    result.val = val
+
+proc option*[T](val: T): Option[T] =
+  ## Can be used to convert a pointer type to an option type. It
+  ## converts ``nil`` to the none-option.
   result.val = val
+  when T isnot SomePointer:
+    result.has = true
 
 proc none*(T: typedesc): Option[T] =
-  ## Returns a ``Option`` for this type that has no value.
-  result.has = false
+  ## Returns an ``Option`` for this type that has no value.
+  # the default is the none type
+  discard
 
-proc isSome*[T](self: Option[T]): bool =
-  self.has
+proc none*[T]: Option[T] =
+  ## Alias for ``none(T)``.
+  none(T)
 
-proc isNone*[T](self: Option[T]): bool =
-  not self.has
+proc isSome*[T](self: Option[T]): bool {.inline.} =
+  when T is SomePointer:
+    self.val != nil
+  else:
+    self.has
+
+proc isNone*[T](self: Option[T]): bool {.inline.} =
+  when T is SomePointer:
+    self.val == nil
+  else:
+    not self.has
 
 proc unsafeGet*[T](self: Option[T]): T =
   ## Returns the value of a ``some``. Behavior is undefined for ``none``.
@@ -105,27 +134,27 @@ proc get*[T](self: Option[T]): T =
 
 proc get*[T](self: Option[T], otherwise: T): T =
   ## Returns the contents of this option or `otherwise` if the option is none.
-  if self.has:
+  if self.isSome:
     self.val
   else:
     otherwise
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
-  if self.has:
+  if self.isSome:
     callback(self.val)
 
 proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
   ## Applies a callback to the value in this Option and returns an option
-  ## containing the new value. If this option is None, None will be returned.
-  if self.has:
-    some[R](callback(self.val))
+  ## containing the new value. If this option is None, None will be returned
+  if self.isSome:
+    some[R]( callback(self.val) )
   else:
     none(R)
 
 proc flatten*[A](self: Option[Option[A]]): Option[A] =
   ## Remove one level of structure in a nested Option.
-  if self.has:
+  if self.isSome:
     self.val
   else:
     none(A)
@@ -142,7 +171,7 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
   ## Applies a callback to the value in this Option. If the callback returns
   ## `true`, the option is returned as a Some. If it returns false, it is
   ## returned as a None.
-  if self.has and not callback(self.val):
+  if self.isSome and not callback(self.val):
     none(T)
   else:
     self
@@ -150,14 +179,14 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
   ## or if they have equal values
-  (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
+  (a.isSome and b.isSome and a.val == b.val) or (not a.isSome and not b.isSome)
 
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of this option. If the option has a value,
   ## the result will be `Some(x)` where `x` is the string representation of the contained value.
-  ## If the option does not have a value, the result will be `None[T]` where `T` is the name of 
+  ## If the option does not have a value, the result will be `None[T]` where `T` is the name of
   ## the type contained in the option.
-  if self.has:
+  if self.isSome:
     "Some(" & $self.val & ")"
   else:
     "None[" & T.name & "]"
@@ -256,3 +285,16 @@ when isMainModule:
 
       check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
       check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
+
+    test "SomePointer":
+      var intref: ref int
+      check(option(intref).isNone)
+      intref.new
+      check(option(intref).isSome)
+
+      let tmp = option(intref)
+      check(sizeof(tmp) == sizeof(ptr int))
+
+    test "none[T]":
+      check(none[int]().isNone)
+      check(none(int) == none[int]())

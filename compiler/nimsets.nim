@@ -12,27 +12,10 @@
 import
   ast, astalgo, trees, nversion, msgs, platform, bitsets, types, renderer
 
-proc toBitSet*(s: PNode, b: var TBitSet)
-  # this function is used for case statement checking:
-proc overlap*(a, b: PNode): bool
-proc inSet*(s: PNode, elem: PNode): bool
-proc someInSet*(s: PNode, a, b: PNode): bool
-proc emptyRange*(a, b: PNode): bool
-proc setHasRange*(s: PNode): bool
-  # returns true if set contains a range (needed by the code generator)
-  # these are used for constant folding:
-proc unionSets*(a, b: PNode): PNode
-proc diffSets*(a, b: PNode): PNode
-proc intersectSets*(a, b: PNode): PNode
-proc symdiffSets*(a, b: PNode): PNode
-proc containsSets*(a, b: PNode): bool
-proc equalSets*(a, b: PNode): bool
-proc cardSet*(s: PNode): BiggestInt
-# implementation
-
-proc inSet(s: PNode, elem: PNode): bool =
+proc inSet*(s: PNode, elem: PNode): bool =
+  assert s.kind == nkCurly
   if s.kind != nkCurly:
-    internalError(s.info, "inSet")
+    #internalError(s.info, "inSet")
     return false
   for i in countup(0, sonsLen(s) - 1):
     if s.sons[i].kind == nkRange:
@@ -44,7 +27,7 @@ proc inSet(s: PNode, elem: PNode): bool =
         return true
   result = false
 
-proc overlap(a, b: PNode): bool =
+proc overlap*(a, b: PNode): bool =
   if a.kind == nkRange:
     if b.kind == nkRange:
       # X..Y and C..D overlap iff (X <= D and C <= Y)
@@ -58,10 +41,11 @@ proc overlap(a, b: PNode): bool =
     else:
       result = sameValue(a, b)
 
-proc someInSet(s: PNode, a, b: PNode): bool =
+proc someInSet*(s: PNode, a, b: PNode): bool =
   # checks if some element of a..b is in the set s
+  assert s.kind == nkCurly
   if s.kind != nkCurly:
-    internalError(s.info, "SomeInSet")
+    #internalError(s.info, "SomeInSet")
     return false
   for i in countup(0, sonsLen(s) - 1):
     if s.sons[i].kind == nkRange:
@@ -74,7 +58,7 @@ proc someInSet(s: PNode, a, b: PNode): bool =
         return true
   result = false
 
-proc toBitSet(s: PNode, b: var TBitSet) =
+proc toBitSet*(s: PNode, b: var TBitSet) =
   var first, j: BiggestInt
   first = firstOrd(s.typ.sons[0])
   bitSetInit(b, int(getSize(s.typ)))
@@ -87,7 +71,7 @@ proc toBitSet(s: PNode, b: var TBitSet) =
     else:
       bitSetIncl(b, getOrdValue(s.sons[i]) - first)
 
-proc toTreeSet(s: TBitSet, settype: PType, info: TLineInfo): PNode =
+proc toTreeSet*(s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
     a, b, e, first: BiggestInt # a, b are interval borders
     elemType: PType
@@ -128,18 +112,18 @@ template nodeSetOp(a, b: PNode, op: untyped) {.dirty.} =
   op(x, y)
   result = toTreeSet(x, a.typ, a.info)
 
-proc unionSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetUnion)
-proc diffSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetDiff)
-proc intersectSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetIntersect)
-proc symdiffSets(a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
+proc unionSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetUnion)
+proc diffSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetDiff)
+proc intersectSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetIntersect)
+proc symdiffSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
 
-proc containsSets(a, b: PNode): bool =
+proc containsSets*(a, b: PNode): bool =
   var x, y: TBitSet
   toBitSet(a, x)
   toBitSet(b, y)
   result = bitSetContains(x, y)
 
-proc equalSets(a, b: PNode): bool =
+proc equalSets*(a, b: PNode): bool =
   var x, y: TBitSet
   toBitSet(a, x)
   toBitSet(b, y)
@@ -156,26 +140,19 @@ proc deduplicate*(a: PNode): PNode =
   toBitSet(a, x)
   result = toTreeSet(x, a.typ, a.info)
 
-proc cardSet(s: PNode): BiggestInt =
-  # here we can do better than converting it into a compact set
-  # we just count the elements directly
-  result = 0
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
-      result = result + getOrdValue(s.sons[i].sons[1]) -
-          getOrdValue(s.sons[i].sons[0]) + 1
-    else:
-      inc(result)
+proc cardSet*(a: PNode): BiggestInt =
+  var x: TBitSet
+  toBitSet(a, x)
+  result = bitSetCard(x)
 
-proc setHasRange(s: PNode): bool =
+proc setHasRange*(s: PNode): bool =
+  assert s.kind == nkCurly
   if s.kind != nkCurly:
-    internalError(s.info, "SetHasRange")
     return false
   for i in countup(0, sonsLen(s) - 1):
     if s.sons[i].kind == nkRange:
       return true
   result = false
 
-proc emptyRange(a, b: PNode): bool =
+proc emptyRange*(a, b: PNode): bool =
   result = not leValue(a, b)  # a > b iff not (a <= b)
-

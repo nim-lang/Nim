@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
@@ -215,14 +215,14 @@ type
                           ## For a typed memory object, the length in bytes.
                           ## For other file types, the use of this field is
                           ## unspecified.
-    when defined(macosx) or defined(android):
-      st_atime*: Time     ## Time of last access.
-      st_mtime*: Time     ## Time of last data modification.
-      st_ctime*: Time     ## Time of last status change.
-    else:
+    when StatHasNanoseconds:
       st_atim*: Timespec  ## Time of last access.
       st_mtim*: Timespec  ## Time of last data modification.
       st_ctim*: Timespec  ## Time of last status change.
+    else:
+      st_atime*: Time     ## Time of last access.
+      st_mtime*: Time     ## Time of last data modification.
+      st_ctime*: Time     ## Time of last status change.
     st_blksize*: Blksize  ## A file system-specific preferred I/O block size
                           ## for this object. In some file system types, this
                           ## may vary from file to file.
@@ -335,8 +335,8 @@ type
 
   Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
              final, pure.} = object ## struct timeval
-    tv_sec*: int       ## Seconds.
-    tv_usec*: int ## Microseconds.
+    tv_sec*: Time ## Seconds.
+    tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",

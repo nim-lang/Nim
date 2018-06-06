@@ -73,12 +73,18 @@
 ## progress of the HTTP request.
 ##
 ## .. code-block:: Nim
-##    var client = newAsyncHttpClient()
+##    import asyncdispatch, httpclient
+##
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
 ##      echo("Downloaded ", progress, " of ", total)
 ##      echo("Current rate: ", speed div 1000, "kb/s")
-##    client.onProgressChanged = onProgressChanged
-##    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##
+##    proc asyncProc() {.async.} =
+##      var client = newAsyncHttpClient()
+##      client.onProgressChanged = onProgressChanged
+##      discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##
+##    waitFor asyncProc()
 ##
 ## If you would like to remove the callback simply set it to ``nil``.
 ##
@@ -213,10 +219,6 @@ type
                                         ## and ``postContent`` proc,
                                         ## when the server returns an error
 
-{.deprecated: [TResponse: Response, PProxy: Proxy,
-  EInvalidProtocol: ProtocolError, EHttpRequestErr: HttpRequestError
-].}
-
 const defUserAgent* = "Nim httpclient/" & NimVersion
 
 proc httpError(msg: string) =
@@ -241,7 +243,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
-    while true:
+    while i < chunkSizeStr.len:
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -249,8 +251,6 @@ proc parseChunks(s: Socket, timeout: int): string =
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
       of 'A'..'F':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
-      of '\0':
-        break
       of ';':
         # http://tools.ietf.org/html/rfc2616#section-3.6.1
         # We don't care about chunk-extensions.
@@ -358,21 +358,17 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
   else:
     result.body = ""
 
-{.deprecated: [THttpMethod: HttpMethod].}
-
 when not defined(ssl):
   type SSLContext = ref object
 var defaultSSLContext {.threadvar.}: SSLContext
 
-when defined(ssl):
-  defaultSSLContext = newContext(verifyMode = CVerifyNone)
-  template contextOrDefault(ctx: SSLContext): SSLContext =
-    var result = ctx
-    if ctx == nil:
-      if defaultSSLContext == nil:
-        defaultSSLContext = newContext(verifyMode = CVerifyNone)
+proc getDefaultSSL(): SSLContext =
+  result = defaultSslContext
+  when defined(ssl):
+    if result == nil:
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
       result = defaultSSLContext
-    result
+      doAssert result != nil, "failure to initialize the SSL context"
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
@@ -482,9 +478,9 @@ proc format(p: MultipartData): tuple[contentType, body: string] =
   result.body.add("--" & bound & "--\c\L")
 
 proc request*(url: string, httpMethod: string, extraHeaders = "",
-              body = "", sslContext = defaultSSLContext, timeout = -1,
+              body = "", sslContext = getDefaultSSL(), timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response
-              {.deprecated.} =
+              {.deprecated: "use HttpClient.request instead".} =
   ## | Requests ``url`` with the custom method string specified by the
   ## | ``httpMethod`` parameter.
   ## | Extra headers can be specified and must be separated by ``\c\L``
@@ -581,8 +577,8 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   result = parseResponse(s, httpMethod != "HEAD", timeout)
 
-proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
-              body = "", sslContext = defaultSSLContext, timeout = -1,
+proc request*(url: string, httpMethod = HttpGET, extraHeaders = "",
+              body = "", sslContext = getDefaultSSL(), timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response
               {.deprecated.} =
   ## | Requests ``url`` with the specified ``httpMethod``.
@@ -613,7 +609,7 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
     result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
-          sslContext: SSLContext = defaultSSLContext,
+          sslContext: SSLContext = getDefaultSSL(),
           timeout = -1, userAgent = defUserAgent,
           proxy: Proxy = nil): Response {.deprecated.} =
   ## | GETs the ``url`` and returns a ``Response`` object
@@ -623,18 +619,18 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## server takes longer than specified an ETimeout exception will be raised.
   ##
   ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
-  result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
+  result = request(url, HttpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
+      result = request(redirectTo, HttpGET, extraHeaders, "", sslContext,
                        timeout, userAgent, proxy)
       lastURL = redirectTo
 
 proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
-                 sslContext: SSLContext = defaultSSLContext,
+                 sslContext: SSLContext = getDefaultSSL(),
                  timeout = -1, userAgent = defUserAgent,
                  proxy: Proxy = nil): string {.deprecated.} =
   ## | GETs the body and returns it as a string.
@@ -653,7 +649,7 @@ proc getContent*(url: string, extraHeaders = "", maxRedirects = 5,
 
 proc post*(url: string, extraHeaders = "", body = "",
            maxRedirects = 5,
-           sslContext: SSLContext = defaultSSLContext,
+           sslContext: SSLContext = getDefaultSSL(),
            timeout = -1, userAgent = defUserAgent,
            proxy: Proxy = nil,
            multipart: MultipartData = nil): Response {.deprecated.} =
@@ -683,20 +679,20 @@ proc post*(url: string, extraHeaders = "", body = "",
   if not multipart.isNil:
     xh.add(withNewLine("Content-Type: " & mpContentType))
 
-  result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
+  result = request(url, HttpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      var meth = if result.status != "307": httpGet else: httpPost
+      var meth = if result.status != "307": HttpGet else: HttpPost
       result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
       lastURL = redirectTo
 
 proc postContent*(url: string, extraHeaders = "", body = "",
                   maxRedirects = 5,
-                  sslContext: SSLContext = defaultSSLContext,
+                  sslContext: SSLContext = getDefaultSSL(),
                   timeout = -1, userAgent = defUserAgent,
                   proxy: Proxy = nil,
                   multipart: MultipartData = nil): string
@@ -719,7 +715,7 @@ proc postContent*(url: string, extraHeaders = "", body = "",
     return r.body
 
 proc downloadFile*(url: string, outputFilename: string,
-                   sslContext: SSLContext = defaultSSLContext,
+                   sslContext: SSLContext = getDefaultSSL(),
                    timeout = -1, userAgent = defUserAgent,
                    proxy: Proxy = nil) {.deprecated.} =
   ## | Downloads ``url`` and saves it to ``outputFilename``
@@ -739,12 +735,13 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = httpMethod.toUpperAscii()
+  let upperMethod = httpMethod.toUpperAscii()
+  result = upperMethod
   result.add ' '
 
-  if proxy.isNil or (not proxy.isNil and requestUrl.scheme == "https"):
+  if proxy.isNil or requestUrl.scheme == "https":
     # /path?query
-    if requestUrl.path[0] != '/': result.add '/'
+    if not requestUrl.path.startsWith("/"): result.add '/'
     result.add(requestUrl.path)
     if requestUrl.query.len > 0:
       result.add("?" & requestUrl.query)
@@ -768,7 +765,9 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  if body.len > 0 and not headers.hasKey("Content-Length"):
+  const requiresBody = ["POST", "PUT", "PATCH"]
+  let needsContentLength = body.len > 0 or upperMethod in requiresBody
+  if needsContentLength and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
   # Proxy auth header.
@@ -816,7 +815,7 @@ type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext, proxy: Proxy = nil,
+    maxRedirects = 5, sslContext = getDefaultSSL(), proxy: Proxy = nil,
     timeout = -1): HttpClient =
   ## Creates a new HttpClient instance.
   ##
@@ -843,7 +842,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newStringStream()
   result.getBody = true
   when defined(ssl):
-    result.sslContext = contextOrDefault(sslContext)
+    result.sslContext = sslContext
 
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
@@ -851,7 +850,7 @@ type
 {.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = defaultSslContext,
+    maxRedirects = 5, sslContext = getDefaultSSL(),
     proxy: Proxy = nil): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
@@ -875,7 +874,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
   when defined(ssl):
-    result.sslContext = contextOrDefault(sslContext)
+    result.sslContext = sslContext
 
 proc close*(client: HttpClient | AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
@@ -929,7 +928,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
-    while true:
+    while i < chunkSizeStr.len:
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -937,8 +936,6 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
       of 'A'..'F':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
-      of '\0':
-        break
       of ';':
         # http://tools.ietf.org/html/rfc2616#section-3.6.1
         # We don't care about chunk-extensions.
@@ -1199,7 +1196,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
 
 

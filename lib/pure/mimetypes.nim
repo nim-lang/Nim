@@ -13,8 +13,6 @@ type
   MimeDB* = object
     mimes: StringTableRef
 
-{.deprecated: [TMimeDB: MimeDB].}
-
 const mimes* = {
     "ez": "application/andrew-inset",
     "anx": "application/annodex",

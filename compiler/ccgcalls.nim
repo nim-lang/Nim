@@ -83,7 +83,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: discard
 
-proc genIndexCheck(p: BProc; arr, idx: TLoc)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
@@ -97,8 +97,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, q[3], c)
     # but first produce the required index checks:
     if optBoundsCheck in p.options:
-      genIndexCheck(p, a, b)
-      genIndexCheck(p, a, c)
+      genBoundsCheck(p, a, b, c)
     let ty = skipTypes(a.t, abstractVar+{tyPtr})
     case ty.kind
     of tyArray:
@@ -116,7 +115,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
       else:
         result = "$1->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
     else:
-      internalError("openArrayLoc: " & typeToString(a.t))
+      internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
@@ -125,25 +124,25 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
       else:
-        result = "$1->data, $1->$2" % [a.rdLoc, lenField(p)]
+        result = "$1->data, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p)]
     of tyArray:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
       else:
-        internalError("openArrayLoc: " & typeToString(a.t))
-    else: internalError("openArrayLoc: " & typeToString(a.t))
+        internalError(p.config, "openArrayLoc: " & typeToString(a.t))
+    else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "$1->data" % [a.rdLoc]
+  result = "($1 ? $1->data : (NCSTRING)\"\")" % [a.rdLoc]
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc
@@ -273,7 +272,7 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
     if tfVarargs notin typ.flags:
-      localError(ri.info, "wrong argument count")
+      localError(p.config, ri.info, "wrong argument count")
       result = nil
     else:
       result = genArgNoParam(p, ri.sons[i])
@@ -337,7 +336,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
-  internalAssert i < sonsLen(typ)
+  internalAssert p.config, i < sonsLen(typ)
   assert(typ.n.sons[i].kind == nkSym)
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
@@ -394,7 +393,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
             result.add genOtherArg(p, ri, k, typ)
           result.add(~")")
         else:
-          localError(ri.info, "call expression expected for C++ pattern")
+          localError(p.config, ri.info, "call expression expected for C++ pattern")
         inc i
       elif pat[i+1] == '.':
         result.add genThisArg(p, ri, j, typ)
@@ -432,7 +431,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert pat != nil
+  internalAssert p.config, pat != nil
   if pat.contains({'#', '(', '@', '\''}):
     var pl = genPatternCall(p, ri, pat, typ)
     # simpler version of 'fixupCall' that works with the pl+params combination:
@@ -481,7 +480,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert pat != nil
+  internalAssert p.config, pat != nil
   var start = 3
   if ' ' in pat:
     start = 1
@@ -501,7 +500,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   for i in countup(start, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
-      internalError(ri.info, "varargs for objective C method?")
+      internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     add(pl, ~" ")

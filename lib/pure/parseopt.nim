@@ -54,29 +54,27 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
-
 proc parseWord(s: string, i: int, w: var string,
-               delim: set[char] = {'\x09', ' ', '\0'}): int =
+               delim: set[char] = {'\x09', ' '}): int =
   result = i
-  if s[result] == '\"':
+  if result < s.len and s[result] == '\"':
     inc(result)
-    while not (s[result] in {'\0', '\"'}):
+    while result < s.len and s[result] != '\"':
       add(w, s[result])
       inc(result)
-    if s[result] == '\"': inc(result)
+    if result < s.len and s[result] == '\"': inc(result)
   else:
-    while not (s[result] in delim):
+    while result < s.len and s[result] notin delim:
       add(w, s[result])
       inc(result)
 
 when declared(os.paramCount):
   proc quote(s: string): string =
-    if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
+    if find(s, {' ', '\t'}) >= 0 and s.len > 0 and s[0] != '"':
       if s[0] == '-':
         result = newStringOfCap(s.len)
-        var i = parseWord(s, 0, result, {'\0', ' ', '\x09', ':', '='})
-        if s[i] in {':','='}:
+        var i = parseWord(s, 0, result, {' ', '\x09', ':', '='})
+        if i < s.len and s[i] in {':','='}:
           result.add s[i]
           inc i
         result.add '"'
@@ -144,43 +142,45 @@ proc handleShortOption(p: var OptParser) =
   add(p.key.string, p.cmd[i])
   inc(i)
   p.inShortState = true
-  while p.cmd[i] in {'\x09', ' '}:
+  while i < p.cmd.len and p.cmd[i] in {'\x09', ' '}:
     inc(i)
     p.inShortState = false
-  if p.cmd[i] in {':', '='} or card(p.shortNoVal) > 0 and p.key.string[0] notin p.shortNoVal:
-    if p.cmd[i] in {':', '='}:
+  if i < p.cmd.len and p.cmd[i] in {':', '='} or
+      card(p.shortNoVal) > 0 and p.key.string[0] notin p.shortNoVal:
+    if i < p.cmd.len and p.cmd[i] in {':', '='}:
       inc(i)
     p.inShortState = false
-    while p.cmd[i] in {'\x09', ' '}: inc(i)
+    while i < p.cmd.len and p.cmd[i] in {'\x09', ' '}: inc(i)
     i = parseWord(p.cmd, i, p.val.string)
-  if p.cmd[i] == '\0': p.inShortState = false
+  if i >= p.cmd.len: p.inShortState = false
   p.pos = i
 
 proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## parses the first or next option; ``p.kind`` describes what token has been
   ## parsed. ``p.key`` and ``p.val`` are set accordingly.
   var i = p.pos
-  while p.cmd[i] in {'\x09', ' '}: inc(i)
+  while i < p.cmd.len and p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
   setLen(p.key.string, 0)
   setLen(p.val.string, 0)
   if p.inShortState:
     handleShortOption(p)
     return
-  case p.cmd[i]
-  of '\0':
+  if i >= p.cmd.len:
     p.kind = cmdEnd
-  of '-':
+    return
+  if p.cmd[i] == '-':
     inc(i)
-    if p.cmd[i] == '-':
+    if i < p.cmd.len and p.cmd[i] == '-':
       p.kind = cmdLongOption
       inc(i)
-      i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
-      while p.cmd[i] in {'\x09', ' '}: inc(i)
-      if p.cmd[i] in {':', '='} or len(p.longNoVal) > 0 and p.key.string notin p.longNoVal:
-        if p.cmd[i] in {':', '='}:
+      i = parseWord(p.cmd, i, p.key.string, {' ', '\x09', ':', '='})
+      while i < p.cmd.len and p.cmd[i] in {'\x09', ' '}: inc(i)
+      if i < p.cmd.len and p.cmd[i] in {':', '='} or
+          len(p.longNoVal) > 0 and p.key.string notin p.longNoVal:
+        if i < p.cmd.len and p.cmd[i] in {':', '='}:
           inc(i)
-        while p.cmd[i] in {'\x09', ' '}: inc(i)
+        while i < p.cmd.len and p.cmd[i] in {'\x09', ' '}: inc(i)
         p.pos = parseWord(p.cmd, i, p.val.string)
       else:
         p.pos = i

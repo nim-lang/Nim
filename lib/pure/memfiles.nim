@@ -38,8 +38,6 @@ type
     else:
       handle: cint
 
-{.deprecated: [TMemFile: MemFile].}
-
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
