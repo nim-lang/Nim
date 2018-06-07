@@ -427,7 +427,7 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
 
 proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen,
                      address: var IpAddress, port: var Port) =
-  if sa.ss_family.int == AF_INET.int and sl == sizeof(Sockaddr_in).Socklen:
+  if sa.ss_family.int == toInt(AF_INET) and sl == sizeof(Sockaddr_in).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv4)
     let s = cast[ptr Sockaddr_in](sa)
     copyMem(addr address.address_v4[0], addr s.sin_addr,
