@@ -133,17 +133,18 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 proc parseUppercaseMethod(name: string): HttpMethod =
-  result = case name
-  of "GET": HttpGet
-  of "POST": HttpPost
-  of "HEAD": HttpHead
-  of "PUT": HttpPut
-  of "DELETE": HttpDelete
-  of "PATCH": HttpPatch
-  of "OPTIONS": HttpOptions
-  of "CONNECT": HttpConnect
-  of "TRACE": HttpTrace
-  else: raise newException(ValueError, "Invalid HTTP method " & name)
+  result =
+    case name
+    of "GET": HttpGet
+    of "POST": HttpPost
+    of "HEAD": HttpHead
+    of "PUT": HttpPut
+    of "DELETE": HttpDelete
+    of "PATCH": HttpPatch
+    of "OPTIONS": HttpOptions
+    of "CONNECT": HttpConnect
+    of "TRACE": HttpTrace
+    else: raise newException(ValueError, "Invalid HTTP method " & name)
 
 proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
                     client: AsyncSocket,
