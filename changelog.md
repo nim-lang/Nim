@@ -85,6 +85,7 @@
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - An exception raised from ``test`` block of ``unittest`` now shows its type in
   the error message
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
