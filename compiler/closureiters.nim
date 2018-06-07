@@ -397,18 +397,17 @@ proc hasYieldsInExpressions(n: PNode): bool =
 
 proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
   assert(n.kind == nkStmtListExpr)
-
-  var parent = n
-  var lastSon = n[^1]
-
-  while lastSon.kind == nkStmtListExpr:
-    parent = lastSon
-    lastSon = lastSon[^1]
-
   result.s = newNodeI(nkStmtList, n.info)
-  result.s.sons = parent.sons
-  result.s.sons.setLen(result.s.sons.len - 1) # delete last son
-  result.res = lastSon
+  result.s.sons = @[]
+
+  var n = n
+  while n.kind == nkStmtListExpr:
+    result.s.sons.add(n.sons)
+    result.s.sons.setLen(result.s.sons.len - 1) # delete last son
+    n = n[^1]
+
+  result.res = n
+
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
   result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
