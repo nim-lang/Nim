@@ -95,8 +95,13 @@ proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.pr
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(s.position.FileIndex, fileIdx)
 
+proc connectCallbacks*(graph: ModuleGraph) =
+  graph.includeFileCallback = includeModule
+  graph.importModuleCallback = importModule
+
 proc compileSystemModule*(graph: ModuleGraph) =
   if graph.systemModule == nil:
+    connectCallbacks(graph)
     graph.config.m.systemFileIdx = fileInfoIdx(graph.config, graph.config.libpath / "system.nim")
     discard graph.compileModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
@@ -104,10 +109,6 @@ proc wantMainModule*(conf: ConfigRef) =
   if conf.projectFull.len == 0:
     fatal(conf, newLineInfo(conf, "command line", 1, 1), errGenerated, "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
-
-proc connectCallbacks*(graph: ModuleGraph) =
-  graph.includeFileCallback = includeModule
-  graph.importModuleCallback = importModule
 
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
   connectCallbacks(graph)

@@ -104,6 +104,7 @@ when nimIncremental:
     db.exec(sql"""
       create table if not exists modules(
         id integer primary key,
+        nimid integer not null,
         fullpath varchar(8000) not null,
         interfHash varchar(256) not null,
         fullHash varchar(256) not null,

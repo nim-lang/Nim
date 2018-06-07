@@ -42,13 +42,14 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
 proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
   if g.config.symbolFiles in {disabledSf, writeOnlySf}: return getID()
   let module = g.incr.db.getRow(
-    sql"select id, fullHash from modules where fullpath = ?", fullpath)
+    sql"select id, fullHash, nimid from modules where fullpath = ?", fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
   if module[0].len == 0:
-    result = int db.insertID(sql"insert into modules(fullpath, interfHash, fullHash) values (?, ?, ?)",
-      fullpath, "", currentFullhash)
+    result = getID()
+    db.exec(sql"insert into modules(fullpath, interfHash, fullHash, nimid) values (?, ?, ?, ?)",
+      fullpath, "", currentFullhash, result)
   else:
-    result = parseInt(module[0])
+    result = parseInt(module[2])
     if currentFullhash == module[1]:
       # not changed, so use the cached AST:
       doAssert(result != 0)
@@ -844,13 +845,14 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
     result.add decodeNode(g, b, module.info)
 
   db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
-  echo result
   replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf: return
   g.recordStmt = recordStmt
   let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
+  if g.config.symbolFiles == writeOnlySf:
+    removeFile(dbfile)
   if not fileExists(dbfile):
     db = open(connection=dbfile, user="nim", password="",
               database="nim")

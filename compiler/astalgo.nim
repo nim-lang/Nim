@@ -66,7 +66,6 @@ proc idNodeTablePut*(t: var TIdNodeTable, key: PIdObj, val: PNode)
 
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
-proc getModule*(s: PSym): PSym
 proc mustRehash*(length, counter: int): bool
 proc nextTry*(h, maxHash: Hash): Hash {.inline.}
 
@@ -157,7 +156,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
     if n.sym.name.id == field.id: result = n.sym
   else: return nil
 
-proc getModule(s: PSym): PSym =
+proc getModule*(s: PSym): PSym =
   result = s
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
