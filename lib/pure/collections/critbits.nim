@@ -167,7 +167,7 @@ proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
   ## increments `c[key]` by `val`.
   let oldCount = c.count
   var n = rawInsert(c, key)
-  if c.count == oldCount or oldCount == 0:
+  if c.count >= oldCount or oldCount == 0:
     # not a new key:
     inc n.val, val
 
@@ -366,3 +366,12 @@ when isMainModule:
 
   c.inc("a", -5)
   assert c["a"] == 0
+
+  c.inc("b", 2)
+  assert c["b"] == 2
+
+  c.inc("c", 3)
+  assert c["c"] == 3
+
+  c.inc("a", 1)
+  assert c["a"] == 1
