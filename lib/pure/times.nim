@@ -185,8 +185,7 @@ type
 
   DurationParts* = array[FixedTimeUnit, int64] # Array of Duration parts starts
   TimeIntervalParts* = array[TimeUnit, int] # Array of Duration parts starts
-
-
+  TimesMutableTypes = DateTime | Time | Duration | TimeInterval
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
@@ -607,29 +606,11 @@ proc `+`*(a: Time, b: Duration): Time {.operator, extern: "ntAddTime".} =
     doAssert (fromUnix(0) + initDuration(seconds = 1)) == fromUnix(1)
   addImpl[Time](a, b)
 
-proc `+=`*(a: var Time, b: Duration) {.operator.} =
-  ## Modify ``a`` in place by subtracting ``b``.
-  runnableExamples:
-    var tm = fromUnix(0)
-    tm += initDuration(seconds = 1)
-    doAssert tm == fromUnix(1)
-
-  a = addImpl[Time](a, b)
-
 proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
   ## Subtracts a duration of time from a ``Time``.
   runnableExamples:
     doAssert (fromUnix(0) - initDuration(seconds = 1)) == fromUnix(-1)
   subImpl[Time](a, b)
-
-proc `-=`*(a: var Time, b: Duration) {.operator.} =
-  ## Modify ``a`` in place by adding ``b``.
-  runnableExamples:
-    var tm = fromUnix(0)
-    tm -= initDuration(seconds = 1)
-    doAssert tm == fromUnix(-1)
-
-  a = subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
   ## Returns true iff ``a < b``, that is iff a happened before b.
@@ -1377,17 +1358,6 @@ proc `+`*(time: Time, interval: TimeInterval): Time =
   else:
     toTime(time.local + interval)
 
-proc `+=`*(time: var Time, interval: TimeInterval) =
-  ## Modifies `time` by adding `interval`.
-  ## If `interval` contains any years, months, weeks or days the operation
-  ## is performed in the local timezone.
-  runnableExamples:
-    var tm = fromUnix(0)
-    tm += 5.seconds
-    doAssert tm == fromUnix(5)
-
-  time = time + interval
-
 proc `-`*(time: Time, interval: TimeInterval): Time =
   ## Subtracts `interval` from Time `time`.
   ## If `interval` contains any years, months, weeks or days the operation
@@ -1401,15 +1371,30 @@ proc `-`*(time: Time, interval: TimeInterval): Time =
   else:
     toTime(time.local - interval)
 
-proc `-=`*(time: var Time, interval: TimeInterval) =
-  ## Modifies `time` by subtracting `interval`.
-  ## If `interval` contains any years, months, weeks or days the operation
-  ## is performed in the local timezone.
+proc `+=`*[T, U: TimesMutableTypes](a: var T, b: U) =
+  ## Modify ``a`` in place by adding ``b``.
+  runnableExamples:
+    var tm = fromUnix(0)
+    tm += initDuration(seconds = 1)
+    doAssert tm == fromUnix(1)
+  a = a + b
+
+proc `-=`*[T, U: TimesMutableTypes](a: var T, b: U) =
+  ## Modify ``a`` in place by subtracting ``b``.
   runnableExamples:
     var tm = fromUnix(5)
-    tm -= 5.seconds
+    tm -= initDuration(seconds = 5)
     doAssert tm == fromUnix(0)
-  time = time - interval
+  a = a - b
+
+proc `*=`*[T: TimesMutableTypes, U](a: var T, b: U) =
+  # Mutable type is often multiplied by number
+  runnableExamples:
+    var dur = initDuration(seconds = 1)
+    dur *= 5
+    doAssert dur == initDuration(seconds = 5)
+
+  a = a * b
 
 proc formatToken(dt: DateTime, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
