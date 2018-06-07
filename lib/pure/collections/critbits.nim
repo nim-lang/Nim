@@ -322,12 +322,17 @@ proc `$`*[T](c: CritBitTree[T]): string =
       const avgItemLen = 16
     result = newStringOfCap(c.count * avgItemLen)
     result.add("{")
-    for key, val in pairs(c):
-      if result.len > 1: result.add(", ")
-      result.add($key)
-      when T isnot void:
-        result.add(": ")
-        result.addQuoted(val)
+    when T is void:
+      for key in items(c):
+        if result.len > 1: result.add(", ")
+        result.add($key)
+    else:
+      for key, val in pairs(c):
+        if result.len > 1: result.add(", ")
+        result.add($key)
+        when T isnot void:
+          result.add(": ")
+          result.addQuoted(val)
     result.add("}")
 
 when isMainModule:
@@ -349,6 +354,8 @@ when isMainModule:
 
   assert r.missingOrExcl("foo") == true
 
+  assert $r == "{abc, definition, prefix, xyz}"
+
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
   assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
@@ -362,3 +369,7 @@ when isMainModule:
 
   c.inc("a", -5)
   assert c["a"] == 0
+
+  c["b"] = 100
+
+  assert $c == "{a: 0, b: 100}"
