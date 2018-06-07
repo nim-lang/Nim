@@ -22,7 +22,7 @@ elif defined(posix):
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import os
+import os, streams
 
 type
   MemFile* = object  ## represents a memory mapped file
@@ -405,3 +405,72 @@ iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} 
   var buf = TaintedString(newStringOfCap(80))
   for line in lines(mfile, buf, delim, eat):
     yield buf
+
+proc newEIO(msg: string): ref IOError =
+  new(result)
+  result.msg = msg
+
+type
+  MemMapFileStream* = ref MemMapFileStreamObj ## a stream that encapsulates a `MemFile`
+  MemMapFileStreamObj* = object of Stream
+    mf: MemFile
+    mode: FileMode
+    pos: ByteAddress
+
+proc mmsClose(s: Stream) =
+  MemMapFileStream(s).pos = -1
+  close(MemMapFileStream(s).mf)
+
+proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
+
+proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
+                                 (MemMapFileStream(s).pos < 0)
+
+proc mmsSetPosition(s: Stream, pos: int) =
+  if pos > MemMapFileStream(s).mf.size or pos < 0:
+    raise newEIO("cannot set pos in stream")
+  MemMapFileStream(s).pos = pos
+
+proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
+
+proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+  let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
+  let p = cast[ByteAddress](MemMapFileStream(s).pos)
+  let l = min(bufLen, MemMapFileStream(s).mf.size - p)
+  moveMem(buffer, cast[pointer](startAddress + p), l)
+  result = l
+
+proc mmsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+  result = mmsPeekData(s, buffer, bufLen)
+  inc(MemMapFileStream(s).pos, result)
+
+proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+  if MemMapFileStream(s).mode == fmRead:
+    raise newEIO("cannot write to read-only stream")
+  let size = MemMapFileStream(s).mf.size
+  if MemMapFileStream(s).pos + bufLen > size:
+    raise newEIO("cannot write to stream")
+  let p = cast[ByteAddress](MemMapFileStream(s).mf.mem) +
+          cast[ByteAddress](MemMapFileStream(s).pos)
+  moveMem(cast[pointer](p), buffer, bufLen)
+  inc(MemMapFileStream(s).pos, bufLen)
+
+proc newMemMapFileStream*(filename: string, mode: FileMode = fmRead, fileSize: int = -1):
+  MemMapFileStream =
+  ## creates a new stream from the file named `filename` with the mode `mode`.
+  ## Raises ## `EOS` if the file cannot be opened. See the `system
+  ## <system.html>`_ module for a list of available FileMode enums.
+  ## ``fileSize`` can only be set if the file does not exist and is opened
+  ## with write access (e.g., with fmReadWrite).
+  var mf: MemFile = open(filename, mode, newFileSize = fileSize)
+  new(result)
+  result.mode = mode
+  result.mf = mf
+  result.closeImpl = mmsClose
+  result.atEndImpl = mmsAtEnd
+  result.setPositionImpl = mmsSetPosition
+  result.getPositionImpl = mmsGetPosition
+  result.readDataImpl = mmsReadData
+  result.peekDataImpl = mmsPeekData
+  result.writeDataImpl = mmsWriteData
+  result.flushImpl = mmsFlush

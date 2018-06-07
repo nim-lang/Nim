@@ -11,7 +11,7 @@ Position after setting position: 6
 Readed line: Hello!
 Position after reading line: 7'''
 """
-import os, streams
+import os, streams, memfiles
 const
   fn = "test.mmapstream"
 var
