@@ -775,6 +775,13 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     else:
       genOrdinalCase(p, t, d)
 
+proc genRestoreFrameAfterException(p: BProc) =
+  if optStackTrace in p.module.config.options:
+    if not p.hasCurFramePointer:
+      p.hasCurFramePointer = true
+      p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
+      p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
+    linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n")
 
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
@@ -794,8 +801,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #   finallyPart();
 
   template genExceptBranchBody(body: PNode) {.dirty.} =
-    if optStackTrace in p.options:
-      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
+    genRestoreFrameAfterException(p)
     expr(p, body, d)
 
   if not isEmptyType(t.typ) and d.k == locNone:
@@ -898,8 +904,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p)
   startBlock(p, "else {$n")
   linefmt(p, cpsStmts, "#popSafePoint();$n")
-  if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
+  genRestoreFrameAfterException(p)
   p.nestedTryStmts[^1].inExcept = true
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
