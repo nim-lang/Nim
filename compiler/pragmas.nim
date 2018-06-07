@@ -374,6 +374,10 @@ proc processPush(c: PContext, n: PNode, start: int) =
       x.otherPragmas.add n.sons[i]
     #localError(c.config, n.info, errOptionExpected)
 
+  # If stacktrace is disabled globally we should not enable it
+  if optStackTrace notin c.optionStack[0].options:
+    c.config.options.excl(optStackTrace)
+
 proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
     localError(c.config, n.info, "{.pop.} without a corresponding {.push.}")
