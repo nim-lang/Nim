@@ -394,10 +394,6 @@ block: #7969
   test(it, 1, 2, 3)
 
 block: # yield in blockexpr
-  type
-    SomeObj = object
-      id: int
-
   iterator it(): int {.closure.} =
     yield(block:
       checkpoint(1)
