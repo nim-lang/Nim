@@ -165,11 +165,8 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
 
 proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
   ## increments `c[key]` by `val`.
-  let oldCount = c.count
   var n = rawInsert(c, key)
-  if c.count >= oldCount or oldCount == 0:
-    # not a new key:
-    inc n.val, val
+  inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
