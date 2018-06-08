@@ -150,23 +150,35 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   ## characters and there is at least one character in `s`.
   isImpl isSpaceAscii
 
+template isCaseImpl(call) =
+  var hasAtleastOneAlphaChar = false
+  if s.len == 0: return false
+  for c in s:
+    var doCaseCheck = c.isAlphaAscii()
+    if not hasAtleastOneAlphaChar:
+      hasAtleastOneAlphaChar = doCaseCheck
+    if doCaseCheck and (not call(c)): return false
+  return hasAtleastOneAlphaChar
+
 proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsLowerAsciiStr".} =
-  ## Checks whether or not `s` contains all lower case characters.
+  ## Checks whether or not all alphabetical characters in `s` are lower case.
   ##
   ## This checks ASCII characters only.
-  ## Returns true if all characters in `s` are lower case
-  ## and there is at least one character  in `s`.
-  isImpl isLowerAscii
+  ## Returns true if all alphabetical characters in `s` are lower case
+  ## and there is at least one character in `s`.
+  ## Returns false if none of the characters in `s` are alphabetical.
+  isCaseImpl isLowerAscii
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsUpperAsciiStr".} =
-  ## Checks whether or not `s` contains all upper case characters.
+  ## Checks whether or not all alphabetical characters in `s` are upper case.
   ##
   ## This checks ASCII characters only.
-  ## Returns true if all characters in `s` are upper case
+  ## Returns true if all alphabetical characters in `s` are upper case
   ## and there is at least one character in `s`.
-  isImpl isUpperAscii
+  ## Returns false if none of the characters in `s` are alphabetical.
+  isCaseImpl isUpperAscii
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =
@@ -2516,10 +2528,16 @@ when isMainModule:
     doAssert(not isLowerAscii('A'))
     doAssert(not isLowerAscii('5'))
     doAssert(not isLowerAscii('&'))
+    doAssert(not isLowerAscii(' '))
 
     doAssert isLowerAscii("abcd")
     doAssert(not isLowerAscii("abCD"))
-    doAssert(not isLowerAscii("33aa"))
+    doAssert isLowerAscii("33aa")
+    doAssert isLowerAscii("a b")
+    doAssert isLowerAscii("ab?!")
+    doAssert isLowerAscii("1, 2, 3 go!")
+    doAssert(not isLowerAscii(" "))
+    doAssert(not isLowerAscii("(*&#@(^#$ ")) # None of the string chars are alphabets
 
     doAssert isUpperAscii('A')
     doAssert(not isUpperAscii('b'))
@@ -2528,7 +2546,14 @@ when isMainModule:
 
     doAssert isUpperAscii("ABC")
     doAssert(not isUpperAscii("AAcc"))
-    doAssert(not isUpperAscii("A#$"))
+    doAssert isUpperAscii("A#$")
+    doAssert(not isUpperAscii(' '))
+
+    doAssert isUpperAscii("A B")
+    doAssert isUpperAscii("AB?!")
+    doAssert isUpperAscii("1, 2, 3 GO!")
+    doAssert(not isUpperAscii(" "))
+    doAssert(not isUpperAscii("(*&#@(^#$ ")) # None of the string chars are alphabets
 
     doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
@@ -2601,4 +2626,3 @@ bar
   nonStaticTests()
   staticTests()
   static: staticTests()
-
