@@ -7,12 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# This include file implements lambda lifting for the transformator.
+# This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
-  idents, renderer, types, magicsys, lowerings, tables,
-  modulegraphs, lineinfos
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
+  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -126,7 +125,7 @@ proc newCall(a: PSym, b: PNode): PNode =
   result.add newSymNode(a)
   result.add b
 
-proc createStateType(g: ModuleGraph; iter: PSym): PType =
+proc createClosureIterStateType*(g: ModuleGraph; iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
   addSon(n, newIntNode(nkIntLit, -1))
   addSon(n, newIntNode(nkIntLit, 0))
@@ -137,8 +136,8 @@ proc createStateType(g: ModuleGraph; iter: PSym): PType =
   rawAddSon(result, intType)
 
 proc createStateField(g: ModuleGraph; iter: PSym): PSym =
-  result = newSym(skField, getIdent(g.cache, ":state"), iter, iter.info, {})
-  result.typ = createStateType(g, iter)
+  result = newSym(skField, getIdent(g.cache, ":state"), iter, iter.info)
+  result.typ = createClosureIterStateType(g, iter)
 
 proc createEnvObj(g: ModuleGraph; owner: PSym; info: TLineInfo): PType =
   # YYY meh, just add the state field for every closure for now, it's too
@@ -146,12 +145,12 @@ proc createEnvObj(g: ModuleGraph; owner: PSym; info: TLineInfo): PType =
   result = createObj(g, owner, info, final=false)
   rawAddField(result, createStateField(g, owner))
 
-proc getIterResult(iter: PSym; cache: IdentCache): PSym =
+proc getClosureIterResult*(g: ModuleGraph; iter: PSym): PSym =
   if resultPos < iter.ast.len:
     result = iter.ast.sons[resultPos].sym
   else:
     # XXX a bit hacky:
-    result = newSym(skResult, getIdent(cache, ":result"), iter, iter.info, {})
+    result = newSym(skResult, getIdent(g.cache, ":result"), iter, iter.info, {})
     result.typ = iter.typ.sons[0]
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
@@ -400,7 +399,11 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           if not c.capturedVars.containsOrIncl(s.id):
             let obj = getHiddenParam(c.graph, owner).typ.lastSon
             #let obj = c.getEnvTypeForOwner(s.owner).lastSon
-            addField(obj, s, c.graph.cache)
+
+            if s.name.id == getIdent(c.graph.cache, ":state").id:
+              obj.n[0].sym.id = -s.id
+            else:
+              addField(obj, s, c.graph.cache)
       # but always return because the rest of the proc is only relevant when
       # ow != owner:
       return
@@ -598,7 +601,7 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
     localError(d.graph.config, n.info, "internal error: not part of closure object type")
     result = n
 
-proc getStateField(g: ModuleGraph; owner: PSym): PSym =
+proc getStateField*(g: ModuleGraph; owner: PSym): PSym =
   getHiddenParam(g, owner).typ.sons[0].n.sons[0].sym
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
@@ -625,7 +628,7 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
   if n.sons[0].kind != nkEmpty:
     var a = newNodeI(nkAsgn, n.sons[0].info)
     var retVal = liftCapturedVars(n.sons[0], owner, d, c)
-    addSon(a, newSymNode(getIterResult(owner, d.graph.cache)))
+    addSon(a, newSymNode(getClosureIterResult(d.graph, owner)))
     addSon(a, retVal)
     retStmt.add(a)
   else:
@@ -718,7 +721,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        let body = wrapIterBody(d.graph, liftCapturedVars(s.getBody, s, d, c), s)
+        var body = liftCapturedVars(s.getBody, s, d, c)
+        if oldIterTransf in d.graph.config.features:
+          body = wrapIterBody(d.graph, body, s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
@@ -761,9 +766,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if n[1].kind == nkClosure: result = n[1]
   else:
     if owner.isIterator:
-      if n.kind == nkYieldStmt:
+      if oldIterTransf in d.graph.config.features and n.kind == nkYieldStmt:
         return transformYield(n, owner, d, c)
-      elif n.kind == nkReturnStmt:
+      elif oldIterTransf in d.graph.config.features and n.kind == nkReturnStmt:
         return transformReturn(n, owner, d, c)
       elif nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
@@ -811,7 +816,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
-  # XXX conf.cmd == cmdCompileToJS does not suffice! The compiletime stuff needs
+  # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
   # However we can do lifting for the stuff which is *only* compiletime.
@@ -820,6 +825,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
   if body.kind == nkEmpty or (
       g.config.cmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
+
     # ignore forward declaration:
     result = body
     tooEarly = true
@@ -831,10 +837,12 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
       d.somethingToDo = true
     if d.somethingToDo:
       var c = initLiftingPass(fn)
-      var newBody = liftCapturedVars(body, fn, d, c)
+      result = liftCapturedVars(body, fn, d, c)
       if c.envvars.getOrDefault(fn.id) != nil:
-        newBody = newTree(nkStmtList, rawClosureCreation(fn, d, c), newBody)
-      result = wrapIterBody(g, newBody, fn)
+        result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
+
+      if oldIterTransf in g.config.features:
+        result = wrapIterBody(g, result, fn)
     else:
       result = body
     #if fn.name.s == "get2":
@@ -872,7 +880,8 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
       cl = createClosure()
       while true:
         let i = foo(cl)
-        nkBreakState(cl.state)
+        if (nkBreakState(cl.state)):
+          break
         ...
     """
   if liftingHarmful(g.config, owner): return body
@@ -932,5 +941,16 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   loopBody.sons[0] = v2
   var bs = newNodeI(nkBreakState, body.info)
   bs.addSon(call.sons[0])
-  loopBody.sons[1] = bs
+
+  let ibs = newNodeI(nkIfStmt, body.info)
+  let elifBranch = newNodeI(nkElifBranch, body.info)
+  elifBranch.add(bs)
+
+  let br = newNodeI(nkBreakStmt, body.info)
+  br.add(g.emptyNode)
+
+  elifBranch.add(br)
+  ibs.add(elifBranch)
+
+  loopBody.sons[1] = ibs
   loopBody.sons[2] = body[L-1]

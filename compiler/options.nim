@@ -118,7 +118,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    oldIterTransf
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

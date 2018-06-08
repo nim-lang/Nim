@@ -41,3 +41,6 @@ proc reraiseException() {.compilerRtl.} =
 proc writeStackTrace() = discard
 
 proc setControlCHook(hook: proc () {.noconv.}) = discard
+
+proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
+  sysFatal(ReraiseError, "exception handling is not available")

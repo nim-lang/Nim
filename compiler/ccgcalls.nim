@@ -83,7 +83,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: discard
 
-proc genIndexCheck(p: BProc; arr, idx: TLoc)
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
@@ -97,8 +97,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, q[3], c)
     # but first produce the required index checks:
     if optBoundsCheck in p.options:
-      genIndexCheck(p, a, b)
-      genIndexCheck(p, a, c)
+      genBoundsCheck(p, a, b, c)
     let ty = skipTypes(a.t, abstractVar+{tyPtr})
     case ty.kind
     of tyArray:

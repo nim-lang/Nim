@@ -65,6 +65,7 @@
 - Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
 - Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
 
 ### Library changes
 
@@ -90,6 +91,7 @@
   API". Using the Nim compiler and its VM as a scripting engine has never been
   easier. See ``tests/compilerapi/tcompilerapi.nim`` for an example of how to
   use the Nim VM in a native Nim application.
+- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
 
 
 ### Language additions

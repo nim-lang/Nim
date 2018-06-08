@@ -25,7 +25,7 @@ const
   SymChars*: set[char] = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
   OpChars*: set[char] = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
-    '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
+    '|', '=', '%', '&', '$', '@', '~', ':'}
 
 # don't forget to update the 'highlite' module if these charsets should change
 
