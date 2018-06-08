@@ -249,7 +249,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if close(result.handle) == 0:
         result.handle = -1
 
-proc flush*(f: var MemFile; attempts: uint = 3) =
+proc flush*(f: var MemFile; attempts: Natural = 3) =
   ## Flushes `f`'s buffer for the number of attempts equal to `attempts`.
   ## If were errors an exception `OSError` will be raised.
   when defined(windows):
