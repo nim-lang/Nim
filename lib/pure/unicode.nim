@@ -1392,7 +1392,7 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0xfe20 and c <= 0xfe2f))
 
 template runeCheck(s, runeProc) =
-  ## Common code for rune.isLower, rune.isUpper, etc
+  ## Common code for isAlpha and isSpace.
   result = if len(s) == 0: false else: true
 
   var
@@ -1403,16 +1403,6 @@ template runeCheck(s, runeProc) =
     fastRuneAt(s, i, rune, doInc=true)
     result = runeProc(rune) and result
 
-proc isUpper*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all upper case unicode characters.
-  runeCheck(s, isUpper)
-
-proc isLower*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all lower case unicode characters.
-  runeCheck(s, isLower)
-
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true iff `s` contains all alphabetic unicode characters.
@@ -1422,6 +1412,43 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true iff `s` contains all whitespace unicode characters.
   runeCheck(s, isWhiteSpace)
+
+template runeCaseCheck(s, runeProc) =
+  ## Common code for isLower and isUpper.
+  if len(s) == 0: return false
+
+  var
+    i = 0
+    rune: Rune
+    hasAtleastOneAlphaRune = false
+    doCaseCheck: bool
+
+  while i < len(s):
+    fastRuneAt(s, i, rune, doInc=true)
+    doCaseCheck = isAlpha(rune)
+    if not hasAtleastOneAlphaRune:
+      hasAtleastOneAlphaRune = doCaseCheck
+    if doCaseCheck and (not runeProc(rune)):
+      return false
+  return hasAtleastOneAlphaRune
+
+proc isUpper*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Checks if all unicode alphabetic characters in `s` are upper case.
+  ##
+  ## Returns true if all unicode alphabetic characters in `s` are upper case
+  ## and there is at least one character in `s`.
+  ## Returns false if none of the unicode characters in `s` are alphabetic.
+  runeCaseCheck(s, isUpper)
+
+proc isLower*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Checks if all unicode alphabetic characters in `s` are lower case.
+  ##
+  ## Returns true if all unicode alphabetic characters in `s` are lower case
+  ## and there is at least one character in `s`.
+  ## Returns false if none of the unicode characters in `s` are alphabetic.
+  runeCaseCheck(s, isLower)
 
 template convertRune(s, runeProc) =
   ## Convert runes in `s` using `runeProc` as the converter.
@@ -1760,20 +1787,34 @@ when isMainModule:
   doAssert(not isLower("Γ"))
   doAssert(not isLower("4"))
   doAssert(not isLower(""))
+  doAssert(not isLower(' '.Rune))
 
   doAssert isLower("abcdγ")
   doAssert(not isLower("abCDΓ"))
   doAssert(not isLower("33aaΓ"))
+
+  doAssert isLower("a b")
+  doAssert isLower("ab?!")
+  doAssert isLower("1, 2, 3 go!")
+  doAssert(not isLower(" "))
+  doAssert(not isLower("(*&#@(^#$✓ ")) # None of the string chars are alphabets
 
   doAssert isUpper("Γ")
   doAssert(not isUpper("b"))
   doAssert(not isUpper("α"))
   doAssert(not isUpper("✓"))
   doAssert(not isUpper(""))
+  doAssert(not isUpper(' '.Rune))
 
   doAssert isUpper("ΑΒΓ")
   doAssert(not isUpper("AAccβ"))
   doAssert(not isUpper("A#$β"))
+
+  doAssert isUpper("A B")
+  doAssert isUpper("AB?!")
+  doAssert isUpper("1, 2, 3 GO!")
+  doAssert(not isUpper(" "))
+  doAssert(not isUpper("(*&#@(^#$✓ ")) # None of the string chars are alphabets
 
   doAssert toUpper("Γ") == "Γ"
   doAssert toUpper("b") == "B"
