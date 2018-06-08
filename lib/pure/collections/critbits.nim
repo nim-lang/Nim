@@ -175,6 +175,11 @@ proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
 
+proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+  ## inserts `key` with value `val` into `c`.
+  var n = rawInsert(c, key)
+  n.val = val
+
 proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## puts a (key, value)-pair into `t`.
   var n = rawInsert(c, key)
@@ -375,3 +380,18 @@ when isMainModule:
 
   c.inc("a", 1)
   assert c["a"] == 1
+
+  var cf = CritBitTree[float]()
+
+  cf.incl("a", 1.0)
+  assert cf["a"] == 1.0
+
+  cf.incl("b", 2.0)
+  assert cf["b"] == 2.0
+
+  cf.incl("c", 3.0)
+  assert cf["c"] == 3.0
+
+  assert cf.len == 3
+  cf.excl("c")
+  assert cf.len == 2
