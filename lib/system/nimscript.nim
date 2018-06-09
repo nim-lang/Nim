@@ -182,7 +182,7 @@ template checkOsError =
   if err.len > 0: raise newException(OSError, err)
 
 template log(msg: string, body: untyped) =
-  if mode == ScriptMode.Verbose or mode == ScriptMode.Whatif:
+  if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
     echo "[NimScript] ", msg
   if mode != ScriptMode.WhatIf:
     body

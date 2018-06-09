@@ -135,6 +135,11 @@ proc write*(s: Stream, x: string) =
   else:
     if x.len > 0: writeData(s, cstring(x), x.len)
 
+proc write*(s: Stream, args: varargs[string, `$`]) =
+  ## writes one or more strings to the the stream. No length fields or
+  ## terminating zeros are written.
+  for str in args: write(s, str)
+
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
@@ -266,8 +271,8 @@ proc peekStr*(s: Stream, length: int): TaintedString =
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
-  ## A line of text may be delimited by ``CR``, ``LF`` or
-  ## ``CRLF``. The newline character(s) are not part of the returned string.
+  ## A line of text may be delimited by ```LF`` or ``CRLF``.
+  ## The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
   line.string.setLen(0)
@@ -316,6 +321,13 @@ proc peekLine*(s: Stream): TaintedString =
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s)
+
+iterator lines*(s: Stream): TaintedString =
+  ## Iterates over every line in the stream.
+  ## The iteration is based on ``readLine``.
+  var line: TaintedString
+  while s.readLine(line):
+    yield line
 
 when not defined(js):
 
