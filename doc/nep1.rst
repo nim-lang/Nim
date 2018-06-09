@@ -32,8 +32,8 @@ Style Guidelines
 Spacing and Whitespace Conventions
 -----------------------------------
 
-- Lines should preferably be no longer than 80 characters. Limiting the amount
-  of information present on each line makes for more readable code - the reader
+- Lines should be no longer than 80 characters. Limiting the amount of
+  information present on each line makes for more readable code - the reader
   has smaller chunks to process.
 
 - Two spaces should be used for indentation of blocks; tabstops are not allowed
