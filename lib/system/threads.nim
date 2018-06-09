@@ -116,6 +116,7 @@ when defined(windows):
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
+  import genode/env
   const
     GenodeHeader = "genode_cpp/threads.h"
   type
@@ -125,11 +126,12 @@ elif defined(genode):
     ThreadVarSlot = int
 
   proc initThread(s: var SysThread,
+                  env: GenodeEnv,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
                   arg: pointer,
                   affinity: cuint) {.
-    importcpp: "#.initThread(genodeEnv, @)".}
+    importcpp: "#.initThread(@)".}
 
   proc threadVarAlloc(): ThreadVarSlot = 0
 
@@ -569,7 +571,7 @@ when hostOS == "windows":
 
 elif defined(genode):
   var affinityOffset: cuint = 1
-  # CPU affinity offset for next thread, safe to roll-over
+    ## CPU affinity offset for next thread, safe to roll-over
 
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -580,6 +582,7 @@ elif defined(genode):
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
+      runtimeEnv,
       ThreadStackSize.culonglong,
       threadProcWrapper[TArg], addr(t), affinityOffset)
     inc affinityOffset
