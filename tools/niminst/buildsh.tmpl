@@ -100,8 +100,14 @@ case $uos in
     ;;
   *darwin* )
     myos="macosx"
-    CC="clang"
-    LINKER="clang"
+    case $HOSTTYPE in
+      powerpc)
+        ucpu="powerpc"
+        ;;
+      *)
+        CC="clang"
+        LINKER="clang"
+    esac
     LINK_FLAGS="$LINK_FLAGS -ldl -lm"
     if [ "$HOSTTYPE" = "x86_64" ] ; then
       ucpu="amd64"

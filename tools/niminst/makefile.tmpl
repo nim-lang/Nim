@@ -42,8 +42,12 @@ ifeq ($(uos),netbsd)
 endif
 ifeq ($(uos),darwin)
   myos = macosx
-  CC = clang
-  LD = clang
+  ifeq ($(HOSTTYPE),powerpc)
+    ucpu = powerpc
+  else
+    CC = clang
+    LD = clang
+  endif
   LDFLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64

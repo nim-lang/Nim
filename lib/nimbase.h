@@ -498,7 +498,7 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <sys/types.h>
 #  include <types/vxWind.h>
 #  include <tool/gnu/toolMacros.h>
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__APPLE__)
 #  include <sys/types.h>
 #endif
 
