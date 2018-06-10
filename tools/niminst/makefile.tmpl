@@ -50,9 +50,6 @@ ifeq ($(uos),darwin)
     LD = clang
   endif
   LDFLAGS += -ldl -lm
-  ifeq ($(HOSTTYPE),x86_64)
-    ucpu = amd64
-  endif
 endif
 ifeq ($(uos),aix)
   myos = aix
