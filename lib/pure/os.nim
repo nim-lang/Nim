@@ -296,6 +296,10 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
+when defined(posix):
+   var
+     pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
+
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
   ## Returns the full (`absolute`:idx:) path of the file `filename`,
@@ -329,14 +333,12 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
           setLen(result, L)
           break
   else:
-    # according to Posix we don't need to allocate space for result pathname.
-    # But we need to free return value with free(3).
-    var r = realpath(filename, nil)
-    if r.isNil:
-      raiseOSError(osLastError())
-    else:
-      result = $r
-      c_free(cast[pointer](r))
+    # realpath needs to take an allocated buffer according to POSIX-2004.
+    # dynamic allocation by passing NULL is only available since POSIX-2017
+    result = newString(pathMax)
+    var r = realpath(filename, result)
+    if r.isNil: raiseOSError(osLastError())
+    setLen(result, c_strlen(result))
 
 when defined(Windows):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
