@@ -42,7 +42,7 @@ ifeq ($(uos),netbsd)
 endif
 ifeq ($(uos),darwin)
   myos = macosx
-  ifeq ($(HOSTTYPE),powerpc)
+  ifeq ($(ucpu),power macintosh)
     ucpu = powerpc
     LD = gcc
   else
