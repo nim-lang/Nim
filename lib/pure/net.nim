@@ -447,7 +447,7 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: Socklen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
-  fromSockAddrAux(unsafeAddr sa, sl, address, port)
+  fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
   CRYPTO_malloc_init()

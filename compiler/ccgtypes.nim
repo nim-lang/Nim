@@ -731,8 +731,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     else: addAbiCheck(m, t, result)
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
-      # for instantiated templates we do not go through the type cache as the
-      # the type cache is not aware of 'tyGenericInst'.
       let cppName = getTypeName(m, t, sig)
       var i = 0
       var chunkStart = 0

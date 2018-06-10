@@ -1498,11 +1498,21 @@ when defined(nimdoc):
     ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
     ## <manual.html#fatal-pragma>`_ pragmas.
 
-
 elif defined(genode):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
-    importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
-    header: "<base/sleep.h>".}
+  include genode/env
+
+  var systemEnv {.exportc: runtimeEnvSym.}: GenodeEnvPtr
+
+  type GenodeEnv* = GenodeEnvPtr
+    ## Opaque type representing Genode environment.
+
+  proc quit*(env: GenodeEnv; errorcode: int) {.magic: "Exit", noreturn,
+    importcpp: "#->parent().exit(@); Genode::sleep_forever()", header: "<base/sleep.h>".}
+
+  proc quit*(errorcode: int = QuitSuccess) =
+    systemEnv.quit(errorCode)
+
+
 
 elif defined(nodejs):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
@@ -4215,3 +4225,22 @@ when not defined(js):
 type
   ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
                                          ## as a `for-loop macro`:idx:
+
+when defined(genode):
+  var componentConstructHook*: proc (env: GenodeEnv) {.nimcall.}
+      ## Hook into the Genode component bootstrap process.
+      ## This hook is called after all globals are initialized.
+      ## When this hook is set the component will not automatically exit,
+      ## call ``quit`` explicitly to do so. This is the only available method
+      ## of accessing the initial Genode environment.
+
+  proc nim_component_construct(env: GenodeEnv) {.exportc.} =
+    ## Procedure called during ``Component::construct`` by the loader.
+    if componentConstructHook.isNil:
+      env.quit(programResult)
+        # No native Genode application initialization,
+        # exit as would POSIX.
+    else:
+      componentConstructHook(env)
+        # Perform application initialization
+        # and return to thread entrypoint.

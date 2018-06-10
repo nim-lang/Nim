@@ -78,7 +78,7 @@ when defined(emscripten):
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode):
-  include genodealloc # osAllocPages, osTryAllocPages, osDeallocPages
+  include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
 elif defined(posix):
   const

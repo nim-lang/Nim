@@ -42,6 +42,12 @@
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
   (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
+- For string inputs, ``unicode.isUpper`` and ``unicode.isLower`` now require a
+  second mandatory parameter ``skipNonAlpha``.
+
+- For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
+  require a second mandatory parameter ``skipNonAlpha``.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -91,6 +97,7 @@
   API". Using the Nim compiler and its VM as a scripting engine has never been
   easier. See ``tests/compilerapi/tcompilerapi.nim`` for an example of how to
   use the Nim VM in a native Nim application.
+- Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
 
 
