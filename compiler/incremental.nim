@@ -33,6 +33,7 @@ when nimIncremental:
       db*: DbConn
       w*: Writer
       r*: Reader
+      configChanged*: bool
 
   proc init*(incr: var IncrementalCtx) =
     incr.w.sstack = @[]
@@ -89,6 +90,12 @@ when nimIncremental:
     db.exec(sql"""
       create table if not exists controlblock(
         idgen integer not null
+      );
+    """)
+
+    db.exec(sql"""
+      create table if not exists config(
+        config varchar(8000) not null
       );
     """)
 

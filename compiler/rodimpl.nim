@@ -11,15 +11,28 @@
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees
+  btrees, trees, condsyms, nversion
 
 ## Todo:
-## - Make conditional symbols and the configuration part of a module's
-##   dependencies. Also include the rodfile "version".
 ## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
+## - Patch the rest of the compiler to do lazy loading of proc bodies.
+## - Patch the C codegen to cache proc bodies and maybe types.
 
 template db(): DbConn = g.incr.db
+
+proc encodeConfig(g: ModuleGraph): string =
+  result = newStringOfCap(100)
+  result.add RodFileVersion
+  for d in definedSymbolNames(g.config.symbols):
+    result.add ' '
+    result.add d
+
+  template serialize(field) =
+    result.add ' '
+    result.add($g.config.field)
+
+  depConfigFields(serialize)
 
 proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
                     cycleCheck: var IntSet): bool =
@@ -40,7 +53,9 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
   return false
 
 proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
-  if g.config.symbolFiles in {disabledSf, writeOnlySf}: return getID()
+  if g.config.symbolFiles in {disabledSf, writeOnlySf} or
+     g.incr.configChanged:
+    return getID()
   let module = g.incr.db.getRow(
     sql"select id, fullHash, nimid from modules where fullpath = ?", fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
@@ -63,13 +78,6 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
     db.exec(sql"delete from syms where module = ?", module[0])
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
-
-when false:
-  proc getDefines(): string =
-    result = ""
-    for d in definedSymbolNames():
-      if result.len != 0: add(result, " ")
-      add(result, d)
 
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.id):
@@ -863,9 +871,12 @@ proc setupModuleCache*(g: ModuleGraph) =
     db = open(connection=dbfile, user="nim", password="",
               database="nim")
     createDb(db)
+    db.exec(sql"insert into config(config) values (?)", encodeConfig(g))
   else:
     db = open(connection=dbfile, user="nim", password="",
               database="nim")
+    let oldConfig = db.getValue(sql"select config from config")
+    g.incr.configChanged = oldConfig != encodeConfig(g)
   db.exec(sql"pragma journal_mode=off")
   db.exec(sql"pragma SYNCHRONOUS=off")
   db.exec(sql"pragma LOCKING_MODE=exclusive")
