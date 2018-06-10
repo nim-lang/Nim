@@ -789,6 +789,10 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
         extccomp.addExternalFileToLink(g.config, n[1].strVal)
+      of "passl":
+        extccomp.addLinkOption(g.config, n[1].strVal)
+      of "passc":
+        extccomp.addCompileOption(g.config, n[1].strVal)
       of "inc":
         let destKey = n[1].strVal
         let by = n[2].intVal

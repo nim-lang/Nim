@@ -82,7 +82,6 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
       return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
-# implementation
 
 proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
   var recorded = newNodeI(nkCommentStmt, n.info)
@@ -933,8 +932,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCompile: processCompile(c, it)
       of wLink: processCommonLink(c, it, linkNormal)
       of wLinksys: processCommonLink(c, it, linkSys)
-      of wPassl: extccomp.addLinkOption(c.config, expectStrLit(c, it))
-      of wPassc: extccomp.addCompileOption(c.config, expectStrLit(c, it))
+      of wPassl:
+        let s = expectStrLit(c, it)
+        extccomp.addLinkOption(c.config, s)
+        recordPragma(c, it, "passl", s)
+      of wPassc:
+        let s = expectStrLit(c, it)
+        extccomp.addCompileOption(c.config, s)
+        recordPragma(c, it, "passc", s)
       of wBreakpoint: pragmaBreakpoint(c, it)
       of wWatchPoint: pragmaWatchpoint(c, it)
       of wPush:

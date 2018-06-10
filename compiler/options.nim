@@ -246,11 +246,7 @@ template depConfigFields*(fn) {.dirty.} =
   fn(selectedGC)
 
 template serializeConfigFields(fn) {.dirty.} =
-  fn(cppDefines)
-  fn(externalToLink)
-  fn(linkOptions)
-  fn(compileOptions)
-  fn(toCompile)
+  fn(cppDefines) # XXX TODO: Replay this.
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
