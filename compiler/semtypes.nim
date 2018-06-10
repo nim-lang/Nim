@@ -232,9 +232,9 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
 
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-      localError(c.config, n.info, errPureTypeMismatch)
+      localError(c.config, n.info, "type mismatch")
     elif not rangeT[0].isOrdinalType and rangeT[0].kind notin tyFloat..tyFloat128:
-      localError(c.config, n.info, errOrdinalOrFloatTypeExpected)
+      localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
