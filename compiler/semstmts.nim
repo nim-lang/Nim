@@ -1771,12 +1771,14 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   inc c.inStaticContext
   let a = semStmt(c, n.sons[0])
   dec c.inStaticContext
-  n.sons[0] = a
-  evalStaticStmt(c.module, c.graph, a, c.p.owner)
-  # for incremental replays, keep the AST as required for replays:
-  result = n
-  #result = newNodeI(nkDiscardStmt, n.info, 1)
-  #result.sons[0] = c.graph.emptyNode
+  when false:
+    n.sons[0] = a
+    evalStaticStmt(c.module, c.graph, a, c.p.owner)
+    # for incremental replays, keep the AST as required for replays:
+    result = n
+  else:
+    result = newNodeI(nkDiscardStmt, n.info, 1)
+    result.sons[0] = c.graph.emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,

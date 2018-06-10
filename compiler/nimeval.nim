@@ -73,7 +73,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, s, nil, i.graph.cache)
+  processModule(i.graph, i.mainModule, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -112,7 +112,7 @@ proc createInterpreter*(scriptName: string;
   vm.mode = emRepl
   vm.features = flags
   graph.vm = vm
-  graph.compileSystemModule(cache)
+  graph.compileSystemModule()
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
 
 proc destroyInterpreter*(i: Interpreter) =
