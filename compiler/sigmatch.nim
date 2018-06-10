@@ -1171,7 +1171,9 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         else:
           return isNone
 
-      if fRange.rangeHasUnresolvedStatic:
+      if fRange.kind == tyAnything:
+        return isSubtype
+      elif fRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, fRange, a)
       elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
