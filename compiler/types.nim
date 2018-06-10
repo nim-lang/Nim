@@ -86,11 +86,11 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getValue*[T:BiggestInt|BiggestFloat|string](n: PNode): T =
-  ## get value of liternal node
+proc getOrdValue*(n: PNode): BiggestInt =
   case n.kind
-  of nkNilLit: reset(result)
-  of nkHiddenStdConv: result = getValue[T](n.sons[1])
+  of nkCharLit..nkUInt64Lit: result = n.intVal
+  of nkNilLit: result = 0
+  of nkHiddenStdConv: result = getOrdValue(n.sons[1])
   else:
     #localError(n.info, errOrdinalTypeExpected)
     # XXX check usages of getOrdValue
@@ -589,15 +589,28 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstValue*[T:BiggestInt|BiggestFloat](t: PType): T =
-  case t.kind:
-    of tyVar: result = firstValue[T](t.sons[0])
-    of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
-      result = firstValue[T](lastSon(t))
-    of tyRange:
-      assert(t.n != nil)        # range directly given:
-      assert(t.n.kind == nkRange)
-      result = getValue[T](t.n.sons[0])
+proc firstOrd*(t: PType): BiggestInt =
+  case t.kind
+  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+    result = 0
+  of tySet, tyVar: result = firstOrd(t.sons[0])
+  of tyArray: result = firstOrd(t.sons[0])
+  of tyRange:
+    assert(t.n != nil)        # range directly given:
+    assert(t.n.kind == nkRange)
+    result = getOrdValue(t.n.sons[0])
+  of tyInt:
+    if platform.intSize == 4: result = - (2147483646) - 2
+    else: result = 0x8000000000000000'i64
+  of tyInt8: result = - 128
+  of tyInt16: result = - 32768
+  of tyInt32: result = - 2147483646 - 2
+  of tyInt64: result = 0x8000000000000000'i64
+  of tyUInt..tyUInt64: result = 0
+  of tyEnum:
+    # if basetype <> nil then return firstOrd of basetype
+    if sonsLen(t) > 0 and t.sons[0] != nil:
+      result = firstOrd(t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
@@ -612,9 +625,10 @@ proc firstValue*[T:BiggestInt|BiggestFloat](t: PType): T =
 
 proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
-  of tyVar: result = lastValue[T](t.sons[0])
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
-    result = lastValue[T](lastSon(t))
+  of tyBool: result = 1
+  of tyChar: result = 255
+  of tySet, tyVar: result = lastOrd(t.sons[0])
+  of tyArray: result = lastOrd(t.sons[0])
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
