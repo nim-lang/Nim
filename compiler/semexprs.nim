@@ -1613,10 +1613,8 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
   if not onlyCurrentScope and considerQuotedIdent(c.config, n[0], n).s == "defined":
-    if n.sons[1].kind != nkIdent:
-      localError(c.config, n.info, "obsolete usage of 'defined', use 'declared' instead")
-    elif isDefined(c.config, n.sons[1].ident.s):
-      result.intVal = 1
+    let d = considerQuotedIdent(c.config, n[1], n)
+    result.intVal = ord isDefined(c.config, d.s)
   elif lookUpForDefined(c, n.sons[1], onlyCurrentScope) != nil:
     result.intVal = 1
   result.info = n.info
