@@ -748,10 +748,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wImportc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
+        recordPragma(c, it, "cppdefine", name)
         makeExternImport(c, sym, name, it.info)
       of wImportCompilerProc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
+        recordPragma(c, it, "cppdefine", name)
         processImportCompilerProc(c, sym, name, it.info)
       of wExtern: setExternName(c, sym, expectStrLit(c, it), it.info)
       of wImmediate:
@@ -844,6 +846,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCompilerProc, wCore:
         noVal(c, it)           # compilerproc may not get a string!
         cppDefine(c.graph.config, sym.name.s)
+        recordPragma(c, it, "cppdefine", sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(c, sym)
       of wProcVar:
         noVal(c, it)
