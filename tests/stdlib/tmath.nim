@@ -79,4 +79,4 @@ suite "^":
     check: compiles(5.5 ^ 2.int8)
     check: compiles(5.5 ^ 2.uint)
     check: compiles(5.5 ^ 2.uint8)
-    check: not compiles(5.5 ^ 2.2)
+    check: compiles(5.5 ^ 2.2)
