@@ -44,6 +44,7 @@ ifeq ($(uos),darwin)
   myos = macosx
   ifeq ($(HOSTTYPE),powerpc)
     ucpu = powerpc
+    LD = gcc
   else
     CC = clang
     LD = clang
