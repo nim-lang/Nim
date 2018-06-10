@@ -10,7 +10,7 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
+  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options
 
 type
   TPreferedDesc* = enum
@@ -92,27 +92,9 @@ proc getValue*[T:BiggestInt|BiggestFloat|string](n: PNode): T =
   of nkNilLit: reset(result)
   of nkHiddenStdConv: result = getValue[T](n.sons[1])
   else:
-    when T is BiggestInt:
-      case n.kind
-      of nkCharLit..nkUInt64Lit: result = n.intVal
-      else:
-        localError(n.info, errOrdinalTypeExpected)
-        result = 0
-    elif T is BiggestFloat:
-      case n.kind
-      of nkFloatLiterals: result = n.floatVal
-      else:
-        localError(n.info, errFloatTypeExpected)
-        result = NaN
-    else:
-      case n.kind:
-      of nkStrLit..nkTripleStrLit: result = n.strVal
-      else:
-        localError(n.info, errStringTypeExpected)
-        result = nil
-
-proc getOrdValue*(n: PNode): BiggestInt {.inline.} =
-  getValue[BiggestInt](n)
+    #localError(n.info, errOrdinalTypeExpected)
+    # XXX check usages of getOrdValue
+    result = high(BiggestInt)
 
 proc isIntLit*(t: PType): bool {.inline.} =
   result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
@@ -124,14 +106,14 @@ proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
   result = sym.owner.name.s & '.' & sym.name.s & '('
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1):
-    var p = n.sons[i]
+    let p = n.sons[i]
     if p.kind == nkSym:
       add(result, p.sym.name.s)
       add(result, ": ")
       add(result, typeToString(p.sym.typ, prefer))
       if i != sonsLen(n)-1: add(result, ", ")
     else:
-      internalError("getProcHeader")
+      result.add renderTree(p)
   add(result, ')')
   if n.sons[0].typ != nil:
     result.add(": " & typeToString(n.sons[0].typ, prefer))
@@ -214,10 +196,10 @@ proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
       of nkOfBranch, nkElse:
         result = searchTypeNodeForAux(lastSon(n.sons[i]), p, marker)
         if result: return
-      else: internalError("searchTypeNodeForAux(record case branch)")
+      else: discard
   of nkSym:
     result = searchTypeForAux(n.sym.typ, p, marker)
-  else: internalError(n.info, "searchTypeNodeForAux()")
+  else: discard
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate,
                       marker: var IntSet): bool =
@@ -263,7 +245,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
   if t == nil: return
   case t.kind
   of tyObject:
-    if (t.n != nil):
+    if t.n != nil:
       if searchTypeNodeForAux(t.n, isObjectWithTypeFieldPredicate, marker):
         return frEmbedded
     for i in countup(0, sonsLen(t) - 1):
@@ -472,16 +454,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if t.sons[0].kind == tyNone: result = "typedesc"
     else: result = "type " & typeToString(t.sons[0])
   of tyStatic:
-    internalAssert t.len > 0
     if prefer == preferGenericArg and t.n != nil:
       result = t.n.renderTree
     else:
-      result = "static[" & typeToString(t.sons[0]) & "]"
+      result = "static[" & (if t.len > 0: typeToString(t.sons[0]) else: "") & "]"
       if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
-    internalAssert t.sym != nil and t.sym.owner != nil
-    if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
-    return t.sym.owner.name.s
+    if t.sym != nil and t.sym.owner != nil:
+      if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
+      return t.sym.owner.name.s
+    else:
+      result = "<invalid tyUserTypeClass>"
   of tyBuiltInTypeClass:
     result = case t.base.kind:
       of tyVar: "var"
@@ -515,7 +498,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
-    internalAssert t.len == 0
+    #internalAssert t.len == 0
     result = "untyped"
   of tyFromExpr:
     result = renderTree(t.n)
@@ -616,45 +599,18 @@ proc firstValue*[T:BiggestInt|BiggestFloat](t: PType): T =
       assert(t.n.kind == nkRange)
       result = getValue[T](t.n.sons[0])
     else:
-      when T is BiggestInt:
-        case t.kind:
-        of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
-          result = 0
-        of tySet, tyVar: result = firstValue[T](t.sons[0])
-        of tyArray: result = firstValue[T](t.sons[0])
-        of tyInt:
-          if platform.intSize == 4: result = - (2147483646) - 2
-          else: result = 0x8000000000000000'i64
-        of tyInt8: result = - 128
-        of tyInt16: result = - 32768
-        of tyInt32: result = - 2147483646 - 2
-        of tyInt64: result = 0x8000000000000000'i64
-        of tyUInt..tyUInt64: result = 0
-        of tyEnum:
-          # if basetype <> nil then return firstOrd of basetype
-          if sonsLen(t) > 0 and t.sons[0] != nil:
-            result = firstValue[T](t.sons[0])
-          else:
-            assert(t.n.sons[0].kind == nkSym)
-            result = t.n.sons[0].sym.position
-        of tyOrdinal:
-          if t.len > 0: result = firstValue[T](lastSon(t))
-          else: internalError("invalid kind for first(" & $t.kind & ')')
-        else:
-          internalError("invalid kind for first(" & $t.kind & ')')
-          result = 0
+      assert(t.n.sons[0].kind == nkSym)
+      result = t.n.sons[0].sym.position
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+    result = firstOrd(lastSon(t))
+  of tyOrdinal:
+    if t.len > 0: result = firstOrd(lastSon(t))
+    else: internalError(newPartialConfigRef(), "invalid kind for firstOrd(" & $t.kind & ')')
+  else:
+    internalError(newPartialConfigRef(), "invalid kind for firstOrd(" & $t.kind & ')')
+    result = 0
 
-      elif T is BiggestFloat:
-        case t.kind:
-          of tyFloat..tyFloat128: result = -Inf
-          else:
-            internalError("invalid kind for first(" & $t.kind & ')')
-            result = NaN
-
-proc firstOrd*(t: PType): BiggestInt {.inline.} =
-  firstValue[BiggestInt](t)
-
-proc lastValue*[T:BiggestInt|BiggestFloat](t: PType; fixedUnsigned = false): T =
+proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
   of tyVar: result = lastValue[T](t.sons[0])
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
@@ -662,50 +618,36 @@ proc lastValue*[T:BiggestInt|BiggestFloat](t: PType; fixedUnsigned = false): T =
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
-    result = getValue[T](t.n.sons[1])
+    result = getOrdValue(t.n.sons[1])
+  of tyInt:
+    if platform.intSize == 4: result = 0x7FFFFFFF
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyInt8: result = 0x0000007F
+  of tyInt16: result = 0x00007FFF
+  of tyInt32: result = 0x7FFFFFFF
+  of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt:
+    if platform.intSize == 4: result = 0xFFFFFFFF
+    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt8: result = 0xFF
+  of tyUInt16: result = 0xFFFF
+  of tyUInt32: result = 0xFFFFFFFF
+  of tyUInt64:
+    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyEnum:
+    assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
+    result = t.n.sons[sonsLen(t.n) - 1].sym.position
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+    result = lastOrd(lastSon(t))
+  of tyProxy: result = 0
+  of tyOrdinal:
+    if t.len > 0: result = lastOrd(lastSon(t))
+    else: internalError(newPartialConfigRef(), "invalid kind for lastOrd(" & $t.kind & ')')
   else:
-    when T is BiggestInt:
-      case t.kind
-      of tyBool: result = 1
-      of tyChar: result = 255
-      of tySet, tyArray: result = lastValue[T](t.sons[0])
-      of tyInt:
-        if platform.intSize == 4: result = 0x7FFFFFFF
-        else: result = 0x7FFFFFFFFFFFFFFF'i64
-      of tyInt8: result = 0x0000007F
-      of tyInt16: result = 0x00007FFF
-      of tyInt32: result = 0x7FFFFFFF
-      of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
-      of tyUInt:
-        if platform.intSize == 4: result = 0xFFFFFFFF
-        elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-        else: result = 0x7FFFFFFFFFFFFFFF'i64
-      of tyUInt8: result = 0xFF
-      of tyUInt16: result = 0xFFFF
-      of tyUInt32: result = 0xFFFFFFFF
-      of tyUInt64:
-        if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-        else: result = 0x7FFFFFFFFFFFFFFF'i64
-      of tyEnum:
-        assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
-        result = t.n.sons[sonsLen(t.n) - 1].sym.position
-
-      of tyProxy: result = 0
-      of tyOrdinal:
-        if t.len > 0: result = lastValue[T](lastSon(t))
-        else: internalError("invalid kind for last(" & $t.kind & ')')
-      else:
-        internalError("invalid kind for last(" & $t.kind & ')')
-        result = 0
-    elif T is BiggestFloat:
-      case t.kind:
-        of tyFloat..tyFloat128: result = Inf
-        else:
-          internalError("invalid kind for first(" & $t.kind & ')')
-          result = NaN
-
-proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt {.inline.} = 
-  lastValue[BiggestInt](t, fixedUnsigned)
+    internalError(newPartialConfigRef(), "invalid kind for lastOrd(" & $t.kind & ')')
+    result = 0
 
 proc lengthOrd*(t: PType): BiggestInt =
   case t.kind
@@ -794,7 +736,7 @@ proc equalParam(a, b: PSym): TParamsEquality =
 
 proc sameConstraints(a, b: PNode): bool =
   if isNil(a) and isNil(b): return true
-  internalAssert a.len == b.len
+  if a.len != b.len: return false
   for i in 1 ..< a.len:
     if not exprStructuralEquivalent(a[i].sym.constraint,
                                     b[i].sym.constraint):
@@ -853,7 +795,8 @@ proc sameTuple(a, b: PType, c: var TSameTypeClosure): bool =
           var y = b.n.sons[i].sym
           result = x.name.id == y.name.id
           if not result: break
-        else: internalError(a.n.info, "sameTuple")
+        else:
+          return false
     elif a.n != b.n and (a.n == nil or b.n == nil) and IgnoreTupleFields notin c.flags:
       result = false
 
@@ -1043,7 +986,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyOptAsRef: internalError("sameFlags")
+  of tyUnused, tyOptAsRef: result = false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1102,8 +1045,12 @@ proc commonSuperclass*(a, b: PType): PType =
     x = x.sons[0]
   var y = b
   while y != nil:
+    var t = y # bug #7818, save type before skip
     y = skipTypes(y, skipPtrs)
-    if ancestors.contains(y.id): return y
+    if ancestors.contains(y.id):
+      # bug #7818, defer the previous skipTypes
+      if t.kind != tyGenericInst: t = y
+      return t
     y = y.sons[0]
 
 type
@@ -1237,7 +1184,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused, tyOptAsRef: internalError("typeAllowedAux")
+  of tyUnused, tyOptAsRef: result = t
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1326,7 +1273,8 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
         if res < 0: return res
         maxSize = max(maxSize, res)
         maxAlign = max(maxAlign, b)
-      else: internalError("computeRecSizeAux(record case branch)")
+      else:
+        return szIllegalRecursion
     currOffset = align(currOffset, maxAlign) + maxSize
     result = align(result, maxAlign) + maxSize
     a = maxAlign
@@ -1487,7 +1435,8 @@ proc getReturnType*(s: PSym): PType =
 
 proc getSize*(typ: PType): BiggestInt =
   result = computeSize(typ)
-  if result < 0: internalError("getSize: " & $typ.kind)
+  #if result < 0: internalError("getSize: " & $typ.kind)
+  # XXX review all usages of 'getSize'
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind
@@ -1515,8 +1464,7 @@ proc baseOfDistinct*(t: PType): PType =
     while it.kind in {tyPtr, tyRef}:
       parent = it
       it = it.lastSon
-    if it.kind == tyDistinct:
-      internalAssert parent != nil
+    if it.kind == tyDistinct and parent != nil:
       parent.sons[0] = it.sons[0]
 
 proc safeInheritanceDiff*(a, b: PType): int =
@@ -1548,8 +1496,9 @@ type
 proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
-  internalAssert formal.n.sons[0].kind == nkEffectList
-  internalAssert actual.n.sons[0].kind == nkEffectList
+  if formal.n.sons[0].kind != nkEffectList or
+     actual.n.sons[0].kind != nkEffectList:
+    return efTagsUnknown
 
   var spec = formal.n.sons[0]
   if spec.len != 0:
@@ -1674,14 +1623,14 @@ proc skipHiddenSubConv*(n: PNode): PNode =
   else:
     result = n
 
-proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
+proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
   if formal.kind != tyError and actual.kind != tyError:
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
-    var msg = msgKindToString(errTypeMismatch) &
+    var msg = "type mismatch: got <" &
               typeToString(actual) & "> " &
-              msgKindToString(errButExpectedX) % [x]
+              "but expected '" & x & "'"
 
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)
@@ -1696,4 +1645,4 @@ proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-    localError(info, errGenerated, msg)
+    localError(conf, info, msg)

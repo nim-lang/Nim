@@ -27,8 +27,6 @@ type
   EncodingError* = object of ValueError ## exception that is raised
                                         ## for encoding errors
 
-{.deprecated: [EInvalidEncoding: EncodingError, PConverter: EncodingConverter].}
-
 when defined(windows):
   proc eqEncodingNames(a, b: string): bool =
     var i = 0

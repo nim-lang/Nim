@@ -309,7 +309,6 @@ when not defined(testing) and isMainModule:
     Node = object
       next, prev: PNode
       data: string
-  {.deprecated: [TNode: Node].}
 
   proc buildList(): PNode =
     new(result)

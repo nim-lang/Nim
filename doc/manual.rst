@@ -2531,7 +2531,7 @@ The implicit initialization can be avoided for optimization reasons with the
 
 .. code-block:: nim
   var
-    a {.noInit.}: array [0..1023, char]
+    a {.noInit.}: array[0..1023, char]
 
 If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 ``result`` variable:
@@ -3200,7 +3200,7 @@ notation. (Thus an operator can have more than two parameters):
     # Multiply and add
     result = a * b + c
 
-  assert `*+`(3, 4, 6) == `*`(a, `+`(b, c))
+  assert `*+`(3, 4, 6) == `+`(`*`(a, b), c)
 
 
 Export marker
@@ -6302,6 +6302,9 @@ modules don't need to import a module's dependencies:
   var x: MyObject
   echo $x
 
+When the exported symbol is another module, all of its definitions will
+be forwarded. You can use an ``except`` list to exclude some of the symbols.
+
 Note on paths
 -----------
 In module related statements, if any part of the module name /
@@ -6633,7 +6636,7 @@ Syntactically it has to be used as a statement inside the loop:
       enumA, enumB, enumC, enumD, enumE
 
   proc vm() =
-    var instructions: array [0..100, MyEnum]
+    var instructions: array[0..100, MyEnum]
     instructions[2] = enumC
     instructions[3] = enumD
     instructions[4] = enumA
@@ -7802,8 +7805,9 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the ``threadvar`` pragma; it is
-a `thread-local`:idx: variable then:
+A variable can be marked with the ``threadvar`` pragma, which makes it a
+`thread-local`:idx: variable; Additionally, this implies all the effects
+of the ``global`` pragma.
 
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]

@@ -99,7 +99,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(info: TLineInfo, s: PSym; usageSym: var PSym)
+proc markUsed*(conf: ConfigRef; info: TLineInfo, s: PSym; usageSym: var PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
@@ -152,13 +152,13 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
     for i in 1..min(sonsLen(typeParams), sonsLen(binding)-1):
       var formalTypeParam = typeParams.sons[i-1].typ
       var bound = binding[i].typ
-      internalAssert bound != nil
-      if formalTypeParam.kind == tyTypeDesc:
-        if bound.kind != tyTypeDesc:
-          bound = makeTypeDesc(ctx, bound)
-      else:
-        bound = bound.skipTypes({tyTypeDesc})
-      put(c, formalTypeParam, bound)
+      if bound != nil:
+        if formalTypeParam.kind == tyTypeDesc:
+          if bound.kind != tyTypeDesc:
+            bound = makeTypeDesc(ctx, bound)
+        else:
+          bound = bound.skipTypes({tyTypeDesc})
+        put(c, formalTypeParam, bound)
 
 proc newCandidate*(ctx: PContext, callee: PSym,
                    binding: PNode, calleeScope = -1): TCandidate =
@@ -362,8 +362,8 @@ proc concreteType(c: TCandidate, t: PType): PType =
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
   of tyGenericInvocation:
-    internalError("cannot resolve type: " & typeToString(t))
     result = t
+    doAssert(false, "cannot resolve type: " & typeToString(t))
   else:
     result = t                # Note: empty is valid here
 
@@ -519,8 +519,8 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.n != nil and a.n != nil:
       for i in countup(0, sonsLen(f.n) - 1):
         # check field names:
-        if f.n.sons[i].kind != nkSym: internalError(f.n.info, "recordRel")
-        elif a.n.sons[i].kind != nkSym: internalError(a.n.info, "recordRel")
+        if f.n.sons[i].kind != nkSym: return isNone
+        elif a.n.sons[i].kind != nkSym: return isNone
         else:
           var x = f.n.sons[i].sym
           var y = a.n.sons[i].sym
@@ -612,7 +612,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       return isNone
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
-        optThreadAnalysis in gGlobalOptions:
+        optThreadAnalysis in c.c.config.globalOptions:
       # noSideEffect implies ``tfThread``!
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
@@ -668,7 +668,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     matchedConceptContext.prev = prevMatchedConcept
     matchedConceptContext.depth = prevMatchedConcept.depth + 1
     if prevMatchedConcept.depth > 4:
-      localError(body.info, $body & " too nested for type matching")
+      localError(m.c.graph.config, body.info, $body & " too nested for type matching")
       return nil
 
   openScope(c)
@@ -693,7 +693,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info)
+        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -767,19 +767,20 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
 
   result.n = checkedBody
 
-proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
+proc shouldSkipDistinct(m: TCandidate; rules: PNode, callIdent: PIdent): bool =
+  # XXX This is bad as 'considerQuotedIdent' can produce an error!
   if rules.kind == nkWith:
     for r in rules:
-      if r.considerQuotedIdent == callIdent: return true
+      if considerQuotedIdent(m.c.graph.config, r) == callIdent: return true
     return false
   else:
     for r in rules:
-      if r.considerQuotedIdent == callIdent: return false
+      if considerQuotedIdent(m.c.graph.config, r) == callIdent: return false
     return true
 
-proc maybeSkipDistinct(t: PType, callee: PSym): PType =
+proc maybeSkipDistinct(m: TCandidate; t: PType, callee: PSym): PType =
   if t != nil and t.kind == tyDistinct and t.n != nil and
-     shouldSkipDistinct(t.n, callee.name):
+     shouldSkipDistinct(m, t.n, callee.name):
     result = t.base
   else:
     result = t
@@ -875,11 +876,11 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
 
   return false
 
-proc failureToInferStaticParam(n: PNode) =
+proc failureToInferStaticParam(conf: ConfigRef; n: PNode) =
   let staticParam = n.findUnresolvedStatic
   let name = if staticParam != nil: staticParam.sym.name.s
              else: "unknown"
-  localError(n.info, errCannotInferStaticParam, name)
+  localError(conf, n.info, "cannot infer the value of the static param '" & name & "'")
 
 proc inferStaticsInRange(c: var TCandidate,
                          inferred, concrete: PType): TTypeRelation =
@@ -893,7 +894,7 @@ proc inferStaticsInRange(c: var TCandidate,
     if inferStaticParam(c, exp, rhs):
       return isGeneric
     else:
-      failureToInferStaticParam exp
+      failureToInferStaticParam(c.c.graph.config, exp)
 
   if lowerBound.kind == nkIntLit:
     if upperBound.kind == nkIntLit:
@@ -1006,7 +1007,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         of tyStatic:
           candidate = computedType
         else:
-          localError(f.n.info, errTypeExpected)
+          # XXX What is this non-sense? Error reporting in signature matching?
+          discard "localError(f.n.info, errTypeExpected)"
       else:
         discard
 
@@ -1020,7 +1022,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   template doBind: bool = trDontBind notin flags
 
   # var and static arguments match regular modifier-free types
-  var a = aOrig.skipTypes({tyStatic, tyVar, tyLent}).maybeSkipDistinct(c.calleeSym)
+  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent}), c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
@@ -1449,7 +1451,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
-          internalError("wrong instantiated type!")
+          internalError(c.c.graph.config, "wrong instantiated type!")
         elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
           # Workaround for regression #4589
           if f.sons[i].kind != tyTypeDesc: return
@@ -1481,7 +1483,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if x == nil:
             discard "maybe fine (for eg. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
-            internalError("wrong instantiated type!")
+            internalError(c.c.graph.config, "wrong instantiated type!")
           else:
             put(c, f.sons[i], x)
 
@@ -1604,7 +1606,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if f.sonsLen == 0:
             result = isGeneric
           else:
-            internalAssert a.sons != nil and a.sons.len > 0
+            internalAssert c.c.graph.config, a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
             var aa = a
             while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
@@ -1746,13 +1748,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
           result = isNone
     else:
-      localError(f.n.info, errTypeExpected)
+      localError(c.c.graph.config, f.n.info, "type expected")
       result = isNone
 
   of tyNone:
     if a.kind == tyNone: result = isEqual
   else:
-    internalError " unknown type kind " & $f.kind
+    internalError c.c.graph.config, " unknown type kind " & $f.kind
 
 proc cmpTypes*(c: PContext, f, a: PType): TTypeRelation =
   var m: TCandidate
@@ -1765,7 +1767,7 @@ proc getInstantiatedType(c: PContext, arg: PNode, m: TCandidate,
   if result == nil:
     result = generateTypeInstance(c, m.bindings, arg, f)
   if result == nil:
-    internalError(arg.info, "getInstantiatedType")
+    internalError(c.graph.config, arg.info, "getInstantiatedType")
     result = errorType(c)
 
 proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
@@ -1778,7 +1780,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
       result.typ = errorType(c)
   else:
     result.typ = f
-  if result.typ == nil: internalError(arg.info, "implicitConv")
+  if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   addSon(result, ast.emptyNode)
   addSon(result, arg)
 
@@ -1799,7 +1801,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric}:
-      markUsed(arg.info, c.converters[i], c.graph.usageSym)
+      markUsed(c.config, arg.info, c.converters[i], c.graph.usageSym)
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -1969,7 +1971,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
-    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
+         m.inheritancePenalty > 0:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
@@ -2017,6 +2020,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
           if r == isGeneric:
             result.typ = getInstantiatedType(c, arg, m, base(f))
           m.baseTypeMatch = true
+        # bug #4799, varargs accepting subtype relation object
+        elif r == isSubtype:
+          inc(m.subtypeMatches)
+          if f.kind == tyTypeDesc:
+            result = arg
+          else:
+            result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+          m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
           if result != nil: m.baseTypeMatch = true
@@ -2039,8 +2050,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    for i in 0 ..< arg.len:
+      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
+                                  skIterator, skMacro, skTemplate}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         if tfUnresolved in z.callee.flags: continue
@@ -2069,23 +2081,23 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
               x = z
             elif cmp == 0:
               y = z           # z is as good as x
+
     if x.state == csEmpty:
       result = nil
     elif y.state == csMatch and cmpCandidates(x, y) == 0:
       if x.state != csMatch:
-        internalError(arg.info, "x.state is not csMatch")
+        internalError(m.c.graph.config, arg.info, "x.state is not csMatch")
       # ambiguous: more than one symbol fits!
       # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
       # anyway:
-      if f.kind == tyExpr: result = arg
+      if f.kind in {tyExpr, tyStmt}: result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
-      markUsed(arg.info, arg.sons[best].sym, m.c.graph.usageSym)
+      markUsed(m.c.config, arg.info, arg.sons[best].sym, m.c.graph.usageSym)
       styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
-
 
 proc setSon(father: PNode, at: int, son: PNode) =
   let oldLen = father.len
@@ -2122,10 +2134,10 @@ proc prepareOperand(c: PContext; a: PNode): PNode =
     result = a
     considerGenSyms(c, result)
 
-proc prepareNamedParam(a: PNode) =
+proc prepareNamedParam(a: PNode; conf: ConfigRef) =
   if a.sons[0].kind != nkIdent:
     var info = a.sons[0].info
-    a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
+    a.sons[0] = newIdentNode(considerQuotedIdent(conf, a.sons[0]), info)
 
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
@@ -2178,7 +2190,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
   while a < n.len:
-    if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
+    if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
+      formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
       if container.isNil:
         container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
@@ -2189,9 +2202,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
-      prepareNamedParam(n.sons[a])
+      prepareNamedParam(n.sons[a], c.config)
       if n.sons[a].sons[0].kind != nkIdent:
-        localError(n.sons[a].info, errNamedParamHasToBeIdent)
+        localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
         m.state = csNoMatch
         return
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
@@ -2234,8 +2247,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # we have no formal here to snoop at:
           n.sons[a] = prepareOperand(c, n.sons[a])
           if skipTypes(n.sons[a].typ, abstractVar-{tyTypeDesc}).kind==tyString:
-            addSon(m.call, implicitConv(nkHiddenStdConv, getSysType(tyCString),
-                                        copyTree(n.sons[a]), m, c))
+            addSon(m.call, implicitConv(nkHiddenStdConv,
+                  getSysType(c.graph, n.sons[a].info, tyCString),
+                  copyTree(n.sons[a]), m, c))
           else:
             addSon(m.call, copyTree(n.sons[a]))
         elif formal != nil and formal.typ.kind == tyVarargs:
@@ -2258,7 +2272,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           return
       else:
         if m.callee.n.sons[f].kind != nkSym:
-          internalError(n.sons[a].info, "matches")
+          internalError(c.config, n.sons[a].info, "matches")
           return
         formal = m.callee.n.sons[f].sym
         if containsOrIncl(marker, formal.position) and container.isNil:
@@ -2366,7 +2380,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   if col >= dc.typ.len:
-    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
+    localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
     return nil
   var f = dc.typ.sons[col]
 
@@ -2375,7 +2389,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   else:
     if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
-    localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
+    localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
     if op == attachedDeepCopy:

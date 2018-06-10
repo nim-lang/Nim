@@ -197,6 +197,9 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
+  if until.len == 0:
+    token.setLen(0)
+    return 0
   var i = start
   while i < s.len:
     if s[i] == until[0]:
@@ -364,8 +367,6 @@ type
     ikDollar,                ## escaped ``$`` part of the interpolated string
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
-
-{.deprecated: [TInterpolatedKind: InterpolatedKind].}
 
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =

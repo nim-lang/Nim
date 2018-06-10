@@ -944,12 +944,8 @@ String variables are **mutable**, so appending to a string
 is possible, and quite efficient. Strings in Nim are both zero-terminated and have a
 length field. A string's length can be retrieved with the builtin ``len``
 procedure; the length never counts the terminating zero. Accessing the
-terminating zero is not an error and often leads to simpler code:
-
-.. code-block:: nim
-  if s[i] == 'a' and s[i+1] == 'b':
-    # no need to check whether ``i < len(s)``!
-    ...
+terminating zero is an error, it only exists so that a Nim string can be converted
+to a ``cstring`` without doing a copy.
 
 The assignment operator for strings copies the string. You can use the ``&``
 operator to concatenate strings and ``add`` to append to a string.
@@ -960,7 +956,7 @@ enforced. For example, when reading strings from binary files, they are merely
 a sequence of bytes. The index operation ``s[i]`` means the i-th *char* of
 ``s``, not the i-th *unichar*.
 
-String variables are initialized with the empty strings ``""``.
+A string variable is initialized with the empty string ``""``.
 
 
 Integers

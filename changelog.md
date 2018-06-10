@@ -1,4 +1,4 @@
-## v0.X.X - XX/XX/2018
+## v0.19.X - XX/XX/2018
 
 ### Changes affecting backwards compatibility
 
@@ -14,6 +14,12 @@
 - Assignments that would "slice" an object into its supertype are now prevented
   at runtime. Use ``ref object`` with inheritance rather than ``object`` with
   inheritance to prevent this issue.
+- The ``not nil`` type annotation now has to be enabled explicitly
+  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  feature works with Nim's containers.
+- The parser now warns about inconsistent spacing around binary operators as
+  these can easily be confused with unary operators. This warning will likely
+  become an error in the future.
 
 
 #### Breaking changes in the standard library
@@ -33,7 +39,19 @@
   The proc is no longer deprecated.
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
+- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
+  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
+
+- For string inputs, ``unicode.isUpper`` and ``unicode.isLower`` now require a
+  second mandatory parameter ``skipNonAlpha``.
+
+- For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
+  require a second mandatory parameter ``skipNonAlpha``.
+
 #### Breaking changes in the compiler
+
+- The undocumented ``#? braces`` parsing mode was removed.
+- The undocumented PHP backend was removed.
 
 ### Library additions
 
@@ -47,6 +65,13 @@
 - Added the type ``times.Duration`` for representing fixed durations of time.
 - Added the proc ``times.convert`` for converting between different time units,
   e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
+- Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
+- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
 
 ### Library changes
 
@@ -60,11 +85,21 @@
   fields.
 - ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
   correctness.
+- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
+  now joined in ``binarySearch``. ``smartbinarySearch`` is now
+  deprecated.
+- The `terminal` module now exports additional procs for generating ANSI color
+  codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
+- An exception raised from ``test`` block of ``unittest`` now shows its type in
+  the error message
+- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
 
 ### Language additions
 
 - Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
@@ -83,11 +118,19 @@
 
 - ``nil`` for strings/seqs is finally gone. Instead the default value for
   these is ``"" / @[]``.
+
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for
   zero-copy interoperability with ``cstring``. Compile your code with the
-  next switch ``--laxStrings:on`` if you need a transition period.
-  
+  new switch ``--laxStrings:on`` if you need a transition period.
+
+- The command syntax now supports keyword arguments after the first comma.
+
+- Thread-local variables can now be declared inside procs. This implies all
+  the effects of the `global` pragma.
+
+- Nim now supports `except` clause in the export statement.
+
 - Range float types, example `range[0.0 .. Inf]`. More details in language manual.
 
 ### Tool changes

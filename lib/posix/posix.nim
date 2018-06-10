@@ -82,6 +82,14 @@ const
 # Special types
 type Sighandler = proc (a: cint) {.noconv.}
 
+const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
+    defined(openbsd) or defined(dragonfly) ## \
+  ## Boolean flag that indicates if the system supports nanosecond time
+  ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
+  ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
+  ## without checking this flag, because this module defines fallback procs
+  ## when they are not available.
+
 # Platform specific stuff
 
 when defined(linux) and defined(amd64):
@@ -92,9 +100,9 @@ else:
 # There used to be this name in posix.nim a long time ago, not sure why!
 {.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
-when not defined(macosx) and not defined(android):
+when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =
-    ## Second-granularity time of last access
+    ## Second-granularity time of last access.
     result = s.st_atim.tv_sec
   proc st_mtime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last data modification.
@@ -102,6 +110,16 @@ when not defined(macosx) and not defined(android):
   proc st_ctime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
+else:
+  proc st_atim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last access.
+    result.tv_sec = s.st_atime
+  proc st_mtim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last data modification.
+    result.tv_sec = s.st_mtime
+  proc st_ctim*(s: Stat): TimeSpec {.inline.} =
+    ## Nanosecond-granularity time of last data modification.
+    result.tv_sec = s.st_ctime
 
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}

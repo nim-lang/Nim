@@ -12,8 +12,6 @@ type
     mt: array[0..623, uint32]
     index: int
 
-{.deprecated: [TMersenneTwister: MersenneTwister].}
-
 proc newMersenneTwister*(seed: uint32): MersenneTwister =
   result.index = 0
   result.mt[0] = seed

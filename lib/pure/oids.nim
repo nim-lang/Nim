@@ -23,11 +23,9 @@ type
     fuzz: int32  ##
     count: int32 ##
 
-{.deprecated: [Toid: Oid].}
-
 proc `==`*(oid1: Oid, oid2: Oid): bool =
-    ## Compare two Mongo Object IDs for equality
-    return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
+  ## Compare two Mongo Object IDs for equality
+  return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
 
 proc hexbyte*(hex: char): int =
   case hex

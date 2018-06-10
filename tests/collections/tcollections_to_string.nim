@@ -68,15 +68,15 @@ block:
 block:
   var t: CritBitTree[int]
   t["a"] = 1
-  doAssert $t == "{a: 1}"
+  doAssert $t == """{"a": 1}"""
 block:
   var t: CritBitTree[string]
   t["a"] = "1"
-  doAssert $t == """{a: "1"}"""
+  doAssert $t == """{"a": "1"}"""
 block:
   var t: CritBitTree[char]
   t["a"] = '1'
-  doAssert $t == "{a: '1'}"
+  doAssert $t == """{"a": '1'}"""
 
 
 # Test escaping behavior

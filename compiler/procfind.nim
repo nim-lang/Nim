@@ -14,14 +14,12 @@ import
   ast, astalgo, msgs, semdata, types, trees, strutils
 
 proc equalGenericParams(procA, procB: PNode): bool =
-  if sonsLen(procA) != sonsLen(procB): return
+  if sonsLen(procA) != sonsLen(procB): return false
   for i in countup(0, sonsLen(procA) - 1):
     if procA.sons[i].kind != nkSym:
-      internalError(procA.info, "equalGenericParams")
-      return
+      return false
     if procB.sons[i].kind != nkSym:
-      internalError(procB.info, "equalGenericParams")
-      return
+      return false
     let a = procA.sons[i].sym
     let b = procB.sons[i].sym
     if a.name.id != b.name.id or
@@ -57,7 +55,7 @@ proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
         of paramsEqual:
           return
         of paramsIncompatible:
-          localError(fn.info, errNotOverloadable, fn.name.s)
+          localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
           return
         of paramsNotEqual:
           discard
@@ -76,10 +74,10 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
           let message = ("public implementation '$1' has non-public " &
                          "forward declaration in $2") %
                         [getProcHeader(result), $result.info]
-          localError(fn.info, errGenerated, message)
+          localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
-        localError(fn.info, errNotOverloadable, fn.name.s)
+        localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
         return
       of paramsNotEqual:
         discard

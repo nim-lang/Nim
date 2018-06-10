@@ -62,6 +62,7 @@ type
     frames*: seq[TFrame]
     screen*: Screen
     performance*: Performance
+    onpopstate*: proc (event: Event)
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -174,6 +175,12 @@ type
     selectedIndex*: int
     text*: cstring
     value*: cstring
+
+  TextAreaElement* = ref object of ElementObj
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
 
   FormElement* = ref FormObj
   FormObj {.importc.} = object of ElementObj
@@ -446,6 +453,7 @@ type
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
 proc removeEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -500,7 +508,7 @@ proc removeAttributeNode*(n, attr: Node)
 proc removeChild*(n, child: Node)
 proc replaceChild*(n, newNode, oldNode: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
-proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, alignToTop: bool=true)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 
@@ -596,6 +604,7 @@ proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}
 proc parseInt*(s: cstring, radix: int):int {.importc, nodecl.}
 
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 type
   TEventHandlers* {.deprecated.} = EventTargetObj

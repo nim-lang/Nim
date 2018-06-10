@@ -54,8 +54,6 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
-
 proc parseWord(s: string, i: int, w: var string,
                delim: set[char] = {'\x09', ' '}): int =
   result = i

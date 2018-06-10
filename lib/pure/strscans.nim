@@ -316,6 +316,9 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
     conds.add resLen
 
   template at(s: string; i: int): char = (if i < s.len: s[i] else: '\0')
+  template matchError() =
+    error("type mismatch between pattern '$" & pattern[p] & "' (position: " & $p & ") and " & $getType(results[i]) &
+          " var '" & repr(results[i]) & "'")
 
   var i = 0
   var p = 0
@@ -338,37 +341,37 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
         else:
-          error("no string var given for $w")
+          matchError
         inc i
       of 'b':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseBin"
         else:
-          error("no int var given for $b")
+          matchError
         inc i
       of 'o':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseOct"
         else:
-          error("no int var given for $o")
+          matchError
         inc i
       of 'i':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseInt"
         else:
-          error("no int var given for $i")
+          matchError
         inc i
       of 'h':
         if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseHex"
         else:
-          error("no int var given for $h")
+          matchError
         inc i
       of 'f':
         if i < results.len and getType(results[i]).typeKind == ntyFloat:
           matchBind "parseFloat"
         else:
-          error("no float var given for $f")
+          matchError
         inc i
       of 's':
         conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", inp, idx))
@@ -392,7 +395,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           conds.add newCall(bindSym"!=", resLen, newLit min)
           conds.add resLen
         else:
-          error("no string var given for $" & pattern[p])
+          matchError
         inc i
       of '{':
         inc p
@@ -414,7 +417,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           conds.add newCall(bindSym"!=", resLen, newLit 0)
           conds.add resLen
         else:
-          error("no var given for $" & expr)
+          error("no var given for $" & expr & " (position: " & $p & ")")
         inc i
       of '[':
         inc p

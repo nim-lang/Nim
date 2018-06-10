@@ -58,7 +58,7 @@ when defined(emscripten):
 
     # Convert pointer to PageSize correct one.
     var new_pos = cast[ByteAddress](pos) +% (PageSize - (pos %% PageSize))
-    if (new_pos-pos)< sizeof(EmscriptenMMapBlock):
+    if (new_pos-pos) < sizeof(EmscriptenMMapBlock):
       new_pos = new_pos +% PageSize
     result = cast[pointer](new_pos)
 
@@ -78,7 +78,7 @@ when defined(emscripten):
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode):
-  include genodealloc # osAllocPages, osTryAllocPages, osDeallocPages
+  include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
 elif defined(posix):
   const

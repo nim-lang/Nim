@@ -43,8 +43,8 @@ type
     mwUnsupportedField
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
-                       arg: string) {.nimcall.} ## what to do in case of an error
-  FindFileHandler* = proc (filename: string): string {.nimcall.}
+                       arg: string) {.closure.} ## what to do in case of an error
+  FindFileHandler* = proc (filename: string): string {.closure.}
 
 const
   messages: array[MsgKind, string] = [
@@ -853,7 +853,6 @@ type
   DirKind = enum             # must be ordered alphabetically!
     dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
     dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
-{.deprecated: [TDirKind: DirKind].}
 
 const
   DirIds: array[0..12, string] = ["", "author", "authors", "code",
@@ -1114,7 +1113,6 @@ proc parseHeadline(p: var RstParser): PRstNode =
 
 type
   IntSeq = seq[int]
-{.deprecated: [TIntSeq: IntSeq].}
 
 proc tokEnd(p: RstParser): int =
   result = p.tok[p.idx].col + len(p.tok[p.idx].symbol) - 1
@@ -1408,8 +1406,6 @@ type
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
   SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
-{.deprecated: [TDirFlag: DirFlag, TDirFlags: DirFlags,
-              TSectionParser: SectionParser].}
 
 proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.

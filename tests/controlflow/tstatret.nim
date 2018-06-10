@@ -1,7 +1,7 @@
 discard """
   file: "tstatret.nim"
   line: 9
-  errormsg: "statement not allowed after"
+  errormsg: "unreachable statement after 'return'"
 """
 # no statement after return
 proc main() =

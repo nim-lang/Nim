@@ -38,8 +38,10 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  proc affinitySpaceTotal(): cuint {.
-    importcpp: "genodeEnv->cpu().affinity_space().total()".}
+  include genode/env
+
+  proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
+    importcpp: "@->cpu().affinity_space().total()".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
@@ -83,7 +85,7 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
     result = sysconf(SC_NPROC_ONLN)
   elif defined(genode):
-    result = affinitySpaceTotal().int
+    result = runtimeEnv.affinitySpaceTotal().int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0

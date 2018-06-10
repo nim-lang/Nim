@@ -45,8 +45,6 @@ type
   SqlLexer* = object of BaseLexer ## the parser object.
     filename: string
 
-{.deprecated: [TToken: Token, TSqlLexer: SqlLexer].}
-
 const
   tokKindToStr: array[TokKind, string] = [
     "invalid", "[EOF]", "identifier", "quoted identifier", "string constant",

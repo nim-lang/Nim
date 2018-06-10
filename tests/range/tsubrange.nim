@@ -7,7 +7,7 @@ type
   TRange = range[0..40]
 
 proc p(r: TRange) =
-  nil
+  discard
 
 var
   r: TRange

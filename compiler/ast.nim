@@ -734,7 +734,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'gCmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -1078,14 +1078,14 @@ template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
-             info: TLineInfo): PSym =
+             info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   new(result)
   result.name = name
   result.kind = symKind
   result.flags = {}
   result.info = info
-  result.options = gOptions
+  result.options = options
   result.owner = owner
   result.offset = -1
   result.id = getID()
@@ -1095,7 +1095,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
-var emptyNode* = newNode(nkEmpty)
+var emptyNode* = newNode(nkEmpty) # XXX global variable here!
 # There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
@@ -1325,7 +1325,7 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym, keepId: bool = false): PSym =
-  result = newSym(s.kind, s.name, s.owner, s.info)
+  result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   if keepId:
@@ -1344,8 +1344,9 @@ proc copySym*(s: PSym, keepId: bool = false): PSym =
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
 
-proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
-  result = newSym(s.kind, newIdent, s.owner, info)
+proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
+                        options: TOptions): PSym =
+  result = newSym(s.kind, newIdent, s.owner, info, options)
   # keep ID!
   result.ast = s.ast
   result.id = s.id
@@ -1564,15 +1565,17 @@ proc getInt*(a: PNode): BiggestInt =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
-    internalError(a.info, "getInt")
-    result = 0
+    #internalError(a.info, "getInt")
+    doAssert false, "getInt"
+    #result = 0
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
   else:
-    internalError(a.info, "getFloat")
-    result = 0.0
+    doAssert false, "getFloat"
+    #internalError(a.info, "getFloat")
+    #result = 0.0
 
 proc getStr*(a: PNode): string =
   case a.kind
@@ -1581,16 +1584,18 @@ proc getStr*(a: PNode): string =
     # let's hope this fixes more problems than it creates:
     result = nil
   else:
-    internalError(a.info, "getStr")
-    result = ""
+    doAssert false, "getStr"
+    #internalError(a.info, "getStr")
+    #result = ""
 
 proc getStrOrChar*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
   else:
-    internalError(a.info, "getStrOrChar")
-    result = ""
+    doAssert false, "getStrOrChar"
+    #internalError(a.info, "getStrOrChar")
+    #result = ""
 
 proc isGenericRoutine*(s: PSym): bool =
   case s.kind
@@ -1614,6 +1619,19 @@ proc originatingModule*(s: PSym): PSym =
 
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in skProcKinds
+
+proc isCompileTimeProc*(s: PSym): bool {.inline.} =
+  result = s.kind == skMacro or
+           s.kind == skProc and sfCompileTime in s.flags
+
+proc requiredParams*(s: PSym): int =
+  # Returns the number of required params (without default values)
+  # XXX: Perhaps we can store this in the `offset` field of the
+  # symbol instead?
+  for i in 1 ..< s.typ.len:
+    if s.typ.n[i].sym.ast != nil:
+      return i - 1
+  return s.typ.len - 1
 
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
@@ -1671,14 +1689,14 @@ proc isException*(t: PType): bool =
 
   var base = t
   while base != nil:
-    if base.sym.magic == mException:
+    if base.sym != nil and base.sym.magic == mException:
       return true
     base = base.lastSon
   return false
 
-proc isImportedException*(t: PType): bool =
+proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert(t != nil)
-  if optNoCppExceptions in gGlobalOptions:
+  if optNoCppExceptions in conf.globalOptions:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})

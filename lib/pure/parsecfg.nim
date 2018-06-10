@@ -125,9 +125,6 @@ type
     tok: Token
     filename: string
 
-{.deprecated: [TCfgEventKind: CfgEventKind, TCfgEvent: CfgEvent,
-    TTokKind: TokKind, TToken: Token, TCfgParser: CfgParser].}
-
 # implementation
 
 const

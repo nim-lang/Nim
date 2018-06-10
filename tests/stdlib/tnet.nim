@@ -66,6 +66,18 @@ block: # "IpAddress/Sockaddr conversion"
     doAssert(ipaddr_1 == ipaddr_2)
     doAssert($ipaddr_1 == $ipaddr_2)
 
+    if sockaddr.ss_family == AF_INET.toInt:
+      var sockaddr4: Sockaddr_in
+      copyMem(addr sockaddr4, addr sockaddr, sizeof(sockaddr4))
+      fromSockAddr(sockaddr4, socklen, ipaddr_2, port_2)
+    elif sockaddr.ss_family == AF_INET6.toInt:
+      var sockaddr6: Sockaddr_in6
+      copyMem(addr sockaddr6, addr sockaddr, sizeof(sockaddr6))
+      fromSockAddr(sockaddr6, socklen, ipaddr_2, port_2)
+
+    doAssert(ipaddr_1 == ipaddr_2)
+    doAssert($ipaddr_1 == $ipaddr_2)
+
 
   # ipv6 address of example.com
   test("2606:2800:220:1:248:1893:25c8:1946")

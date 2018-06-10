@@ -271,7 +271,7 @@ else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)
     raise err
-  
+
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 
@@ -316,18 +316,18 @@ else:
     include ioselects/ioselectors_poll
 
 proc register*[T](s: Selector[T], fd: int | SocketHandle,
-                  events: set[Event], data: T) {.deprecated.} =
+                  events: set[Event], data: T) {.deprecated: "use registerHandle instead".} =
   ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
   s.registerHandle(fd, events, data)
 
-proc setEvent*(ev: SelectEvent) {.deprecated.} =
+proc setEvent*(ev: SelectEvent) {.deprecated: "use trigger instead".} =
   ## Trigger event ``ev``.
   ##
   ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
   ev.trigger()
 
 proc update*[T](s: Selector[T], fd: int | SocketHandle,
-                events: set[Event]) {.deprecated.} =
+                events: set[Event]) {.deprecated: "use updateHandle instead".} =
   ## Update file/socket descriptor ``fd``, registered in selector
   ## ``s`` with new events set ``event``.
   ##
