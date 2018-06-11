@@ -2369,6 +2369,7 @@ proc argtypeMatches*(c: PContext, f, a: PType, from_hlo = false): bool =
   if not from_hlo:
     res != nil
   else:
+    # pattern templates do not allow for conversions except from int literal
     res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
