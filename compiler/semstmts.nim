@@ -1771,9 +1771,9 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   inc c.inStaticContext
   let a = semStmt(c, n.sons[0])
   dec c.inStaticContext
+  n.sons[0] = a
+  evalStaticStmt(c.module, c.graph, a, c.p.owner)
   when false:
-    n.sons[0] = a
-    evalStaticStmt(c.module, c.graph, a, c.p.owner)
     # for incremental replays, keep the AST as required for replays:
     result = n
   else:
