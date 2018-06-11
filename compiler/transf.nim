@@ -985,7 +985,7 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
 
-    if prc.isIterator and oldIterTransf notin g.config.features:
+    if prc.isIterator:
       result = g.transformClosureIterator(prc, result)
 
     incl(result.flags, nfTransf)
