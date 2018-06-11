@@ -607,81 +607,6 @@ proc getStateField*(g: ModuleGraph; owner: PSym): PSym =
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
                       c: var LiftingPass): PNode
 
-proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
-                    c: var LiftingPass): PNode =
-  if c.inContainer > 0:
-    localError(d.graph.config, n.info, "invalid control flow: 'yield' within a constructor")
-  let state = getStateField(d.graph, owner)
-  assert state != nil
-  assert state.typ != nil
-  assert state.typ.n != nil
-  inc state.typ.n.sons[1].intVal
-  let stateNo = state.typ.n.sons[1].intVal
-
-  var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(getEnvParam(owner)),
-                    state, n.info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, stateNo,
-                    getSysType(d.graph, n.info, tyInt)))
-
-  var retStmt = newNodeI(nkReturnStmt, n.info)
-  if n.sons[0].kind != nkEmpty:
-    var a = newNodeI(nkAsgn, n.sons[0].info)
-    var retVal = liftCapturedVars(n.sons[0], owner, d, c)
-    addSon(a, newSymNode(getClosureIterResult(owner)))
-    addSon(a, retVal)
-    retStmt.add(a)
-  else:
-    retStmt.add(emptyNode)
-
-  var stateLabelStmt = newNodeI(nkState, n.info)
-  stateLabelStmt.add(newIntTypeNode(nkIntLit, stateNo,
-                     getSysType(d.graph, n.info, tyInt)))
-
-  result = newNodeI(nkStmtList, n.info)
-  result.add(stateAsgnStmt)
-  result.add(retStmt)
-  result.add(stateLabelStmt)
-
-proc transformReturn(n: PNode; owner: PSym; d: DetectionPass;
-                     c: var LiftingPass): PNode =
-  let state = getStateField(d.graph, owner)
-  result = newNodeI(nkStmtList, n.info)
-  var stateAsgnStmt = newNodeI(nkAsgn, n.info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(getEnvParam(owner)),
-                    state, n.info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(d.graph, n.info, tyInt)))
-  result.add(stateAsgnStmt)
-  result.add(n)
-
-proc wrapIterBody(g: ModuleGraph; n: PNode; owner: PSym): PNode =
-  if not owner.isIterator: return n
-  when false:
-    # unfortunately control flow is still convoluted and we can end up
-    # multiple times here for the very same iterator. We shield against this
-    # with some rather primitive check for now:
-    if n.kind == nkStmtList and n.len > 0:
-      if n.sons[0].kind == nkGotoState: return n
-      if n.len > 1 and n[1].kind == nkStmtList and n[1].len > 0 and
-          n[1][0].kind == nkGotoState:
-        return n
-  let info = n.info
-  result = newNodeI(nkStmtList, info)
-  var gs = newNodeI(nkGotoState, info)
-  gs.add(rawIndirectAccess(newSymNode(getHiddenParam(g, owner)), getStateField(g, owner), info))
-  result.add(gs)
-  var state0 = newNodeI(nkState, info)
-  state0.add(newIntNode(nkIntLit, 0))
-  result.add(state0)
-
-  result.add(n)
-
-  var stateAsgnStmt = newNodeI(nkAsgn, info)
-  stateAsgnStmt.add(rawIndirectAccess(newSymNode(getHiddenParam(g, owner)),
-                    getStateField(g, owner), info))
-  stateAsgnStmt.add(newIntTypeNode(nkIntLit, -1, getSysType(g, info, tyInt)))
-  result.add(stateAsgnStmt)
-
 proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
                   c: var LiftingPass): PNode =
   let s = n.sym
@@ -722,8 +647,6 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         let oldInContainer = c.inContainer
         c.inContainer = 0
         var body = liftCapturedVars(s.getBody, s, d, c)
-        if oldIterTransf in d.graph.config.features:
-          body = wrapIterBody(d.graph, body, s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
@@ -766,11 +689,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if n[1].kind == nkClosure: result = n[1]
   else:
     if owner.isIterator:
-      if oldIterTransf in d.graph.config.features and n.kind == nkYieldStmt:
-        return transformYield(n, owner, d, c)
-      elif oldIterTransf in d.graph.config.features and n.kind == nkReturnStmt:
-        return transformReturn(n, owner, d, c)
-      elif nfLL in n.flags:
+      if nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
         n.sons[1] = liftCapturedVars(n[1], owner, d, c)
         return
@@ -811,7 +730,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.typ.callConv = ccClosure
   d.ownerToType[fn.id] = ptrType
   detectCapturedVars(body, fn, d)
-  result = wrapIterBody(g, liftCapturedVars(body, fn, d, c), fn)
+  result = liftCapturedVars(body, fn, d, c)
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
@@ -840,9 +759,6 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
       result = liftCapturedVars(body, fn, d, c)
       if c.envvars.getOrDefault(fn.id) != nil:
         result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
-
-      if oldIterTransf in g.config.features:
-        result = wrapIterBody(g, result, fn)
     else:
       result = body
     #if fn.name.s == "get2":
