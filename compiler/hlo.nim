@@ -36,35 +36,27 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
   # we apply the last pattern first, so that pattern overriding is possible;
   # however the resulting AST would better not trigger the old rule then
   # anymore ;-)
-  if c.patterns.len > 0:
-
-    # temporary disable converters
-    var ctx_converters: TSymSeq
-    shallowCopy(ctx_converters, c.converters)
-    c.converters = @[]
-    defer: shallowCopy(c.converters, ctx_converters)
-
-    for i in countdown(c.patterns.len-1, 0):
-      let pattern = c.patterns[i]
-      if not isNil(pattern):
-        let x = applyRule(c, pattern, result)
-        if not isNil(x):
-          assert x.kind in {nkStmtList, nkCall}
-          # better be safe than sorry, so check evalTemplateCounter too:
-          inc(evalTemplateCounter)
-          if evalTemplateCounter > evalTemplateLimit:
-            globalError(c.config, n.info, "template instantiation too nested")
-          # deactivate this pattern:
-          c.patterns[i] = nil
-          if x.kind == nkStmtList:
-            assert x.len == 3
-            x.sons[1] = evalPattern(c, x.sons[1], result)
-            result = flattenStmts(x)
-          else:
-            result = evalPattern(c, x, result)
-          dec(evalTemplateCounter)
-          # activate this pattern again:
-          c.patterns[i] = pattern
+  for i in countdown(c.patterns.len-1, 0):
+    let pattern = c.patterns[i]
+    if not isNil(pattern):
+      let x = applyRule(c, pattern, result)
+      if not isNil(x):
+        assert x.kind in {nkStmtList, nkCall}
+        # better be safe than sorry, so check evalTemplateCounter too:
+        inc(evalTemplateCounter)
+        if evalTemplateCounter > evalTemplateLimit:
+          globalError(c.config, n.info, "template instantiation too nested")
+        # deactivate this pattern:
+        c.patterns[i] = nil
+        if x.kind == nkStmtList:
+          assert x.len == 3
+          x.sons[1] = evalPattern(c, x.sons[1], result)
+          result = flattenStmts(x)
+        else:
+          result = evalPattern(c, x, result)
+        dec(evalTemplateCounter)
+        # activate this pattern again:
+        c.patterns[i] = pattern
 
 proc hlo(c: PContext, n: PNode): PNode =
   inc(c.hloLoopDetector)

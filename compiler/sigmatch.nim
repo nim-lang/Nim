@@ -2359,14 +2359,17 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     for t in m.inferredTypes:
       if t.sonsLen > 1: t.sons.setLen 1
 
-proc argtypeMatches*(c: PContext, f, a: PType): bool =
+proc argtypeMatches*(c: PContext, f, a: PType, from_hlo = false): bool =
   var m: TCandidate
   initCandidate(c, m, f)
   let res = paramTypesMatch(m, f, a, ast.emptyNode, nil)
   #instantiateGenericConverters(c, res, m)
   # XXX this is used by patterns.nim too; I think it's better to not
   # instantiate generic converters for that
-  result = res != nil
+  if not from_hlo:
+    res != nil
+  else:
+    res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
                       op: TTypeAttachedOp; col: int): PSym {.procvar.} =
