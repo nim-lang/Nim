@@ -1,6 +1,5 @@
 discard """
   outputsub: "-6"
-  targets: "c cpp"
 """
 type
   ESomething = object of Exception

@@ -1667,8 +1667,7 @@ proc skipStmtList*(n: PNode): PNode =
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
-  let typ = typ.skipTypes({tyAlias, tyGenericInst})
-  if typ.kind == tyObject:
+  if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, typ.owner)
     rawAddSon(result, typ)
 
@@ -1676,9 +1675,9 @@ proc toObject*(typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
-  result = typ.skipTypes({tyAlias, tyGenericInst})
-  if result.kind == tyRef:
-    result = result.lastSon
+  let t = typ.skipTypes({tyAlias, tyGenericInst})
+  if t.kind == tyRef: t.lastSon
+  else: typ
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
