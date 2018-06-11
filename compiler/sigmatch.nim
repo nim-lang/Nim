@@ -633,19 +633,19 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  template check_range[T](a_first, a_last, f_first, f_last: T): TTypeRelation = 
-    if a_first == f_first and a_last == f_last:
+  template checkRange[T](afirst, alast, ffirst, flast: T): TTypeRelation = 
+    if afirst == ffirst and alast == flast:
       isEqual
-    elif a_first >= f_first and a_last <= f_last:
+    elif afirst >= ffirst and alast <= flast:
       isConvertible
-    elif a_first <= f_last and f_first <= a_last:
+    elif afirst <= flast and ffirst <= a_last:
       # X..Y and C..D overlap iff (X <= D and C <= Y)
       isConvertible
     else:
       isNone
   
   if f.isOrdinalType: 
-    check_range(firstOrd(a), lastOrd(a), firstOrd(f), lastOrd(f))
+    checkRange(firstOrd(a), lastOrd(a), firstOrd(f), lastOrd(f))
   else: 
     check_range(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
     
