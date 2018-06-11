@@ -828,7 +828,7 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:
     var a: TLoc
     genRecordFieldAux(p, e.sons[0], d, a)
-    let ty = skipTypes(a.t, abstractInst)
+    let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
     var r = rdLoc(a)
     let f = e.sons[0].sons[1].sym
     let field = lookupFieldAgain(p, ty, f, r)
