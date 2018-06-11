@@ -31,6 +31,9 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
+  # XXX: A more elaborate line info rewrite might be needed
+  result.info = n.info
+
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
