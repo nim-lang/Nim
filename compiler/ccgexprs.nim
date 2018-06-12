@@ -2436,7 +2436,7 @@ proc genConstSimpleList(p: BProc, n: PNode): Rope =
   addf(result, "}$n", [])
 
 proc genConstSeq(p: BProc, n: PNode, t: PType): Rope =
-  var data = "{{$1, $1}" % [n.len.rope]
+  var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
