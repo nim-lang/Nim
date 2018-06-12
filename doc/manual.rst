@@ -741,7 +741,7 @@ For further details, see `Convertible relation
 
 Subrange types
 --------------
-A subrange type is a range of values from an ordinal or float point type (the base
+A subrange type is a range of values from an ordinal or floating point type (the base
 type). To define a subrange type, one must specify it's limiting values: the
 lowest and highest value of the type:
 
