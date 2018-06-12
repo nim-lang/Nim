@@ -917,7 +917,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno == EEXIST:
       result = false
     else:
-      echo res
+      #echo res
       raiseOSError(osLastError())
   else:
     when useWinUnicode:

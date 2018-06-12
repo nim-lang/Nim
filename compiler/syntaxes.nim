@@ -11,7 +11,7 @@
 
 import
   strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
-  filters, filter_tmpl, renderer, configuration
+  filters, filter_tmpl, renderer, lineinfos
 
 type
   TFilterKind* = enum
@@ -38,7 +38,6 @@ proc parseAll*(p: var TParsers): PNode =
     result = parser.parseAll(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
-    result = ast.emptyNode
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
   case p.skin
@@ -46,7 +45,6 @@ proc parseTopLevelStmt*(p: var TParsers): PNode =
     result = parser.parseTopLevelStmt(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
-    result = ast.emptyNode
 
 proc utf8Bom(s: string): int =
   if s.len >= 3 and s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
@@ -62,7 +60,7 @@ proc containsShebang(s: string, i: int): bool =
 
 proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
-  result = ast.emptyNode
+  result = newNode(nkEmpty)
   var s = llStreamOpen(filename, fmRead)
   if s != nil:
     var line = newStringOfCap(80)
@@ -144,7 +142,7 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
   assert config != nil
   var s: PLLStream
   p.skin = skinStandard
-  let filename = fileIdx.toFullPathConsiderDirty
+  let filename = toFullPathConsiderDirty(config, fileIdx)
   var pipe = parsePipe(filename, inputstream, cache, config)
   p.config() = config
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
@@ -162,7 +160,7 @@ proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode
   var
     p: TParsers
     f: File
-  let filename = fileIdx.toFullPathConsiderDirty
+  let filename = toFullPathConsiderDirty(config, fileIdx)
   if not open(f, filename):
     rawMessage(config, errGenerated, "cannot open file: " & filename)
     return

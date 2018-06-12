@@ -157,12 +157,12 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc addVar(father, v, value: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
   vpart.sons[2] = value
   addSon(father, vpart)
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
-  var temp = newSym(skTemp, getIdent(lowerings.genPrefix), c.fn, c.info)
+  var temp = newSym(skTemp, getIdent(c.c.cache, lowerings.genPrefix), c.fn, c.info)
   temp.typ = getSysType(c.c.graph, body.info, tyInt)
   incl(temp.flags, sfFromGeneric)
 
@@ -207,7 +207,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       if t.kind == tySequence:
         # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
-      let i = declareCounter(c, body, firstOrd(t))
+      let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
@@ -268,17 +268,17 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   a.kind = kind
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
-                 of attachedAsgn: getIdent"="
-                 of attachedSink: getIdent"=sink"
-                 of attachedDeepCopy: getIdent"=deepcopy"
-                 of attachedDestructor: getIdent"=destroy"
+                 of attachedAsgn: getIdent(c.cache, "=")
+                 of attachedSink: getIdent(c.cache, "=sink")
+                 of attachedDeepCopy: getIdent(c.cache, "=deepcopy")
+                 of attachedDestructor: getIdent(c.cache, "=destroy")
 
   result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
   a.asgnForType = typ
 
-  let dest = newSym(skParam, getIdent"dest", result, info)
-  let src = newSym(skParam, getIdent"src", result, info)
+  let dest = newSym(skParam, getIdent(c.cache, "dest"), result, info)
+  let src = newSym(skParam, getIdent(c.cache, "src"), result, info)
   dest.typ = makeVarType(c, typ)
   src.typ = typ
 
@@ -297,7 +297,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 ..< n.len: n.sons[i] = emptyNode
+  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
   n.sons[namePos] = newSymNode(result)
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body

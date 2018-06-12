@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os
+import ast, renderer, strutils, msgs, options, idents, os, lineinfos
 
 import nimblecmd
 
@@ -120,7 +120,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result = pathSubs(conf, n.strVal, n.info.toFullPath().splitFile().dir)
+      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -131,7 +131,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   of nkInfix:
     let n0 = n[0]
     let n1 = n[1]
-    if n0.kind == nkIdent and n0.ident.id == getIdent("as").id:
+    if n0.kind == nkIdent and n0.ident.s == "as":
       # XXX hack ahead:
       n.kind = nkImportAs
       n.sons[0] = n.sons[1]
@@ -177,7 +177,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
 proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
   let modulename = getModuleName(conf, n)
-  let fullPath = findModule(conf, modulename, n.info.toFullPath)
+  let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
   if fullPath.len == 0:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n

@@ -23,7 +23,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs, options
+import ast, astalgo, types, intsets, tables, msgs, options, lineinfos
 
 type
   InstrKind* = enum
@@ -54,7 +54,7 @@ type
     blocks: seq[TBlock]
 
 proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename & ":" & $info.line
+  result = $info.line #info.toFilename & ":" & $info.line
 
 proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   # for debugging purposes
@@ -87,7 +87,8 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  echo buf
+  when declared(echo):
+    echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)

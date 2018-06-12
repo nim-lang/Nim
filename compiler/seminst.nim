@@ -159,13 +159,13 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       var oldPrc = c.generics[i].inst.sym
       pushProcCon(c, oldPrc)
       pushOwner(c, oldPrc)
-      pushInfoContext(oldPrc.info)
+      pushInfoContext(c.config, oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
-      popInfoContext()
+      popInfoContext(c.config)
       popOwner(c)
       popProcCon(c)
 
@@ -236,7 +236,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # at this point semtypinst have to become part of sem, because it
   # will need to use openScope, addDecl, etc.
   #addDecl(c, prc)
-  pushInfoContext(info)
+  pushInfoContext(c.config, info)
   var typeMap = initLayeredTypeMap(pt)
   var cl = initTypeVars(c, addr(typeMap), info, nil)
   var result = instCopyType(cl, prc.typ)
@@ -278,7 +278,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   skipIntLiteralParams(result)
 
   prc.typ = result
-  popInfoContext()
+  popInfoContext(c.config)
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
@@ -309,7 +309,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let gp = n.sons[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
-  pushInfoContext(info)
+  pushInfoContext(c.config, info)
   var entry = TInstantiation.new
   entry.sym = result
   # we need to compare both the generic types and the concrete types:
@@ -328,7 +328,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     inc i
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
-  n.sons[genericParamsPos] = ast.emptyNode
+  n.sons[genericParamsPos] = c.graph.emptyNode
   var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
@@ -353,7 +353,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   else:
     result = oldPrc
   popProcCon(c)
-  popInfoContext()
+  popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
   popOwner(c)
   c.currentScope = oldScope

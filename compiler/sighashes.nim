@@ -12,7 +12,7 @@
 import ast, md5, tables, ropes
 from hashes import Hash
 from astalgo import debug
-from types import typeToString, preferDesc
+import types
 from strutils import startsWith, contains
 
 when false:
@@ -148,19 +148,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
-    return
   of tyDistinct:
     if CoType in flags:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
-    return
-  of tyAlias, tySink, tyGenericInst, tyUserTypeClasses:
+  of tyGenericInst:
+    if sfInfixCall in t.base.sym.flags:
+      # This is an imported C++ generic type.
+      # We cannot trust the `lastSon` to hold a properly populated and unique
+      # value for each instantiation, so we hash the generic parameters here:
+      let normalizedType = t.skipGenericAlias
+      for i in 0 .. normalizedType.len - 2:
+        c.hashType t.sons[i], flags
+    else:
+      c.hashType t.lastSon, flags
+  of tyAlias, tySink, tyUserTypeClasses:
     c.hashType t.lastSon, flags
-    return
-  else:
-    discard
-  case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -168,11 +172,12 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    c &= char(t.kind)
     if t.typeInst != nil:
       assert t.typeInst.kind == tyGenericInst
-      for i in countup(1, sonsLen(t.typeInst) - 2):
+      for i in countup(0, sonsLen(t.typeInst) - 2):
         c.hashType t.typeInst.sons[i], flags
+      return
+    c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:

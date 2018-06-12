@@ -55,7 +55,7 @@ template macroToExpandSym(s): untyped =
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
                           ctx: var GenericCtx; fromDotExpr=false): PNode =
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
   of skUnknown:
@@ -103,7 +103,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var GenericCtx): PNode =
   result = n
-  let ident = considerQuotedIdent(c.config, n)
+  let ident = considerQuotedIdent(c, n)
   var s = searchInScopes(c, ident).skipAlias(n, c.config)
   if s == nil:
     s = strTableGet(c.pureEnumFields, ident)
@@ -129,7 +129,7 @@ proc newDot(n, b: PNode): PNode =
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
                  ctx: var GenericCtx; isMacro: var bool): PNode =
   assert n.kind == nkDotExpr
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   let luf = if withinMixin notin flags: {checkUndeclared, checkModule} else: {checkModule}
 
@@ -140,7 +140,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     n.sons[0] = semGenericStmt(c, n.sons[0], flags, ctx)
     result = n
     let n = n[1]
-    let ident = considerQuotedIdent(c.config, n)
+    let ident = considerQuotedIdent(c, n)
     var s = searchInScopes(c, ident).skipAlias(n, c.config)
     if s != nil and s.kind in routineKinds:
       isMacro = s.kind in {skTemplate, skMacro}
@@ -170,7 +170,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if withinTypeDesc in flags: inc c.inTypeContext
 
   #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
-  semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
+  semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
   case n.kind
   of nkIdent, nkAccQuoted:
@@ -207,7 +207,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if  s == nil and
         {withinMixin, withinConcept}*flags == {} and
         fn.kind in {nkIdent, nkAccQuoted} and
-        considerQuotedIdent(c.config, fn).id notin ctx.toMixin:
+        considerQuotedIdent(c, fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
     var first = int ord(withinConcept in flags)
@@ -275,12 +275,12 @@ proc semGenericStmt(c: PContext, n: PNode,
       result.sons[i] = semGenericStmt(c, result.sons[i], flags, ctx)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("{}"), n.info)
+    result.add newIdentNode(getIdent(c.cache, "{}"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     result = semGenericStmt(c, result, flags, ctx)
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
-    result.add newIdentNode(getIdent("[]"), n.info)
+    result.add newIdentNode(getIdent(c.cache, "[]"), n.info)
     for i in 0 ..< n.len: result.add(n[i])
     withBracketExpr ctx, n.sons[0]:
       result = semGenericStmt(c, result, flags, ctx)
@@ -293,13 +293,13 @@ proc semGenericStmt(c: PContext, n: PNode,
     case k
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("{}="), n.info)
+      result.add newIdentNode(getIdent(c.cache, "{}="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
       result = semGenericStmt(c, result, flags, ctx)
     of nkBracketExpr:
       result = newNodeI(nkCall, n.info)
-      result.add newIdentNode(getIdent("[]="), n.info)
+      result.add newIdentNode(getIdent(c.cache, "[]="), n.info)
       for i in 0 ..< a.len: result.add(a[i])
       result.add(b)
       withBracketExpr ctx, a.sons[0]:
@@ -448,7 +448,7 @@ proc semGenericStmt(c: PContext, n: PNode,
                                               flags, ctx)
     if n.sons[paramsPos].kind != nkEmpty:
       if n.sons[paramsPos].sons[0].kind != nkEmpty:
-        addPrelimDecl(c, newSym(skUnknown, getIdent("result"), nil, n.info))
+        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
       n.sons[paramsPos] = semGenericStmt(c, n.sons[paramsPos], flags, ctx)
     n.sons[pragmasPos] = semGenericStmt(c, n.sons[pragmasPos], flags, ctx)
     var body: PNode
