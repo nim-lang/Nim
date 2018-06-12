@@ -649,7 +649,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
       isNone
   
   if f.isOrdinalType: 
-    checkRange(firstOrd(a), lastOrd(a), firstOrd(f), lastOrd(f))
+    checkRange(firstOrd(nil, a), lastOrd(nil, a), firstOrd(nil, f), lastOrd(nil, f))
   else: 
     checkRange(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
     

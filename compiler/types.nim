@@ -643,7 +643,7 @@ proc firstFloat*(t: PType): BiggestFloat =
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
     NaN
 
-proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
+proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -699,7 +699,7 @@ proc lastFloat*(t: PType): BiggestFloat =
     NaN
 
 
-proc lengthOrd*(t: PType): BiggestInt =
+proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(conf, t)
   of tyDistinct: result = lengthOrd(conf, t.sons[0])
