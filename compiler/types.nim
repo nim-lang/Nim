@@ -638,7 +638,7 @@ proc firstFloat*(t: PType): BiggestFloat =
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
     firstFloat(lastSon(t))
   else:
-    internalError(newPartialConfigRef(), "invalid kind for firstValue(" & $t.kind & ')')
+    internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
     NaN
 
 proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
@@ -693,7 +693,7 @@ proc lastFloat*(t: PType): BiggestFloat =
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
     lastFloat(lastSon(t))
   else:
-    internalError(newPartialConfigRef(), "invalid kind for lastOrd(" & $t.kind & ')')
+    internalError(newPartialConfigRef(), "invalid kind for lastFloat(" & $t.kind & ')')
     NaN
 
 
