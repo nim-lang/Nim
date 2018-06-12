@@ -844,7 +844,7 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseInt(s, result, 0)
+  let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
@@ -853,7 +853,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseBiggestInt(s, result, 0)
+  let L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
@@ -862,7 +862,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseUInt(s, result, 0)
+  let L = parseutils.parseUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
@@ -871,7 +871,7 @@ proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseBiggestUInt(s, result, 0)
+  let L = parseutils.parseBiggestUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
@@ -880,7 +880,7 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `ValueError` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
-  var L = parseutils.parseFloat(s, result, 0)
+  let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
 
