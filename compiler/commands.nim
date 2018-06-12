@@ -717,6 +717,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     doAssert(conf != nil)
     incl(conf.features, destructor)
     defineSymbol(conf.symbols, "nimNewRuntime")
+  of "nep1":
+    processOnOffSwitchG(conf, {optCheckNep1}, arg, pass, info)
   of "cppcompiletonamespace":
     expectNoArg(conf, switch, arg, pass, info)
     incl conf.globalOptions, optUseNimNamespace

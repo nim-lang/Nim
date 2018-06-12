@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  nimfix / pretty, lineinfos
+  linter, lineinfos
 
 when defined(booting) or defined(nimsuggest):
   import docgen

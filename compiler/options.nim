@@ -54,7 +54,7 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optCaasEnabled            # compiler-as-a-service is running
+    optCheckNep1,             # check that the names adhere to NEP-1
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
     optSkipUserConfigFile,    # skip the users's config file
@@ -372,7 +372,6 @@ proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   conf.symbolFiles in {v2Sf, writeOnlySf}
-#  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions

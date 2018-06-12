@@ -493,7 +493,6 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, verbosePass
   registerPass graph, semPass
   conf.cmd = cmdIdeTools
-  incl conf.globalOptions, optCaasEnabled
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):

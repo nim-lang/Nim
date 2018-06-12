@@ -364,7 +364,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
   suggestSym(c.config, n.info, result, c.graph.usageSym)
-  styleCheckDef(result)
+  styleCheckDef(c.config, result)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
@@ -627,7 +627,7 @@ proc addForVarDecl(c: PContext, v: PSym) =
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
-  styleCheckDef(result)
+  styleCheckDef(c.config, result)
 
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
