@@ -244,7 +244,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
       localError(c.config, n.info, "enum '$1' has holes" % typeToString(rangeT[0]))
 
   for i in 0..1:
-    if hasGenericArguments(range[i]):
+    if hasUnresolvedArgs(c, range[i]):
       result.n.addSon makeStaticExpr(c, range[i])
       result.flags.incl tfUnresolved
     else:
@@ -301,8 +301,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
-    elif e.kind in (nkCallKinds + {nkBracketExpr}) and
-         hasGenericArguments(e):
+    elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
       if not isOrdinalType(e.typ):
         localError(c.config, n[1].info, errOrdinalTypeExpected)
       # This is an int returning call, depending on an
@@ -1006,13 +1005,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind; isType=false): PType =
   # for historical reasons (code grows) this is invoked for parameter
   # lists too and then 'isType' is false.
-  var cl: IntSet
   checkMinSonsLen(n, 1, c.config)
   result = newProcType(c, n.info, prev)
-  if genericParams != nil and sonsLen(genericParams) == 0:
-    cl = initIntSet()
   var check = initIntSet()
   var counter = 0
+
   for i in countup(1, n.len - 1):
     var a = n.sons[i]
     if a.kind != nkIdentDefs:
@@ -1022,6 +1019,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       # pass over this instantiation:
       if a.kind == nkSym and sfFromGeneric in a.sym.flags: continue
       illFormedAst(a, c.config)
+
     checkMinSonsLen(a, 3, c.config)
     var
       typ: PType = nil
@@ -1030,26 +1028,38 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       length = sonsLen(a)
       hasType = a.sons[length-2].kind != nkEmpty
       hasDefault = a.sons[length-1].kind != nkEmpty
+
     if hasType:
       typ = semParamType(c, a.sons[length-2], constraint)
 
     if hasDefault:
-      def = semExprWithType(c, a.sons[length-1])
-      # check type compatibility between def.typ and typ:
+      def = a[^1]
+      block determineType:
+        if genericParams != nil and genericParams.len > 0:
+          def = semGenericStmt(c, def)
+          if hasUnresolvedArgs(c, def):
+            def.typ = makeTypeFromExpr(c, def.copyTree)
+            break determineType
+
+        def = semExprWithType(c, def, {efDetermineType})
+
       if typ == nil:
         typ = def.typ
-      elif def != nil:
-        # and def.typ != nil and def.typ.kind != tyNone:
+      else:
+        # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
         if not containsGenericType(typ):
+          # check type compatibility between def.typ and typ:
           def = fitNode(c, typ, def, def.info)
+
     if not hasType and not hasDefault:
       if isType: localError(c.config, a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyExpr, c)
     elif skipTypes(typ, {tyGenericInst, tyAlias, tySink}).kind == tyVoid:
       continue
+
     for j in countup(0, length-3):
       var arg = newSymG(skParam, a.sons[j], c)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
@@ -1065,7 +1075,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       arg.position = counter
       arg.constraint = constraint
       inc(counter)
-      if def != nil and def.kind != nkEmpty: arg.ast = copyTree(def)
+      if def != nil and def.kind != nkEmpty:
+        arg.ast = copyTree(def)
       if containsOrIncl(check, arg.name.id):
         localError(c.config, a.sons[j].info, "attempt to redefine: '" & arg.name.s & "'")
       addSon(result.n, newSymNode(arg))
@@ -1320,7 +1331,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
 
-  result.n.sons[3] = semConceptBody(c, n[3])
+  result.n[3] = semConceptBody(c, n[3])
   closeScope(c)
 
 proc semProcTypeWithScope(c: PContext, n: PNode,

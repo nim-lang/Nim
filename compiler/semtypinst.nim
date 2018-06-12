@@ -144,17 +144,6 @@ proc isTypeParam(n: PNode): bool =
          (n.sym.kind == skGenericParam or
            (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
 
-proc hasGenericArguments*(n: PNode): bool =
-  if n.kind == nkSym:
-    return n.sym.kind == skGenericParam or
-           tfInferrableStatic in n.sym.typ.flags or
-           (n.sym.kind == skType and
-            n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
-  else:
-    for i in 0..<n.safeLen:
-      if hasGenericArguments(n.sons[i]): return true
-    return false
-
 proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
   # This is needed for tgenericshardcases
   # It's possible that a generic param will be used in a proc call to a
@@ -231,6 +220,16 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
     return s
+
+  # XXX: Bound symbols in default parameter expressions may reach here.
+  # We cannot process them, becase `sym.n` may point to a proc body with
+  # cyclic references that will lead to an infinite recursion. Perhaps we
+  # should not use a black-list here, but a whitelist instead.
+  # Note: `s.magic` may be `mType` in an example such as:
+  # proc foo[T](a: T, b = myDefault(type(a)))
+  if s.kind == skProc or s.magic != mNone:
+    return s
+
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
   result = copySym(s, false)
@@ -278,7 +277,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # is difficult to handle:
   const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
-  if body.kind != tyGenericBody: internalError(cl.c.config, cl.info, "no generic body")
+  if body.kind != tyGenericBody:
+    internalError(cl.c.config, cl.info, "no generic body")
   var header: PType = t
   # search for some instantiation here:
   if cl.allowMetaTypes:

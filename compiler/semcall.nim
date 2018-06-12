@@ -391,7 +391,21 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result = copyTree(arg)
     result.typ = formal
 
-proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
+proc updateDefaultParams(call: PNode) =
+  # In generic procs, the default parameter may be unique for each
+  # instantiation (see tlateboundgenericparams).
+  # After a call is resolved, we need to re-assign any default value
+  # that was used during sigmatch. sigmatch is responsible for marking
+  # the default params with `nfDefaultParam` and `instantiateProcType`
+  # computes correctly the default values for each instantiation.
+  let calleeParams = call[0].sym.typ.n
+  for i in countdown(call.len - 1, 1):
+    if nfDefaultParam notin call[i].flags:
+      return
+    call[i] = calleeParams[i].sym.ast
+
+proc semResolvedCall(c: PContext, x: TCandidate,
+                     n: PNode, flags: TExprFlags): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
@@ -424,8 +438,9 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
 
   result = x.call
   instGenericConvertersSons(c, result, x)
-  result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
+  result[0] = newSymNode(finalCallee, result[0].info)
   result.typ = finalCallee.typ.sons[0]
+  updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
@@ -447,7 +462,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    result = semResolvedCall(c, n, r)
+    result = semResolvedCall(c, r, n, flags)
   elif implicitDeref in c.features and canDeref(n):
     # try to deref the first argument and then try overloading resolution again:
     #
@@ -458,7 +473,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     #
     n.sons[1] = n.sons[1].tryDeref
     var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
-    if r.state == csMatch: result = semResolvedCall(c, n, r)
+    if r.state == csMatch: result = semResolvedCall(c, r, n, flags)
     else:
       # get rid of the deref again for a better error message:
       n.sons[1] = n.sons[1].sons[0]

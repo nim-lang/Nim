@@ -247,25 +247,28 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     if i > 1:
       resetIdTable(cl.symMap)
       resetIdTable(cl.localCache)
-    result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
-    propagateToOwner(result, result.sons[i])
+    let needsStaticSkipping = result[i].kind == tyFromExpr
+    result[i] = replaceTypeVarsT(cl, result[i])
+    if needsStaticSkipping:
+      result[i] = result[i].skipTypes({tyStatic})
     internalAssert c.config, originalParams[i].kind == nkSym
-    when true:
-      let oldParam = originalParams[i].sym
-      let param = copySym(oldParam)
-      param.owner = prc
-      param.typ = result.sons[i]
-      if oldParam.ast != nil:
-        param.ast = fitNode(c, param.typ, oldParam.ast, oldParam.ast.info)
+    let oldParam = originalParams[i].sym
+    let param = copySym(oldParam)
+    param.owner = prc
+    param.typ = result[i]
+    if oldParam.ast != nil:
+      var def = oldParam.ast.copyTree
+      if def.kind == nkCall:
+        for i in 1 ..< def.len:
+          def[i] = replaceTypeVarsN(cl, def[i])
+        def = semExprWithType(c, def)
+      param.ast = fitNode(c, param.typ, def, def.info)
+      param.typ = param.ast.typ
 
-      # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
-      result.n.sons[i] = newSymNode(param)
-      addDecl(c, param)
-    else:
-      let param = replaceTypeVarsN(cl, originalParams[i])
-      result.n.sons[i] = param
-      param.sym.owner = prc
-      addDecl(c, result.n.sons[i].sym)
+    result.n[i] = newSymNode(param)
+    result[i] = param.typ
+    propagateToOwner(result, result[i])
+    addDecl(c, param)
 
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)

@@ -542,6 +542,36 @@ proc fixAbstractType(c: PContext, n: PNode) =
 proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
+proc isUnresolvedSym(s: PSym): bool =
+  return s.kind == skGenericParam or
+         tfInferrableStatic in s.typ.flags or
+         (s.kind == skParam and s.typ.isMetaType) or
+         (s.kind == skType and
+          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+
+proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
+  # Checks whether an expression depends on generic parameters that
+  # don't have bound values yet. E.g. this could happen in situations
+  # such as:
+  #  type Slot[T] = array[T.size, byte]
+  #  proc foo[T](x: default(T))
+  #
+  # Both static parameter and type parameters can be unresolved.
+  case n.kind
+  of nkSym:
+    return isUnresolvedSym(n.sym)
+  of nkIdent, nkAccQuoted:
+    let ident = considerQuotedIdent(c.config, n)
+    let sym = searchInScopes(c, ident)
+    if sym != nil:
+      return isUnresolvedSym(sym)
+    else:
+      return false
+  else:
+    for i in 0..<n.safeLen:
+      if hasUnresolvedArgs(c, n.sons[i]): return true
+    return false
+
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
   if n.kind == nkHiddenDeref and not (c.config.cmd == cmdCompileToCpp or
                                       sfCompileToCpp in c.module.flags):

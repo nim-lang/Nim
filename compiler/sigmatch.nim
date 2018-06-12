@@ -1089,8 +1089,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
              else: isNone
 
   of tyAnything:
-    return if f.kind == tyAnything: isGeneric
-           else: isNone
+    if f.kind in {tyAnything}:
+      return isGeneric
+
+    if tfWildCard in a.flags and f.kind == tyTypeDesc:
+      return isGeneric
+
+    return isNone
 
   of tyUserTypeClass, tyUserTypeClassInst:
     if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
@@ -1711,9 +1716,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc: return isNone
-
-      if f.base.kind == tyNone:
+      if a.kind != tyTypeDesc:
+        if a.kind == tyGenericParam and tfWildcard in a.flags:
+          # TODO: prevent `a` from matching as a wildcard again
+          result = isGeneric
+        else:
+          result = isNone
+      elif f.base.kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.base, a.base)
@@ -2363,7 +2372,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
           put(m, formal.typ, def.typ)
+        def.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, def)
+        # XXX: Instead of setting a default value here, we may place a special
+        # marker value instead. Later, we will replace it in `semResolvedCall`.
+        # Unfortunately, this causes some breakage at the moment.
     inc(f)
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:

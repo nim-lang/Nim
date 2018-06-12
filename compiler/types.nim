@@ -502,7 +502,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     #internalAssert t.len == 0
     result = "untyped"
   of tyFromExpr:
-    result = renderTree(t.n)
+    if t.n == nil:
+      result = "unknown"
+    else:
+      result = "type(" & renderTree(t.n) & ")"
   of tyArray:
     if t.sons[0].kind == tyRange:
       result = "array[" & rangeToStr(t.sons[0].n) & ", " &
