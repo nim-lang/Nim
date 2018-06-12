@@ -1680,7 +1680,7 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mStatic:
-    setMagicType(m, tyStatic, 0)
+    setMagicType(c.config, m, tyStatic, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mVoidType:
     setMagicType(c.config, m, tyVoid, 0)

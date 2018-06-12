@@ -561,7 +561,7 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   of nkSym:
     return isUnresolvedSym(n.sym)
   of nkIdent, nkAccQuoted:
-    let ident = considerQuotedIdent(c.config, n)
+    let ident = considerQuotedIdent(c, n)
     let sym = searchInScopes(c, ident)
     if sym != nil:
       return isUnresolvedSym(sym)
