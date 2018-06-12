@@ -72,6 +72,8 @@
 - Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
 - Added the proc ``math.prod`` for product of elements in openArray.
+- Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 
 ### Library changes
 
@@ -99,7 +101,7 @@
   use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
-
+- The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
 ### Language additions
 
