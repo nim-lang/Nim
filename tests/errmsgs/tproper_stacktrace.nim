@@ -119,5 +119,23 @@ when isMainModule:
     verifyStackTrace expectedStackTrace:
       foo()
 
+  block:
+    proc bar() {.stackTrace: off.} =
+      proc baz() = # Stack trace should be enabled
+        raiseTestException()
+      baz()
+
+    proc foo() =
+      bar()
+
+    const expectedStackTrace = """
+      tproper_stacktrace.nim(139) tproper_stacktrace
+      tproper_stacktrace.nim(129) foo
+      tproper_stacktrace.nim(125) baz
+      tproper_stacktrace.nim(7) raiseTestException
+    """
+
+    verifyStackTrace expectedStackTrace:
+      foo()
 
   echo "ok"
