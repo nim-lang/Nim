@@ -217,6 +217,7 @@ proc testParseInts =
   assert "0b1_1_1_1".parseBinInt == 15
   rejectParse "".parseBinInt
   rejectParse "_".parseBinInt
+  rejectParse "0b".parseBinInt
   rejectParse "0b1234".parseBinInt
   # hex
   assert "0x72".parseHexInt == 114
@@ -228,6 +229,7 @@ proc testParseInts =
   assert "fF".parseHexInt == 255  
   assert "0x7_2".parseHexInt == 114
   rejectParse "".parseHexInt
+  rejectParse "_".parseHexInt
   rejectParse "0x".parseHexInt
   rejectParse "0xFFG".parseHexInt
   rejectParse "0bFF".parseHexInt
@@ -239,6 +241,7 @@ proc testParseInts =
   assert "10".parseOctInt == 8
   assert "0o1_0_0".parseOctInt == 64
   rejectParse "".parseOctInt
+  rejectParse "_".parseOctInt  
   rejectParse "0o".parseOctInt
   rejectParse "9".parseOctInt
   rejectParse "0o9".parseOctInt
