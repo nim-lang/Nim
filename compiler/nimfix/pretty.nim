@@ -14,7 +14,7 @@ import
   strutils, os, intsets, strtabs
 
 import ".." / [options, ast, astalgo, msgs, semdata, ropes, idents,
-  configuration]
+  lineinfos]
 import prettybase
 
 type
@@ -27,19 +27,19 @@ var
 
 proc overwriteFiles*(conf: ConfigRef) =
   let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
-  for i in 0 .. high(gSourceFiles):
-    if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
-        (not gOnlyMainfile or gSourceFiles[i].fileIdx == conf.projectMainIdx.FileIndex):
-      let newFile = if gOverWrite: gSourceFiles[i].fullpath
-                    else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
+  for i in 0 .. high(conf.m.fileInfos):
+    if conf.m.fileInfos[i].dirty and
+        (not gOnlyMainfile or FileIndex(i) == conf.projectMainIdx):
+      let newFile = if gOverWrite: conf.m.fileInfos[i].fullpath
+                    else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
       try:
         var f = open(newFile, fmWrite)
-        for line in gSourceFiles[i].lines:
+        for line in conf.m.fileInfos[i].lines:
           if doStrip:
             f.write line.strip(leading = false, trailing = true)
           else:
             f.write line
-          f.write(gSourceFiles[i].newline)
+          f.write(conf.m.fileInfos[i], "\L")
         f.close
       except IOError:
         rawMessage(conf, errGenerated, "cannot open file: " & newFile)
@@ -93,10 +93,8 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
-proc replaceInFile(info: TLineInfo; newName: string) =
-  loadFile(info)
-
-  let line = gSourceFiles[info.fileIndex.int].lines[info.line.int-1]
+proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
+  let line = conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
@@ -108,35 +106,35 @@ proc replaceInFile(info: TLineInfo; newName: string) =
   if differ(line, first, last, newName):
     # last-first+1 != newName.len or
     var x = line.substr(0, first-1) & newName & line.substr(last+1)
-    system.shallowCopy(gSourceFiles[info.fileIndex.int].lines[info.line.int-1], x)
-    gSourceFiles[info.fileIndex.int].dirty = true
+    system.shallowCopy(conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1], x)
+    conf.m.fileInfos[info.fileIndex.int].dirty = true
 
-proc checkStyle(conf: ConfigRef; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
+proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
     if gStyleCheck == StyleCheck.Auto:
-      sym.name = getIdent(beau)
-      replaceInFile(info, beau)
+      sym.name = getIdent(cache, beau)
+      replaceInFile(conf, info, beau)
     else:
       message(conf, info, hintName, beau)
 
-proc styleCheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
+proc styleCheckDefImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
-    checkStyle(conf, info, s.name.s, k, s)
+    checkStyle(conf, cache, info, s.name.s, k, s)
 
 template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, info, s, k)
+    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)
 
 template styleCheckDef*(info: TLineInfo; s: PSym) =
   styleCheckDef(info, s, s.kind)
 template styleCheckDef*(s: PSym) =
   styleCheckDef(s.info, s, s.kind)
 
-proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
+proc styleCheckUseImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -147,9 +145,9 @@ proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
 
-  replaceInFile(info, newName)
+  replaceInFile(conf, info, newName)
   #if newName == "File": writeStackTrace()
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)
+    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, cache, info, s)

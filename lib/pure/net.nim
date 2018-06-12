@@ -405,33 +405,40 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
     return false
   return true
 
-proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage, sl: var Socklen) =
+proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
+                 sl: var Socklen) =
   ## Converts `IpAddress` and `Port` to `SockAddr` and `Socklen`
   let port = htons(uint16(port))
   case address.family
   of IpAddressFamily.IPv4:
     sl = sizeof(Sockaddr_in).Socklen
     let s = cast[ptr Sockaddr_in](addr sa)
-    s.sin_family = type(s.sin_family)(AF_INET)
+    s.sin_family = type(s.sin_family)(toInt(AF_INET))
     s.sin_port = port
-    copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0], sizeof(s.sin_addr))
+    copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
+            sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
     sl = sizeof(Sockaddr_in6).Socklen
     let s = cast[ptr Sockaddr_in6](addr sa)
-    s.sin6_family = type(s.sin6_family)(AF_INET6)
+    s.sin6_family = type(s.sin6_family)(toInt(AF_INET6))
     s.sin6_port = port
-    copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0], sizeof(s.sin6_addr))
+    copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
+            sizeof(s.sin6_addr))
 
-proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen, address: var IpAddress, port: var Port) =
-  if sa.ss_family.int == AF_INET.int and sl == sizeof(Sockaddr_in).Socklen:
+proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen,
+                     address: var IpAddress, port: var Port) =
+  if sa.ss_family.int == toInt(AF_INET) and sl == sizeof(Sockaddr_in).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv4)
     let s = cast[ptr Sockaddr_in](sa)
-    copyMem(addr address.address_v4[0], addr s.sin_addr, sizeof(address.address_v4))
+    copyMem(addr address.address_v4[0], addr s.sin_addr,
+            sizeof(address.address_v4))
     port = ntohs(s.sin_port).Port
-  elif sa.ss_family.int == AF_INET6.int and sl == sizeof(Sockaddr_in6).Socklen:
+  elif sa.ss_family.int == toInt(AF_INET6) and
+       sl == sizeof(Sockaddr_in6).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv6)
     let s = cast[ptr Sockaddr_in6](sa)
-    copyMem(addr address.address_v6[0], addr s.sin6_addr, sizeof(address.address_v6))
+    copyMem(addr address.address_v6[0], addr s.sin6_addr,
+            sizeof(address.address_v6))
     port = ntohs(s.sin6_port).Port
   else:
     raise newException(ValueError, "Neither IPv4 nor IPv6")
@@ -440,7 +447,7 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: Socklen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
-  fromSockAddrAux(unsafeAddr sa, sl, address, port)
+  fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
   CRYPTO_malloc_init()
@@ -1149,7 +1156,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
           return 1
         let sslPending = SSLPending(socket.sslHandle)
         if sslPending != 0:
-          return sslPending
+          return min(sslPending, size)
 
     var startTime = epochTime()
     let selRet = select(socket, timeout - int(waited * 1000.0))

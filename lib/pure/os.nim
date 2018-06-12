@@ -917,7 +917,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno == EEXIST:
       result = false
     else:
-      echo res
+      #echo res
       raiseOSError(osLastError())
   else:
     when useWinUnicode:
@@ -1440,7 +1440,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      raiseOSError("POSIX command line not supported")
+      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:

@@ -10,8 +10,8 @@
 # This module implements the symbol importing mechanism.
 
 import
-  intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes, renderer, modulepaths, sigmatch, configuration
+  intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
+  semdata, passes, renderer, modulepaths, sigmatch, lineinfos
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
@@ -20,7 +20,7 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
   for i in 1 ..< n.len:
-    let ident = lookups.considerQuotedIdent(c.config, n[i])
+    let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
@@ -69,12 +69,13 @@ proc rawImportSymbol(c: PContext, s: PSym) =
     if hasPattern(s): addPattern(c, s)
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
-  let ident = lookups.considerQuotedIdent(c.config, n)
+  let ident = lookups.considerQuotedIdent(c, n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
-    if s.kind == skStub: loadStub(s)
+    when false:
+      if s.kind == skStub: loadStub(s)
     if s.kind notin ExportableSymKinds:
       internalError(c.config, n.info, "importSymbol: 2")
     # for an enumeration we have to add all identifiers
@@ -132,7 +133,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
     result = createModuleAlias(realModule, n.sons[1].ident, realModule.info,
                                c.config.options)
 
-proc myImportModule(c: PContext, n: PNode): PSym =
+proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
   var f = checkModuleName(c.config, n)
   if f != InvalidFileIDX:
     let L = c.graph.importStack.len
@@ -143,10 +144,10 @@ proc myImportModule(c: PContext, n: PNode): PSym =
       var err = ""
       for i in countup(recursion, L-1):
         if i > recursion: err.add "\n"
-        err.add toFullPath(c.graph.importStack[i]) & " imports " &
-                toFullPath(c.graph.importStack[i+1])
+        err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
+                toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
-    result = importModuleAs(c, n, gImportModule(c.graph, c.module, f, c.cache))
+    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f))
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
@@ -161,9 +162,10 @@ proc myImportModule(c: PContext, n: PNode): PSym =
       else:
         message(c.config, n.info, warnDeprecated, result.name.s)
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
+    importStmtResult.add newStrNode(toFullPath(c.config, f), n.info)
 
-proc impMod(c: PContext; it: PNode) =
-  let m = myImportModule(c, it)
+proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
+  let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     var emptySet: IntSet
     # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -172,7 +174,8 @@ proc impMod(c: PContext; it: PNode) =
     #importForwarded(c, m.ast, emptySet)
 
 proc evalImport(c: PContext, n: PNode): PNode =
-  result = n
+  #result = n
+  result = newNodeI(nkImportStmt, n.info)
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
@@ -184,14 +187,14 @@ proc evalImport(c: PContext, n: PNode): PNode =
       a.add sep # dummy entry, replaced in the loop
       for x in it[2]:
         a.sons[2] = x
-        impMod(c, a)
+        impMod(c, a, result)
     else:
-      impMod(c, it)
+      impMod(c, it, result)
 
 proc evalFrom(c: PContext, n: PNode): PNode =
-  result = n
+  result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  var m = myImportModule(c, n.sons[0])
+  var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
@@ -200,9 +203,9 @@ proc evalFrom(c: PContext, n: PNode): PNode =
         importSymbol(c, n.sons[i], m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
-  result = n
+  result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  var m = myImportModule(c, n.sons[0])
+  var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module

@@ -41,7 +41,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   if result.isNil:
     let x = copyTree(n)
-    x.sons[0] = newIdentNode(getIdent"[]", n.info)
+    x.sons[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
     bracketNotFoundError(c, x)
     #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
@@ -76,9 +76,9 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkTupleConstr, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
-  let info = getInfoContext(idx)
+  let info = getInfoContext(c.config, idx)
   var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
+  filename.strVal = if useFullPaths != 0: toFullPath(c.config, info) else: toFilename(c.config, info)
   var line = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   line.intVal = toLinenumber(info)
   var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
@@ -154,7 +154,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait")
-    result = emptyNode
+    result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
@@ -174,7 +174,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   if isOrdinalType(parType):
     discard
   elif parType.kind == tySet:
-    result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
+    result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)
   else:
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
@@ -194,7 +194,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     localError(c.config, n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
 
-  let id = newIdentNode(getIdent(sl.strVal), n.info)
+  let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
@@ -208,10 +208,6 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
-
-proc isStrangeArray(t: PType): bool =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tyArray and t.firstOrd != 0
 
 proc semOf(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 3:
@@ -283,7 +279,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mRoof:
     localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
-    let plugin = getPlugin(n[0].sym)
+    let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
       localError(c.config, n.info, "cannot find plugin " & n[0].sym.name.s)
       result = n

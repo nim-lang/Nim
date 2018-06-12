@@ -42,6 +42,12 @@
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
   (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
 
+- For string inputs, ``unicode.isUpper`` and ``unicode.isLower`` now require a
+  second mandatory parameter ``skipNonAlpha``.
+
+- For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
+  require a second mandatory parameter ``skipNonAlpha``.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -85,9 +91,15 @@
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
-- An exception raised from ``test`` block of ``unittest`` now shows its type in
-  the error message
+- An exception raised from a ``test`` block of ``unittest`` now shows its type in
+  error message.
+- The ``compiler/nimeval`` API was rewritten to simplify the "compiler as an
+  API". Using the Nim compiler and its VM as a scripting engine has never been
+  easier. See ``tests/compilerapi/tcompilerapi.nim`` for an example of how to
+  use the Nim VM in a native Nim application.
+- Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+
 
 ### Language additions
 

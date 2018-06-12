@@ -393,4 +393,15 @@ block: #7969
 
   test(it, 1, 2, 3)
 
+block: # yield in blockexpr
+  iterator it(): int {.closure.} =
+    yield(block:
+      checkpoint(1)
+      yield 2
+      3
+    )
+
+  test(it, 1, 2, 3)
+
+
 echo "ok"
