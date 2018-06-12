@@ -908,6 +908,22 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
       inc(i)
     else: raise newException(ValueError, "invalid hex integer: " & s)
 
+proc parseBinInt*(s: string): int {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBinInt".} =
+  ## Parses a binary integer value contained in `s`.
+  ##
+  ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: ``0b``, ``0B``. Underscores within
+  ## `s` are ignored.
+  var i = 0
+  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
+  while i < s.len:
+    case s[i]
+    of '_': discard
+    of '0'..'1':
+      result = result shl 1 or (ord(s[i]) - ord('0'))
+    else: raise newException(ValueError, "invalid binary integer: " & s)
+    inc(i)
 
 proc generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
