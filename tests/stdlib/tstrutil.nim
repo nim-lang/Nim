@@ -7,6 +7,11 @@ discard """
 import
   strutils
 
+template rejectParse(e) =
+  try:
+    discard e
+  except ValueError: discard
+
 proc testStrip() =
   write(stdout, strip("  ha  "))
 
@@ -148,7 +153,6 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-
 proc testIsAlphaNumeric =
   assert isAlphaNumeric("abcdABC1234") == true
   assert isAlphaNumeric("a") == true
@@ -203,10 +207,42 @@ proc testCountLines =
   assertCountLines("\nabc\n123")
   assertCountLines("\nabc\n123\n")
 
+proc testParseInts =
+  # binary
+  assert "0b1111".parseBinInt == 15
+  assert "0B1111".parseBinInt == 15
+  assert "1111".parseBinInt == 15
+  assert "1110".parseBinInt == 14
+  assert "1_1_1_1".parseBinInt == 15
+  assert "0b1_1_1_1".parseBinInt == 15
+  rejectParse "0b1234".parseBinInt
+  # hex
+  assert "0x72".parseHexInt == 114
+  assert "0X72".parseHexInt == 114
+  assert "#72".parseHexInt == 114
+  assert "72".parseHexInt == 114
+  assert "FF".parseHexInt == 255
+  assert "ff".parseHexInt == 255
+  assert "fF".parseHexInt == 255  
+  assert "0x7_2".parseHexInt == 114
+  rejectParse "0xFFG".parseHexInt
+  rejectParse "0bFF".parseHexInt
+  rejectParse "reject".parseHexInt
+  # octal
+  assert "0o17".parseOctInt == 15
+  assert "0O17".parseOctInt == 15
+  assert "17".parseOctInt == 15
+  assert "10".parseOctInt == 8
+  assert "0o1_0_0".parseOctInt == 64
+  rejectParse "9".parseOctInt
+  rejectParse "0o9".parseOctInt
+  rejectParse "reject".parseOctInt
+
 testDelete()
 testFind()
 testRFind()
 testCountLines()
+testParseInts()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
