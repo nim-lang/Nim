@@ -2359,14 +2359,14 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     for t in m.inferredTypes:
       if t.sonsLen > 1: t.sons.setLen 1
 
-proc argtypeMatches*(c: PContext, f, a: PType, from_hlo = false): bool =
+proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
   var m: TCandidate
   initCandidate(c, m, f)
   let res = paramTypesMatch(m, f, a, ast.emptyNode, nil)
   #instantiateGenericConverters(c, res, m)
   # XXX this is used by patterns.nim too; I think it's better to not
   # instantiate generic converters for that
-  if not from_hlo:
+  if not fromHlo:
     res != nil
   else:
     # pattern templates do not allow for conversions except from int literal

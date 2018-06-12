@@ -77,7 +77,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   if isNil(n.typ):
     result = p.typ.kind in {tyVoid, tyStmt}
   else:
-    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, from_hlo = true)
+    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, fromHlo = true)
 
 proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
   result = p.kind == nkSym and p.sym.kind == skParam and p.sym.owner == c.owner
