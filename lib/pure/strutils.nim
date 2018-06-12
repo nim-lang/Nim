@@ -884,30 +884,6 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
 
-proc parseHexInt*(s: string): int {.noSideEffect, procvar,
-  rtl, extern: "nsuParseHexInt".} =
-  ## Parses a hexadecimal integer value contained in `s`.
-  ##
-  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
-  ## within `s` are ignored.
-  var i = 0
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
-  elif i < s.len and s[i] == '#': inc(i)
-  while i < s.len:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'9':
-      result = result shl 4 or (ord(s[i]) - ord('0'))
-      inc(i)
-    of 'a'..'f':
-      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
-      inc(i)
-    of 'A'..'F':
-      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
-      inc(i)
-    else: raise newException(ValueError, "invalid hex integer: " & s)
-
 proc parseBinInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseBinInt".} =
   ## Parses a binary integer value contained in `s`.
@@ -915,15 +891,31 @@ proc parseBinInt*(s: string): int {.noSideEffect, procvar,
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
   ## one of the following optional prefixes: ``0b``, ``0B``. Underscores within
   ## `s` are ignored.
-  var i = 0
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
-  while i < s.len:
-    case s[i]
-    of '_': discard
-    of '0'..'1':
-      result = result shl 1 or (ord(s[i]) - ord('0'))
-    else: raise newException(ValueError, "invalid binary integer: " & s)
-    inc(i)
+  let L = parseutils.parseBin(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid binary integer: " & s)
+
+proc parseOctInt*(s: string): int {.noSideEffect,
+  rtl, extern: "nsuParseOctInt".} =
+  ## Parses an octal integer value contained in `s`.
+  ##
+  ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
+  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
+  ## `s` are ignored.
+  let L = parseutils.parseOct(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid oct integer: " & s)  
+
+proc parseHexInt*(s: string): int {.noSideEffect, procvar,
+  rtl, extern: "nsuParseHexInt".} =
+  ## Parses a hexadecimal integer value contained in `s`.
+  ##
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
+  ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
+  ## within `s` are ignored.
+  let L = parseutils.parseHex(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid hex integer: " & s)
 
 proc generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
@@ -1632,23 +1624,6 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     inc(i)
     inc(j)
   setLen(s, newLen)
-
-proc parseOctInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseOctInt".} =
-  ## Parses an octal integer value contained in `s`.
-  ##
-  ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
-  ## `s` are ignored.
-  var i = 0
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while i < s.len:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'7':
-      result = result shl 3 or (ord(s[i]) - ord('0'))
-      inc(i)
-    else: raise newException(ValueError, "invalid octal integer: " & s)
 
 proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
