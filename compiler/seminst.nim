@@ -247,26 +247,39 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     if i > 1:
       resetIdTable(cl.symMap)
       resetIdTable(cl.localCache)
+
+    # take a note of the original type. If't a free type parameter
+    # we'll need to keep it unbount for the `fitNode` operation below...
+    var typeToFit = result[i]
+
     let needsStaticSkipping = result[i].kind == tyFromExpr
     result[i] = replaceTypeVarsT(cl, result[i])
     if needsStaticSkipping:
       result[i] = result[i].skipTypes({tyStatic})
+
+    # ...otherwise, we use the instantiated type in `fitNode`
+    if typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone:
+      typeToFit = result[i]
+
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
     let param = copySym(oldParam)
     param.owner = prc
     param.typ = result[i]
+
+    # The default value is instantiated and fitted against the final
+    # concrete param type. We avoid calling `replaceTypeVarsN` on the
+    # call head symbol, because this leads to infinite recursion.
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
       if def.kind == nkCall:
         for i in 1 ..< def.len:
           def[i] = replaceTypeVarsN(cl, def[i])
         def = semExprWithType(c, def)
-      param.ast = fitNode(c, param.typ, def, def.info)
-      param.typ = param.ast.typ
+      param.ast = fitNode(c, typeToFit, def, def.info)
+      param.typ = result[i]
 
     result.n[i] = newSymNode(param)
-    result[i] = param.typ
     propagateToOwner(result, result[i])
     addDecl(c, param)
 

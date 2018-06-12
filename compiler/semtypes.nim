@@ -1045,6 +1045,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
       if typ == nil:
         typ = def.typ
+        if typ.kind == tyTypeDesc:
+          # default typedesc values are mapped to the unbound typedesc type:
+          typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
+
       else:
         # if def.typ != nil and def.typ.kind != tyNone:
         # example code that triggers it:
