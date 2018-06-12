@@ -888,7 +888,7 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
-  ## If `s` is not a valid integer, `ValueError` is raised. `s` can have one
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
   ## within `s` are ignored.
   var i = 0
@@ -906,7 +906,8 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
     of 'A'..'F':
       result = result shl 4 or (ord(s[i]) - ord('A') + 10)
       inc(i)
-    else: raise newException(ValueError, "invalid integer: " & s)
+    else: raise newException(ValueError, "invalid hex integer: " & s)
+
 
 proc generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
@@ -1620,7 +1621,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseOctInt".} =
   ## Parses an octal integer value contained in `s`.
   ##
-  ## If `s` is not a valid integer, `ValueError` is raised. `s` can have one
+  ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
   ## `s` are ignored.
   var i = 0
@@ -1631,7 +1632,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
     of '0'..'7':
       result = result shl 3 or (ord(s[i]) - ord('0'))
       inc(i)
-    else: raise newException(ValueError, "invalid integer: " & s)
+    else: raise newException(ValueError, "invalid octal integer: " & s)
 
 proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
