@@ -141,7 +141,7 @@ Standard format specifier for strings, integers and floats
 
 The general form of a standard format specifier is::
 
-  [[fill]align][sign][#][0][minimumwidth][.precision][type]
+  [[fill]align][sign][#][0][minimumwidth][thousands_sep][.precision][type]
 
 The square brackets ``[]`` indicate an optional element.
 
@@ -188,6 +188,11 @@ then the field width will be determined by the content.
 
 If the width field is preceded by a zero ('0') character, this enables
 zero-padding.
+
+The 'thousands_sep' can be one of ',', '\'', or '.'. It will be used to separate
+thousands in int or float numbers. If one of the 'alternate forms' is selected
+to format integers, then for base 2 and 16 an '_' is inserted every 4 digits
+and for base 8 an '_' is inserted every 3 digits.
 
 The 'precision' is a decimal number indicating how many digits should be displayed
 after the decimal point in a floating point conversion. For non-numeric types the
@@ -368,6 +373,7 @@ type
     sign*: char                     ## Desired sign.
     alternateForm*: bool            ## Whether to prefix binary, octal and hex numbers
                                     ## with ``0b``, ``0o``, ``0x``.
+    thousandSeparator*: char        ## Whether to insert thousands separators.
     padWithZero*: bool              ## Whether to pad with zeros rather than spaces.
     minimumWidth*, precision*: int  ## Desired minium width and precision.
     typ*: char                      ## Type like 'f', 'g' or 'd'.
@@ -402,10 +408,26 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
     result = "0"
   else:
     result = ""
+    var ndigits = 0
     while v > type(v)(0):
       let d = v mod type(v)(radix)
+      inc(ndigits)
       v = v div type(v)(radix)
       result.add(mkDigit(d.int, spec.typ))
+      if spec.thousandSeparator != '\0':
+        if v > type(v)(0):
+          if radix == 2 or radix == 16:
+            if ndigits == 4:
+              result.add('_')
+              ndigits = 0
+          else:
+            if ndigits == 3:
+              if radix == 8:
+                result.add('_')
+              else:
+                result.add(spec.thousandSeparator)
+              ndigits = 0
+
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]
   if spec.padWithZero:
@@ -447,6 +469,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   result.fill = ' '
   result.align = '\0'
   result.sign = '-'
+  result.thousandSeparator = '\0'
   var i = start
   if i + 1 < s.len and s[i+1] in alignChars:
     result.fill = s[i]
@@ -470,6 +493,16 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
 
   let parsedLength = parseSaturatedNatural(s, result.minimumWidth, i)
   inc i, parsedLength
+
+  if i < s.len and s[i] in {',', '_', '\'', '.'}:
+    if s[i] == '.':
+      if i + 1 < s.len and s[i + 1] == '.':
+        result.thousandSeparator = s[i]
+        inc i
+    else:
+      result.thousandSeparator = s[i]
+      inc i
+
   if i < s.len and s[i] == '.':
     inc i
     let parsedLengthB = parseSaturatedNatural(s, result.precision, i)
@@ -484,7 +517,6 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   if i != s.len and not ignoreUnknownSuffix:
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
-
 
 proc format*(value: SomeInteger; specifier: string; res: var string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
@@ -524,6 +556,19 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
+
+  if spec.thousandSeparator != '\0':
+    let decPos = f.find('.')
+    let startPos = if decPos >= 0: decPos - 1 else: len(f) - 1
+    let endPos = if f[0] in {'+', '-', ' '}: 1 else: 0
+    if startPos - endPos > 3:
+      var i = 0
+      for p in countDown(startPos, endPos):
+        inc(i)
+        if p > endPos and i == 3:
+          insert(f, $spec.thousandSeparator, p)
+          i = 0
+
   var sign = false
   if value >= 0.0:
     if spec.sign != '-':
