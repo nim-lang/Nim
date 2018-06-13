@@ -494,7 +494,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   let parsedLength = parseSaturatedNatural(s, result.minimumWidth, i)
   inc i, parsedLength
 
-  if i < s.len and s[i] in {',', '_', '\'', '.'}:
+  if i < s.len and s[i] in {',', '\'', '.'}:
     if s[i] == '.':
       if i + 1 < s.len and s[i + 1] == '.':
         result.thousandSeparator = s[i]
