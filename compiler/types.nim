@@ -10,7 +10,8 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options
+  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
+  lineinfos
 
 type
   TPreferedDesc* = enum
@@ -102,7 +103,7 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
+proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
   result = sym.owner.name.s & '.' & sym.name.s & '('
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1):
@@ -118,7 +119,7 @@ proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
   if n.sons[0].typ != nil:
     result.add(": " & typeToString(n.sons[0].typ, prefer))
   result.add "[declared in "
-  result.add($sym.info)
+  result.add(conf$sym.info)
   result.add "]"
 
 proc elemType*(t: PType): PType =
@@ -589,18 +590,18 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstOrd*(t: PType): BiggestInt =
+proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
     result = 0
-  of tySet, tyVar: result = firstOrd(t.sons[0])
-  of tyArray: result = firstOrd(t.sons[0])
+  of tySet, tyVar: result = firstOrd(conf, t.sons[0])
+  of tyArray: result = firstOrd(conf, t.sons[0])
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[0])
   of tyInt:
-    if platform.intSize == 4: result = - (2147483646) - 2
+    if conf != nil and conf.target.intSize == 4: result = - (2147483646) - 2
     else: result = 0x8000000000000000'i64
   of tyInt8: result = - 128
   of tyInt16: result = - 32768
@@ -610,38 +611,38 @@ proc firstOrd*(t: PType): BiggestInt =
   of tyEnum:
     # if basetype <> nil then return firstOrd of basetype
     if sonsLen(t) > 0 and t.sons[0] != nil:
-      result = firstOrd(t.sons[0])
+      result = firstOrd(conf, t.sons[0])
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
-    result = firstOrd(lastSon(t))
+    result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
-    if t.len > 0: result = firstOrd(lastSon(t))
-    else: internalError(newPartialConfigRef(), "invalid kind for firstOrd(" & $t.kind & ')')
+    if t.len > 0: result = firstOrd(conf, lastSon(t))
+    else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
   else:
-    internalError(newPartialConfigRef(), "invalid kind for firstOrd(" & $t.kind & ')')
+    internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
 
-proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
+proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
-  of tySet, tyVar: result = lastOrd(t.sons[0])
-  of tyArray: result = lastOrd(t.sons[0])
+  of tySet, tyVar: result = lastOrd(conf, t.sons[0])
+  of tyArray: result = lastOrd(conf, t.sons[0])
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
     result = getOrdValue(t.n.sons[1])
   of tyInt:
-    if platform.intSize == 4: result = 0x7FFFFFFF
+    if conf != nil and conf.target.intSize == 4: result = 0x7FFFFFFF
     else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyInt8: result = 0x0000007F
   of tyInt16: result = 0x00007FFF
   of tyInt32: result = 0x7FFFFFFF
   of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt:
-    if platform.intSize == 4: result = 0xFFFFFFFF
+    if conf != nil and conf.target.intSize == 4: result = 0xFFFFFFFF
     elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
     else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt8: result = 0xFF
@@ -654,27 +655,27 @@ proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
-    result = lastOrd(lastSon(t))
+    result = lastOrd(conf, lastSon(t))
   of tyProxy: result = 0
   of tyOrdinal:
-    if t.len > 0: result = lastOrd(lastSon(t))
-    else: internalError(newPartialConfigRef(), "invalid kind for lastOrd(" & $t.kind & ')')
+    if t.len > 0: result = lastOrd(conf, lastSon(t))
+    else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
   else:
-    internalError(newPartialConfigRef(), "invalid kind for lastOrd(" & $t.kind & ')')
+    internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
 
-proc lengthOrd*(t: PType): BiggestInt =
+proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
-  of tyInt64, tyInt32, tyInt: result = lastOrd(t)
-  of tyDistinct: result = lengthOrd(t.sons[0])
+  of tyInt64, tyInt32, tyInt: result = lastOrd(conf, t)
+  of tyDistinct: result = lengthOrd(conf, t.sons[0])
   else:
-    let last = lastOrd t
-    let first = firstOrd t
+    let last = lastOrd(conf, t)
+    let first = firstOrd(conf, t)
     # XXX use a better overflow check here:
     if last == high(BiggestInt) and first <= 0:
       result = last
     else:
-      result = lastOrd(t) - firstOrd(t) + 1
+      result = lastOrd(conf, t) - firstOrd(conf, t) + 1
 
 # -------------- type equality -----------------------------------------------
 
@@ -1209,81 +1210,24 @@ proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PTyp
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
-type
-  OptKind* = enum  ## What to map 'opt T' to internally.
-    oBool      ## opt[T] requires an additional 'bool' field
-    oNil       ## opt[T] has no overhead since 'nil'
-               ## is available
-    oEnum      ## We can use some enum value that is not yet
-               ## used for opt[T]
-    oPtr       ## opt[T] actually introduces a hidden pointer
-               ## in order for the type recursion to work
-
-proc optKind*(typ: PType): OptKind =
-  ## return true iff 'opt[T]' can be mapped to 'T' internally
-  ## because we have a 'nil' value available:
-  assert typ.kind == tyOpt
-  case typ.sons[0].skipTypes(abstractInst).kind
-  of tyRef, tyPtr, tyProc:
-    result = oNil
-  of tyArray, tyObject, tyTuple:
-    result = oPtr
-  of tyBool: result = oEnum
-  of tyEnum:
-    assert(typ.n.sons[0].kind == nkSym)
-    if typ.n.sons[0].sym.position != low(int):
-      result = oEnum
-    else:
-      result = oBool
-  else:
-    result = oBool
-
-proc optLowering*(typ: PType): PType =
-  case optKind(typ)
-  of oNil: result = typ.sons[0]
-  of oPtr:
-    result = newType(tyOptAsRef, typ.owner)
-    result.rawAddSon typ.sons[0]
-  of oBool:
-    result = newType(tyTuple, typ.owner)
-    result.rawAddSon newType(tyBool, typ.owner)
-    result.rawAddSon typ.sons[0]
-  of oEnum:
-    if lastOrd(typ) + 1 < `shl`(BiggestInt(1), 32):
-      result = newType(tyInt32, typ.owner)
-    else:
-      result = newType(tyInt64, typ.owner)
-
-proc optEnumValue*(typ: PType): BiggestInt =
-  assert typ.kind == tyOpt
-  assert optKind(typ) == oEnum
-  let elem = typ.sons[0].skipTypes(abstractInst).kind
-  if elem == tyBool:
-    result = 2
-  else:
-    assert elem == tyEnum
-    assert typ.n.sons[0].sym.position != low(int)
-    result = typ.n.sons[0].sym.position - 1
-
-
 const
   szNonConcreteType* = -3
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 
-proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt
-proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
+proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt
+proc computeRecSizeAux(conf: ConfigRef; n: PNode, a, currOffset: var BiggestInt): BiggestInt =
   var maxAlign, maxSize, b, res: BiggestInt
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    result = computeRecSizeAux(n.sons[0], a, currOffset)
+    result = computeRecSizeAux(conf, n.sons[0], a, currOffset)
     maxSize = 0
     maxAlign = 1
     for i in countup(1, sonsLen(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        res = computeRecSizeAux(lastSon(n.sons[i]), b, currOffset)
+        res = computeRecSizeAux(conf, lastSon(n.sons[i]), b, currOffset)
         if res < 0: return res
         maxSize = max(maxSize, res)
         maxAlign = max(maxAlign, b)
@@ -1296,20 +1240,20 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
     result = 0
     maxAlign = 1
     for i in countup(0, sonsLen(n) - 1):
-      res = computeRecSizeAux(n.sons[i], b, currOffset)
+      res = computeRecSizeAux(conf, n.sons[i], b, currOffset)
       if res < 0: return res
       currOffset = align(currOffset, b) + res
       result = align(result, b) + res
       if b > maxAlign: maxAlign = b
     a = maxAlign
   of nkSym:
-    result = computeSizeAux(n.sym.typ, a)
+    result = computeSizeAux(conf, n.sym.typ, a)
     n.sym.offset = int(currOffset)
   else:
     a = 1
     result = szNonConcreteType
 
-proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
+proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt =
   var res, maxAlign, length, currOffset: BiggestInt
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
@@ -1323,7 +1267,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   typ.size = szIllegalRecursion # mark as being computed
   case typ.kind
   of tyInt, tyUInt:
-    result = intSize
+    result = conf.target.intSize
     a = result
   of tyInt8, tyUInt8, tyBool, tyChar:
     result = 1
@@ -1341,30 +1285,30 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     result = 16
     a = result
   of tyFloat:
-    result = floatSize
+    result = conf.target.floatSize
     a = result
   of tyProc:
-    if typ.callConv == ccClosure: result = 2 * ptrSize
-    else: result = ptrSize
-    a = ptrSize
+    if typ.callConv == ccClosure: result = 2 * conf.target.ptrSize
+    else: result = conf.target.ptrSize
+    a = conf.target.ptrSize
   of tyString, tyNil:
-    result = ptrSize
+    result = conf.target.ptrSize
     a = result
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion
-    else: result = ptrSize
+    else: result = conf.target.ptrSize
     a = result
   of tyArray:
-    let elemSize = computeSizeAux(typ.sons[1], a)
+    let elemSize = computeSizeAux(conf, typ.sons[1], a)
     if elemSize < 0: return elemSize
-    result = lengthOrd(typ.sons[0]) * elemSize
+    result = lengthOrd(conf, typ.sons[0]) * elemSize
   of tyEnum:
-    if firstOrd(typ) < 0:
+    if firstOrd(conf, typ) < 0:
       result = 4              # use signed int32
     else:
-      length = lastOrd(typ)   # BUGFIX: use lastOrd!
+      length = lastOrd(conf, typ)   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8): result = 1
       elif length + 1 < `shl`(1, 16): result = 2
       elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
@@ -1374,7 +1318,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if typ.sons[0].kind == tyGenericParam:
       result = szUnknownSize
     else:
-      length = lengthOrd(typ.sons[0])
+      length = lengthOrd(conf, typ.sons[0])
       if length <= 8: result = 1
       elif length <= 16: result = 2
       elif length <= 32: result = 4
@@ -1383,12 +1327,12 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
       else: result = align(length, 8) div 8 + 1
     a = result
   of tyRange:
-    result = computeSizeAux(typ.sons[0], a)
+    result = computeSizeAux(conf, typ.sons[0], a)
   of tyTuple:
     result = 0
     maxAlign = 1
     for i in countup(0, sonsLen(typ) - 1):
-      res = computeSizeAux(typ.sons[i], a)
+      res = computeSizeAux(conf, typ.sons[i], a)
       if res < 0: return res
       maxAlign = max(maxAlign, a)
       result = align(result, a) + res
@@ -1396,61 +1340,52 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     a = maxAlign
   of tyObject:
     if typ.sons[0] != nil:
-      result = computeSizeAux(typ.sons[0].skipTypes(skipPtrs), a)
+      result = computeSizeAux(conf, typ.sons[0].skipTypes(skipPtrs), a)
       if result < 0: return
       maxAlign = a
     elif isObjectWithTypeFieldPredicate(typ):
-      result = intSize
+      result = conf.target.intSize
       maxAlign = result
     else:
       result = 0
       maxAlign = 1
     currOffset = result
-    result = computeRecSizeAux(typ.n, a, currOffset)
+    result = computeRecSizeAux(conf, typ.n, a, currOffset)
     if result < 0: return
     if a < maxAlign: a = maxAlign
     result = align(result, a)
   of tyInferred:
     if typ.len > 1:
-      result = computeSizeAux(typ.lastSon, a)
+      result = computeSizeAux(conf, typ.lastSon, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
-    result = computeSizeAux(lastSon(typ), a)
+    result = computeSizeAux(conf, lastSon(typ), a)
   of tyTypeClasses:
-    result = if typ.isResolvedUserTypeClass: computeSizeAux(typ.lastSon, a)
+    result = if typ.isResolvedUserTypeClass: computeSizeAux(conf, typ.lastSon, a)
              else: szUnknownSize
   of tyTypeDesc:
-    result = computeSizeAux(typ.base, a)
+    result = computeSizeAux(conf, typ.base, a)
   of tyForward: return szIllegalRecursion
   of tyStatic:
-    result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
+    result = if typ.n != nil: computeSizeAux(conf, typ.lastSon, a)
              else: szUnknownSize
-  of tyOpt:
-    case optKind(typ)
-    of oBool: result = computeSizeAux(lastSon(typ), a) + 1
-    of oEnum:
-      if lastOrd(typ) + 1 < `shl`(BiggestInt(1), 32): result = 4
-      else: result = 8
-    of oNil: result = computeSizeAux(lastSon(typ), a)
-    of oPtr: result = ptrSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
   typ.size = result
   typ.align = int16(a)
 
-proc computeSize*(typ: PType): BiggestInt =
+proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
   var a: BiggestInt = 1
-  result = computeSizeAux(typ, a)
+  result = computeSizeAux(conf, typ, a)
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
   assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
-proc getSize*(typ: PType): BiggestInt =
-  result = computeSize(typ)
-  #if result < 0: internalError("getSize: " & $typ.kind)
-  # XXX review all usages of 'getSize'
+proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
+  result = computeSize(conf, typ)
+  if result < 0: internalError(conf, "getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind

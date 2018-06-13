@@ -13,8 +13,8 @@ import
   strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
-  modulegraphs, configuration
+  magicsys, nversion, nimsets, parser, times, passes, vmdef,
+  modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -75,6 +75,7 @@ type
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
+    enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
@@ -148,7 +149,7 @@ proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
 
 proc filename*(c: PContext): string =
   # the module's filename
-  return toFilename(FileIndex c.module.position)
+  return toFilename(c.config, FileIndex c.module.position)
 
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
@@ -210,8 +211,9 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.dynlib = nil
   result.notes = conf.notes
 
-proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
+proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
+  result.enforceVoidContext = PType(kind: tyStmt)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]
@@ -225,7 +227,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
-  result.cache = cache
+  result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
   result.typesWithOps = @[]

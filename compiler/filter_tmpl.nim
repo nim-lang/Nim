@@ -11,7 +11,7 @@
 
 import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
-  renderer, filters
+  renderer, filters, lineinfos
 
 type
   TParseState = enum

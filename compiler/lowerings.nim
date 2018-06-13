@@ -12,7 +12,8 @@
 const
   genPrefix* = ":tmp"         # prefix for generated names
 
-import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs
+import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
+  lineinfos
 from trees import getMagic
 
 proc newDeref*(n: PNode): PNode {.inline.} =
@@ -30,8 +31,8 @@ proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
-  vpart.sons[1] = ast.emptyNode
-  vpart.sons[2] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
+  vpart.sons[2] = vpart[1]
   addSon(father, vpart)
 
 proc newAsgnStmt(le, ri: PNode): PNode =
@@ -49,7 +50,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info, g.config.options)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
 
@@ -73,17 +74,17 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
 proc newTryFinally*(body, final: PNode): PNode =
   result = newTree(nkTryStmt, body, newTree(nkFinally, final))
 
-proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
+proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skLet, getIdent("_"), owner, value.info, owner.options)
+  var temp = newSym(skLet, getIdent(g.cache, "_"), owner, value.info, owner.options)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, value.info)
   vpart.sons[2] = value
   addSon(v, vpart)
   result.add(v)
@@ -92,10 +93,10 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   for i in 0 .. lhs.len-1:
     result.add newAsgnStmt(lhs.sons[i], newTupleAccessRaw(tempAsNode, i))
 
-proc lowerSwap*(n: PNode; owner: PSym): PNode =
+proc lowerSwap*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
-  var temp = newSym(skVar, getIdent(genPrefix), owner, n.info, owner.options)
+  var temp = newSym(skVar, getIdent(g.cache, genPrefix), owner, n.info, owner.options)
   temp.typ = n.sons[1].typ
   incl(temp.flags, sfFromGeneric)
 
@@ -104,7 +105,7 @@ proc lowerSwap*(n: PNode; owner: PSym): PNode =
 
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
   vpart.sons[2] = n[1]
   addSon(v, vpart)
 
@@ -120,7 +121,7 @@ proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType
   else:
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)
-  let s = newSym(skType, getIdent("Env_" & info.toFilename),
+  let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info)),
                   owner, info, owner.options)
   incl s.flags, sfAnon
   s.typ = result
@@ -171,10 +172,10 @@ proc lookupInRecord(n: PNode, id: int): PSym =
     if n.sym.id == -abs(id): result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym) =
+proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info,
+  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), s.owner, s.info,
                      s.options)
   field.id = -s.id
   let t = skipIntLit(s.typ)
@@ -183,10 +184,10 @@ proc addField*(obj: PType; s: PSym) =
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
-proc addUniqueField*(obj: PType; s: PSym): PSym {.discardable.} =
+proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.id)
   if result == nil:
-    var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info,
+    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), s.owner, s.info,
                        s.options)
     field.id = -s.id
     let t = skipIntLit(s.typ)
@@ -227,13 +228,13 @@ proc indirectAccess*(a: PNode, b: int, info: TLineInfo): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
-proc indirectAccess(a: PNode, b: string, info: TLineInfo): PNode =
+proc indirectAccess(a: PNode, b: string, info: TLineInfo; cache: IdentCache): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
   var t = deref.typ.skipTypes(abstractInst)
   var field: PSym
-  let bb = getIdent(b)
+  let bb = getIdent(cache, b)
   while true:
     assert t.kind == tyObject
     field = getSymFromList(t.n, bb)
@@ -337,15 +338,15 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
 
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: PType;
                  v: PNode; useShallowCopy=false): PSym =
-  result = newSym(skTemp, getIdent(genPrefix), owner, varSection.info,
+  result = newSym(skTemp, getIdent(g.cache, genPrefix), owner, varSection.info,
                   owner.options)
   result.typ = typ
   incl(result.flags, sfFromGeneric)
 
   var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
   vpart.sons[0] = newSymNode(result)
-  vpart.sons[1] = ast.emptyNode
-  vpart.sons[2] = if varInit.isNil: v else: ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, varSection.info)
+  vpart.sons[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
     if useShallowCopy and typeNeedsNoDeepCopy(typ):
@@ -410,7 +411,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     # generate:
     #   fv.owner = threadParam
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
-      "owner", fv.info), threadParam.newSymNode)
+      "owner", fv.info, g.cache), threadParam.newSymNode)
 
   body.add callCodegenProc(g, "nimArgsPassingDone", threadParam.newSymNode)
   if spawnKind == srByVar:
@@ -421,12 +422,12 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ.sons[1]))
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
-      if fk == fvGC: "data" else: "blob", fv.info), call)
+      if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
     if fk == fvGC:
       let incRefCall = newNodeI(nkCall, fv.info, 2)
       incRefCall.sons[0] = newSymNode(getSysMagic(g, fv.info, "GCref", mGCref))
       incRefCall.sons[1] = indirectAccess(threadLocalProm.newSymNode,
-                                          "data", fv.info)
+                                          "data", fv.info, g.cache)
       body.add incRefCall
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
@@ -438,7 +439,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
-  params.add emptyNode
+  params.add newNodeI(nkEmpty, f.info)
   params.add threadParam.newSymNode
   params.add argsParam.newSymNode
 
@@ -452,14 +453,18 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   t.n.add argsParam.newSymNode
 
   let name = (if f.kind == nkSym: f.sym.name.s else: genPrefix) & "Wrapper"
-  result = newSym(skProc, getIdent(name), argsParam.owner, f.info,
+  result = newSym(skProc, getIdent(g.cache, name), argsParam.owner, f.info,
                   argsParam.options)
-  result.ast = newProcNode(nkProcDef, f.info, body, params, newSymNode(result))
+  let emptyNode = newNodeI(nkEmpty, f.info)
+  result.ast = newProcNode(nkProcDef, f.info, body = body,
+      params = params, name = newSymNode(result), pattern = emptyNode,
+      genericParams = emptyNode, pragmas = emptyNode,
+      exceptions = emptyNode)
   result.typ = t
 
 proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result = newNodeI(nkCast, argsParam.info)
-  result.add emptyNode
+  result.add newNodeI(nkEmpty, argsParam.info)
   result.add newSymNode(argsParam)
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
@@ -468,7 +473,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchOb
                              castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
-  let tmpName = getIdent(genPrefix)
+  let tmpName = getIdent(g.cache, genPrefix)
   for i in 1 ..< n.len:
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
@@ -481,7 +486,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchOb
     let fieldname = if i < formals.len: formals[i].sym.name else: tmpName
     var field = newSym(skField, fieldname, objType.owner, n.info, g.config.options)
     field.typ = argType
-    objType.addField(field)
+    objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[i])
 
     let temp = addLocalVar(g, varSection, varInit, objType.owner, argType,
@@ -511,7 +516,7 @@ proc newIntLit*(g: ModuleGraph; info: TLineInfo; value: BiggestInt): PNode =
 
 proc genHigh*(g: ModuleGraph; n: PNode): PNode =
   if skipTypes(n.typ, abstractVar).kind == tyArray:
-    result = newIntLit(g, n.info, lastOrd(skipTypes(n.typ, abstractVar)))
+    result = newIntLit(g, n.info, lastOrd(g.config, skipTypes(n.typ, abstractVar)))
   else:
     result = newNodeI(nkCall, n.info, 2)
     result.typ = getSysType(g, n.info, tyInt)
@@ -522,7 +527,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
                              castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
-  let tmpName = getIdent(genPrefix)
+  let tmpName = getIdent(g.cache, genPrefix)
   # we need to copy the foreign scratch object fields into local variables
   # for correctness: These are called 'threadLocal' here.
   for i in 1 ..< n.len:
@@ -543,17 +548,17 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       slice.sons[0].typ = getSysType(g, n.info, tyInt) # fake type
       var fieldB = newSym(skField, tmpName, objType.owner, n.info, g.config.options)
       fieldB.typ = getSysType(g, n.info, tyInt)
-      objType.addField(fieldB)
+      objType.addField(fieldB, g.cache)
 
       if getMagic(n) == mSlice:
         let a = genAddrOf(n[1])
         field.typ = a.typ
-        objType.addField(field)
+        objType.addField(field, g.cache)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
 
         var fieldA = newSym(skField, tmpName, objType.owner, n.info, g.config.options)
         fieldA.typ = getSysType(g, n.info, tyInt)
-        objType.addField(fieldA)
+        objType.addField(fieldA, g.cache)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldA), n[2])
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
@@ -564,7 +569,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       else:
         let a = genAddrOf(n)
         field.typ = a.typ
-        objType.addField(field)
+        objType.addField(field, g.cache)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), genHigh(g, n))
 
@@ -577,12 +582,12 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
                                     useShallowCopy=true)
       slice.sons[3] = threadLocal.newSymNode
       call.add slice
-    elif (let size = computeSize(argType); size < 0 or size > 16) and
+    elif (let size = computeSize(g.config, argType); size < 0 or size > 16) and
         n.getRoot != nil:
       # it is more efficient to pass a pointer instead:
       let a = genAddrOf(n)
       field.typ = a.typ
-      objType.addField(field)
+      objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(g, varSection,nil, objType.owner, field.typ,
                                     indirectAccess(castExpr, field, n.info),
@@ -591,7 +596,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
     else:
       # boring case
       field.typ = argType
-      objType.addField(field)
+      objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(g, varSection, varInit,
                                     objType.owner, field.typ,
@@ -623,8 +628,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
       localError(g.config, n.info, "'spawn' takes a GC safe call expression")
   var
-    threadParam = newSym(skParam, getIdent"thread", owner, n.info, g.config.options)
-    argsParam = newSym(skParam, getIdent"args", owner, n.info, g.config.options)
+    threadParam = newSym(skParam, getIdent(g.cache, "thread"), owner, n.info, g.config.options)
+    argsParam = newSym(skParam, getIdent(g.cache, "args"), owner, n.info, g.config.options)
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType
@@ -635,7 +640,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   incl(objType.flags, tfFinal)
   let castExpr = createCastExpr(argsParam, objType)
 
-  var scratchObj = newSym(skVar, getIdent"scratch", owner, n.info, g.config.options)
+  var scratchObj = newSym(skVar, getIdent(g.cache, "scratch"), owner, n.info, g.config.options)
   block:
     scratchObj.typ = objType
     incl(scratchObj.flags, sfFromGeneric)
@@ -653,9 +658,9 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
                                                skFunc, skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj
     var argType = n[0].typ.skipTypes(abstractInst)
-    var field = newSym(skField, getIdent"fn", owner, n.info, g.config.options)
+    var field = newSym(skField, getIdent(g.cache, "fn"), owner, n.info, g.config.options)
     field.typ = argType
-    objType.addField(field)
+    objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
     fn = indirectAccess(castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
@@ -677,17 +682,17 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   if barrier != nil:
     let typ = newType(tyPtr, owner)
     typ.rawAddSon(magicsys.getCompilerProc(g, "Barrier").typ)
-    var field = newSym(skField, getIdent"barrier", owner, n.info, g.config.options)
+    var field = newSym(skField, getIdent(g.cache, "barrier"), owner, n.info, g.config.options)
     field.typ = typ
-    objType.addField(field)
+    objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
     barrierAsExpr = indirectAccess(castExpr, field, n.info)
 
   var fvField, fvAsExpr: PNode = nil
   if spawnKind == srFlowVar:
-    var field = newSym(skField, getIdent"fv", owner, n.info, g.config.options)
+    var field = newSym(skField, getIdent(g.cache, "fv"), owner, n.info, g.config.options)
     field.typ = retType
-    objType.addField(field)
+    objType.addField(field, g.cache)
     fvField = newDotExpr(scratchObj, field)
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     # create flowVar:
@@ -696,10 +701,10 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
       result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField)
 
   elif spawnKind == srByVar:
-    var field = newSym(skField, getIdent"fv", owner, n.info, g.config.options)
+    var field = newSym(skField, getIdent(g.cache, "fv"), owner, n.info, g.config.options)
     field.typ = newType(tyPtr, objType.owner)
     field.typ.rawAddSon(retType)
-    objType.addField(field)
+    objType.addField(field, g.cache)
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 

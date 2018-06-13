@@ -9,10 +9,10 @@
 
 ## The builtin 'system.locals' implemented as a plugin.
 
-import "../../" / [pluginsupport, ast, astalgo,
+import ".." / [pluginsupport, ast, astalgo,
   magicsys, lookups, semdata, lowerings]
 
-proc semLocals(c: PContext, n: PNode): PNode =
+proc semLocals*(c: PContext, n: PNode): PNode =
   var counter = 0
   var tupleType = newTypeS(tyTuple, c)
   result = newNodeIT(nkPar, n.info, tupleType)
@@ -39,5 +39,3 @@ proc semLocals(c: PContext, n: PNode): PNode =
         var a = newSymNode(it, result.info)
         if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)
         result.add(a)
-
-registerPlugin("stdlib", "system", "locals", semLocals)

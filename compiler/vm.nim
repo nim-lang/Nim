@@ -19,7 +19,7 @@ import ast except getstr
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, configuration
+  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -66,7 +66,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = substr(toFilename(info), 0)
+    var s = substr(toFilename(c.config, info), 0)
     # this 'substr' prevents a strange corruption. XXX This needs to be
     # investigated eventually but first attempts to fix it broke everything
     # see the araq-wip-fixed-writebarrier branch.
@@ -213,7 +213,7 @@ proc putIntoNode(n: var PNode; x: TFullReg) =
     if nfIsRef in x.node.flags:
       n = x.node
     else:
-      let destIsRef = nfIsRef in n.flags    
+      let destIsRef = nfIsRef in n.flags
       n[] = x.node[]
       # Ref-ness must be kept for the destination
       if destIsRef:
@@ -370,7 +370,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(desttyp) or dest.intVal > lastOrd(desttyp):
+      if dest.intVal < firstOrd(c.config, desttyp) or dest.intVal > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
       if dest.kind != rkInt:
@@ -700,12 +700,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
       addSon(b, regs[rb].regToNode)
-      var r = diffSets(regs[ra].node, b)
+      var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
       for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
     of opcCard:
       decodeB(rkInt)
-      regs[ra].intVal = nimsets.cardSet(regs[rb].node)
+      regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
     of opcMulInt:
       decodeBC(rkInt)
       let
@@ -853,35 +853,35 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(regs[rb].node.strVal < regs[rc].node.strVal)
     of opcLeSet:
       decodeBC(rkInt)
-      regs[ra].intVal = ord(containsSets(regs[rb].node, regs[rc].node))
+      regs[ra].intVal = ord(containsSets(c.config, regs[rb].node, regs[rc].node))
     of opcEqSet:
       decodeBC(rkInt)
-      regs[ra].intVal = ord(equalSets(regs[rb].node, regs[rc].node))
+      regs[ra].intVal = ord(equalSets(c.config, regs[rb].node, regs[rc].node))
     of opcLtSet:
       decodeBC(rkInt)
       let a = regs[rb].node
       let b = regs[rc].node
-      regs[ra].intVal = ord(containsSets(a, b) and not equalSets(a, b))
+      regs[ra].intVal = ord(containsSets(c.config, a, b) and not equalSets(c.config, a, b))
     of opcMulSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-            nimsets.intersectSets(regs[rb].node, regs[rc].node).sons)
+            nimsets.intersectSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcPlusSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.unionSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.unionSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcMinusSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.diffSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.diffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcSymdiffSet:
       decodeBC(rkNode)
       createSet(regs[ra])
       move(regs[ra].node.sons,
-           nimsets.symdiffSets(regs[rb].node, regs[rc].node).sons)
+           nimsets.symdiffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]
@@ -972,7 +972,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         when hasFFI:
           let prcValue = c.globals.sons[prc.position-1]
           if prcValue.kind == nkEmpty:
-            globalError(c.config, c.debug[pc], "canot run " & prc.name.s)
+            globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
           let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
@@ -1291,7 +1291,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # getType opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
       of 1:
@@ -1305,14 +1305,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # getTypeInst opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeInstToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeInstToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
       else:
         # getTypeImpl opcode:
         ensureKind(rkNode)
         if regs[rb].kind == rkNode and regs[rb].node.typ != nil:
-          regs[ra].node = opMapTypeImplToAst(regs[rb].node.typ, c.debug[pc])
+          regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
     of opcNStrVal:
@@ -1336,14 +1336,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      decodeBC(rkNode)
-      inc pc
-      let rd = c.code[pc].regA
+      when defined(nimcore):
+        decodeBC(rkNode)
+        inc pc
+        let rd = c.code[pc].regA
 
-      createStr regs[ra]
-      regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc], c.config)[0]
+        createStr regs[ra]
+        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                      regs[rc].node.strVal, regs[rd].node.strVal,
+                                      c.debug[pc], c.config)[0]
+      else:
+        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError:
       decodeB(rkNode)
       let a = regs[ra].node
@@ -1358,7 +1361,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            c.debug[pc].toFullPath, c.debug[pc].line.int,
+                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
@@ -1373,7 +1376,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            c.debug[pc].toFullPath, c.debug[pc].line.int,
+                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
@@ -1392,7 +1395,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, n.info.toFilename)
+      regs[ra].node = newStrNode(nkStrLit, toFilename(c.config, n.info))
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetLine:
@@ -1453,7 +1456,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
-        regs[ra].node.ident = getIdent(regs[rb].node.strVal)
+        regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.config, c.debug[pc], "cannot set type")
@@ -1566,9 +1569,110 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  else: regs[rc].node.strVal
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
-      var sym = newSym(k.TSymKind, name.getIdent, c.module.owner, c.debug[pc])
+      var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.module.owner, c.debug[pc])
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
+
+    of opcNccValue:
+      decodeB(rkInt)
+      let destKey = regs[rb].node.strVal
+      regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
+    of opcNccInc:
+      let g = c.graph
+      let destKey = regs[ra].node.strVal
+      let by = regs[instr.regB].intVal
+      let v = getOrDefault(g.cacheCounters, destKey)
+      g.cacheCounters[destKey] = v+by
+      recordInc(c, c.debug[pc], destKey, by)
+    of opcNcsAdd:
+      let g = c.graph
+      let destKey = regs[ra].node.strVal
+      let val = regs[instr.regB].node
+      if not contains(g.cacheSeqs, destKey):
+        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+        # newNodeI(nkStmtList, c.debug[pc])
+      else:
+        g.cacheSeqs[destKey].add val
+      recordAdd(c, c.debug[pc], destKey, val)
+    of opcNcsIncl:
+      let g = c.graph
+      let destKey = regs[ra].node.strVal
+      let val = regs[instr.regB].node
+      if not contains(g.cacheSeqs, destKey):
+        g.cacheSeqs[destKey] = newTree(nkStmtList, val)
+      else:
+        block search:
+          for existing in g.cacheSeqs[destKey]:
+            if exprStructuralEquivalent(existing, val, strictSymEquality=true):
+              break search
+          g.cacheSeqs[destKey].add val
+      recordIncl(c, c.debug[pc], destKey, val)
+    of opcNcsLen:
+      let g = c.graph
+      decodeB(rkInt)
+      let destKey = regs[rb].node.strVal
+      regs[ra].intVal =
+        if contains(g.cacheSeqs, destKey): g.cacheSeqs[destKey].len else: 0
+    of opcNcsAt:
+      let g = c.graph
+      decodeBC(rkNode)
+      let idx = regs[rc].intVal
+      let destKey = regs[rb].node.strVal
+      if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
+        regs[ra].node = g.cacheSeqs[destKey][idx.int]
+      else:
+        stackTrace(c, tos, pc, errIndexOutOfBounds)
+    of opcNctPut:
+      let g = c.graph
+      let destKey = regs[ra].node.strVal
+      let key = regs[instr.regB].node.strVal
+      let val = regs[instr.regC].node
+      if not contains(g.cacheTables, destKey):
+        g.cacheTables[destKey] = initBTree[string, PNode]()
+      if not contains(g.cacheTables[destKey], key):
+        g.cacheTables[destKey].add(key, val)
+        recordPut(c, c.debug[pc], destKey, key, val)
+      else:
+        stackTrace(c, tos, pc, "key already exists: " & key)
+    of opcNctLen:
+      let g = c.graph
+      decodeB(rkInt)
+      let destKey = regs[rb].node.strVal
+      regs[ra].intVal =
+        if contains(g.cacheTables, destKey): g.cacheTables[destKey].len else: 0
+    of opcNctGet:
+      let g = c.graph
+      decodeBC(rkNode)
+      let destKey = regs[rb].node.strVal
+      let key = regs[rc].node.strVal
+      if contains(g.cacheTables, destKey):
+        if contains(g.cacheTables[destKey], key):
+          regs[ra].node = getOrDefault(g.cacheTables[destKey], key)
+        else:
+          stackTrace(c, tos, pc, "key does not exist: " & key)
+      else:
+        stackTrace(c, tos, pc, "key does not exist: " & destKey)
+    of opcNctHasNext:
+      let g = c.graph
+      decodeBC(rkInt)
+      let destKey = regs[rb].node.strVal
+      regs[ra].intVal =
+        if g.cacheTables.contains(destKey):
+          ord(btrees.hasNext(g.cacheTables[destKey], regs[rc].intVal.int))
+        else:
+          0
+    of opcNctNext:
+      let g = c.graph
+      decodeBC(rkNode)
+      let destKey = regs[rb].node.strVal
+      let index = regs[rc].intVal
+      if contains(g.cacheTables, destKey):
+        let (k, v, nextIndex) = btrees.next(g.cacheTables[destKey], index.int)
+        regs[ra].node = newTree(nkTupleConstr, newStrNode(k, c.debug[pc]), v,
+                                newIntNode(nkIntLit, nextIndex))
+      else:
+        stackTrace(c, tos, pc, "key does not exist: " & destKey)
+
     of opcTypeTrait:
       # XXX only supports 'name' for now; we can use regC to encode the
       # type trait operation
@@ -1583,7 +1687,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       inc pc
       let typ = c.types[c.code[pc].regBx - wordExcess]
-      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.config))
+      putIntoReg(regs[ra], loadAny(regs[rb].node.strVal, typ, c.cache, c.config))
     of opcMarshalStore:
       decodeB(rkNode)
       inc pc
@@ -1654,36 +1758,30 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-# for now we share the 'globals' environment. XXX Coming soon: An API for
-# storing&loading the 'globals' environment to get what a component system
-# requires.
-var
-  globalCtx*: PCtx
-
-proc setupGlobalCtx(module: PSym; cache: IdentCache; graph: ModuleGraph) =
-  if globalCtx.isNil:
-    globalCtx = newCtx(module, cache, graph)
-    registerAdditionalOps(globalCtx)
+proc setupGlobalCtx(module: PSym; graph: ModuleGraph) =
+  if graph.vm.isNil:
+    graph.vm = newCtx(module, graph.cache, graph)
+    registerAdditionalOps(PCtx graph.vm)
   else:
-    refresh(globalCtx, module)
+    refresh(PCtx graph.vm, module)
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
-  setupGlobalCtx(module, cache, graph)
-  result = globalCtx
+  setupGlobalCtx(module, graph)
+  result = PCtx graph.vm
   when hasFFI:
-    globalCtx.features = {allowFFI, allowCast}
+    PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
     evalStmt(c, n)
-    result = emptyNode
+    result = newNodeI(nkEmpty, n.info)
   else:
     result = n
   c.oldErrorCount = c.config.errorCounter
@@ -1691,19 +1789,19 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
 proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   myProcess(c, n)
 
-const evalPass* = makePass(myOpen, nil, myProcess, myClose)
+const evalPass* = makePass(myOpen, myProcess, myClose)
 
-proc evalConstExprAux(module: PSym; cache: IdentCache;
+proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   let n = transformExpr(g, module, n)
-  setupGlobalCtx(module, cache, g)
-  var c = globalCtx
+  setupGlobalCtx(module, g)
+  var c = PCtx g.vm
   let oldMode = c.mode
   defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
-  if c.code[start].opcode == opcEof: return emptyNode
+  if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
@@ -1712,17 +1810,17 @@ proc evalConstExprAux(module: PSym; cache: IdentCache;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
 
-proc evalConstExpr*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode): PNode =
-  result = evalConstExprAux(module, cache, g, nil, e, emConst)
+proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
+  result = evalConstExprAux(module, g, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode, prc: PSym): PNode =
-  result = evalConstExprAux(module, cache, g, prc, e, emStaticExpr)
+proc evalStaticExpr*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym): PNode =
+  result = evalConstExprAux(module, g, prc, e, emStaticExpr)
 
-proc evalStaticStmt*(module: PSym; cache: IdentCache, g: ModuleGraph; e: PNode, prc: PSym) =
-  discard evalConstExprAux(module, cache, g, prc, e, emStaticStmt)
+proc evalStaticStmt*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym) =
+  discard evalConstExprAux(module, g, prc, e, emStaticStmt)
 
-proc setupCompileTimeVar*(module: PSym; cache: IdentCache, g: ModuleGraph; n: PNode) =
-  discard evalConstExprAux(module, cache, g, nil, n, emStaticStmt)
+proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
+  discard evalConstExprAux(module, g, nil, n, emStaticStmt)
 
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
@@ -1748,13 +1846,12 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
-var evalMacroCounter: int
 
-proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
+proc evalMacroCall*(module: PSym; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
-  inc(evalMacroCounter)
-  if evalMacroCounter > evalMacroLimit:
+  inc(g.config.evalMacroCounter)
+  if g.config.evalMacroCounter > evalMacroLimit:
     globalError(g.config, n.info, "macro instantiation too nested")
 
   # immediate macros can bypass any type and arity checking so we check the
@@ -1763,8 +1860,8 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
     globalError(g.config, n.info, "in call '$#' got $#, but expected $# argument(s)" % [
         n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
 
-  setupGlobalCtx(module, cache, g)
-  var c = globalCtx
+  setupGlobalCtx(module, g)
+  var c = PCtx g.vm
   c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig
@@ -1795,12 +1892,12 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
       if idx < n.len:
         tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
       else:
-        dec(evalMacroCounter)
+        dec(g.config.evalMacroCounter)
         c.callsite = nil
         localError(c.config, n.info, "expected " & $gp.len &
                    " generic parameter(s)")
     elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
-      dec(evalMacroCounter)
+      dec(g.config.evalMacroCounter)
       c.callsite = nil
       globalError(c.config, n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
@@ -1808,5 +1905,5 @@ proc evalMacroCall*(module: PSym; cache: IdentCache; g: ModuleGraph;
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
-  dec(evalMacroCounter)
+  dec(g.config.evalMacroCounter)
   c.callsite = nil

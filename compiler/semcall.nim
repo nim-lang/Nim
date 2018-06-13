@@ -170,7 +170,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
-      add(candidates, err.sym.getProcHeader(prefer))
+      add(candidates, getProcHeader(c.config, err.sym, prefer))
     add(candidates, "\n")
     if err.firstMismatch != 0 and n.len > 1:
       let cond = n.len > 2
@@ -213,7 +213,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
-  if errorOutputs == {}:
+  if c.config.m.errorOutputs == {}:
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
   if errors.len == 0:
@@ -293,7 +293,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       orig.sons[0..1] = [nil, orig[1], f]
 
       template tryOp(x) =
-        let op = newIdentNode(getIdent(x), n.info)
+        let op = newIdentNode(getIdent(c.cache, x), n.info)
         n.sons[0] = op
         orig.sons[0] = op
         pickBest(op)
@@ -306,17 +306,17 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
       # we need to strip away the trailing '=' here:
-      let calleeName = newIdentNode(getIdent(f.ident.s[0..f.ident.s.len-2]), n.info)
-      let callOp = newIdentNode(getIdent".=", n.info)
+      let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..f.ident.s.len-2]), n.info)
+      let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c.config, f, n).s)
+        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
       else:
-        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c.config, f, n).s)
+        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -333,7 +333,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     internalAssert c.config, result.state == csMatch
     #writeMatches(result)
     #writeMatches(alt)
-    if errorOutputs == {}:
+    if c.config.m.errorOutputs == {}:
       # quick error message for performance of 'compiles' built-in:
       globalError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:
@@ -345,7 +345,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       add(args, ")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
+        getProcHeader(c.config, result.calleeSym),
+        getProcHeader(c.config, alt.calleeSym),
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
