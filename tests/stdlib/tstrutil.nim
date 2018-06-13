@@ -7,9 +7,12 @@ discard """
 import
   strutils
 
+import macros
+
 template rejectParse(e) =
   try:
     discard e
+    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
 
 proc testStrip() =
@@ -232,7 +235,6 @@ proc testParseInts =
   rejectParse "_".parseHexInt
   rejectParse "0x".parseHexInt
   rejectParse "0xFFG".parseHexInt
-  rejectParse "0bFF".parseHexInt
   rejectParse "reject".parseHexInt
   # octal
   assert "0o17".parseOctInt == 15
@@ -241,7 +243,7 @@ proc testParseInts =
   assert "10".parseOctInt == 8
   assert "0o1_0_0".parseOctInt == 64
   rejectParse "".parseOctInt
-  rejectParse "_".parseOctInt  
+  rejectParse "_".parseOctInt
   rejectParse "0o".parseOctInt
   rejectParse "9".parseOctInt
   rejectParse "0o9".parseOctInt
