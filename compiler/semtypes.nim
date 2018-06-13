@@ -114,8 +114,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       incl(e.flags, sfExported)
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
-    let conf = c.config
-    styleCheckDef(e)
+    styleCheckDef(c.config, e)
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
       else: importPureEnumField(c, e)
@@ -451,7 +450,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
-      if c.config.cmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
+      styleCheckDef(c.config, a.sons[j].info, field)
   if result.n.len == 0: result.n = nil
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -491,7 +490,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
-  if c.config.cmd == cmdPretty: styleCheckDef(n.info, result)
+  styleCheckDef(c.config, n.info, result)
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -685,7 +684,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         localError(c.config, n.sons[i].info, "attempt to redefine: '" & f.name.s & "'")
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
-      styleCheckDef(f)
+      styleCheckDef(c.config, f)
     if a.kind != nkEmpty: addSon(father, a)
   of nkSym:
     # This branch only valid during generic object
@@ -1062,7 +1061,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addSon(result.n, newSymNode(arg))
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      if c.config.cmd == cmdPretty: styleCheckDef(a.sons[j].info, arg)
+      styleCheckDef(c.config, a.sons[j].info, arg)
 
   var r: PType
   if n.sons[0].kind != nkEmpty:

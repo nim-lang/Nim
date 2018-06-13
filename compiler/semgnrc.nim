@@ -160,7 +160,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
   addPrelimDecl(c, s)
-  styleCheckDef(n.info, s, kind)
+  styleCheckDef(c.config, n.info, s, kind)
 
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =

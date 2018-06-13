@@ -364,7 +364,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
   suggestSym(c.config, n.info, result, c.graph.usageSym)
-  styleCheckDef(result)
+  styleCheckDef(c.config, result)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
@@ -627,7 +627,7 @@ proc addForVarDecl(c: PContext, v: PSym) =
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
-  styleCheckDef(result)
+  styleCheckDef(c.config, result)
 
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
@@ -1489,6 +1489,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
+  let oldOptions = c.config.options
   #c.currentScope = s.scope
   pushOwner(c, s)
   openScope(c)
@@ -1569,6 +1570,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner(c)
     pushOwner(c, s)
   s.options = c.config.options
+  c.config.options = oldOptions
+
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
     if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:

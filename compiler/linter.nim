@@ -13,9 +13,18 @@
 import
   strutils, os, intsets, strtabs
 
-import ".." / [options, ast, astalgo, msgs, semdata, ropes, idents,
-  lineinfos]
-import prettybase
+import options, ast, astalgo, msgs, semdata, ropes, idents,
+  lineinfos
+
+const
+  Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
+
+proc identLen*(line: string, start: int): int =
+  while start+result < line.len and line[start+result] in Letters:
+    inc result
+
+when false:
+  import prettybase
 
 type
   StyleCheck* {.pure.} = enum None, Warn, Auto
@@ -93,12 +102,16 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
+proc differ*(line: string, a, b: int, x: string): bool =
+  let y = line[a..b]
+  result = cmpIgnoreStyle(y, x) == 0 and y != x
+
 proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
   let line = conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
-  while first > 0 and line[first-1] in prettybase.Letters: dec first
+  while first > 0 and line[first-1] in Letters: dec first
   if first < 0: return
   if line[first] == '`': inc first
 
@@ -120,27 +133,37 @@ proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, 
 
 proc styleCheckDefImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
-  if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
+  if k in {skResult, skTemp} or s.name.s[0] notin Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
     checkStyle(conf, cache, info, s.name.s, k, s)
 
-template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
+proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
+  # operators stay as they are:
+  if k in {skResult, skTemp} or s.name.s[0] notin Letters: return
+  if k in {skType, skGenericParam} and sfAnon in s.flags: return
+  let beau = beautifyName(s.name.s, k)
+  if s.name.s != beau:
+    message(conf, info, hintName, beau)
+
+template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
+  if optCheckNep1 in conf.globalOptions:
+    nep1CheckDefImpl(conf, info, s, k)
   when defined(nimfix):
     if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)
 
-template styleCheckDef*(info: TLineInfo; s: PSym) =
-  styleCheckDef(info, s, s.kind)
-template styleCheckDef*(s: PSym) =
-  styleCheckDef(s.info, s, s.kind)
+template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =
+  styleCheckDef(conf, info, s, s.kind)
+template styleCheckDef*(conf: ConfigRef; s: PSym) =
+  styleCheckDef(conf, s.info, s, s.kind)
 
-proc styleCheckUseImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym) =
+proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
 
   # operators stay as they are:
-  if s.kind in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters:
+  if s.kind in {skResult, skTemp} or s.name.s[0] notin Letters:
     return
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
@@ -150,4 +173,4 @@ proc styleCheckUseImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: P
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, cache, info, s)
+    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)

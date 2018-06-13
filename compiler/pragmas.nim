@@ -24,8 +24,8 @@ const
     wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
-    wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims, wUsed, wLiftLocals}
+    wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe, wOverride,
+    wConstructor, wExportNims, wUsed, wLiftLocals, wStacktrace, wLinetrace}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,

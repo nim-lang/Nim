@@ -213,7 +213,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       else:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
-        styleCheckDef(n.info, local)
+        styleCheckDef(c.c.config, n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
     else:
       replaceIdentBySym(c.c, n, ident)
@@ -260,7 +260,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       var s = newGenSym(k, ident, c)
       s.ast = n
       addPrelimDecl(c.c, s)
-      styleCheckDef(n.info, s)
+      styleCheckDef(c.c.config, n.info, s)
       n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
     else:
       n.sons[namePos] = ident
@@ -382,7 +382,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         # labels are always 'gensym'ed:
         let s = newGenSym(skLabel, n.sons[0], c)
         addPrelimDecl(c.c, s)
-        styleCheckDef(s)
+        styleCheckDef(c.c.config, s)
         n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
@@ -551,7 +551,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     incl(s.flags, sfGlobal)
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
-  styleCheckDef(s)
+  styleCheckDef(c.config, s)
   # check parameter list:
   #s.scope = c.currentScope
   pushOwner(c, s)

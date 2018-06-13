@@ -11,7 +11,7 @@
 
 import strutils, os, parseopt
 import compiler/[options, commands, modules, sem,
-  passes, passaux, nimfix/pretty,
+  passes, passaux, linter,
   msgs, nimconf,
   extccomp, condsyms,
   modulegraphs, idents]

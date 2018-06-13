@@ -15,7 +15,7 @@ import
   magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
+  evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
 
 from modulegraphs import ModuleGraph

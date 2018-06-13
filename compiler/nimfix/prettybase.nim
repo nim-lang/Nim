@@ -7,20 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-import strutils, lexbase, streams
-import ".." / [ast, msgs, lineinfos, idents, options]
+import strutils except Letters
+import lexbase, streams
+import ".." / [ast, msgs, lineinfos, idents, options, linter]
 from os import splitFile
-
-const
-  Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
-
-proc identLen*(line: string, start: int): int =
-  while start+result < line.len and line[start+result] in Letters:
-    inc result
-
-proc differ*(line: string, a, b: int, x: string): bool =
-  let y = line[a..b]
-  result = cmpIgnoreStyle(y, x) == 0 and y != x
 
 proc replaceDeprecated*(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PIdent) =
   let line = sourceLine(conf, info)
