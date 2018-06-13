@@ -47,7 +47,7 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
   ##   discard parseHex("0x38", value)
   ##   assert value == -200
   ##
-  ## If `maxLen == 0` the length of the hexadecimal number has no upper bound.
+  ## If ``maxLen == 0`` the length of the hexadecimal number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
   var i = start
@@ -77,7 +77,7 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   ## Parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   ##
-  ## If `maxLen == 0` the length of the octal number has no upper bound.
+  ## If ``maxLen == 0`` the length of the octal number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
   var i = start
@@ -100,7 +100,7 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   ##
-  ## If `maxLen == 0` the length of the binary number has no upper bound.
+  ## If ``maxLen == 0`` the length of the binary number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
   var i = start

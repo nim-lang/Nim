@@ -48,6 +48,10 @@
 - For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
   require a second mandatory parameter ``skipNonAlpha``.
 
+- The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
+    and strings containing only valid prefixes, e.g. "0x" for hex integers.
+
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -101,7 +105,6 @@
   use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
-- The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
 ### Language additions
 
