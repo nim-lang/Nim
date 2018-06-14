@@ -1486,10 +1486,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.ast = n
     #s.scope = c.currentScope
 
+  s.options = c.config.options
+
   # before compiling the proc body, set as current the scope
   # where the proc was declared
   let oldScope = c.currentScope
-  let oldOptions = c.config.options
   #c.currentScope = s.scope
   pushOwner(c, s)
   openScope(c)
@@ -1569,8 +1570,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)
-  s.options = c.config.options
-  c.config.options = oldOptions
 
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
