@@ -24,6 +24,10 @@ else:
 
 import os, streams
 
+proc newEIO(msg: string): ref IOError =
+  new(result)
+  result.msg = msg
+
 type
   MemFile* = object  ## represents a memory mapped file
     mem*: pointer    ## a pointer to the memory mapped file. The pointer
@@ -44,11 +48,14 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
   ##
   ## ``mappedSize`` of ``-1`` maps to the whole file, and
   ## ``offset`` must be multiples of the PAGE SIZE of your OS
+  if mode == fmAppend:
+    raise newEIO("The append mode is not supported.")
+
   var readonly = mode == fmRead
   when defined(windows):
     result = mapViewOfFileEx(
       m.mapHandle,
-      if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
+      if readonly: FILE_MAP_READ else: FILE_MAP_READ or FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
       if mappedSize == -1: 0 else: mappedSize,
@@ -113,6 +120,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
 
   # The file can be resized only when write mode is used:
+  if mode == fmAppend:
+    raise newEIO("The append mode is not supported.")
+
   assert newFileSize == -1 or mode != fmRead
   var readonly = mode == fmRead
 
@@ -176,7 +186,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
     result.mem = mapViewOfFileEx(
       result.mapHandle,
-      if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
+      if readonly: FILE_MAP_READ else: FILE_MAP_READ or FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
       if mappedSize == -1: 0 else: mappedSize,
@@ -252,22 +262,24 @@ proc open*(filename: string, mode: FileMode = fmRead,
 proc flush*(f: var MemFile; attempts: Natural = 3) =
   ## Flushes `f`'s buffer for the number of attempts equal to `attempts`.
   ## If were errors an exception `OSError` will be raised.
+  var res = false
+  var lastErr: OSErrorCode
   when defined(windows):
-    var res = false
     for i in 1..attempts:
       res = flushViewOfFile(f.mem, 0) != 0
       if res:
         break
-    if not res:
-      raiseOSError(osLastError())
+      lastErr = osLastError()
+      if lastErr != ERROR_LOCK_VIOLATION.OSErrorCode:
+        raiseOSError(lastErr)
   else:
-    var res = false
     for i in 1..attempts:
-      res = msync(f.mem, f.size, MS_SYNC) == 0
+      res = msync(f.mem, f.size, MS_SYNC or MS_INVALIDATE) == 0
       if res:
         break
-    if not res:
-      raiseOSError(osLastError(), "error flushing mapping")
+      lastErr = osLastError()
+      if lastErr != EBUSY.OSErrorCode:
+        raiseOSError(lastErr, "error flushing mapping")
 
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
@@ -405,10 +417,6 @@ iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} 
   var buf = TaintedString(newStringOfCap(80))
   for line in lines(mfile, buf, delim, eat):
     yield buf
-
-proc newEIO(msg: string): ref IOError =
-  new(result)
-  result.msg = msg
 
 type
   MemMapFileStream* = ref MemMapFileStreamObj ## a stream that encapsulates a `MemFile`
