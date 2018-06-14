@@ -248,8 +248,8 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       resetIdTable(cl.symMap)
       resetIdTable(cl.localCache)
 
-    # take a note of the original type. If't a free type parameter
-    # we'll need to keep it unbount for the `fitNode` operation below...
+    # take a note of the original type. If't a free type or static parameter
+    # we'll need to keep it unbound for the `fitNode` operation below...
     var typeToFit = result[i]
 
     let needsStaticSkipping = result[i].kind == tyFromExpr
@@ -258,7 +258,8 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       result[i] = result[i].skipTypes({tyStatic})
 
     # ...otherwise, we use the instantiated type in `fitNode`
-    if typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone:
+    if (typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone) and
+       (typeToFit.kind != tyStatic):
       typeToFit = result[i]
 
     internalAssert c.config, originalParams[i].kind == nkSym

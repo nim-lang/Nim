@@ -31,6 +31,15 @@ when declared(echo):
   proc debug*(conf: ConfigRef; n: PType) {.deprecated.}
   proc debug*(conf: ConfigRef; n: PNode) {.deprecated.}
 
+  template debug*(x: PSym|PType|PNode) {.deprecated.} =
+    when compiles(c.config):
+      debug(c.config, x)
+    else:
+      error()
+
+  template debug*(x: auto) {.deprecated.} =
+    echo x
+
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
     c.module.fileIdx == c.config.projectMainIdx

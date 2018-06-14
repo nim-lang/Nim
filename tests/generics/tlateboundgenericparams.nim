@@ -1,3 +1,11 @@
+discard """
+  output: "1\n10\n1\n10"
+  nimout: '''
+bar instantiated with 1
+bar instantiated with 10
+'''
+"""
+
 import typetraits
 
 type
@@ -121,4 +129,17 @@ when true:
 
     var p = getOrigin[float]()
     var rotated = p.rotate(2.1)
+
+  test 7:
+    proc bar(x: static[int]) =
+      static: echo "bar instantiated with ", x
+      echo x
+
+    proc foo(x: static[int] = 1) =
+      bar(x)
+
+    foo()
+    foo(10)
+    foo(1)
+    foo(10)
 
