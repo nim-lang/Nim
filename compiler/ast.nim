@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, std / sha1, ropes, idents,
+  lineinfos, hashes, nversion, options, strutils, std / sha1, ropes, idents,
   intsets, idgen
 
 type
@@ -634,14 +634,18 @@ type
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
-    mNKind, mNSymKind
+    mNKind, mNSymKind,
+
+    mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
+    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
+
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
+    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo, mNGenSym,
+    mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
     mException, mBuiltinType
 
@@ -998,8 +1002,8 @@ const
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
-var
-  gMainPackageId*: int
+#var
+#  gMainPackageId*: int
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -1058,22 +1062,6 @@ proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
     result.info = children[0].info
   result.sons = @children
 
-proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
-  result = newNode(kind)
-  result.intVal = intVal
-
-proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
-  result = newIntNode(kind, intVal)
-  result.typ = typ
-
-proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
-  result = newNode(kind)
-  result.floatVal = floatVal
-
-proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
-  result = newNode(kind)
-  result.strVal = strVal
-
 template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
@@ -1094,9 +1082,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   #if result.id == 93289:
   #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
-
-var emptyNode* = newNode(nkEmpty) # XXX global variable here!
-# There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1224,18 +1209,35 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
+proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
+  result = newNode(kind)
+  result.intVal = intVal
+
+proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
+  result = newIntNode(kind, intVal)
+  result.typ = typ
+
+proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
+  result = newNode(kind)
+  result.floatVal = floatVal
+
+proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newStrNode*(strVal: string; info: TLineInfo): PNode =
+  result = newNodeI(nkStrLit, info)
+  result.strVal = strVal
+
 proc addSon*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-var emptyParams = newNode(nkFormalParams)
-emptyParams.addSon(emptyNode)
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
-                 params = emptyParams,
+                 params,
                  name, pattern, genericParams,
-                 pragmas, exceptions = ast.emptyNode): PNode =
+                 pragmas, exceptions: PNode): PNode =
   result = newNodeI(kind, info)
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
@@ -1705,7 +1707,7 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
     result = true
 
 proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
@@ -1730,3 +1732,5 @@ template incompleteType*(t: PType): bool =
 
 template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
+
+template getBody*(s: PSym): PNode = s.ast[bodyPos]

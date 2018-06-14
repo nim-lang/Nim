@@ -129,6 +129,20 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+proc parseUppercaseMethod(name: string): HttpMethod =
+  result =
+    case name
+    of "GET": HttpGet
+    of "POST": HttpPost
+    of "HEAD": HttpHead
+    of "PUT": HttpPut
+    of "DELETE": HttpDelete
+    of "PATCH": HttpPatch
+    of "OPTIONS": HttpOptions
+    of "CONNECT": HttpConnect
+    of "TRACE": HttpTrace
+    else: raise newException(ValueError, "Invalid HTTP method " & name)
+
 proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
                     client: AsyncSocket,
                     address: string, lineFut: FutureVar[string],
@@ -172,8 +186,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     case i
     of 0:
       try:
-        # TODO: this is likely slow.
-        request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+        request.reqMethod = parseUppercaseMethod(linePart)
       except ValueError:
         asyncCheck request.respondError(Http400)
         return

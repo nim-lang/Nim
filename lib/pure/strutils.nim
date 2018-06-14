@@ -150,23 +150,52 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   ## characters and there is at least one character in `s`.
   isImpl isSpaceAscii
 
-proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiStr".} =
-  ## Checks whether or not `s` contains all lower case characters.
-  ##
-  ## This checks ASCII characters only.
-  ## Returns true if all characters in `s` are lower case
-  ## and there is at least one character  in `s`.
-  isImpl isLowerAscii
+template isCaseImpl(s, charProc, skipNonAlpha) =
+  var hasAtleastOneAlphaChar = false
+  if s.len == 0: return false
+  for c in s:
+    if skipNonAlpha:
+      var charIsAlpha = c.isAlphaAscii()
+      if not hasAtleastOneAlphaChar:
+        hasAtleastOneAlphaChar = charIsAlpha
+      if charIsAlpha and (not charProc(c)):
+        return false
+    else:
+      if not charProc(c):
+        return false
+  return if skipNonAlpha: hasAtleastOneAlphaChar else: true
 
-proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiStr".} =
-  ## Checks whether or not `s` contains all upper case characters.
+proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
+  ## Checks whether ``s`` is lower case.
   ##
   ## This checks ASCII characters only.
-  ## Returns true if all characters in `s` are upper case
-  ## and there is at least one character in `s`.
-  isImpl isUpperAscii
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## characters in ``s`` are lower case.  Returns false if none of the
+  ## characters in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all characters
+  ## in ``s`` are alphabetical and lower case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  isCaseImpl(s, isLowerAscii, skipNonAlpha)
+
+proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
+  ## Checks whether ``s`` is upper case.
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## characters in ``s`` are upper case.  Returns false if none of the
+  ## characters in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all characters
+  ## in ``s`` are alphabetical and upper case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  isCaseImpl(s, isUpperAscii, skipNonAlpha)
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =
@@ -815,7 +844,7 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseInt(s, result, 0)
+  let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
@@ -824,7 +853,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseBiggestInt(s, result, 0)
+  let L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
@@ -833,7 +862,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseUInt(s, result, 0)
+  let L = parseutils.parseUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
@@ -842,7 +871,7 @@ proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  var L = parseutils.parseBiggestUInt(s, result, 0)
+  let L = parseutils.parseBiggestUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
@@ -851,33 +880,42 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `ValueError` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
-  var L = parseutils.parseFloat(s, result, 0)
+  let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
+
+proc parseBinInt*(s: string): int {.noSideEffect, procvar,
+  rtl, extern: "nsuParseBinInt".} =
+  ## Parses a binary integer value contained in `s`.
+  ##
+  ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
+  ## one of the following optional prefixes: ``0b``, ``0B``. Underscores within
+  ## `s` are ignored.
+  let L = parseutils.parseBin(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid binary integer: " & s)
+
+proc parseOctInt*(s: string): int {.noSideEffect,
+  rtl, extern: "nsuParseOctInt".} =
+  ## Parses an octal integer value contained in `s`.
+  ##
+  ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
+  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
+  ## `s` are ignored.
+  let L = parseutils.parseOct(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid oct integer: " & s)  
 
 proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
-  ## If `s` is not a valid integer, `ValueError` is raised. `s` can have one
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
   ## within `s` are ignored.
-  var i = 0
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
-  elif i < s.len and s[i] == '#': inc(i)
-  while i < s.len:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'9':
-      result = result shl 4 or (ord(s[i]) - ord('0'))
-      inc(i)
-    of 'a'..'f':
-      result = result shl 4 or (ord(s[i]) - ord('a') + 10)
-      inc(i)
-    of 'A'..'F':
-      result = result shl 4 or (ord(s[i]) - ord('A') + 10)
-      inc(i)
-    else: raise newException(ValueError, "invalid integer: " & s)
+  let L = parseutils.parseHex(s, result, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid hex integer: " & s)
 
 proc generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
@@ -1586,23 +1624,6 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
     inc(i)
     inc(j)
   setLen(s, newLen)
-
-proc parseOctInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseOctInt".} =
-  ## Parses an octal integer value contained in `s`.
-  ##
-  ## If `s` is not a valid integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
-  ## `s` are ignored.
-  var i = 0
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while i < s.len:
-    case s[i]
-    of '_': inc(i)
-    of '0'..'7':
-      result = result shl 3 or (ord(s[i]) - ord('0'))
-      inc(i)
-    else: raise newException(ValueError, "invalid integer: " & s)
 
 proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToOct".} =
@@ -2516,19 +2537,34 @@ when isMainModule:
     doAssert(not isLowerAscii('A'))
     doAssert(not isLowerAscii('5'))
     doAssert(not isLowerAscii('&'))
+    doAssert(not isLowerAscii(' '))
 
-    doAssert isLowerAscii("abcd")
-    doAssert(not isLowerAscii("abCD"))
-    doAssert(not isLowerAscii("33aa"))
+    doAssert isLowerAscii("abcd", false)
+    doAssert(not isLowerAscii("33aa", false))
+    doAssert(not isLowerAscii("a b", false))
+
+    doAssert(not isLowerAscii("abCD", true))
+    doAssert isLowerAscii("33aa", true)
+    doAssert isLowerAscii("a b", true)
+    doAssert isLowerAscii("1, 2, 3 go!", true)
+    doAssert(not isLowerAscii(" ", true))
+    doAssert(not isLowerAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
 
     doAssert isUpperAscii('A')
     doAssert(not isUpperAscii('b'))
     doAssert(not isUpperAscii('5'))
     doAssert(not isUpperAscii('%'))
 
-    doAssert isUpperAscii("ABC")
-    doAssert(not isUpperAscii("AAcc"))
-    doAssert(not isUpperAscii("A#$"))
+    doAssert isUpperAscii("ABC", false)
+    doAssert(not isUpperAscii("A#$", false))
+    doAssert(not isUpperAscii("A B", false))
+
+    doAssert(not isUpperAscii("AAcc", true))
+    doAssert isUpperAscii("A#$", true)
+    doAssert isUpperAscii("A B", true)
+    doAssert isUpperAscii("1, 2, 3 GO!", true)
+    doAssert(not isUpperAscii(" ", true))
+    doAssert(not isUpperAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
 
     doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
@@ -2601,4 +2637,3 @@ bar
   nonStaticTests()
   staticTests()
   static: staticTests()
-

@@ -1,5 +1,5 @@
 import macros
-macro case_token(n: untyped): untyped {.immediate.} =
+macro case_token(n: varargs[untyped]): untyped =
   # creates a lexical analyzer from regular expressions
   # ... (implementation is an exercise for the reader :-)
   nil
@@ -21,6 +21,6 @@ case_token: inc i
 macro foo: typed =
   var exp = newCall("whatwhat", newIntLitNode(1))
   if compiles(getAst(exp)): return exp
-  else: echo "Does not compute!"
+  else: echo "Does not compute! (test OK)"
 
 foo()

@@ -47,34 +47,32 @@ const
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(tnl)
-    add(result, "/*\t")
+    result = nil
+    add(result, "\n/*\t")
     add(result, CFileSectionNames[fs])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
 proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & "\n")
 
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(tnl)
-    add(result, "/*\t")
+    result = rope(nil)
+    add(result, "\n/*\t")
     add(result, CProcSectionNames[ps])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & "\n")
 
 proc writeTypeCache(a: TypeCache, s: var string) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeStr($id, s)
@@ -88,7 +86,7 @@ proc writeIntSet(a: IntSet, s: var string) =
   for x in items(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeVInt(x, s)
@@ -97,8 +95,7 @@ proc writeIntSet(a: IntSet, s: var string) =
 
 proc genMergeInfo*(m: BModule): Rope =
   if not compilationCachePresent(m.config): return nil
-  var s = "/*\tNIM_merge_INFO:"
-  s.add(tnl)
+  var s = "/*\tNIM_merge_INFO:\n"
   s.add("typeCache:{")
   writeTypeCache(m.typeCache, s)
   s.add("declared:{")
@@ -110,8 +107,7 @@ proc genMergeInfo*(m: BModule): Rope =
   encodeVInt(m.labels, s)
   s.add(" flags:")
   encodeVInt(cast[int](m.flags), s)
-  s.add(tnl)
-  s.add("*/")
+  s.add("\n*/")
   result = s.rope
 
 template `^`(pos: int): untyped = L.buf[pos]
@@ -155,11 +151,11 @@ proc readVerbatimSection(L: var TBaseLexer): Rope =
     of CR:
       pos = nimlexbase.handleCR(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of '\0':
       doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break

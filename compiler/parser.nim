@@ -27,7 +27,7 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, configuration
+  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos
 
 type
   TParser* = object            # A TParser object represents a file that
@@ -40,6 +40,7 @@ type
     tok*: TToken               # The current token
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
+    emptyNode: PNode
 
   SymbolMode = enum
     smNormal, smAllowNil, smAfterDot
@@ -93,6 +94,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   getTok(p)                   # read the first token
   p.firstTok = true
   p.strongSpaces = strongSpaces
+  p.emptyNode = newNode(nkEmpty)
 
 proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef;
@@ -131,7 +133,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
       if node.comment == nil: node.comment = ""
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
-          add node.comment, fileSection(p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+          add node.comment, fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
         else:
           add node.comment, p.tok.literal
       else:
@@ -333,7 +335,7 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
       getTok(p)
     else:
       parMessage(p, errIdentifierExpected, p.tok)
-      result = ast.emptyNode
+      result = p.emptyNode
   of tkAccent:
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
@@ -364,7 +366,7 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
     # But: this really sucks for idetools and keywords, so we don't do it
     # if it is a keyword:
     #if not isKeyword(p.tok.tokType): getTok(p)
-    result = ast.emptyNode
+    result = p.emptyNode
 
 proc colonOrEquals(p: var TParser, a: PNode): PNode =
   if p.tok.tokType == tkColon:
@@ -703,7 +705,7 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
   else:
     parMessage(p, errExprExpected, p.tok)
     getTok(p)  # we must consume a token here to prevend endless loops!
-    result = ast.emptyNode
+    result = p.emptyNode
 
 proc namedParams(p: var TParser, callee: PNode,
                  kind: TNodeKind, endTok: TTokType): PNode =
@@ -1015,7 +1017,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   #| paramListColon = paramList? (':' optInd typeDesc)?
   var a: PNode
   result = newNodeP(nkFormalParams, p)
-  addSon(result, ast.emptyNode) # return type
+  addSon(result, p.emptyNode) # return type
   let hasParLe = p.tok.tokType == tkParLe and p.tok.indent < 0
   if hasParLe:
     getTok(p)
@@ -1047,13 +1049,13 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     result.sons[0] = parseTypeDesc(p)
   elif not retColon and not hasParle:
     # Mark as "not there" in order to mark for deprecation in the semantic pass:
-    result = ast.emptyNode
+    result = p.emptyNode
 
 proc optPragmas(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)):
     result = parsePragma(p)
   else:
-    result = ast.emptyNode
+    result = p.emptyNode
 
 proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   #| doBlock = 'do' paramListArrow pragmas? colcom stmt
@@ -1062,7 +1064,9 @@ proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   colcom(p, result)
   result = parseStmt(p)
   if params.kind != nkEmpty:
-    result = newProcNode(nkDo, info, result, params = params, pragmas = pragmas)
+    result = newProcNode(nkDo, info,
+      body = result, params = params, name = p.emptyNode, pattern = p.emptyNode,
+      genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
 
 proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
@@ -1075,9 +1079,9 @@ proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
     skipComment(p, result)
-    result = newProcNode(kind, info, parseStmt(p),
-                         params = params,
-                         pragmas = pragmas)
+    result = newProcNode(kind, info, body = parseStmt(p),
+      params = params, name = p.emptyNode, pattern = p.emptyNode,
+      genericParams = p.emptyNode, pragmas = pragmas, exceptions = p.emptyNode)
   else:
     result = newNodeI(nkProcTy, info)
     if hasSignature:
@@ -1244,8 +1248,8 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
   if p.tok.indent >= 0: return
 
   var
-    openingParams = emptyNode
-    openingPragmas = emptyNode
+    openingParams = p.emptyNode
+    openingPragmas = p.emptyNode
 
   if p.tok.tokType == tkDo:
     getTok(p)
@@ -1264,8 +1268,12 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
 
       stmtList.flags.incl nfBlockArg
       if openingParams.kind != nkEmpty:
-        result.add newProcNode(nkDo, stmtList.info, stmtList,
-                               params = openingParams, pragmas = openingPragmas)
+        result.add newProcNode(nkDo, stmtList.info, body = stmtList,
+                               params = openingParams,
+                               name = p.emptyNode, pattern = p.emptyNode,
+                               genericParams = p.emptyNode,
+                               pragmas = openingPragmas,
+                               exceptions = p.emptyNode)
       else:
         result.add stmtList
 
@@ -1424,10 +1432,10 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   getTok(p)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   elif p.tok.indent >= 0 and p.tok.indent <= p.currInd or not isExprStart(p):
     # NL terminates:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   else:
     var e = parseExpr(p)
     e = postExprBlocks(p, e)
@@ -1568,7 +1576,7 @@ proc parseBlock(p: var TParser): PNode =
   #| blockExpr = 'block' symbol? colcom stmt
   result = newNodeP(nkBlockStmt, p)
   getTokNoInd(p)
-  if p.tok.tokType == tkColon: addSon(result, ast.emptyNode)
+  if p.tok.tokType == tkColon: addSon(result, p.emptyNode)
   else: addSon(result, parseSymbol(p))
   colcom(p, result)
   addSon(result, parseStmt(p))
@@ -1586,7 +1594,7 @@ proc parseAsm(p: var TParser): PNode =
   result = newNodeP(nkAsmStmt, p)
   getTokNoInd(p)
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
-  else: addSon(result, ast.emptyNode)
+  else: addSon(result, p.emptyNode)
   case p.tok.tokType
   of tkStrLit: addSon(result, newStrNodeP(nkStrLit, p.tok.literal, p))
   of tkRStrLit: addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
@@ -1594,7 +1602,7 @@ proc parseAsm(p: var TParser): PNode =
                             newStrNodeP(nkTripleStrLit, p.tok.literal, p))
   else:
     parMessage(p, "the 'asm' statement takes a string literal")
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
     return
   getTok(p)
 
@@ -1625,13 +1633,13 @@ proc parseGenericParam(p: var TParser): PNode =
     optInd(p, result)
     addSon(result, parseExpr(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkEquals:
     getTok(p)
     optInd(p, result)
     addSon(result, parseExpr(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
 
 proc parseGenericParamList(p: var TParser): PNode =
   #| genericParamList = '[' optInd
@@ -1667,22 +1675,22 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   optInd(p, result)
   addSon(result, identVis(p))
   if p.tok.tokType == tkCurlyLe and p.validInd: addSon(result, p.parsePattern)
-  else: addSon(result, ast.emptyNode)
+  else: addSon(result, p.emptyNode)
   if p.tok.tokType == tkBracketLe and p.validInd:
     result.add(p.parseGenericParamList)
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   addSon(result, p.parseParamList)
   if p.tok.tokType == tkCurlyDotLe and p.validInd: addSon(result, p.parsePragma)
-  else: addSon(result, ast.emptyNode)
+  else: addSon(result, p.emptyNode)
   # empty exception tracking:
-  addSon(result, ast.emptyNode)
+  addSon(result, p.emptyNode)
   if p.tok.tokType == tkEquals and p.validInd:
     getTok(p)
     skipComment(p, result)
     addSon(result, parseStmt(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   indAndComment(p, result)
 
 proc newCommentStmt(p: var TParser): PNode =
@@ -1732,7 +1740,7 @@ proc parseConstant(p: var TParser): PNode =
     optInd(p, result)
     addSon(result, parseTypeDesc(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   eat(p, tkEquals)
   optInd(p, result)
   addSon(result, parseExpr(p))
@@ -1742,7 +1750,7 @@ proc parseEnum(p: var TParser): PNode =
   #| enum = 'enum' optInd (symbol optInd ('=' optInd expr COMMENT?)? comma?)+
   result = newNodeP(nkEnumTy, p)
   getTok(p)
-  addSon(result, ast.emptyNode)
+  addSon(result, p.emptyNode)
   optInd(p, result)
   flexComment(p, result)
   # progress guaranteed
@@ -1813,7 +1821,7 @@ proc parseObjectCase(p: var TParser): PNode =
   addSon(a, identWithPragma(p))
   eat(p, tkColon)
   addSon(a, parseTypeDesc(p))
-  addSon(a, ast.emptyNode)
+  addSon(a, p.emptyNode)
   addSon(result, a)
   if p.tok.tokType == tkColon: getTok(p)
   flexComment(p, result)
@@ -1872,7 +1880,7 @@ proc parseObjectPart(p: var TParser): PNode =
       result = newNodeP(nkNilLit, p)
       getTok(p)
     else:
-      result = ast.emptyNode
+      result = p.emptyNode
 
 proc parseObject(p: var TParser): PNode =
   #| object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
@@ -1881,19 +1889,19 @@ proc parseObject(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     addSon(result, parsePragma(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkOf and p.tok.indent < 0:
     var a = newNodeP(nkOfInherit, p)
     getTok(p)
     addSon(a, parseTypeDesc(p))
     addSon(result, a)
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
   # an initial IND{>} HAS to follow:
   if not realInd(p):
-    addSon(result, emptyNode)
+    addSon(result, p.emptyNode)
     return
   addSon(result, parseObjectPart(p))
 
@@ -1928,7 +1936,7 @@ proc parseTypeClass(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     addSon(result, parsePragma(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkOf and p.tok.indent < 0:
     var a = newNodeP(nkOfInherit, p)
     getTok(p)
@@ -1939,12 +1947,12 @@ proc parseTypeClass(p: var TParser): PNode =
       getTok(p)
     addSon(result, a)
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkComment:
     skipComment(p, result)
   # an initial IND{>} HAS to follow:
   if not realInd(p):
-    addSon(result, emptyNode)
+    addSon(result, p.emptyNode)
   else:
     addSon(result, parseStmt(p))
 
@@ -1957,14 +1965,14 @@ proc parseTypeDef(p: var TParser): PNode =
   if p.tok.tokType == tkBracketLe and p.validInd:
     addSon(result, parseGenericParamList(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   if p.tok.tokType == tkEquals:
     result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
     addSon(result, parseTypeDefAux(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, p.emptyNode)
   indAndComment(p, result)    # special extension!
 
 proc parseVarTuple(p: var TParser): PNode =
@@ -1979,7 +1987,7 @@ proc parseVarTuple(p: var TParser): PNode =
     if p.tok.tokType != tkComma: break
     getTok(p)
     skipComment(p, a)
-  addSon(result, ast.emptyNode)         # no type desc
+  addSon(result, p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
   eat(p, tkEquals)
@@ -2040,7 +2048,7 @@ proc simpleStmt(p: var TParser): PNode =
   of tkComment: result = newCommentStmt(p)
   else:
     if isExprStart(p): result = parseExprStmt(p)
-    else: result = ast.emptyNode
+    else: result = p.emptyNode
   if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
 proc complexOrSimpleStmt(p: var TParser): PNode =
@@ -2136,7 +2144,7 @@ proc parseStmt(p: var TParser): PNode =
     of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkFunc,
        tkIterator, tkMacro, tkType, tkConst, tkWhen, tkVar:
       parMessage(p, "complex statement requires indentation")
-      result = ast.emptyNode
+      result = p.emptyNode
     else:
       if p.inSemiStmtList > 0:
         result = simpleStmt(p)
@@ -2173,7 +2181,7 @@ proc parseAll(p: var TParser): PNode =
 proc parseTopLevelStmt(p: var TParser): PNode =
   ## Implements an iterator which, when called repeatedly, returns the next
   ## top-level statement or emptyNode if end of stream.
-  result = ast.emptyNode
+  result = p.emptyNode
   # progress guaranteed
   while true:
     if p.tok.indent != 0:

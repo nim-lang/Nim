@@ -11,9 +11,8 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi
+  tables, ndi, lineinfos
 
-from msgs import TLineInfo
 from modulegraphs import ModuleGraph
 
 type
@@ -69,6 +68,8 @@ type
     prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
+    hasCurFramePointer*: bool # true if _nimCurFrame var needed to recover after
+                              # exception is generated
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
@@ -119,6 +120,17 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
+
+    nimtv*: Rope            # Nim thread vars; the struct body
+    nimtvDeps*: seq[PType]  # type deps: every module needs whole struct
+    nimtvDeclared*: IntSet  # so that every var/field exists only once
+                            # in the struct
+                            # 'nimtv' is incredibly hard to modularize! Best
+                            # effort is to store all thread vars in a ROD
+                            # section and with their type deps and load them
+                            # unconditionally...
+                            # nimtvDeps is VERY hard to cache because it's
+                            # not a list of IDs nor can it be made to be one.
 
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -178,7 +190,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
-    graph: g)
+    graph: g, nimtvDeps: @[], nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for i in 0..high(g.modules):

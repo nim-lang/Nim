@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, configuration,
+  wordrecg, strutils, options, guards, writetracking, lineinfos,
   modulegraphs
 
 when defined(useDfa):
@@ -185,7 +185,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name,
                                           a.owner, reason.info, {})
 
 when true:
@@ -410,7 +410,7 @@ proc effectSpec(n: PNode, effectType: TSpecialWord): PNode =
         result.add(it.sons[1])
       return
 
-proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
+proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
   let spec = effectSpec(x, effectType)
   if isNil(spec):
     let s = n.sons[namePos].sym
@@ -424,14 +424,14 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
     for i in 0 ..< real.len:
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
-      effects.sons[i] = newIdentNode(getIdent(t), n.info)
+      effects.sons[i] = newIdentNode(getIdent(cache, t), n.info)
       # set the type so that the following analysis doesn't screw up:
       effects.sons[i].typ = real[i].typ
 
     result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(specialWords[effectType]), n.info), effects])
+      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
 
-proc documentWriteEffect(n: PNode; flag: TSymFlag; pragmaName: string): PNode =
+proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n.sons[namePos].sym
   let params = s.typ.n
 
@@ -442,21 +442,21 @@ proc documentWriteEffect(n: PNode; flag: TSymFlag; pragmaName: string): PNode =
 
   if effects.len > 0:
     result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(pragmaName), n.info), effects])
+      newIdentNode(getIdent(cache, pragmaName), n.info), effects])
 
-proc documentNewEffect(n: PNode): PNode =
+proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n.sons[namePos].sym
   if tfReturnsNew in s.typ.flags:
-    result = newIdentNode(getIdent("new"), n.info)
+    result = newIdentNode(getIdent(cache, "new"), n.info)
 
-proc documentRaises*(n: PNode) =
+proc documentRaises*(cache: IdentCache; n: PNode) =
   if n.sons[namePos].kind != nkSym: return
   let pragmas = n.sons[pragmasPos]
-  let p1 = documentEffect(n, pragmas, wRaises, exceptionEffects)
-  let p2 = documentEffect(n, pragmas, wTags, tagEffects)
-  let p3 = documentWriteEffect(n, sfWrittenTo, "writes")
-  let p4 = documentNewEffect(n)
-  let p5 = documentWriteEffect(n, sfEscapes, "escapes")
+  let p1 = documentEffect(cache, n, pragmas, wRaises, exceptionEffects)
+  let p2 = documentEffect(cache, n, pragmas, wTags, tagEffects)
+  let p3 = documentWriteEffect(cache, n, sfWrittenTo, "writes")
+  let p4 = documentNewEffect(cache, n)
+  let p5 = documentWriteEffect(cache, n, sfEscapes, "escapes")
 
   if p1 != nil or p2 != nil or p3 != nil or p4 != nil or p5 != nil:
     if pragmas.kind == nkEmpty:
@@ -859,9 +859,9 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
           used.incl(s)
           break search
       # XXX call graph analysis would be nice here!
-      pushInfoContext(spec.info)
+      pushInfoContext(g.config, spec.info)
       localError(g.config, r.info, errGenerated, msg & typeToString(r.typ))
-      popInfoContext()
+      popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
     for s in 0 ..< spec.len:
@@ -915,8 +915,8 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
   effects.sons[exceptionEffects] = newNodeI(nkArgList, s.info)
   effects.sons[tagEffects] = newNodeI(nkArgList, s.info)
-  effects.sons[usesEffects] = ast.emptyNode
-  effects.sons[writeEffects] = ast.emptyNode
+  effects.sons[usesEffects] = g.emptyNode
+  effects.sons[writeEffects] = g.emptyNode
 
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]

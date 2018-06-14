@@ -12,14 +12,15 @@
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
+  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi
+  lowerings, semparallel, tables, sets, ndi, lineinfos
 
 import strutils except `%` # collides with ropes.`%`
 
 from modulegraphs import ModuleGraph
-from configuration import warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated
+from lineinfos import
+  warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
 when not declared(dynlib.libCandidates):
@@ -120,10 +121,10 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
           internalError(m.config, "ropes: invalid format string $" & $j)
         add(result, args[j-1])
       of 'n':
-        if optLineDir notin m.config.options: add(result, rnl)
+        if optLineDir notin m.config.options: add(result, "\L")
         inc(i)
       of 'N':
-        add(result, rnl)
+        add(result, "\L")
         inc(i)
       else: internalError(m.config, "ropes: invalid format string $" & frmt[i])
     elif frmt[i] == '#' and frmt[i+1] in IdentStartChars:
@@ -193,7 +194,7 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
         [rope(makeSingleLineCString(filename)), rope(line)])
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
-  genCLineDir(r, info.toFullPath, info.safeLineNm, conf)
+  genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
@@ -203,27 +204,22 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     result = true
 
 proc genLineDir(p: BProc, t: PNode) =
-  var tt = t
-  #while tt.kind in {nkStmtListExpr}+nkCallKinds:
-  #  tt = tt.lastSon
-  if tt.kind in nkCallKinds and tt.len > 1:
-    tt = tt.sons[1]
-  let line = tt.info.safeLineNm
+  let line = t.info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
-    add(p.s(cpsStmts), ~"//" & sourceLine(p.config, tt.info) & rnl)
-  genCLineDir(p.s(cpsStmts), tt.info.toFullPath, line, p.config)
+    add(p.s(cpsStmts), ~"//" & sourceLine(p.config, t.info) & "\L")
+  genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
-    if freshLineInfo(p, tt.info):
+    if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "#endb($1, $2);$N",
-              line.rope, makeCString(toFilename(tt.info)))
+              line.rope, makeCString(toFilename(p.config, t.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex != InvalidFileIDX:
-    if freshLineInfo(p, tt.info):
+      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
+    if freshLineInfo(p, t.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              line.rope, quotedFilename(p.config, tt.info))
+              line.rope, quotedFilename(p.config, t.info))
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
@@ -249,9 +245,9 @@ proc rdLoc(a: TLoc): Rope =
   result = a.r
   if lfIndirect in a.flags: result = "(*$1)" % [result]
 
-proc addrLoc(a: TLoc): Rope =
+proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r
-  if lfIndirect notin a.flags and mapType(a.t) != ctArray:
+  if lfIndirect notin a.flags and mapType(conf, a.t) != ctArray:
     result = "(&" & result & ")"
 
 proc rdCharLoc(a: TLoc): Rope =
@@ -281,7 +277,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t, a.lode.info))
   of frEmbedded:
     # worst case for performance:
-    var r = if takeAddr: addrLoc(a) else: rdLoc(a)
+    var r = if takeAddr: addrLoc(p.config, a) else: rdLoc(a)
     linefmt(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t, a.lode.info))
 
 type
@@ -310,10 +306,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
     if optNilCheck in p.options:
-      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
+      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(p.config, loc))
     if loc.storage != OnStack:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-              addrLoc(loc), genTypeInfo(p.module, loc.t, loc.lode.info))
+              addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info))
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -322,7 +318,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-              addrLoc(loc), getTypeDesc(p.module, loc.t))
+              addrLoc(p.config, loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -339,7 +335,7 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       if not isImportedCppType(typ):
         useStringh(p.module)
         linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-                addrLoc(loc), getTypeDesc(p.module, typ))
+                addrLoc(p.config, loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
@@ -386,7 +382,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
   # XXX work around a bug: No type information for open arrays possible:
   if skipTypes(s.typ, abstractVar).kind in {tyOpenArray, tyVarargs}: return
   var a = "&" & s.loc.r
-  if s.kind == skParam and ccgIntroducedPtr(s): a = s.loc.r
+  if s.kind == skParam and ccgIntroducedPtr(p.config, s): a = s.loc.r
   lineF(p, cpsInit,
        "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
@@ -414,7 +410,7 @@ proc assignLocalVar(p: BProc, n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
-  let nl = if optLineDir in p.config.options: "" else: tnl
+  let nl = if optLineDir in p.config.options: "" else: "\L"
   let decl = localVarDecl(p, n) & ";" & nl
   line(p, cpsLocals, decl)
   localDebugInfo(p, n.sym)
@@ -651,33 +647,33 @@ proc cgsym(m: BModule, name: string): Rope =
   result = sym.loc.r
 
 proc generateHeaders(m: BModule) =
-  add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
+  add(m.s[cfsHeaders], "\L#include \"nimbase.h\"\L")
 
   for it in m.headerFiles:
     if it[0] == '#':
-      add(m.s[cfsHeaders], rope(it.replace('`', '"') & tnl))
+      add(m.s[cfsHeaders], rope(it.replace('`', '"') & "\L"))
     elif it[0] notin {'\"', '<'}:
       addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
-  add(m.s[cfsHeaders], "#undef LANGUAGE_C" & tnl)
-  add(m.s[cfsHeaders], "#undef MIPSEB" & tnl)
-  add(m.s[cfsHeaders], "#undef MIPSEL" & tnl)
-  add(m.s[cfsHeaders], "#undef PPC" & tnl)
-  add(m.s[cfsHeaders], "#undef R3000" & tnl)
-  add(m.s[cfsHeaders], "#undef R4000" & tnl)
-  add(m.s[cfsHeaders], "#undef i386" & tnl)
-  add(m.s[cfsHeaders], "#undef linux" & tnl)
-  add(m.s[cfsHeaders], "#undef mips" & tnl)
-  add(m.s[cfsHeaders], "#undef near" & tnl)
-  add(m.s[cfsHeaders], "#undef powerpc" & tnl)
-  add(m.s[cfsHeaders], "#undef unix" & tnl)
+  add(m.s[cfsHeaders], "#undef LANGUAGE_C\L")
+  add(m.s[cfsHeaders], "#undef MIPSEB\L")
+  add(m.s[cfsHeaders], "#undef MIPSEL\L")
+  add(m.s[cfsHeaders], "#undef PPC\L")
+  add(m.s[cfsHeaders], "#undef R3000\L")
+  add(m.s[cfsHeaders], "#undef R4000\L")
+  add(m.s[cfsHeaders], "#undef i386\L")
+  add(m.s[cfsHeaders], "#undef linux\L")
+  add(m.s[cfsHeaders], "#undef mips\L")
+  add(m.s[cfsHeaders], "#undef near\L")
+  add(m.s[cfsHeaders], "#undef powerpc\L")
+  add(m.s[cfsHeaders], "#undef unix\L")
 
 proc openNamespaceNim(): Rope =
-  result.add("namespace Nim {" & tnl)
+  result.add("namespace Nim {\L")
 
 proc closeNamespaceNim(): Rope =
-  result.add("}" & tnl)
+  result.add("}\L")
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
@@ -727,7 +723,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       internalError(m.config, prc.info, "proc has no result symbol")
     let resNode = prc.ast.sons[resultPos]
     let res = resNode.sym # get result symbol
-    if not isInvalidReturnType(prc.typ.sons[0]):
+    if not isInvalidReturnType(m.config, prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(prc.getBody); val != nil):
         var decl = localVarDecl(p, resNode)
@@ -741,7 +737,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", rdLoc(res.loc))
     else:
-      fillResult(resNode)
+      fillResult(p.config, resNode)
       assignParam(p, res)
       if sfNoInit notin prc.flags: resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
@@ -756,10 +752,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
   if sfNoReturn in prc.flags:
-    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
-    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(naked) " & header
     generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
@@ -803,13 +799,13 @@ proc genProcPrototype(m: BModule, sym: PSym) =
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
   elif not containsOrIncl(m.declaredProtos, sym.id):
     var header = genProcHeader(m, sym)
-    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
+    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
     if sym.typ.callConv != ccInline and requiresExternC(m, sym):
       header = "extern \"C\" " & header
-    if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
+    if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
       header.add(" __attribute__((naked))")
-    if sfNoReturn in sym.flags and hasAttribute in CC[cCompiler].props:
+    if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
       header.add(" __attribute__((noreturn))")
     add(m.s[cfsProcHeaders], ropecg(m, "$1;$n", header))
 
@@ -918,10 +914,10 @@ proc genVarPrototype(m: BModule, n: PNode) =
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
 proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
-  addf(result, "#define NIM_NEW_MANGLING_RULES" & tnl &
-               "#define NIM_INTBITS $1" & tnl, [
-    platform.CPU[targetCPU].intSize.rope])
-  if optUseNimNamespace in conf.globalOptions: result.add("#define USE_NIM_NAMESPACE" & tnl)
+  addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
+               "#define NIM_INTBITS $1\L", [
+    platform.CPU[conf.target.targetCPU].intSize.rope])
+  if optUseNimNamespace in conf.globalOptions: result.add("#define USE_NIM_NAMESPACE\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -936,9 +932,9 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
         "/* Compiled for: $2, $3, $4 */$N" &
         "/* Command for C compiler:$n   $5 */$N") %
         [rope(VersionAsString),
-        rope(platform.OS[targetOS].name),
-        rope(platform.CPU[targetCPU].name),
-        rope(extccomp.CC[extccomp.cCompiler].name),
+        rope(platform.OS[conf.target.targetOS].name),
+        rope(platform.CPU[conf.target.targetCPU].name),
+        rope(extccomp.CC[conf.cCompiler].name),
         rope(getCompileCFileCmd(conf, cfile))]
 
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
@@ -948,8 +944,8 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
 proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
-  for i in 0..<fileInfos.len:
-    result.addf("dbgRegisterFilename($1);$N", [fileInfos[i].projPath.makeCString])
+  for i in 0..<m.config.m.fileInfos.len:
+    result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
 
 proc genMainProc(m: BModule) =
   const
@@ -1035,19 +1031,24 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     GenodeNimMain =
-      "Libc::Env *genodeEnv;$N" &
+      "extern Genode::Env *nim_runtime_env;$N" &
+      "extern void nim_component_construct(Genode::Env*);$N$N" &
       NimMainBody
 
     ComponentConstruct =
       "void Libc::Component::construct(Libc::Env &env) {$N" &
-      "\tgenodeEnv = &env;$N" &
+      "\t// Set Env used during runtime initialization$N" &
+      "\tnim_runtime_env = &env;$N" &
       "\tLibc::with_libc([&] () {$N\t" &
+      "\t// Initialize runtime and globals$N" &
       MainProcs &
+      "\t// Call application construct$N" &
+      "\t\tnim_component_construct(&env);$N" &
       "\t});$N" &
       "}$N$N"
 
   var nimMain, otherMain: FormatStr
-  if platform.targetOS == osWindows and
+  if m.config.target.targetOS == osWindows and
       m.config.globalOptions * {optGenGuiApp, optGenDynLib} != {}:
     if optGenGuiApp in m.config.globalOptions:
       nimMain = WinNimMain
@@ -1056,13 +1057,14 @@ proc genMainProc(m: BModule) =
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
     m.includeHeader("<windows.h>")
-  elif platform.targetOS == osGenode:
+  elif m.config.target.targetOS == osGenode:
     nimMain = GenodeNimMain
     otherMain = ComponentConstruct
+    m.includeHeader("<libc/component.h>")
   elif optGenDynLib in m.config.globalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
-  elif platform.targetOS == osStandalone:
+  elif m.config.target.targetOS == osStandalone:
     nimMain = PosixNimMain
     otherMain = StandaloneCMain
   else:
@@ -1073,12 +1075,12 @@ proc genMainProc(m: BModule) =
     m.g.breakpoints.add(m.genFilenames)
 
   let initStackBottomCall =
-    if platform.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
+    if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
     m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit,
-     if emulatedThreadVars(m.config) and platform.targetOS != osStandalone:
+     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
        ropecg(m, "\t#initThreadVarsEmulation();$N")
      else:
        "".rope,
@@ -1088,7 +1090,7 @@ proc genMainProc(m: BModule) =
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin m.config.globalOptions:
     if optUseNimNamespace in m.config.globalOptions:
-      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;" & tnl
+      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;\L"
 
     appcg(m, m.s[cfsProcs], otherMain, [])
     if optUseNimNamespace in m.config.globalOptions: m.s[cfsProcs].add openNamespaceNim()
@@ -1249,7 +1251,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
     excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
                 else: ""
-  open(result.ndi, ndiName)
+  open(result.ndi, ndiName, g.config)
 
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
@@ -1299,13 +1301,15 @@ proc resetModule*(m: BModule) =
 proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
-proc rawNewModule(g: BModuleList; module: PSym): BModule =
-  result = rawNewModule(g, module, module.position.FileIndex.toFullPath)
+proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+  result = rawNewModule(g, module, toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
-  result = rawNewModule(g, module)
-  growCache g.modules, module.position
+  result = rawNewModule(g, module, conf)
+  if module.position >= g.modules.len:
+    setLen(g.modules, module.position + 1)
+  #growCache g.modules, module.position
   g.modules[module.position] = result
 
 template injectG() {.dirty.} =
@@ -1313,9 +1317,9 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   injectG()
-  result = newModule(g, module)
+  result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: graph.config.headerFile
             else: graph.config.projectFull
@@ -1347,7 +1351,8 @@ proc writeHeader(m: BModule) =
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
   if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
-  writeRope(result, m.filename)
+  if not writeRope(result, m.filename):
+    rawMessage(m.config, errCannotOpenFile, m.filename)
 
 proc getCFile(m: BModule): string =
   let ext =
@@ -1356,11 +1361,12 @@ proc getCFile(m: BModule): string =
       else: ".c"
   result = changeFileExt(completeCFilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
-proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
-  injectG()
-  var m = newModule(g, module)
-  readMergeInfo(getCFile(m), m)
-  result = m
+when false:
+  proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
+    injectG()
+    var m = newModule(g, module, graph.config)
+    readMergeInfo(getCFile(m), m)
+    result = m
 
 proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n
@@ -1368,7 +1374,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if passes.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
-  softRnl = if optLineDir in m.config.options: noRnl else: rnl
+  #softRnl = if optLineDir in m.config.options: noRnl else: rnl
+  # XXX replicate this logic!
   genStmts(m.initProc, n)
 
 proc finishModule(m: BModule) =
@@ -1395,12 +1402,14 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
           echo "diff ", cfile.cname, ".backup ", cfile.cname
         else:
           echo "new file ", cfile.cname
-      writeRope(code, cfile.cname)
+      if not writeRope(code, cfile.cname):
+        rawMessage(m.config, errCannotOpenFile, cfile.cname)
       return
     if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):
       result = false
   else:
-    writeRope(code, cfile.cname)
+    if not writeRope(code, cfile.cname):
+      rawMessage(m.config, errCannotOpenFile, cfile.cname)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1412,7 +1421,7 @@ proc writeModule(m: BModule, pending: bool) =
   # generate code for the init statements of the module:
   let cfile = getCFile(m)
 
-  if m.rd == nil or optForceFullMake in m.config.globalOptions:
+  if true or optForceFullMake in m.config.globalOptions:
     genInitCode(m)
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
@@ -1435,7 +1444,8 @@ proc writeModule(m: BModule, pending: bool) =
     genInitCode(m)
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
-    writeRope(code, cfile)
+    if not writeRope(code, cfile):
+      rawMessage(m.config, errCannotOpenFile, cfile)
     addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
@@ -1456,7 +1466,8 @@ proc updateCachedModule(m: BModule) =
     finishTypeDescriptions(m)
 
     var code = genModule(m, cf)
-    writeRope(code, cfile)
+    if not writeRope(code, cfile):
+      rawMessage(m.config, errCannotOpenFile, cfile)
   else:
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)
@@ -1469,7 +1480,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   # if the module is cached, we don't regenerate the main proc
   # nor the dispatchers? But if the dispatchers changed?
   # XXX emit the dispatchers into its own .c file?
-  if b.rd != nil: return
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genStmts(m.initProc, n)
@@ -1492,14 +1502,10 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):
-      if m.rd == nil:
-        finishModule(m)
+      finishModule(m)
   for m in cgenModules(g):
-    if m.rd != nil:
-      m.updateCachedModule
-    else:
-      m.writeModule(pending=true)
+    m.writeModule(pending=true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 
-const cgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const cgenPass* = makePass(myOpen, myProcess, myClose)

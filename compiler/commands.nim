@@ -26,7 +26,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, configuration
+  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -56,21 +56,21 @@ const
     x
   AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
 
-proc getCommandLineDesc(): string =
-  result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
-                           CPU[platform.hostCPU].name, CompileDate]) &
+proc getCommandLineDesc(conf: ConfigRef): string =
+  result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
+                           CPU[conf.target.hostCPU].name, CompileDate]) &
                            Usage
 
 proc helpOnError(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
-    msgWriteln(conf, getCommandLineDesc(), {msgStdout})
+    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
     msgQuit(0)
 
 proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, (HelpMessage % [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]) &
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]) &
                                  AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -78,8 +78,8 @@ proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
 proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]) &
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]) &
                                  Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -87,8 +87,8 @@ proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
 proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
-                                 platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name, CompileDate]),
+                                 platform.OS[conf.target.hostOS].name,
+                                 CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
@@ -103,7 +103,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
 
 proc writeCommandLineUsage*(conf: ConfigRef; helpWritten: var bool) =
   if not helpWritten:
-    msgWriteln(conf, getCommandLineDesc(), {msgStdout})
+    msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
     helpWritten = true
 
 proc addPrefix(switch: string): string =
@@ -178,11 +178,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
-    let x = findStr(configuration.HintsToStr, id)
+    let x = findStr(lineinfos.HintsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
     else: localError(conf, info, "unknown hint: " & id)
   else:
-    let x = findStr(configuration.WarningsToStr, id)
+    let x = findStr(lineinfos.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(conf, info, "unknown warning: " & id)
   case substr(arg, i).normalize
@@ -289,14 +289,14 @@ proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
           else:
             conf.projectPath / path
   try:
-    result = pathSubs(conf, p, info.toFullPath().splitFile().dir)
+    result = pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
     result = p
 
 proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): string =
   let path = if path[0] == '"': strutils.unescape(path) else: path
-  let basedir = info.toFullPath().splitFile().dir
+  let basedir = toFullPath(conf, info).splitFile().dir
   let p = if os.isAbsolute(path) or '$' in path:
             path
           else:
@@ -322,9 +322,9 @@ proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
 
   let dirtyOriginalIdx = fileInfoIdx(conf, a[1])
   if dirtyOriginalIdx.int32 >= 0:
-    msgs.setDirtyFile(dirtyOriginalIdx, a[0])
+    msgs.setDirtyFile(conf, dirtyOriginalIdx, a[0])
 
-  gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
+  conf.m.trackPos = newLineInfo(dirtyOriginalIdx, line, column)
 
 proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
@@ -334,7 +334,7 @@ proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
     localError(conf, info, errInvalidNumber % a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
     localError(conf, info, errInvalidNumber % a[2])
-  gTrackPos = newLineInfo(conf, a[0], line, column)
+  conf.m.trackPos = newLineInfo(conf, a[0], line, column)
 
 proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:
@@ -344,8 +344,6 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
-    theOS: TSystemOS
-    cpu: TSystemCPU
     key, val: string
   case switch.normalize
   of "path", "p":
@@ -565,13 +563,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}: extccomp.addLinkOptionCmd(conf, arg)
   of "cincludes":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cIncludes.add processPath(conf, arg, info)
+    if pass in {passCmd2, passPP}: conf.cIncludes.add processPath(conf, arg, info)
   of "clibdir":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLibs.add processPath(conf, arg, info)
+    if pass in {passCmd2, passPP}: conf.cLibs.add processPath(conf, arg, info)
   of "clib":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: cLinkedLibs.add processPath(conf, arg, info)
+    if pass in {passCmd2, passPP}: conf.cLinkedLibs.add processPath(conf, arg, info)
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
@@ -592,17 +590,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "os":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
-      theOS = platform.nameToOS(arg)
+      let theOS = platform.nameToOS(arg)
       if theOS == osNone: localError(conf, info, "unknown OS: '$1'" % arg)
-      elif theOS != platform.hostOS:
-        setTarget(theOS, targetCPU)
+      elif theOS != conf.target.hostOS:
+        setTarget(conf.target, theOS, conf.target.targetCPU)
   of "cpu":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:
-      cpu = platform.nameToCPU(arg)
+      let cpu = platform.nameToCPU(arg)
       if cpu == cpuNone: localError(conf, info, "unknown CPU: '$1'" % arg)
-      elif cpu != platform.hostCPU:
-        setTarget(targetOS, cpu)
+      elif cpu != conf.target.hostCPU:
+        setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optRun)
@@ -628,9 +626,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "help", "h":
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
-  of "symbolfiles":
+  of "symbolfiles", "incremental":
     case arg.normalize
-    of "on": conf.symbolFiles = enabledSf
+    of "on": conf.symbolFiles = v2Sf
     of "off": conf.symbolFiles = disabledSf
     of "writeonly": conf.symbolFiles = writeOnlySf
     of "readonly": conf.symbolFiles = readOnlySf
@@ -719,6 +717,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     doAssert(conf != nil)
     incl(conf.features, destructor)
     defineSymbol(conf.symbols, "nimNewRuntime")
+  of "nep1":
+    processOnOffSwitchG(conf, {optCheckNep1}, arg, pass, info)
   of "cppcompiletonamespace":
     expectNoArg(conf, switch, arg, pass, info)
     incl conf.globalOptions, optUseNimNamespace
