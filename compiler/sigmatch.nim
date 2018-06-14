@@ -2357,6 +2357,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         var def = copyTree(formal.ast)
         if def.kind == nkNilLit:
           def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
+        if formal.typ.kind == tyStatic:
+          def = makeStaticExpr(c, def)
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
           put(m, formal.typ, def.typ)
         setSon(m.call, formal.position + 1, def)
