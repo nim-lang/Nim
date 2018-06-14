@@ -151,10 +151,6 @@ else: # JS
 proc log*[T: SomeFloat](x, base: T): T =
   ## Computes the logarithm ``base`` of ``x``
   ln(x) / ln(base)
-proc log*(x: float64, base: float32): float64 =
-  ln(x) / ln(base)
-proc log*(x: float32, base: float64): float64 =
-  ln(x) / ln(base)
 
 when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
@@ -676,4 +672,4 @@ when isMainModule:
     doAssert floorMod(-8.5, 3.0) ==~ 0.5
 
   block: # log
-    doAssert log(3.0, 4.0) == log(4.0) / log(3.0)
+    doAssert log(4.0, 3.0) == log(4.0) / log(3.0)
