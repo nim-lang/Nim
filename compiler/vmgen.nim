@@ -804,7 +804,7 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers of same size")
 
-proc genVoidABC(c: PCtx, n: PNode, dest: TRegister, opcode: TOpcode) =
+proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
   var
     tmp1 = c.genx(n[1])

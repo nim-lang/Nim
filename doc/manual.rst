@@ -6251,6 +6251,35 @@ Likewise the following does not make sense as the name is ``strutils`` already:
   import lib.pure.strutils as strutils
 
 
+Collective imports from a directory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The syntax ``import dir / [moduleA, moduleB]`` can be used to import multiple modules
+from the same directory.
+
+Path names are syntactically either Nim identifiers or string literals. If the path
+name is not a valid Nim identifier it needs to be a string literal:
+
+.. code-block:: nim
+  import "gfx/3d/somemodule" # in quotes because '3d' is not a valid Nim identifier
+
+
+Pseudo import/include paths
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A directory can also be a so called "pseudo directory".
+
+There are two pseudo directories:
+
+1. ``std``: The ``std`` pseudo directory is the abstract location of Nim's standard
+  library. For example, the syntax ``import std / strutils`` is used to unambiguously
+  refer to the standard library's ``strutils`` module.
+2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to a Nimble
+  package. However, for technical details that lie outside of the scope of this document
+  its semantics are: *Use the search path to look for module name but ignore the standard
+  library locations*. In other words, it is the opposite of ``std``.
+
+
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -6300,16 +6329,6 @@ modules don't need to import a module's dependencies:
 
 When the exported symbol is another module, all of its definitions will
 be forwarded. You can use an ``except`` list to exclude some of the symbols.
-
-Note on paths
------------
-In module related statements, if any part of the module name /
-path begins with a number, you may have to quote it in double quotes.
-In the following example, it would be seen as a literal number '3.0' of type
-'float64' if not quoted, if uncertain - quote it:
-
-.. code-block:: nim
-  import "gfx/3d/somemodule"
 
 
 Scope rules
