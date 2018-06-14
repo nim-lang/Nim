@@ -672,4 +672,4 @@ when isMainModule:
     doAssert floorMod(-8.5, 3.0) ==~ 0.5
 
   block: # log
-    doAssert log(4.0, 3.0) == log(4.0) / log(3.0)
+    doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)
