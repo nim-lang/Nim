@@ -726,11 +726,8 @@ macro styledWrite*(f: File, m: varargs[typed]): untyped =
       reset = true
   if reset: result.add(newCall(bindSym"resetAttributes", f))
 
-macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
-  ## Similar to ``writeLine``, but treating terminal style arguments specially.
-  ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
-  ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
-  ## ``f``, but instead corresponding terminal style proc is called.
+template styledWriteLine*(f: File, args: varargs[untyped]) =
+  ## Calls ``styledWrite`` and appends a newline at the end.
   ##
   ## Example:
   ##
@@ -739,35 +736,12 @@ macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
   ##   proc error(msg: string) =
   ##     styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
   ##
-  let m = callsite()
-  var reset = false
-  result = newNimNode(nnkStmtList)
+  styledWrite(f, args)
+  write(f, "\n")
 
-  for i in countup(2, m.len - 1):
-    let item = m[i]
-    case item.kind
-    of nnkStrLit..nnkTripleStrLit:
-      if i == m.len - 1:
-        # optimize if string literal is last, just call writeLine
-        result.add(newCall(bindSym"writeLine", f, item))
-        if reset: result.add(newCall(bindSym"resetAttributes", f))
-        return
-      else:
-        # if it is string literal just call write, do not enable reset
-        result.add(newCall(bindSym"write", f, item))
-    else:
-      result.add(newCall(bindSym"styledEchoProcessArg", f, item))
-      reset = true
-
-  result.add(newCall(bindSym"write", f, newStrLitNode("\n")))
-  if reset: result.add(newCall(bindSym"resetAttributes", f))
-
-macro styledEcho*(args: varargs[untyped]): untyped =
+template styledEcho*(args: varargs[untyped]) =
   ## Echoes styles arguments to stdout using ``styledWriteLine``.
-  result = newCall(bindSym"styledWriteLine")
-  result.add(bindSym"stdout")
-  for arg in children(args):
-    result.add(arg)
+  stdout.styledWriteLine(args)
 
 proc getch*(): char =
   ## Read a single character from the terminal, blocking until it is entered.
@@ -951,9 +925,7 @@ when not defined(testing) and isMainModule:
   echo "ordinary text"
 
   stdout.styledWriteLine(fgRed, "red text ")
-  # Below, resetStyle is needed to prevent leaking the set bgRed to the next
-  # newline.
-  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background", resetStyle)
+  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
   stdout.styledWriteLine(" ordinary text ")
   stdout.styledWriteLine(fgGreen, "green text")
 
