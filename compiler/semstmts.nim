@@ -1559,6 +1559,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
     s.typ = proto.typ
+    proto.options = s.options
     s = proto
     n.sons[genericParamsPos] = proto.ast.sons[genericParamsPos]
     n.sons[paramsPos] = proto.ast.sons[paramsPos]
