@@ -189,10 +189,10 @@ then the field width will be determined by the content.
 If the width field is preceded by a zero ('0') character, this enables
 zero-padding.
 
-The 'thousands_sep' can be one of ',', '\'', or '.'. It will be used to separate
-thousands in int or float numbers. If one of the 'alternate forms' is selected
-to format integers, then for base 2 and 16 an '_' is inserted every 4 digits
-and for base 8 an '_' is inserted every 3 digits.
+The 'thousands_sep' can be one of ',', '\'', '.', '_' or ' '. It will be used to
+separate thousands in int or float numbers. If one of the 'alternate forms' is
+selected to format integers, then for base 2 and 16 an '_' is inserted every
+4 digits and for base 8 an '_' is inserted every 3 digits.
 
 The 'precision' is a decimal number indicating how many digits should be displayed
 after the decimal point in a floating point conversion. For non-numeric types the
@@ -493,8 +493,9 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
 
   let parsedLength = parseSaturatedNatural(s, result.minimumWidth, i)
   inc i, parsedLength
-
-  if i < s.len and s[i] in {',', '\'', '.'}:
+  if i > 0 and s[i - 1] == '_':
+    dec i
+  if i < s.len and s[i] in {',', '\'', '.', '_', ' '}:
     if s[i] == '.':
       if i + 1 < s.len and s[i + 1] == '.':
         result.thousandSeparator = s[i]
@@ -561,7 +562,7 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
     let decPos = f.find('.')
     let startPos = if decPos >= 0: decPos - 1 else: len(f) - 1
     let endPos = if f[0] in {'+', '-', ' '}: 1 else: 0
-    if startPos - endPos > 3:
+    if startPos - endPos >= 3:
       var i = 0
       for p in countDown(startPos, endPos):
         inc(i)

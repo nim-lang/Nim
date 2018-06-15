@@ -77,3 +77,9 @@ doAssert fmt("{1234567890123:+015,d}") == "+1,234,567,890,123"
 doAssert fmt("{float(low(int32)) - 1.1e10:+30'.20e}") == "   -1.31474836480000000000e+10"
 doAssert fmt("{float(low(int32)) - 0.1:+30'.11g}") == "              -2'147'483'648.1"
 doAssert fmt("{float(high(int32)) + 0.1234567: 30,.6f}") == "          2,147,483,647.123457"
+
+# check '_' and ' ' as separators and off by one error in floats
+doAssert fmt("{123.123:6_.3f}") == "123.123"
+doAssert fmt("{1234.123:6_.3f}") == "1_234.123"
+doAssert fmt("{123.123:7 .3f}") == "123.123"
+doAssert fmt("{1234.123:7 .3f}") == "1 234.123"
