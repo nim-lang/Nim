@@ -9,6 +9,7 @@
 
 ## Layouter for nimpretty. Still primitive but useful.
 ## TODO
+## - Fix 'echo ()' vs 'echo()' difference!
 ## - Make indentations consistent.
 ## - Align 'if' and 'case' expressions properly.
 
@@ -132,13 +133,19 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
-    if endsInAlpha(em): wr(" ")
+    if endsInAlpha(em):
+      wr(" ")
+    elif not em.inquote and not endsInWhite(em):
+      wr(" ")
+
     wr(TokTypeToStr[tok.tokType])
 
     case tok.tokType
     of tkAnd: rememberSplit(splitAnd)
     of tkOr: rememberSplit(splitOr)
-    of tkIn: rememberSplit(splitIn)
+    of tkIn, tkNotin:
+      rememberSplit(splitIn)
+      wr(" ")
     else: discard
 
   of tkColon:
