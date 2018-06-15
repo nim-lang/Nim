@@ -467,16 +467,18 @@ proc resetAttributes*(f: File) =
     f.write(ansiResetCode)
 
 type
-  Style* = enum         ## different styles for text output
+  Style* = enum          ## different styles for text output
     styleBright = 1,     ## bright text
     styleDim,            ## dim text
-    styleUnknown,        ## unknown
+    styleItalic,         ## italic (or reverse on terminals not supporting)
     styleUnderscore = 4, ## underscored text
     styleBlink,          ## blinking/bold text
-    styleReverse = 7,    ## unknown
+    styleReverse = 7,    ## reverse
     styleHidden          ## hidden text
+    styleStrikethrough,  ## strikethrough
 
 {.deprecated: [TStyle: Style].}
+{.deprecated: [styleUnknown: styleItalic].}
 
 when not defined(windows):
   var
@@ -843,6 +845,7 @@ when not defined(testing) and isMainModule:
   write(stdout, "never mind")
   stdout.eraseLine()
   stdout.styledWriteLine("styled text ", {styleBright, styleBlink, styleUnderscore})
+  stdout.styledWriteLine("italic text ", {styleItalic})
   stdout.setBackGroundColor(bgCyan, true)
   stdout.setForeGroundColor(fgBlue)
   stdout.writeLine("ordinary text")
