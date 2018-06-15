@@ -78,6 +78,8 @@
 - Added the proc ``math.prod`` for product of elements in openArray.
 - Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
+- Added the proc ``flush`` for memory mapped files.
+- Added the ``MemMapFileStream``.
 
 ### Library changes
 

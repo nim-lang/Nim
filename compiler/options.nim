@@ -516,8 +516,10 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: string, createSubDir: bool =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc rawFindFile(conf: ConfigRef; f: string): string =
+proc rawFindFile(conf: ConfigRef; f: string; suppressStdlib: bool): string =
   for it in conf.searchPaths:
+    if suppressStdlib and it.startsWith(conf.libpath):
+      continue
     result = joinPath(it, f)
     if existsFile(result):
       return canonicalizePath(conf, result)
@@ -541,13 +543,13 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = ov
 
-proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.procvar.} =
   if f.isAbsolute:
     result = if f.existsFile: f else: ""
   else:
-    result = rawFindFile(conf, f)
+    result = rawFindFile(conf, f, suppressStdlib)
     if result.len == 0:
-      result = rawFindFile(conf, f.toLowerAscii)
+      result = rawFindFile(conf, f.toLowerAscii, suppressStdlib)
       if result.len == 0:
         result = rawFindFile2(conf, f)
         if result.len == 0:
@@ -556,21 +558,15 @@ proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
 
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
-  when defined(nimfix):
-    # '.nimfix' modules are preferred over '.nim' modules so that specialized
-    # versions can be kept for 'nimfix'.
-    block:
-      let m = addFileExt(modulename, "nimfix")
-      let currentPath = currentModule.splitFile.dir
-      result = currentPath / m
-      if not existsFile(result):
-        result = findFile(conf, m)
-        if existsFile(result): return result
+  const pkgPrefix = "pkg/"
   let m = addFileExt(modulename, NimExt)
-  let currentPath = currentModule.splitFile.dir
-  result = currentPath / m
-  if not existsFile(result):
-    result = findFile(conf, m)
+  if m.startsWith(pkgPrefix):
+    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
+  else:
+    let currentPath = currentModule.splitFile.dir
+    result = currentPath / m
+    if not existsFile(result):
+      result = findFile(conf, m)
   patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
