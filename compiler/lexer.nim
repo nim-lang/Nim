@@ -949,6 +949,8 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
       if isDoc or defined(nimpretty): tok.literal.add buf[pos]
       inc(pos)
   L.bufpos = pos
+  when defined(nimpretty):
+    tok.commentOffsetB = L.offsetBase + pos - 1
 
 proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
@@ -957,6 +959,9 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
   assert buf[pos+1] == '#'
+  when defined(nimpretty):
+    tok.commentOffsetA = L.offsetBase + pos - 1
+
   if buf[pos+2] == '[':
     skipMultiLineComment(L, tok, pos+3, true)
     return
@@ -996,6 +1001,8 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       tokenEndIgnore(tok, pos)
       break
   L.bufpos = pos
+  when defined(nimpretty):
+    tok.commentOffsetB = L.offsetBase + pos - 1
 
 proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
@@ -1016,6 +1023,9 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
+      when defined(nimpretty):
+        # we are not yet in a comment, so update the comment token's line information:
+        if not hasComment: inc tok.line
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -1055,7 +1065,7 @@ proc skip(L: var TLexer, tok: var TToken) =
   L.bufpos = pos
   when defined(nimpretty):
     if hasComment:
-      tok.commentOffsetB = L.offsetBase + pos
+      tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
