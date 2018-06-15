@@ -692,6 +692,40 @@ template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == bgColor:
     fgSetColor = false
 
+macro styledWrite*(f: File, m: varargs[typed]): untyped =
+  ## Similar to ``write``, but treating terminal style arguments specially.
+  ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
+  ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
+  ## ``f``, but instead corresponding terminal style proc is called.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   stdout.styledWrite(fgRed, "red text ")
+  ##   stdout.styledWrite(fgGreen, "green text")
+  ##
+  let m = callsite()
+  var reset = false
+  result = newNimNode(nnkStmtList)
+
+  for i in countup(2, m.len - 1):
+    let item = m[i]
+    case item.kind
+    of nnkStrLit..nnkTripleStrLit:
+      if i == m.len - 1:
+        # optimize if string literal is last, just call write
+        result.add(newCall(bindSym"write", f, item))
+        if reset: result.add(newCall(bindSym"resetAttributes", f))
+        return
+      else:
+        # if it is string literal just call write, do not enable reset
+        result.add(newCall(bindSym"write", f, item))
+    else:
+      result.add(newCall(bindSym"styledEchoProcessArg", f, item))
+      reset = true
+  if reset: result.add(newCall(bindSym"resetAttributes", f))
+
 macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``writeLine``, but treating terminal style arguments specially.
   ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
@@ -781,7 +815,7 @@ when defined(windows):
           inc i, x
         password.string.setLen(max(password.len - x, 0))
       of chr(0x0):
-        # modifier key - ignore - for details see 
+        # modifier key - ignore - for details see
         # https://github.com/nim-lang/Nim/issues/7764
         continue
       else:
@@ -840,17 +874,6 @@ proc resetAttributes*() {.noconv.} =
   ## ``system.addQuitProc(resetAttributes)``.
   resetAttributes(stdout)
 
-when not defined(testing) and isMainModule:
-  #system.addQuitProc(resetAttributes)
-  write(stdout, "never mind")
-  stdout.eraseLine()
-  stdout.styledWriteLine("styled text ", {styleBright, styleBlink, styleUnderscore})
-  stdout.styledWriteLine("italic text ", {styleItalic})
-  stdout.setBackGroundColor(bgCyan, true)
-  stdout.setForeGroundColor(fgBlue)
-  stdout.writeLine("ordinary text")
-  stdout.resetAttributes()
-
 proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return trueColorIsSupported
@@ -901,3 +924,42 @@ proc disableTrueColors*() =
       trueColorIsEnabled = false
   else:
     trueColorIsEnabled = false
+
+when not defined(testing) and isMainModule:
+  #system.addQuitProc(resetAttributes)
+  write(stdout, "never mind")
+  stdout.eraseLine()
+  stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
+  stdout.styledWriteLine("italic text ", {styleItalic})
+  stdout.setBackGroundColor(bgCyan, true)
+  stdout.setForeGroundColor(fgBlue)
+  stdout.write("blue text in cyan background")
+  stdout.resetAttributes()
+  echo ""
+  stdout.writeLine("ordinary text")
+  echo "more ordinary text"
+  styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
+  echo "ordinary text again"
+  styledEcho styleBright, fgRed, "[FAIL]", resetStyle, fgRed, " Nay :("
+  echo "ordinary text again"
+  setForeGroundColor(fgGreen)
+  echo "green text"
+  echo "more green text"
+  setForeGroundColor(fgBlue)
+  echo "blue text"
+  resetAttributes()
+  echo "ordinary text"
+
+  stdout.styledWriteLine(fgRed, "red text ")
+  # Below, resetStyle is needed to prevent leaking the set bgRed to the next
+  # newline.
+  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background", resetStyle)
+  stdout.styledWriteLine(" ordinary text ")
+  stdout.styledWriteLine(fgGreen, "green text")
+
+  stdout.styledWrite(fgRed, "red text ")
+  stdout.styledWrite(fgWhite, bgRed, "white text in red background")
+  stdout.styledWrite(" ordinary text ")
+  stdout.styledWrite(fgGreen, "green text")
+  echo ""
+  echo "ordinary text"
