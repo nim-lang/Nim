@@ -29,7 +29,8 @@ type
     fid: FileIndex
     lastTok: TTokType
     inquote: bool
-    col, lastLineNumber, lineSpan, indentLevel: int
+    col, lastLineNumber, lineSpan, indentLevel, indWidth: int
+    lastIndent: int
     doIndentMore*: int
     content: string
     fixedUntil: int # marks where we must not go in the content
@@ -69,15 +70,18 @@ template wr(x) =
 
 template goodCol(col): bool = col in 40..MaxLineLen
 
-const splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
-                   tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
-                   tkCurlyLe}
+const
+  splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
+               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
+               tkCurlyLe}
+  sectionKeywords = {tkType, tkVar, tkConst, tkLet, tkUsing}
 
 template rememberSplit(kind) =
   if goodCol(em.col):
     em.altSplitPos[kind] = em.content.len
 
-template moreIndent(em): int = (if em.doIndentMore > 0: 4 else: 2)
+template moreIndent(em): int =
+  max(if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth, 2)
 
 proc softLinebreak(em: var Emitter, lit: string) =
   # XXX Use an algorithm that is outlined here:
@@ -115,6 +119,10 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr lit
 
   var preventComment = false
+  if em.indWidth == 0 and tok.indent > 0:
+    # first indentation determines how many number of spaces to use:
+    em.indWidth = tok.indent
+
   if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
     emitComment(em, tok)
@@ -129,9 +137,29 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr("\L")
     for i in 2..tok.line - em.lastLineNumber: wr("\L")
     em.col = 0
-    for i in 1..tok.indent:
+    #[ we only correct the indentation if it is slightly off,
+       so that code like
+
+        const splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
+                          tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
+                          tkCurlyLe}
+
+       is not touched.
+    ]#
+    when false:
+      if tok.indent > em.lastIndent and em.indWidth > 1 and (tok.indent mod em.indWidth) == 1:
+        em.indentLevel = 0
+        while em.indentLevel < tok.indent-1:
+          inc em.indentLevel, em.indWidth
+    when false:
+      if em.indWidth != 0 and
+          abs(tok.indent - em.nested*em.indWidth) <= em.indWidth and
+          em.lastTok notin sectionKeywords:
+        em.indentLevel =  em.nested*em.indWidth
+    for i in 1..em.indentLevel:
       wr(" ")
     em.fixedUntil = em.content.high
+    em.lastIndent = tok.indent
 
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
