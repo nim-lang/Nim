@@ -42,9 +42,12 @@ proc writeVersion() =
 proc prettyPrint(infile: string) =
   let conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, infile)
-  let tree = parseFile(fileIdx, newIdentCache(), conf)
-  let outfile = changeFileExt(infile, ".pretty.nim")
-  renderModule(tree, infile, outfile, {}, fileIdx)
+  when defined(nimpretty2):
+    discard parseFile(fileIdx, newIdentCache(), conf)
+  else:
+    let tree = parseFile(fileIdx, newIdentCache(), conf)
+    let outfile = changeFileExt(infile, ".pretty.nim")
+    renderModule(tree, infile, outfile, {}, fileIdx, conf)
 
 proc main =
   var infile: string

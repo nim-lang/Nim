@@ -1453,11 +1453,12 @@ proc `$`*(n: PNode): string = n.renderTree
 
 proc renderModule*(n: PNode, infile, outfile: string,
                    renderFlags: TRenderFlags = {};
-                   fid = FileIndex(-1)) =
+                   fid = FileIndex(-1);
+                   conf: ConfigRef = nil) =
   var
     f: File
     g: TSrcGen
-  initSrcGen(g, renderFlags, newPartialConfigRef())
+  initSrcGen(g, renderFlags, conf)
   g.fid = fid
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])

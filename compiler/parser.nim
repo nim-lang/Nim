@@ -29,6 +29,9 @@ when isMainModule:
 import
   llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos
 
+when defined(nimpretty2):
+  import layouter
+
 type
   TParser* = object            # A TParser object represents a file that
                                # is being parsed
@@ -41,6 +44,8 @@ type
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
+    when defined(nimpretty2):
+      em: Emitter
 
   SymbolMode = enum
     smNormal, smAllowNil, smAfterDot
@@ -83,6 +88,11 @@ proc getTok(p: var TParser) =
   ## `tok` member.
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
+  when defined(nimpretty2):
+    emitTok(p.em, p.lex, p.tok)
+    while p.tok.tokType == tkComment:
+      rawGetTok(p.lex, p.tok)
+      emitTok(p.em, p.lex, p.tok)
 
 proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef;
@@ -91,6 +101,8 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   ##
   initToken(p.tok)
   openLexer(p.lex, fileIdx, inputStream, cache, config)
+  when defined(nimpretty2):
+    openEmitter(p.em, config, fileIdx)
   getTok(p)                   # read the first token
   p.firstTok = true
   p.strongSpaces = strongSpaces
@@ -104,6 +116,8 @@ proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.
   closeLexer(p.lex)
+  when defined(nimpretty2):
+    closeEmitter(p.em)
 
 proc parMessage(p: TParser, msg: TMsgKind, arg = "") =
   ## Produce and emit the parser message `arg` to output.
@@ -907,6 +921,8 @@ proc identVis(p: var TParser; allowDot=false): PNode =
   #| identVisDot = symbol '.' optInd symbol opr?
   var a = parseSymbol(p)
   if p.tok.tokType == tkOpr:
+    when defined(nimpretty2):
+      starWasExportMarker(p.em)
     result = newNodeP(nkPostfix, p)
     addSon(result, newIdentNodeP(p.tok.ident, p))
     addSon(result, a)
