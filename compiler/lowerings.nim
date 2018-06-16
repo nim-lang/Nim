@@ -336,6 +336,18 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
   result = not containsGarbageCollectedRef(t)
 
+proc hoistExpr*(varSection, expr: PNode, name: PIdent, owner: PSym): PSym =
+  result = newSym(skLet, name, owner, varSection.info, owner.options)
+  result.flags.incl sfHoisted
+  result.typ = expr.typ
+
+  var varDef = newNodeI(nkIdentDefs, varSection.info, 3)
+  varDef.sons[0] = newSymNode(result)
+  varDef.sons[1] = newNodeI(nkEmpty, varSection.info)
+  varDef.sons[2] = expr
+
+  varSection.add varDef
+
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: PType;
                  v: PNode; useShallowCopy=false): PSym =
   result = newSym(skTemp, getIdent(g.cache, genPrefix), owner, varSection.info,

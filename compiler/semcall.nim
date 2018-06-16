@@ -402,7 +402,9 @@ proc updateDefaultParams(call: PNode) =
   for i in countdown(call.len - 1, 1):
     if nfDefaultParam notin call[i].flags:
       return
-    call[i] = calleeParams[i].sym.ast
+    let def = calleeParams[i].sym.ast
+    if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+    call[i] = def
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =

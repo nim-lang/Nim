@@ -34,32 +34,36 @@ when declared(echo):
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
       debug(c.config, x)
+    elif compiles(c.graph.config):
+      debug(c.graph.config, x)
     else:
       error()
 
   template debug*(x: auto) {.deprecated.} =
     echo x
 
-template mdbg*: bool {.dirty.} =
-  when compiles(c.module):
-    c.module.fileIdx == c.config.projectMainIdx
-  elif compiles(c.c.module):
-    c.c.module.fileIdx == c.c.config.projectMainIdx
-  elif compiles(m.c.module):
-    m.c.module.fileIdx == m.c.config.projectMainIdx
-  elif compiles(cl.c.module):
-    cl.c.module.fileIdx == cl.c.config.projectMainIdx
-  elif compiles(p):
-    when compiles(p.lex):
-      p.lex.fileIdx == p.lex.config.projectMainIdx
+  template mdbg*: bool {.deprecated.} =
+    when compiles(c.graph):
+      c.module.fileIdx == c.graph.config.projectMainIdx
+    elif compiles(c.module):
+      c.module.fileIdx == c.config.projectMainIdx
+    elif compiles(c.c.module):
+      c.c.module.fileIdx == c.c.config.projectMainIdx
+    elif compiles(m.c.module):
+      m.c.module.fileIdx == m.c.config.projectMainIdx
+    elif compiles(cl.c.module):
+      cl.c.module.fileIdx == cl.c.config.projectMainIdx
+    elif compiles(p):
+      when compiles(p.lex):
+        p.lex.fileIdx == p.lex.config.projectMainIdx
+      else:
+        p.module.module.fileIdx == p.config.projectMainIdx
+    elif compiles(m.module.fileIdx):
+      m.module.fileIdx == m.config.projectMainIdx
+    elif compiles(L.fileIdx):
+      L.fileIdx == L.config.projectMainIdx
     else:
-      p.module.module.fileIdx == p.config.projectMainIdx
-  elif compiles(m.module.fileIdx):
-    m.module.fileIdx == m.config.projectMainIdx
-  elif compiles(L.fileIdx):
-    L.fileIdx == L.config.projectMainIdx
-  else:
-    error()
+      error()
 
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef

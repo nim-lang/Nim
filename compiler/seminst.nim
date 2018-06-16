@@ -220,6 +220,14 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   result = replaceTypeVarsT(cl, header)
   closeScope(c)
 
+proc referencesAnotherParam(n: PNode, p: PSym): bool =
+  if n.kind == nkSym:
+    return n.sym.kind == skParam and n.sym.owner == p
+  else:
+    for i in 0..<n.safeLen:
+      if referencesAnotherParam(n[i], p): return true
+    return false
+
 proc instantiateProcType(c: PContext, pt: TIdTable,
                          prc: PSym, info: TLineInfo) =
   # XXX: Instantiates a generic proc signature, while at the same
@@ -276,8 +284,22 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       if def.kind == nkCall:
         for i in 1 ..< def.len:
           def[i] = replaceTypeVarsN(cl, def[i])
-        def = semExprWithType(c, def)
-      param.ast = fitNode(c, typeToFit, def, def.info)
+
+      def = semExprWithType(c, def)
+      if def.referencesAnotherParam(getCurrOwner(c)):
+        def.flags.incl nfDefaultRefsParam
+
+      var converted = indexTypesMatch(c, typeToFit, def.typ, def)
+      if converted == nil:
+        # The default value doesn't match the final instantiated type.
+        # As an example of this, see:
+        # https://github.com/nim-lang/Nim/issues/1201
+        # We are replacing the default value with an error node in case
+        # the user calls an explicit instantiation of the proc (this is
+        # the only way the default value might be inserted).
+        param.ast = errorNode(c, def)
+      else:
+        param.ast = fitNodePostMatch(c, typeToFit, converted)
       param.typ = result[i]
 
     result.n[i] = newSymNode(param)

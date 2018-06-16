@@ -1042,6 +1042,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             break determineType
 
         def = semExprWithType(c, def, {efDetermineType})
+        if def.referencesAnotherParam(getCurrOwner(c)):
+          def.flags.incl nfDefaultRefsParam
 
       if typ == nil:
         typ = def.typ

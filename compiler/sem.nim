@@ -73,6 +73,16 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
+proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
+  result = arg
+  let x = result.skipConv
+  if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
+    changeType(c, x, formal, check=true)
+  else:
+    result = skipHiddenSubConv(result)
+    #result.typ = takeType(formal, arg.typ)
+    #echo arg.info, " picked ", result.typ.typeToString
+
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(c.config, arg.info, "expression has no type: " &
@@ -88,13 +98,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result = copyTree(arg)
       result.typ = formal
     else:
-      let x = result.skipConv
-      if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
-        changeType(c, x, formal, check=true)
-      else:
-        result = skipHiddenSubConv(result)
-        #result.typ = takeType(formal, arg.typ)
-        #echo arg.info, " picked ", result.typ.typeToString
+      result = fitNodePostMatch(c, formal, result)
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode

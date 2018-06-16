@@ -2366,7 +2366,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           m.firstMismatch = f
           break
       else:
-        # use default value:
+        if nfDefaultRefsParam in formal.ast.flags:
+          m.call.flags.incl nfDefaultRefsParam
         var def = copyTree(formal.ast)
         if def.kind == nkNilLit:
           def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
