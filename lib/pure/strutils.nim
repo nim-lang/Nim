@@ -151,21 +151,29 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   isImpl isSpaceAscii
 
 proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiStr".} =
+  rtl, extern: "nsuIsLowerAsciiStr", deprecated: "See issue #8003".} =
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
   ## Returns true if all characters in `s` are lower case
   ## and there is at least one character  in `s`.
+  ##
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
   isImpl isLowerAscii
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiStr".} =
+  rtl, extern: "nsuIsUpperAsciiStr", deprecated: "See issue #8003".} =
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
   ## Returns true if all characters in `s` are upper case
   ## and there is at least one character in `s`.
+  ##
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
   isImpl isUpperAscii
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
@@ -1454,7 +1462,7 @@ proc quoteIfContainsWhite*(s: string): string {.deprecated.} =
   ## Returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`.
   ##
-  ## **DEPRECATED** as it was confused for shell quoting function.  For this
+  ## **Deprecated** as it was confused for shell quoting function.  For this
   ## application use `osproc.quoteShell <osproc.html#quoteShell>`_.
   if find(s, {' ', '\t'}) >= 0 and s[0] != '"': result = '"' & s & '"'
   else: result = s

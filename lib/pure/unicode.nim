@@ -1404,13 +1404,21 @@ template runeCheck(s, runeProc) =
     result = runeProc(rune) and result
 
 proc isUpper*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
+  rtl, extern: "nuc$1Str", deprecated: "See issue #8003".} =
   ## Returns true iff `s` contains all upper case unicode characters.
+  ##
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
   runeCheck(s, isUpper)
 
 proc isLower*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
+  rtl, extern: "nuc$1Str", deprecated: "See issue #8003".} =
   ## Returns true iff `s` contains all lower case unicode characters.
+  ##
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
   runeCheck(s, isLower)
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
