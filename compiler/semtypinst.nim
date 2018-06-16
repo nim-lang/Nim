@@ -223,8 +223,9 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   # XXX: Bound symbols in default parameter expressions may reach here.
   # We cannot process them, becase `sym.n` may point to a proc body with
-  # cyclic references that will lead to an infinite recursion. Perhaps we
-  # should not use a black-list here, but a whitelist instead.
+  # cyclic references that will lead to an infinite recursion.
+  # Perhaps we should not use a black-list here, but a whitelist instead
+  # (e.g. skGenericParam and skType).
   # Note: `s.magic` may be `mType` in an example such as:
   # proc foo[T](a: T, b = myDefault(type(a)))
   if s.kind == skProc or s.magic != mNone:

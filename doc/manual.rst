@@ -5500,9 +5500,9 @@ Static params can also appear in the signatures of generic types:
   var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
 Please note that ``static T`` is just a syntactic convenience for the
-underlying generic type ``static[T]``. This means that you can omit the
-type param to obtain the type class of all values, known at compile-time
-and you can restrict the matched values by instantiating ``static`` with
+underlying generic type ``static[T]``. The type param can be omitted
+to obtain the type class of all values known at compile-time. A more
+specific type class can be created by instantiating ``static`` with
 another type class.
 
 You can force the evaluation of a certain expression at compile-time by
@@ -5529,7 +5529,7 @@ generic param is ommited, ``type`` denotes the type class of all types.
 As a syntactic convenience, you can also use ``type`` as a modifier.
 ``type int`` is considered the same as ``type[int]``.
 
-Procs featuring ``type`` params will be considered implicitly generic.
+Procs featuring ``type`` params are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types
 and within the body of the proc, the name of each param will refer to
 the bound concrete type:

@@ -863,7 +863,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyStatic:
     if paramType.base.kind != tyNone and paramType.n != nil:
-      # this is a concrete type
+      # this is a concrete static value
       return
     if tfUnresolved in paramType.flags: return # already lifted
     let base = paramType.base.maybeLift
@@ -1048,7 +1048,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if typ == nil:
         typ = def.typ
         if typ.kind == tyTypeDesc:
-          # default typedesc values are mapped to the unbound typedesc type:
+          # consider a proc such as:
+          # proc takesType(T = int)
+          # a naive analysis may conclude that the proc type is type[int]
+          # which will prevent other types from matching - clearly a very
+          # surprising behavior. We must instead fix the expected type of
+          # the proc to be the unbound typedesc type:
           typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
 
       else:

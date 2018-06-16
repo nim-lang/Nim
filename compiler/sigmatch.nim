@@ -1089,13 +1089,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
              else: isNone
 
   of tyAnything:
-    if f.kind in {tyAnything}:
-      return isGeneric
-
-    if tfWildCard in a.flags and f.kind == tyTypeDesc:
-      return isGeneric
-
-    return isNone
+    if f.kind == tyAnything: return isGeneric
+    else: return isNone
 
   of tyUserTypeClass, tyUserTypeClassInst:
     if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
@@ -2366,6 +2361,14 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           m.firstMismatch = f
           break
       else:
+        if formal.ast.kind == nkEmpty:
+          # The default param value is set to empty in `instantiateProcType`
+          # when the type of the default expression doesn't match the type
+          # of the instantiated proc param:
+          localError(c.config, m.call.info,
+                     ("The default parameter '$1' has incompatible type " &
+                      "with the explicitly requested proc instantiation") %
+                      formal.name.s)
         if nfDefaultRefsParam in formal.ast.flags:
           m.call.flags.incl nfDefaultRefsParam
         var def = copyTree(formal.ast)
@@ -2375,9 +2378,6 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           put(m, formal.typ, def.typ)
         def.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, def)
-        # XXX: Instead of setting a default value here, we may place a special
-        # marker value instead. Later, we will replace it in `semResolvedCall`.
-        # Unfortunately, this causes some breakage at the moment.
     inc(f)
   # forget all inferred types if the overload matching failed
   if m.state == csNoMatch:
