@@ -51,7 +51,6 @@
 - The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
     and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
-
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
