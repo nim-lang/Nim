@@ -223,9 +223,9 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
     if x.kind == nkIntLit: return x.intVal != 0
   localError(c.config, n.info, "'on' or 'off' expected")
 
-proc onOff(c: PContext, n: PNode, op: TOptions) =
-  if isTurnedOn(c, n): c.config.options = c.config.options + op
-  else: c.config.options = c.config.options - op
+proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
+  if isTurnedOn(c, n): resOptions = resOptions + op
+  else: resOptions = resOptions - op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n): incl(c.module.flags, flag)
@@ -313,54 +313,68 @@ proc processNote(c: PContext, n: PNode) =
   else:
     invalidPragma(c, n)
 
-proc processOption(c: PContext, n: PNode): bool =
-  if n.kind notin nkPragmaCallKinds or n.len != 2: result = true
+proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
+  case w
+  of wChecks: ChecksOptions
+  of wObjChecks: {optObjCheck}
+  of wFieldChecks: {optFieldCheck}
+  of wRangechecks: {optRangeCheck}
+  of wBoundchecks: {optBoundsCheck}
+  of wOverflowchecks: {optOverflowCheck}
+  of wNilchecks: {optNilCheck}
+  of wFloatchecks: {optNaNCheck, optInfCheck}
+  of wNanChecks: {optNaNCheck}
+  of wInfChecks: {optInfCheck}
+  of wMovechecks: {optMoveCheck}
+  of wAssertions: {optAssert}
+  of wWarnings: {optWarns}
+  of wHints: {optHints}
+  of wLinedir: {optLineDir}
+  of wStacktrace: {optStackTrace}
+  of wLinetrace: {optLineTrace}
+  of wDebugger: {optEndb}
+  of wProfiler: {optProfiler, optMemTracker}
+  of wMemTracker: {optMemTracker}
+  of wByRef: {optByRef}
+  of wImplicitStatic: {optImplicitStatic}
+  of wPatterns: {optPatterns}
+  else: {}
+
+proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
+  result = true
+  if n.kind notin nkPragmaCallKinds or n.len != 2: result = false
   elif n.sons[0].kind == nkBracketExpr: processNote(c, n)
-  elif n.sons[0].kind != nkIdent: result = true
+  elif n.sons[0].kind != nkIdent: result = false
   else:
     let sw = whichKeyword(n.sons[0].ident)
-    case sw
-    of wChecks: onOff(c, n, ChecksOptions)
-    of wObjChecks: onOff(c, n, {optObjCheck})
-    of wFieldChecks: onOff(c, n, {optFieldCheck})
-    of wRangechecks: onOff(c, n, {optRangeCheck})
-    of wBoundchecks: onOff(c, n, {optBoundsCheck})
-    of wOverflowchecks: onOff(c, n, {optOverflowCheck})
-    of wNilchecks: onOff(c, n, {optNilCheck})
-    of wFloatchecks: onOff(c, n, {optNaNCheck, optInfCheck})
-    of wNanChecks: onOff(c, n, {optNaNCheck})
-    of wInfChecks: onOff(c, n, {optInfCheck})
-    of wMovechecks: onOff(c, n, {optMoveCheck})
-    of wAssertions: onOff(c, n, {optAssert})
-    of wWarnings: onOff(c, n, {optWarns})
-    of wHints: onOff(c, n, {optHints})
-    of wCallconv: processCallConv(c, n)
-    of wLinedir: onOff(c, n, {optLineDir})
-    of wStacktrace: onOff(c, n, {optStackTrace})
-    of wLinetrace: onOff(c, n, {optLineTrace})
-    of wDebugger: onOff(c, n, {optEndb})
-    of wProfiler: onOff(c, n, {optProfiler, optMemTracker})
-    of wMemTracker: onOff(c, n, {optMemTracker})
-    of wByRef: onOff(c, n, {optByRef})
-    of wDynlib: processDynLib(c, n, nil)
-    of wOptimization:
-      if n.sons[1].kind != nkIdent:
-        invalidPragma(c, n)
-      else:
-        case n.sons[1].ident.s.normalize
-        of "speed":
-          incl(c.config.options, optOptimizeSpeed)
-          excl(c.config.options, optOptimizeSize)
-        of "size":
-          excl(c.config.options, optOptimizeSpeed)
-          incl(c.config.options, optOptimizeSize)
-        of "none":
-          excl(c.config.options, optOptimizeSpeed)
-          excl(c.config.options, optOptimizeSize)
-        else: localError(c.config, n.info, "'none', 'speed' or 'size' expected")
-    of wImplicitStatic: onOff(c, n, {optImplicitStatic})
-    of wPatterns: onOff(c, n, {optPatterns})
-    else: result = true
+    let opts = pragmaToOptions(sw)
+    if opts != {}:
+      onOff(c, n, opts, resOptions)
+    else:
+      case sw
+      of wCallconv: processCallConv(c, n)
+      of wDynlib: processDynLib(c, n, nil)
+      of wOptimization:
+        if n.sons[1].kind != nkIdent:
+          invalidPragma(c, n)
+        else:
+          case n.sons[1].ident.s.normalize
+          of "speed":
+            incl(resOptions, optOptimizeSpeed)
+            excl(resOptions, optOptimizeSize)
+          of "size":
+            excl(resOptions, optOptimizeSpeed)
+            incl(resOptions, optOptimizeSize)
+          of "none":
+            excl(resOptions, optOptimizeSpeed)
+            excl(resOptions, optOptimizeSize)
+          else: localError(c.config, n.info, "'none', 'speed' or 'size' expected")
+      else: result = false
+
+proc processOption(c: PContext, n: PNode, resOptions: var TOptions) =
+  if not tryProcessOption(c, n, resOptions):
+    # calling conventions (boring...):
+    localError(c.config, n.info, "option expected")
 
 proc processPush(c: PContext, n: PNode, start: int) =
   if n.sons[start-1].kind in nkPragmaCallKinds:
@@ -373,7 +387,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   x.notes = c.config.notes
   c.optionStack.add(x)
   for i in countup(start, sonsLen(n) - 1):
-    if processOption(c, n.sons[i]):
+    if not tryProcessOption(c, n.sons[i], c.config.options):
       # simply store it somewhere:
       if x.otherPragmas.isNil:
         x.otherPragmas = newNodeI(nkPragma, n.info)
@@ -964,13 +978,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
          wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
-         wLinedir, wStacktrace, wLinetrace, wOptimization, wMovechecks,
-         wCallconv,
-         wDebugger, wProfiler, wFloatchecks, wNanChecks, wInfChecks,
-         wPatterns:
-        if processOption(c, it):
-          # calling conventions (boring...):
-          localError(c.config, it.info, "option expected")
+         wLinedir, wOptimization, wMovechecks, wCallconv, wDebugger, wProfiler,
+         wFloatchecks, wNanChecks, wInfChecks, wPatterns:
+        processOption(c, it, c.config.options)
+      of wStacktrace, wLinetrace:
+        if sym.kind in {skProc, skMethod, skConverter}:
+          processOption(c, it, sym.options)
+        else:
+          processOption(c, it, c.config.options)
       of FirstCallConv..LastCallConv:
         assert(sym != nil)
         if sym.typ == nil: invalidPragma(c, it)
@@ -1000,7 +1015,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wByRef:
         noVal(c, it)
         if sym == nil or sym.typ == nil:
-          if processOption(c, it): localError(c.config, it.info, "option expected")
+          processOption(c, it, c.config.options)
         else:
           incl(sym.typ.flags, tfByRef)
       of wByCopy:
