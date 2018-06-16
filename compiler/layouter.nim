@@ -9,7 +9,6 @@
 
 ## Layouter for nimpretty. Still primitive but useful.
 ## TODO
-## - Fix 'echo ()' vs 'echo()' difference!
 ## - Make indentations consistent.
 ## - Align 'if' and 'case' expressions properly.
 
@@ -31,6 +30,7 @@ type
     lastTok: TTokType
     inquote: bool
     col, lastLineNumber, lineSpan, indentLevel: int
+    doIndentMore*: int
     content: string
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
@@ -77,6 +77,8 @@ template rememberSplit(kind) =
   if goodCol(em.col):
     em.altSplitPos[kind] = em.content.len
 
+template moreIndent(em): int = (if em.doIndentMore > 0: 4 else: 2)
+
 proc softLinebreak(em: var Emitter, lit: string) =
   # XXX Use an algorithm that is outlined here:
   # https://llvm.org/devmtg/2013-04/jasper-slides.pdf
@@ -85,12 +87,12 @@ proc softLinebreak(em: var Emitter, lit: string) =
     if em.lastTok in splitters:
       wr("\L")
       em.col = 0
-      for i in 1..em.indentLevel+2: wr(" ")
+      for i in 1..em.indentLevel+moreIndent(em): wr(" ")
     else:
       # search backwards for a good split position:
       for a in em.altSplitPos:
         if a > em.fixedUntil:
-          let ws = "\L" & repeat(' ',em.indentLevel+2)
+          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
           em.content.insert(ws, a)
           break
@@ -155,15 +157,19 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(TokTypeToStr[tok.tokType])
     wr(" ")
     rememberSplit(splitComma)
-  of tkParLe, tkParRi, tkBracketLe,
-     tkBracketRi, tkCurlyLe, tkCurlyRi,
-     tkBracketDotLe, tkBracketDotRi,
-     tkCurlyDotLe, tkCurlyDotRi,
-     tkParDotLe, tkParDotRi,
-     tkColonColon, tkDot, tkBracketLeColon:
+  of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
+     tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
+    if tok.strongSpaceA > 0 and not em.endsInWhite:
+      wr(" ")
     wr(TokTypeToStr[tok.tokType])
-    if tok.tokType in splitters:
-      rememberSplit(splitParLe)
+    rememberSplit(splitParLe)
+  of tkParRi,
+     tkBracketRi, tkCurlyRi,
+     tkBracketDotRi,
+     tkCurlyDotRi,
+     tkParDotRi,
+     tkColonColon, tkDot:
+    wr(TokTypeToStr[tok.tokType])
   of tkEquals:
     if not em.endsInWhite: wr(" ")
     wr(TokTypeToStr[tok.tokType])
@@ -206,3 +212,13 @@ proc starWasExportMarker*(em: var Emitter) =
     setLen(em.content, em.content.len-3)
     em.content.add("*")
     dec em.col, 2
+
+proc commaWasSemicolon*(em: var Emitter) =
+  if em.content.endsWith(", "):
+    setLen(em.content, em.content.len-2)
+    em.content.add("; ")
+
+proc curlyRiWasPragma*(em: var Emitter) =
+  if em.content.endsWith("}"):
+    setLen(em.content, em.content.len-1)
+    em.content.add(".}")
