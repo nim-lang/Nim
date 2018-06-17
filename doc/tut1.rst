@@ -208,7 +208,7 @@ Note that declaring multiple variables with a single assignment which calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use only constant values.
+different values! For safety use only immutable values.
 
 
 Constants
@@ -642,7 +642,7 @@ initialisation.
 
 Parameters
 ----------
-Parameters are constant in the procedure body. By default, their value cannot be
+Parameters are immutable in the procedure body. By default, their value cannot be
 changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
