@@ -104,7 +104,7 @@ proc softLinebreak(em: var Emitter, lit: string) =
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
   template endsInWhite(em): bool =
-    em.content.len > 0 and em.content[em.content.high] in {' ', '\L'}
+    em.content.len == 0 or em.content[em.content.high] in {' ', '\L'}
   template endsInAlpha(em): bool =
     em.content.len > 0 and em.content[em.content.high] in SymChars+{'_'}
 
@@ -203,14 +203,18 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(TokTypeToStr[tok.tokType])
     wr(" ")
   of tkOpr, tkDotDot:
-    if not em.endsInWhite: wr(" ")
-    wr(tok.ident.s)
-    template isUnary(tok): bool =
-      tok.strongSpaceB == 0 and tok.strongSpaceA > 0
+    if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
+      # if not surrounded by whitespace, don't produce any whitespace either:
+      wr(tok.ident.s)
+    else:
+      if not em.endsInWhite: wr(" ")
+      wr(tok.ident.s)
+      template isUnary(tok): bool =
+        tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
-    if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
-      wr(" ")
-      rememberSplit(splitBinary)
+      if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
+        wr(" ")
+        rememberSplit(splitBinary)
   of tkAccent:
     wr(TokTypeToStr[tok.tokType])
     em.inquote = not em.inquote
