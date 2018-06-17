@@ -922,7 +922,7 @@ proc parsePragma(p: var TParser): PNode =
   optPar(p)
   if p.tok.tokType in {tkCurlyDotRi, tkCurlyRi}:
     when defined(nimpretty2):
-      curlyRiWasPragma(p.em)
+      if p.tok.tokType == tkCurlyRi: curlyRiWasPragma(p.em)
     getTok(p)
   else:
     parMessage(p, "expected '.}'")
