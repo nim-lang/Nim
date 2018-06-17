@@ -513,6 +513,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       else:
         return symChoice(c.c, n, s, scOpen)
     result = semTemplBodySons(c, n)
+  of nkExprEqExpr:
+    checkMinSonsLen(n, 2, c.c.config)
+    result.sons[1] = semTemplBody(c, n.sons[1])
   else:
     result = semTemplBodySons(c, n)
 
