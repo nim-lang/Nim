@@ -208,7 +208,8 @@ Note that declaring multiple variables with a single assignment which calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use only immutable values.
+different values! For safety use side-effect free procedures if making multiple
+assignments.
 
 
 Constants
