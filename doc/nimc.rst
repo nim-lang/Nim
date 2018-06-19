@@ -228,6 +228,29 @@ configuration file should contain something like::
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
+Cross compilation for Nintendo Switch
+=====================================
+
+Simply add --os:nintendoswitch
+to your usual ``nim c`` or ``nim cpp`` command. DevkitPro setup must be the same as
+what is the default with their new installer
+[here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
+[here for Windows](https://github.com/devkitPro/installer/releases).
+
+For example::
+
+  nim c --os:nintendoswitch switchhomebrew.nim
+
+This will generate a file called ``switchhomebrew.elf`` which can then be turned into
+an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
+[the nim-libnx github repo](https://github.com/jyapayne/nim-libnx.git).
+
+Environment variables are ``DEVKITPRO`` for the devkitpro path, ``SWITCH_LIBS`` for any extra
+libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``), and
+``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``).
+
+There are some directories expected to exist in a specific structure for now until I figure out a better way to specify them. They are: ``DEVKITPRO/portlibs/switch/lib``, ``DEVKITPRO/libnx/lib``,
+``DEVKITPRO/portlibs/switch/include``, and ``DEVKITPRO/libnx/include``.
 
 DLL generation
 ==============
