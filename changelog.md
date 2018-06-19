@@ -80,8 +80,6 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
-- The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
-object types.
 
 ### Library changes
 
@@ -109,6 +107,9 @@ object types.
   use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
+  object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
+  iterators.
 
 ### Language additions
 
