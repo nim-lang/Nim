@@ -542,7 +542,9 @@ type
     fgBlue,                ## blue
     fgMagenta,             ## magenta
     fgCyan,                ## cyan
-    fgWhite                ## white
+    fgWhite,               ## white
+    fg8Bit,                ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    fgDefault              ## default terminal foreground color
 
   BackgroundColor* = enum  ## terminal's background colors
     bgBlack = 40,          ## black
@@ -552,7 +554,9 @@ type
     bgBlue,                ## blue
     bgMagenta,             ## magenta
     bgCyan,                ## cyan
-    bgWhite                ## white
+    bgWhite,               ## white
+    bg8Bit,                ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    bgDefault              ## default terminal background color
 
 {.deprecated: [TForegroundColor: ForegroundColor,
                TBackgroundColor: BackgroundColor].}
@@ -565,13 +569,16 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
     old = if bright: old or FOREGROUND_INTENSITY
           else:      old and not(FOREGROUND_INTENSITY)
     const lookup: array[ForegroundColor, int] = [
-      0,
+      0, # ForegroundColor enum with ordinal 30
       (FOREGROUND_RED),
       (FOREGROUND_GREEN),
       (FOREGROUND_RED or FOREGROUND_GREEN),
       (FOREGROUND_BLUE),
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
+      (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED),
+      0, # not supported, see enableTrueColors instead.
+      # default Windows Console foreground = White
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED)]
     discard setConsoleTextAttribute(h, toU16(old or lookup[fg]))
   else:
@@ -587,14 +594,17 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     old = if bright: old or BACKGROUND_INTENSITY
           else:      old and not(BACKGROUND_INTENSITY)
     const lookup: array[BackgroundColor, int] = [
-      0,
+      0, # BackgroundColor enum with ordinal 40
       (BACKGROUND_RED),
       (BACKGROUND_GREEN),
       (BACKGROUND_RED or BACKGROUND_GREEN),
       (BACKGROUND_BLUE),
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
-      (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED)]
+      (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED),
+      0, # not supported, see enableTrueColors instead.
+      # default Windows Console background = Black
+      0]
     discard setConsoleTextAttribute(h, toU16(old or lookup[bg]))
   else:
     gBG = ord(bg)
@@ -934,4 +944,7 @@ when not defined(testing) and isMainModule:
   stdout.styledWrite(" ordinary text ")
   stdout.styledWrite(fgGreen, "green text")
   echo ""
+  echo "ordinary text"
+  stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
+  stdout.styledWriteLine(bgYellow, "text in yellow bg", styleBright, " bold text in yellow bg", bgDefault, " bold text")
   echo "ordinary text"
