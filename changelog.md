@@ -170,4 +170,13 @@
 - ``experimental`` is now a pragma / command line switch that can enable specific
   language extensions, it is not an all-or-nothing switch anymore.
 
+- Nintendo Switch was added as a new platform target. Simply add --os:nintendoswitch
+  to your usual ``nim c`` or ``nim cpp`` command. DevkitPro setup must be the same as
+  what is the default with their new installer
+  [here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
+   [here for Windows](https://github.com/devkitPro/installer/releases).
+  Environment variables are ``DEVKITPRO`` for the devkitpro path, ``SWITCH_LIBS`` for any extra
+  libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``), and
+  ``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``).
+
 ### Bugfixes
