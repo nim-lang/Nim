@@ -867,7 +867,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
-proc newlineFollows*(L: var TLexer): bool =
+proc newlineFollows*(L: TLexer): bool =
   var pos = L.bufpos
   var buf = L.buf
   while true:
@@ -1220,3 +1220,15 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
   atTokenEnd()
+
+proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
+                     cache: IdentCache; config: ConfigRef): int =
+  var lex: TLexer
+  var tok: TToken
+  initToken(tok)
+  openLexer(lex, fileIdx, inputstream, cache, config)
+  while true:
+    rawGetTok(lex, tok)
+    result = tok.indent
+    if result > 0 or tok.tokType == tkEof: break
+  closeLexer(lex)
