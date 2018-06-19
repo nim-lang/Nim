@@ -214,7 +214,7 @@ proc putIntoNode(n: var PNode; x: TFullReg) =
       n = x.node
     else:
       let destIsRef = nfIsRef in n.flags
-      n[] = x.node[]
+      n = copyValue(x.node)
       # Ref-ness must be kept for the destination
       if destIsRef:
         n.flags.incl nfIsRef
