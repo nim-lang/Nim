@@ -93,6 +93,8 @@ proc softLinebreak(em: var Emitter, lit: string) =
   # +2 because we blindly assume a comma or ' &' might follow
   if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
     if em.lastTok in splitters:
+      while em.content.len > 0 and em.content[em.content.high] == ' ':
+        setLen(em.content, em.content.len-1)
       wr("\L")
       em.col = 0
       for i in 1..em.indentLevel+moreIndent(em): wr(" ")
@@ -100,8 +102,11 @@ proc softLinebreak(em: var Emitter, lit: string) =
       # search backwards for a good split position:
       for a in em.altSplitPos:
         if a > em.fixedUntil:
-          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em) -
-              ord(em.content[a] == ' '))
+          var spaces = 0
+          while a+spaces < em.content.len and em.content[a+spaces] == ' ':
+            inc spaces
+          if spaces > 0: delete(em.content, a, a+spaces-1)
+          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
           em.content.insert(ws, a)
           break
@@ -186,8 +191,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(" ")
   of tkSemicolon, tkComma:
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
     rememberSplit(splitComma)
+    wr(" ")
   of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
      tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
     if tok.strongSpaceA > 0 and not em.endsInWhite:
@@ -215,7 +220,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       template isUnary(tok): bool =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
-      if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
+      if not isUnary(tok):
         wr(" ")
         rememberSplit(splitBinary)
   of tkAccent:

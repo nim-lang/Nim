@@ -3,7 +3,7 @@ discard """
   exitcode: "1"
 """
 
-import verylongnamehere, verylongnamehere, 
+import verylongnamehere, verylongnamehere,
   verylongnamehereverylongnamehereverylong, namehere, verylongnamehere
 
 type
@@ -17,7 +17,7 @@ type
 var x*: string
 var y: seq[string] #[ yay inline comments. So nice I have to care bout these. ]#
 
-echo "#", x, "##", y, "#"
+echo "#", x, "##", y, "#" & "string" & $test
 
 echo (tup, here)
 echo(argA, argB)
@@ -104,7 +104,7 @@ type
     fixedUntil: int           # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
-proc openEmitter*[T, S](em: var Emitter; config: ConfigRef; 
+proc openEmitter*[T, S](em: var Emitter; config: ConfigRef;
     fileIdx: FileIndex) {.pragmaHereWrongCurlyEnd.} =
   let outfile = changeFileExt(config.toFullPath(fileIdx), ".pretty.nim")
   em.f = llStreamOpen(outfile, fmWrite)
@@ -173,13 +173,13 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.content.len > 0 and em.content[em.content.high] in SymChars+{'_'}
 
   proc emitComment(em: var Emitter; tok: TToken) =
-    let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, 
+    let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA,
         tok.commentOffsetB)
     em.lineSpan = countNewlines(lit)
     if em.lineSpan > 0: calcCol(em, lit)
     if not endsInWhite(em):
       wr(" ")
-      if em.lineSpan == 0 and max(em.col, 
+      if em.lineSpan == 0 and max(em.col,
           LineCommentColumn) + lit.len <= MaxLineLen:
         for i in 1 .. LineCommentColumn - em.col: wr(" ")
     wr lit
@@ -264,7 +264,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tkComment:
     if not preventComment:
       emitComment(em, tok)
-  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit, 
+  of tkIntLit..tkStrLit, tkRStrLit, tkTripleStrLit, tkGStrLit,
       tkGTripleStrLit, tkCharLit:
     let lit = fileSection(em.config, em.fid, tok.offsetA, tok.offsetB)
     softLinebreak(em, lit)

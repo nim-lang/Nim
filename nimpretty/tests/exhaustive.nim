@@ -16,7 +16,7 @@ type
 var x*: string
 var y: seq[string] #[ yay inline comments. So nice I have to care bout these. ]#
 
-echo "#", x, "##", y, "#"
+echo "#", x, "##", y, "#" & "string" & $test
 
 echo (tup, here)
 echo(argA, argB)
