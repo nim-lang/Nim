@@ -21,7 +21,6 @@ type
     splitComma, splitParLe, splitAnd, splitOr, splitIn, splitBinary
 
   Emitter* = object
-    f: PLLStream
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
@@ -40,8 +39,6 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                cache, config)
   if em.indWidth == 0: em.indWidth = 2
-  let outfile = changeFileExt(fullPath, ".pretty.nim")
-  em.f = llStreamOpen(outfile, fmWrite)
   em.config = config
   em.fid = fileIdx
   em.lastTok = tkInvalid
@@ -50,12 +47,13 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
-  if em.f == nil:
-    rawMessage(config, errGenerated, "cannot open file: " & outfile)
 
 proc closeEmitter*(em: var Emitter) =
-  em.f.llStreamWrite em.content
-  llStreamClose(em.f)
+  var f = llStreamOpen(em.config.outFile, fmWrite)
+  if f == nil:
+    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile)
+  f.llStreamWrite em.content
+  llStreamClose(f)
 
 proc countNewlines(s: string): int =
   result = 0
