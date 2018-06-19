@@ -47,6 +47,8 @@ build_script:
   - koch boot -d:release
   - koch nimble
   - nim e tests/test_nimscript.nims
+  - nim c -o:bin/nimpretty.exe nimpretty/nimpretty.nim
+  - nim c -r nimpretty/tester.nim
   - nimble install zip -y
   - nimble install opengl
   - nimble install sdl1

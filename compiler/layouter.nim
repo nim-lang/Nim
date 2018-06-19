@@ -21,7 +21,6 @@ type
     splitComma, splitParLe, splitAnd, splitOr, splitIn, splitBinary
 
   Emitter* = object
-    f: PLLStream
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
@@ -40,8 +39,6 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                cache, config)
   if em.indWidth == 0: em.indWidth = 2
-  let outfile = changeFileExt(fullPath, ".pretty.nim")
-  em.f = llStreamOpen(outfile, fmWrite)
   em.config = config
   em.fid = fileIdx
   em.lastTok = tkInvalid
@@ -50,12 +47,13 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
-  if em.f == nil:
-    rawMessage(config, errGenerated, "cannot open file: " & outfile)
 
 proc closeEmitter*(em: var Emitter) =
-  em.f.llStreamWrite em.content
-  llStreamClose(em.f)
+  var f = llStreamOpen(em.config.outFile, fmWrite)
+  if f == nil:
+    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile)
+  f.llStreamWrite em.content
+  llStreamClose(f)
 
 proc countNewlines(s: string): int =
   result = 0
@@ -95,6 +93,8 @@ proc softLinebreak(em: var Emitter, lit: string) =
   # +2 because we blindly assume a comma or ' &' might follow
   if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
     if em.lastTok in splitters:
+      while em.content.len > 0 and em.content[em.content.high] == ' ':
+        setLen(em.content, em.content.len-1)
       wr("\L")
       em.col = 0
       for i in 1..em.indentLevel+moreIndent(em): wr(" ")
@@ -102,8 +102,11 @@ proc softLinebreak(em: var Emitter, lit: string) =
       # search backwards for a good split position:
       for a in em.altSplitPos:
         if a > em.fixedUntil:
-          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em) -
-              ord(em.content[a] == ' '))
+          var spaces = 0
+          while a+spaces < em.content.len and em.content[a+spaces] == ' ':
+            inc spaces
+          if spaces > 0: delete(em.content, a, a+spaces-1)
+          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
           em.content.insert(ws, a)
           break
@@ -166,7 +169,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
-    elif not em.inquote and not endsInWhite(em):
+    elif not em.inquote and not endsInWhite(em) and tok.tokType in oprSet:
       wr(" ")
 
     if not em.inquote:
@@ -188,8 +191,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr(" ")
   of tkSemicolon, tkComma:
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
     rememberSplit(splitComma)
+    wr(" ")
   of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
      tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
     if tok.strongSpaceA > 0 and not em.endsInWhite:
@@ -204,9 +207,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkColonColon, tkDot:
     wr(TokTypeToStr[tok.tokType])
   of tkEquals:
-    if not em.endsInWhite: wr(" ")
+    if not em.inquote and not em.endsInWhite: wr(" ")
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
+    if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
     if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
       # if not surrounded by whitespace, don't produce any whitespace either:
@@ -217,10 +220,11 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       template isUnary(tok): bool =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
-      if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
+      if not isUnary(tok):
         wr(" ")
         rememberSplit(splitBinary)
   of tkAccent:
+    if not em.inquote and endsInAlpha(em): wr(" ")
     wr(TokTypeToStr[tok.tokType])
     em.inquote = not em.inquote
   of tkComment:
