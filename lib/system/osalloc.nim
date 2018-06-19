@@ -80,6 +80,35 @@ when defined(emscripten):
 elif defined(genode):
   include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
+elif defined(nintendoswitch):
+  import nintendoswitch/switch_memory
+
+  var
+    stack: pointer
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    stack = memalign(0x1000, size)
+    result = virtmemReserveMap(size.csize)
+    let rc = svcMapMemory(result, stack, size.uint64)
+    if rc.uint32 != 0:
+      #discard svcUnmapMemory(result, stack, size.csize)
+      raiseOutOfMem()
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    stack = memalign(0x1000, size)
+    result = virtmemReserveMap(size.csize)
+    let rc = svcMapMemory(result, stack, size.uint64)
+    if rc.uint32 != 0:
+      #discard svcUnmapMemory(result, stack, size.csize)
+      result = nil
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    when reallyOsDealloc:
+      discard svcUnmapMemory(p, stack, size.uint64)
+      virtmemFreeMap(p, size.csize)
+      free(stack)
+
+
 elif defined(posix):
   const
     PROT_READ  = 1             # page can be read
