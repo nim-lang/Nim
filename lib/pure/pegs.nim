@@ -32,7 +32,7 @@ const
                        ## can be captured. More subpatterns cannot be captured!
 
 type
-  PegKind = enum
+  PegKind* = enum
     pkEmpty,
     pkAny,              ## any character (.)
     pkAnyRune,          ## any Unicode character (_)
@@ -67,7 +67,7 @@ type
     pkRule,             ## a <- b
     pkList,             ## a, b
     pkStartAnchor       ## ^      --> Internal DSL: startAnchor()
-  NonTerminalFlag = enum
+  NonTerminalFlag* = enum
     ntDeclared, ntUsed
   NonTerminalObj = object         ## represents a non terminal symbol
     name: string                  ## the name of the symbol
@@ -85,6 +85,25 @@ type
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
+
+proc name*(nt: NonTerminal): string = nt.name
+proc line*(nt: NonTerminal): int = nt.line
+proc col*(nt: NonTerminal): int = nt.col
+proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
+proc rule*(nt: NonTerminal): Peg = nt.rule
+
+proc kind*(p: Peg): PegKind = p.kind
+proc term*(p: Peg): string = p.term
+proc ch*(p: Peg): char = p.ch
+proc charChoice*(p: Peg): ref set[char] = p.charChoice
+proc nt*(p: Peg): NonTerminal = p.nt
+proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
+iterator items*(p: Peg): Peg {.inline.} =
+  for s in p.sons:
+    yield s
+iterator pairs*(p: Peg): (int, Peg) {.inline.} =
+  for i in 0 ..< p.sons.len:
+    yield (i, p.sons[i])
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
