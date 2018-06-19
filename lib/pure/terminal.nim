@@ -561,11 +561,16 @@ type
 {.deprecated: [TForegroundColor: ForegroundColor,
                TBackgroundColor: BackgroundColor].}
 
+when defined(windows):
+  var defaultForegroundColor, defaultBackgroundColor: int16 = 0xFFFF'i16 # Default to an invalid value 0xFFFF
+
 proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   ## Sets the terminal's foreground color.
   when defined(windows):
     let h = conHandle(f)
     var old = getAttributes(h) and not FOREGROUND_RGB
+    if defaultForegroundColor == 0xFFFF'i16:
+      defaultForegroundColor = old
     old = if bright: old or FOREGROUND_INTENSITY
           else:      old and not(FOREGROUND_INTENSITY)
     const lookup: array[ForegroundColor, int] = [
@@ -577,10 +582,12 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED),
-      0, # not supported, see enableTrueColors instead.
-      # default Windows Console foreground = White
-      (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED)]
-    discard setConsoleTextAttribute(h, toU16(old or lookup[fg]))
+      0, # fg8Bit not supported, see ``enableTrueColors`` instead.
+      0] # unused
+    if fg == fgDefault:
+      discard setConsoleTextAttribute(h, toU16(old or defaultForegroundColor))
+    else:
+      discard setConsoleTextAttribute(h, toU16(old or lookup[fg]))
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
@@ -591,6 +598,8 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   when defined(windows):
     let h = conHandle(f)
     var old = getAttributes(h) and not BACKGROUND_RGB
+    if defaultBackgroundColor == 0xFFFF'i16:
+      defaultBackgroundColor = old
     old = if bright: old or BACKGROUND_INTENSITY
           else:      old and not(BACKGROUND_INTENSITY)
     const lookup: array[BackgroundColor, int] = [
@@ -602,10 +611,12 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
       (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED),
-      0, # not supported, see enableTrueColors instead.
-      # default Windows Console background = Black
-      0]
-    discard setConsoleTextAttribute(h, toU16(old or lookup[bg]))
+      0, # bg8Bit not supported, see ``enableTrueColors`` instead.
+      0] # unused
+    if bg == bgDefault:
+      discard setConsoleTextAttribute(h, toU16(old or defaultBackgroundColor))
+    else:
+      discard setConsoleTextAttribute(h, toU16(old or lookup[bg]))
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
