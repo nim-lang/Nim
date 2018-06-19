@@ -178,5 +178,7 @@
   Environment variables are ``DEVKITPRO`` for the devkitpro path, ``SWITCH_LIBS`` for any extra
   libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``), and
   ``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``).
+  There are some directories expected to exist in a specific structure for now until I figure out a better way to specify them. They are: ``DEVKITPRO/portlibs/switch/lib``, ``DEVKITPRO/libnx/lib``,
+  ``DEVKITPRO/portlibs/switch/include``, and ``DEVKITPRO/libnx/include``
 
 ### Bugfixes
