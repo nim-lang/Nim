@@ -31,13 +31,14 @@ type
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
     avr,                       ## AVR based processor
     msp430,                    ## TI MSP430 microcontroller
-    riscv64                    ## RISC-V 64-bit processor
+    riscv64,                   ## RISC-V 64-bit processor
+    armv8a57                   ## Arm Cortex A57 64-bit processor for Nintendo Switch
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
     atari, netware, macos, macosx, haiku, android, js, nimVM,
-    standalone
+    standalone, nintendoswitch
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
@@ -64,6 +65,7 @@ const
               elif defined(js): OsPlatform.js
               elif defined(nimVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
+              elif defined(nintendoswitch): OsPlatform.nintendoswitch
               else: OsPlatform.none
     ## the OS this program will run on.
 
@@ -86,5 +88,6 @@ const
                elif defined(avr): CpuPlatform.avr
                elif defined(msp430): CpuPlatform.msp430
                elif defined(riscv64): CpuPlatform.riscv64
+               elif defined(armv8a57): CpuPlatform.armv8a57
                else: CpuPlatform.none
     ## the CPU this program will run on.

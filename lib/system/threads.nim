@@ -185,6 +185,14 @@ else:
         abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
+  elif defined(nintendoswitch):
+    type
+      SysThread* {.importc: "pthread_t",
+                  header: "<sys/types.h>" .} = distinct cuint
+      Pthread_attr {.importc: "pthread_attr_t",
+                    header: "<sys/types.h>".} = object
+      ThreadVarSlot {.importc: "pthread_key_t",
+                    header: "<sys/types.h>".} = distinct cuint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
