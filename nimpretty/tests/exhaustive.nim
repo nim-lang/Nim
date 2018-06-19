@@ -5,6 +5,9 @@ discard """
 
 import verylongnamehere,verylongnamehere,verylongnamehereverylongnamehereverylong,namehere,verylongnamehere
 
+proc `[]=`() = discard "index setter"
+proc `putter=`() = discard cast[pointer](cast[int](buffer) + size)
+
 type
   GeneralTokenizer* = object of RootObj ## comment here
     kind*: TokenClass ## and here

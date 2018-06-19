@@ -169,7 +169,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
-    elif not em.inquote and not endsInWhite(em):
+    elif not em.inquote and not endsInWhite(em) and tok.tokType in oprSet:
       wr(" ")
 
     if not em.inquote:
@@ -207,9 +207,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkColonColon, tkDot:
     wr(TokTypeToStr[tok.tokType])
   of tkEquals:
-    if not em.endsInWhite: wr(" ")
+    if not em.inquote and not em.endsInWhite: wr(" ")
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
+    if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
     if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
       # if not surrounded by whitespace, don't produce any whitespace either:
@@ -224,6 +224,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         wr(" ")
         rememberSplit(splitBinary)
   of tkAccent:
+    if not em.inquote and endsInAlpha(em): wr(" ")
     wr(TokTypeToStr[tok.tokType])
     em.inquote = not em.inquote
   of tkComment:
