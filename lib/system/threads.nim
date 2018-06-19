@@ -176,21 +176,13 @@ else:
     else:
       type Time = int
 
-  when defined(linux) and defined(amd64):
+  when defined(linux) and defined(amd64) and defined(nintendoswitch):
     type
       SysThread* {.importc: "pthread_t",
                   header: "<sys/types.h>" .} = distinct culong
       Pthread_attr {.importc: "pthread_attr_t",
                     header: "<sys/types.h>".} = object
         abi: array[56 div sizeof(clong), clong]
-      ThreadVarSlot {.importc: "pthread_key_t",
-                    header: "<sys/types.h>".} = distinct cuint
-  elif defined(nintendoswitch):
-    type
-      SysThread* {.importc: "pthread_t",
-                  header: "<sys/types.h>" .} = distinct cuint
-      Pthread_attr {.importc: "pthread_attr_t",
-                    header: "<sys/types.h>".} = object
       ThreadVarSlot {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
   else:
