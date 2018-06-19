@@ -51,7 +51,6 @@
 - The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
     and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
-
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -107,6 +106,10 @@
   use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The unicode module's `isUpper` and `isLower` procedures as well as
+  the equivalent strutils module's `isUpperAscii` and `isLowerAscii` variants
+  are now deprecated. See PR [#8003](https://github.com/nim-lang/Nim/pull/8003)
+  for more information.
 
 ### Language additions
 

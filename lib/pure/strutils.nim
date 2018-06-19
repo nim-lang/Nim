@@ -154,52 +154,31 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   ## characters and there is at least one character in `s`.
   isImpl isSpaceAscii
 
-template isCaseImpl(s, charProc, skipNonAlpha) =
-  var hasAtleastOneAlphaChar = false
-  if s.len == 0: return false
-  for c in s:
-    if skipNonAlpha:
-      var charIsAlpha = c.isAlphaAscii()
-      if not hasAtleastOneAlphaChar:
-        hasAtleastOneAlphaChar = charIsAlpha
-      if charIsAlpha and (not charProc(c)):
-        return false
-    else:
-      if not charProc(c):
-        return false
-  return if skipNonAlpha: hasAtleastOneAlphaChar else: true
-
-proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
-  ## Checks whether ``s`` is lower case.
+proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsLowerAsciiStr", deprecated: "See issue #8003".} =
+  ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are lower case
+  ## and there is at least one character  in `s`.
   ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## characters in ``s`` are lower case.  Returns false if none of the
-  ## characters in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all characters
-  ## in ``s`` are alphabetical and lower case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  isCaseImpl(s, isLowerAscii, skipNonAlpha)
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
+  isImpl isLowerAscii
 
-proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
-  ## Checks whether ``s`` is upper case.
+proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nsuIsUpperAsciiStr", deprecated: "See issue #8003".} =
+  ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
+  ## Returns true if all characters in `s` are upper case
+  ## and there is at least one character in `s`.
   ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## characters in ``s`` are upper case.  Returns false if none of the
-  ## characters in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all characters
-  ## in ``s`` are alphabetical and upper case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  isCaseImpl(s, isUpperAscii, skipNonAlpha)
+  ## **Deprecated since version 0.19.0**:
+  ## See PR `#8003 <https://github.com/nim-lang/Nim/pull/8003>`_
+  ## for more information.
+  isImpl isUpperAscii
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =
@@ -1487,7 +1466,7 @@ proc quoteIfContainsWhite*(s: string): string {.deprecated.} =
   ## Returns ``'"' & s & '"'`` if `s` contains a space and does not
   ## start with a quote, else returns `s`.
   ##
-  ## **DEPRECATED** as it was confused for shell quoting function.  For this
+  ## **Deprecated** as it was confused for shell quoting function.  For this
   ## application use `osproc.quoteShell <osproc.html#quoteShell>`_.
   if find(s, {' ', '\t'}) >= 0 and s[0] != '"': result = '"' & s & '"'
   else: result = s
@@ -2541,34 +2520,19 @@ when isMainModule:
     doAssert(not isLowerAscii('A'))
     doAssert(not isLowerAscii('5'))
     doAssert(not isLowerAscii('&'))
-    doAssert(not isLowerAscii(' '))
 
-    doAssert isLowerAscii("abcd", false)
-    doAssert(not isLowerAscii("33aa", false))
-    doAssert(not isLowerAscii("a b", false))
-
-    doAssert(not isLowerAscii("abCD", true))
-    doAssert isLowerAscii("33aa", true)
-    doAssert isLowerAscii("a b", true)
-    doAssert isLowerAscii("1, 2, 3 go!", true)
-    doAssert(not isLowerAscii(" ", true))
-    doAssert(not isLowerAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
+    doAssert isLowerAscii("abcd")
+    doAssert(not isLowerAscii("abCD"))
+    doAssert(not isLowerAscii("33aa"))
 
     doAssert isUpperAscii('A')
     doAssert(not isUpperAscii('b'))
     doAssert(not isUpperAscii('5'))
     doAssert(not isUpperAscii('%'))
 
-    doAssert isUpperAscii("ABC", false)
-    doAssert(not isUpperAscii("A#$", false))
-    doAssert(not isUpperAscii("A B", false))
-
-    doAssert(not isUpperAscii("AAcc", true))
-    doAssert isUpperAscii("A#$", true)
-    doAssert isUpperAscii("A B", true)
-    doAssert isUpperAscii("1, 2, 3 GO!", true)
-    doAssert(not isUpperAscii(" ", true))
-    doAssert(not isUpperAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
+    doAssert isUpperAscii("ABC")
+    doAssert(not isUpperAscii("AAcc"))
+    doAssert(not isUpperAscii("A#$"))
 
     doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]
@@ -2641,3 +2605,4 @@ bar
   nonStaticTests()
   staticTests()
   static: staticTests()
+
