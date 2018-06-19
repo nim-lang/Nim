@@ -292,3 +292,16 @@ proc starWasExportMarker*(em: var Emitter) =
     setLen(em.content, em.content.len-3)
     em.content.add("*")
     dec em.col, 2
+
+type
+  Thing = ref object
+    grade: string
+    # this name is great
+    name: string
+
+proc f() =
+  var c: char
+  var str: string
+  if c == '\\':
+    # escape char
+    str &= c
