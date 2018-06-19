@@ -71,7 +71,7 @@ proc recLoop(p: Peg, level: int = 0) =
     outp.prt(p.kind, $p, level)
   else:
     outp.prt(p.kind, $p, level)
-    for s in sons(p):
+    for s in items(p):
       s.recLoop level+1
 
 pegAst.recLoop

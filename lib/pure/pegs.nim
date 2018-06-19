@@ -98,9 +98,12 @@ proc ch*(p: Peg): char = p.ch
 proc charChoice*(p: Peg): ref set[char] = p.charChoice
 proc nt*(p: Peg): NonTerminal = p.nt
 proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
-iterator sons*(p: Peg): Peg =
+iterator items*(p: Peg): Peg {.inline.} =
   for s in p.sons:
     yield s
+iterator pairs*(p: Peg): (int, Peg) {.inline.} =
+  for i in 0 ..< p.sons.len:
+    yield (i, p.sons[i])
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
