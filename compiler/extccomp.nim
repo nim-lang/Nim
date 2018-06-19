@@ -84,7 +84,7 @@ compiler gcc:
             hasAttribute})
 
 # GNU C and C++ Compiler
-compiler aarch64NoneElfGCC:
+compiler nintendoSwitchGCC:
   result = (
     name: "switch_gcc",
     objExt: "o",
@@ -341,7 +341,7 @@ compiler ucc:
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
-    aarch64NoneElfGCC(),
+    nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
     lcc(),
