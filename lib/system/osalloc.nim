@@ -86,28 +86,36 @@ elif defined(nintendoswitch):
   var
     stack: pointer
 
-  proc osAllocPages(size: int): pointer {.inline.} =
+  proc alignSize(size: int): int =
+    (size + 0x00000FFF) and not 0x00000FFF
+
+  proc freeMem(p: pointer, msize: int) =
+    let size = alignSize(msize)
+    discard svcUnmapMemory(p, stack, size.uint64)
+    virtmemFreeMap(p, size.csize)
+    free(stack)
+
+  proc osAllocPages(msize: int): pointer {.inline.} =
+    let size = alignSize(msize)
     stack = memalign(0x1000, size)
     result = virtmemReserveMap(size.csize)
     let rc = svcMapMemory(result, stack, size.uint64)
     if rc.uint32 != 0:
-      #discard svcUnmapMemory(result, stack, size.csize)
+      freeMem(result, size)
       raiseOutOfMem()
 
-  proc osTryAllocPages(size: int): pointer {.inline.} =
+  proc osTryAllocPages(msize: int): pointer {.inline.} =
+    let size = alignSize(msize)
     stack = memalign(0x1000, size)
     result = virtmemReserveMap(size.csize)
     let rc = svcMapMemory(result, stack, size.uint64)
     if rc.uint32 != 0:
-      #discard svcUnmapMemory(result, stack, size.csize)
+      freeMem(result, size)
       result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     when reallyOsDealloc:
-      discard svcUnmapMemory(p, stack, size.uint64)
-      virtmemFreeMap(p, size.csize)
-      free(stack)
-
+      freeMem(p, size)
 
 elif defined(posix):
   const
