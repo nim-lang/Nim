@@ -85,6 +85,11 @@ type
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
+  NtCallback* = object
+    enter*: proc(nt: NonTerminal, matchStart: int)
+    leave*: proc(nt: NonTerminal; matchStart, matchLength: int)
+  Callbacks* = ref object
+    nonTerminal*: NtCallback
 
 proc name*(nt: NonTerminal): string = nt.name
 proc line*(nt: NonTerminal): int = nt.line
@@ -540,8 +545,8 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
-               nosideEffect, rtl, extern: "npegs$1".} =
+proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
+    cbs: Callbacks = nil): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## low-level matching proc that implements the PEG interpreter. Use this
   ## for maximum efficiency (every other PEG operation ends up calling this
   ## proc).
@@ -660,14 +665,18 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkNonTerminal:
     var oldMl = c.ml
     when false: echo "enter: ", p.nt.name
-    result = rawMatch(s, p.nt.rule, start, c)
+    if not cbs.isNil:
+      cbs.nonTerminal.enter(p.nt, start)
+    result = rawMatch(s, p.nt.rule, start, c, cbs)
     when false: echo "leave: ", p.nt.name
+    if not cbs.isNil:
+      cbs.nonTerminal.leave(p.nt, start, result)
     if result < 0: c.ml = oldMl
   of pkSequence:
     var oldMl = c.ml
     result = 0
     for i in 0..high(p.sons):
-      var x = rawMatch(s, p.sons[i], start+result, c)
+      var x = rawMatch(s, p.sons[i], start+result, c, cbs)
       if x < 0:
         c.ml = oldMl
         result = -1
@@ -676,14 +685,14 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkOrderedChoice:
     var oldMl = c.ml
     for i in 0..high(p.sons):
-      result = rawMatch(s, p.sons[i], start, c)
+      result = rawMatch(s, p.sons[i], start, c, cbs)
       if result >= 0: break
       c.ml = oldMl
   of pkSearch:
     var oldMl = c.ml
     result = 0
     while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
       if x >= 0:
         inc(result, x)
         return
@@ -695,7 +704,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     inc(c.ml)
     result = 0
     while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
       if x >= 0:
         if idx < MaxSubpatterns:
           c.matches[idx] = (start, start+result-1)
@@ -708,7 +717,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkGreedyRep:
     result = 0
     while true:
-      var x = rawMatch(s, p.sons[0], start+result, c)
+      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
       # if x == 0, we have an endless loop; so the correct behaviour would be
       # not to break. But endless loops can be easily introduced:
       # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
@@ -723,15 +732,15 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     result = 0
     while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
   of pkOption:
-    result = max(0, rawMatch(s, p.sons[0], start, c))
+    result = max(0, rawMatch(s, p.sons[0], start, c, cbs))
   of pkAndPredicate:
     var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c, cbs)
     if result >= 0: result = 0 # do not consume anything
     else: c.ml = oldMl
   of pkNotPredicate:
     var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c, cbs)
     if result < 0: result = 0
     else:
       c.ml = oldMl
@@ -739,7 +748,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkCapture:
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
-    result = rawMatch(s, p.sons[0], start, c)
+    result = rawMatch(s, p.sons[0], start, c, cbs)
     if result >= 0:
       if idx < MaxSubpatterns:
         c.matches[idx] = (start, start+result-1)
@@ -752,7 +761,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     var n: Peg
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
     n.term = s.substr(a, b)
-    result = rawMatch(s, n, start, c)
+    result = rawMatch(s, n, start, c, cbs)
   of pkStartAnchor:
     if c.origStart == start: result = 0
     else: result = -1
@@ -1749,6 +1758,17 @@ proc escapePeg*(s: string): string =
         inQuote = true
       result.add(c)
   if inQuote: result.add('\'')
+
+proc parse*(s: string, p: Peg, cbs: Callbacks): int =
+  ## Parses a string according to the given PEG. The fields of the ``Callbacks``
+  ## parameter correspond to the content of the ``kind`` field of ``Peg`` AST
+  ## nodes: when a node is matched during parsing, the ``enter`` and
+  ## ``leave`` procs of the corresponding callback object are called at
+  ## the beginning and the end of the match.
+  var
+    ms: array[MaxSubpatterns, tuple[first: int, last: int]]
+    cs = Captures(matches: ms, ml: 0, origStart: 0)
+  rawMatch(s, p, 0, cs, cbs)
 
 when isMainModule:
   assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"

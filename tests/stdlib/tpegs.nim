@@ -1,5 +1,7 @@
 discard """
   output: '''
+PEG AST traversal output
+------------------------
 pkNonTerminal: Sum @(2, 3)
   pkSequence: (Product (('+' / '-') Product)*)
     pkNonTerminal: Product @(3, 7)
@@ -26,6 +28,35 @@ pkNonTerminal: Sum @(2, 3)
           pkChar: '+'
           pkChar: '-'
         pkNonTerminal: Product @(3, 7)
+
+Event parser output
+-------------------
+Sum pkSequence@(2, 3): parsing @0
+  Product pkSequence@(3, 7): parsing @0
+    Value pkOrderedChoice@(4, 5): parsing @0
+      Expr pkNonTerminal@(1, 4): parsing @1
+        Sum pkSequence@(2, 3): parsing @1
+          Product pkSequence@(3, 7): parsing @1
+            Value pkOrderedChoice@(4, 5): parsing @1
+              5
+            5
+          Product pkSequence@(3, 7): parsing @3
+            Value pkOrderedChoice@(4, 5): parsing @3
+              3
+            3
+          5+3
+        5+3
+      (5+3)
+    Value pkOrderedChoice@(4, 5): parsing @6
+      2
+    (5+3)/2
+  Product pkSequence@(3, 7): parsing @8
+    Value pkOrderedChoice@(4, 5): parsing @8
+      7
+    Value pkOrderedChoice@(4, 5): parsing @10
+      22
+    7*22
+  (5+3)/2+7*22
 '''
 """
 
@@ -36,13 +67,13 @@ const
   indent = "  "
 
 let
-  pegSrc = """
+  pegAst = """
 Expr <- Sum
 Sum <- Product (('+' / '-') Product)*
 Product <- Value (('*' / '/') Value)*
 Value <- [0-9]+ / '(' Expr ')'
-  """
-  pegAst: Peg = pegSrc.peg
+  """.peg
+  txt = "(5+3)/2+7*22"
 
 var
   outp = newStringStream()
@@ -75,4 +106,34 @@ proc recLoop(p: Peg, level: int = 0) =
       s.recLoop level+1
 
 pegAst.recLoop
+echo "PEG AST traversal output"
+echo "------------------------"
+echo outp.data
+
+
+proc cbs(txt: string, outp: Stream): Callbacks =
+  var
+    level: int = 0
+
+  proc prt(outp: Stream, s: string, level: int = 0) =
+    outp.writeLine indent.repeat(level) & s
+
+  Callbacks(
+    nonTerminal: NtCallback(
+      enter: proc(nt: NonTerminal, start: int) {.closure.} =
+        outp.prt("$1 $2@($3, $4): parsing @$5" %
+          [nt.name, $nt.rule.kind, $nt.line, $nt.col, $start], level)
+        level.inc
+      ,
+      leave: proc(nt: NonTerminal, start: int, length: int) {.closure.} =
+        if -1 < length:
+          outp.prt(txt.substr(start, start+length-1), level)
+        level.dec
+    )
+  )
+
+outp = newStringStream()
+assert txt.len == txt.parse(pegAst, cbs(txt, outp))
+echo "Event parser output"
+echo "-------------------"
 echo outp.data
