@@ -111,25 +111,23 @@ echo "------------------------"
 echo outp.data
 
 
-proc cbs(txt: string, outp: Stream): Callbacks =
+proc cbs(txt: string, outp: Stream): PegCallbacks =
   var
     level: int = 0
 
   proc prt(outp: Stream, s: string, level: int = 0) =
     outp.writeLine indent.repeat(level) & s
 
-  Callbacks(
-    nonTerminal: NtCallback(
-      enter: proc(nt: NonTerminal, start: int) {.closure.} =
-        outp.prt("$1 $2@($3, $4): parsing @$5" %
-          [nt.name, $nt.rule.kind, $nt.line, $nt.col, $start], level)
-        level.inc
-      ,
-      leave: proc(nt: NonTerminal, start: int, length: int) {.closure.} =
-        if -1 < length:
-          outp.prt(txt.substr(start, start+length-1), level)
-        level.dec
-    )
+  result = initPegCallbacks(
+    enterNonTerminal: proc(nt: NonTerminal, start: int) {.closure.} =
+      outp.prt("$1 $2@($3, $4): parsing @$5" %
+        [nt.name, $nt.rule.kind, $nt.line, $nt.col, $start], level)
+      level.inc
+    ,
+    leaveNonTerminal: proc(nt: NonTerminal, start: int, length: int) {.closure.} =
+      if -1 < length:
+        outp.prt(txt.substr(start, start+length-1), level)
+      level.dec
   )
 
 outp = newStringStream()

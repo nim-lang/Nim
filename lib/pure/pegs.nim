@@ -85,11 +85,28 @@ type
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
-  NtCallback* = object
-    enter*: proc(nt: NonTerminal, matchStart: int)
-    leave*: proc(nt: NonTerminal; matchStart, matchLength: int)
-  Callbacks* = ref object
-    nonTerminal*: NtCallback
+  PegCallbacks* = object
+    ent: proc(nt: NonTerminal, matchStart: int)
+    lnt: proc(nt: NonTerminal; matchStart, matchLength: int)
+
+# Do-nothing callbacks as default values for ``initPegCallbacks``
+proc nteNOP(nt: NonTerminal, matchStart: int) = discard
+proc ntlNOP(nt: NonTerminal, matchStart: int, matchLength: int) = discard
+
+proc initPegCallbacks*(
+    enterNonTerminal: proc(nt: NonTerminal, matchStart: int) = nteNOP,
+    leaveNonTerminal: proc(nt: NonTerminal; matchStart, matchLength: int) = ntlNOP
+): PegCallbacks =
+  ## Creates a container object with callbacks to be invoked by the ``parse``
+  ## event parser proc. The ``enter..`` procs will be called at the
+  ## beginnig of an input text section matching a ``Peg`` node of
+  ## corresponding ``PegKind``, the ``leave..`` at its end.
+  result = PegCallbacks(
+      ent: enterNonTerminal,
+      lnt: leaveNonTerminal
+  )
+
+let nopCallbacks = initPegCallbacks()
 
 proc name*(nt: NonTerminal): string = nt.name
 proc line*(nt: NonTerminal): int = nt.line
@@ -546,7 +563,7 @@ when not useUnicode:
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
 proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
-    cbs: Callbacks = nil): int {.nosideEffect, rtl, extern: "npegs$1".} =
+    cbs: PegCallbacks = nopCallbacks): int {.nosideEffect, rtl, extern: "npegs$1".} =
   ## low-level matching proc that implements the PEG interpreter. Use this
   ## for maximum efficiency (every other PEG operation ends up calling this
   ## proc).
@@ -665,12 +682,10 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
   of pkNonTerminal:
     var oldMl = c.ml
     when false: echo "enter: ", p.nt.name
-    if not cbs.isNil:
-      cbs.nonTerminal.enter(p.nt, start)
+    cbs.ent(p.nt, start)
     result = rawMatch(s, p.nt.rule, start, c, cbs)
     when false: echo "leave: ", p.nt.name
-    if not cbs.isNil:
-      cbs.nonTerminal.leave(p.nt, start, result)
+    cbs.lnt(p.nt, start, result)
     if result < 0: c.ml = oldMl
   of pkSequence:
     var oldMl = c.ml
@@ -1759,12 +1774,13 @@ proc escapePeg*(s: string): string =
       result.add(c)
   if inQuote: result.add('\'')
 
-proc parse*(s: string, p: Peg, cbs: Callbacks): int =
-  ## Parses a string according to the given PEG. The fields of the ``Callbacks``
-  ## parameter correspond to the content of the ``kind`` field of ``Peg`` AST
-  ## nodes: when a node is matched during parsing, the ``enter`` and
-  ## ``leave`` procs of the corresponding callback object are called at
-  ## the beginning and the end of the match.
+proc parse*(s: string, p: Peg, cbs: PegCallbacks): int =
+  ## Parses a string according to the given PEG. The fields of the
+  ## ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
+  ## of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
+  ## and ``leave`` procs of the corresponding callback object are called at the
+  ## beginning and the end of the match.
+  ## Returns -1 if ``s`` does not match, else the length of the match.
   var
     ms: array[MaxSubpatterns, tuple[first: int, last: int]]
     cs = Captures(matches: ms, ml: 0, origStart: 0)
