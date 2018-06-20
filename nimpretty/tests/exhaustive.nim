@@ -8,6 +8,22 @@ import verylongnamehere,verylongnamehere,verylongnamehereverylongnamehereverylon
 proc `[]=`() = discard "index setter"
 proc `putter=`() = discard cast[pointer](cast[int](buffer) + size)
 
+(not false)
+
+let expr = if true: "true" else: "false"
+
+var body = newNimNode(nnkIfExpr).add(
+  newNimNode(nnkElifBranch).add(
+    infix(newDotExpr(ident("a"), ident("kind")), "==", newDotExpr(ident("b"), ident("kind"))),
+    condition
+  ),
+  newNimNode(nnkElse).add(newStmtList(newNimNode(nnkReturnStmt).add(ident("false"))))
+)
+
+# comment
+
+var x = 1
+
 type
   GeneralTokenizer* = object of RootObj ## comment here
     kind*: TokenClass ## and here

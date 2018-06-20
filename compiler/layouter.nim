@@ -74,9 +74,10 @@ template wr(x) =
 template goodCol(col): bool = col in 40..MaxLineLen
 
 const
-  splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
-               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
-               tkCurlyLe}
+  openPars = {tkParLe, tkParDotLe,
+              tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
+              tkCurlyLe}
+  splitters = openPars + {tkComma, tkSemicolon}
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
             tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
@@ -169,7 +170,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
-    elif not em.inquote and not endsInWhite(em) and tok.tokType in oprSet:
+    elif not em.inquote and not endsInWhite(em) and
+        em.lastTok notin openPars:
+      #and tok.tokType in oprSet
       wr(" ")
 
     if not em.inquote:
