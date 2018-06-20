@@ -211,7 +211,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
   of mNot: result = newIntNodeT(1 - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
-  of mBitnotI: result = newIntNodeT(not getInt(a), n, g)
+  of mBitnotI:
+    case skipTypes(n.typ, abstractRange).kind
+    of tyUInt..tyUInt64:
+      result = newIntNodeT((not getInt(a)) and lastOrd(g.config, a.typ, fixedUnsigned=true), n, g)
+    else:
+      result = newIntNodeT(not getInt(a), n, g)
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
@@ -250,8 +255,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     of tyInt8: result = newIntNodeT(int8(getInt(a)) shl int8(getInt(b)), n, g)
     of tyInt16: result = newIntNodeT(int16(getInt(a)) shl int16(getInt(b)), n, g)
     of tyInt32: result = newIntNodeT(int32(getInt(a)) shl int32(getInt(b)), n, g)
-    of tyInt64, tyInt, tyUInt..tyUInt64:
+    of tyInt64, tyInt:
       result = newIntNodeT(`shl`(getInt(a), getInt(b)), n, g)
+    of tyUInt..tyUInt64:
+      result = newIntNodeT(`shl`(getInt(a), getInt(b)) and lastOrd(g.config, a.typ, fixedUnsigned=true), n, g)
     else: internalError(g.config, n.info, "constant folding for shl")
   of mShrI:
     case skipTypes(n.typ, abstractRange).kind
