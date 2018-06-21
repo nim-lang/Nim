@@ -189,10 +189,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if sfAnon in t.sym.flags:
+      if {sfAnon, sfGenSym} * t.sym.flags != {}:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
         # mild hack to prevent endless recursions (makes nimforum compile again):
+        let wasAnon = sfAnon in t.sym.flags
         excl t.sym.flags, sfAnon
         let n = t.n
         for i in 0 ..< n.len:
@@ -200,7 +201,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
-        incl t.sym.flags, sfAnon
+        if wasAnon:
+          incl t.sym.flags, sfAnon
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
