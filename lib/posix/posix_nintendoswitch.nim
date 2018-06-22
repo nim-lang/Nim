@@ -7,9 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-# Types here should conform to the glibc ABI on linux / x86_64
-# When adding a type, the order and size of fields must match
-
 # To be included from posix.nim!
 
 {.deadCodeElim: on.}  # dce option deprecated
