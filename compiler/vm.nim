@@ -1276,6 +1276,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
       c.comesFromHeuristic = regs[rb].node.info
+    of opcNSymId:
+      decodeB(rkInt)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].intVal = ord(a.sym.id)
+      else:
+        stackTrace(c, tos, pc, "node is not a symbol")
+      c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node

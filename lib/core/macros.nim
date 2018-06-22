@@ -205,6 +205,7 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: 
 
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
+  proc symId*(symbol: NimNode): int {.magic: "NSymId", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
   proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
     ## retrieve the implementation of `symbol`. `symbol` can be a

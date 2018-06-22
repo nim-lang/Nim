@@ -642,7 +642,7 @@ type
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
-    mNKind, mNSymKind,
+    mNKind, mNSymKind, mNSymId,
 
     mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
     mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
