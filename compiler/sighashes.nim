@@ -193,16 +193,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
         # mild hack to prevent endless recursions (makes nimforum compile again):
-        let wasAnon = sfAnon in t.sym.flags
-        excl t.sym.flags, sfAnon
+        let oldFlags = t.sym.flags
+        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
         let n = t.n
         for i in 0 ..< n.len:
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
-        if wasAnon:
-          incl t.sym.flags, sfAnon
+        t.sym.flags = oldFlags
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
