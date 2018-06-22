@@ -176,7 +176,7 @@ else:
     else:
       type Time = int
 
-  when defined(linux) and defined(amd64) and defined(nintendoswitch):
+  when (defined(linux) or defined(nintendoswitch)) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t",
                   header: "<sys/types.h>" .} = distinct culong
