@@ -418,7 +418,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
         of skConst:
           x.call.add s.ast
         of skType:
-          x.call.add newSymNode(s, n.info)
+          x.call.add newSymNodeTypeDesc(s, n.info)
         else:
           internalAssert c.config, false
 
