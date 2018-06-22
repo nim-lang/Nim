@@ -16,7 +16,7 @@ proc test(infile, outfile: string) =
   let produced = dir / nimFile & ".pretty"
   if strip(readFile(expected)) != strip(readFile(produced)):
     echo "FAILURE: files differ: ", nimFile
-    discard execShellCmd("diff -uNdr " & produced & " " & expected)
+    discard execShellCmd("diff -uNdr " & expected & " " & produced)
     failures += 1
   else:
     echo "SUCCESS: files identical: ", nimFile
