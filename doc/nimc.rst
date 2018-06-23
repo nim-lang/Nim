@@ -249,8 +249,21 @@ Environment variables are ``DEVKITPRO`` for the devkitpro path, ``SWITCH_LIBS`` 
 libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``), and
 ``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``).
 
-There are some directories expected to exist in a specific structure for now until I figure out a better way to specify them. They are: ``DEVKITPRO/portlibs/switch/lib``, ``DEVKITPRO/libnx/lib``,
-``DEVKITPRO/portlibs/switch/include``, and ``DEVKITPRO/libnx/include``.
+There are some directories expected to exist in a specific structure for now until I
+figure out a better way to specify them. They are: ``DEVKITPRO/portlibs/switch/lib``,
+``DEVKITPRO/libnx/lib``, ``DEVKITPRO/portlibs/switch/include``, and ``DEVKITPRO/libnx/include``.
+
+There are a few things that don't work because the DevkitPro libraries don't support them.
+They are:
+
+    1. Waiting for a subprocess to finish. A subprocess can be started, but right
+       now it can't be waited on, which sort of makes subprocesses a bit hard to use
+    2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
+    3. Command line parameters. It doesn't make sense to have these for a console
+       anyways, so no big deal here.
+    4. mqueue. Sadly there are no mqueue headers.
+    5. ucontext. No headers for these either. No coroutines for now :(
+    6. nl_types. No headers for this.
 
 DLL generation
 ==============
