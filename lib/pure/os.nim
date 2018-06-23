@@ -21,7 +21,7 @@ import
 
 when defined(windows):
   import winlean
-elif defined(posix) or defined(nintendoswitch):
+elif defined(posix):
   import posix
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
@@ -187,7 +187,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
 
 proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     result = res.st_mtim.toTime
@@ -200,7 +200,7 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".}
 
 proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     result = res.st_atim.toTime
@@ -217,7 +217,7 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
   ## which the file's attribute's were last modified. See
   ## `here <https://github.com/nim-lang/Nim/issues/1058>`_ for details.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
     result = res.st_ctim.toTime
@@ -231,7 +231,7 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     # If we don't have access to nanosecond resolution, use '>='
     when not StatHasNanoseconds:  
       result = getLastModificationTime(a) >= getLastModificationTime(b)
@@ -446,7 +446,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
   ## retrieves file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is checked, every other
   ## permission is available in any case.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     var a: Stat
     if stat(filename, a) < 0'i32: raiseOSError(osLastError())
     result = {}
@@ -478,7 +478,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   ## sets the file permissions for `filename`. `OSError` is raised in case of
   ## an error. On Windows, only the ``readonly`` flag is changed, depending on
   ## ``fpUserWrite``.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     var p = 0'i32
     if fpUserRead in permissions: p = p or S_IRUSR
     if fpUserWrite in permissions: p = p or S_IWUSR
@@ -645,7 +645,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     result = c_system(command) shr 8
   else:
     result = c_system(command)
@@ -739,7 +739,7 @@ type
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
 
-when defined(posix) or defined(nintendoswitch):
+when defined(posix):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
@@ -911,7 +911,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError())
-  elif defined(posix) or defined(nintendoswitch):
+  elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true
@@ -1656,7 +1656,7 @@ proc isHidden*(path: string): bool =
 proc setLastModificationTime*(file: string, t: times.Time) =
   ## Sets the `file`'s last modification time. `OSError` is raised in case of
   ## an error.
-  when defined(posix) or defined(nintendoswitch):
+  when defined(posix):
     let unixt = posix.Time(t.toUnix)
     let micro = convert(Nanoseconds, Microseconds, t.nanosecond)
     var timevals = [Timeval(tv_sec: unixt, tv_usec: micro),

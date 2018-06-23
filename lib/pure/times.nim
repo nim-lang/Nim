@@ -61,7 +61,7 @@ when defined(JS):
     system.inc(a, b)
   {.pop.}
 
-when defined(posix) or defined(nintendoswitch):
+when defined(posix):
   import posix
 
   type CTime = posix.Time
@@ -2031,7 +2031,7 @@ when not defined(JS):
       ## on the hardware/OS).
       ##
       ## ``getTime`` should generally be prefered over this proc.
-      when defined(posix) or defined(nintendoswitch):
+      when defined(posix):
         var a: Timeval
         gettimeofday(a)
         result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
