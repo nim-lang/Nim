@@ -330,15 +330,15 @@ template eatChar(L: var TLexer, t: var TToken) =
   inc(L.bufpos)
 
 proc getNumber(L: var TLexer, result: var TToken) =
-  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]): uint =
+  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]): Natural =
     var pos = L.bufpos              # use registers for pos, buf
     var buf = L.buf
-    var numDigits: uint = 0
+    result = 0
     while true:
       if buf[pos] in chars:
         add(tok.literal, buf[pos])
         inc(pos)
-        inc(numDigits)
+        inc(result)
       else:
         break
       if buf[pos] == '_':
@@ -349,7 +349,6 @@ proc getNumber(L: var TLexer, result: var TToken) =
         add(tok.literal, '_')
         inc(pos)
     L.bufpos = pos
-    return numDigits
 
   proc matchChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
@@ -386,7 +385,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     startpos, endpos: int
     xi: BiggestInt
     isBase10 = true
-    numDigits: uint = 0
+    numDigits = 0
   const
     baseCodeChars = {'X', 'x', 'o', 'c', 'C', 'b', 'B'}
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
@@ -415,7 +414,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       numDigits = matchUnderscoreChars(L, result, {'0'..'1'})
     else:
       internalError(L.config, getLineInfo(L), "getNumber")
-    if numDigits == 0u:
+    if numDigits == 0:
       lexMessageLitNum(L, "invalid number: '$1'", startpos)
   else:
     discard matchUnderscoreChars(L, result, {'0'..'9'})
