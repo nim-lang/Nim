@@ -619,7 +619,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mLow:
         result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
       of mHigh:
-        if skipTypes(n.sons[1].typ, abstractVar).kind notin
+        if skipTypes(n.sons[1].typ, abstractVar+{tyUserTypeClassInst}).kind notin
             {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
           result = newIntNodeT(lastOrd(g.config, skipTypes(n[1].typ, abstractVar)), n, g)
         else:
