@@ -277,6 +277,49 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ##
   for i in 0 ..< s.len: s[i] = op(s[i])
 
+proc zipApply*[S, T](s1: var openArray[S], s2: var openArray[T],
+                     op: proc (a: var S, b: var T) {.closure.})
+                                                              {.inline.} =
+  ## Applies `op` to every item in `s1` and `s2` modifying them directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## If one container is shorter, the remaining items in the
+  ## longer container are discarded.
+  ## The parameter function takes both a ``var S`` and a ``var T`` type parameter.
+  runnableExamples:
+    var
+      a1 = @["A", "B", "C", "D"]
+      a2 = @[1, 2, 3, 4]
+    zipApply(a1, a2, proc(x: var string, y: var int) =
+      x = $y & x
+      y *= 2)
+    doAssert a1 == @["1A", "2B", "3C", "4D"]
+    doAssert a2 == @[2, 4, 6, 8]
+  let m = min(s1.len, s2.len)
+  for i in 0 ..< m: op(s1[i], s2[i])
+
+proc zipApply*[S, T](s1: var openArray[S], s2: var openArray[T],
+                     op: proc (a: S, b: T): tuple[a: S, b: T] {.closure.})
+                                                              {.inline.} =
+  ## Applies `op` to every item in `s1` and `s2` modifying them directly.
+  ##
+  ## Note that this requires your input and output types to
+  ## be the same, since they are modified in-place.
+  ## If one container is shorter, the remaining items in the
+  ## longer container are discarded.
+  ## The parameter function takes both an ``S`` and a ``T`` parameter
+  ## and returns a ``tuple[a: S, b: T]``.
+  runnableExamples:
+    var
+      a1 = @["A", "B", "C", "D"]
+      a2 = @[1, 2, 3, 4]
+    zipApply(a1, a2, proc(x: string, y: int) = ($y & x, y * 2))
+    doAssert a1 == @["1A", "2B", "3C", "4D"]
+    doAssert a2 == @[2, 4, 6, 8]
+  let m = min(s1.len, s2.len)
+  for i in 0 ..< m: (s1[i], s2[i]) = op(s1[i], s2[i])
+
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container and yields every item that fulfills the
   ## predicate.
@@ -887,6 +930,16 @@ when isMainModule:
     var a = @["1", "2", "3", "4"]
     apply(a, proc(x: var string) = x &= "42")
     assert a == @["142", "242", "342", "442"]
+
+  block: # zipApply test
+    var
+      a1 = @["A", "B", "C", "D"]
+      a2 = @[1, 2, 3, 4]
+    zipApply(a1, a2, proc(x: var string, y: var int) =
+      x = $y & x
+      y *= 2)
+    assert a1 == @["1A", "2B", "3C", "4D"]
+    assert a2 == @[2, 4, 6, 8]
 
   block: # filter proc test
     let
