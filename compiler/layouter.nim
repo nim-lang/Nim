@@ -7,10 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Layouter for nimpretty. Still primitive but useful.
-## TODO
-## - Make indentations consistent.
-## - Align 'if' and 'case' expressions properly.
+## Layouter for nimpretty.
 
 import idents, lexer, lineinfos, llstream, options, msgs, strutils
 from os import changeFileExt
@@ -24,33 +21,39 @@ type
     splitComma, splitParLe, splitAnd, splitOr, splitIn, splitBinary
 
   Emitter* = object
-    f: PLLStream
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
     inquote: bool
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
-    lastIndent: int
+    nested: int
     doIndentMore*: int
     content: string
+    indentStack: seq[int]
     fixedUntil: int # marks where we must not go in the content
     altSplitPos: array[SplitKind, int] # alternative split positions
 
-proc openEmitter*(em: var Emitter, config: ConfigRef, fileIdx: FileIndex) =
-  let outfile = changeFileExt(config.toFullPath(fileIdx), ".pretty.nim")
-  em.f = llStreamOpen(outfile, fmWrite)
+proc openEmitter*(em: var Emitter, cache: IdentCache;
+                  config: ConfigRef, fileIdx: FileIndex) =
+  let fullPath = config.toFullPath(fileIdx)
+  em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
+                               cache, config)
+  if em.indWidth == 0: em.indWidth = 2
   em.config = config
   em.fid = fileIdx
   em.lastTok = tkInvalid
   em.inquote = false
   em.col = 0
   em.content = newStringOfCap(16_000)
-  if em.f == nil:
-    rawMessage(config, errGenerated, "cannot open file: " & outfile)
+  em.indentStack = newSeqOfCap[int](30)
+  em.indentStack.add 0
 
 proc closeEmitter*(em: var Emitter) =
-  em.f.llStreamWrite em.content
-  llStreamClose(em.f)
+  var f = llStreamOpen(em.config.outFile, fmWrite)
+  if f == nil:
+    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile)
+  f.llStreamWrite em.content
+  llStreamClose(f)
 
 proc countNewlines(s: string): int =
   result = 0
@@ -71,17 +74,19 @@ template wr(x) =
 template goodCol(col): bool = col in 40..MaxLineLen
 
 const
-  splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
-               tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
-               tkCurlyLe}
-  sectionKeywords = {tkType, tkVar, tkConst, tkLet, tkUsing}
+  openPars = {tkParLe, tkParDotLe,
+              tkBracketLe, tkBracketLeColon, tkCurlyDotLe,
+              tkCurlyLe}
+  splitters = openPars + {tkComma, tkSemicolon}
+  oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
+            tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
 
 template rememberSplit(kind) =
   if goodCol(em.col):
     em.altSplitPos[kind] = em.content.len
 
 template moreIndent(em): int =
-  max(if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth, 2)
+  (if em.doIndentMore > 0: em.indWidth*2 else: em.indWidth)
 
 proc softLinebreak(em: var Emitter, lit: string) =
   # XXX Use an algorithm that is outlined here:
@@ -89,6 +94,8 @@ proc softLinebreak(em: var Emitter, lit: string) =
   # +2 because we blindly assume a comma or ' &' might follow
   if not em.inquote and em.col+lit.len+2 >= MaxLineLen:
     if em.lastTok in splitters:
+      while em.content.len > 0 and em.content[em.content.high] == ' ':
+        setLen(em.content, em.content.len-1)
       wr("\L")
       em.col = 0
       for i in 1..em.indentLevel+moreIndent(em): wr(" ")
@@ -96,6 +103,10 @@ proc softLinebreak(em: var Emitter, lit: string) =
       # search backwards for a good split position:
       for a in em.altSplitPos:
         if a > em.fixedUntil:
+          var spaces = 0
+          while a+spaces < em.content.len and em.content[a+spaces] == ' ':
+            inc spaces
+          if spaces > 0: delete(em.content, a, a+spaces-1)
           let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
           em.content.insert(ws, a)
@@ -104,7 +115,7 @@ proc softLinebreak(em: var Emitter, lit: string) =
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
   template endsInWhite(em): bool =
-    em.content.len > 0 and em.content[em.content.high] in {' ', '\L'}
+    em.content.len == 0 or em.content[em.content.high] in {' ', '\L'}
   template endsInAlpha(em): bool =
     em.content.len > 0 and em.content[em.content.high] in SymChars+{'_'}
 
@@ -119,10 +130,6 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr lit
 
   var preventComment = false
-  if em.indWidth == 0 and tok.indent > 0:
-    # first indentation determines how many number of spaces to use:
-    em.indWidth = tok.indent
-
   if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
     emitComment(em, tok)
@@ -130,14 +137,17 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.content.high
 
   elif tok.indent >= 0:
-    em.indentLevel = tok.indent
-    # remove trailing whitespace:
-    while em.content.len > 0 and em.content[em.content.high] == ' ':
-      setLen(em.content, em.content.len-1)
-    wr("\L")
-    for i in 2..tok.line - em.lastLineNumber: wr("\L")
-    em.col = 0
-    #[ we only correct the indentation if it is slightly off,
+    if em.lastTok in (splitters + oprSet):
+      em.indentLevel = tok.indent
+    else:
+      if tok.indent > em.indentStack[^1]:
+        em.indentStack.add tok.indent
+      else:
+        # dedent?
+        while em.indentStack.len > 1 and em.indentStack[^1] > tok.indent:
+          discard em.indentStack.pop()
+      em.indentLevel = em.indentStack.high * em.indWidth
+    #[ we only correct the indentation if it is not in an expression context,
        so that code like
 
         const splitters = {tkComma, tkSemicolon, tkParLe, tkParDotLe,
@@ -146,45 +156,46 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
 
        is not touched.
     ]#
-    when false:
-      if tok.indent > em.lastIndent and em.indWidth > 1 and (tok.indent mod em.indWidth) == 1:
-        em.indentLevel = 0
-        while em.indentLevel < tok.indent-1:
-          inc em.indentLevel, em.indWidth
-    when false:
-      if em.indWidth != 0 and
-          abs(tok.indent - em.nested*em.indWidth) <= em.indWidth and
-          em.lastTok notin sectionKeywords:
-        em.indentLevel =  em.nested*em.indWidth
+    # remove trailing whitespace:
+    while em.content.len > 0 and em.content[em.content.high] == ' ':
+      setLen(em.content, em.content.len-1)
+    wr("\L")
+    for i in 2..tok.line - em.lastLineNumber: wr("\L")
+    em.col = 0
     for i in 1..em.indentLevel:
       wr(" ")
     em.fixedUntil = em.content.high
-    em.lastIndent = tok.indent
 
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
-    elif not em.inquote and not endsInWhite(em):
+    elif not em.inquote and not endsInWhite(em) and
+        em.lastTok notin openPars:
+      #and tok.tokType in oprSet
       wr(" ")
 
-    wr(TokTypeToStr[tok.tokType])
+    if not em.inquote:
+      wr(TokTypeToStr[tok.tokType])
 
-    case tok.tokType
-    of tkAnd: rememberSplit(splitAnd)
-    of tkOr: rememberSplit(splitOr)
-    of tkIn, tkNotin:
-      rememberSplit(splitIn)
-      wr(" ")
-    else: discard
+      case tok.tokType
+      of tkAnd: rememberSplit(splitAnd)
+      of tkOr: rememberSplit(splitOr)
+      of tkIn, tkNotin:
+        rememberSplit(splitIn)
+        wr(" ")
+      else: discard
+    else:
+      # keywords in backticks are not normalized:
+      wr(tok.ident.s)
 
   of tkColon:
     wr(TokTypeToStr[tok.tokType])
     wr(" ")
   of tkSemicolon, tkComma:
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
     rememberSplit(splitComma)
+    wr(" ")
   of tkParDotLe, tkParLe, tkBracketDotLe, tkBracketLe,
      tkCurlyLe, tkCurlyDotLe, tkBracketLeColon:
     if tok.strongSpaceA > 0 and not em.endsInWhite:
@@ -199,19 +210,24 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkColonColon, tkDot:
     wr(TokTypeToStr[tok.tokType])
   of tkEquals:
-    if not em.endsInWhite: wr(" ")
+    if not em.inquote and not em.endsInWhite: wr(" ")
     wr(TokTypeToStr[tok.tokType])
-    wr(" ")
+    if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
-    if not em.endsInWhite: wr(" ")
-    wr(tok.ident.s)
-    template isUnary(tok): bool =
-      tok.strongSpaceB == 0 and tok.strongSpaceA > 0
+    if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
+      # if not surrounded by whitespace, don't produce any whitespace either:
+      wr(tok.ident.s)
+    else:
+      if not em.endsInWhite: wr(" ")
+      wr(tok.ident.s)
+      template isUnary(tok): bool =
+        tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
-    if not isUnary(tok) or em.lastTok in {tkOpr, tkDotDot}:
-      wr(" ")
-      rememberSplit(splitBinary)
+      if not isUnary(tok):
+        wr(" ")
+        rememberSplit(splitBinary)
   of tkAccent:
+    if not em.inquote and endsInAlpha(em): wr(" ")
     wr(TokTypeToStr[tok.tokType])
     em.inquote = not em.inquote
   of tkComment:

@@ -107,6 +107,9 @@
   use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
+  object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
+  iterators.
 
 ### Language additions
 

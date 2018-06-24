@@ -102,7 +102,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   initToken(p.tok)
   openLexer(p.lex, fileIdx, inputStream, cache, config)
   when defined(nimpretty2):
-    openEmitter(p.em, config, fileIdx)
+    openEmitter(p.em, cache, config, fileIdx)
   getTok(p)                   # read the first token
   p.firstTok = true
   p.strongSpaces = strongSpaces

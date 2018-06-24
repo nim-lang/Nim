@@ -978,16 +978,17 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
   if isAsmStmt and hasGnuAsm in CC[p.config.cCompiler].props:
     for x in splitLines(res):
       var j = 0
-      while x[j] in {' ', '\t'}: inc(j)
-      if x[j] in {'"', ':'}:
-        # don't modify the line if already in quotes or
-        # some clobber register list:
-        add(result, x); add(result, "\L")
-      elif x[j] != '\0':
-        # ignore empty lines
-        add(result, "\"")
-        add(result, x)
-        add(result, "\\n\"\n")
+      while j < x.len and x[j] in {' ', '\t'}: inc(j)
+      if j < x.len:
+        if x[j] in {'"', ':'}:
+          # don't modify the line if already in quotes or
+          # some clobber register list:
+          add(result, x); add(result, "\L")
+        else:
+          # ignore empty lines
+          add(result, "\"")
+          add(result, x)
+          add(result, "\\n\"\n")
   else:
     res.add("\L")
     result = res.rope
