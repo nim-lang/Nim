@@ -1772,7 +1772,9 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
   inc c.inStaticContext
+  openScope(c)
   let a = semStmt(c, n.sons[0])
+  closeScope(c)
   dec c.inStaticContext
   n.sons[0] = a
   evalStaticStmt(c.module, c.graph, a, c.p.owner)
