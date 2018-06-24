@@ -111,27 +111,22 @@ echo "------------------------"
 echo outp.data
 
 
-proc cbs(txt: string, outp: Stream): PegCallbacks =
-  var
-    level: int = 0
+proc prt(outp: Stream, s: string, level: int = 0) =
+  outp.writeLine indent.repeat(level) & s
 
-  proc prt(outp: Stream, s: string, level: int = 0) =
-    outp.writeLine indent.repeat(level) & s
-
-  result = initPegCallbacks(
-    enterNonTerminal: proc(nt: NonTerminal, start: int) {.closure.} =
+outp = newStringStream()
+var level: int = 0
+let eParse = pegAst.eventParser:
+  pkNonTerminal:
+    enter:
       outp.prt("$1 $2@($3, $4): parsing @$5" %
-        [nt.name, $nt.rule.kind, $nt.line, $nt.col, $start], level)
+        [p.nt.name, $p.nt.rule.kind, $p.nt.line, $p.nt.col, $start], level)
       level.inc
-    ,
-    leaveNonTerminal: proc(nt: NonTerminal, start: int, length: int) {.closure.} =
+    leave:
       if -1 < length:
         outp.prt(txt.substr(start, start+length-1), level)
       level.dec
-  )
-
-outp = newStringStream()
-assert txt.len == txt.parse(pegAst, cbs(txt, outp))
+assert txt.len == eParse(txt)
 echo "Event parser output"
 echo "-------------------"
 echo outp.data

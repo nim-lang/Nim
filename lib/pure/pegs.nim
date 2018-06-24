@@ -21,10 +21,11 @@ const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
 import
-  strutils
+  strutils, macros
 
 when useUnicode:
   import unicode
+  export unicode.`==`
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
@@ -85,28 +86,6 @@ type
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
-  PegCallbacks* = object
-    ent: proc(nt: NonTerminal, matchStart: int)
-    lnt: proc(nt: NonTerminal; matchStart, matchLength: int)
-
-# Do-nothing callbacks as default values for ``initPegCallbacks``
-proc nteNOP(nt: NonTerminal, matchStart: int) = discard
-proc ntlNOP(nt: NonTerminal, matchStart: int, matchLength: int) = discard
-
-proc initPegCallbacks*(
-    enterNonTerminal: proc(nt: NonTerminal, matchStart: int) = nteNOP,
-    leaveNonTerminal: proc(nt: NonTerminal; matchStart, matchLength: int) = ntlNOP
-): PegCallbacks =
-  ## Creates a container object with callbacks to be invoked by the ``parse``
-  ## event parser proc. The ``enter..`` procs will be called at the
-  ## beginnig of an input text section matching a ``Peg`` node of
-  ## corresponding ``PegKind``, the ``leave..`` at its end.
-  result = PegCallbacks(
-      ent: enterNonTerminal,
-      lnt: leaveNonTerminal
-  )
-
-let nopCallbacks = initPegCallbacks()
 
 proc name*(nt: NonTerminal): string = nt.name
 proc line*(nt: NonTerminal): int = nt.line
@@ -562,12 +541,8 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
-    cbs: PegCallbacks = nopCallbacks): int {.nosideEffect, rtl, extern: "npegs$1".} =
-  ## low-level matching proc that implements the PEG interpreter. Use this
-  ## for maximum efficiency (every other PEG operation ends up calling this
-  ## proc).
-  ## Returns -1 if it does not match, else the length of the match
+template matchOrParse*(mopProc, cbts) =
+  cbts
   case p.kind
   of pkEmpty: result = 0 # match of length 0
   of pkAny:
@@ -680,18 +655,18 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
     if start < s.len and contains(p.charChoice[], s[start]): result = 1
     else: result = -1
   of pkNonTerminal:
+    enter(p, start)
     var oldMl = c.ml
     when false: echo "enter: ", p.nt.name
-    cbs.ent(p.nt, start)
-    result = rawMatch(s, p.nt.rule, start, c, cbs)
+    result = mopProc(s, p.nt.rule, start, c)
     when false: echo "leave: ", p.nt.name
-    cbs.lnt(p.nt, start, result)
     if result < 0: c.ml = oldMl
+    leave(p, start, result)
   of pkSequence:
     var oldMl = c.ml
     result = 0
     for i in 0..high(p.sons):
-      var x = rawMatch(s, p.sons[i], start+result, c, cbs)
+      var x = mopProc(s, p.sons[i], start+result, c)
       if x < 0:
         c.ml = oldMl
         result = -1
@@ -700,14 +675,14 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
   of pkOrderedChoice:
     var oldMl = c.ml
     for i in 0..high(p.sons):
-      result = rawMatch(s, p.sons[i], start, c, cbs)
+      result = mopProc(s, p.sons[i], start, c)
       if result >= 0: break
       c.ml = oldMl
   of pkSearch:
     var oldMl = c.ml
     result = 0
     while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
+      var x = mopProc(s, p.sons[0], start+result, c)
       if x >= 0:
         inc(result, x)
         return
@@ -719,7 +694,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
     inc(c.ml)
     result = 0
     while start+result <= s.len:
-      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
+      var x = mopProc(s, p.sons[0], start+result, c)
       if x >= 0:
         if idx < MaxSubpatterns:
           c.matches[idx] = (start, start+result-1)
@@ -732,7 +707,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
   of pkGreedyRep:
     result = 0
     while true:
-      var x = rawMatch(s, p.sons[0], start+result, c, cbs)
+      var x = mopProc(s, p.sons[0], start+result, c)
       # if x == 0, we have an endless loop; so the correct behaviour would be
       # not to break. But endless loops can be easily introduced:
       # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
@@ -747,15 +722,15 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
     result = 0
     while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
   of pkOption:
-    result = max(0, rawMatch(s, p.sons[0], start, c, cbs))
+    result = max(0, mopProc(s, p.sons[0], start, c))
   of pkAndPredicate:
     var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c, cbs)
+    result = mopProc(s, p.sons[0], start, c)
     if result >= 0: result = 0 # do not consume anything
     else: c.ml = oldMl
   of pkNotPredicate:
     var oldMl = c.ml
-    result = rawMatch(s, p.sons[0], start, c, cbs)
+    result = mopProc(s, p.sons[0], start, c)
     if result < 0: result = 0
     else:
       c.ml = oldMl
@@ -763,7 +738,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
   of pkCapture:
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
-    result = rawMatch(s, p.sons[0], start, c, cbs)
+    result = mopProc(s, p.sons[0], start, c)
     if result >= 0:
       if idx < MaxSubpatterns:
         c.matches[idx] = (start, start+result-1)
@@ -776,11 +751,89 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures,
     var n: Peg
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
     n.term = s.substr(a, b)
-    result = rawMatch(s, n, start, c, cbs)
+    result = mopProc(s, n, start, c)
   of pkStartAnchor:
     if c.origStart == start: result = 0
     else: result = -1
   of pkRule, pkList: assert false
+
+template mkMatcher(name) {.dirty.} =
+  proc name*(s: string, p: Peg, start: int, c: var Captures): int
+        {.nosideEffect, rtl, extern: "npegs$1".} =
+    ## low-level matching proc that implements the PEG interpreter. Use this
+    ## for maximum efficiency (every other PEG operation ends up calling this
+    ## proc).
+    ## Returns -1 if it does not match, else the length of the match
+    matchOrParse name:
+      template enter(p, start) =
+        discard
+      template leave(p, start, length) =
+        discard
+mkMatcher(rawMatch)
+    
+
+macro eventParser*(pegAst, callbacks: untyped): proc(s: string): int =
+  # Parses a string according to the given PEG. The fields of the
+  # ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
+  # of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
+  # and ``leave`` procs of the corresponding callback object are called at the
+  # beginning and the end of the match, respectively. Callbacks not specified
+  # in the construction of the ``PegCallbacks`` object will be ignored.
+  # Returns -1 if ``s`` does not match, else the length of the match.
+  template tpl(pegAst, cbms) {.dirty.} =
+    proc parse(s: string): int {.gensym.} =
+      var
+        ms: array[MaxSubpatterns, (int, int)]
+        cs = Captures(matches: ms, ml: 0, origStart: 0)
+      proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
+        matchOrParse(parseIt, cbms)
+      parseIt(s, pegAst, 0, cs)
+    parse
+
+  template enterTpl {.dirty.} =
+    template enter(p, start) =
+      case p.kind
+      else:
+        discard
+
+  template leaveTpl {.dirty.} =
+    template leave(p, start, length) =
+      case p.kind
+      else:
+        discard
+
+  let
+    cbms = newStmtList()
+    et = getAst(enterTpl())
+    lt = getAst(leaveTpl())
+  for co in callbacks:
+    if nnkCall != co.kind:
+      error("Call syntax expected.", co)
+    let pk = co[0]
+    if nnkIdent != pk.kind:
+      error("PegKind expected.", pk)
+    if 2 == co.len:
+      for cb in co[1]:
+        if nnkCall != cb.kind:
+          error("Call syntax expected.", cb)
+        if nnkIdent != cb[0].kind:
+          error("Callback identifier expected.", cb[0])
+        if 2 == cb.len:
+          let ob = newTree(nnkOfBranch, pk.copy, cb[1].copy)
+          case $cb[0].ident
+          of "enter":
+            et.last[0].insert(1, ob)
+          of "leave":
+            lt.last[0].insert(1, ob)
+          else:
+            error(
+              "Unsupported callback identifier, expected 'enter' or 'leave'.",
+              cb[0]
+            )
+
+  cbms.add et
+  cbms.add lt
+  result = getAst(tpl(pegAst, cbms))
 
 template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:
@@ -1773,18 +1826,6 @@ proc escapePeg*(s: string): string =
         inQuote = true
       result.add(c)
   if inQuote: result.add('\'')
-
-proc parse*(s: string, p: Peg, cbs: PegCallbacks): int =
-  ## Parses a string according to the given PEG. The fields of the
-  ## ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
-  ## of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
-  ## and ``leave`` procs of the corresponding callback object are called at the
-  ## beginning and the end of the match.
-  ## Returns -1 if ``s`` does not match, else the length of the match.
-  var
-    ms: array[MaxSubpatterns, tuple[first: int, last: int]]
-    cs = Captures(matches: ms, ml: 0, origStart: 0)
-  rawMatch(s, p, 0, cs, cbs)
 
 when isMainModule:
   assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
