@@ -332,7 +332,7 @@ proc boot(args: string) =
   # default to use the 'c' command:
   let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
-                      hostOs & "_" & hostCpu
+                      hostOs & "_" & hostCpu & "_" & bootOptions
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:

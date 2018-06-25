@@ -45,6 +45,8 @@ install:
 build_script:
   - bin\nim c koch
   - koch boot -d:release
+  - koch boot cpp
+  - koch boot cpp -d:release
   - koch nimble
   - nim e tests/test_nimscript.nims
   - nim c -o:bin/nimpretty.exe nimpretty/nimpretty.nim

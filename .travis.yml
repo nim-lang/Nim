@@ -36,6 +36,8 @@ script:
   - nim c koch
   - ./koch boot
   - ./koch boot -d:release
+  - ./koch boot cpp
+  - ./koch boot cpp -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
   - nimble install zip -y

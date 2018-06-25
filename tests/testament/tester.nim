@@ -309,6 +309,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
 
   if expected.targets == {}:
     expected.targets.incl(target)
+  if targetC in expected.targets:
+    expected.targets.incl(targetCpp)
 
   for target in expected.targets:
     inc(r.total)
