@@ -606,7 +606,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     incl(conf.globalOptions, optRun)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
-    conf.verbosity = parseInt(arg)
+    let verbosity = parseInt(arg)
+    if verbosity notin {0..3}:
+      localError(conf, info, "invalid verbosity level: '$1'" % arg)
+    conf.verbosity = verbosity
     conf.notes = NotesVerbosity[conf.verbosity]
     incl(conf.notes, conf.enableNotes)
     excl(conf.notes, conf.disableNotes)
