@@ -401,6 +401,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
   else:
+    debug s.typ
     case s.typ.sons[0].kind
     of tyExpr:
       # BUGFIX: we cannot expect a type here, because module aliases would not
