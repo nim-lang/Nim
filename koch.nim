@@ -470,7 +470,7 @@ proc temp(args: string) =
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
+  exec(nimexec & " c --debugger:native " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 

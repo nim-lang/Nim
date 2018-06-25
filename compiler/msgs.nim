@@ -155,10 +155,10 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   else: result = conf.m.msgContext[i]
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
-  (if fileIdx.int32 < 0: "???" else: conf.m.fileInfos[fileIdx.int32].projPath)
+  (if fileIdx.int32 < 0 or conf == nil: "???" else: conf.m.fileInfos[fileIdx.int32].projPath)
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0: result = "???"
+  if fileIdx.int32 < 0 or conf == nil: result = "???"
   else: result = conf.m.fileInfos[fileIdx.int32].fullPath
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: string) =
