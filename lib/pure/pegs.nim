@@ -541,8 +541,8 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-template matchOrParse*(mopProc, cbts) =
-  cbts
+template matchOrParse*(mopProc, cbms: untyped): untyped =
+  cbms
   case p.kind
   of pkEmpty: result = 0 # match of length 0
   of pkAny:
@@ -757,20 +757,23 @@ template matchOrParse*(mopProc, cbts) =
     else: result = -1
   of pkRule, pkList: assert false
 
-template mkMatcher(name) {.dirty.} =
+template mkMatcher(name: untyped): untyped {.dirty.} =
   proc name*(s: string, p: Peg, start: int, c: var Captures): int
         {.nosideEffect, rtl, extern: "npegs$1".} =
     ## low-level matching proc that implements the PEG interpreter. Use this
     ## for maximum efficiency (every other PEG operation ends up calling this
     ## proc).
     ## Returns -1 if it does not match, else the length of the match
-    matchOrParse name:
+    name.matchOrParse:
       template enter(p, start) =
-        discard
+        template doEnter(p, start) =
+          discard
+        doEnter(p, start)
       template leave(p, start, length) =
-        discard
+        template doLeave(p, start, lenght) =
+          discard
+        doLeave(p, start, lenght)
 mkMatcher(rawMatch)
-    
 
 macro eventParser*(pegAst, callbacks: untyped): proc(s: string): int =
   # Parses a string according to the given PEG. The fields of the
@@ -790,50 +793,83 @@ macro eventParser*(pegAst, callbacks: untyped): proc(s: string): int =
       parseIt(s, pegAst, 0, cs)
     parse
 
-  template enterTpl {.dirty.} =
-    template enter(p, start) =
-      case p.kind
-      else:
-        discard
+  # macro mkEnterCb(p, cbs: untyped): untyped =
+  #   template enterTpl() {.dirty.} =
+  #     template enter(p, start) =
+  #       discard
 
-  template leaveTpl {.dirty.} =
-    template leave(p, start, length) =
-      case p.kind
-      else:
-        discard
+  #   let
+  #     co = `callbacks`.findChild(nnkIdent == it[0].kind and p == it[0])
+  #     cb = if co.isNil or 0 == co.len or isNil(
+  #       ci = co[1].findChild(
+  #         it.len > 1 and nnkIdent == it[0].kind and "enter" == $it[0].ident
+  #       )
+  #     ):
+  #       newTree(nnkDiscardStmt,
+  #         newEmptyNode()
+  #       )
+  #     else:
+  #       ci[1]
+  #   result = getAst(enterTpl())
+  macro mkMkCbTpls(cbs: untyped): untyped =
+    template mkCbTpls(ecb, lcb: untyped) =
+      template enter(p, start) =
+        template doEnter(p, start) =
+          ecb
+        doEnter(p, start)
+      template leave(p, start, length) =
+        template doLeave(p, start, length) =
+          lcb
+        doLeave(p, start, length)
+    getAst(mkCbTpls(cbs[0][1][0][1], cbs[0][1][1][1]))
 
-  let
-    cbms = newStmtList()
-    et = getAst(enterTpl())
-    lt = getAst(leaveTpl())
-  for co in callbacks:
-    if nnkCall != co.kind:
-      error("Call syntax expected.", co)
-    let pk = co[0]
-    if nnkIdent != pk.kind:
-      error("PegKind expected.", pk)
-    if 2 == co.len:
-      for cb in co[1]:
-        if nnkCall != cb.kind:
-          error("Call syntax expected.", cb)
-        if nnkIdent != cb[0].kind:
-          error("Callback identifier expected.", cb[0])
-        if 2 == cb.len:
-          let ob = newTree(nnkOfBranch, pk.copy, cb[1].copy)
-          case $cb[0].ident
-          of "enter":
-            et.last[0].insert(1, ob)
-          of "leave":
-            lt.last[0].insert(1, ob)
-          else:
-            error(
-              "Unsupported callback identifier, expected 'enter' or 'leave'.",
-              cb[0]
-            )
-
-  cbms.add et
-  cbms.add lt
+  let cbms = getAst(mkMkCbTpls(callbacks))
   result = getAst(tpl(pegAst, cbms))
+  echo result.repr
+
+  # template enterTpl {.dirty.} =
+  #   template enter(p, start) =
+  #     case p.kind
+  #     else:
+  #       discard
+
+  # template leaveTpl {.dirty.} =
+  #   template leave(p, start, length) =
+  #     case p.kind
+  #     else:
+  #       discard
+
+  # let
+  #   cbms = newStmtList()
+  #   et = getAst(enterTpl())
+  #   lt = getAst(leaveTpl())
+  # for co in callbacks:
+  #   if nnkCall != co.kind:
+  #     error("Call syntax expected.", co)
+  #   let pk = co[0]
+  #   if nnkIdent != pk.kind:
+  #     error("PegKind expected.", pk)
+  #   if 2 == co.len:
+  #     for cb in co[1]:
+  #       if nnkCall != cb.kind:
+  #         error("Call syntax expected.", cb)
+  #       if nnkIdent != cb[0].kind:
+  #         error("Callback identifier expected.", cb[0])
+  #       if 2 == cb.len:
+  #         let ob = newTree(nnkOfBranch, pk.copy, cb[1].copy)
+  #         case $cb[0].ident
+  #         of "enter":
+  #           et.last[0].insert(1, ob)
+  #         of "leave":
+  #           lt.last[0].insert(1, ob)
+  #         else:
+  #           error(
+  #             "Unsupported callback identifier, expected 'enter' or 'leave'.",
+  #             cb[0]
+  #           )
+
+  # cbms.add et
+  # cbms.add lt
 
 template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:

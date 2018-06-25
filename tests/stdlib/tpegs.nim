@@ -110,7 +110,6 @@ echo "PEG AST traversal output"
 echo "------------------------"
 echo outp.data
 
-
 proc prt(outp: Stream, s: string, level: int = 0) =
   outp.writeLine indent.repeat(level) & s
 
