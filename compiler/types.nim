@@ -615,7 +615,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred, tyUserTypeClassInst:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
