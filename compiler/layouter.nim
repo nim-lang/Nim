@@ -20,11 +20,15 @@ type
   SplitKind = enum
     splitComma, splitParLe, splitAnd, splitOr, splitIn, splitBinary
 
+  SemicolonKind = enum
+    detectSemicolonKind, useSemicolon, dontTouch
+
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
     inquote: bool
+    semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
     nested: int
     doIndentMore*: int
@@ -258,7 +262,9 @@ proc starWasExportMarker*(em: var Emitter) =
     dec em.col, 2
 
 proc commaWasSemicolon*(em: var Emitter) =
-  if em.content.endsWith(", "):
+  if em.semicolons == detectSemicolonKind:
+    em.semicolons = if em.content.endsWith(", "): dontTouch else: useSemicolon
+  if em.semicolons == useSemicolon and em.content.endsWith(", "):
     setLen(em.content, em.content.len-2)
     em.content.add("; ")
 
