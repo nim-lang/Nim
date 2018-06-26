@@ -466,7 +466,7 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.len == 0: found = s
-    let obj = toObjFile(c.config, completeCFilePath(c.config, changeFileExt(found, ""), false))
+    let obj = toObjFile(c.config, completeCFilePath(c.config, found, false))
     docompile(c, it, found, obj)
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
