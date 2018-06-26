@@ -1693,7 +1693,7 @@ proc isException*(t: PType): bool =
   assert(t != nil)
 
   var base = t
-  while base != nil and base.kind in {tyObject, tyGenericInst, tyAlias}:
+  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst, tyAlias}:
     if base.sym != nil and base.sym.magic == mException:
       return true
     if base.len == 0: break
