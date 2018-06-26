@@ -71,5 +71,4 @@ macro make(arg: untyped): untyped =
 proc first(i: int): void =
   make(second)
 
-static:
-  var ss: string = ""
+var ss {.compileTime.}: string = ""
