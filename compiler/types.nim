@@ -128,7 +128,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
 proc elemType*(t: PType): PType =
   assert(t != nil)
   case t.kind
-  of tyGenericInst, tyDistinct, tyAlias: result = elemType(lastSon(t))
+  of tyGenericInst, tyDistinct, tyAlias, tySink: result = elemType(lastSon(t))
   of tyArray: result = t.sons[1]
   else: result = t.lastSon
   assert(result != nil)
@@ -138,12 +138,12 @@ proc isOrdinalType*(t: PType): bool =
   const
     # caution: uint, uint64 are no ordinal types!
     baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
-    parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tyDistinct}
+    parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
   t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
 
 proc enumHasHoles*(t: PType): bool =
   var b = t
-  while b.kind in {tyRange, tyGenericInst, tyAlias}: b = b.sons[0]
+  while b.kind in {tyRange, tyGenericInst, tyAlias, tySink}: b = b.sons[0]
   result = b.kind == tyEnum and tfEnumHasHoles in b.flags
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
@@ -168,7 +168,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if result: return
   if not containsOrIncl(marker, t.id):
     case t.kind
-    of tyGenericInst, tyGenericBody, tyAlias, tyInferred:
+    of tyGenericInst, tyGenericBody, tyAlias, tySink, tyInferred:
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
     else:
       for i in countup(0, sonsLen(t) - 1):
@@ -218,7 +218,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
     if t.sons[0] != nil:
       result = searchTypeForAux(t.sons[0].skipTypes(skipPtrs), predicate, marker)
     if not result: result = searchTypeNodeForAux(t.n, predicate, marker)
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = searchTypeForAux(lastSon(t), predicate, marker)
   of tyArray, tySet, tyTuple:
     for i in countup(0, sonsLen(t) - 1):
@@ -261,7 +261,7 @@ proc analyseObjectWithTypeFieldAux(t: PType,
       if res == frHeader: result = frHeader
     if result == frNone:
       if isObjectWithTypeFieldPredicate(t): result = frHeader
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = analyseObjectWithTypeFieldAux(lastSon(t), marker)
   of tyArray, tyTuple:
     for i in countup(0, sonsLen(t) - 1):
@@ -622,7 +622,8 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred, tyUserTypeClassInst:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred, tyUserTypeClassInst:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
@@ -640,7 +641,8 @@ proc firstFloat*(t: PType): BiggestFloat =
     assert(t.n.kind == nkRange)
     getFloatValue(t.n.sons[0])
   of tyVar: firstFloat(t.sons[0])
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred:
     firstFloat(lastSon(t))
   else:
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
@@ -676,7 +678,8 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = 0
   of tyOrdinal:
@@ -695,7 +698,8 @@ proc lastFloat*(t: PType): BiggestFloat =
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
     getFloatValue(t.n.sons[1])
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
+     tyStatic, tyInferred:
     lastFloat(lastSon(t))
   else:
     internalError(newPartialConfigRef(), "invalid kind for lastFloat(" & $t.kind & ')')
@@ -1395,7 +1399,7 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
   of tyInferred:
     if typ.len > 1:
       result = computeSizeAux(conf, typ.lastSon, a)
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
+  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink:
     result = computeSizeAux(conf, lastSon(typ), a)
   of tyTypeClasses:
     result = if typ.isResolvedUserTypeClass: computeSizeAux(conf, typ.lastSon, a)
@@ -1574,7 +1578,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyArray: result = t.sons[1].kind == tyEmpty
   of tySet, tySequence, tyOpenArray, tyVarargs:
     result = t.sons[0].kind == tyEmpty
-  of tyGenericInst, tyAlias: result = isEmptyContainer(t.lastSon)
+  of tyGenericInst, tyAlias, tySink: result = isEmptyContainer(t.lastSon)
   else: result = false
 
 proc takeType*(formal, arg: PType): PType =
