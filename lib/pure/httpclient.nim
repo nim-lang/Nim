@@ -1184,7 +1184,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
   ##
-  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## Connection will be kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
   ## connection can be closed by using the ``close`` procedure.
   ##

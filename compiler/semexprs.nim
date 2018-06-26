@@ -289,7 +289,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     localError(c.config, n.info, errXExpectsTypeOrValue % opToStr[m])
   else:
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    var typ = skipTypes(n.sons[1].typ, abstractVarRange + {tyTypeDesc})
+    var typ = skipTypes(n.sons[1].typ, abstractVarRange + {tyTypeDesc, tyUserTypeClassInst})
     case typ.kind
     of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
@@ -1351,7 +1351,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoEvaluateGeneric})
-  var arr = skipTypes(n.sons[0].typ, {tyGenericInst,
+  var arr = skipTypes(n.sons[0].typ, {tyGenericInst, tyUserTypeClassInst,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:

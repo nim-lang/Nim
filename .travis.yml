@@ -45,6 +45,8 @@ script:
   - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
+  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
+  - nim c -r nimpretty/tester.nim
   - ./koch web
   - ./koch csource
   - ./koch nimsuggest

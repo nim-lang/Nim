@@ -582,7 +582,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-          "$1", [rope(getModuleName(d.conf, it))])
+          "$1", [rope(splitFile(getModuleName(d.conf, it)).name)])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -780,13 +780,11 @@ proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
   var success = true
-  var filename: string
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
-    filename = "<stdout>"
   else:
-    filename = getOutFile2(d.conf, filename, outExt, "htmldocs")
-    success = writeRope(content, filename)
+    let outfile = getOutFile2(d.conf, filename, outExt, "htmldocs")
+    success = writeRope(content, outfile)
   if not success:
     rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, filename)
 
