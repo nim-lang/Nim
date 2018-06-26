@@ -4,9 +4,10 @@ discard """
 Half read size: 10 Data: Hello'''
 """
 import memfiles, os
+const
+  fn = "test.mmap"
 var
   mm, mm_full, mm_half: MemFile
-  fn = "test.mmap"
   p: pointer
 
 if fileExists(fn): removeFile(fn)

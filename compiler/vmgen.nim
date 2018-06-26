@@ -29,7 +29,7 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, rodread, magicsys, options, lowerings
+  trees, intsets, magicsys, options, lowerings, lineinfos
 import platform
 from os import splitFile
 
@@ -40,8 +40,8 @@ type
   TGenFlag = enum gfAddrOf, gfFieldAccess
   TGenFlags = set[TGenFlag]
 
-proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename.splitFile.name & ":" & $info.line
+proc debugInfo(c: PCtx; info: TLineInfo): string =
+  result = toFilename(c.config, info).splitFile.name & ":" & $info.line
 
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # first iteration: compute all necessary labels:
@@ -85,7 +85,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     else:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
-    result.add(debugInfo(c.debug[i]))
+    result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
 
@@ -550,7 +550,7 @@ proc genField(c: PCtx; n: PNode): TRegister =
   result = s.position
 
 proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
-  if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(arr);
+  if arr.skipTypes(abstractInst).kind == tyArray and (let x = firstOrd(c.config, arr);
       x != 0):
     let tmp = c.genx(n)
     # freeing the temporary here means we can produce:  regA = regA - Imm
@@ -767,12 +767,12 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
   var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
-  let src_size = src.getSize
+  let src_size = getSize(c.config, src)
 
-  if platform.intSize < 8:
+  if c.config.target.intSize < 8:
     signedIntegers.incl(tyInt)
     unsignedIntegers.incl(tyUInt)
-  if src_size == dst.getSize and src.kind in allowedIntegers and
+  if src_size == getSize(c.config, dst) and src.kind in allowedIntegers and
                                  dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
     var tmp2 = c.getTemp(n.sons[1].typ)
@@ -803,6 +803,17 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp3)
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers of same size")
+
+proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
+  unused(c, n, dest)
+  var
+    tmp1 = c.genx(n[1])
+    tmp2 = c.genx(n[2])
+    tmp3 = c.genx(n[3])
+  c.gABC(n, opcode, tmp1, tmp2, tmp3)
+  c.freeTemp(tmp1)
+  c.freeTemp(tmp2)
+  c.freeTemp(tmp3)
 
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
@@ -966,7 +977,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
   of mSwap:
     unused(c, n, dest)
-    c.gen(lowerSwap(n, if c.prc == nil: c.module else: c.prc.sym))
+    c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mCopyStr:
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1068,20 +1079,25 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
-  of mNSetChild, mNDel:
-    unused(c, n, dest)
-    var
-      tmp1 = c.genx(n.sons[1])
-      tmp2 = c.genx(n.sons[2])
-      tmp3 = c.genx(n.sons[3])
-    c.gABC(n, if m == mNSetChild: opcNSetChild else: opcNDel, tmp1, tmp2, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
+  of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
+  of mNDel: genVoidABC(c, n, dest, opcNDel)
   of mNAdd: genBinaryABC(c, n, dest, opcNAdd)
   of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
   of mNKind: genUnaryABC(c, n, dest, opcNKind)
   of mNSymKind: genUnaryABC(c, n, dest, opcNSymKind)
+
+  of mNccValue: genUnaryABC(c, n, dest, opcNccValue)
+  of mNccInc: genBinaryABC(c, n, dest, opcNccInc)
+  of mNcsAdd: genBinaryABC(c, n, dest, opcNcsAdd)
+  of mNcsIncl: genBinaryABC(c, n, dest, opcNcsIncl)
+  of mNcsLen: genUnaryABC(c, n, dest, opcNcsLen)
+  of mNcsAt: genBinaryABC(c, n, dest, opcNcsAt)
+  of mNctPut: genVoidABC(c, n, dest, opcNctPut)
+  of mNctLen: genUnaryABC(c, n, dest, opcNctLen)
+  of mNctGet: genBinaryABC(c, n, dest, opcNctGet)
+  of mNctHasNext: genBinaryABC(c, n, dest, opcNctHasNext)
+  of mNctNext: genBinaryABC(c, n, dest, opcNctNext)
+
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
@@ -1544,7 +1560,6 @@ proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   var t = skipTypes(typ, abstractRange-{tyTypeDesc})
-  result = emptyNode
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
     result = newNodeIT(nkIntLit, info, t)
@@ -1576,7 +1591,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     getNullValueAux(t.n, result, conf)
   of tyArray:
     result = newNodeIT(nkBracket, info, t)
-    for i in countup(0, int(lengthOrd(t)) - 1):
+    for i in countup(0, int(lengthOrd(conf, t)) - 1):
       addSon(result, getNullValue(elemType(t), info, conf))
   of tyTuple:
     result = newNodeIT(nkTupleConstr, info, t)
@@ -1590,6 +1605,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     result = newNodeIT(nkBracket, info, t)
   else:
     globalError(conf, info, "cannot create null element for: " & $t.kind)
+    result = newNodeI(nkEmpty, info)
 
 proc ldNullOpcode(t: PType): TOpcode =
   assert t != nil
@@ -1796,6 +1812,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.magic != mNone:
         genMagic(c, n, dest, s.magic)
       elif matches(s, "stdlib", "marshal", "to"):
+        # XXX marshal load&store should not be opcodes, but use the
+        # general callback mechanisms.
         genMarshalLoad(c, n, dest)
       elif matches(s, "stdlib", "marshal", "$$"):
         genMarshalStore(c, n, dest)
@@ -1881,7 +1899,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
-     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt:
+     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt:
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n.sons[0], dest)
@@ -2009,7 +2027,7 @@ proc genProc(c: PCtx; s: PSym): int =
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
     if x.kind == nkEmpty:
-      x = newTree(nkBracket, newIntNode(nkIntLit, result), ast.emptyNode)
+      x = newTree(nkBracket, newIntNode(nkIntLit, result), x)
     else:
       x.sons[0] = newIntNode(nkIntLit, result)
     s.ast.sons[miscPos] = x

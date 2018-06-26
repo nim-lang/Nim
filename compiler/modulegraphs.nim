@@ -9,7 +9,7 @@
 
 ## This module implements the module graph data structure. The module graph
 ## represents a complete Nim project. Single modules can either be kept in RAM
-## or stored in a ROD file. The ROD file mechanism is not yet integrated here.
+## or stored in a Sqlite database.
 ##
 ## The caching of modules is critical for 'nimsuggest' and is tricky to get
 ## right. If module E is being edited, we need autocompletion (and type
@@ -25,7 +25,8 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, rod, msgs, hashes, idents
+import ast, intsets, tables, options, lineinfos, hashes, idents,
+  incremental, btrees
 
 type
   ModuleGraph* = ref object
@@ -40,16 +41,27 @@ type
                                   # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
+    cache*: IdentCache
+    vm*: RootRef # unfortunately the 'vm' state is shared project-wise, this will
+                 # be clarified in later compiler implementations.
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
+    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
     exposed*: TStrTable
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
+    emptyNode*: PNode
+    incr*: IncrementalCtx
+    importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
+    includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
+    recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
+    cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
+    cacheCounters*: Table[string, BiggestInt]
+    cacheTables*: Table[string, BTree[string, PNode]]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -59,26 +71,31 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = doStopCompile != nil and doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo(), {})
+  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
   result.magic = m
 
-proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
+proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
-  if config.isNil:
-    result.config = newConfigRef()
-  else:
-    result.config = config
+  result.config = config
+  result.cache = cache
   result.owners = @[]
   result.methods = @[]
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
+  result.emptyNode = newNode(nkEmpty)
+  init(result.incr)
+  result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
+    discard
+  result.cacheSeqs = initTable[string, PNode]()
+  result.cacheCounters = initTable[string, BiggestInt]()
+  result.cacheTables = initTable[string, BTree[string, PNode]]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
@@ -100,15 +117,15 @@ proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   assert m.position == m.info.fileIndex.int32
-  addModuleDep(m.info.fileIndex, dep, isIncludeFile = false)
+  addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
   if suggestMode:
     deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when quering the graph lazily.
-    # this improve efficiency quite a lot:
+    # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
-  addModuleDep(module, includeFile, isIncludeFile = true)
+  addModuleDep(g.incr, g.config, module, includeFile, isIncludeFile = true)
   discard hasKeyOrPut(inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =

@@ -832,7 +832,7 @@ elif not defined(useNimRtl):
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      echo(command, " ", join(args, " "))
+      when declared(echo): echo(command, " ", join(args, " "))
     result.id = pid
     result.exitFlag = false
 

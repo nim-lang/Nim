@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, configuration
+  wordrecg, lineinfos
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -273,10 +273,10 @@ template tokenBegin(tok, pos) {.dirty.} =
 template tokenEnd(tok, pos) {.dirty.} =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)+1
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.InToken
-      gTrackPos.col = colA.int16
+      L.config.m.trackPos.col = colA.int16
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -284,10 +284,10 @@ template tokenEnd(tok, pos) {.dirty.} =
 template tokenEndIgnore(tok, pos) =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
-      gTrackPos.fileIndex = trackPosInvalidFileIdx
-      gTrackPos.line = 0'u16
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+      L.config.m.trackPos.fileIndex = trackPosInvalidFileIdx
+      L.config.m.trackPos.line = 0'u16
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -298,11 +298,11 @@ template tokenEndPrevious(tok, pos) =
     # to the token that came before that, but only if we haven't detected
     # the cursor in a string literal or comment:
     let colB = getColNumber(L, pos)
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
+    if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
+        L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.BeforeToken
-      gTrackPos = L.previousToken
-      gTrackPosAttached = true
+      L.config.m.trackPos = L.previousToken
+      L.config.m.trackPosAttached = true
     colA = 0
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
@@ -630,14 +630,14 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     if L.config.oldNewlines:
       if tok.tokType == tkCharLit:
         lexMessage(L, errGenerated, "\\n not allowed in character literal")
-      add(tok.literal, tnl)
+      add(tok.literal, L.config.target.tnl)
     else:
       add(tok.literal, '\L')
     inc(L.bufpos)
   of 'p', 'P':
     if tok.tokType == tkCharLit:
       lexMessage(L, errGenerated, "\\p not allowed in character literal")
-    add(tok.literal, tnl)
+    add(tok.literal, L.config.target.tnl)
     inc(L.bufpos)
   of 'r', 'R', 'c', 'C':
     add(tok.literal, CR)
@@ -713,11 +713,6 @@ proc handleCRLF(L: var TLexer, pos: int): int =
 
     if col > MaxLineLength:
       lexMessagePos(L, hintLineTooLong, pos)
-
-    if optEmbedOrigSrc in L.config.globalOptions:
-      let lineStart = cast[ByteAddress](L.buf) + L.lineStart
-      let line = newString(cast[cstring](lineStart), col)
-      addSourceLine(L.fileIdx, line)
 
   case L.buf[pos]
   of CR:
@@ -872,7 +867,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
-proc newlineFollows*(L: var TLexer): bool =
+proc newlineFollows*(L: TLexer): bool =
   var pos = L.bufpos
   var buf = L.buf
   while true:
@@ -954,6 +949,8 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
       if isDoc or defined(nimpretty): tok.literal.add buf[pos]
       inc(pos)
   L.bufpos = pos
+  when defined(nimpretty):
+    tok.commentOffsetB = L.offsetBase + pos - 1
 
 proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
@@ -962,6 +959,9 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
   assert buf[pos+1] == '#'
+  when defined(nimpretty):
+    tok.commentOffsetA = L.offsetBase + pos - 1
+
   if buf[pos+2] == '[':
     skipMultiLineComment(L, tok, pos+3, true)
     return
@@ -1001,6 +1001,8 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       tokenEndIgnore(tok, pos)
       break
   L.bufpos = pos
+  when defined(nimpretty):
+    tok.commentOffsetB = L.offsetBase + pos - 1
 
 proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
@@ -1021,6 +1023,9 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
+      when defined(nimpretty):
+        # we are not yet in a comment, so update the comment token's line information:
+        if not hasComment: inc tok.line
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -1060,7 +1065,7 @@ proc skip(L: var TLexer, tok: var TToken) =
   L.bufpos = pos
   when defined(nimpretty):
     if hasComment:
-      tok.commentOffsetB = L.offsetBase + pos
+      tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
@@ -1121,9 +1126,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       else:
         tok.tokType = tkParLe
         when defined(nimsuggest):
-          if L.fileIdx == gTrackPos.fileIndex and tok.col < gTrackPos.col and
-                    tok.line == gTrackPos.line.int and L.config.ideCmd == ideCon:
-            gTrackPos.col = tok.col.int16
+          if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col < L.config.m.trackPos.col and
+                    tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideCon:
+            L.config.m.trackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
       inc(L.bufpos)
@@ -1142,11 +1147,11 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
-            tok.line == gTrackPos.line.int and L.config.ideCmd == ideSug:
+        if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col+1 == L.config.m.trackPos.col and
+            tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken
-          gTrackPos.col = tok.col.int16
+          L.config.m.trackPos.col = tok.col.int16
           inc(L.bufpos)
           atTokenEnd()
           return
@@ -1215,3 +1220,15 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
   atTokenEnd()
+
+proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
+                     cache: IdentCache; config: ConfigRef): int =
+  var lex: TLexer
+  var tok: TToken
+  initToken(tok)
+  openLexer(lex, fileIdx, inputstream, cache, config)
+  while true:
+    rawGetTok(lex, tok)
+    result = tok.indent
+    if result > 0 or tok.tokType == tkEof: break
+  closeLexer(lex)

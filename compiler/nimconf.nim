@@ -11,7 +11,7 @@
 
 import
   llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer,
-  options, idents, wordrecg, strtabs, configuration
+  options, idents, wordrecg, strtabs, lineinfos
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
@@ -233,7 +233,7 @@ proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
 
 proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
-  
+
   var configFiles = newSeq[string]()
 
   template readConfigFile(path: string) =
@@ -264,7 +264,3 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
 
   for filename in configFiles:
     rawMessage(conf, hintConf, filename)
-
-proc loadConfigs*(cfg: string; conf: ConfigRef) =
-  # for backwards compatibility only.
-  loadConfigs(cfg, newIdentCache(), conf)

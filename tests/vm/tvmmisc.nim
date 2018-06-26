@@ -19,9 +19,9 @@ block:
     var x = default(type(0))
 
 # #6379
-static:
-  import algorithm
+import algorithm
 
+static:
   var numArray = [1, 2, 3, 4, -1]
   numArray.sort(cmp)
   assert numArray == [-1, 1, 2, 3, 4]

@@ -126,9 +126,6 @@ type
     ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
 
-{.deprecated: [TNimrodNodeKind: NimNodeKind, TNimNodeKinds: NimNodeKinds,
-    TNimrodTypeKind: NimTypeKind, TNimrodSymKind: NimSymKind,
-    TNimrodIdent: NimIdent, PNimrodSymbol: NimSym].}
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}

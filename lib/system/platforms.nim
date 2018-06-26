@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Platform detection for Nim. This module is included by the system module!
+## Platform detection for NimScript. This module is included by the system module!
 ## Do not import it directly!
 
 type
@@ -62,7 +62,7 @@ const
               elif defined(haiku): OsPlatform.haiku
               elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
-              elif defined(nimrodVM): OsPlatform.nimVM
+              elif defined(nimVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
               else: OsPlatform.none
     ## the OS this program will run on.

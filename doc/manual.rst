@@ -741,22 +741,26 @@ For further details, see `Convertible relation
 
 Subrange types
 --------------
-A subrange type is a range of values from an ordinal type (the base
+A subrange type is a range of values from an ordinal or floating point type (the base
 type). To define a subrange type, one must specify it's limiting values: the
 lowest and highest value of the type:
 
 .. code-block:: nim
   type
     Subrange = range[0..5]
+    PositiveFloat = range[0.0..Inf]
 
 
 ``Subrange`` is a subrange of an integer which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``Subrange`` is a
+to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
+NaN does not belong to any subrange of floating point types.
+Assigning any other value to a variable of type ``Subrange`` is a
 checked runtime error (or static error if it can be statically
 determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
-A subrange type has the same size as its base type (``int`` in the example).
+A subrange type has the same size as its base type (``int`` in the 
+Subrange example).
 
 
 Pre-defined floating point types
@@ -1732,7 +1736,7 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: typedesc) =
+  template additive(typ: type) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1740,13 +1744,13 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: typedesc) =
+  template multiplicative(typ, base: type) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: typedesc) =
+  template comparable(typ: type) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
@@ -2396,7 +2400,7 @@ argument's resolution:
   rem unresolvedExpression(undeclaredIdentifier)
 
 ``untyped`` and ``varargs[untyped]`` are the only metatype that are lazy in this sense, the other
-metatypes ``typed`` and ``typedesc`` are not lazy.
+metatypes ``typed`` and ``type`` are not lazy.
 
 
 Varargs matching
@@ -4274,29 +4278,6 @@ therefore very useful for type specialization within generic code:
         deletedKeys: seq[bool]
 
 
-Type operator
--------------
-
-The ``type`` (in many other languages called `typeof`:idx:) operator can
-be used to get the type of an expression:
-
-.. code-block:: nim
-  var x = 0
-  var y: type(x) # y has type int
-
-If ``type`` is used to determine the result type of a proc/iterator/converter
-call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
-interpretation where ``c`` is an iterator is preferred over the
-other interpretations:
-
-.. code-block:: nim
-  import strutils
-
-  # strutils contains both a ``split`` proc and iterator, but since an
-  # an iterator is the preferred interpretation, `y` has the type ``string``:
-  var y: type("a b c".split)
-
-
 Type Classes
 ------------
 
@@ -4450,10 +4431,10 @@ the presence of callable symbols with specific signatures:
     OutputStream = concept var s
       s.write(string)
 
-In order to check for symbols accepting ``typedesc`` params, you must prefix
-the type with an explicit ``type`` modifier. The named instance of the type,
-following the ``concept`` keyword is also considered an explicit ``typedesc``
-value that will be matched only as a type.
+In order to check for symbols accepting ``type`` params, you must prefix
+the type with the explicit ``type`` modifier. The named instance of the
+type, following the ``concept`` keyword is also considered to have the
+explicit modifier and will be matched only as a type.
 
 .. code-block:: nim
   type
@@ -4513,7 +4494,7 @@ The concept types can be parametric just like the regular generic types:
   import typetraits
 
   type
-    AnyMatrix*[R, C: static[int]; T] = concept m, var mvar, type M
+    AnyMatrix*[R, C: static int; T] = concept m, var mvar, type M
       M.ValueType is T
       M.Rows == R
       M.Cols == C
@@ -4523,7 +4504,7 @@ The concept types can be parametric just like the regular generic types:
 
       type TransposedType = stripGenericParams(M)[C, R, T]
 
-    AnySquareMatrix*[N: static[int], T] = AnyMatrix[N, N, T]
+    AnySquareMatrix*[N: static int, T] = AnyMatrix[N, N, T]
 
     AnyTransform3D* = AnyMatrix[4, 4, float]
 
@@ -4542,7 +4523,7 @@ The concept types can be parametric just like the regular generic types:
   ### matrix.nim
 
   type
-    Matrix*[M, N: static[int]; T] = object
+    Matrix*[M, N: static int; T] = object
       data: array[M*N, T]
 
   proc `[]`*(M: Matrix; m, n: int): M.T =
@@ -4554,7 +4535,7 @@ The concept types can be parametric just like the regular generic types:
   # Adapt the Matrix type to the concept's requirements
   template Rows*(M: type Matrix): expr = M.M
   template Cols*(M: type Matrix): expr = M.N
-  template ValueType*(M: type Matrix): typedesc = M.T
+  template ValueType*(M: type Matrix): type = M.T
 
   -------------
   ### usage.nim
@@ -4582,7 +4563,7 @@ operator and also when types dependent on them are being matched:
 
 .. code-block:: nim
   type
-    MatrixReducer[M, N: static[int]; T] = concept x
+    MatrixReducer[M, N: static int; T] = concept x
       x.reduce(SquareMatrix[N, T]) is array[M, int]
 
 The Nim compiler includes a simple linear equation solver, allowing it to
@@ -4771,12 +4752,12 @@ object inheritance syntax involving the ``of`` keyword:
 
     # the varargs param will here be converted to an array of StringRefValues
     # the proc will have only two instantiations for the two character types
-    proc log(format: static[string], varargs[StringRef])
+    proc log(format: static string, varargs[StringRef])
 
     # this proc will allow char and wchar values to be mixed in
     # the same call at the cost of additional instantiations
     # the varargs param will be converted to a tuple
-    proc log(format: static[string], varargs[distinct StringRef])
+    proc log(format: static string, varargs[distinct StringRef])
 
 
 ..
@@ -4940,9 +4921,8 @@ templates:
 | ``notin`` and ``isnot`` have the obvious meanings.
 
 The "types" of templates can be the symbols ``untyped``,
-``typed`` or ``typedesc`` (stands for *type
-description*). These are "meta types", they can only be used in certain
-contexts. Real types can be used too; this implies that ``typed`` expressions
+``typed`` or ``type``. These are "meta types", they can only be used in certain
+contexts. Regular types can be used too; this implies that ``typed`` expressions
 are expected.
 
 
@@ -5109,7 +5089,7 @@ In templates identifiers can be constructed with the backticks notation:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template typedef(name: untyped, typ: typedesc) =
+  template typedef(name: untyped, typ: type) =
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
@@ -5171,7 +5151,7 @@ template cannot be accessed in the instantiation context:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template newException*(exceptn: typedesc, message: string): untyped =
+  template newException*(exceptn: type, message: string): untyped =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
@@ -5493,7 +5473,7 @@ As their name suggests, static parameters must be known at compile-time:
 
 .. code-block:: nim
 
-  proc precompiledRegex(pattern: static[string]): RegEx =
+  proc precompiledRegex(pattern: static string): RegEx =
     var res {.global.} = re(pattern)
     return res
 
@@ -5513,9 +5493,9 @@ Static params can also appear in the signatures of generic types:
 .. code-block:: nim
 
   type
-    Matrix[M,N: static[int]; T: Number] = array[0..(M*N - 1), T]
+    Matrix[M,N: static int; T: Number] = array[0..(M*N - 1), T]
       # Note how `Number` is just a type constraint here, while
-      # `static[int]` requires us to supply a compile-time int value
+      # `static int` requires us to supply a compile-time int value
 
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
@@ -5523,53 +5503,75 @@ Static params can also appear in the signatures of generic types:
   var m1: AffineTransform3D[float]  # OK
   var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
+Please note that ``static T`` is just a syntactic convenience for the
+underlying generic type ``static[T]``. The type param can be omitted
+to obtain the type class of all values known at compile-time. A more
+specific type class can be created by instantiating ``static`` with
+another type class.
 
-typedesc
---------
+You can force the evaluation of a certain expression at compile-time by
+coercing it to a corresponding ``static`` type:
 
-`typedesc` is a special type allowing one to treat types as compile-time values
-(i.e. if types are compile-time values and all values have a type, then
-typedesc must be their type).
+.. code-block:: nim
+  import math
 
-When used as a regular proc param, typedesc acts as a type class. The proc
-will be instantiated for each unique type parameter and one can refer to the
-instantiation type using the param name:
+  echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
+
+The complier will report any failure to evaluate the expression or a
+possible type mismatch error.
+
+type[T]
+-------
+
+In many contexts, Nim allows you to treat the names of types as regular
+values. These values exists only during the compilation phase, but since
+all values must have a type, ``type`` is considered their special type.
+
+``type`` acts like a generic type. For instance, the type of the symbol
+``int`` is ``type[int]``. Just like with regular generic types, when the
+generic param is ommited, ``type`` denotes the type class of all types.
+As a syntactic convenience, you can also use ``type`` as a modifier.
+``type int`` is considered the same as ``type[int]``.
+
+Procs featuring ``type`` params are considered implicitly generic.
+They will be instantiated for each unique combination of supplied types
+and within the body of the proc, the name of each param will refer to
+the bound concrete type:
 
 .. code-block:: nim
 
-  proc new(T: typedesc): ref T =
+  proc new(T: type): ref T =
     echo "allocating ", T.name
     new(result)
 
   var n = Node.new
   var tree = new(BinaryTree[int])
 
-When multiple typedesc params are present, they will bind freely to different
-types. To force a bind-once behavior
-one can use an explicit ``typedesc[T]`` generic param:
+When multiple type params are present, they will bind freely to different
+types. To force a bind-once behavior one can use an explicit generic param:
 
 .. code-block:: nim
-  proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
+  proc acceptOnlyTypePairs[T, U](A, B: type[T]; C, D: type[U])
 
-Once bound, typedesc params can appear in the rest of the proc signature:
+Once bound, type params can appear in the rest of the proc signature:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  template declareVariableWithType(T: typedesc, value: T) =
+  template declareVariableWithType(T: type, value: T) =
     var x: T = value
 
   declareVariableWithType int, 42
 
 
 Overload resolution can be further influenced by constraining the set of
-types that will match the typedesc param:
+types that will match the type param:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  template maxval(T: typedesc[int]): int = high(int)
-  template maxval(T: typedesc[float]): float = Inf
+  template maxval(T: type int): int = high(int)
+  template maxval(T: type float): float = Inf
 
   var i = int.maxval
   var f = float.maxval
@@ -5578,7 +5580,35 @@ types that will match the typedesc param:
 
 The constraint can be a concrete type or a type class.
 
+type operator
+-------------
 
+You can obtain the type of a given expression by constructing a ``type``
+value from it (in many other languages this is known as the `typeof`:idx:
+operator):
+
+.. code-block:: nim
+  var x = 0
+  var y: type(x) # y has type int
+
+You may add a constraint to the resulting type to trigger a compile-time error
+if the expression doesn't have the expected type:
+
+.. code-block:: nim
+  var x = 0
+  var y: type[object](x) # Error: type mismatch: got <int> but expected 'object'
+
+If ``type`` is used to determine the result type of a proc/iterator/converter
+call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
+interpretation where ``c`` is an iterator is preferred over the
+other interpretations:
+
+.. code-block:: nim
+  import strutils
+
+  # strutils contains both a ``split`` proc and iterator, but since an
+  # an iterator is the preferred interpretation, `y` has the type ``string``:
+  var y: type("a b c".split)
 
 
 Special Operators
@@ -6251,6 +6281,35 @@ Likewise the following does not make sense as the name is ``strutils`` already:
   import lib.pure.strutils as strutils
 
 
+Collective imports from a directory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The syntax ``import dir / [moduleA, moduleB]`` can be used to import multiple modules
+from the same directory.
+
+Path names are syntactically either Nim identifiers or string literals. If the path
+name is not a valid Nim identifier it needs to be a string literal:
+
+.. code-block:: nim
+  import "gfx/3d/somemodule" # in quotes because '3d' is not a valid Nim identifier
+
+
+Pseudo import/include paths
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A directory can also be a so called "pseudo directory".
+
+There are two pseudo directories:
+
+1. ``std``: The ``std`` pseudo directory is the abstract location of Nim's standard
+  library. For example, the syntax ``import std / strutils`` is used to unambiguously
+  refer to the standard library's ``strutils`` module.
+2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to a Nimble
+  package. However, for technical details that lie outside of the scope of this document
+  its semantics are: *Use the search path to look for module name but ignore the standard
+  library locations*. In other words, it is the opposite of ``std``.
+
+
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -6300,16 +6359,6 @@ modules don't need to import a module's dependencies:
 
 When the exported symbol is another module, all of its definitions will
 be forwarded. You can use an ``except`` list to exclude some of the symbols.
-
-Note on paths
------------
-In module related statements, if any part of the module name /
-path begins with a number, you may have to quote it in double quotes.
-In the following example, it would be seen as a literal number '3.0' of type
-'float64' if not quoted, if uncertain - quote it:
-
-.. code-block:: nim
-  import "gfx/3d/somemodule"
 
 
 Scope rules
@@ -7439,7 +7488,7 @@ Custom pragmas are defined using templates annotated with pragma ``pragma``:
 .. code-block:: nim
   template dbTable(name: string, table_space: string = "") {.pragma.}
   template dbKey(name: string = "", primary_key: bool = false) {.pragma.}
-  template dbForeignKey(t: typedesc) {.pragma.}
+  template dbForeignKey(t: type) {.pragma.}
   template dbIgnore {.pragma.}
 
 

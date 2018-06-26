@@ -48,6 +48,10 @@
 - For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
   require a second mandatory parameter ``skipNonAlpha``.
 
+- The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
+    and strings containing only valid prefixes, e.g. "0x" for hex integers.
+
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
@@ -72,6 +76,10 @@
 - Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
 - Added the proc ``math.prod`` for product of elements in openArray.
+- Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
+- Added the proc ``flush`` for memory mapped files.
+- Added the ``MemMapFileStream``.
 
 ### Library changes
 
@@ -91,10 +99,17 @@
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
 - Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from a ``test`` block of ``unittest`` now shows its type in
+  error message.
+- The ``compiler/nimeval`` API was rewritten to simplify the "compiler as an
+  API". Using the Nim compiler and its VM as a scripting engine has never been
+  easier. See ``tests/compilerapi/tcompilerapi.nim`` for an example of how to
+  use the Nim VM in a native Nim application.
 - Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
-- An exception raised from ``test`` block of ``unittest`` now shows its type in
-  the error message
 - The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
+  object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
+  iterators.
 
 ### Language additions
 
@@ -104,6 +119,13 @@
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
   the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- the `typedesc` special type has been renamed to just `type`.
+- `static` and `type` are now also modifiers similar to `ref` and `ptr`.
+  They denote the special types `static[T]` and `type[T]`.
+- Forcing compile-time evaluation with `static` now supports specifying
+  the desired target type (as a concrete type or as a type class)
+- The `type` operator now supports checking that the supplied expression
+  matches an expected type constraint.
 
 ### Language changes
 
@@ -130,6 +152,8 @@
   the effects of the `global` pragma.
 
 - Nim now supports `except` clause in the export statement.
+
+- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
 
 ### Tool changes
 

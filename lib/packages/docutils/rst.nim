@@ -363,6 +363,7 @@ proc addNodes(n: PRstNode): string =
   addNodesAux(n, result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+  if n == nil: return
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
       case n.text[i]

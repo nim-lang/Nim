@@ -31,7 +31,6 @@ before_script:
   - cd csources
   - sh build.sh
   - cd ..
-  - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
 script:
   - nim c koch
@@ -46,6 +45,8 @@ script:
   - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
+  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
+  - nim c -r nimpretty/tester.nim
   - ./koch web
   - ./koch csource
   - ./koch nimsuggest

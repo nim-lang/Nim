@@ -238,11 +238,11 @@ proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc initTime*(unix: int64, nanosecond: NanosecondRange): Time 
+proc initTime*(unix: int64, nanosecond: NanosecondRange): Time
   {.tags: [], raises: [], benign noSideEffect.}
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
-                   seconds, minutes, hours, days, weeks: int64 = 0): Duration 
+                   seconds, minutes, hours, days, weeks: int64 = 0): Duration
   {.tags: [], raises: [], benign noSideEffect.}
 
 proc nanosecond*(time: Time): NanosecondRange =
@@ -531,7 +531,7 @@ proc `$`*(dur: Duration): string =
     let quantity = numParts[unit]
     if quantity != 0.int64:
       parts.add(stringifyUnit(quantity, $unit))
-  
+
   result = humanizeParts(parts)
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
@@ -1243,23 +1243,23 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
     minutes = interval.minutes,
     hours = interval.hours)
 
-proc between*(startDt, endDt:DateTime): TimeInterval =
+proc between*(startDt, endDt: DateTime): TimeInterval =
   ## Evaluate difference between two dates in ``TimeInterval`` format, so, it
   ## will be relative.
   ##
-  ## **Warning:** It's not recommended to use ``between`` for ``DateTime's`` in 
-  ## different ``TimeZone's``.  
+  ## **Warning:** It's not recommended to use ``between`` for ``DateTime's`` in
+  ## different ``TimeZone's``.
   ## ``a + between(a, b) == b`` is only guaranteed when ``a`` and ``b`` are in UTC.
   runnableExamples:
-    var a = initDateTime(year = 2018, month = Month(3), monthday = 25, 
+    var a = initDateTime(year = 2018, month = Month(3), monthday = 25,
                      hour = 0, minute = 59, second = 59, nanosecond = 1,
                      zone = utc()).local
-    var b = initDateTime(year = 2018, month = Month(3), monthday = 25, 
+    var b = initDateTime(year = 2018, month = Month(3), monthday = 25,
                      hour = 1, minute =  1, second =  1, nanosecond = 0,
                      zone = utc()).local
     doAssert between(a, b) == initTimeInterval(
       nanoseconds=999, milliseconds=999, microseconds=999, seconds=1, minutes=1)
-    
+
     a = parse("2018-01-09T00:00:00+00:00", "yyyy-MM-dd'T'HH:mm:sszzz", utc())
     b = parse("2018-01-10T23:00:00-02:00", "yyyy-MM-dd'T'HH:mm:sszzz")
     doAssert between(a, b) == initTimeInterval(hours=1, days=2)
@@ -1526,7 +1526,6 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
   else:
     raise newException(ValueError, "Invalid format string: " & token)
 
-
 proc format*(dt: DateTime, f: string): string {.tags: [].}=
   ## This procedure formats `dt` as specified by `f`. The following format
   ## specifiers are available:
@@ -1601,18 +1600,14 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
     inc(i)
   formatToken(dt, currentF, result)
 
-proc format*(time: Time, f: string, zone_info: proc(t: Time): DateTime): string {.tags: [].} =
-  ## converts a `Time` value to a string representation. It will use format from
+proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
+  ## Converts a `Time` value to a string representation. It will use format from
   ## ``format(dt: DateTime, f: string)``.
   runnableExamples:
-    var dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
+    var dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
     var tm = dt.toTime()
-    doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", local) == "1970-01-01T00:00:00"
-    dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
-    tm = dt.toTime()
-    doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc) == "1970-01-01T00:00:00"
-
-  zone_info(time).format(f)
+    doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
+  time.inZone(zone).format(f)
 
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
@@ -1984,16 +1979,12 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
 proc toTimeInterval*(time: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
   ##
-  ## To be used when diffing times.
+  ## To be used when diffing times. Consider using `between` instead.
   runnableExamples:
     let a = fromUnix(10)
-    let dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
-    doAssert a.toTimeInterval() == initTimeInterval(
-      years=1970, days=1, seconds=10, hours=convert(
-        Seconds, Hours, -dt.utcOffset
-      )
-    )
-
+    let b = fromUnix(1_500_000_000)
+    let ti = b.toTimeInterval() - a.toTimeInterval()
+    doAssert a + ti == b
   var dt = time.local
   initTimeInterval(dt.nanosecond, 0, 0, dt.second, dt.minute, dt.hour,
     dt.monthday, 0, dt.month.ord - 1, dt.year)
@@ -2150,7 +2141,7 @@ proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   t.toTimeInterval()
 
 proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
-  ## **Deprecated since v0.18.0:** use 
+  ## **Deprecated since v0.18.0:** use
   ## ``getDayOfWeek(monthday: MonthdayRange; month: Month; year: int)`` instead.
   getDayOfWeek(day, month.Month, year)
 

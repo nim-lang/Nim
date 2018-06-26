@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, configuration
+import algorithm, prefixmatches, lineinfos
 from wordrecg import wDeprecated
 
 when defined(nimsuggest):
@@ -40,31 +40,6 @@ when defined(nimsuggest):
 
 const
   sep = '\t'
-
-type
-  Suggest* = ref object
-    section*: IdeCmd
-    qualifiedPath*: seq[string]
-    name*: PIdent                # not used beyond sorting purposes; name is also
-                                 # part of 'qualifiedPath'
-    filePath*: string
-    line*: int                   # Starts at 1
-    column*: int                 # Starts at 0
-    doc*: string           # Not escaped (yet)
-    symkind*: TSymKind
-    forth*: string               # type
-    quality*: range[0..100]   # matching quality
-    isGlobal*: bool # is a global variable
-    contextFits*: bool # type/non-type context matches
-    prefix*: PrefixMatch
-    scope*, localUsages*, globalUsages*: int # more usages is better
-    tokenLen*: int
-  Suggestions* = seq[Suggest]
-
-var
-  suggestionResultHook*: proc (result: Suggest) {.closure.}
-  suggestVersion*: int
-  suggestMaxResults* = 10_000
 
 #template sectionSuggest(): expr = "##begin\n" & getStackTrace() & "##end\n"
 
@@ -104,7 +79,7 @@ proc cmpSuggestions(a, b: Suggest): int =
   cf globalUsages
   # if all is equal, sort alphabetically for deterministic output,
   # independent of hashing order:
-  result = cmp(a.name.s, b.name.s)
+  result = cmp(a.name[], b.name[])
 
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
@@ -117,14 +92,14 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
   result.prefix = prefix
   result.contextFits = inTypeContext == (s.kind in {skType, skGenericParam})
   result.scope = scope
-  result.name = s.name
+  result.name = addr s.name.s
   when defined(nimsuggest):
     result.globalUsages = s.allUsages.len
     var c = 0
     for u in s.allUsages:
       if u.fileIndex == info.fileIndex: inc c
     result.localUsages = c
-  result.symkind = s.kind
+  result.symkind = byte s.kind
   if optIdeTerse notin conf.globalOptions:
     result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
@@ -140,23 +115,24 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
       result.forth = typeToString(s.typ)
     else:
       result.forth = ""
-    when not defined(noDocgen):
+    when defined(nimsuggest) and not defined(noDocgen):
       result.doc = s.extractDocComment
   let infox = if section in {ideUse, ideHighlight, ideOutline}: info else: s.info
-  result.filePath = toFullPath(infox)
+  result.filePath = toFullPath(conf, infox)
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
+  result.version = conf.suggestVersion
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section
   result.add(sep)
   if suggest.section == ideHighlight:
-    if suggest.symkind == skVar and suggest.isGlobal:
+    if suggest.symkind.TSymKind == skVar and suggest.isGlobal:
       result.add("skGlobalVar")
-    elif suggest.symkind == skLet and suggest.isGlobal:
+    elif suggest.symkind.TSymKind == skLet and suggest.isGlobal:
       result.add("skGlobalLet")
     else:
-      result.add($suggest.symkind)
+      result.add($suggest.symkind.TSymKind)
     result.add(sep)
     result.add($suggest.line)
     result.add(sep)
@@ -164,9 +140,9 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     result.add($suggest.tokenLen)
   else:
-    result.add($suggest.symkind)
+    result.add($suggest.symkind.TSymKind)
     result.add(sep)
-    if suggest.qualifiedPath != nil:
+    if suggest.qualifiedPath.len != 0:
       result.add(suggest.qualifiedPath.join("."))
     result.add(sep)
     result.add(suggest.forth)
@@ -177,20 +153,20 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     result.add($suggest.column)
     result.add(sep)
-    when not defined(noDocgen):
+    when defined(nimsuggest) and not defined(noDocgen):
       result.add(suggest.doc.escape)
-    if suggestVersion == 0:
+    if suggest.version == 0:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
         result.add(sep)
         result.add($suggest.prefix)
 
-proc suggestResult(s: Suggest) =
-  if not isNil(suggestionResultHook):
-    suggestionResultHook(s)
+proc suggestResult(conf: ConfigRef; s: Suggest) =
+  if not isNil(conf.suggestionResultHook):
+    conf.suggestionResultHook(s)
   else:
-    suggestWriteln($s)
+    conf.suggestWriteln($s)
 
 proc produceOutput(a: var Suggestions; conf: ConfigRef) =
   if conf.ideCmd in {ideSug, ideCon}:
@@ -198,13 +174,13 @@ proc produceOutput(a: var Suggestions; conf: ConfigRef) =
   when defined(debug):
     # debug code
     writeStackTrace()
-  if a.len > suggestMaxResults: a.setLen(suggestMaxResults)
-  if not isNil(suggestionResultHook):
+  if a.len > conf.suggestMaxResults: a.setLen(conf.suggestMaxResults)
+  if not isNil(conf.suggestionResultHook):
     for s in a:
-      suggestionResultHook(s)
+      conf.suggestionResultHook(s)
   else:
     for s in a:
-      suggestWriteln($s)
+      conf.suggestWriteln($s)
 
 proc filterSym(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
   proc prefixMatch(s: PSym; n: PNode): PrefixMatch =
@@ -340,14 +316,14 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   var typ = n.typ
   var pm: PrefixMatch
   when defined(nimsuggest):
-    if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 0:
+    if n.kind == nkSym and n.sym.kind == skError and c.config.suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
-      let fullPath = findModule(c.config, n.sym.name.s, n.info.toFullPath)
+      let fullPath = findModule(c.config, n.sym.name.s, toFullPath(c.config, n.info))
       if fullPath.len == 0:
         # error: no known module name:
         typ = nil
       else:
-        let m = gImportModule(c.graph, c.module, fileInfoIdx(c.config, fullpath), c.cache)
+        let m = c.graph.importModuleCallback(c.graph, c.module, fileInfoIdx(c.config, fullpath))
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
@@ -397,17 +373,17 @@ type
   TCheckPointResult* = enum
     cpNone, cpFuzzy, cpExact
 
-proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
-  if current.fileIndex == gTrackPos.fileIndex:
-    if current.line == gTrackPos.line and
-        abs(current.col-gTrackPos.col) < 4:
+proc inCheckpoint*(current, trackPos: TLineInfo): TCheckPointResult =
+  if current.fileIndex == trackPos.fileIndex:
+    if current.line == trackPos.line and
+        abs(current.col-trackPos.col) < 4:
       return cpExact
-    if current.line >= gTrackPos.line:
+    if current.line >= trackPos.line:
       return cpFuzzy
 
-proc isTracked*(current: TLineInfo, tokenLen: int): bool =
-  if current.fileIndex==gTrackPos.fileIndex and current.line==gTrackPos.line:
-    let col = gTrackPos.col
+proc isTracked*(current, trackPos: TLineInfo, tokenLen: int): bool =
+  if current.fileIndex==trackPos.fileIndex and current.line==trackPos.line:
+    let col = trackPos.col
     if col >= current.col and col <= current.col+tokenLen-1:
       return true
 
@@ -425,30 +401,27 @@ when defined(nimsuggest):
       if infoB.infoToInt == infoAsInt: return
     s.allUsages.add(info)
 
-var
-  lastLineInfo*: TLineInfo # XXX global here
-
 proc findUsages(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
-  if suggestVersion == 1:
-    if usageSym == nil and isTracked(info, s.name.s.len):
+  if conf.suggestVersion == 1:
+    if usageSym == nil and isTracked(info, conf.m.trackPos, s.name.s.len):
       usageSym = s
-      suggestResult(symToSuggest(conf, s, isLocal=false, ideUse, info, 100, PrefixMatch.None, false, 0))
+      suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideUse, info, 100, PrefixMatch.None, false, 0))
     elif s == usageSym:
-      if lastLineInfo != info:
-        suggestResult(symToSuggest(conf, s, isLocal=false, ideUse, info, 100, PrefixMatch.None, false, 0))
-      lastLineInfo = info
+      if conf.lastLineInfo != info:
+        suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideUse, info, 100, PrefixMatch.None, false, 0))
+      conf.lastLineInfo = info
 
 when defined(nimsuggest):
   proc listUsages*(conf: ConfigRef; s: PSym) =
     #echo "usages ", len(s.allUsages)
     for info in s.allUsages:
       let x = if info == s.info and info.col == s.info.col: ideDef else: ideUse
-      suggestResult(symToSuggest(conf, s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
+      suggestResult(conf, symToSuggest(conf, s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
 
 proc findDefinition(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if s.isNil: return
-  if isTracked(info, s.name.s.len):
-    suggestResult(symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+  if isTracked(info, conf.m.trackPos, s.name.s.len):
+    suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
     suggestQuit()
 
 proc ensureIdx[T](x: var T, y: int) =
@@ -460,7 +433,7 @@ proc ensureSeq[T](x: var seq[T]) =
 proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
-    if suggestVersion == 0:
+    if conf.suggestVersion == 0:
       if s.allUsages.isNil:
         s.allUsages = @[info]
       else:
@@ -471,14 +444,14 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
     elif conf.ideCmd == ideDef:
       findDefinition(conf, info, s)
     elif conf.ideCmd == ideDus and s != nil:
-      if isTracked(info, s.name.s.len):
-        suggestResult(symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+      if isTracked(info, conf.m.trackPos, s.name.s.len):
+        suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
       findUsages(conf, info, s, usageSym)
-    elif conf.ideCmd == ideHighlight and info.fileIndex == gTrackPos.fileIndex:
-      suggestResult(symToSuggest(conf, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif conf.ideCmd == ideOutline and info.fileIndex == gTrackPos.fileIndex and
+    elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
+      suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
+    elif conf.ideCmd == ideOutline and info.fileIndex == conf.m.trackPos.fileIndex and
         isDecl:
-      suggestResult(symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
+      suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if s.kind in routineKinds:
@@ -510,7 +483,7 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   try:
     result = c.semExpr(c, n)
   except ERecoverableError:
-    result = ast.emptyNode
+    result = c.graph.emptyNode
 
 proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   if n.kind == nkDotExpr:
@@ -519,14 +492,14 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     # of the next line, so we check the 'field' is actually on the same
     # line as the object to prevent this from happening:
     let prefix = if n.len == 2 and n[1].info.line == n[0].info.line and
-       not gTrackPosAttached: n[1] else: nil
+       not c.config.m.trackPosAttached: n[1] else: nil
     suggestFieldAccess(c, obj, prefix, outputs)
 
     #if optIdeDebug in gGlobalOptions:
     #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
     #writeStackTrace()
   else:
-    let prefix = if gTrackPosAttached: nil else: n
+    let prefix = if c.config.m.trackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
 
 proc suggestExprNoCheck*(c: PContext, n: PNode) =
@@ -555,10 +528,10 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
     suggestQuit()
 
 proc suggestExpr*(c: PContext, n: PNode) =
-  if exactEquals(gTrackPos, n.info): suggestExprNoCheck(c, n)
+  if exactEquals(c.config.m.trackPos, n.info): suggestExprNoCheck(c, n)
 
 proc suggestDecl*(c: PContext, n: PNode; s: PSym) =
-  let attached = gTrackPosAttached
+  let attached = c.config.m.trackPosAttached
   if attached: inc(c.inTypeContext)
   defer:
     if attached: dec(c.inTypeContext)
@@ -574,7 +547,7 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   if outputs.len > 0: suggestQuit()
 
 proc suggestSentinel*(c: PContext) =
-  if c.config.ideCmd != ideSug or c.module.position != gTrackPos.fileIndex.int32: return
+  if c.config.ideCmd != ideSug or c.module.position != c.config.m.trackPos.fileIndex.int32: return
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
@@ -587,7 +560,9 @@ proc suggestSentinel*(c: PContext) =
     for it in items(scope.symbols):
       var pm: PrefixMatch
       if filterSymNoOpr(it, nil, pm):
-        outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug, newLineInfo(gTrackPos.fileIndex, -1, -1), 0, PrefixMatch.None, false, scopeN))
+        outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug,
+            newLineInfo(c.config.m.trackPos.fileIndex, -1, -1), 0,
+            PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)
   produceOutput(outputs, c.config)
