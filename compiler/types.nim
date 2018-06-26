@@ -89,13 +89,16 @@ proc isPureObject*(typ: PType): bool =
 
 proc getOrdValue*(n: PNode): BiggestInt =
   case n.kind
-  of nkCharLit..nkUInt64Lit: result = n.intVal
-  of nkNilLit: result = 0
-  of nkHiddenStdConv: result = getOrdValue(n.sons[1])
-  else:
-    #localError(n.info, errOrdinalTypeExpected)
-    # XXX check usages of getOrdValue
-    result = high(BiggestInt)
+  of nkCharLit..nkUInt64Lit: n.intVal
+  of nkNilLit: 0
+  of nkHiddenStdConv: getOrdValue(n.sons[1])
+  else: high(BiggestInt)
+
+proc getFloatValue*(n: PNode): BiggestFloat =
+  case n.kind
+  of nkFloatLiterals: n.floatVal
+  of nkHiddenStdConv: getFloatValue(n.sons[1])
+  else: NaN
 
 proc isIntLit*(t: PType): bool {.inline.} =
   result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
@@ -593,6 +596,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
+
 proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
@@ -626,6 +630,21 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
+
+
+proc firstFloat*(t: PType): BiggestFloat =
+  case t.kind
+  of tyFloat..tyFloat128: -Inf
+  of tyRange:
+    assert(t.n != nil)        # range directly given:
+    assert(t.n.kind == nkRange)
+    getFloatValue(t.n.sons[0])
+  of tyVar: firstFloat(t.sons[0])
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+    firstFloat(lastSon(t))
+  else:
+    internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
+    NaN
 
 proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
@@ -666,6 +685,22 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
+
+
+proc lastFloat*(t: PType): BiggestFloat =
+  case t.kind
+  of tyFloat..tyFloat128: Inf
+  of tyVar: lastFloat(t.sons[0])
+  of tyRange:
+    assert(t.n != nil)        # range directly given:
+    assert(t.n.kind == nkRange)
+    getFloatValue(t.n.sons[1])
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic, tyInferred:
+    lastFloat(lastSon(t))
+  else:
+    internalError(newPartialConfigRef(), "invalid kind for lastFloat(" & $t.kind & ')')
+    NaN
+
 
 proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind

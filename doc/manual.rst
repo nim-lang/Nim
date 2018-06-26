@@ -741,22 +741,26 @@ For further details, see `Convertible relation
 
 Subrange types
 --------------
-A subrange type is a range of values from an ordinal type (the base
+A subrange type is a range of values from an ordinal or floating point type (the base
 type). To define a subrange type, one must specify it's limiting values: the
 lowest and highest value of the type:
 
 .. code-block:: nim
   type
     Subrange = range[0..5]
+    PositiveFloat = range[0.0..Inf]
 
 
 ``Subrange`` is a subrange of an integer which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``Subrange`` is a
+to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
+NaN does not belong to any subrange of floating point types.
+Assigning any other value to a variable of type ``Subrange`` is a
 checked runtime error (or static error if it can be statically
 determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
-A subrange type has the same size as its base type (``int`` in the example).
+A subrange type has the same size as its base type (``int`` in the 
+Subrange example).
 
 
 Pre-defined floating point types

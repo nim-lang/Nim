@@ -637,20 +637,22 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  let
-    a0 = firstOrd(nil, a)
-    a1 = lastOrd(nil, a)
-    f0 = firstOrd(nil, f)
-    f1 = lastOrd(nil, f)
-  if a0 == f0 and a1 == f1:
-    result = isEqual
-  elif a0 >= f0 and a1 <= f1:
-    result = isConvertible
-  elif a0 <= f1 and f0 <= a1:
-    # X..Y and C..D overlap iff (X <= D and C <= Y)
-    result = isConvertible
-  else:
-    result = isNone
+  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation = 
+    if a0 == f0 and a1 == f1:
+      isEqual
+    elif a0 >= f0 and a1 <= f1:
+      isConvertible
+    elif a0 <= f1 and f0 <= a1:
+      # X..Y and C..D overlap iff (X <= D and C <= Y)
+      isConvertible
+    else:
+      isNone
+  
+  if f.isOrdinalType: 
+    checkRange(firstOrd(nil, a), lastOrd(nil, a), firstOrd(nil, f), lastOrd(nil, f))
+  else: 
+    checkRange(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
+    
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var

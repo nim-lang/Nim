@@ -153,6 +153,8 @@
 
 - Nim now supports `except` clause in the export statement.
 
+- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
