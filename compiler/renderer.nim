@@ -387,8 +387,10 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
   for i in countup(start, sonsLen(n) + theEnd):
-    inc(result, lsub(g, n.sons[i]))
-    inc(result, 2)            # for ``, ``
+    let param = n.sons[i]
+    if nfDefaultParam notin param.flags:
+      inc(result, lsub(g, param))
+      inc(result, 2)          # for ``, ``
   if result > 0:
     dec(result, 2)            # last does not get a comma!
 
