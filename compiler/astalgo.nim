@@ -27,9 +27,9 @@ proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 when declared(echo):
   # these are for debugging only: They are not really deprecated, but I want
   # the warning so that release versions do not contain debugging statements:
-  proc debug*(conf: ConfigRef; n: PSym) {.deprecated.}
-  proc debug*(conf: ConfigRef; n: PType) {.deprecated.}
-  proc debug*(conf: ConfigRef; n: PNode) {.deprecated.}
+  proc debug*(n: PSym; conf: ConfigRef = nil) {.deprecated.}
+  proc debug*(n: PType; conf: ConfigRef = nil) {.deprecated.}
+  proc debug*(n: PNode; conf: ConfigRef = nil) {.deprecated.}
 
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
@@ -422,7 +422,7 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
     addf(result, "$N$1}", [rspaces(indent)])
 
 when declared(echo):
-  proc debug(conf: ConfigRef; n: PSym) =
+  proc debug(n: PSym; conf: ConfigRef) =
     if n == nil:
       echo("null")
     elif n.kind == skUnknown:
@@ -433,10 +433,10 @@ when declared(echo):
         n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
         $lineInfoToStr(conf, n.info), $n.kind])
 
-  proc debug(conf: ConfigRef; n: PType) =
+  proc debug(n: PType; conf: ConfigRef) =
     echo($debugType(conf, n))
 
-  proc debug(conf: ConfigRef; n: PNode) =
+  proc debug(n: PNode; conf: ConfigRef) =
     echo($debugTree(conf, n, 0, 100))
 
 proc nextTry(h, maxHash: Hash): Hash =
