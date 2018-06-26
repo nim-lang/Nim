@@ -36,7 +36,6 @@ type
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
-    opcRegToNode,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
