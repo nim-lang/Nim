@@ -603,7 +603,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: string) =
   var c = Cfile(cname: filename,
-    obj: toObjFile(conf, completeCFilePath(conf, changeFileExt(filename, ""), false)),
+    obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
