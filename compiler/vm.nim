@@ -204,22 +204,14 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
-proc putIntoNode(n: var PNode; x: TFullReg) =
+proc writeField(n: var PNode, x: TFullReg) =
   case x.kind
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
-  of rkNode:
-    if nfIsRef in x.node.flags:
-      n = x.node
-    else:
-      let destIsRef = nfIsRef in n.flags
-      n[] = x.node[]
-      # Ref-ness must be kept for the destination
-      if destIsRef:
-        n.flags.incl nfIsRef
-  of rkRegisterAddr: putIntoNode(n, x.regAddr[])
-  of rkNodeAddr: n[] = x.nodeAddr[][]
+  of rkNode: n = x.node
+  of rkRegisterAddr: writeField(n, x.regAddr[])
+  of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
   case n.kind
@@ -498,9 +490,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       asgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
-    of opcRegToNode:
-      decodeB(rkNode)
-      putIntoNode(regs[ra].node, regs[rb])
     of opcNodeToReg:
       let ra = instr.regA
       let rb = instr.regB
@@ -559,7 +548,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           stackTrace(c, tos, pc, errIndexOutOfBounds)
       elif idx <% arr.len:
-        putIntoNode(arr.sons[idx], regs[rc])
+        writeField(arr.sons[idx], regs[rc])
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdObj:
@@ -579,9 +568,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind == nkNilLit:
         stackTrace(c, tos, pc, errNilAccess)
       elif dest.sons[shiftedRb].kind == nkExprColonExpr:
-        putIntoNode(dest.sons[shiftedRb].sons[1], regs[rc])
+        writeField(dest.sons[shiftedRb].sons[1], regs[rc])
       else:
-        putIntoNode(dest.sons[shiftedRb], regs[rc])
+        writeField(dest.sons[shiftedRb], regs[rc])
     of opcWrStrIdx:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
@@ -624,9 +613,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let ra = instr.regA
       let rc = instr.regC
       case regs[ra].kind
-      of rkNodeAddr: putIntoNode(regs[ra].nodeAddr[], regs[rc])
+      of rkNodeAddr:
+        # XXX: Workaround for vmgen bug:
+        let n = regs[rc].regToNode
+        if (nfIsRef in regs[ra].nodeAddr[].flags or
+            regs[ra].nodeAddr[].kind == nkNilLit) and nfIsRef notin n.flags:
+          if regs[ra].nodeAddr[].kind == nkNilLit:
+            stackTrace(c, tos, pc, errNilAccess)
+          regs[ra].nodeAddr[][] = n[]
+          regs[ra].nodeAddr[].flags.incl nfIsRef
+        else:
+          regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
-      of rkNode: putIntoNode(regs[ra].node, regs[rc])
+      of rkNode:
+        if regs[ra].node.kind == nkNilLit:
+          stackTrace(c, tos, pc, errNilAccess)
+        assert nfIsRef in regs[ra].node.flags
+        regs[ra].node[] = regs[rc].regToNode[]
+        regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -1211,6 +1215,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNBindSym:
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
+      regs[ra].node.flags.incl nfIsRef
     of opcNChild:
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
@@ -1572,7 +1577,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var sym = newSym(k.TSymKind, getIdent(c.cache, name), c.module.owner, c.debug[pc])
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
-
+      regs[ra].node.flags.incl nfIsRef
     of opcNccValue:
       decodeB(rkInt)
       let destKey = regs[rb].node.strVal
