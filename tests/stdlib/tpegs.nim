@@ -69,11 +69,14 @@ const
 let
   pegAst = """
 Expr <- Sum
-Sum <- Product (('+' / '-') Product)*
-Product <- Value (('*' / '/') Value)*
+SumOp <- ('+' / '-')
+ProductOp <- ('*' / '/')
+Sum <- Product (SumOp Product)*
+Product <- Value (ProductOp  Value)*
 Value <- [0-9]+ / '(' Expr ')'
   """.peg
-  txt = "(5+3)/2-7*22"
+  # txt = "(5+3)/2-7*22"
+  txt = "1+(2+3)*4"
 
 var
   outp = newStringStream()
@@ -138,15 +141,15 @@ let
     pkNonTerminal:
       enter:
         let ntName {.inject.} = p.nt.name.toLowerAscii
-        echo "start of non-terminal symbol: ", ntName 
+        echo "start of symbol: ", ntName 
       leave:
-        echo "end of non-terminal symbol: ", ntName 
         var
-          matchStr: string = ""
+          matchStr, strMatch: string = ""
           opInd: int = -1
         if length > 0:
           matchStr = txt.substr(start, start+length-1)
-          opInd = matchStr.find(peg("'+'/'-'/'*'/'/'"))
+          strMatch = matchStr.reversed
+          opInd = strMatch.find(peg("'+'/'-'/'*'/'/'"))
         case ntName
         of "value":
           if opInd == -1:
@@ -157,14 +160,18 @@ let
             if opInd == -1:
               echo "--> nope"
             else:
-              echo "--> ", matchStr[opInd]
-              stack[^2] = case matchStr[opInd]
+              echo "--> ", strMatch[opInd]
+              stack[^2] = case strMatch[opInd]
               of '+': stack[^2] + stack[^1]
               of '-': stack[^2] - stack[^1]
               of '*': stack[^2] * stack[^1]
               else: stack[^2] / stack[^1]
               stack.setLen 1
               echo "new stack: ", stack 
+        echo "end of symbol: ", ntName
+    pkChar:
+      enter:
+        echo "start of char at ", start
 echo "Arithmetic expression parser output"
 echo "-----------------------------------"
 let aepLen = arithExprParse(txt)

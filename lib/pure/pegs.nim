@@ -649,8 +649,10 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
         break
     dec(result, start)
   of pkChar:
+    enter(pkChar, p, start)
     if start < s.len and p.ch == s[start]: result = 1
     else: result = -1
+    leave(pkChar, p, start, result)
   of pkCharChoice:
     if start < s.len and contains(p.charChoice[], s[start]): result = 1
     else: result = -1
@@ -824,7 +826,7 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
   ## in the construction of the ``PegCallbacks`` object will be ignored.
   ## Returns -1 if ``s`` does not match, else the length of the match.
   block:
-    proc parser(s: string): int {.gensym.} =
+    proc parser(s: string): int =
       var
         ms: array[MaxSubpatterns, (int, int)]
         cs = Captures(matches: ms, ml: 0, origStart: 0)
