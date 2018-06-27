@@ -401,7 +401,6 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
   else:
-    debug s.typ
     case s.typ.sons[0].kind
     of tyExpr:
       # BUGFIX: we cannot expect a type here, because module aliases would not
@@ -409,6 +408,9 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # semExprWithType(c, result)
       result = semExpr(c, result, flags)
     of tyStmt:
+      # this is not `stmt` anymore, this is `typed`. Therefore the
+      # following line might be the better solution.
+      # result = semExprWithType(c, result, flags)
       result = semStmt(c, result)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType

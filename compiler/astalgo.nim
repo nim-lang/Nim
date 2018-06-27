@@ -27,9 +27,9 @@ proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 when declared(echo):
   # these are for debugging only: They are not really deprecated, but I want
   # the warning so that release versions do not contain debugging statements:
-  proc debug*(n: PSym; conf: ConfigRef = nil) {.deprecated.}
-  proc debug*(n: PType; conf: ConfigRef = nil) {.deprecated.}
-  proc debug*(n: PNode; conf: ConfigRef = nil) {.deprecated.}
+  proc debug*(n: PSym;  conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
+  proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
+  proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
@@ -438,6 +438,9 @@ when declared(echo):
 
   proc debug(n: PNode; conf: ConfigRef) =
     echo($debugTree(conf, n, 0, 100))
+
+  proc debug(arg: Rope): void {.exportc: "debugRope".} =
+    echo($arg)
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
