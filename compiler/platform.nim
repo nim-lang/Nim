@@ -22,7 +22,7 @@ type
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
     osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osAndroid, osVxworks
-    osGenode, osJS, osNimVM, osStandalone
+    osGenode, osJS, osNimVM, osStandalone, osNintendoSwitch
 
 type
   TInfoOSProp* = enum
@@ -168,7 +168,12 @@ const
      (name: "Standalone", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
-      props: {})]
+      props: {}),
+     (name: "NintendoSwitch", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: ".elf", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
+     ]
 
 type
   TSystemCPU* = enum # Also add CPU for in initialization section and

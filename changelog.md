@@ -182,4 +182,7 @@
 - ``experimental`` is now a pragma / command line switch that can enable specific
   language extensions, it is not an all-or-nothing switch anymore.
 
+- Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
+  for more info.
+
 ### Bugfixes

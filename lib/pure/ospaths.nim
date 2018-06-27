@@ -597,7 +597,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
   else:
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
-when defined(windows) or defined(posix):
+when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote ``s``, so it can be safely passed to shell.
     when defined(windows):
