@@ -232,38 +232,48 @@ Cross compilation for Nintendo Switch
 =====================================
 
 Simply add --os:nintendoswitch
-to your usual ``nim c`` or ``nim cpp`` command. DevkitPro setup must be the same as
-what is the default with their new installer
-[here for Mac/Linux](https://github.com/devkitPro/pacman/releases) or
-[here for Windows](https://github.com/devkitPro/installer/releases).
+to your usual ``nim c`` or ``nim cpp`` command and set the ``SWITCH_LIBS``
+and ``SWITCH_INCLUDES`` environment variables to something like:
 
-For example::
+.. code-block:: console
+  export SWITCH_INCLUDES="-I$DEVKITPRO/libnx/include"
+  export SWITCH_LIBS="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+
+or setup a nim.cfg file like so:
+
+.. code-block:: Nim
+  #nim.cfg
+  --passC="-I$DEVKITPRO/libnx/include"
+  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+
+The DevkitPro setup must be the same as the default with their new installer
+`here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
+`here for Windows <https://github.com/devkitPro/installer/releases>`_.
+
+For example, with the above mentioned config::
 
   nim c --os:nintendoswitch switchhomebrew.nim
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
-[the nim-libnx github repo](https://github.com/jyapayne/nim-libnx.git).
+`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
+`the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
 
-Environment variables are ``DEVKITPRO`` for the devkitpro path, ``SWITCH_LIBS`` for any extra
-libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``), and
-``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``).
-
-There are some directories expected to exist in a specific structure for now until I
-figure out a better way to specify them. They are: ``DEVKITPRO/portlibs/switch/lib``,
-``DEVKITPRO/libnx/lib``, ``DEVKITPRO/portlibs/switch/include``, and ``DEVKITPRO/libnx/include``.
+Environment variables are: 
+  - ``SWITCH_LIBS`` for any extra libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``)
+  - ``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``)
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
 They are:
 
-    1. Waiting for a subprocess to finish. A subprocess can be started, but right
-       now it can't be waited on, which sort of makes subprocesses a bit hard to use
-    2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
-    3. Command line parameters. It doesn't make sense to have these for a console
-       anyways, so no big deal here.
-    4. mqueue. Sadly there are no mqueue headers.
-    5. ucontext. No headers for these either. No coroutines for now :(
-    6. nl_types. No headers for this.
+1. Waiting for a subprocess to finish. A subprocess can be started, but right
+   now it can't be waited on, which sort of makes subprocesses a bit hard to use
+2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
+3. Command line parameters. It doesn't make sense to have these for a console
+   anyways, so no big deal here.
+4. mqueue. Sadly there are no mqueue headers.
+5. ucontext. No headers for these either. No coroutines for now :(
+6. nl_types. No headers for this.
 
 DLL generation
 ==============
