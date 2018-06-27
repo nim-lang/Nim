@@ -344,7 +344,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
       if buf[pos] == '_':
         if buf[pos+1] notin chars:
           lexMessage(L, errGenerated,
-            "only single underscores may occur in a token: '__' is invalid")
+            "only single underscores may occur in a token and token may not " &
+            "end with an underscore: e.g. '1__1' and '1_' are invalid")
           break
         add(tok.literal, '_')
         inc(pos)
