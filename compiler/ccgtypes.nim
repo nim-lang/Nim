@@ -734,6 +734,16 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let cppName = getTypeName(m, t, sig)
       var i = 0
       var chunkStart = 0
+
+      template addResultType(ty: untyped) =
+        if ty == nil or ty.kind == tyVoid:
+          result.add(~"void")
+        elif ty.kind == tyStatic:
+          internalAssert m.config, ty.n != nil
+          result.add ty.n.renderTree
+        else:
+          result.add getTypeDescAux(m, ty, check)
+
       while i < cppName.data.len:
         if cppName.data[i] == '\'':
           var chunkEnd = i-1
@@ -743,13 +753,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             chunkStart = i
 
             let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
-            if typeInSlot == nil or typeInSlot.kind == tyVoid:
-              result.add(~"void")
-            elif typeInSlot.kind == tyStatic:
-              internalAssert m.config, typeInSlot.n != nil
-              result.add typeInSlot.n.renderTree
-            else:
-              result.add getTypeDescAux(m, typeInSlot, check)
+            addResultType(typeInSlot)
         else:
           inc i
 
@@ -759,7 +763,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = cppName & "<"
         for i in 1 .. origTyp.len-2:
           if i > 1: result.add(" COMMA ")
-          result.add(getTypeDescAux(m, origTyp.sons[i], check))
+          addResultType(origTyp.sons[i])
         result.add("> ")
       # always call for sideeffects:
       assert t.kind != tyTuple
