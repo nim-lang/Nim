@@ -177,6 +177,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     var t = semTypeNode(c, n.lastSon, nil)
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
       t = t.base
+    if t.kind == tyVoid:
+      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
+      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     # check every except the last is an object:
