@@ -1210,8 +1210,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
-      regs[ra].intVal = ord(node.kind == nkNilLit or
-        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil))
+      regs[ra].intVal = ord(
+        # Note that `nfIsRef` + `nkNilLit` represents an allocated
+        # reference with the value `nil`, so `isNil` should be false!
+        (node.kind == nkNilLit and nfIsRef notin node.flags) or
+        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil) or
+        (not node.typ.isNil and node.typ.kind == tyProc and
+          node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
+          node.sons[1].kind == nkNilLit))
     of opcNBindSym:
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
