@@ -412,7 +412,12 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
-      result.typ = makeTypeDesc(c, typ)
+      if typ == nil:
+        localError(c.config, result.info, "expression has no type: " &
+                   renderTree(result, {renderNoComments}))
+        result = newSymNode(errorSym(c, result))
+      else:
+        result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
       var retType = s.typ.sons[0]
