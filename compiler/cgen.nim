@@ -288,7 +288,7 @@ type
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
-  let t = t.skipTypes(abstractInst)
+  let t = t.skipTypes(abstractInst + tyUserTypeClasses)
   result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
