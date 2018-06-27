@@ -342,7 +342,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     t1 = n[1].typ
     t2 = n[2].typ
 
-  if t1.kind == tyTypeDesc and t2.kind != tyTypeDesc:
+  if t1.kind == tyTypeDesc:
     t1 = t1.base
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
@@ -393,6 +393,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # When the right-hand side is an explicit type, we must
       # not allow regular values to be matched against the type:
       liftLhs = false
+  else:
+    n.sons[2] = semExpr(c, n[2], {efDetermineType})
 
   var lhsType = n[1].typ
   if lhsType.kind != tyTypeDesc:
