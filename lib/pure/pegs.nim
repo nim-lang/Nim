@@ -22,10 +22,11 @@ const
 
 import
   strutils, macros
+export macros
 
 when useUnicode:
   import unicode
-  export unicode.`==`
+  export unicode
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
@@ -541,8 +542,7 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-template matchOrParse*(mopProc, cbms: untyped): untyped =
-  cbms
+template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
   case p.kind
   of pkEmpty: result = 0 # match of length 0
   of pkAny:
@@ -655,13 +655,13 @@ template matchOrParse*(mopProc, cbms: untyped): untyped =
     if start < s.len and contains(p.charChoice[], s[start]): result = 1
     else: result = -1
   of pkNonTerminal:
-    enter(p, start)
+    enter(pkNonTerminal, p, start)
     var oldMl = c.ml
     when false: echo "enter: ", p.nt.name
     result = mopProc(s, p.nt.rule, start, c)
     when false: echo "leave: ", p.nt.name
     if result < 0: c.ml = oldMl
-    leave(p, start, result)
+    leave(pkNonTerminal, p, start, result)
   of pkSequence:
     var oldMl = c.ml
     result = 0
@@ -757,119 +757,103 @@ template matchOrParse*(mopProc, cbms: untyped): untyped =
     else: result = -1
   of pkRule, pkList: assert false
 
-template mkMatcher(name: untyped): untyped {.dirty.} =
-  proc name*(s: string, p: Peg, start: int, c: var Captures): int
-        {.nosideEffect, rtl, extern: "npegs$1".} =
-    ## low-level matching proc that implements the PEG interpreter. Use this
-    ## for maximum efficiency (every other PEG operation ends up calling this
-    ## proc).
-    ## Returns -1 if it does not match, else the length of the match
-    name.matchOrParse:
-      template enter(p, start) =
-        template doEnter(p, start) =
-          discard
-        doEnter(p, start)
-      template leave(p, start, length) =
-        template doLeave(p, start, lenght) =
-          discard
-        doLeave(p, start, lenght)
-mkMatcher(rawMatch)
+proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
+      {.nosideEffect, rtl, extern: "npegs$1".} =
+  ## low-level matching proc that implements the PEG interpreter. Use this
+  ## for maximum efficiency (every other PEG operation ends up calling this
+  ## proc).
+  ## Returns -1 if it does not match, else the length of the match
 
-macro eventParser*(pegAst, callbacks: untyped): proc(s: string): int =
-  # Parses a string according to the given PEG. The fields of the
-  # ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
-  # of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
-  # and ``leave`` procs of the corresponding callback object are called at the
-  # beginning and the end of the match, respectively. Callbacks not specified
-  # in the construction of the ``PegCallbacks`` object will be ignored.
-  # Returns -1 if ``s`` does not match, else the length of the match.
-  template tpl(pegAst, cbms) {.dirty.} =
-    proc parse(s: string): int {.gensym.} =
+  # Set the callbacks to do-nothing.
+  template enter(pk, p, start) =
+    discard
+  template leave(pk, p, start, length) =
+    discard
+  matchOrParse(rawMatch)
+
+template mkEnterCb(cbPostf, body) {.dirty.} =
+  template `enter cbPostf`(p, start) =
+    body
+
+template mkLeaveCb(cbPostf, body) {.dirty.} =
+  template `leave cbPostf`(p, start, length) =
+    body
+
+macro mkCallbacks*(callbacks: untyped): untyped =
+  let cbms = newStmtList()
+  for co in callbacks[0]:
+    if nnkCall != co.kind:
+      error("Call syntax expected.", co)
+    let pk = co[0]
+    if nnkIdent != pk.kind:
+      error("PegKind expected.", pk)
+    if 2 == co.len:
+      for cb in co[1]:
+        if nnkCall != cb.kind:
+          error("Call syntax expected.", cb)
+        if nnkIdent != cb[0].kind:
+          error("Callback identifier expected.", cb[0])
+        if 2 == cb.len:
+          let cbPostf = toNimIdent(substr($pk.ident, 2))
+          case $cb[0].ident
+          of "enter":
+            cbms.add getAst(mkEnterCb(cbPostf, cb[1]))
+          of "leave":
+            cbms.add getAst(mkLeaveCb(cbPostf, cb[1]))
+          else:
+            error(
+              "Unsupported callback identifier, expected 'enter' or 'leave'.",
+              cb[0]
+            )
+  cbms
+
+template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirty.} =
+  ## Generates an interpreting event parser proc according to the given PEG
+  ## AST and callback code blocks. The proc can be called with a text
+  ## to be parsed and will execute the callback code blocks whenever their
+  ## associated grammar element is matched. It returns -1 if the text does not
+  ## match, else the length of the match. Example usage:
+  ## ```
+  ## ```
+  ## The fields of the
+  ## Parses a string according to the given PEG. The fields of the
+  ## ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
+  ## of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
+  ## and ``leave`` procs of the corresponding callback object are called at the
+  ## beginning and the end of the match, respectively. Callbacks not specified
+  ## in the construction of the ``PegCallbacks`` object will be ignored.
+  ## Returns -1 if ``s`` does not match, else the length of the match.
+  block:
+    proc parser(s: string): int {.gensym.} =
       var
         ms: array[MaxSubpatterns, (int, int)]
         cs = Captures(matches: ms, ml: 0, origStart: 0)
       proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
-        matchOrParse(parseIt, cbms)
+
+        mkCallbacks:
+          callbacks
+
+        macro enter(pk, p, start: untyped): untyped =
+          template mkDoEnter(cbPostf, p, start) =
+            when declared(`enter cbPostf`):
+              `enter cbPostf`(p, start):
+            else:
+              discard
+          let cbPostf = toNimIdent(substr($pk.ident, 2))
+          getAst(mkDoEnter(cbPostf, p, start))
+
+        macro leave(pk, p, start, length: untyped): untyped =
+          template mkDoLeave(cbPostf, p, start, length) =
+            when declared(`leave cbPostf`):
+              `leave cbPostf`(p, start, length):
+            else:
+              discard
+          let cbPostf = toNimIdent(substr($pk.ident, 2))
+          getAst(mkDoLeave(cbPostf, p, start, length))
+
+        matchOrParse(parseIt)
       parseIt(s, pegAst, 0, cs)
-    parse
-
-  # macro mkEnterCb(p, cbs: untyped): untyped =
-  #   template enterTpl() {.dirty.} =
-  #     template enter(p, start) =
-  #       discard
-
-  #   let
-  #     co = `callbacks`.findChild(nnkIdent == it[0].kind and p == it[0])
-  #     cb = if co.isNil or 0 == co.len or isNil(
-  #       ci = co[1].findChild(
-  #         it.len > 1 and nnkIdent == it[0].kind and "enter" == $it[0].ident
-  #       )
-  #     ):
-  #       newTree(nnkDiscardStmt,
-  #         newEmptyNode()
-  #       )
-  #     else:
-  #       ci[1]
-  #   result = getAst(enterTpl())
-  macro mkMkCbTpls(cbs: untyped): untyped =
-    template mkCbTpls(ecb, lcb: untyped) =
-      template enter(p, start) =
-        template doEnter(p, start) =
-          ecb
-        doEnter(p, start)
-      template leave(p, start, length) =
-        template doLeave(p, start, length) =
-          lcb
-        doLeave(p, start, length)
-    getAst(mkCbTpls(cbs[0][1][0][1], cbs[0][1][1][1]))
-
-  let cbms = getAst(mkMkCbTpls(callbacks))
-  result = getAst(tpl(pegAst, cbms))
-  echo result.repr
-
-  # template enterTpl {.dirty.} =
-  #   template enter(p, start) =
-  #     case p.kind
-  #     else:
-  #       discard
-
-  # template leaveTpl {.dirty.} =
-  #   template leave(p, start, length) =
-  #     case p.kind
-  #     else:
-  #       discard
-
-  # let
-  #   cbms = newStmtList()
-  #   et = getAst(enterTpl())
-  #   lt = getAst(leaveTpl())
-  # for co in callbacks:
-  #   if nnkCall != co.kind:
-  #     error("Call syntax expected.", co)
-  #   let pk = co[0]
-  #   if nnkIdent != pk.kind:
-  #     error("PegKind expected.", pk)
-  #   if 2 == co.len:
-  #     for cb in co[1]:
-  #       if nnkCall != cb.kind:
-  #         error("Call syntax expected.", cb)
-  #       if nnkIdent != cb[0].kind:
-  #         error("Callback identifier expected.", cb[0])
-  #       if 2 == cb.len:
-  #         let ob = newTree(nnkOfBranch, pk.copy, cb[1].copy)
-  #         case $cb[0].ident
-  #         of "enter":
-  #           et.last[0].insert(1, ob)
-  #         of "leave":
-  #           lt.last[0].insert(1, ob)
-  #         else:
-  #           error(
-  #             "Unsupported callback identifier, expected 'enter' or 'leave'.",
-  #             cb[0]
-  #           )
-
-  # cbms.add et
-  # cbms.add lt
+    parser
 
 template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:

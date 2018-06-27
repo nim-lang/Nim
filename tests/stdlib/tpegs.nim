@@ -73,7 +73,7 @@ Sum <- Product (('+' / '-') Product)*
 Product <- Value (('*' / '/') Value)*
 Value <- [0-9]+ / '(' Expr ')'
   """.peg
-  txt = "(5+3)/2+7*22"
+  txt = "(5+3)/2-7*22"
 
 var
   outp = newStringStream()
@@ -125,7 +125,47 @@ let eParse = pegAst.eventParser:
       if -1 < length:
         outp.prt(txt.substr(start, start+length-1), level)
       level.dec
-assert txt.len == eParse(txt)
+let pLen = eParse(txt)
+assert txt.len == pLen
 echo "Event parser output"
 echo "-------------------"
 echo outp.data
+
+var
+  stack: seq[float] = @[]
+let
+  arithExprParse = pegAst.eventParser:
+    pkNonTerminal:
+      enter:
+        let ntName {.inject.} = p.nt.name.toLowerAscii
+        echo "start of non-terminal symbol: ", ntName 
+      leave:
+        echo "end of non-terminal symbol: ", ntName 
+        var
+          matchStr: string = ""
+          opInd: int = -1
+        if length > 0:
+          matchStr = txt.substr(start, start+length-1)
+          opInd = matchStr.find(peg("'+'/'-'/'*'/'/'"))
+        case ntName
+        of "value":
+          if opInd == -1:
+            stack.add matchStr.parseFloat
+            echo "new stack: ", stack 
+        of "sum", "product":
+          if stack.len == 2:
+            if opInd == -1:
+              echo "--> nope"
+            else:
+              echo "--> ", matchStr[opInd]
+              stack[^2] = case matchStr[opInd]
+              of '+': stack[^2] + stack[^1]
+              of '-': stack[^2] - stack[^1]
+              of '*': stack[^2] * stack[^1]
+              else: stack[^2] / stack[^1]
+              stack.setLen 1
+              echo "new stack: ", stack 
+echo "Arithmetic expression parser output"
+echo "-----------------------------------"
+let aepLen = arithExprParse(txt)
+assert txt.len == aepLen
