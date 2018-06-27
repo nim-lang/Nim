@@ -584,7 +584,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
 
   # D files are required by nintendo switch libs for
   # compilation. They are basically a list of all includes.
-  let dfile = objfile.replace(".o", ".d").quoteShell()
+  let dfile = objfile.changeFileExt(".d").quoteShell()
 
   objfile = quoteShell(objfile)
   cf = quoteShell(cf)
@@ -694,8 +694,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
 
     # Map files are required by Nintendo Switch compilation. They are a list
     # of all function calls in the library and where they come from.
-    var mapfile = getNimcacheDir(conf) / splitFile(projectFile).name & ".map"
-    mapfile = quoteShell(mapfile)
+    let mapfile = quoteShell(getNimcacheDir(conf) / splitFile(projectFile).name & ".map")
 
     let linkOptions = getLinkOptions(conf) & " " &
                       getConfigVar(conf, conf.cCompiler, ".options.linker")
