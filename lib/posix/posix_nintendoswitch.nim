@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2018 Andreas Rumpf
+#        (c) Copyright 2018 Joey Yakimowich-Payne
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,16 +9,9 @@
 
 # To be included from posix.nim!
 
-{.deadCodeElim: on.}  # dce option deprecated
-
-const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
-  hasAioH = defined(linux)
-
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
-    ## A type representing a directory stream.
 
 const SIG_HOLD* = cast[SigHandler](2)
 
@@ -334,12 +327,11 @@ type
     aio_offset*: Off          ## File offset.
     reserved: array[32, uint8]
 
-when hasSpawnH:
-  type
-    Tposix_spawnattr* {.importc: "posix_spawnattr_t",
-                        header: "<spawn.h>", final, pure.} = object
-    Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
-                                 header: "<spawn.h>", final, pure.} = object
+type
+  Tposix_spawnattr* {.importc: "posix_spawnattr_t",
+                      header: "<spawn.h>", final, pure.} = object
+  Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
+                               header: "<spawn.h>", final, pure.} = object
 
 # from sys/un.h
 const Sockaddr_un_path_length* = 108
@@ -497,7 +489,7 @@ var
   timezone* {.importc: "_timezone", header: "<time.h>".}: clong
 
 # Regenerate using detect.nim!
-include posix_linux_amd64_consts
+include posix_nintendoswitch_consts
 
 const POSIX_SPAWN_USEVFORK* = cint(0x40)  # needs _GNU_SOURCE!
 
