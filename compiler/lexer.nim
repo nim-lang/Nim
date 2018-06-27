@@ -330,13 +330,15 @@ template eatChar(L: var TLexer, t: var TToken) =
   inc(L.bufpos)
 
 proc getNumber(L: var TLexer, result: var TToken) =
-  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
+  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]): Natural =
     var pos = L.bufpos              # use registers for pos, buf
     var buf = L.buf
+    result = 0
     while true:
       if buf[pos] in chars:
         add(tok.literal, buf[pos])
         inc(pos)
+        inc(result)
       else:
         break
       if buf[pos] == '_':
@@ -383,6 +385,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     startpos, endpos: int
     xi: BiggestInt
     isBase10 = true
+    numDigits = 0
   const
     baseCodeChars = {'X', 'x', 'o', 'c', 'C', 'b', 'B'}
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
@@ -402,27 +405,29 @@ proc getNumber(L: var TLexer, result: var TToken) =
       lexMessageLitNum(L, "$1 is not a valid number; did you mean octal? Then use one of '0o', '0c' or '0C'.", startpos)
     of 'x', 'X':
       eatChar(L, result, 'x')
-      matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
+      numDigits = matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
     of 'o', 'c', 'C':
       eatChar(L, result, 'c')
-      matchUnderscoreChars(L, result, {'0'..'7'})
+      numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'b', 'B':
       eatChar(L, result, 'b')
-      matchUnderscoreChars(L, result, {'0'..'1'})
+      numDigits = matchUnderscoreChars(L, result, {'0'..'1'})
     else:
       internalError(L.config, getLineInfo(L), "getNumber")
+    if numDigits == 0:
+      lexMessageLitNum(L, "invalid number: '$1'", startpos)
   else:
-    matchUnderscoreChars(L, result, {'0'..'9'})
+    discard matchUnderscoreChars(L, result, {'0'..'9'})
     if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
       result.tokType = tkFloatLit
       eatChar(L, result, '.')
-      matchUnderscoreChars(L, result, {'0'..'9'})
+      discard matchUnderscoreChars(L, result, {'0'..'9'})
     if L.buf[L.bufpos] in {'e', 'E'}:
       result.tokType = tkFloatLit
       eatChar(L, result, 'e')
       if L.buf[L.bufpos] in {'+', '-'}:
         eatChar(L, result)
-      matchUnderscoreChars(L, result, {'0'..'9'})
+      discard matchUnderscoreChars(L, result, {'0'..'9'})
   endpos = L.bufpos
 
   # Second stage, find out if there's a datatype suffix and handle it
