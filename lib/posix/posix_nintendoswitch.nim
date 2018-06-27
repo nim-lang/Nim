@@ -9,6 +9,10 @@
 
 # To be included from posix.nim!
 
+const
+  hasSpawnH = true
+  hasAioH = false
+
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
@@ -494,10 +498,9 @@ include posix_nintendoswitch_consts
 const POSIX_SPAWN_USEVFORK* = cint(0x40)  # needs _GNU_SOURCE!
 
 # <sys/wait.h>
-proc WEXITSTATUS*(s: cint): cint =  (s and 0xff00) shr 8
+proc WEXITSTATUS*(s: cint): cint =  (s shr 8) and 0xff
+proc WIFEXITED*(s:cint) : bool = (s and 0xff) == 0
 proc WTERMSIG*(s:cint): cint = s and 0x7f
 proc WSTOPSIG*(s:cint): cint = WEXITSTATUS(s)
-proc WIFEXITED*(s:cint) : bool = WTERMSIG(s) == 0
-proc WIFSIGNALED*(s:cint) : bool = (cast[int8]((s and 0x7f) + 1) shr 1) > 0
+proc WIFSIGNALED*(s:cint) : bool = ((s and 0x7f) > 0) and ((s and 0x7f) < 0x7f)
 proc WIFSTOPPED*(s:cint) : bool = (s and 0xff) == 0x7f
-proc WIFCONTINUED*(s:cint) : bool = s == W_CONTINUED
