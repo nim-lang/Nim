@@ -759,7 +759,7 @@ checked runtime error (or static error if it can be statically
 determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
-A subrange type has the same size as its base type (``int`` in the 
+A subrange type has the same size as its base type (``int`` in the
 Subrange example).
 
 
@@ -4966,8 +4966,8 @@ clearer names.
 Passing a code block to a template
 ----------------------------------
 
-You can pass a block of statements as a last parameter to a template via a
-special ``:`` syntax:
+You can pass a block of statements as the last argument to a template
+following the special ``:`` syntax:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -4982,11 +4982,11 @@ special ``:`` syntax:
     else:
       quit("cannot open: " & fn)
 
-  withFile(txt, "ttempl3.txt", fmWrite):
+  withFile(txt, "ttempl3.txt", fmWrite):  # special colon
     txt.writeLine("line 1")
     txt.writeLine("line 2")
 
-In the example the two ``writeLine`` statements are bound to the ``actions``
+In the example, the two ``writeLine`` statements are bound to the ``actions``
 parameter.
 
 
