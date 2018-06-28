@@ -110,20 +110,19 @@ block:
     parseArithExpr = pegAst.eventParser:
       pkNonTerminal:
         enter:
-          let ntName {.inject.} = p.nt.name.toLowerAscii
-          pStack.add ntName
+          pStack.add p.nt.name
         leave:
           pStack.setLen pStack.high
           if length > 0:
             let matchStr = txt.substr(start, start+length-1)
-            case ntName
-            of "value":
+            case p.nt.name
+            of "Value":
               try:
                 valStack.add matchStr.parseFloat
                 echo valStack
               except ValueError:
                 discard
-            of "sum", "product":
+            of "Sum", "Product":
               try:
                 let val = matchStr.parseFloat
               except ValueError:
@@ -139,7 +138,7 @@ block:
                   echo opStack 
       pkChar:
         leave:
-          if length == 1 and "value" != pStack[^1]:
+          if length == 1 and "Value" != pStack[^1]:
             let matchChar = txt[start]
             opStack.add matchChar
             echo opStack 

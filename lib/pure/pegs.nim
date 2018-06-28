@@ -542,6 +542,8 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
+# Used to make the main parser proc or event parser procs from the same code
+# base.
 template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
   case p.kind
   of pkEmpty: result = 0 # match of length 0
@@ -766,7 +768,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
   ## proc).
   ## Returns -1 if it does not match, else the length of the match
 
-  # Set the callbacks to do-nothing.
+  # Set the handlers to do-nothing.
   template enter(pk, p, start) =
     discard
   template leave(pk, p, start, length) =
@@ -781,9 +783,9 @@ template mkLeaveCb(cbPostf, body) {.dirty.} =
   template `leave cbPostf`(p, start, length) =
     body
 
-macro mkHandlers*(callbacks: untyped): untyped =
+macro mkHandlers*(handlers: untyped): untyped =
   let cbms = newStmtList()
-  for co in callbacks[0]:
+  for co in handlers[0]:
     if nnkCall != co.kind:
       error("Call syntax expected.", co)
     let pk = co[0]
@@ -804,15 +806,15 @@ macro mkHandlers*(callbacks: untyped): untyped =
             cbms.add getAst(mkLeaveCb(cbPostf, cb[1]))
           else:
             error(
-              "Unsupported callback identifier, expected 'enter' or 'leave'.",
+              "Unsupported handler identifier, expected 'enter' or 'leave'.",
               cb[0]
             )
   cbms
 
-template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirty.} =
+template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty.} =
   ## Generates an interpreting event parser proc according to the given PEG
-  ## AST and callback code blocks. The proc can be called with a text
-  ## to be parsed and will execute the callback code blocks whenever their
+  ## AST and handler code blocks. The proc can be called with a text
+  ## to be parsed and will execute the handler code blocks whenever their
   ## associated grammar element is matched. It returns -1 if the text does not
   ## match, else the length of the match. The following example code evaluates
   ## an arithmetic expression defined by this simple PEG:
@@ -834,20 +836,19 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
   ##    parseArithExpr = pegAst.eventParser:
   ##      pkNonTerminal:
   ##        enter:
-  ##          let ntName {.inject.} = p.nt.name.toLowerAscii
-  ##          pStack.add ntName
+  ##          pStack.add p.nt.name
   ##        leave:
   ##          pStack.setLen pStack.high
   ##          if length > 0:
   ##            let matchStr = txt.substr(start, start+length-1)
-  ##            case ntName
-  ##            of "value":
+  ##            case p.nt.name
+  ##            of "Value":
   ##              try:
   ##                valStack.add matchStr.parseFloat
   ##                echo valStack
   ##              except ValueError:
   ##                discard
-  ##            of "sum", "product":
+  ##            of "Sum", "Product":
   ##              try:
   ##                let val = matchStr.parseFloat
   ##              except ValueError:
@@ -863,19 +864,20 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
   ##                  echo opStack 
   ##      pkChar:
   ##        leave:
-  ##          if length == 1 and "value" != pStack[^1]:
+  ##          if length == 1 and "Value" != pStack[^1]:
   ##            let matchChar = txt[start]
   ##            opStack.add matchChar
-  ##            echo opStack
+  ##            echo opStack 
   ## 
-  ## The fields of the
-  ## Parses a string according to the given PEG. The fields of the
-  ## ``PegHandlers`` parameter correspond to the content of the ``kind`` field
-  ## of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
-  ## and ``leave`` procs of the corresponding callback object are called at the
-  ## beginning and the end of the match, respectively. Handlers not specified
-  ## in the construction of the ``PegHandlers`` object will be ignored.
-  ## Returns -1 if ``s`` does not match, else the length of the match.
+  ## The ``handlers`` parameter consists of code blocks for ``PegKind``s,
+  ## which define the grammar elements of interest. Each block can contain
+  ## handler code to be executed when the parser enters and leaves text
+  ## matching the grammar element. An ``enter`` handler can access the specific
+  ## PEG AST node being matched as ``p`` and the position of the matched text
+  ## segment as ``start``. A ``leave`` handler can access ``p``, ``start`` and
+  ## also the length of the matched text segment in ``length``. Symbols
+  ## declared in an ``enter`` handler can be made visible in the corresponding
+  ## ``leave`` handler by annotating it with an ``inject`` pragma.
   block:
     proc parser(s: string): int =
       var
@@ -884,7 +886,7 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
       proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
 
         mkHandlers:
-          callbacks
+          handlers
 
         macro enter(pk, p, start: untyped): untyped =
           template mkDoEnter(cbPostf, p, start) =
