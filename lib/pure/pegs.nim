@@ -814,9 +814,60 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
   ## AST and callback code blocks. The proc can be called with a text
   ## to be parsed and will execute the callback code blocks whenever their
   ## associated grammar element is matched. It returns -1 if the text does not
-  ## match, else the length of the match. Example usage:
-  ## ```
-  ## ```
+  ## match, else the length of the match. The following example code evaluates
+  ## an arithmetic expression defined by this simple PEG:
+  ##
+  ## .. code-block:: nim
+  ##  let
+  ##    pegAst = """
+  ##  Expr    <- Sum
+  ##  Sum     <- Product (('+' / '-')Product)*
+  ##  Product <- Value (('*' / '/')Value)*
+  ##  Value   <- [0-9]+ / '(' Expr ')'
+  ##    """.peg
+  ##    txt = "(5+3)/2-7*22"
+  ##  var
+  ##    pStack: seq[string] = @[]
+  ##    valStack: seq[float] = @[]
+  ##    opStack = ""
+  ##  let
+  ##    parseArithExpr = pegAst.eventParser:
+  ##      pkNonTerminal:
+  ##        enter:
+  ##          let ntName {.inject.} = p.nt.name.toLowerAscii
+  ##          pStack.add ntName
+  ##        leave:
+  ##          pStack.setLen pStack.high
+  ##          if length > 0:
+  ##            let matchStr = txt.substr(start, start+length-1)
+  ##            case ntName
+  ##            of "value":
+  ##              try:
+  ##                valStack.add matchStr.parseFloat
+  ##                echo valStack
+  ##              except ValueError:
+  ##                discard
+  ##            of "sum", "product":
+  ##              try:
+  ##                let val = matchStr.parseFloat
+  ##              except ValueError:
+  ##                if valStack.len > 1 and opStack.len > 0:
+  ##                  valStack[^2] = case opStack[^1]
+  ##                  of '+': valStack[^2] + valStack[^1]
+  ##                  of '-': valStack[^2] - valStack[^1]
+  ##                  of '*': valStack[^2] * valStack[^1]
+  ##                  else: valStack[^2] / valStack[^1]
+  ##                  valStack.setLen valStack.high
+  ##                  echo valStack 
+  ##                  opStack.setLen opStack.high
+  ##                  echo opStack 
+  ##      pkChar:
+  ##        leave:
+  ##          if length == 1 and "value" != pStack[^1]:
+  ##            let matchChar = txt[start]
+  ##            opStack.add matchChar
+  ##            echo opStack
+  ## 
   ## The fields of the
   ## Parses a string according to the given PEG. The fields of the
   ## ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
