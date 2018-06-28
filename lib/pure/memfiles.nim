@@ -91,7 +91,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ## with write access (e.g., with fmReadWrite).
   ##
   ##``mappedSize`` and ``offset``
-  ## can be used to map only a slice of the file.
+  ## can be used to map only a slice of the file. 
+  ## mappedSize must not be 0. If no size is supplied, it will be guessed from the file being opened
   ##
   ## ``offset`` must be multiples of the PAGE SIZE of your OS
   ## (usually 4K or 8K but is unique to your OS)
@@ -225,13 +226,16 @@ proc open*(filename: string, mode: FileMode = fmRead,
       result.size = mappedSize
     else:
       var stat: Stat
-      if fstat(result.handle, stat) != -1:
+      if fstat(result.handle, stat) != -1 and int(stat.st_size) > 0:
         # XXX: Hmm, this could be unsafe
         # Why is mmap taking int anyway?
         result.size = int(stat.st_size)
       else:
         fail(osLastError(), "error getting file size")
 
+    if result.size == 0:
+      fail(osLastError(), "mapped size cannot be zero")
+    
     result.mem = mmap(
       nil,
       result.size,
