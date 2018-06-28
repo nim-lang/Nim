@@ -31,32 +31,22 @@ pkNonTerminal: Sum @(2, 3)
 
 Event parser output
 -------------------
-Sum pkSequence@(2, 3): parsing @0
-  Product pkSequence@(3, 7): parsing @0
-    Value pkOrderedChoice@(4, 5): parsing @0
-      Expr pkNonTerminal@(1, 4): parsing @1
-        Sum pkSequence@(2, 3): parsing @1
-          Product pkSequence@(3, 7): parsing @1
-            Value pkOrderedChoice@(4, 5): parsing @1
-              5
-            5
-          Product pkSequence@(3, 7): parsing @3
-            Value pkOrderedChoice@(4, 5): parsing @3
-              3
-            3
-          5+3
-        5+3
-      (5+3)
-    Value pkOrderedChoice@(4, 5): parsing @6
-      2
-    (5+3)/2
-  Product pkSequence@(3, 7): parsing @8
-    Value pkOrderedChoice@(4, 5): parsing @8
-      7
-    Value pkOrderedChoice@(4, 5): parsing @10
-      22
-    7*22
-  (5+3)/2+7*22
+@[5.0]
++
+@[5.0, 3.0]
+@[8.0]
+
+/
+@[8.0, 2.0]
+@[4.0]
+
+-
+@[4.0, 7.0]
+-*
+@[4.0, 7.0, 22.0]
+@[4.0, 154.0]
+-
+@[-150.0]
 '''
 """
 
@@ -68,111 +58,92 @@ const
 
 let
   pegAst = """
-Expr <- Sum
-SumOp <- ('+' / '-')
-ProductOp <- ('*' / '/')
-Sum <- Product (SumOp Product)*
-Product <- Value (ProductOp  Value)*
-Value <- [0-9]+ / '(' Expr ')'
+Expr    <- Sum
+Sum     <- Product (('+' / '-')Product)*
+Product <- Value (('*' / '/')Value)*
+Value   <- [0-9]+ / '(' Expr ')'
   """.peg
-  # txt = "(5+3)/2-7*22"
-  txt = "1+(2+3)*4"
+  txt = "(5+3)/2-7*22"
 
-var
-  outp = newStringStream()
-  processed: seq[string] = @[]
+block:
+  var
+    outp = newStringStream()
+    processed: seq[string] = @[]
 
-proc prt(outp: Stream, kind: PegKind, s: string; level: int = 0) =
-  outp.writeLine indent.repeat(level) & "$1: $2" % [$kind, s]
+  proc prt(outp: Stream, kind: PegKind, s: string; level: int = 0) =
+    outp.writeLine indent.repeat(level) & "$1: $2" % [$kind, s]
 
-proc recLoop(p: Peg, level: int = 0) =
-  case p.kind
-  of pkEmpty..pkWhitespace:
-    discard
-  of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle:
-    outp.prt(p.kind, $p, level)
-  of pkChar, pkGreedyRepChar:
-    outp.prt(p.kind, $p, level)
-  of pkCharChoice, pkGreedyRepSet:
-    outp.prt(p.kind, $p, level)
-  of pkNonTerminal:
-    outp.prt(p.kind,
-      "$1 @($3, $4)" % [p.nt.name, $p.nt.rule.kind, $p.nt.line, $p.nt.col], level)
-    if not(p.nt.name in processed):
-      processed.add p.nt.name
-      p.nt.rule.recLoop level+1
-  of pkBackRef..pkBackRefIgnoreStyle:
-    outp.prt(p.kind, $p, level)
-  else:
-    outp.prt(p.kind, $p, level)
-    for s in items(p):
-      s.recLoop level+1
+  proc recLoop(p: Peg, level: int = 0) =
+    case p.kind
+    of pkEmpty..pkWhitespace:
+      discard
+    of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle:
+      outp.prt(p.kind, $p, level)
+    of pkChar, pkGreedyRepChar:
+      outp.prt(p.kind, $p, level)
+    of pkCharChoice, pkGreedyRepSet:
+      outp.prt(p.kind, $p, level)
+    of pkNonTerminal:
+      outp.prt(p.kind,
+        "$1 @($3, $4)" % [p.nt.name, $p.nt.rule.kind, $p.nt.line, $p.nt.col], level)
+      if not(p.nt.name in processed):
+        processed.add p.nt.name
+        p.nt.rule.recLoop level+1
+    of pkBackRef..pkBackRefIgnoreStyle:
+      outp.prt(p.kind, $p, level)
+    else:
+      outp.prt(p.kind, $p, level)
+      for s in items(p):
+        s.recLoop level+1
 
-pegAst.recLoop
-echo "PEG AST traversal output"
-echo "------------------------"
-echo outp.data
+  pegAst.recLoop
+  echo "PEG AST traversal output"
+  echo "------------------------"
+  echo outp.data
 
-proc prt(outp: Stream, s: string, level: int = 0) =
-  outp.writeLine indent.repeat(level) & s
-
-outp = newStringStream()
-var level: int = 0
-let eParse = pegAst.eventParser:
-  pkNonTerminal:
-    enter:
-      outp.prt("$1 $2@($3, $4): parsing @$5" %
-        [p.nt.name, $p.nt.rule.kind, $p.nt.line, $p.nt.col, $start], level)
-      level.inc
-    leave:
-      if -1 < length:
-        outp.prt(txt.substr(start, start+length-1), level)
-      level.dec
-let pLen = eParse(txt)
-assert txt.len == pLen
-echo "Event parser output"
-echo "-------------------"
-echo outp.data
-
-var
-  stack: seq[float] = @[]
-let
-  arithExprParse = pegAst.eventParser:
-    pkNonTerminal:
-      enter:
-        let ntName {.inject.} = p.nt.name.toLowerAscii
-        echo "start of symbol: ", ntName 
-      leave:
-        var
-          matchStr, strMatch: string = ""
-          opInd: int = -1
-        if length > 0:
-          matchStr = txt.substr(start, start+length-1)
-          strMatch = matchStr.reversed
-          opInd = strMatch.find(peg("'+'/'-'/'*'/'/'"))
-        case ntName
-        of "value":
-          if opInd == -1:
-            stack.add matchStr.parseFloat
-            echo "new stack: ", stack 
-        of "sum", "product":
-          if stack.len == 2:
-            if opInd == -1:
-              echo "--> nope"
-            else:
-              echo "--> ", strMatch[opInd]
-              stack[^2] = case strMatch[opInd]
-              of '+': stack[^2] + stack[^1]
-              of '-': stack[^2] - stack[^1]
-              of '*': stack[^2] * stack[^1]
-              else: stack[^2] / stack[^1]
-              stack.setLen 1
-              echo "new stack: ", stack 
-        echo "end of symbol: ", ntName
-    pkChar:
-      enter:
-        echo "start of char at ", start
-echo "Arithmetic expression parser output"
-echo "-----------------------------------"
-let aepLen = arithExprParse(txt)
-assert txt.len == aepLen
+block:
+  var
+    pStack: seq[string] = @[]
+    valStack: seq[float] = @[]
+    opStack = ""
+  let
+    parseArithExpr = pegAst.eventParser:
+      pkNonTerminal:
+        enter:
+          let ntName {.inject.} = p.nt.name.toLowerAscii
+          pStack.add ntName
+        leave:
+          pStack.setLen pStack.high
+          if length > 0:
+            let matchStr = txt.substr(start, start+length-1)
+            case ntName
+            of "value":
+              try:
+                valStack.add matchStr.parseFloat
+                echo valStack
+              except ValueError:
+                discard
+            of "sum", "product":
+              try:
+                let val = matchStr.parseFloat
+              except ValueError:
+                if valStack.len > 1 and opStack.len > 0:
+                  valStack[^2] = case opStack[^1]
+                  of '+': valStack[^2] + valStack[^1]
+                  of '-': valStack[^2] - valStack[^1]
+                  of '*': valStack[^2] * valStack[^1]
+                  else: valStack[^2] / valStack[^1]
+                  valStack.setLen valStack.high
+                  echo valStack 
+                  opStack.setLen opStack.high
+                  echo opStack 
+      pkChar:
+        leave:
+          if length == 1 and "value" != pStack[^1]:
+            let matchChar = txt[start]
+            opStack.add matchChar
+            echo opStack 
+  echo "Event parser output"
+  echo "-------------------"
+  let pLen = parseArithExpr(txt)
+  assert txt.len == pLen
