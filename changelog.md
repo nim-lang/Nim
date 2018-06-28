@@ -80,7 +80,7 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
-- Added a simple interpreting event parser proc named ``parse`` to the ``pegs`` module.
+- Added a simple interpreting event parser template ``eventParser`` to the ``pegs`` module.
 
 ### Library changes
 
