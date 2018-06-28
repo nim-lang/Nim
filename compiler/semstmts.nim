@@ -823,11 +823,12 @@ proc semRaise(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   if n[0].kind != nkEmpty:
     n[0] = semExprWithType(c, n[0])
-    let typ = n[0].typ
+    var typ = n[0].typ
     if not isImportedException(typ, c.config):
-      if typ.kind != tyRef or typ.lastSon.kind != tyObject:
+      typ = typ.skipTypes({tyAlias, tyGenericInst})
+      if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if typ.len > 0 and not isException(typ.lastSon):
+      if not isException(typ.lastSon):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception",
                           [typeToString(typ)])
 
