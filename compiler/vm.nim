@@ -209,7 +209,7 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
-  of rkNode: n = x.node
+  of rkNode: n = copyValue(x.node)
   of rkRegisterAddr: writeField(n, x.regAddr[])
   of rkNodeAddr: n = x.nodeAddr[]
 
@@ -912,6 +912,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
+        regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
     of opcEcho:
@@ -1462,6 +1463,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
         regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
+        regs[ra].node.flags.incl nfIsRef
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.config, c.debug[pc], "cannot set type")
