@@ -1,3 +1,17 @@
+
+
+import macros
+
+proc foo(arg: NimNodeKind): void {.exportc: "foo".} =
+  echo arg
+
+proc mymain(): void =
+  foo(nnkIdent)
+  foo(nnkVarSection)
+
+mymain()
+
+#[
 import macros
 
 proc unpackTypedesc(arg: NimNode): NimNode =
@@ -41,3 +55,4 @@ type
 var myType: MyGeneric[int]
 
 echo myType
+]#

@@ -167,6 +167,33 @@ class NimStringPrinter:
 
 ################################################################
 
+
+
+# proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
+#   ## Return string representation for enumeration values
+#   var n = typ.node
+#   if ntfEnumHole notin typ.flags:
+#     let o = e - n.sons[0].offset
+#     if o >= 0 and o <% typ.node.len:
+#       return $n.sons[o].name
+#   else:
+#     # ugh we need a slow linear search:
+#     var s = n.sons
+#     for i in 0 .. n.len-1:
+#       if s[i].offset == e:
+#         return $s[i].name
+#  result = $e & " (invalid data!)"
+
+
+
+def reprEnum(e, typ):
+  n = typ["node"]
+  return ""
+
+
+
+
+
 class NimEnumPrinter:
 
   pattern = re.compile(r'^tyEnum_(.+?)_([A-Za-z0-9]+)$')
@@ -174,25 +201,30 @@ class NimEnumPrinter:
   def __init__(self, val):
     self.val      = val
     self.reprEnum = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
-    typeInfoName = "NTI_" + self.pattern.match(str(self.val.type)).group(2) + "_"
-    self.nti = gdb.lookup_global_symbol(typeInfoName)
+    self.typeInfoName = "NTI_" + self.pattern.match(str(self.val.type)).group(2) + "_"
+    self.nti = gdb.lookup_global_symbol(self.typeInfoName)
 
     if self.reprEnum is None:
       printError('reprEnum', "NimEnumPrinter: lookup global symbol 'reprEnum' failed.\n")
-    else:
-      self.reprEnum = self.reprEnum.value
 
     if self.nti is None:
-      printError(typeInfoName, "NimEnumPrinter: lookup global symbol '"+typeInfoName+" failed for " + self.val.type.name + ".\n")
-    else:
-      self.nti = self.nti.value
+      printError(self.typeInfoName, "NimEnumPrinter: lookup global symbol '"+self.typeInfoName+" failed for " + self.val.type.name + ".\n")
 
   def display_hint(self):
     return 'string'
 
   def to_string(self):
-    if self.reprEnum and self.nti:
-      return self.reprEnum(self.val, self.nti)
+
+    #if self.reprEnum and self.nti:
+    if False:
+      frame    = gdb.newest_frame()
+      function = self.reprEnum.value(frame)
+      arg0     = self.val
+      arg1     = self.nti.value(frame).address
+      #result   = function(arg0, arg1)
+      #resultStr = NimStringPrinter(result).to_string()
+      #return resultStr
+      return reprEnum(arg0, arg1)
     else:
       return str(int(self.val))
 
@@ -297,7 +329,7 @@ def makematcher(klass):
       if klass.pattern.match(typeName):
         return klass(val)
     except Exception as e:
-      gdb.write("No matcher for type '" + typeName + "': " + str(e) + "\n", gdb.STDERR)
+      printError(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
 nimobjfile.pretty_printers = []
