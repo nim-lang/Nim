@@ -79,11 +79,6 @@ type
 
   `nil` {.magic: "Nil".}
 
-  expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-                                    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
-  stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
-                                    ## **Deprecated** since version 0.15. Use ``typed`` instead.
-
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
@@ -111,8 +106,6 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
 
-{.deprecated: [SomeReal: SomeFloat].}
-
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
@@ -124,15 +117,6 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   when not defined(release):
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
-
-when defined(nimalias):
-  {.deprecated: [
-    TSignedInt: SomeSignedInt,
-    TUnsignedInt: SomeUnsignedInt,
-    TInteger: SomeInteger,
-    TReal: SomeFloat,
-    TNumber: SomeNumber,
-    TOrdinal: SomeOrdinal].}
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -147,10 +131,6 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 
 when defined(useNimRtl):
   {.deadCodeElim: on.}  # dce option deprecated
-
-proc definedInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
-  ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
 proc declaredInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, compileTime.}
@@ -638,32 +618,6 @@ when defined(nimNewRuntime):
   type
     MoveError* = object of SystemError ## \
       ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
-
-{.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
-  FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
-  FWriteIO: WriteIOEffect, FExecIO: ExecIOEffect,
-
-  E_Base: Exception, ESystem: SystemError, EIO: IOError,
-  EOS: OSError, EInvalidLibrary: LibraryError,
-  EResourceExhausted: ResourceExhaustedError,
-  EArithmetic: ArithmeticError, EDivByZero: DivByZeroError,
-  EOverflow: OverflowError, EAccessViolation: AccessViolationError,
-  EAssertionFailed: AssertionError, EInvalidValue: ValueError,
-  EInvalidKey: KeyError, EOutOfMemory: OutOfMemError,
-  EInvalidIndex: IndexError, EInvalidField: FieldError,
-  EOutOfRange: RangeError, EStackOverflow: StackOverflowError,
-  ENoExceptionToReraise: ReraiseError,
-  EInvalidObjectAssignment: ObjectAssignmentError,
-  EInvalidObjectConversion: ObjectConversionError,
-  EDeadThread: DeadThreadError,
-  EFloatInexact: FloatInexactError,
-  EFloatUnderflow: FloatUnderflowError,
-  EFloatingPoint: FloatingPointError,
-  EFloatInvalidOp: FloatInvalidOpError,
-  EFloatDivByZero: FloatDivByZeroError,
-  EFloatOverflow: FloatOverflowError,
-  ESynch: Exception
-].}
 
 when defined(js) or defined(nimdoc):
   type
@@ -1655,8 +1609,6 @@ else:
     ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
     ## targets.
 
-{.deprecated: [TAddress: ByteAddress].}
-
 when defined(windows):
   type
     clong* {.importc: "long", nodecl.} = int32
@@ -1747,17 +1699,6 @@ proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
 # Support for addQuitProc() is done by Ansi C's facilities here.
 # In case of an unhandled exeption the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
-
-proc copy*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect, deprecated.}
-proc copy*(s: string, first, last: int): string {.
-  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect,
-  deprecated.}
-  ## copies a slice of `s` into a new string and returns this new
-  ## string. The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``.
-  ## **Deprecated since version 0.8.12**: Use ``substr`` instead.
 
 proc substr*(s: string, first = 0): string {.
   magic: "CopyStr", importc: "copyStr", noSideEffect.}
@@ -2619,8 +2560,6 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  {.deprecated: [TGC_Strategy: GC_Strategy].}
-
   when not defined(JS):
     proc GC_disable*() {.rtl, inl, benign.}
       ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
@@ -2633,10 +2572,6 @@ when not defined(nimscript) and hasAlloc:
     proc GC_fullCollect*() {.rtl, benign.}
       ## forces a full garbage collection pass.
       ## Ordinary code does not need to call this (and should not).
-
-    proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
-      ## tells the GC the desired strategy for the application.
-      ## **Deprecated** since version 0.8.14. This has always been a nop.
 
     proc GC_enableMarkAndSweep*() {.rtl, benign.}
     proc GC_disableMarkAndSweep*() {.rtl, benign.}
@@ -2789,7 +2724,6 @@ type
     filename*: cstring  ## filename of the proc that is currently executing
     len*: int16         ## length of the inspectable slots
     calldepth*: int16   ## used for max call depth checking
-#{.deprecated: [TFrame: Frame].}
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -2966,8 +2900,6 @@ when not defined(JS): #and not defined(nimscript):
     FileHandle* = cint ## type that represents an OS file handle; this is
                        ## useful for low-level file access
 
-  {.deprecated: [TFile: File, TFileHandle: FileHandle, TFileMode: FileMode].}
-
   include "system/ansi_c"
 
   proc cmp(x, y: string): int =
@@ -3120,10 +3052,6 @@ when not defined(JS): #and not defined(nimscript):
       ## if the end of the file has been reached, ``true`` otherwise. If
       ## ``false`` is returned `line` contains no new data.
 
-    proc writeLn*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
-                             tags: [WriteIOEffect], benign, deprecated.}
-      ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
-
     proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}
       ## writes the values `x` to `f` and then writes "\\n".
@@ -3238,7 +3166,6 @@ when not defined(JS): #and not defined(nimscript):
         hasRaiseAction: bool
         raiseAction: proc (e: ref Exception): bool {.closure.}
       SafePoint = TSafePoint
-  #  {.deprecated: [TSafePoint: SafePoint].}
 
   when declared(initAllocator):
     initAllocator()
@@ -3927,7 +3854,6 @@ type
 
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## represents a Nim AST node. Macros operate on this type.
-{.deprecated: [PNimrodNode: NimNode].}
 
 when false:
   template eval*(blk: typed): typed =
