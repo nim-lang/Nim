@@ -775,49 +775,13 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
     discard
   matchOrParse(rawMatch)
 
-template mkEnterCb(cbPostf, body) {.dirty.} =
-  template `enter cbPostf`(p, start) =
-    body
-
-template mkLeaveCb(cbPostf, body) {.dirty.} =
-  template `leave cbPostf`(p, start, length) =
-    body
-
-macro mkHandlers*(handlers: untyped): untyped =
-  let cbms = newStmtList()
-  for co in handlers[0]:
-    if nnkCall != co.kind:
-      error("Call syntax expected.", co)
-    let pk = co[0]
-    if nnkIdent != pk.kind:
-      error("PegKind expected.", pk)
-    if 2 == co.len:
-      for cb in co[1]:
-        if nnkCall != cb.kind:
-          error("Call syntax expected.", cb)
-        if nnkIdent != cb[0].kind:
-          error("Handler identifier expected.", cb[0])
-        if 2 == cb.len:
-          let cbPostf = toNimIdent(substr($pk.ident, 2))
-          case $cb[0].ident
-          of "enter":
-            cbms.add getAst(mkEnterCb(cbPostf, cb[1]))
-          of "leave":
-            cbms.add getAst(mkLeaveCb(cbPostf, cb[1]))
-          else:
-            error(
-              "Unsupported handler identifier, expected 'enter' or 'leave'.",
-              cb[0]
-            )
-  cbms
-
 template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty.} =
   ## Generates an interpreting event parser proc according to the given PEG
   ## AST and handler code blocks. The proc can be called with a text
   ## to be parsed and will execute the handler code blocks whenever their
   ## associated grammar element is matched. It returns -1 if the text does not
-  ## match, else the length of the match. The following example code evaluates
-  ## an arithmetic expression defined by this simple PEG:
+  ## match, else the length of the total match. The following example code
+  ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
   ##  let
@@ -878,6 +842,42 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty
   ## also the length of the matched text segment in ``length``. Symbols
   ## declared in an ``enter`` handler can be made visible in the corresponding
   ## ``leave`` handler by annotating it with an ``inject`` pragma.
+  template mkEnterCb(cbPostf, body) {.dirty.} =
+    template `enter cbPostf`(p, start) =
+      body
+
+  template mkLeaveCb(cbPostf, body) {.dirty.} =
+    template `leave cbPostf`(p, start, length) =
+      body
+
+  macro mkHandlers(hdlrs: untyped): untyped =
+    let cbms = newStmtList()
+    for co in hdlrs[0]:
+      if nnkCall != co.kind:
+        error("Call syntax expected.", co)
+      let pk = co[0]
+      if nnkIdent != pk.kind:
+        error("PegKind expected.", pk)
+      if 2 == co.len:
+        for cb in co[1]:
+          if nnkCall != cb.kind:
+            error("Call syntax expected.", cb)
+          if nnkIdent != cb[0].kind:
+            error("Handler identifier expected.", cb[0])
+          if 2 == cb.len:
+            let cbPostf = toNimIdent(substr($pk.ident, 2))
+            case $cb[0].ident
+            of "enter":
+              cbms.add getAst(mkEnterCb(cbPostf, cb[1]))
+            of "leave":
+              cbms.add getAst(mkLeaveCb(cbPostf, cb[1]))
+            else:
+              error(
+                "Unsupported handler identifier, expected 'enter' or 'leave'.",
+                cb[0]
+              )
+    cbms
+
   block:
     proc parser(s: string): int =
       var
