@@ -167,8 +167,23 @@ class NimStringPrinter:
 
 ################################################################
 
+# proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
+#   ## Return string representation for enumeration values
+#   var n = typ.node
+#   if ntfEnumHole notin typ.flags:
+#     let o = e - n.sons[0].offset
+#     if o >= 0 and o <% typ.node.len:
+#       return $n.sons[o].name
+#   else:
+#     # ugh we need a slow linear search:
+#     var s = n.sons
+#     for i in 0 .. n.len-1:
+#       if s[i].offset == e:
+#         return $s[i].name
+#   result = $e & " (invalid data!)"
+
 def reprEnum(e, typ):
-  """ this is a python port of reprEnum from the standard library """
+  """ this is a port of the nim runtime function `reprEnum` to python """
   e = int(e)
   n = typ["node"]
   flags = int(typ["flags"])
