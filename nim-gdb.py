@@ -167,45 +167,33 @@ class NimStringPrinter:
 
 ################################################################
 
-
-
-# proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-#   ## Return string representation for enumeration values
-#   var n = typ.node
-#   if ntfEnumHole notin typ.flags:
-#     let o = e - n.sons[0].offset
-#     if o >= 0 and o <% typ.node.len:
-#       return $n.sons[o].name
-#   else:
-#     # ugh we need a slow linear search:
-#     var s = n.sons
-#     for i in 0 .. n.len-1:
-#       if s[i].offset == e:
-#         return $s[i].name
-#  result = $e & " (invalid data!)"
-
-
-
 def reprEnum(e, typ):
+  """ this is a python port of reprEnum from the standard library """
+  e = int(e)
   n = typ["node"]
-  return ""
+  flags = int(typ["flags"])
+  # 1 << 2 is {ntfEnumHole}
+  if ((1 << 2) & flags) == 0:
+    o = e - int(n["sons"][0]["offset"])
+    if o >= 0 and 0 < int(n["len"]):
+      return n["sons"][o]["name"].string("utf-8", "ignore")
+  else:
+    # ugh we need a slow linear search:
+    s = n["sons"]
+    for i in range(0, int(n["len"])):
+      if int(s[i]["offset"]) == e:
+        return s[i]["name"].string("utf-8", "ignore")
 
-
-
-
+  return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-
   pattern = re.compile(r'^tyEnum_(.+?)_([A-Za-z0-9]+)$')
 
   def __init__(self, val):
     self.val      = val
-    self.reprEnum = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+    #self.reprEnum = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
     self.typeInfoName = "NTI_" + self.pattern.match(str(self.val.type)).group(2) + "_"
     self.nti = gdb.lookup_global_symbol(self.typeInfoName)
-
-    if self.reprEnum is None:
-      printError('reprEnum', "NimEnumPrinter: lookup global symbol 'reprEnum' failed.\n")
 
     if self.nti is None:
       printError(self.typeInfoName, "NimEnumPrinter: lookup global symbol '"+self.typeInfoName+" failed for " + self.val.type.name + ".\n")
@@ -214,19 +202,12 @@ class NimEnumPrinter:
     return 'string'
 
   def to_string(self):
-
-    #if self.reprEnum and self.nti:
-    if False:
-      frame    = gdb.newest_frame()
-      function = self.reprEnum.value(frame)
+    if self.nti:
       arg0     = self.val
-      arg1     = self.nti.value(frame).address
-      #result   = function(arg0, arg1)
-      #resultStr = NimStringPrinter(result).to_string()
-      #return resultStr
+      arg1     = self.nti.value(gdb.newest_frame())
       return reprEnum(arg0, arg1)
     else:
-      return str(int(self.val))
+      return str(int(self.val)) + " (no typeinfo found)"
 
 ################################################################
 

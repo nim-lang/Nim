@@ -1,21 +1,13 @@
 #set args c scratch.nim
-
 source nim-gdb.py
-
 # rbreak quit
-
 break foo
 run
 #break reprEnum
 #info args
-
-# quit
-
+#quit
 #print msg
 
-
-
-#quit
 
 #info args
 #next
