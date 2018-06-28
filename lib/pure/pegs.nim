@@ -542,20 +542,27 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-# Used to make the main parser proc or event parser procs from the same code
-# base.
 template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
+  ## Internal use only.
   case p.kind
-  of pkEmpty: result = 0 # match of length 0
+  of pkEmpty:
+    enter(pkEmpty, p, start)
+    result = 0 # match of length 0
+    leave(pkEmpty, p, start, result)
   of pkAny:
+    enter(pkAny, p, start)
     if start < s.len: result = 1
     else: result = -1
+    leave(pkAny, p, start, result)
   of pkAnyRune:
+    enter(pkAnyRune, p, start)
     if start < s.len:
       result = runeLenAt(s, start)
     else:
       result = -1
+    leave(pkAnyRune, p, start, result)
   of pkLetter:
+    enter(pkLetter, p, start)
     if start < s.len:
       var a: Rune
       result = start
@@ -564,7 +571,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       else: result = -1
     else:
       result = -1
+    leave(pkLetter, p, start, result)
   of pkLower:
+    enter(pkLower, p, start)
     if start < s.len:
       var a: Rune
       result = start
@@ -573,7 +582,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       else: result = -1
     else:
       result = -1
+    leave(pkLower, p, start, result)
   of pkUpper:
+    enter(pkUpper, p, start)
     if start < s.len:
       var a: Rune
       result = start
@@ -582,7 +593,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       else: result = -1
     else:
       result = -1
+    leave(pkUpper, p, start, result)
   of pkTitle:
+    enter(pkTitle, p, start)
     if start < s.len:
       var a: Rune
       result = start
@@ -591,7 +604,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       else: result = -1
     else:
       result = -1
+    leave(pkTitle, p, start, result)
   of pkWhitespace:
+    enter(pkWhitespace, p, start)
     if start < s.len:
       var a: Rune
       result = start
@@ -600,21 +615,29 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       else: result = -1
     else:
       result = -1
+    leave(pkWhitespace, p, start, result)
   of pkGreedyAny:
+    enter(pkGreedyAny, p, start)
     result = len(s) - start
+    leave(pkGreedyAny, p, start, result)
   of pkNewLine:
+    enter(pkNewLine, p, start)
     if start < s.len and s[start] == '\L': result = 1
     elif start < s.len and s[start] == '\C':
       if start+1 < s.len and s[start+1] == '\L': result = 2
       else: result = 1
     else: result = -1
+    leave(pkNewLine, p, start, result)
   of pkTerminal:
+    enter(pkTerminal, p, start)
     result = len(p.term)
     for i in 0..result-1:
       if start+i >= s.len or p.term[i] != s[start+i]:
         result = -1
         break
+    leave(pkTerminal, p, start, result)
   of pkTerminalIgnoreCase:
+    enter(pkTerminalIgnoreCase, p, start)
     var
       i = 0
       a, b: Rune
@@ -629,7 +652,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
         result = -1
         break
     dec(result, start)
+    leave(pkTerminalIgnoreCase, p, start, result)
   of pkTerminalIgnoreStyle:
+    enter(pkTerminalIgnoreStyle, p, start)
     var
       i = 0
       a, b: Rune
@@ -650,14 +675,17 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
         result = -1
         break
     dec(result, start)
+    leave(pkTerminalIgnoreStyle, p, start, result)
   of pkChar:
     enter(pkChar, p, start)
     if start < s.len and p.ch == s[start]: result = 1
     else: result = -1
     leave(pkChar, p, start, result)
   of pkCharChoice:
+    enter(pkCharChoice, p, start)
     if start < s.len and contains(p.charChoice[], s[start]): result = 1
     else: result = -1
+    leave(pkCharChoice, p, start, result)
   of pkNonTerminal:
     enter(pkNonTerminal, p, start)
     var oldMl = c.ml
@@ -667,6 +695,7 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
     if result < 0: c.ml = oldMl
     leave(pkNonTerminal, p, start, result)
   of pkSequence:
+    enter(pkSequence, p, start)
     var oldMl = c.ml
     result = 0
     for i in 0..high(p.sons):
@@ -676,13 +705,17 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
         result = -1
         break
       else: inc(result, x)
+    leave(pkSequence, p, start, result)
   of pkOrderedChoice:
+    enter(pkOrderedChoice, p, start)
     var oldMl = c.ml
     for i in 0..high(p.sons):
       result = mopProc(s, p.sons[i], start, c)
       if result >= 0: break
       c.ml = oldMl
+    leave(pkOrderedChoice, p, start, result)
   of pkSearch:
+    enter(pkSearch, p, start)
     var oldMl = c.ml
     result = 0
     while start+result <= s.len:
@@ -693,7 +726,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       inc(result)
     result = -1
     c.ml = oldMl
+    leave(pkSearch, p, start, result)
   of pkCapturedSearch:
+    enter(pkCapturedSearch, p, start)
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
     result = 0
@@ -708,7 +743,9 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       inc(result)
     result = -1
     c.ml = idx
+    leave(pkCapturedSearch, p, start, result)
   of pkGreedyRep:
+    enter(pkGreedyRep, p, start)
     result = 0
     while true:
       var x = mopProc(s, p.sons[0], start+result, c)
@@ -718,28 +755,40 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       # expected thing in this case.
       if x <= 0: break
       inc(result, x)
+    leave(pkGreedyRep, p, start, result)
   of pkGreedyRepChar:
+    enter(pkGreedyRepChar, p, start)
     result = 0
     var ch = p.ch
     while start+result < s.len and ch == s[start+result]: inc(result)
+    leave(pkGreedyRepChar, p, start, result)
   of pkGreedyRepSet:
+    enter(pkGreedyRepSet, p, start)
     result = 0
     while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
+    leave(pkGreedyRepSet, p, start, result)
   of pkOption:
+    enter(pkOption, p, start)
     result = max(0, mopProc(s, p.sons[0], start, c))
+    leave(pkOption, p, start, result)
   of pkAndPredicate:
+    enter(pkAndPredicate, p, start)
     var oldMl = c.ml
     result = mopProc(s, p.sons[0], start, c)
     if result >= 0: result = 0 # do not consume anything
     else: c.ml = oldMl
+    leave(pkAndPredicate, p, start, result)
   of pkNotPredicate:
+    enter(pkNotPredicate, p, start)
     var oldMl = c.ml
     result = mopProc(s, p.sons[0], start, c)
     if result < 0: result = 0
     else:
       c.ml = oldMl
       result = -1
+    leave(pkNotPredicate, p, start, result)
   of pkCapture:
+    enter(pkCapture, p, start)
     var idx = c.ml # reserve a slot for the subpattern
     inc(c.ml)
     result = mopProc(s, p.sons[0], start, c)
@@ -749,16 +798,21 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
       #else: silently ignore the capture
     else:
       c.ml = idx
+    leave(pkCapture, p, start, result)
   of pkBackRef..pkBackRefIgnoreStyle:
+    enter(pkBackRef, p, start)
     if p.index >= c.ml: return -1
     var (a, b) = c.matches[p.index]
     var n: Peg
     n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
     n.term = s.substr(a, b)
     result = mopProc(s, n, start, c)
+    leave(pkBackRef, p, start, result)
   of pkStartAnchor:
+    enter(pkStartAnchor, p, start)
     if c.origStart == start: result = 0
     else: result = -1
+    leave(pkStartAnchor, p, start, result)
   of pkRule, pkList: assert false
 
 proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
@@ -776,7 +830,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
   matchOrParse(rawMatch)
 
 template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty.} =
-  ## Generates an interpreting event parser proc according to the given PEG
+  ## Generates an interpreting event parser proc according to the specified PEG
   ## AST and handler code blocks. The proc can be called with a text
   ## to be parsed and will execute the handler code blocks whenever their
   ## associated grammar element is matched. It returns -1 if the text does not
@@ -784,6 +838,8 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
+  ##  import strutils, pegs
+  ##
   ##  let
   ##    pegAst = """
   ##  Expr    <- Sum
@@ -792,6 +848,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty
   ##  Value   <- [0-9]+ / '(' Expr ')'
   ##    """.peg
   ##    txt = "(5+3)/2-7*22"
+  ##
   ##  var
   ##    pStack: seq[string] = @[]
   ##    valStack: seq[float] = @[]
@@ -831,17 +888,19 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty
   ##          if length == 1 and "Value" != pStack[^1]:
   ##            let matchChar = txt[start]
   ##            opStack.add matchChar
-  ##            echo opStack 
+  ##            echo opStack
+  ##
+  ##  let pLen = parseArithExpr(txt)
   ## 
-  ## The ``handlers`` parameter consists of code blocks for ``PegKind``s,
+  ## The *handlers* parameter consists of code blocks for *PegKinds*,
   ## which define the grammar elements of interest. Each block can contain
   ## handler code to be executed when the parser enters and leaves text
-  ## matching the grammar element. An ``enter`` handler can access the specific
-  ## PEG AST node being matched as ``p`` and the position of the matched text
-  ## segment as ``start``. A ``leave`` handler can access ``p``, ``start`` and
-  ## also the length of the matched text segment in ``length``. Symbols
-  ## declared in an ``enter`` handler can be made visible in the corresponding
-  ## ``leave`` handler by annotating it with an ``inject`` pragma.
+  ## matching the grammar element. An *enter* handler can access the specific
+  ## PEG AST node being matched as *p* and the position of the matched text
+  ## segment as *start*. A *leave* handler can access *p*, *start* and
+  ## also the length of the matched text segment as *length*. Symbols
+  ## declared in an *enter* handler can be made visible in the corresponding
+  ## *leave* handler by annotating them with an *inject* pragma.
   template mkEnterCb(cbPostf, body) {.dirty.} =
     template `enter cbPostf`(p, start) =
       body
