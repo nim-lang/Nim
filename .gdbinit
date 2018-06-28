@@ -1,15 +1,24 @@
-set args c /tmp/scratch.nim
-source ~/gdb/nim-gdb.py
+set args c scratch.nim
 
-rbreak reprEnum
+source nim-gdb.py
+
+# rbreak reprEnum
+rbreak quit
 
 run
 
-next
-next
-next
+print msg
 
-print n->kind
 
-kill
-quit
+
+#quit
+
+#info args
+#next
+#next
+#next
+
+#print n->kind
+
+#kill
+#quit
