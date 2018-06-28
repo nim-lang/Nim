@@ -623,7 +623,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClassInst:
+     tyStatic, tyInferred, tyUserTypeClasses:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
@@ -642,7 +642,7 @@ proc firstFloat*(t: PType): BiggestFloat =
     getFloatValue(t.n.sons[0])
   of tyVar: firstFloat(t.sons[0])
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred:
+     tyStatic, tyInferred, tyUserTypeClasses:
     firstFloat(lastSon(t))
   else:
     internalError(newPartialConfigRef(), "invalid kind for firstFloat(" & $t.kind & ')')
@@ -679,7 +679,7 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred:
+     tyStatic, tyInferred, tyUserTypeClasses:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = 0
   of tyOrdinal:
@@ -699,7 +699,7 @@ proc lastFloat*(t: PType): BiggestFloat =
     assert(t.n.kind == nkRange)
     getFloatValue(t.n.sons[1])
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred:
+     tyStatic, tyInferred, tyUserTypeClasses:
     lastFloat(lastSon(t))
   else:
     internalError(newPartialConfigRef(), "invalid kind for lastFloat(" & $t.kind & ')')
@@ -707,7 +707,7 @@ proc lastFloat*(t: PType): BiggestFloat =
 
 
 proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
-  case t.kind
+  case t.skipTypes(tyUserTypeClasses).kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(conf, t)
   of tyDistinct: result = lengthOrd(conf, t.sons[0])
   else:
@@ -717,7 +717,7 @@ proc lengthOrd*(conf: ConfigRef; t: PType): BiggestInt =
     if last == high(BiggestInt) and first <= 0:
       result = last
     else:
-      result = lastOrd(conf, t) - firstOrd(conf, t) + 1
+      result = last - first + 1
 
 # -------------- type equality -----------------------------------------------
 
