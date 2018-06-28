@@ -781,7 +781,7 @@ template mkLeaveCb(cbPostf, body) {.dirty.} =
   template `leave cbPostf`(p, start, length) =
     body
 
-macro mkCallbacks*(callbacks: untyped): untyped =
+macro mkHandlers*(callbacks: untyped): untyped =
   let cbms = newStmtList()
   for co in callbacks[0]:
     if nnkCall != co.kind:
@@ -794,7 +794,7 @@ macro mkCallbacks*(callbacks: untyped): untyped =
         if nnkCall != cb.kind:
           error("Call syntax expected.", cb)
         if nnkIdent != cb[0].kind:
-          error("Callback identifier expected.", cb[0])
+          error("Handler identifier expected.", cb[0])
         if 2 == cb.len:
           let cbPostf = toNimIdent(substr($pk.ident, 2))
           case $cb[0].ident
@@ -870,11 +870,11 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
   ## 
   ## The fields of the
   ## Parses a string according to the given PEG. The fields of the
-  ## ``PegCallbacks`` parameter correspond to the content of the ``kind`` field
+  ## ``PegHandlers`` parameter correspond to the content of the ``kind`` field
   ## of ``Peg`` AST nodes: when a node is matched during parsing, the ``enter``
   ## and ``leave`` procs of the corresponding callback object are called at the
-  ## beginning and the end of the match, respectively. Callbacks not specified
-  ## in the construction of the ``PegCallbacks`` object will be ignored.
+  ## beginning and the end of the match, respectively. Handlers not specified
+  ## in the construction of the ``PegHandlers`` object will be ignored.
   ## Returns -1 if ``s`` does not match, else the length of the match.
   block:
     proc parser(s: string): int =
@@ -883,7 +883,7 @@ template eventParser*(pegAst, callbacks: untyped): (proc(s: string): int) {.dirt
         cs = Captures(matches: ms, ml: 0, origStart: 0)
       proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
 
-        mkCallbacks:
+        mkHandlers:
           callbacks
 
         macro enter(pk, p, start: untyped): untyped =
