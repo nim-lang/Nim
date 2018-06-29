@@ -393,6 +393,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # When the right-hand side is an explicit type, we must
       # not allow regular values to be matched against the type:
       liftLhs = false
+  else:
+    n.sons[2] = semExpr(c, n[2])
 
   var lhsType = n[1].typ
   if lhsType.kind != tyTypeDesc:
