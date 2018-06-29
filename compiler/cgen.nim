@@ -235,6 +235,12 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc lenField(p: BProc): Rope =
+  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
+
+proc dataField(p: BProc): Rope =
+  result = rope"->data"
+
 include ccgliterals
 include ccgtypes
 
@@ -494,9 +500,6 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
   result.flags.incl lfSingleUse
   expr(p, e, result)
-
-proc lenField(p: BProc): Rope =
-  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
 include ccgcalls, "ccgstmts.nim"
 

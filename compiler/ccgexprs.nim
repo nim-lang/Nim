@@ -928,7 +928,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", a.r)
   putIntoDest(p, d, n,
-              ropecg(p.module, "$1->data[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
+              ropecg(p.module, "$1$3[$2]", rdLoc(a), rdCharLoc(b), dataField(p)), a.storage)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange + tyUserTypeClasses)
@@ -994,7 +994,7 @@ proc genEcho(p: BProc, n: PNode) =
         add(args, ", \"\"")
       else:
         initLocExpr(p, it, a)
-        addf(args, ", $1? ($1)->data:\"\"", [rdLoc(a)])
+        add(args, ropecg(p.module, ", #nimToCStringConv($1)", [rdLoc(a)]))
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
@@ -1113,7 +1113,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   initLoc(dest, locExpr, e.sons[2], OnHeap)
   getIntTemp(p, tmpL)
   lineCg(p, cpsStmts, "$1 = $2->$3++;$n", tmpL.r, rdLoc(a), lenField(p))
-  dest.r = ropecg(p.module, "$1->data[$2]", rdLoc(a), tmpL.r)
+  dest.r = ropecg(p.module, "$1$3[$2]", rdLoc(a), tmpL.r, dataField(p))
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
   gcUsage(p.config, e)
 
@@ -1287,7 +1287,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   genNewSeqAux(p, dest[], intLiteral(sonsLen(n)))
   for i in countup(0, sonsLen(n) - 1):
     initLoc(arr, locExpr, n[i], OnHeap)
-    arr.r = ropecg(p.module, "$1->data[$2]", rdLoc(dest[]), intLiteral(i))
+    arr.r = ropecg(p.module, "$1$3[$2]", rdLoc(dest[]), intLiteral(i), dataField(p))
     arr.storage = OnHeap            # we know that sequences are on the heap
     expr(p, n[i], arr)
   gcUsage(p.config, n)
@@ -1313,7 +1313,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if L < 10:
     for i in countup(0, L - 1):
       initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
-      elem.r = ropecg(p.module, "$1->data[$2]", rdLoc(d), intLiteral(i))
+      elem.r = ropecg(p.module, "$1$3[$2]", rdLoc(d), intLiteral(i), dataField(p))
       elem.storage = OnHeap # we know that sequences are on the heap
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
       arr.r = ropecg(p.module, "$1[$2]", rdLoc(a), intLiteral(i))
@@ -1324,7 +1324,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  i.r, L.rope)
     initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
-    elem.r = ropecg(p.module, "$1->data[$2]", rdLoc(d), rdLoc(i))
+    elem.r = ropecg(p.module, "$1$3[$2]", rdLoc(d), rdLoc(i), dataField(p))
     elem.storage = OnHeap # we know that sequences are on the heap
     initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
     arr.r = ropecg(p.module, "$1[$2]", rdLoc(a), rdLoc(i))
@@ -1428,7 +1428,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1->data, ($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)], a.storage)
+                  "$1$3, ($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p), dataField(p)], a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))], a.storage)
@@ -1751,7 +1751,8 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, n, "($1 ? $1->data : (NCSTRING)\"\")" % [rdLoc(a)],
+  putIntoDest(p, d, n,
+              ropecg(p.module, "#nimToCStringConv($1)", [rdLoc(a)]),
               a.storage)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =

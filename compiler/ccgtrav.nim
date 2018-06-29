@@ -108,9 +108,9 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
   let oldCode = p.s(cpsStmts)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
-      [i.r, accessor, rope(if c.p.module.compileToCpp: "len" else: "Sup.len")])
+      [i.r, accessor, lenField(c.p)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1->data[$2]" % [accessor, i.r], typ.sons[0])
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.sons[0])
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
