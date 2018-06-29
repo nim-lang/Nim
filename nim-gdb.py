@@ -215,9 +215,6 @@ class NimEnumPrinter:
     if self.nti is None:
       printError(self.typeInfoName, "NimEnumPrinter: lookup global symbol '"+self.typeInfoName+" failed for " + self.val.type.name + ".\n")
 
-  def display_hint(self):
-    return 'string'
-
   def to_string(self):
     if self.nti:
       arg0     = self.val
@@ -256,7 +253,7 @@ class NimSetPrinter:
         val = val >> 1
         i += 1
 
-      return '{' + ','.join(enumStrings) + '}'
+      return '{' + ', '.join(enumStrings) + '}'
     else:
       return str(int(self.val))
 
@@ -272,7 +269,13 @@ class NimSeqPrinter:
     return 'array'
 
   def to_string(self):
-    return 'seq'
+    len = 0
+    cap = 0
+    if self.val:
+      len = int(self.val['Sup']['len'])
+      cap = int(self.val['Sup']['cap'])
+
+    return 'seq({0}, {1})'.format()
 
   def children(self):
     if self.val:
@@ -281,6 +284,23 @@ class NimSeqPrinter:
         yield ('[{0}]'.format(i), self.val["data"][i])
 
 ################################################################
+
+class NimArrayPrinter:
+  pattern = re.compile(r'^tyArray_.*$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hint(self):
+    return 'array'
+
+  def to_string(self):
+    return 'array'
+
+  def children(self):
+    len = self.val.type.sizeof // self.val[0].type.sizeof
+    for i in range(len):
+      yield ('[{0}]'.format(i), self.val[i])
 
 
 # class NimObjectPrinter:
