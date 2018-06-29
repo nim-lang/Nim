@@ -207,7 +207,9 @@ class NimEnumPrinter:
   def __init__(self, val):
     self.val      = val
     #self.reprEnum = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
-    self.typeInfoName = "NTI_" + self.pattern.match(str(self.val.type)).group(2) + "_"
+    match = self.pattern.match(str(self.val.type))
+    self.typeNimName  = match.group(1)
+    self.typeInfoName = "NTI_" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(self.typeInfoName)
 
     if self.nti is None:
@@ -222,23 +224,40 @@ class NimEnumPrinter:
       arg1     = self.nti.value(gdb.newest_frame())
       return reprEnum(arg0, arg1)
     else:
-      return str(int(self.val)) + " (no typeinfo found)"
+      return self.typeNimName + "(" + str(int(self.val)) + ")"
 
 ################################################################
 
 class NimSetPrinter:
-
-  pattern = re.compile(r'^tySet_(.+?)_([A-Za-z0-9]+)$')
+  ## the set printer is limited to sets that fit in an integer
+  ## values. Other sets are compiled to `NU8 *` (ptr uint8) are
+  ## therefore invisible to the debugger.
+  pattern = re.compile(r'^tySet_tyEnum_(.+?)_([A-Za-z0-9]+)$')
 
   def __init__(self, val):
     self.val = val
+    match = self.pattern.match(self.val.type.name)
+    self.typeNimName  = match.group(1)
+    self.typeInfoName = "NTI_" + match.group(2) + "_"
+    self.nti = gdb.lookup_global_symbol(self.typeInfoName)
+
+    if self.nti is None:
+      printError(self.typeInfoName, "NimSetPrinter: lookup global symbol '"+ self.typeInfoName +" failed for " + self.val.type.name + ".\n")
 
   def to_string(self):
-    try:
-      return DollarPrintFunction.invoke_static(self.val)
-    except:
-      typeString = str(self.val.type)
-      printError(typeString, "RTI information not found for set, lik,ely removed by dead code elimination: " + typeString + "\n")
+    if self.nti:
+      nti = self.nti.value(gdb.newest_frame())
+      enumStrings = []
+      val = int(self.val)
+      i   = 0
+      while val > 0:
+        if (val & 1) == 1:
+          enumStrings.append(reprEnum(i, nti))
+        val = val >> 1
+        i += 1
+
+      return '{' + ','.join(enumStrings) + '}'
+    else:
       return str(int(self.val))
 
 ################################################################
@@ -323,6 +342,7 @@ def makematcher(klass):
     typeName = str(val.type)
     try:
       if klass.pattern.match(typeName):
+        #gdb.write(typeName + " <> " + klass.__name__)
         return klass(val)
     except Exception as e:
       printError(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")

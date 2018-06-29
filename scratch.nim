@@ -1,6 +1,15 @@
-
-
 import macros
+
+type
+  MyEnum = enum
+    AVal, BVal, CVal
+
+echo($AVal)
+echo($BVal)
+
+proc bar(arg: set[MyEnum], arg2: MyEnum): void {.exportc: "bar".} =
+  echo arg
+  echo arg2
 
 proc foo(arg: NimNodeKind): void {.exportc: "foo".} =
   echo arg
@@ -8,6 +17,7 @@ proc foo(arg: NimNodeKind): void {.exportc: "foo".} =
 proc mymain(): void =
   foo(nnkIdent)
   foo(nnkVarSection)
+  bar({AVal, CVal}, BVal)
 
 mymain()
 
@@ -55,4 +65,5 @@ type
 var myType: MyGeneric[int]
 
 echo myType
+
 ]#
