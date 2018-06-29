@@ -260,7 +260,7 @@ class NimSetPrinter:
 ################################################################
 
 class NimSeqPrinter:
-  pattern = re.compile(r'^tySequence_.*$')
+  pattern = re.compile(r'^tySequence_.* \*$')
 
   def __init__(self, val):
     self.val = val

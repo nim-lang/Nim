@@ -1,5 +1,7 @@
 import macros
 
+
+#[
 type
   MyEnum = enum
     AVal, BVal, CVal
@@ -24,8 +26,9 @@ proc mymain(): void =
   bar({AVal, CVal}, BVal)
 
 mymain()
+]#
 
-#[
+
 import macros
 
 proc unpackTypedesc(arg: NimNode): NimNode =
@@ -69,5 +72,3 @@ type
 var myType: MyGeneric[int]
 
 echo myType
-
-]#
