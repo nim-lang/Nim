@@ -404,6 +404,9 @@ proc genComputedGoto(p: BProc; n: PNode) =
         localError(p.config, it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
+      if enumHasHoles(it.sons[0].typ):
+        localError(p.config, it.info,
+            "case statement cannot work on enums with holes for computed goto"); return
       let aSize = lengthOrd(p.config, it.sons[0].typ)
       if aSize > 10_000:
         localError(p.config, it.info,

@@ -75,8 +75,6 @@ type
   JsAssoc*[K, V] = ref object of JsRoot
     ## Statically typed wrapper around a JavaScript object.
 
-  NotString = concept c
-    c isnot string
   js* = JsObject
 
 var
@@ -167,7 +165,7 @@ proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
 proc `[]=`*[T](obj: JsObject, field: int, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
 
-proc `[]`*[K: NotString, V](obj: JsAssoc[K, V], field: K): V
+proc `[]`*[K: not string, V](obj: JsAssoc[K, V], field: K): V
   {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
@@ -175,7 +173,7 @@ proc `[]`*[V](obj: JsAssoc[string, V], field: cstring): V
   {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
-proc `[]=`*[K: NotString, V](obj: JsAssoc[K, V], field: K, val: V)
+proc `[]=`*[K: not string, V](obj: JsAssoc[K, V], field: K, val: V)
   {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
 
