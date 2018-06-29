@@ -90,3 +90,33 @@ block:
       var some = newStringOfCap(size)
       result = size
     doAssert f(4) == 4
+
+# #7871
+static:
+  type Obj = object
+    field: int
+  var s = newSeq[Obj](1)
+  var o = Obj()
+  s[0] = o
+  o.field = 2
+  doAssert s[0].field == 0
+
+# #8125
+static:
+   let def_iter_var = ident("it")
+
+# #8142
+static:
+  type Obj = object
+    names: string
+
+  proc pushName(o: var Obj) =
+    var s = ""
+    s.add("FOOBAR")
+    o.names.add(s)
+
+  var o = Obj()
+  o.names = ""
+  o.pushName()
+  o.pushName()
+  doAssert o.names == "FOOBARFOOBAR"
