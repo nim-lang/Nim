@@ -1,7 +1,5 @@
 import macros
 
-
-#[
 type
   MyEnum = enum
     AVal, BVal, CVal
@@ -18,7 +16,9 @@ proc foo(arg: NimNodeKind): void {.exportc: "foo".} =
   echo arg
 
 proc mymain(): void =
-  let mySeq = [AVal,BVal,CVal]
+  let myArray = [AVal,BVal,CVal]
+  var mySeq = @myArray
+  mySeq.add myArray
   echo mySeq
 
   foo(nnkIdent)
@@ -26,9 +26,9 @@ proc mymain(): void =
   bar({AVal, CVal}, BVal)
 
 mymain()
-]#
 
 
+#[
 import macros
 
 proc unpackTypedesc(arg: NimNode): NimNode =
@@ -72,3 +72,4 @@ type
 var myType: MyGeneric[int]
 
 echo myType
+]#

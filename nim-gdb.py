@@ -273,9 +273,9 @@ class NimSeqPrinter:
     cap = 0
     if self.val:
       len = int(self.val['Sup']['len'])
-      cap = int(self.val['Sup']['cap'])
+      cap = int(self.val['Sup']['reserved'])
 
-    return 'seq({0}, {1})'.format()
+    return 'seq({0}, {1})'.format(len, cap)
 
   def children(self):
     if self.val:
