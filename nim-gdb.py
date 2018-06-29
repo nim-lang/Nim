@@ -302,6 +302,29 @@ class NimArrayPrinter:
     for i in range(len):
       yield ('[{0}]'.format(i), self.val[i])
 
+################################################################
+
+class NimStringTablePrinter:
+
+  pattern = re.compile(r'^tyObject_StringTableObj_.*$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hind(self):
+    return 'map'
+
+  def to_string(self):
+    return 'StringTable'
+
+  def children(self):
+    if self.val:
+      data = NimSeqPrinter(self.val['data'])
+      for _, entry in data.children():
+        if int(entry['Field2']) > 0:
+          yield (str(entry['Field0']), str(entry['Field1']))
+
+################################################################
 
 # class NimObjectPrinter:
 #   pattern = re.compile(r'^tyObject_.*$')
