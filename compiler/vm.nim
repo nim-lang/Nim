@@ -622,6 +622,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             stackTrace(c, tos, pc, errNilAccess)
           regs[ra].nodeAddr[][] = n[]
           regs[ra].nodeAddr[].flags.incl nfIsRef
+        # `var object` parameters are sent as rkNodeAddr. When they are mutated
+        # vmgen generates opcWrDeref, which means that we must dereference
+        # twice.
+        # TODO: This should likely be handled differently in vmgen.
+        elif (nfIsRef notin regs[ra].nodeAddr[].flags and
+            nfIsRef notin n.flags):
+          regs[ra].nodeAddr[][] = n[]
         else:
           regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
