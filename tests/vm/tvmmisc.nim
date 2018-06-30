@@ -91,6 +91,21 @@ block:
       result = size
     doAssert f(4) == 4
 
+# #6689
+block:
+  static:
+    proc foo(): int = 0
+    var f: proc(): int
+    doAssert f.isNil
+    f = foo
+    doAssert(not f.isNil)
+
+block:
+  static:
+    var x: ref ref int
+    new(x)
+    doAssert(not x.isNil)
+
 # #7871
 static:
   type Obj = object
