@@ -54,7 +54,8 @@ template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
 template macroToExpandSym(s): untyped =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1) and not fromDotExpr
+  sfCustomPragma notin s.flags and s.kind in {skMacro, skTemplate} and
+    (s.typ.len == 1) and not fromDotExpr
 
 template isMixedIn(sym): bool =
   let s = sym
