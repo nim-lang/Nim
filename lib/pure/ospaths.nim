@@ -711,3 +711,82 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+proc isSep(c: char): bool {.noSideEffect.} = c in {DirSep, AltSep}
+
+proc cmpCharInPath(a, b: char): bool {.noSideEffect.} =
+  when FileSystemCaseSensitive:
+    let r = a == b:
+  else:
+    let r = toLowerAscii(a) == toLowerAscii(b)
+  return if r: true else: (a.isSep and b.isSep)
+
+proc sameDrive(a, b: string): bool {.noSideEffect.} =
+  when doslikeFileSystem:
+    not (a.len > 1 and a[1] == ':' and isAlphaAscii(a[0]) and b.len > 1 and b[1] == ':' and a[0] != b[0])
+  else:
+    true
+
+proc countDir(path: string; start, last: Natural): int {.noSideEffect.} =
+  if start >= last:
+    return 0
+
+  result = 0
+  if not path[start].isSep:
+    inc(result)
+  for i in (start+1)..<last:
+    if path[i-1].isSep and not path[i].isSep:
+      inc(result)
+
+proc rSkipDirSep(path: string; start, last: Natural = 0): int {.noSideEffect.} =
+  var p = start
+  while p > last and path[p].isSep:
+    dec(p)
+  return p
+
+proc getRelPathFromAbs*(path, baseDir: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Convert 'path' to a relative path from baseDir.
+  ##
+  ## Both 'path' and 'baseDir' must be absolute paths.
+  ## On DOS like filesystem, when a drive of 'path' is different from 'baseDir',
+  ## this proc just return the 'path' as is because no way to calculate the relative path.
+  ## This proc never read filesystem.
+  ## 'baseDir' is always assumed to be a directory even if that path is actually a file.
+  ##
+  runnableExamples:
+    doAssert getRelPathFromAbs("/home/abc".unixToNativePath, "/".unixToNativePath) == "home/abc".unixToNativePath
+    doAssert getRelPathFromAbs("/home/abc".unixToNativePath, "/home/abc/x".unixToNativePath) == "../".unixToNativePath
+    doAssert getRelPathFromAbs("/home/abc/xyz".unixToNativePath, "/home/abc/x".unixToNativePath) == "../xyz".unixToNativePath
+
+  assert(isAbsolute(path) and isAbsolute(baseDir))
+
+  if baseDir.len == 0:
+    return path
+
+  if not sameDrive(path, baseDir):
+      return path
+
+  let alast = path.len
+  let blast = rSkipDirSep(baseDir, baseDir.len - 1, 0) + 1
+
+  var pos = 0
+  let m = min(alast, blast)
+  while pos < m:
+    if not cmpCharInPath(path[pos], baseDir[pos]):
+      break
+    inc(pos)
+
+  if pos == blast and (alast == blast or path[blast].isSep):
+    inc(pos)
+  else:
+    while pos != 0 and not path[pos-1].isSep:
+      dec(pos)
+
+  let numUp = countDir(baseDir, pos, blast)
+
+  if numUp == 0 and pos >= alast:
+    return $CurDir
+
+  result = if numUp > 0: (ParDir & DirSep).repeat(numUp) else: ""
+  result.add path.substr(pos)

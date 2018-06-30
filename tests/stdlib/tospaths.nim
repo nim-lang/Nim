@@ -62,3 +62,17 @@ block lastPathPartTest:
   when doslikeFileSystem:
     doAssert lastPathPart(r"foo\bar.txt") == "bar.txt"
     doAssert lastPathPart(r"foo\") == "foo"
+
+block:
+  proc testGetRelPathFromAbs(path, baseDir, res: string): bool {.noSideEffect.} =
+    getRelPathFromAbs(path.unixToNativePath("a"), baseDir.unixToNativePath("a")) == res.unixToNativePath
+  doAssert testGetRelPathFromAbs("/", "/", ".")
+  doAssert testGetRelPathFromAbs("/b", "/a", "../b")
+  doAssert testGetRelPathFromAbs("/ab", "/a", "../ab")
+  doAssert testGetRelPathFromAbs("/a", "/ab", "../a")
+  doAssert testGetRelPathFromAbs("/x/a", "/x/a", ".")
+  doAssert testGetRelPathFromAbs("/x/a", "/x/ab/c", "../../a")
+  doAssert testGetRelPathFromAbs("/x/a/bc", "/x/a", "bc")
+  doAssert testGetRelPathFromAbs("/x/ab", "/x/a/", "../ab")
+  doAssert testGetRelPathFromAbs("/x/ab", "/x/a", "../ab")
+  doAssert testGetRelPathFromAbs("/x/y/z/", "/u/v/w", "../../../x/y/z/")
