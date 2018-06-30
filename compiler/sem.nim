@@ -76,7 +76,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   result = arg
   let x = result.skipConv
-  if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
+  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyExpr:
     changeType(c, x, formal, check=true)
   else:
     result = skipHiddenSubConv(result)
