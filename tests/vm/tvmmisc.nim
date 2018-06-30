@@ -135,3 +135,16 @@ static:
   o.pushName()
   o.pushName()
   doAssert o.names == "FOOBARFOOBAR"
+
+# #8154
+import parseutils
+
+static:
+  type Obj = object
+    i: int
+
+  proc foo(): Obj =
+    discard parseInt("1", result.i, 0)
+
+  static:
+    doAssert foo().i == 1
