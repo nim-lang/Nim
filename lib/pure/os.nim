@@ -296,6 +296,18 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
+proc absolutePath*(path: string, root = getCurrentDir()):string=
+  ## Returns the absolute path of `path`, rooted at `root`
+  ## if `path` is absolute, return it, ignoring `root`
+  if isAbsolute(path): path
+  else: joinPath(root, path)
+
+when isMainModule:
+  assert absolutePath("a", "b") == "b" / "a"
+  when defined(Posix):
+    assert absolutePath("a", "b/") == "b" / "a"
+    assert absolutePath("/a", "b/") == "/a"
+
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
   ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
