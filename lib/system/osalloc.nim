@@ -83,39 +83,77 @@ elif defined(genode):
 elif defined(nintendoswitch):
   import nintendoswitch/switch_memory
 
-  var
-    stack: pointer
+  type
+    PSwitchBlock = ptr NSwitchBlock
+    NSwitchBlock {.pure, inheritable.} = object
+      realSize: int
+      heap: pointer           # pointer to main heap alloc
+      heapMirror: pointer     # pointer to virtmem mapped heap
 
   proc alignSize(size: int): int =
-    (size + 0x00000FFF) and not 0x00000FFF
+    ## Align a size integer to be in multiples of PageSize
+    ## The nintendo switch will not allocate memory that is not
+    ## aligned to 0x1000 bytes and will just crash.
+    (size + (PageSize - 1)) and not (PageSize - 1)
 
-  proc freeMem(p: pointer, msize: int) =
-    let size = alignSize(msize)
-    discard svcUnmapMemory(p, stack, size.uint64)
-    virtmemFreeMap(p, size.csize)
-    free(stack)
+  proc freeMem(p: pointer) =
+    # Retrieve the switch block data from the pointer we set before
+    let nswitchDescrPos = cast[ByteAddress](p) -% sizeof(NSwitchBlock)
+    let nswitchBlock = cast[PSwitchBlock](nswitchDescrPos)
 
-  proc osAllocPages(msize: int): pointer {.inline.} =
-    let size = alignSize(msize)
-    stack = memalign(0x1000, size)
-    result = virtmemReserveMap(size.csize)
-    let rc = svcMapMemory(result, stack, size.uint64)
+    discard svcUnmapMemory(
+      nswitchBlock.heapMirror, nswitchBlock.heap, nswitchBlock.realSize.uint64
+    )
+    virtmemFreeMap(nswitchBlock.heapMirror, nswitchBlock.realSize.csize)
+    free(nswitchBlock.heap)
+
+  template allocPages(size: int, outOfMemoryStmt: untyped): untyped =
+    let realSize = alignSize(size + sizeof(NSwitchBlock))
+
+    let heap = memalign(PageSize, realSize)
+    let heapMirror = virtmemReserveMap(realSize.csize)
+    result = heapMirror
+
+    let rc = svcMapMemory(heapMirror, heap, realSize.uint64)
     if rc.uint32 != 0:
-      freeMem(result, size)
+      discard svcUnmapMemory(heapMirror, heap, realSize.uint64)
+      virtmemFreeMap(heapMirror, realSize.csize)
+      free(heap)
+      outOfMemoryStmt
+
+    # What we are doing here in the following section is
+    # allocating memory for ourselves so that we can store
+    # extra data in the mapped memory (our switch pointers)
+
+    let pos = cast[int](result)
+
+    var new_pos = cast[ByteAddress](pos) +% (PageSize - (pos %% PageSize))
+    if (new_pos-pos) < sizeof(NSwitchBlock):
+      new_pos = new_pos +% PageSize
+    # set result to be the original size requirement
+    result = cast[pointer](new_pos)
+
+    let nswitchDescrPos = cast[ByteAddress](result) -% sizeof(NSwitchBlock)
+
+    # We need to store this in a pointer obj so that the data sticks
+    # at the address
+    var nswitchDescr = cast[PSwitchBlock](nswitchDescrPos)
+    nswitchDescr.realSize = realSize
+    nswitchDescr.heap = heap
+    nswitchDescr.heapMirror = heapMirror
+
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    allocPages(size):
       raiseOutOfMem()
 
-  proc osTryAllocPages(msize: int): pointer {.inline.} =
-    let size = alignSize(msize)
-    stack = memalign(0x1000, size)
-    result = virtmemReserveMap(size.csize)
-    let rc = svcMapMemory(result, stack, size.uint64)
-    if rc.uint32 != 0:
-      freeMem(result, size)
-      result = nil
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    allocPages(size):
+      return nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     when reallyOsDealloc:
-      freeMem(p, size)
+      freeMem(p)
 
 elif defined(posix):
   const
