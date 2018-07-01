@@ -489,18 +489,16 @@ proc toParts*(dur: Duration): DurationParts =
 
     result[unit] = quantity
 
-proc stringifyUnit*(value: int | int64, unit: string): string =
+proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
   ## Stringify time unit with it's name, lowercased
-  runnableExamples:
-    doAssert stringifyUnit(2, "Seconds") == "2 seconds"
-    doAssert stringifyUnit(1, "Years") == "1 year"
+  let strUnit = $unit
   result = ""
   result.add($value)
   result.add(" ")
   if abs(value) != 1:
-    result.add(unit.toLowerAscii())
+    result.add(strUnit.toLowerAscii())
   else:
-    result.add(unit[0..^2].toLowerAscii())
+    result.add(strUnit[0..^2].toLowerAscii())
 
 proc humanizeParts(parts: seq[string]): string =
   ## Make date string parts human-readable
@@ -530,7 +528,7 @@ proc `$`*(dur: Duration): string =
   for unit in countdown(Weeks, Nanoseconds):
     let quantity = numParts[unit]
     if quantity != 0.int64:
-      parts.add(stringifyUnit(quantity, $unit))
+      parts.add(stringifyUnit(quantity, unit))
 
   result = humanizeParts(parts)
 
@@ -1024,7 +1022,7 @@ proc `$`*(ti: TimeInterval): string =
   var tiParts = toParts(ti)
   for unit in countdown(Years, Nanoseconds):
     if tiParts[unit] != 0:
-      parts.add(stringifyUnit(tiParts[unit], $unit))
+      parts.add(stringifyUnit(tiParts[unit], unit))
 
   result = humanizeParts(parts)
 
