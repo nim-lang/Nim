@@ -449,6 +449,9 @@ proc unixToNativePath*(path: string, drive=""): string {.
   when defined(unix):
     result = path
   else:
+    if path.len == 0:
+        return ""
+
     var start: int
     if path[0] == '/':
       # an absolute path
@@ -462,7 +465,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
       else:
         result = $DirSep
       start = 1
-    elif path[0] == '.' and path[1] == '/':
+    elif path[0] == '.' and (path.len == 1 or path[1] == '/'):
       # current directory
       result = $CurDir
       start = 2
