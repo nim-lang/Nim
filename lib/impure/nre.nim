@@ -654,17 +654,17 @@ template replaceImpl(str: string, pattern: Regex,
 
 proc replace*(str: string, pattern: Regex,
               subproc: proc (match: RegexMatch): string): string =
-  ## Replaces each match of Regex in the string with ``sub``, which should
+  ## Replaces each match of Regex in the string with ``subproc``, which should
   ## never be or return ``nil``.
   ##
-  ## If ``sub`` is a ``proc (RegexMatch): string``, then it is executed with
+  ## If ``subproc`` is a ``proc (RegexMatch): string``, then it is executed with
   ## each match and the return value is the replacement value.
   ##
-  ## If ``sub`` is a ``proc (string): string``, then it is executed with the
+  ## If ``subproc`` is a ``proc (string): string``, then it is executed with the
   ## full text of the match and and the return value is the replacement
   ## value.
   ##
-  ## If ``sub`` is a string, the syntax is as follows:
+  ## If ``subproc`` is a string, the syntax is as follows:
   ##
   ## -  ``$$`` - literal ``$``
   ## -  ``$123`` - capture number ``123``

@@ -393,6 +393,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # When the right-hand side is an explicit type, we must
       # not allow regular values to be matched against the type:
       liftLhs = false
+  else:
+    n.sons[2] = semExpr(c, n[2])
 
   var lhsType = n[1].typ
   if lhsType.kind != tyTypeDesc:
@@ -906,19 +908,6 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
-  # make an 'if' expression an 'if' statement again for backwards
-  # compatibility (.discardable was a bad idea!); bug #6980
-  var isStmt = false
-  if result.kind == nkIfExpr:
-    isStmt = true
-    for condActionPair in result:
-      let action = condActionPair.lastSon
-      if not implicitlyDiscardable(action) and not
-          endsInNoReturn(action):
-        isStmt = false
-    if isStmt:
-      result.kind = nkIfStmt
-      result.typ = nil
   discardCheck(c, result)
 
 proc isTypeExpr(n: PNode): bool =

@@ -209,7 +209,7 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNone: discard
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
-  of rkNode: n = x.node
+  of rkNode: n = copyValue(x.node)
   of rkRegisterAddr: writeField(n, x.regAddr[])
   of rkNodeAddr: n = x.nodeAddr[]
 
@@ -622,6 +622,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             stackTrace(c, tos, pc, errNilAccess)
           regs[ra].nodeAddr[][] = n[]
           regs[ra].nodeAddr[].flags.incl nfIsRef
+        # `var object` parameters are sent as rkNodeAddr. When they are mutated
+        # vmgen generates opcWrDeref, which means that we must dereference
+        # twice.
+        # TODO: This should likely be handled differently in vmgen.
+        elif (nfIsRef notin regs[ra].nodeAddr[].flags and
+            nfIsRef notin n.flags):
+          regs[ra].nodeAddr[][] = n[]
         else:
           regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
@@ -912,6 +919,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
+        regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
     of opcEcho:
@@ -1210,8 +1218,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
-      regs[ra].intVal = ord(node.kind == nkNilLit or
-        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil))
+      regs[ra].intVal = ord(
+        # Note that `nfIsRef` + `nkNilLit` represents an allocated
+        # reference with the value `nil`, so `isNil` should be false!
+        (node.kind == nkNilLit and nfIsRef notin node.flags) or
+        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil) or
+        (not node.typ.isNil and node.typ.kind == tyProc and
+          node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
+          node.sons[1].kind == nkNilLit))
     of opcNBindSym:
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
@@ -1462,6 +1476,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
         regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
+        regs[ra].node.flags.incl nfIsRef
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.config, c.debug[pc], "cannot set type")

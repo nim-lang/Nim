@@ -151,3 +151,13 @@ if true:
   fooBool()
 else:
   raise newException(ValueError, "argh")
+
+# bug #5374
+
+proc test1(): int64 {.discardable.} = discard
+proc test2(): int {.discardable.} = discard
+
+if true:
+  test1()
+else:
+  test2()

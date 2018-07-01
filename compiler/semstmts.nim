@@ -111,13 +111,15 @@ proc semExprBranchScope(c: PContext, n: PNode): PNode =
 const
   skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
-    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr}
+    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
+    nkHiddenStdConv}
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = isCallExpr(n) and n.sons[0].kind == nkSym and
-           sfDiscardable in n.sons[0].sym.flags
+  result = n.kind == nkRaiseStmt or
+           (isCallExpr(n) and n.sons[0].kind == nkSym and
+           sfDiscardable in n.sons[0].sym.flags)
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
@@ -132,11 +134,8 @@ proc discardCheck(c: PContext, result: PNode) =
   if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if implicitlyDiscardable(result):
-      var n = result
-      result.typ = nil
-      while n.kind in skipForDiscardable:
-        n = n.lastSon
-        n.typ = nil
+      var n = newNodeI(nkDiscardStmt, result.info, 1)
+      n[0] = result
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
