@@ -334,7 +334,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMixinStmt:
     if c.scopeN > 0: result = semTemplBodySons(c, n)
     else: result = semMixinStmt(c.c, n, c.toMixin)
-  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
+  of nkSym:
+    # local declarations may introduce fresh definitions of the same symbol
+    if sfGenSym in n.sym.flags and not isTemplParam(c, n):
+      let s = searchInScopes(c.c, considerQuotedIdent(c.c, n))
+      if s != nil and s != n.sym:
+        assert s != nil
+        incl(s.flags, sfUsed)
+        result = newSymNode(s, n.info)
+        styleCheckUse(n.info, s)
+  of nkEmpty, nkType..nkNilLit, nkComesFrom:
     discard
   of nkIfStmt:
     for i in countup(0, sonsLen(n)-1):
