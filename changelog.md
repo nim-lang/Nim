@@ -20,6 +20,8 @@
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely
   become an error in the future.
+- The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
+  bring the language in line with the standard library (e.g. ``parseOct``).
 
 
 #### Breaking changes in the standard library

@@ -413,7 +413,7 @@ Numerical constants are of a single type and have the form::
   bindigit = '0'..'1'
   HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
   DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0' ('o' | 'c' | 'C') octdigit ( ['_'] octdigit )*
+  OCT_LIT = '0' 'o' octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
   INT_LIT = HEX_LIT
@@ -444,7 +444,7 @@ Numerical constants are of a single type and have the form::
 
 As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o`` or ``0c``) and hexadecimal
+prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
