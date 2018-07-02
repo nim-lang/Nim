@@ -304,6 +304,7 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
     raise newException(ReplyError, "Reply has no file size.")
 
   await getFile(ftp, destFile, fileSize, onProgressChanged)
+  destFile.close()
 
 proc doUpload(ftp: AsyncFtpClient, file: File,
               onProgressChanged: ProgressChangedProc) {.async.} =
