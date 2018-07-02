@@ -37,8 +37,8 @@ def getNimRti(type_name):
     except:
       return None
 
-class NimTypePrinter(gdb.types.TypePrinter):
-  """Nim type printer. One printer for all Nim types."""
+
+class NimTypeRecognizer:
 
   type_map_static = {
     'NI': 'int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'in64',
@@ -48,59 +48,71 @@ class NimTypePrinter(gdb.types.TypePrinter):
     'NimStringDesc': 'string'
   }
 
-  def __init__ (self):
-    super (NimTypePrinter, self).__init__ ("NimTypePrinter")
+  object_type_pattern = re.compile("^(\w*):ObjectType$")
 
+  def recognize(self, type_obj):
+    tname = None
+    if type_obj.tag is not None:
+      tname = type_obj.tag
+    elif type_obj.name is not None:
+      tname = type_obj.name
+
+    # handle pointer types
+    if not tname:
+      if type_obj.code == gdb.TYPE_CODE_PTR:
+        target_type = type_obj.target()
+        target_type_name = target_type.name
+        if target_type_name:
+          # visualize 'string' as non pointer type (unpack pointer type).
+          if target_type_name == "NimStringDesc":
+            tname = target_type_name # could also just return 'string'
+          # visualize 'seq[T]' as non pointer type.
+          if target_type_name.find('tySequence_') == 0:
+            tname = target_type_name
+
+        if not tname:
+          # visualize other pointer types for nim types as 'ptr <type>' instead of 'type *'
+          target_result = self.recognize(target_type)
+
+          if target_result:
+
+            # object that are defined as `MyType = ref object` have an
+            # internal type `MyType:ObjectRef *`. This is converted
+            # back to `MyType`.
+            match = self.object_type_pattern.match(target_result)
+            if match:
+              return match.group(1)
+            else:
+              return 'ptr/ref ' + target_result
+          else:
+            return None
+
+      else:
+        # no name defined and not a pointer. We are not repsonsible for printing.
+        return None
+
+    assert(tname)
+
+    result = self.type_map_static.get(tname, None)
+    if result:
+      return result
+
+    rti = getNimRti(tname)
+    if rti:
+      return rti['name'].string("utf-8", "ignore")
+    else:
+      return None
+
+class NimTypePrinter:
+  """Nim type printer. One printer for all Nim types."""
+
+  def __init__ (self):
+    self.name = "NimTypePrinter"
+    self.enabled = True
 
   def instantiate(self):
-    return self._recognizer()
+    return NimTypeRecognizer()
 
-  class _recognizer(object):
-
-    def recognize(self, type_obj):
-
-      tname = None
-      if type_obj.tag is not None:
-        tname = type_obj.tag
-      elif type_obj.name is not None:
-        tname = type_obj.name
-
-      # handle pointer types
-      if not tname:
-        if type_obj.code == gdb.TYPE_CODE_PTR:
-          target_type = type_obj.target()
-          target_type_name = target_type.name
-          if target_type_name:
-            # visualize 'string' as non pointer type (unpack pointer type).
-            if target_type_name == "NimStringDesc":
-              tname = target_type_name # could also just return 'string'
-            # visualize 'seq[T]' as non pointer type.
-            if target_type_name.find('tySequence_') == 0:
-              tname = target_type_name
-
-          if not tname:
-            # visualize other pointer types for nim types as 'ptr <type>' instead of 'type *'
-            target_result = self.recognize(target_type)
-            if target_result:
-              return 'ptr/ref ' + target_result
-            else:
-              return None
-
-        else:
-          # no name defined and not a pointer. We are not repsonsible for printing.
-          return None
-
-      assert(tname)
-
-      result = NimTypePrinter.type_map_static.get(tname, None)
-      if result:
-        return result
-
-      rti = getNimRti(tname)
-      if rti:
-        return rti['name'].string("utf-8", "ignore")
-      else:
-        return None
 
 nimobjfile.type_printers = [NimTypePrinter()]
 
@@ -233,7 +245,6 @@ class NimEnumPrinter:
   pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
-    print('init nim enum printer')
     self.val      = val
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
@@ -241,10 +252,9 @@ class NimEnumPrinter:
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
-      printErrorOnce(self.typeInfoName, "NimEnumPrinter: lookup global symbol '" + typeInfoName + " failed for " + self.val.type.name + ".\n")
+      printErrorOnce(typeInfoName, "NimEnumPrinter: lookup global symbol '" + typeInfoName + " failed for " + self.val.type.name + ".\n")
 
   def to_string(self):
-    print('to string enum printer')
     if self.nti:
       arg0     = self.val
       arg1     = self.nti.value(gdb.newest_frame())
@@ -369,13 +379,13 @@ class NimArrayPrinter:
 
 ################################################################################
 
-class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_((?:String)?Table(?:Obj)?)_([A-Za-z0-9]*)$')
+class NimStringTablePrinter:
+  pattern = re.compile(r'^tyObject_StringTableObj_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
-    match = self.pattern.match(self.val.type.name)
-    self.typeNimName  = match.group(1)
+    # match = self.pattern.match(self.val.type.name)
+    self.typeNimName  = "StringTableObj"
 
   def display_hint(self):
     return 'map'
@@ -388,14 +398,48 @@ class NimTablePrinter:
       if self.val['data']:
         capacity = int(self.val['data']['Sup']['len'])
 
-    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity, )
+    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity)
 
   def children(self):
     if self.val:
       data = NimSeqPrinter(self.val['data'])
       for _, entry in data.children():
         if int(entry['Field2']) > 0:
-          yield (str(entry['Field0']), str(entry['Field1']))
+          print(entry)
+          yield (None,entry['Field0'])
+          yield (None,entry['Field1'])
+
+################################################################
+
+class NimTablePrinter:
+  pattern = re.compile(r'^tyObject_Table_([A-Za-z0-9]*)$')
+
+  def __init__(self, val):
+    self.val = val
+    # match = self.pattern.match(self.val.type.name)
+    self.typeNimName  = "Table"
+
+  def display_hint(self):
+    return 'map'
+
+  def to_string(self):
+    counter  = 0
+    capacity = 0
+    if self.val:
+      counter  = int(self.val['counter'])
+      if self.val['data']:
+        capacity = int(self.val['data']['Sup']['len'])
+
+    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity)
+
+  def children(self):
+    if self.val:
+      data = NimSeqPrinter(self.val['data'])
+      for _, entry in data.children():
+        # print(entry)
+        if int(entry['Field0']) > 0:
+          yield (str(entry['Field0']), entry['Field1'])
+          yield (str(entry['Field0']), entry['Field2'])
 
 
 ################################################################
