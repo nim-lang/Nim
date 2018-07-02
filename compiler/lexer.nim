@@ -359,7 +359,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       inc(pos)
     L.bufpos = pos
 
-  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int) =
+  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int, msgKind = errGenerated) =
     # Used to get slightly human friendlier err messages.
     # Note: the erroneous 'O' char in the character set is intentional
     const literalishChars = {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'O',
@@ -380,7 +380,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       add(t.literal, L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
-    lexMessage(L, errGenerated, msg % t.literal)
+    lexMessage(L, msgKind, msg % t.literal)
 
   var
     startpos, endpos: int
