@@ -947,8 +947,16 @@ proc genFilenames(m: BModule): Rope =
   for i in 0..<m.config.m.fileInfos.len:
     result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
 
+proc genHashName(m: PSym, name: string): string =
+  name & $hashProc(m)
+
+proc maybeHashMain(m: BModule, name: string): string =
+  result = name
+  if optUniqueMain in m.config.globalOptions:
+    result = m.module.genHashName(name)
+
 proc genMainProc(m: BModule) =
-  const
+  let
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
@@ -968,7 +976,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     MainProcs =
-      "\tNimMain();$N"
+      "\t" & m.maybeHashMain("NimMain") & "();$N"
 
     MainProcsWithResult =
       MainProcs & "\treturn nim_program_result;$N"
@@ -978,7 +986,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     NimMainProc =
-      "N_CDECL(static void, NimMain)(void) {$N" &
+      "N_CDECL(void, " & m.maybeHashMain("NimMain") & ")(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &

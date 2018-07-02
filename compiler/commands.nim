@@ -246,6 +246,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "compileonly", "c": result = contains(conf.globalOptions, optCompileOnly)
   of "nolinking": result = contains(conf.globalOptions, optNoLinking)
   of "nomain": result = contains(conf.globalOptions, optNoMain)
+  of "uniquemain": result = contains(conf.globalOptions, optUniqueMain)
   of "forcebuild", "f": result = contains(conf.globalOptions, optForceFullMake)
   of "warnings", "w": result = contains(conf.options, optWarns)
   of "hints": result = contains(conf.options, optHints)
@@ -416,6 +417,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nomain":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optNoMain)
+  of "uniquemain":
+    expectNoArg(conf, switch, arg, pass, info)
+    incl(conf.globalOptions, optUniqueMain)
   of "forcebuild", "f":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optForceFullMake)
