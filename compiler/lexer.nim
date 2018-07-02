@@ -359,9 +359,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
       inc(pos)
     L.bufpos = pos
 
-  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int) =
+  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int, msgKind = errGenerated) =
     # Used to get slightly human friendlier err messages.
-    # Note: the erroneous 'O' char in the character set is intentional
     const literalishChars = {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'O',
       'c', 'C', 'b', 'B', '_', '.', '\'', 'd', 'i', 'u'}
     var msgPos = L.bufpos
@@ -380,7 +379,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       add(t.literal, L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
-    lexMessage(L, errGenerated, msg % t.literal)
+    lexMessage(L, msgKind, msg % t.literal)
 
   var
     startpos, endpos: int
@@ -388,7 +387,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
     isBase10 = true
     numDigits = 0
   const
-    baseCodeChars = {'X', 'x', 'o', 'c', 'C', 'b', 'B'}
+    # 'c', 'C' is deprecated
+    baseCodeChars = {'X', 'x', 'o', 'b', 'B', 'c', 'C'}
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
     floatTypes = {tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit}
   result.tokType = tkIntLit   # int literal until we know better
@@ -398,17 +398,27 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenBegin(result, startPos)
 
   # First stage: find out base, make verifications, build token literal string
-  if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'O'}:
+  # {'c', 'C'} is added for deprecation reasons to provide a clear error message
+  if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'c', 'C', 'O'}:
     isBase10 = false
     eatChar(L, result, '0')
     case L.buf[L.bufpos]
+    of 'c', 'C':
+      lexMessageLitNum(L,
+                       "$1 will soon be invalid for oct literals; Use '0o' " &
+                       "for octals. 'c', 'C' prefix",
+                       startpos,
+                       warnDeprecated)
+      eatChar(L, result, 'c')
+      numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'O':
-      lexMessageLitNum(L, "$1 is not a valid number; did you mean octal? Then use one of '0o', '0c' or '0C'.", startpos)
+      lexMessageLitNum(L, "$1 is an invalid int literal; For octal literals " &
+                          "use the '0o' prefix.", startpos)
     of 'x', 'X':
       eatChar(L, result, 'x')
       numDigits = matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
-    of 'o', 'c', 'C':
-      eatChar(L, result, 'c')
+    of 'o':
+      eatChar(L, result, 'o')
       numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'b', 'B':
       eatChar(L, result, 'b')
@@ -511,6 +521,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
           if L.buf[pos] != '_':
             xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
           inc(pos)
+      # 'c', 'C' is deprecated
       of 'o', 'c', 'C':
         result.base = base8
         while pos < endpos:
