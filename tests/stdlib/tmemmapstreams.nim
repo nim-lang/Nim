@@ -9,7 +9,8 @@ Readed data: Hello!
 Position after reading line: 7
 Position after setting position: 6
 Readed line: Hello!
-Position after reading line: 7'''
+Position after reading line: 7
+Size: 10'''
 """
 import os, streams, memfiles
 const
@@ -47,7 +48,7 @@ echo "Position after setting position: ", mms.getPosition()
 mms.setPosition(0)
 echo "Readed line: ", mms.readLine
 echo "Position after reading line: ", mms.getPosition()
-
+echo "Size: ", mms.size
 mms.close()
 
 if fileExists(fn): removeFile(fn)
