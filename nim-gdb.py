@@ -59,13 +59,38 @@ class NimTypePrinter(gdb.types.TypePrinter):
 
     def recognize(self, type_obj):
 
-      tname = ""
+      tname = None
       if type_obj.tag is not None:
         tname = type_obj.tag
       elif type_obj.name is not None:
         tname = type_obj.name
-      else:
-        return None
+
+      # handle pointer types
+      if not tname:
+        if type_obj.code == gdb.TYPE_CODE_PTR:
+          target_type = type_obj.target()
+          target_type_name = target_type.name
+          if target_type_name:
+            # visualize 'string' as non pointer type (unpack pointer type).
+            if target_type_name == "NimStringDesc":
+              tname = target_type_name # could also just return 'string'
+            # visualize 'seq[T]' as non pointer type.
+            if target_type_name.find('tySequence_') == 0:
+              tname = target_type_name
+
+          if not tname:
+            # visualize other pointer types for nim types as 'ptr <type>' instead of 'type *'
+            target_result = self.recognize(target_type)
+            if target_result:
+              return 'ptr/ref ' + target_result
+            else:
+              return None
+
+        else:
+          # no name defined and not a pointer. We are not repsonsible for printing.
+          return None
+
+      assert(tname)
 
       result = NimTypePrinter.type_map_static.get(tname, None)
       if result:
