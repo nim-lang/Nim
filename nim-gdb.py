@@ -7,10 +7,13 @@ import sys
 #####  Type pretty printers
 ################################################################################
 
-gdb.write("Loading Nim Runtime support.", gdb.STDERR)
+# some feedback that the nim runtime support is loading, isn't a bad thing at all.
+gdb.write("Loading Nim Runtime support.\n", gdb.STDERR)
 
+# When error occure they occur regularly. This 'caches' known errors
+# and prevents them from being reprinted over and over again.
 errorSet = set()
-def printError(id, message):
+def printErrorOnce(id, message):
   global errorSet
   if id not in errorSet:
     errorSet.add(id)
@@ -19,10 +22,23 @@ def printError(id, message):
 nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
 nimobjfile.type_printers = []
 
-class NimTypePrinter(gdb.types.TypePrinter):
-  "Nim type printer, one printer for all Nim types"
 
-  type_hash_regex = re.compile("^(.+?)_([A-Za-z0-9]+)$")
+type_hash_regex = re.compile("^\w*_([A-Za-z0-9]*)$")
+
+def getNimRti(type_name):
+  """ Return a ``gdb.Value`` object for the Nim Runtime Information of ``type_name``. """
+
+  # Get static const TNimType variable. This should be available for
+  # every non trivial Nim type.
+  m = type_hash_regex.match(type_name)
+  if m:
+    try:
+      return gdb.parse_and_eval("NTI_" + m.group(1) + "_")
+    except:
+      return None
+
+class NimTypePrinter(gdb.types.TypePrinter):
+  """Nim type printer. One printer for all Nim types."""
 
   type_map_static = {
     'NI': 'int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'in64',
@@ -35,16 +51,6 @@ class NimTypePrinter(gdb.types.TypePrinter):
   def __init__ (self):
     super (NimTypePrinter, self).__init__ ("NimTypePrinter")
 
-  @staticmethod
-  def rti(type_name):
-    "Get static const TNimType variable, should be available for every non trivial Nim type"
-
-    m = NimTypePrinter.type_hash_regex.match(type_name)
-    if m is not None:
-      try:
-        return gdb.parse_and_eval("NTI_" + m.group(2) + "_")
-      except:
-       return None
 
   def instantiate(self):
     return self._recognizer()
@@ -62,14 +68,14 @@ class NimTypePrinter(gdb.types.TypePrinter):
         return None
 
       result = NimTypePrinter.type_map_static.get(tname, None)
-      if result is not None:
+      if result:
         return result
 
-      rti = NimTypePrinter.rti(tname)
-      if rti is None:
+      rti = getNimRti(tname)
+      if rti:
+        return rti['name'].string("utf-8", "ignore")
+      else:
         return None
-
-      return str(rti['name'])
 
 nimobjfile.type_printers = [NimTypePrinter()]
 
@@ -100,7 +106,7 @@ class DollarPrintFunction (gdb.Function):
         return func_value(arg.address)
 
     typeName = arg.type.name
-    printError(typeName, "No suitable Nim $ operator found for type: " + typeName)
+    printErrorOnce(typeName, "No suitable Nim $ operator found for type: " + typeName + ".\n")
 
   def invoke(self, arg):
     return self.invoke_static(arg)
@@ -136,16 +142,13 @@ class NimBoolPrinter:
   def __init__(self, val):
     self.val = val
 
-  def display_hint(self):
-    return 'bool'
-
   def to_string(self):
     if self.val == 0:
       return "false"
     else:
       return "true"
 
-################################################################
+################################################################################
 
 class NimStringPrinter:
 
@@ -165,7 +168,7 @@ class NimStringPrinter:
      return ""
 
 
-################################################################
+################################################################################
 
 # proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 #   ## Return string representation for enumeration values
@@ -202,20 +205,21 @@ def reprEnum(e, typ):
   return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(.+?)_([A-Za-z0-9]+)$')
+  pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
+    print('init nim enum printer')
     self.val      = val
-    #self.reprEnum = gdb.lookup_global_symbol("reprEnum", gdb.SYMBOL_FUNCTIONS_DOMAIN)
-    match = self.pattern.match(str(self.val.type))
+    match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
-    self.typeInfoName = "NTI_" + match.group(2) + "_"
-    self.nti = gdb.lookup_global_symbol(self.typeInfoName)
+    typeInfoName = "NTI_" + match.group(2) + "_"
+    self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
-      printError(self.typeInfoName, "NimEnumPrinter: lookup global symbol '"+self.typeInfoName+" failed for " + self.val.type.name + ".\n")
+      printErrorOnce(self.typeInfoName, "NimEnumPrinter: lookup global symbol '" + typeInfoName + " failed for " + self.val.type.name + ".\n")
 
   def to_string(self):
+    print('to string enum printer')
     if self.nti:
       arg0     = self.val
       arg1     = self.nti.value(gdb.newest_frame())
@@ -223,23 +227,24 @@ class NimEnumPrinter:
     else:
       return self.typeNimName + "(" + str(int(self.val)) + ")"
 
-################################################################
+################################################################################
 
 class NimSetPrinter:
-  ## the set printer is limited to sets that fit in an integer
-  ## values. Other sets are compiled to `NU8 *` (ptr uint8) are
-  ## therefore invisible to the debugger.
-  pattern = re.compile(r'^tySet_tyEnum_(.+?)_([A-Za-z0-9]+)$')
+  ## the set printer is limited to sets that fit in an integer.  Other
+  ## sets are compiled to `NU8 *` (ptr uint8) and are invisible to
+  ## gdb (currently).
+  pattern = re.compile(r'^tySet_tyEnum_(\w*)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
-    self.typeInfoName = "NTI_" + match.group(2) + "_"
-    self.nti = gdb.lookup_global_symbol(self.typeInfoName)
+
+    typeInfoName = "NTI_" + match.group(2) + "_"
+    self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
-      printError(self.typeInfoName, "NimSetPrinter: lookup global symbol '"+ self.typeInfoName +" failed for " + self.val.type.name + ".\n")
+      printErrorOnce(typeInfoName, "NimSetPrinter: lookup global symbol '"+ typeInfoName +" failed for " + self.val.type.name + ".\n")
 
   def to_string(self):
     if self.nti:
@@ -257,10 +262,43 @@ class NimSetPrinter:
     else:
       return str(int(self.val))
 
-################################################################
+################################################################################
+
+class NimHashSetPrinter:
+  pattern = re.compile(r'^tyObject_(HashSet)_([A-Za-z0-9]*)$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hint(self):
+    return 'array'
+
+  def to_string(self):
+    counter  = 0
+    capacity = 0
+    if self.val:
+      counter  = int(self.val['counter'])
+      if self.val['data']:
+        capacity = int(self.val['data']['Sup']['len'])
+
+    return 'HashSet({0}, {1})'.format(counter, capacity)
+
+  def children(self):
+    if self.val:
+      data = NimSeqPrinter(self.val['data'])
+      i = 0
+      align = len(str(int(self.val['counter']) - 1))
+      for _, entry in data.children():
+        if int(entry['Field0']) > 0:
+          yield ("[{0:>{1}}]".format(i, align), str(entry['Field1']))
+          i += 1
+
+################################################################################
 
 class NimSeqPrinter:
-  pattern = re.compile(r'^tySequence_.* \*$')
+  # the pointer is explicity part of the type. So it is part of
+  # ``pattern``.
+  pattern = re.compile(r'^tySequence_\w* \*$')
 
   def __init__(self, val):
     self.val = val
@@ -279,14 +317,15 @@ class NimSeqPrinter:
 
   def children(self):
     if self.val:
-      len = int(self.val['Sup']['len'])
-      for i in range(len):
-        yield ('[{0}]'.format(i), self.val["data"][i])
+      length = int(self.val['Sup']['len'])
+      align = len(str(length - 1))
+      for i in range(length):
+        yield ("[{0:>{1}}]".format(i, align), self.val["data"][i])
 
-################################################################
+################################################################################
 
 class NimArrayPrinter:
-  pattern = re.compile(r'^tyArray_.*$')
+  pattern = re.compile(r'^tyArray_\w*$')
 
   def __init__(self, val):
     self.val = val
@@ -298,24 +337,33 @@ class NimArrayPrinter:
     return 'array'
 
   def children(self):
-    len = self.val.type.sizeof // self.val[0].type.sizeof
-    for i in range(len):
-      yield ('[{0}]'.format(i), self.val[i])
+    length = self.val.type.sizeof // self.val[0].type.sizeof
+    align = len(str(length-1))
+    for i in range(length):
+      yield ("[{0:>{1}}]".format(i, align), self.val[i])
 
-################################################################
+################################################################################
 
-class NimStringTablePrinter:
-
-  pattern = re.compile(r'^tyObject_StringTableObj_.*$')
+class NimTablePrinter:
+  pattern = re.compile(r'^tyObject_((?:String)?Table(?:Obj)?)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
+    match = self.pattern.match(self.val.type.name)
+    self.typeNimName  = match.group(1)
 
-  def display_hind(self):
+  def display_hint(self):
     return 'map'
 
   def to_string(self):
-    return 'StringTable'
+    counter  = 0
+    capacity = 0
+    if self.val:
+      counter  = int(self.val['counter'])
+      if self.val['data']:
+        capacity = int(self.val['data']['Sup']['len'])
+
+    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity, )
 
   def children(self):
     if self.val:
@@ -323,6 +371,7 @@ class NimStringTablePrinter:
       for _, entry in data.children():
         if int(entry['Field2']) > 0:
           yield (str(entry['Field0']), str(entry['Field1']))
+
 
 ################################################################
 
@@ -350,7 +399,7 @@ class NimStringTablePrinter:
 #         yield (field.name, self.val[field])
 
 #   def _union_field(self, i, field):
-#     rti = NimTypePrinter.rti(self.val.type.name)
+#     rti = getNimRti(self.val.type.name)
 #     if rti is None:
 #       return (field.name, "UNION field can't be displayed without RTI")
 
@@ -384,11 +433,13 @@ def makematcher(klass):
   def matcher(val):
     typeName = str(val.type)
     try:
-      if klass.pattern.match(typeName):
-        #gdb.write(typeName + " <> " + klass.__name__)
-        return klass(val)
+      if hasattr(klass, 'pattern') and hasattr(klass, '__name__'):
+        # print(typeName + " <> " + klass.__name__)
+        if klass.pattern.match(typeName):
+          return klass(val)
     except Exception as e:
-      printError(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
+      print(klass)
+      printErrorOnce(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
 nimobjfile.pretty_printers = []
