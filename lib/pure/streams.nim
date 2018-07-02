@@ -76,7 +76,7 @@ proc atEnd*(s: Stream): bool =
   result = s.atEndImpl(s)
 
 proc size*(s: Stream): int =
-  ## retrieves the size of the stream `s`.
+  ## retrieves the current size of the stream `s`.
   ## returns -1 if `s.sizeImpl` isn't implemented.
   result = if not isNil(s.sizeImpl): s.sizeImpl(s) else: -1
 
