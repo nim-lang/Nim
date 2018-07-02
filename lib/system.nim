@@ -2668,7 +2668,8 @@ when not defined(nimscript) and hasAlloc:
       ""
 
 template accumulateResult*(iter: untyped) =
-  ## helps to convert an iterator to a proc.
+  ## helps to convert an iterator to a proc. 
+  ## See also `sequtils.toSeq` which is more hygienic and efficient.
   result = @[]
   for x in iter: add(result, x)
 
