@@ -468,7 +468,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
     elif path[0] == '.' and (path.len == 1 or path[1] == '/'):
       # current directory
       result = $CurDir
-      start = 2
+      start = when doslikeFileSystem: 1 else: 2
     else:
       result = ""
       start = 0
