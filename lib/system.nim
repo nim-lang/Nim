@@ -2667,7 +2667,7 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
       ""
 
-template accumulateResult*(iter: untyped) =
+template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
   ## helps to convert an iterator to a proc. 
   ## See also `sequtils.toSeq` which is more hygienic and efficient.
   result = @[]
