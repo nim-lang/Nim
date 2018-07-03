@@ -422,6 +422,11 @@ proc mangleDynLibProc(sym: PSym): Rope
 
 proc assignGlobalVar(p: BProc, n: PNode) =
   let s = n.sym
+
+  # see tfinally3 test. Global declarations can be injected twice since
+  # we have to run codegen twice over code in 'finally' sections:
+  if sfGenSym in s.flags and p.module.declaredThings.containsOrIncl(s.id): return
+
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
 
