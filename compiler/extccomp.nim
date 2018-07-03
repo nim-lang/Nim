@@ -434,10 +434,10 @@ proc completeCFilePath*(conf: ConfigRef; cfile: string, createSubDir: bool = tru
 
 proc toObjFile*(conf: ConfigRef; filename: string): string =
   # Object file for compilation
-  #if filename.endsWith(".cpp"):
-  #  result = changeFileExt(filename, "cpp." & CC[cCompiler].objExt)
-  #else:
-  result = changeFileExt(filename, CC[conf.cCompiler].objExt)
+  if filename.endsWith(".cpp"):
+    result = changeFileExt(filename, "cpp." & CC[conf.cCompiler].objExt)
+  else:
+    result = changeFileExt(filename, CC[conf.cCompiler].objExt)
 
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
