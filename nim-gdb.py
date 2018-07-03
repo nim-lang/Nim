@@ -37,7 +37,6 @@ def getNimRti(type_name):
     except:
       return None
 
-
 class NimTypeRecognizer:
 
   type_map_static = {
@@ -323,9 +322,9 @@ class NimHashSetPrinter:
       data = NimSeqPrinter(self.val['data'])
       i = 0
       align = len(str(int(self.val['counter']) - 1))
-      for _, entry in data.children():
+      for idxStr, entry in data.children():
         if int(entry['Field0']) > 0:
-          yield ("[{0:>{1}}]".format(i, align), str(entry['Field1']))
+          yield (idxStr + ".Field1", str(entry['Field1']))
           i += 1
 
 ################################################################################
@@ -353,9 +352,9 @@ class NimSeqPrinter:
   def children(self):
     if self.val:
       length = int(self.val['Sup']['len'])
-      align = len(str(length - 1))
+      #align = len(str(length - 1))
       for i in range(length):
-        yield ("[{0:>{1}}]".format(i, align), self.val["data"][i])
+        yield ("data[{0}]".format(i), self.val["data"][i])
 
 ################################################################################
 
@@ -380,12 +379,10 @@ class NimArrayPrinter:
 ################################################################################
 
 class NimStringTablePrinter:
-  pattern = re.compile(r'^tyObject_StringTableObj_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
-    # match = self.pattern.match(self.val.type.name)
-    self.typeNimName  = "StringTableObj"
 
   def display_hint(self):
     return 'map'
@@ -398,26 +395,24 @@ class NimStringTablePrinter:
       if self.val['data']:
         capacity = int(self.val['data']['Sup']['len'])
 
-    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity)
+    return 'StringTableObj({0}, {1})'.format(counter, capacity)
 
   def children(self):
     if self.val:
       data = NimSeqPrinter(self.val['data'])
-      for _, entry in data.children():
+      for idxStr, entry in data.children():
         if int(entry['Field2']) > 0:
-          print(entry)
-          yield (None,entry['Field0'])
-          yield (None,entry['Field1'])
+          yield (idxStr + ".Field0", entry['Field0'])
+          yield (idxStr + ".Field1", entry['Field1'])
 
 ################################################################
 
 class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_Table_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
     # match = self.pattern.match(self.val.type.name)
-    self.typeNimName  = "Table"
 
   def display_hint(self):
     return 'map'
@@ -430,16 +425,16 @@ class NimTablePrinter:
       if self.val['data']:
         capacity = int(self.val['data']['Sup']['len'])
 
-    return '{0}({1}, {2})'.format(self.typeNimName, counter, capacity)
+    return 'Table({0}, {1})'.format(counter, capacity)
 
   def children(self):
     if self.val:
       data = NimSeqPrinter(self.val['data'])
-      for _, entry in data.children():
+      for idxStr, entry in data.children():
         # print(entry)
         if int(entry['Field0']) > 0:
-          yield (str(entry['Field0']), entry['Field1'])
-          yield (str(entry['Field0']), entry['Field2'])
+          yield (idxStr + '.Field1', entry['Field1'])
+          yield (idxStr + '.Field2', entry['Field2'])
 
 
 ################################################################

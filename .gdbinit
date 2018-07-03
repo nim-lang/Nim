@@ -1,7 +1,7 @@
 #set args c scratch.nim
-#source nim-gdb.py
+source nim-gdb.py
+rbreak quit
 
-#rbreak quit
 #break foo
 #break bar
 #run
