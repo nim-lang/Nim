@@ -17,8 +17,12 @@ proc foo() =
   var i = 0
   try:
     inc i
-    onRaise(proc (e: ref Exception): bool =
-      echo "i: ", i)
+    when defined(cpp):
+      echo "i: ", i
+      # C++ backend doesn't support 'onRaise' and 'onRaise' needs to die.
+    else:
+      onRaise(proc (e: ref Exception): bool =
+        echo "i: ", i)
     genErrors("errssor!")
   except ESomething:
     echo("ESomething happened")
