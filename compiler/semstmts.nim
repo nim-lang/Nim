@@ -1888,4 +1888,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
+  pushInfoContext(c.config, n.info)
   result = semExprNoType(c, n)
+  popInfoContext(c.config)
