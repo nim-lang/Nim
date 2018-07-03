@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, lineinfos
+  typesrenderer, astalgo, modulepaths, lineinfos, sequtils
 
 type
   TSections = array[TSymKind, Rope]
@@ -223,13 +223,8 @@ proc getPlainDocstring(n: PNode): string =
       if result.len > 0: return
 
 func htmlCollapse(html: string): string =
-    ## Remove leading whitespace and trailing newlines from every line
-    result = ""
-    for line in html.split("\n"):
-        for i, c in line:
-            if c notin Whitespace:
-                result.add line[i ..< line.len]
-                break
+  ## Strip whitespace and remove trailing newlines from every line
+  return html.splitLines().mapIt(strip(it)).join("")
 
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
   var r: TSrcGen
