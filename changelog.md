@@ -20,6 +20,8 @@
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely
   become an error in the future.
+- The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
+  bring the language in line with the standard library (e.g. ``parseOct``).
 
 
 #### Breaking changes in the standard library
@@ -29,7 +31,7 @@
 - The returned tuple of ``system.instantiationInfo`` now has a third field
   containing the column of the instantiation.
 
-- ``cookies.setCookie` no longer assumes UTC for the expiration date.
+- ``cookies.setCookie`` no longer assumes UTC for the expiration date.
 - ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
   strings anymore for its ``unit`` parameter. Instead the space is controlled
   by a new parameter ``useUnitSpace``.
@@ -119,6 +121,13 @@
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
   the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- the `typedesc` special type has been renamed to just `type`.
+- `static` and `type` are now also modifiers similar to `ref` and `ptr`.
+  They denote the special types `static[T]` and `type[T]`.
+- Forcing compile-time evaluation with `static` now supports specifying
+  the desired target type (as a concrete type or as a type class)
+- The `type` operator now supports checking that the supplied expression
+  matches an expected type constraint.
 
 ### Language changes
 
@@ -146,6 +155,8 @@
 
 - Nim now supports `except` clause in the export statement.
 
+- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
@@ -172,5 +183,8 @@
 
 - ``experimental`` is now a pragma / command line switch that can enable specific
   language extensions, it is not an all-or-nothing switch anymore.
+
+- Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
+  for more info.
 
 ### Bugfixes

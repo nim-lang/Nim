@@ -330,19 +330,22 @@ template eatChar(L: var TLexer, t: var TToken) =
   inc(L.bufpos)
 
 proc getNumber(L: var TLexer, result: var TToken) =
-  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]) =
+  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]): Natural =
     var pos = L.bufpos              # use registers for pos, buf
     var buf = L.buf
+    result = 0
     while true:
       if buf[pos] in chars:
         add(tok.literal, buf[pos])
         inc(pos)
+        inc(result)
       else:
         break
       if buf[pos] == '_':
         if buf[pos+1] notin chars:
           lexMessage(L, errGenerated,
-            "only single underscores may occur in a token: '__' is invalid")
+            "only single underscores may occur in a token and token may not " &
+            "end with an underscore: e.g. '1__1' and '1_' are invalid")
           break
         add(tok.literal, '_')
         inc(pos)
@@ -356,9 +359,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
       inc(pos)
     L.bufpos = pos
 
-  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int) =
+  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int, msgKind = errGenerated) =
     # Used to get slightly human friendlier err messages.
-    # Note: the erroneous 'O' char in the character set is intentional
     const literalishChars = {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'O',
       'c', 'C', 'b', 'B', '_', '.', '\'', 'd', 'i', 'u'}
     var msgPos = L.bufpos
@@ -377,14 +379,16 @@ proc getNumber(L: var TLexer, result: var TToken) =
       add(t.literal, L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
-    lexMessage(L, errGenerated, msg % t.literal)
+    lexMessage(L, msgKind, msg % t.literal)
 
   var
     startpos, endpos: int
     xi: BiggestInt
     isBase10 = true
+    numDigits = 0
   const
-    baseCodeChars = {'X', 'x', 'o', 'c', 'C', 'b', 'B'}
+    # 'c', 'C' is deprecated
+    baseCodeChars = {'X', 'x', 'o', 'b', 'B', 'c', 'C'}
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
     floatTypes = {tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit}
   result.tokType = tkIntLit   # int literal until we know better
@@ -394,35 +398,47 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenBegin(result, startPos)
 
   # First stage: find out base, make verifications, build token literal string
-  if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'O'}:
+  # {'c', 'C'} is added for deprecation reasons to provide a clear error message
+  if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'c', 'C', 'O'}:
     isBase10 = false
     eatChar(L, result, '0')
     case L.buf[L.bufpos]
+    of 'c', 'C':
+      lexMessageLitNum(L,
+                       "$1 will soon be invalid for oct literals; Use '0o' " &
+                       "for octals. 'c', 'C' prefix",
+                       startpos,
+                       warnDeprecated)
+      eatChar(L, result, 'c')
+      numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'O':
-      lexMessageLitNum(L, "$1 is not a valid number; did you mean octal? Then use one of '0o', '0c' or '0C'.", startpos)
+      lexMessageLitNum(L, "$1 is an invalid int literal; For octal literals " &
+                          "use the '0o' prefix.", startpos)
     of 'x', 'X':
       eatChar(L, result, 'x')
-      matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
-    of 'o', 'c', 'C':
-      eatChar(L, result, 'c')
-      matchUnderscoreChars(L, result, {'0'..'7'})
+      numDigits = matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
+    of 'o':
+      eatChar(L, result, 'o')
+      numDigits = matchUnderscoreChars(L, result, {'0'..'7'})
     of 'b', 'B':
       eatChar(L, result, 'b')
-      matchUnderscoreChars(L, result, {'0'..'1'})
+      numDigits = matchUnderscoreChars(L, result, {'0'..'1'})
     else:
       internalError(L.config, getLineInfo(L), "getNumber")
+    if numDigits == 0:
+      lexMessageLitNum(L, "invalid number: '$1'", startpos)
   else:
-    matchUnderscoreChars(L, result, {'0'..'9'})
+    discard matchUnderscoreChars(L, result, {'0'..'9'})
     if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
       result.tokType = tkFloatLit
       eatChar(L, result, '.')
-      matchUnderscoreChars(L, result, {'0'..'9'})
+      discard matchUnderscoreChars(L, result, {'0'..'9'})
     if L.buf[L.bufpos] in {'e', 'E'}:
       result.tokType = tkFloatLit
       eatChar(L, result, 'e')
       if L.buf[L.bufpos] in {'+', '-'}:
         eatChar(L, result)
-      matchUnderscoreChars(L, result, {'0'..'9'})
+      discard matchUnderscoreChars(L, result, {'0'..'9'})
   endpos = L.bufpos
 
   # Second stage, find out if there's a datatype suffix and handle it
@@ -505,6 +521,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
           if L.buf[pos] != '_':
             xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
           inc(pos)
+      # 'c', 'C' is deprecated
       of 'o', 'c', 'C':
         result.base = base8
         while pos < endpos:

@@ -124,7 +124,7 @@ type
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
-    ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
 
   CfileFlag* {.pure.} = enum
@@ -345,7 +345,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx,
-                            osAndroid}
+                            osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -356,6 +356,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
     of "sunos": result = conf.target.targetOS == osSolaris
+    of "nintendoswitch":
+      result = conf.target.targetOS == osNintendoSwitch
     of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8

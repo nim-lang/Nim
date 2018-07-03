@@ -59,9 +59,4 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 
 
 when isMainModule:
-  # echo type(42)
-  import streams
-  var ss = newStringStream()
-  ss.write($type(42)) # needs `$`
-  ss.setPosition(0)
-  doAssert ss.readAll() == "int"
+  doAssert $type(42) == "int"

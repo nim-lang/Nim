@@ -637,20 +637,22 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  let
-    a0 = firstOrd(nil, a)
-    a1 = lastOrd(nil, a)
-    f0 = firstOrd(nil, f)
-    f1 = lastOrd(nil, f)
-  if a0 == f0 and a1 == f1:
-    result = isEqual
-  elif a0 >= f0 and a1 <= f1:
-    result = isConvertible
-  elif a0 <= f1 and f0 <= a1:
-    # X..Y and C..D overlap iff (X <= D and C <= Y)
-    result = isConvertible
-  else:
-    result = isNone
+  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation = 
+    if a0 == f0 and a1 == f1:
+      isEqual
+    elif a0 >= f0 and a1 <= f1:
+      isConvertible
+    elif a0 <= f1 and f0 <= a1:
+      # X..Y and C..D overlap iff (X <= D and C <= Y)
+      isConvertible
+    else:
+      isNone
+  
+  if f.isOrdinalType: 
+    checkRange(firstOrd(nil, a), lastOrd(nil, a), firstOrd(nil, f), lastOrd(nil, f))
+  else: 
+    checkRange(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
+    
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var
@@ -1089,8 +1091,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
              else: isNone
 
   of tyAnything:
-    return if f.kind == tyAnything: isGeneric
-           else: isNone
+    if f.kind == tyAnything: return isGeneric
+    else: return isNone
 
   of tyUserTypeClass, tyUserTypeClassInst:
     if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
@@ -1666,13 +1668,17 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if aOrig.kind == tyStatic:
-        result = typeRel(c, f.lastSon, a)
-        if result != isNone and f.n != nil:
-          if not exprStructuralEquivalent(f.n, aOrig.n):
-            result = isNone
+        if f.base.kind != tyNone:
+          result = typeRel(c, f.base, a)
+          if result != isNone and f.n != nil:
+            if not exprStructuralEquivalent(f.n, aOrig.n):
+              result = isNone
+        else:
+          result = isGeneric
         if result != isNone: put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
-        result = typeRel(c, f.lastSon, aOrig.n.typ)
+        result = if f.base.kind != tyNone: typeRel(c, f.lastSon, aOrig.n.typ)
+                 else: isGeneric
         if result != isNone:
           var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])
           boundType.n = aOrig.n
@@ -1707,9 +1713,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       # proc foo(T: typedesc, x: T)
       # when `f` is an unresolved typedesc, `a` could be any
       # type, so we should not perform this check earlier
-      if a.kind != tyTypeDesc: return isNone
-
-      if f.base.kind == tyNone:
+      if a.kind != tyTypeDesc:
+        if a.kind == tyGenericParam and tfWildcard in a.flags:
+          # TODO: prevent `a` from matching as a wildcard again
+          result = isGeneric
+        else:
+          result = isNone
+      elif f.base.kind == tyNone:
         result = isGeneric
       else:
         result = typeRel(c, f.base, a.base)
@@ -2353,12 +2363,22 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
           m.firstMismatch = f
           break
       else:
-        # use default value:
+        if formal.ast.kind == nkEmpty:
+          # The default param value is set to empty in `instantiateProcType`
+          # when the type of the default expression doesn't match the type
+          # of the instantiated proc param:
+          localError(c.config, m.call.info,
+                     ("The default parameter '$1' has incompatible type " &
+                      "with the explicitly requested proc instantiation") %
+                      formal.name.s)
+        if nfDefaultRefsParam in formal.ast.flags:
+          m.call.flags.incl nfDefaultRefsParam
         var def = copyTree(formal.ast)
         if def.kind == nkNilLit:
           def = implicitConv(nkHiddenStdConv, formal.typ, def, m, c)
         if {tfImplicitTypeParam, tfGenericTypeParam} * formal.typ.flags != {}:
           put(m, formal.typ, def.typ)
+        def.flags.incl nfDefaultParam
         setSon(m.call, formal.position + 1, def)
     inc(f)
   # forget all inferred types if the overload matching failed

@@ -111,13 +111,15 @@ proc semExprBranchScope(c: PContext, n: PNode): PNode =
 const
   skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
-    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr}
+    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
+    nkHiddenStdConv}
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = isCallExpr(n) and n.sons[0].kind == nkSym and
-           sfDiscardable in n.sons[0].sym.flags
+  result = n.kind == nkRaiseStmt or
+           (isCallExpr(n) and n.sons[0].kind == nkSym and
+           sfDiscardable in n.sons[0].sym.flags)
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
@@ -132,11 +134,8 @@ proc discardCheck(c: PContext, result: PNode) =
   if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if implicitlyDiscardable(result):
-      var n = result
-      result.typ = nil
-      while n.kind in skipForDiscardable:
-        n = n.lastSon
-        n.typ = nil
+      var n = newNodeI(nkDiscardStmt, result.info, 1)
+      n[0] = result
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
@@ -519,7 +518,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         localError(c.config, a.info, errWrongNumberOfVariables)
       b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
-      b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
+      # keep type desc for doc generator
+      # NOTE: at the moment this is always ast.emptyNode, see parser.nim
+      b.sons[length-2] = a.sons[length-2]
       b.sons[length-1] = def
       addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
@@ -558,7 +559,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
-        addSon(b, a.sons[length-2])      # keep type desc for doc generator
+        # keep type desc for doc generator, but only if the user explicitly
+        # added it
+        if a.sons[length-2].kind != nkEmpty:
+          addSon(b, newNodeIT(nkType, a.info, typ))
+        else:
+          addSon(b, a.sons[length-2])
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
@@ -1772,7 +1778,9 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
   inc c.inStaticContext
+  openScope(c)
   let a = semStmt(c, n.sons[0])
+  closeScope(c)
   dec c.inStaticContext
   n.sons[0] = a
   evalStaticStmt(c.module, c.graph, a, c.p.owner)

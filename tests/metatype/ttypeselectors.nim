@@ -5,16 +5,16 @@ output: "8\n8\n4"
 import
   macros, typetraits
 
-template selectType(x: int): typeDesc =
+template selectType(x: int): type =
   when x < 10:
     int
   else:
     string
 
-template simpleTypeTempl: typeDesc =
+template simpleTypeTempl: type =
   string
 
-macro typeFromMacro: typedesc = string
+macro typeFromMacro: type = string
 
 # The tests below check that the result variable of the
 # selected type matches the literal types in the code:
