@@ -4239,3 +4239,8 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+type DummyTypeLast* = object
+  ## Use case: `when declared(DummyTypeLast): export foo` where foo is in a
+  ## `bar.nim`, where system.nim has "include bar" and another module has
+  ## `import bar` ; see example in system/helpers.nim
