@@ -3,11 +3,8 @@ import gdb
 import re
 import sys
 
-################################################################################
-#####  Type pretty printers
-################################################################################
-
-# some feedback that the nim runtime support is loading, isn't a bad thing at all.
+# some feedback that the nim runtime support is loading, isn't a bad
+# thing at all.
 gdb.write("Loading Nim Runtime support.\n", gdb.STDERR)
 
 # When error occure they occur regularly. This 'caches' known errors
@@ -22,6 +19,9 @@ def printErrorOnce(id, message):
 nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
 nimobjfile.type_printers = []
 
+################################################################################
+#####  Type pretty printers
+################################################################################
 
 type_hash_regex = re.compile("^\w*_([A-Za-z0-9]*)$")
 
@@ -39,6 +39,21 @@ def getNimRti(type_name):
 
 class NimTypeRecognizer:
 
+
+  # Normally gdb distinguishes between the command `ptype` and
+  # `whatis`.  `ptype` prints a very detailed view of the type, and
+  # `whatis` a very brief representation of the type. I haven't
+  # figured out a way to know from the type printer that is
+  # implemented here how to know if a type printer should print the
+  # short representation or the long representation.  As a hacky
+  # workaround I just say I am not resposible for printing pointer
+  # types (seq and string are exception as they are semantically
+  # values).  this way the default type printer will handle pointer
+  # types and dive into the members of that type.  So I can still
+  # control with `ptype myval` and `ptype *myval` if I want to have
+  # detail or not.  I this this method stinks but I could not figure
+  # out a better solution.
+
   type_map_static = {
     'NI': 'int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'in64',
     'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32', 'NU64': 'uint64',
@@ -50,6 +65,7 @@ class NimTypeRecognizer:
   object_type_pattern = re.compile("^(\w*):ObjectType$")
 
   def recognize(self, type_obj):
+
     tname = None
     if type_obj.tag is not None:
       tname = type_obj.tag
@@ -69,28 +85,10 @@ class NimTypeRecognizer:
           if target_type_name.find('tySequence_') == 0:
             tname = target_type_name
 
-        if not tname:
-          # visualize other pointer types for nim types as 'ptr <type>' instead of 'type *'
-          target_result = self.recognize(target_type)
-
-          if target_result:
-
-            # object that are defined as `MyType = ref object` have an
-            # internal type `MyType:ObjectRef *`. This is converted
-            # back to `MyType`.
-            match = self.object_type_pattern.match(target_result)
-            if match:
-              return match.group(1)
-            else:
-              return 'ptr/ref ' + target_result
-          else:
-            return None
-
-      else:
-        # no name defined and not a pointer. We are not repsonsible for printing.
-        return None
-
-    assert(tname)
+    if not tname:
+      # We are not resposible for this type printing.
+      # Basically this means we don't print pointer types.
+      return None
 
     result = self.type_map_static.get(tname, None)
     if result:
@@ -105,8 +103,15 @@ class NimTypeRecognizer:
 class NimTypePrinter:
   """Nim type printer. One printer for all Nim types."""
 
+
+  # enabling and disabling of type printers can be done with the
+  # following gdb commands:
+  #
+  #   enable  type-printer NimTypePrinter
+  #   disable type-printer NimTypePrinter
+
+  name = "NimTypePrinter"
   def __init__ (self):
-    self.name = "NimTypePrinter"
     self.enabled = True
 
   def instantiate(self):
@@ -187,7 +192,6 @@ class NimBoolPrinter:
 ################################################################################
 
 class NimStringPrinter:
-
   pattern = re.compile(r'^NimStringDesc \*$')
 
   def __init__(self, val):
@@ -202,7 +206,6 @@ class NimStringPrinter:
       return self.val['data'][0].address.string("utf-8", "ignore", l)
     else:
      return ""
-
 
 ################################################################################
 
@@ -431,7 +434,6 @@ class NimTablePrinter:
     if self.val:
       data = NimSeqPrinter(self.val['data'])
       for idxStr, entry in data.children():
-        # print(entry)
         if int(entry['Field0']) > 0:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
