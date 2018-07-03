@@ -222,6 +222,15 @@ proc getPlainDocstring(n: PNode): string =
       result = getPlainDocstring(n.sons[i])
       if result.len > 0: return
 
+func htmlCollapse(html: string): string =
+    ## Remove leading whitespace and trailing newlines from every line
+    result = ""
+    for line in html.split("\n"):
+        for i, c in line:
+            if c notin Whitespace:
+                result.add line[i ..< line.len]
+                break
+
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
   var r: TSrcGen
   var literal = ""
@@ -259,11 +268,20 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+      dispA(d.conf, result, """
+<span><!-- pragma tease (i.e. {...}) -->
+    <span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+</span>
+<span class="pragmawrap"><!-- actual pragma content -->
+    <span class="Other">$1</span>
+    <span class="pragma">""".htmlCollapse,
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
-      dispA(d.conf, result, "</div><span class=\"Other pragmaend\">$1</span>",
+      dispA(d.conf, result, """
+    </span>
+    <span class="Other">$1</span>
+</span>""".htmlCollapse,
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
