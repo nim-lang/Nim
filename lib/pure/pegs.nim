@@ -946,7 +946,30 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
       body
 
   macro mkHandlerTplts(hdlrs: untyped): untyped =
-    # transforms the handler spec in *hdlrs* into handler templates
+    # Transforms the handler spec in *hdlrs* into handler templates.
+    # The AST structure of *hdlrs[0]*:
+    # 
+    # .. code-block::
+    # StmtList
+    #   Call
+    #     Ident "pkNonTerminal"
+    #     StmtList
+    #       Call
+    #         Ident "enter"
+    #         StmtList
+    #           <handler code block>
+    #       Call
+    #         Ident "leave"
+    #         StmtList
+    #           <handler code block>
+    #   Call
+    #     Ident "pkChar"
+    #     StmtList
+    #       Call
+    #         Ident "leave"
+    #         StmtList
+    #           <handler code block>
+    #   ...
     let hdc = newStmtList()
     for topCall in hdlrs[0]:
       if nnkCall != topCall.kind:
