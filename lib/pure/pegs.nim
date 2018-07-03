@@ -20,8 +20,7 @@ include "system/inclrtl"
 const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
-import
-  strutils, macros
+import strutils, macros
 export macros
 
 when useUnicode:
@@ -76,7 +75,7 @@ type
     line: int                     ## line the symbol has been declared/used in
     col: int                      ## column the symbol has been declared/used in
     flags: set[NonTerminalFlag]   ## the nonterminal's flags
-    rule: Peg                   ## the rule that the symbol refers to
+    rule: Peg                     ## the rule that the symbol refers to
   Peg* {.shallow.} = object ## type that represents a PEG
     case kind: PegKind
     of pkEmpty..pkWhitespace: nil
@@ -88,24 +87,58 @@ type
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
 
-proc name*(nt: NonTerminal): string = nt.name
-proc line*(nt: NonTerminal): int = nt.line
-proc col*(nt: NonTerminal): int = nt.col
-proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
-proc rule*(nt: NonTerminal): Peg = nt.rule
-
 proc kind*(p: Peg): PegKind = p.kind
+  ## Returns the *PegKind* of a given *Peg* object.
+
 proc term*(p: Peg): string = p.term
+  ## Returns the *string* representation of a given *Peg* variant object 
+  ## where present.
+
 proc ch*(p: Peg): char = p.ch
+  ## Returns the *char* representation of a given *Peg* variant object 
+  ## where present.
+
 proc charChoice*(p: Peg): ref set[char] = p.charChoice
+  ## Returns the *charChoice* field of a given *Peg* variant object 
+  ## where present.
+
 proc nt*(p: Peg): NonTerminal = p.nt
+  ## Returns the *NonTerminal* object of a given *Peg* variant object 
+  ## where present.
+
 proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
+  ## Returns the back-reference index of a captured sub-pattern in the
+  ## *Captures* object for a given *Peg* variant object where present.
+
 iterator items*(p: Peg): Peg {.inline.} =
+  ## Yields the child nodes of a *Peg* variant object where present.
   for s in p.sons:
     yield s
+
 iterator pairs*(p: Peg): (int, Peg) {.inline.} =
+  ## Yields the indices and child nodes of a *Peg* variant object where present.
   for i in 0 ..< p.sons.len:
     yield (i, p.sons[i])
+
+proc name*(nt: NonTerminal): string = nt.name
+  ## Gets the name of the symbol represented by the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc line*(nt: NonTerminal): int = nt.line
+  ## Gets the line number of the definition of the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc col*(nt: NonTerminal): int = nt.col
+  ## Gets the column number of the definition of the parent *Peg* object variant
+  ## of a given *NonTerminal*.
+
+proc flags*(nt: NonTerminal): set[NonTerminalFlag] = nt.flags
+  ## Gets the *NonTerminalFlag*-typed flags field of the parent *Peg* variant
+  ## object of a given *NonTerminal*.
+
+proc rule*(nt: NonTerminal): Peg = nt.rule
+  ## Gets the *Peg* object representing the rule definition of the parent *Peg*
+  ## object variant of a given *NonTerminal*. 
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
@@ -829,11 +862,12 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
     discard
   matchOrParse(rawMatch)
 
-template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty.} =
-  ## Generates an interpreting event parser proc according to the specified PEG
-  ## AST and handler code blocks. The proc can be called with a text
+template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
+    {.dirty.} =
+  ## Generates an interpreting event parser *proc* according to the specified
+  ## PEG AST and handler code blocks. The *proc* can be called with a string
   ## to be parsed and will execute the handler code blocks whenever their
-  ## associated grammar element is matched. It returns -1 if the text does not
+  ## associated grammar element is matched. It returns -1 if the string does not
   ## match, else the length of the total match. The following example code
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
@@ -896,74 +930,84 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) {.dirty
   ## which define the grammar elements of interest. Each block can contain
   ## handler code to be executed when the parser enters and leaves text
   ## matching the grammar element. An *enter* handler can access the specific
-  ## PEG AST node being matched as *p* and the position of the matched text
-  ## segment as *start*. A *leave* handler can access *p*, *start* and
-  ## also the length of the matched text segment as *length*. Symbols
-  ## declared in an *enter* handler can be made visible in the corresponding
-  ## *leave* handler by annotating them with an *inject* pragma.
-  template mkEnterCb(cbPostf, body) {.dirty.} =
-    template `enter cbPostf`(p, start) =
+  ## PEG AST node being matched as *p*, the entire parsed string as *s*
+  ## and the position of the matched text segment in *s* as *start*. A *leave*
+  ## handler can access *p*, *s*, *start* and also the length of the matched
+  ## text segment as *length*.
+  ##
+  ## Symbols  declared in an *enter* handler can be made visible in the
+  ## corresponding *leave* handler by annotating them with an *inject* pragma.
+  template mkEnter(hdPostf, body) {.dirty.} =
+    template `enter hdPostf`(pegNode, start) =
       body
 
-  template mkLeaveCb(cbPostf, body) {.dirty.} =
-    template `leave cbPostf`(p, start, length) =
+  template mkLeave(hdPostf, body) {.dirty.} =
+    template `leave hdPostf`(pegNode, start, length) =
       body
 
-  macro mkHandlers(hdlrs: untyped): untyped =
-    let cbms = newStmtList()
-    for co in hdlrs[0]:
-      if nnkCall != co.kind:
-        error("Call syntax expected.", co)
-      let pk = co[0]
-      if nnkIdent != pk.kind:
-        error("PegKind expected.", pk)
-      if 2 == co.len:
-        for cb in co[1]:
-          if nnkCall != cb.kind:
-            error("Call syntax expected.", cb)
-          if nnkIdent != cb[0].kind:
-            error("Handler identifier expected.", cb[0])
-          if 2 == cb.len:
-            let cbPostf = toNimIdent(substr($pk.ident, 2))
-            case $cb[0].ident
+  macro mkHandlerTplts(hdlrs: untyped): untyped =
+    # transforms the handler spec in *hdlrs* into handler templates
+    let hdc = newStmtList()
+    for topCall in hdlrs[0]:
+      if nnkCall != topCall.kind:
+        error("Call syntax expected.", topCall)
+      let pegKind = topCall[0]
+      if nnkIdent != pegKind.kind:
+        error("PegKind expected.", pegKind)
+      if 2 == topCall.len:
+        for hdDef in topCall[1]:
+          if nnkCall != hdDef.kind:
+            error("Call syntax expected.", hdDef)
+          if nnkIdent != hdDef[0].kind:
+            error("Handler identifier expected.", hdDef[0])
+          if 2 == hdDef.len:
+            let hdPostf = ident(substr(pegKind.strVal, 2))
+            case hdDef[0].strVal
             of "enter":
-              cbms.add getAst(mkEnterCb(cbPostf, cb[1]))
+              hdc.add getAst(mkEnter(hdPostf, hdDef[1]))
             of "leave":
-              cbms.add getAst(mkLeaveCb(cbPostf, cb[1]))
+              hdc.add getAst(mkLeave(hdPostf, hdDef[1]))
             else:
               error(
                 "Unsupported handler identifier, expected 'enter' or 'leave'.",
-                cb[0]
+                hdDef[0]
               )
-    cbms
+    hdc
 
   block:
     proc parser(s: string): int =
+      # the proc to be returned
       var
         ms: array[MaxSubpatterns, (int, int)]
         cs = Captures(matches: ms, ml: 0, origStart: 0)
       proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
 
-        mkHandlers:
+        mkHandlerTplts:
           handlers
 
-        macro enter(pk, p, start: untyped): untyped =
-          template mkDoEnter(cbPostf, p, start) =
-            when declared(`enter cbPostf`):
-              `enter cbPostf`(p, start):
+        macro enter(pegKind, pegNode, start: untyped): untyped =
+          # This is called by the matcher code in *matchOrParse* at the
+          # start of the code for a grammar element of kind *pegKind*.
+          # Expands to a call to the handler template if one was generated
+          # by *mkHandlerTplts*.
+          template mkDoEnter(hdPostf, pegNode, start) =
+            when declared(`enter hdPostf`):
+              `enter hdPostf`(pegNode, start):
             else:
               discard
-          let cbPostf = toNimIdent(substr($pk.ident, 2))
-          getAst(mkDoEnter(cbPostf, p, start))
+          let hdPostf = ident(substr(pegKind.strVal, 2))
+          getAst(mkDoEnter(hdPostf, pegNode, start))
 
-        macro leave(pk, p, start, length: untyped): untyped =
-          template mkDoLeave(cbPostf, p, start, length) =
-            when declared(`leave cbPostf`):
-              `leave cbPostf`(p, start, length):
+        macro leave(pegKind, pegNode, start, length: untyped): untyped =
+          # Like *enter*, but called at the end of the matcher code for
+          # a grammar element of kind *pegKind*.
+          template mkDoLeave(hdPostf, pegNode, start, length) =
+            when declared(`leave hdPostf`):
+              `leave hdPostf`(pegNode, start, length):
             else:
               discard
-          let cbPostf = toNimIdent(substr($pk.ident, 2))
-          getAst(mkDoLeave(cbPostf, p, start, length))
+          let hdPostf = ident(substr(pegKind.strVal, 2))
+          getAst(mkDoLeave(hdPostf, pegNode, start, length))
 
         matchOrParse(parseIt)
       parseIt(s, pegAst, 0, cs)

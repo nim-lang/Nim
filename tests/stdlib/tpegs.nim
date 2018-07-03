@@ -114,7 +114,7 @@ block:
         leave:
           pStack.setLen pStack.high
           if length > 0:
-            let matchStr = txt.substr(start, start+length-1)
+            let matchStr = s.substr(start, start+length-1)
             case p.nt.name
             of "Value":
               try:
@@ -133,15 +133,15 @@ block:
                   of '*': valStack[^2] * valStack[^1]
                   else: valStack[^2] / valStack[^1]
                   valStack.setLen valStack.high
-                  echo valStack 
+                  echo valStack
                   opStack.setLen opStack.high
-                  echo opStack 
+                  echo opStack
       pkChar:
         leave:
           if length == 1 and "Value" != pStack[^1]:
-            let matchChar = txt[start]
+            let matchChar = s[start]
             opStack.add matchChar
-            echo opStack 
+            echo opStack
   echo "Event parser output"
   echo "-------------------"
   let pLen = parseArithExpr(txt)
