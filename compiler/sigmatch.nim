@@ -2308,6 +2308,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             m.firstMismatch = f
             return
           if m.baseTypeMatch:
+            assert formal.typ.kind == tyVarargs
             #assert(container == nil)
             if container.isNil:
               container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
@@ -2321,10 +2322,19 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
             # pick the formal from the end, so that 'x, y, varargs, z' works:
             f = max(f, formalLen - n.len + a + 1)
-          else:
+          elif formal.typ.kind != tyVarargs or container == nil:
             setSon(m.call, formal.position + 1, arg)
             inc(f)
             container = nil
+          else:
+            # we end up here if the argument can be converted into the varargs
+            # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
+            # a container
+            assert arg.kind == nkHiddenStdConv
+            localError(c.config, n.sons[a].info, "cannot convert $1 to $2" % [
+              typeToString(n.sons[a].typ), typeToString(formal.typ) ])
+            m.state = csNoMatch
+            return
         checkConstraint(n.sons[a])
     inc(a)
 

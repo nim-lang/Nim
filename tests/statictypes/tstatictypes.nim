@@ -107,3 +107,12 @@ when true:
     assert aw2.data.high == 6
     assert aw3.data.high == 9
 
+# #6077
+block:
+  type
+    Backend = enum
+      Cpu
+
+    Tensor[B: static[Backend]; T] = object
+
+    BackProp[B: static[Backend],T] = proc (gradient: Tensor[B,T]): Tensor[B,T]

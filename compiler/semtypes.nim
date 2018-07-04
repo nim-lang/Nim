@@ -873,7 +873,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if base.isMetaType and procKind == skMacro:
       localError(c.config, info, errMacroBodyDependsOnGenericTypes % paramName)
     result = addImplicitGeneric(c.newTypeWithSons(tyStatic, @[base]))
-    result.flags.incl({tfHasStatic, tfUnresolved})
+    if result != nil: result.flags.incl({tfHasStatic, tfUnresolved})
 
   of tyTypeDesc:
     if tfUnresolved notin paramType.flags:
