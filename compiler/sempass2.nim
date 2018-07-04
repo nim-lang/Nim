@@ -899,16 +899,13 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
 proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
   var effects = t.n[0]
   if t.kind != tyProc or effects.kind != nkEffectList: return
-
-  let
-    raisesSpec = effectSpec(n, wRaises)
-    tagsSpec = effectSpec(n, wTags)
-
-  if n.kind != nkEmpty or not isNil(raisesSpec) or not isNil(tagsSpec):
+  if n.kind != nkEmpty:
     internalAssert g.config, effects.len == 0
     newSeq(effects.sons, effectListLen)
+    let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
       effects[exceptionEffects] = raisesSpec
+    let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
     effects[pragmasEffects] = n
