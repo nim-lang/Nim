@@ -146,3 +146,11 @@ block:
 
   proc generic_proc[T]() =
     assert Annotated.hasCustomPragma(simpleAttr)
+
+
+#--------------------------------------------------------------------------
+# Pragma on proc type
+
+let a: proc(x: int) {.defaultValue(5).} = nil
+static:
+  doAssert hasCustomPragma(a.type, defaultValue)

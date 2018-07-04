@@ -229,7 +229,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       for i in 1..<t.sons.len:
         fp.add newIdentDefs(t.n[i], t.sons[i])
       result.add fp
-      result.add newNodeI(nkEmpty, info)  # pragmas aren't reconstructed yet
+      result.add t.n[0][pragmasEffects]
     else:
       result = mapTypeToBracket("proc", mNone, t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)
