@@ -155,9 +155,8 @@ proc semIf(c: PContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var it = n.sons[i]
     if it.len == 2:
-      when newScopeForIf: openScope(c)
+      openScope(c)
       it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
-      when not newScopeForIf: openScope(c)
       it.sons[1] = semExprBranch(c, it.sons[1])
       typ = commonType(typ, it.sons[1])
       closeScope(c)
@@ -212,9 +211,8 @@ proc semCase(c: PContext, n: PNode): PNode =
     of nkElifBranch:
       chckCovered = false
       checkSonsLen(x, 2, c.config)
-      when newScopeForIf: openScope(c)
+      openScope(c)
       x.sons[0] = forceBool(c, semExprWithType(c, x.sons[0]))
-      when not newScopeForIf: openScope(c)
       x.sons[1] = semExprBranch(c, x.sons[1])
       typ = commonType(typ, x.sons[1])
       closeScope(c)

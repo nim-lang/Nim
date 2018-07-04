@@ -18,8 +18,6 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(useFFI)
-  newScopeForIf* = true
-  useCaas* = not defined(noCaas)
   copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
