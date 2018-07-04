@@ -1556,12 +1556,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    if destructor notin c.features:
-      if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
-          mode != noOverloadedAsgn:
-        return overloadedAsgn(c, lhs, n.sons[1])
-    else:
-      liftTypeBoundOps(c, lhs.typ, lhs.info)
+    liftTypeBoundOps(c, lhs.typ, lhs.info)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])

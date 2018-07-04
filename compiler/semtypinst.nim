@@ -369,10 +369,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    if destructor in cl.c.features:
-      cl.c.typesWithOps.add((newbody, result))
-    else:
-      typeBound(cl.c, newbody, result, assignment, cl.info)
+    cl.c.typesWithOps.add((newbody, result))
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes
@@ -546,7 +543,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       else: discard
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
-  if destructor notin c.features: return
   var i = 0
   while i < c.typesWithOps.len:
     let (newty, oldty) = c.typesWithOps[i]
