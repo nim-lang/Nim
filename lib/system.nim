@@ -3855,6 +3855,8 @@ type
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## represents a Nim AST node. Macros operate on this type.
 
+{.deprecated: [PNimrodNode: NimNode].}
+
 when false:
   template eval*(blk: typed): typed =
     ## executes a block of code at compile time just as if it was a macro
