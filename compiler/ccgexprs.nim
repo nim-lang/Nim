@@ -1135,9 +1135,21 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   if sizeExpr.isNil:
     sizeExpr = "sizeof($1)" %
         [getTypeDesc(p.module, bt)]
-  let args = [getTypeDesc(p.module, typ),
-              genTypeInfo(p.module, typ, a.lode.info),
-              sizeExpr]
+
+  let ti = genTypeInfo(p.module, typ, a.lode.info)
+  if bt.destructor != nil:
+    # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
+    # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
+    # convention at least:
+    if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccDefault:
+      localError(p.module.config, a.lode.info,
+        "the destructor that is turned into a finalizer needs " &
+        "to have the 'nimcall' calling convention")
+    var f: TLoc
+    initLocExpr(p, newSymNode(bt.destructor), f)
+    addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
+
+  let args = [getTypeDesc(p.module, typ), ti, sizeExpr]
   if a.storage == OnHeap and usesNativeGC(p.config):
     # use newObjRC1 as an optimization
     if canFormAcycle(a.t):
