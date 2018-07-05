@@ -834,8 +834,6 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
     leave(pkCapture, p, start, result)
   of pkBackRef..pkBackRefIgnoreStyle:
     enter(pkBackRef, p, start)
-    enter(pkBackRefIgnoreCase, p, start)
-    enter(pkBackRefIgnoreStyle, p, start)
     if p.index >= c.ml: return -1
     var (a, b) = c.matches[p.index]
     var n: Peg
@@ -843,8 +841,6 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
     n.term = s.substr(a, b)
     result = mopProc(s, n, start, c)
     leave(pkBackRef, p, start, result)
-    leave(pkBackRefIgnoreCase, p, start, result)
-    leave(pkBackRefIgnoreStyle, p, start, result)
   of pkStartAnchor:
     enter(pkStartAnchor, p, start)
     if c.origStart == start: result = 0
@@ -942,14 +938,13 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
   ##
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
-  template mkEnter(hdPostf, pegKind, body) {.dirty.} =
+  template mkEnter(hdPostf, body) {.dirty.} =
     template `enter hdPostf`(pegNode, start) =
-      if pegKind == pegNode.kind:
-        body
+      body
 
-  template mkLeave(hdPostf, pegKind, body) {.dirty.} =
+  template mkLeave(hdPostf, body) {.dirty.} =
     template `leave hdPostf`(pegNode, start, length) =
-      if pegKind == pegNode.kind and length != -1:
+      if length != -1:
         body
 
   macro mkHandlerTplts(hdlrs: untyped): untyped =
@@ -977,7 +972,6 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
     #         StmtList
     #           <handler code block>
     #   ...
-    #
     let hdc = newStmtList()
     for topCall in hdlrs[0]:
       if nnkCall != topCall.kind:
@@ -995,9 +989,9 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
             let hdPostf = ident(substr(pegKind.strVal, 2))
             case hdDef[0].strVal
             of "enter":
-              hdc.add getAst(mkEnter(hdPostf, pegKind, hdDef[1]))
+              hdc.add getAst(mkEnter(hdPostf, hdDef[1]))
             of "leave":
-              hdc.add getAst(mkLeave(hdPostf, pegKind, hdDef[1]))
+              hdc.add getAst(mkLeave(hdPostf, hdDef[1]))
             else:
               error(
                 "Unsupported handler identifier, expected 'enter' or 'leave'.",
@@ -1020,8 +1014,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
           # This is called by the matcher code in *matchOrParse* at the
           # start of the code for a grammar element of kind *pegKind*.
           # Expands to a call to the handler template if one was generated
-          # by *mkHandlerTplts*. The handler code will only be executed if
-          # the kind of the matched *pegNode* is equal to *pegKind*.
+          # by *mkHandlerTplts*.
           template mkDoEnter(hdPostf, pegNode, start) =
             when declared(`enter hdPostf`):
               `enter hdPostf`(pegNode, start):
