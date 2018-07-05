@@ -81,6 +81,7 @@ elif defined(genode):
   include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
 elif defined(nintendoswitch):
+
   import nintendoswitch/switch_memory
 
   type
@@ -94,7 +95,7 @@ elif defined(nintendoswitch):
       heap: pointer           # pointer to main heap alloc
       heapMirror: pointer     # pointer to virtmem mapped heap
 
-  proc alignSize(size: int): int =
+  proc alignSize(size: int): int {.inline.} =
     ## Align a size integer to be in multiples of PageSize
     ## The nintendo switch will not allocate memory that is not
     ## aligned to 0x1000 bytes and will just crash.
@@ -120,7 +121,7 @@ elif defined(nintendoswitch):
       nswitchBlock.heapMirror, nswitchBlock.heap, nswitchBlock.realSize
     )
 
-  proc storeHeapData(address, heapMirror, heap: pointer, size: int) =
+  proc storeHeapData(address, heapMirror, heap: pointer, size: int) {.inline.} =
     ## Store data in the heap for deallocation purposes later
 
     # the position of our heap pointer data. Since we allocated PageSize extra
@@ -138,7 +139,7 @@ elif defined(nintendoswitch):
     nswitchBlock.heap = heap
     nswitchBlock.heapMirror = heapMirror
 
-  proc getOriginalHeapPosition(address: pointer, difference: int): pointer =
+  proc getOriginalHeapPosition(address: pointer, difference: int): pointer {.inline.} =
     ## This function sets the heap back to the originally requested
     ## size
     let
@@ -175,11 +176,11 @@ elif defined(nintendoswitch):
     allocPages(size):
       raiseOutOfMem()
 
-  proc osTryAllocPages(size: int): pointer {.inline.} =
+  proc osTryAllocPages(size: int): pointer =
     allocPages(size):
       return nil
 
-  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+  proc osDeallocPages(p: pointer, size: int) =
     # Note that in order for the Switch not to crash, a call to
     # deallocHeap(runFinalizers = true, allowGcAfterwards = false)
     # must be run before gfxExit(). The Switch requires all memory
