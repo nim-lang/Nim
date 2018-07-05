@@ -855,7 +855,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
   ## proc).
   ## Returns -1 if it does not match, else the length of the match
 
-  # Set the handlers to do-nothing.
+  # Set the handler generators to produce do-nothing handlers.
   template enter(pk, p, start) =
     discard
   template leave(pk, p, start, length) =
@@ -933,7 +933,8 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
   ## PEG AST node being matched as *p*, the entire parsed string as *s*
   ## and the position of the matched text segment in *s* as *start*. A *leave*
   ## handler can access *p*, *s*, *start* and also the length of the matched
-  ## text segment as *length*.
+  ## text segment as *length*. For an unsuccessful match, the *enter* handler
+  ## will be executed, but not the *leave* handler.
   ##
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
@@ -943,7 +944,8 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
 
   template mkLeave(hdPostf, body) {.dirty.} =
     template `leave hdPostf`(pegNode, start, length) =
-      body
+      if length != -1:
+        body
 
   macro mkHandlerTplts(hdlrs: untyped): untyped =
     # Transforms the handler spec in *hdlrs* into handler templates.
