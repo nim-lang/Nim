@@ -85,6 +85,10 @@ elif defined(nintendoswitch):
 
   type
     PSwitchBlock = ptr NSwitchBlock
+    ## This will hold the heap pointer data in a separate
+    ## block of memory that is PageSize bytes above
+    ## the requested memory. It's the only good way
+    ## to pass around data with heap allocations
     NSwitchBlock {.pure, inheritable.} = object
       realSize: int
       heap: pointer           # pointer to main heap alloc
@@ -96,52 +100,76 @@ elif defined(nintendoswitch):
     ## aligned to 0x1000 bytes and will just crash.
     (size + (PageSize - 1)) and not (PageSize - 1)
 
+  proc deallocate(heapMirror: pointer, heap: pointer, size: int) =
+    # Unmap the allocated memory
+    discard svcUnmapMemory(heapMirror, heap, size.uint64)
+    # These should be called (theoretically), but referencing them crashes the switch.
+    # The above call seems to free all heap memory, so these are not needed.
+    # virtmemFreeMap(nswitchBlock.heapMirror, nswitchBlock.realSize.csize)
+    # free(nswitchBlock.heap)
+
   proc freeMem(p: pointer) =
     # Retrieve the switch block data from the pointer we set before
-    let nswitchDescrPos = cast[ByteAddress](p) -% sizeof(NSwitchBlock)
-    let nswitchBlock = cast[PSwitchBlock](nswitchDescrPos)
+    # The data is located just sizeof(NSwitchBlock) bytes below
+    # the top of the pointer to the heap
+    let
+      nswitchDescrPos = cast[ByteAddress](p) -% sizeof(NSwitchBlock)
+      nswitchBlock = cast[PSwitchBlock](nswitchDescrPos)
 
-    discard svcUnmapMemory(
-      nswitchBlock.heapMirror, nswitchBlock.heap, nswitchBlock.realSize.uint64
+    deallocate(
+      nswitchBlock.heapMirror, nswitchBlock.heap, nswitchBlock.realSize
     )
-    virtmemFreeMap(nswitchBlock.heapMirror, nswitchBlock.realSize.csize)
-    free(nswitchBlock.heap)
+
+  proc storeHeapData(address, heapMirror, heap: pointer, size: int) =
+    ## Store data in the heap for deallocation purposes later
+
+    # the position of our heap pointer data. Since we allocated PageSize extra
+    # bytes, we should have a buffer on top of the requested size of at least
+    # PageSize bytes, which is much larger than sizeof(NSwitchBlock). So we
+    # decrement the address by sizeof(NSwitchBlock) and use that address
+    # to store our pointer data
+    let nswitchBlockPos = cast[ByteAddress](address) -% sizeof(NSwitchBlock)
+
+    # We need to store this in a pointer obj (PSwitchBlock) so that the data sticks
+    # at the address we've chosen. If NSwitchBlock is used here, the data will
+    # be all 0 when we try to retrieve it later.
+    var nswitchBlock = cast[PSwitchBlock](nswitchBlockPos)
+    nswitchBlock.realSize = size
+    nswitchBlock.heap = heap
+    nswitchBlock.heapMirror = heapMirror
+
+  proc getOriginalHeapPosition(address: pointer, difference: int): pointer =
+    ## This function sets the heap back to the originally requested
+    ## size
+    let
+      pos = cast[int](address)
+      newPos = cast[ByteAddress](pos) +% difference
+
+    return cast[pointer](newPos)
 
   template allocPages(size: int, outOfMemoryStmt: untyped): untyped =
+    # This is to ensure we get a block of memory the requested
+    # size, as well as space to store our structure
     let realSize = alignSize(size + sizeof(NSwitchBlock))
 
     let heap = memalign(PageSize, realSize)
+
+    if heap.isNil:
+      outOfMemoryStmt
+
     let heapMirror = virtmemReserveMap(realSize.csize)
     result = heapMirror
 
     let rc = svcMapMemory(heapMirror, heap, realSize.uint64)
+    # Any return code not equal 0 means an error in libnx
     if rc.uint32 != 0:
-      discard svcUnmapMemory(heapMirror, heap, realSize.uint64)
-      virtmemFreeMap(heapMirror, realSize.csize)
-      free(heap)
+      deallocate(heapMirror, heap, realSize)
       outOfMemoryStmt
 
-    # What we are doing here in the following section is
-    # allocating memory for ourselves so that we can store
-    # extra data in the mapped memory (our switch pointers)
-
-    let pos = cast[int](result)
-
-    var new_pos = cast[ByteAddress](pos) +% (PageSize - (pos %% PageSize))
-    if (new_pos-pos) < sizeof(NSwitchBlock):
-      new_pos = new_pos +% PageSize
     # set result to be the original size requirement
-    result = cast[pointer](new_pos)
+    result = getOriginalHeapPosition(result, realSize - size)
 
-    let nswitchDescrPos = cast[ByteAddress](result) -% sizeof(NSwitchBlock)
-
-    # We need to store this in a pointer obj so that the data sticks
-    # at the address
-    var nswitchDescr = cast[PSwitchBlock](nswitchDescrPos)
-    nswitchDescr.realSize = realSize
-    nswitchDescr.heap = heap
-    nswitchDescr.heapMirror = heapMirror
-
+    storeHeapData(result, heapMirror, heap, realSize)
 
   proc osAllocPages(size: int): pointer {.inline.} =
     allocPages(size):
@@ -152,6 +180,13 @@ elif defined(nintendoswitch):
       return nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    # Note that in order for the Switch not to crash, a call to
+    # deallocHeap(runFinalizers = true, allowGcAfterwards = false)
+    # must be run before gfxExit(). The Switch requires all memory
+    # to be deallocated before the graphics application has exited.
+    #
+    # gfxExit() can be found in <switch/gfx/gfx.h> in the github
+    # repo https://github.com/switchbrew/libnx
     when reallyOsDealloc:
       freeMem(p)
 
