@@ -1,5 +1,5 @@
 type
-  TBase = object of TObject
+  TBase = object of RootObj
     x, y: int
 
   TSubclassKind = enum ka, kb, kc, kd, ke, kf
@@ -13,7 +13,7 @@ type
     n: bool
 
 type
-  TMyObject = object of TObject
+  TMyObject = object of RootObj
     case disp: range[0..4]
       of 0: arg: char
       of 1: s: string

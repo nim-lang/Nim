@@ -351,6 +351,7 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
     if kind == pcDir:
       when defined(windows):
         if dir.endsWith"nake": continue
+      if dir.endsWith"named_argument_bug": continue
       let mainfile = findMainFile(dir)
       if mainfile != "":
         testNoSpec r, makeTest(mainfile, options, cat)

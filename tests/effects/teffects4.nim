@@ -9,7 +9,7 @@ type
     a, b, c: string
     fn: proc (): int {.tags: [ReadIOEffect].}
 
-  EIO2 = ref object of EIO
+
 
 proc q() {.tags: [IoEffect].} =
   discard

@@ -20,8 +20,8 @@ proc noRaise(x: proc()) {.raises: [].} =
   # unknown call that might raise anything, but valid:
   x()
 
-proc doRaise() {.raises: [EIO].} =
-  raise newException(EIO, "IO")
+proc doRaise() {.raises: [IoError].} =
+  raise newException(IoError, "IO")
 
 proc use*() =
   noRaise(doRaise)

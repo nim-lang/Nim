@@ -28,9 +28,9 @@ proc newElement[TKey, TData](key: TKey, left: PElement[TKey, TData] = nil, right
 proc newElement[Tkey, TData](key: Tkey, data: TData) : PElement[Tkey, TData] =
   PElement[TKey, TData](kind: ElementKind.leaf, data: data)
 
-proc find*[TKey, TData](root: PElement[TKey, TData], key: TKey): TData {.raises: [EInvalidKey].} =
+proc find*[TKey, TData](root: PElement[TKey, TData], key: TKey): TData {.raises: [KeyError].} =
   if root.left == nil:
-    raise newException(EInvalidKey, "key does not exist: " & key)
+    raise newException(KeyError, "key does not exist: " & key)
 
   var tmp_element = addr(root)
 
