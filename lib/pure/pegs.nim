@@ -577,6 +577,17 @@ when not useUnicode:
 
 template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
   ## Internal use only.
+
+  proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
+    # Parse handler code must run in an *of* clause of its own for each
+    # *PegKind*, so we encapsulate the identical clause body for
+    # *pkBackRef..pkBackRefIgnoreStyle* here.
+    var (a, b) = c.matches[p.index]
+    var n: Peg
+    n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
+    n.term = s.substr(a, b)
+    result = mopProc(s, n, start, c)
+
   case p.kind
   of pkEmpty:
     enter(pkEmpty, p, start)
@@ -832,15 +843,21 @@ template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
     else:
       c.ml = idx
     leave(pkCapture, p, start, result)
-  of pkBackRef..pkBackRefIgnoreStyle:
+  of pkBackRef:
     enter(pkBackRef, p, start)
     if p.index >= c.ml: return -1
-    var (a, b) = c.matches[p.index]
-    var n: Peg
-    n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
-    n.term = s.substr(a, b)
-    result = mopProc(s, n, start, c)
+    result = matchBackRef(s, p, start, c)
     leave(pkBackRef, p, start, result)
+  of pkBackRefIgnoreCase:
+    enter(pkBackRefIgnoreCase, p, start)
+    if p.index >= c.ml: return -1
+    result = matchBackRef(s, p, start, c)
+    leave(pkBackRefIgnoreCase, p, start, result)
+  of pkBackRefIgnoreStyle:
+    enter(pkBackRefIgnoreStyle, p, start)
+    if p.index >= c.ml: return -1
+    result = matchBackRef(s, p, start, c)
+    leave(pkBackRefIgnoreStyle, p, start, result)
   of pkStartAnchor:
     enter(pkStartAnchor, p, start)
     if c.origStart == start: result = 0
