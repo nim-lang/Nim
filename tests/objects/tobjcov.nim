@@ -1,7 +1,7 @@
 # Covariance is not type safe:
 
 type
-  TA = object of TObject
+  TA = object of RootObj
     a: int
   TB = object of TA
     b: array[0..5000_000, int]

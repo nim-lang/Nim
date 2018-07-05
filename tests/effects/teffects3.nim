@@ -11,7 +11,7 @@ type
 
   EIO2 = ref object of EIO
 
-proc raiser(): int {.tags: [TObj, FWriteIO].} =
+proc raiser(): int {.tags: [TObj, WriteIoEffect].} =
   writeLine stdout, "arg"
 
 var o: TObjB

@@ -5,13 +5,13 @@ from strutils import countlines
 
 type
   PGuiContainer* = ref TGuiContainer
-  TGuiContainer* = object of TObject
+  TGuiContainer* = object of RootObj
     position: TVector2f
     activeEntry: PTextEntry
     widgets: seq[PGuiObject]
     buttons: seq[PButton]
   PGuiObject* = ref TGuiObject
-  TGuiObject* = object of TObject
+  TGuiObject* = object of RootObj
   PButton* = ref TButton
   TButton* = object of TGuiObject
     enabled: bool

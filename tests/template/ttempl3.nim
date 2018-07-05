@@ -1,5 +1,5 @@
 
-template withOpenFile(f: untyped, filename: string, mode: TFileMode,
+template withOpenFile(f: untyped, filename: string, mode: FileMode,
                       actions: untyped): untyped =
   block:
     # test that 'f' is implicitly 'injecting':

@@ -11,7 +11,7 @@ createMenuItem(s, "Go to definition...",
       proc (i: PMenuItem, p: pointer) {.cdecl.} =
         try:
           echo(i.repr)
-        except EInvalidValue:
+        except ValueError:
           echo("blah")
 )
 

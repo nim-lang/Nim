@@ -1060,6 +1060,8 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     var c = openTransf(g, module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
+    # expressions are not to be injected with destructor calls as that
+    # the list of top level statements needs to be collected before.
     if c.needsDestroyPass:
       result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)

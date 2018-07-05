@@ -14,7 +14,7 @@ when defined(windows):
   var clientCount = 0
 
   proc winConnect*(socket: AsyncFD, address: string, port: Port,
-    domain = Domain.AF_INET): Future[void] =
+      domain = Domain.AF_INET): Future[void] =
     var retFuture = newFuture[void]("winConnect")
     proc cb(fd: AsyncFD): bool =
       var ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
@@ -183,7 +183,7 @@ when defined(windows):
     ## **Note**: This procedure is mostly used for testing. You likely want to
     ## use ``asyncnet.recvLine`` instead.
 
-    template addNLIfEmpty(): stmt =
+    template addNLIfEmpty() =
       if result.len == 0:
         result.add("\c\L")
 

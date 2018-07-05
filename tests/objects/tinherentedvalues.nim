@@ -6,7 +6,7 @@ true
 
 # bug #1053
 type
-  TA = object of TObject
+  TA = object of RootObj
     a: int
 
   TB = object of TA
@@ -32,13 +32,13 @@ test(v)
 
 # bug #924
 type
-  MyObject = object of TObject
+  MyObject = object of RootObj
     x: int
 
 var
   asd: MyObject
 
-proc isMyObject(obj: TObject) =
+proc isMyObject(obj: RootObj) =
     echo obj of MyObject
     if obj of MyObject:
         let a = MyObject(obj)
@@ -46,7 +46,7 @@ proc isMyObject(obj: TObject) =
 
 asd.x = 5
 
-#var asdCopy = TObject(asd)
+#var asdCopy = RootObj(asd)
 #echo asdCopy of MyObject
 
 isMyObject(asd)

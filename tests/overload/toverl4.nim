@@ -43,7 +43,7 @@ proc find*[TKey, TData](root: PElement[TKey, TData], key: TKey): TData {.raises:
   if tmp_element.key == key:
     return tmp_element.left.data
   else:
-    raise newException(EInvalidKey, "key does not exist: " & key)
+    raise newException(KeyError, "key does not exist: " & key)
 
 proc add*[TKey, TData](root: var PElement[TKey, TData], key: TKey, data: TData) : bool =
   if root.left == nil:

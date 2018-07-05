@@ -8,7 +8,7 @@ assignment test a:test b:1 c:2 haha:3
 # bug #1005
 
 type
-  TSomeObj = object of TObject
+  TSomeObj = object of RootObj
     a, b: int
   PSomeObj = ref object
     a, b: int
@@ -20,7 +20,7 @@ echo a.a, " ", b.a, " ", a.b, " ", b.b
 # bug #575
 
 type
-  Something = object of Tobject
+  Something = object of RootObj
     a: string
     b, c: int32
 
