@@ -404,6 +404,9 @@ proc genComputedGoto(p: BProc; n: PNode) =
         localError(p.config, it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
+      if enumHasHoles(it.sons[0].typ):
+        localError(p.config, it.info,
+            "case statement cannot work on enums with holes for computed goto"); return
       let aSize = lengthOrd(p.config, it.sons[0].typ)
       if aSize > 10_000:
         localError(p.config, it.info,
@@ -978,16 +981,17 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
   if isAsmStmt and hasGnuAsm in CC[p.config.cCompiler].props:
     for x in splitLines(res):
       var j = 0
-      while x[j] in {' ', '\t'}: inc(j)
-      if x[j] in {'"', ':'}:
-        # don't modify the line if already in quotes or
-        # some clobber register list:
-        add(result, x); add(result, "\L")
-      elif x[j] != '\0':
-        # ignore empty lines
-        add(result, "\"")
-        add(result, x)
-        add(result, "\\n\"\n")
+      while j < x.len and x[j] in {' ', '\t'}: inc(j)
+      if j < x.len:
+        if x[j] in {'"', ':'}:
+          # don't modify the line if already in quotes or
+          # some clobber register list:
+          add(result, x); add(result, "\L")
+        else:
+          # ignore empty lines
+          add(result, "\"")
+          add(result, x)
+          add(result, "\\n\"\n")
   else:
     res.add("\L")
     result = res.rope

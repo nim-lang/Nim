@@ -280,7 +280,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
 proc del*[A, B](t: var Table[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## deletes `key` from hash table `t`. Does nothing if the key does not exist.
   delImpl()
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
@@ -457,7 +457,7 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   t[].add(key, val)
 
 proc del*[A, B](t: TableRef[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## deletes `key` from hash table `t`. Does nothing if the key does not exist.
   t[].del(key)
 
 proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
@@ -845,7 +845,8 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int) =
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) complexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity. Does nothing
+  ## if the key does not exist.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -864,7 +865,8 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) complexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.  Does nothing
+  ## if the key does not exist.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------

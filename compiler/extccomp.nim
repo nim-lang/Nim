@@ -83,6 +83,31 @@ compiler gcc:
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
+# GNU C and C++ Compiler
+compiler nintendoSwitchGCC:
+  result = (
+    name: "switch_gcc",
+    objExt: "o",
+    optSpeed: " -O3 -ffast-math ",
+    optSize: " -Os -ffast-math ",
+    compilerExe: "aarch64-none-elf-gcc",
+    cppCompiler: "aarch64-none-elf-g++",
+    compileTmpl: "-MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    buildGui: " -mwindows",
+    buildDll: " -shared",
+    buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
+    linkerExe: "aarch64-none-elf-gcc",
+    linkTmpl: "$buildgui $builddll -Wl,-Map,$mapfile -o $exefile $objfiles $options",
+    includeCmd: " -I",
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
+    debug: "",
+    pic: "-fPIE",
+    asmStmtFrmt: "asm($1);$n",
+    structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
+            hasAttribute})
+
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
   result = gcc() # Uses settings from GCC
@@ -316,6 +341,7 @@ compiler ucc:
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
+    nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
     lcc(),
@@ -556,14 +582,20 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
     else:
       cfile.obj
 
+  # D files are required by nintendo switch libs for
+  # compilation. They are basically a list of all includes.
+  let dfile = objfile.changeFileExt(".d").quoteShell()
+
   objfile = quoteShell(objfile)
   cf = quoteShell(cf)
   result = quoteShell(compilePattern % [
+    "dfile", dfile,
     "file", cf, "objfile", objfile, "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf),
     "nim", getPrefixDir(conf), "lib", conf.libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
+    "dfile", dfile,
     "file", cf, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
@@ -603,7 +635,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: string) =
   var c = Cfile(cname: filename,
-    obj: toObjFile(conf, completeCFilePath(conf, changeFileExt(filename, ""), false)),
+    obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
@@ -659,16 +691,23 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
     exefile = quoteShell(exefile)
+
+    # Map files are required by Nintendo Switch compilation. They are a list
+    # of all function calls in the library and where they come from.
+    let mapfile = quoteShell(getNimcacheDir(conf) / splitFile(projectFile).name & ".map")
+
     let linkOptions = getLinkOptions(conf) & " " &
                       getConfigVar(conf, conf.cCompiler, ".options.linker")
     var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
       linkTmpl = CC[conf.cCompiler].linkTmpl
     result = quoteShell(result % ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf), "lib", conf.libpath])
     result.add ' '
     addf(result, linkTmpl, ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),

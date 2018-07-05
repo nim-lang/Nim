@@ -45,7 +45,7 @@ when defined(windows):
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
-     defined(dragonfly):
+     defined(dragonfly) or defined(nintendoswitch):
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)

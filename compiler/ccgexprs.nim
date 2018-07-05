@@ -59,7 +59,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    case skipTypes(ty, abstractVarRange).kind
+    case skipTypes(ty, abstractVarRange + {tyStatic}).kind
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
@@ -385,7 +385,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
     else:
       addrLoc(p.config, a)
 
-  var ty = skipTypes(dest.t, abstractVarRange)
+  var ty = skipTypes(dest.t, abstractVarRange + {tyStatic})
   case ty.kind
   of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray:
     # XXX optimize this
@@ -1587,20 +1587,24 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
                e.sons[2]
     initLocExpr(p, ea, a)
     initLoc(b, locExpr, e, OnUnknown)
-    b.r = rope("(")
     var length = sonsLen(e.sons[1])
-    for i in countup(0, length - 1):
-      let it = e.sons[1].sons[i]
-      if it.kind == nkRange:
-        initLocExpr(p, it.sons[0], x)
-        initLocExpr(p, it.sons[1], y)
-        addf(b.r, "$1 >= $2 && $1 <= $3",
-             [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
-      else:
-        initLocExpr(p, it, x)
-        addf(b.r, "$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
-      if i < length - 1: add(b.r, " || ")
-    add(b.r, ")")
+    if length > 0:
+      b.r = rope("(")
+      for i in countup(0, length - 1):
+        let it = e.sons[1].sons[i]
+        if it.kind == nkRange:
+          initLocExpr(p, it.sons[0], x)
+          initLocExpr(p, it.sons[1], y)
+          addf(b.r, "$1 >= $2 && $1 <= $3",
+               [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
+        else:
+          initLocExpr(p, it, x)
+          addf(b.r, "$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
+        if i < length - 1: add(b.r, " || ")
+      add(b.r, ")")
+    else:
+      # handle the case of an empty set
+      b.r = rope("0")
     putIntoDest(p, d, e, b.r)
   else:
     assert(e.sons[1].typ != nil)

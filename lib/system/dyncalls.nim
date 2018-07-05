@@ -167,6 +167,24 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
     error: "nimGetProcAddr not implemented".}
 
+elif defined(nintendoswitch):
+  proc nimUnloadLibrary(lib: LibHandle) =
+    stderr.rawWrite("nimUnLoadLibrary not implemented")
+    stderr.rawWrite("\n")
+    quit(1)
+
+  proc nimLoadLibrary(path: string): LibHandle =
+    stderr.rawWrite("nimLoadLibrary not implemented")
+    stderr.rawWrite("\n")
+    quit(1)
+
+
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    stderr.rawWrite("nimGetProAddr not implemented")
+    stderr.write(name)
+    stderr.rawWrite("\n")
+    quit(1)
+
 else:
   {.error: "no implementation for dyncalls".}
 
