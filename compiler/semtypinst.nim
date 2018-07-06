@@ -278,6 +278,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # is difficult to handle:
   const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
+  if body.kind == tyForward:
+    return t
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
   var header: PType = t
