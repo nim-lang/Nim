@@ -296,17 +296,30 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
-proc absolutePath*(path: string, root = getCurrentDir()):string=
-  ## Returns the absolute path of `path`, rooted at `root`
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
   ## if `path` is absolute, return it, ignoring `root`
+  runnableExamples:
+    doAssert absolutePath("a") == getCurrentDir() / "a"
   if isAbsolute(path): path
-  else: joinPath(root, path)
+  else:
+    doAssert root.isAbsolute, root
+    joinPath(root, path)
 
 when isMainModule:
-  assert absolutePath("a", "b") == "b" / "a"
+  # TODO: use doAssertRaises pending https://github.com/nim-lang/Nim/issues/8223
+  try:
+    let a = absolutePath("a", "b")
+    doAssert false, "should've thrown"
+  except:
+    discard
+
+  doAssert absolutePath("a") == getCurrentDir() / "a"
+  doAssert absolutePath("a", "/b") == "/b" / "a"
   when defined(Posix):
-    assert absolutePath("a", "b/") == "b" / "a"
-    assert absolutePath("/a", "b/") == "/a"
+    doAssert absolutePath("a", "/b/") == "/b" / "a"
+    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
+    doAssert absolutePath("/a", "b/") == "/a"
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
