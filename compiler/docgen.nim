@@ -57,7 +57,7 @@ proc attachToType(d: PDoc; p: PSym): PSym =
 
 template declareClosures =
   proc compilerMsgHandler(filename: string, line, col: int,
-                          msgKind: rst.MsgKind, arg: string) {.procvar, gcsafe.} =
+                          msgKind: rst.MsgKind, arg: string) {.procvar.} =
     # translate msg kind:
     var k: TMsgKind
     case msgKind
