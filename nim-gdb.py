@@ -323,12 +323,9 @@ class NimHashSetPrinter:
   def children(self):
     if self.val:
       data = NimSeqPrinter(self.val['data'])
-      i = 0
-      align = len(str(int(self.val['counter']) - 1))
       for idxStr, entry in data.children():
         if int(entry['Field0']) > 0:
-          yield (idxStr + ".Field1", str(entry['Field1']))
-          i += 1
+          yield ("data." + idxStr + ".Field1", str(entry['Field1']))
 
 ################################################################################
 
