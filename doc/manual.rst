@@ -5160,7 +5160,7 @@ template cannot be accessed in the instantiation context:
 
   # so this works:
   let e = "message"
-  raise newException(EIO, e)
+  raise newException(IoError, e)
 
 
 Whether a symbol that is declared in a template is exposed to the instantiation
