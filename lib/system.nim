@@ -3916,7 +3916,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08
   of '\t': s.add "\\t" # \x09
-  of '\n': s.add "\\n" # \x0A
+  of '\L': s.add "\\n" # \x0A
   of '\v': s.add "\\v" # \x0B
   of '\f': s.add "\\f" # \x0C
   of '\c': s.add "\\c" # \x0D
