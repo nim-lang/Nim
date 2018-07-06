@@ -154,7 +154,6 @@ class DollarPrintFunction (gdb.Function):
 
 DollarPrintFunction()
 
-
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
 ################################################################################
@@ -170,7 +169,6 @@ class DollarPrintCmd (gdb.Command):
     gdb.write(str(DollarPrintFunction.invoke_static(param)) + "\n", gdb.STDOUT)
 
 DollarPrintCmd()
-
 
 ################################################################################
 #####  Value pretty printers
@@ -379,7 +377,7 @@ class NimArrayPrinter:
 ################################################################################
 
 class NimStringTablePrinter:
-  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -408,7 +406,7 @@ class NimStringTablePrinter:
 ################################################################
 
 class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -437,6 +435,8 @@ class NimTablePrinter:
 
 
 ################################################################
+
+# this is untested, therefore disabled
 
 # class NimObjectPrinter:
 #   pattern = re.compile(r'^tyObject_.*$')
