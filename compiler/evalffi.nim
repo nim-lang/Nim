@@ -442,7 +442,7 @@ proc callForeignFunction*(call: PNode): PNode =
   libffi.call(cif, fn, retVal, args)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, typ.sons[0], nil)
     result.info = call.info
@@ -484,7 +484,7 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
   libffi.call(cif, fn, retVal, cargs)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, fntyp.sons[0], nil)
     result.info = info

@@ -79,7 +79,7 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let nimcache = nimcacheDir(filename, options, target)
-  let options = options & " --nimCache:" & nimcache.quoteShell & extraOptions
+  let options = options & " " & ("--nimCache:" & nimcache).quoteShell & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
@@ -129,7 +129,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
-  var p = startProcess(command="gcc", args=c[5.. ^1],
+  var p = startProcess(command="gcc", args=c[5 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var x = newStringOfCap(120)

@@ -45,36 +45,34 @@ const
   ]
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
-proc genSectionStart*(fs: TCFileSection): Rope =
-  if compilationCachePresent:
-    result = rope(tnl)
-    add(result, "/*\t")
+proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
+  if compilationCachePresent(conf):
+    result = nil
+    add(result, "\n/*\t")
     add(result, CFileSectionNames[fs])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
-proc genSectionEnd*(fs: TCFileSection): Rope =
-  if compilationCachePresent:
-    result = rope(NimMergeEndMark & tnl)
+proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
+  if compilationCachePresent(conf):
+    result = rope(NimMergeEndMark & "\n")
 
-proc genSectionStart*(ps: TCProcSection): Rope =
-  if compilationCachePresent:
-    result = rope(tnl)
-    add(result, "/*\t")
+proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
+  if compilationCachePresent(conf):
+    result = rope(nil)
+    add(result, "\n/*\t")
     add(result, CProcSectionNames[ps])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
-proc genSectionEnd*(ps: TCProcSection): Rope =
-  if compilationCachePresent:
-    result = rope(NimMergeEndMark & tnl)
+proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
+  if compilationCachePresent(conf):
+    result = rope(NimMergeEndMark & "\n")
 
 proc writeTypeCache(a: TypeCache, s: var string) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeStr($id, s)
@@ -88,7 +86,7 @@ proc writeIntSet(a: IntSet, s: var string) =
   for x in items(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeVInt(x, s)
@@ -96,9 +94,8 @@ proc writeIntSet(a: IntSet, s: var string) =
   s.add('}')
 
 proc genMergeInfo*(m: BModule): Rope =
-  if not compilationCachePresent: return nil
-  var s = "/*\tNIM_merge_INFO:"
-  s.add(tnl)
+  if not compilationCachePresent(m.config): return nil
+  var s = "/*\tNIM_merge_INFO:\n"
   s.add("typeCache:{")
   writeTypeCache(m.typeCache, s)
   s.add("declared:{")
@@ -110,8 +107,7 @@ proc genMergeInfo*(m: BModule): Rope =
   encodeVInt(m.labels, s)
   s.add(" flags:")
   encodeVInt(cast[int](m.flags), s)
-  s.add(tnl)
-  s.add("*/")
+  s.add("\n*/")
   result = s.rope
 
 template `^`(pos: int): untyped = L.buf[pos]
@@ -155,13 +151,13 @@ proc readVerbatimSection(L: var TBaseLexer): Rope =
     of CR:
       pos = nimlexbase.handleCR(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of '\0':
-      internalError("ccgmerge: expected: " & NimMergeEndMark)
+      doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break
     else:
       if atEndMark(buf, pos):
@@ -179,7 +175,7 @@ proc readKey(L: var TBaseLexer, result: var string) =
   while buf[pos] in IdentChars:
     result.add(buf[pos])
     inc pos
-  if buf[pos] != ':': internalError("ccgmerge: ':' expected")
+  if buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
 proc newFakeType(id: int): PType =
@@ -187,12 +183,12 @@ proc newFakeType(id: int): PType =
   result.id = id
 
 proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
-  if ^L.bufpos != '{': internalError("ccgmerge: '{' expected")
+  if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
   inc L.bufpos
   while ^L.bufpos != '}':
     skipWhite(L)
     var key = decodeStr(L.buf, L.bufpos)
-    if ^L.bufpos != ':': internalError("ccgmerge: ':' expected")
+    if ^L.bufpos != ':': doAssert(false, "ccgmerge: ':' expected")
     inc L.bufpos
     var value = decodeStr(L.buf, L.bufpos)
     # XXX implement me
@@ -201,7 +197,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
-  if ^L.bufpos != '{': internalError("ccgmerge: '{' expected")
+  if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
   inc L.bufpos
   while ^L.bufpos != '}':
     skipWhite(L)
@@ -225,7 +221,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "flags":
       m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)
-    else: internalError("ccgmerge: unknown key: " & k)
+    else: doAssert(false, "ccgmerge: unknown key: " & k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -275,9 +271,9 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
         if sectionB >= 0 and sectionB <= high(TCProcSection).int:
           m.p[TCProcSection(sectionB)] = verbatim
         else:
-          internalError("ccgmerge: unknown section: " & k)
+          doAssert(false, "ccgmerge: unknown section: " & k)
     else:
-      internalError("ccgmerge: '*/' expected")
+      doAssert(false, "ccgmerge: '*/' expected")
 
 proc mergeRequired*(m: BModule): bool =
   for i in cfsHeaders..cfsProcs:

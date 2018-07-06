@@ -11,9 +11,9 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi
+  tables, ndi, lineinfos
 
-from msgs import TLineInfo
+from modulegraphs import ModuleGraph
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -68,6 +68,8 @@ type
     prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
+    hasCurFramePointer*: bool # true if _nimCurFrame var needed to recover after
+                              # exception is generated
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
@@ -116,7 +118,19 @@ type
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCache
     config*: ConfigRef
+    graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
+
+    nimtv*: Rope            # Nim thread vars; the struct body
+    nimtvDeps*: seq[PType]  # type deps: every module needs whole struct
+    nimtvDeclared*: IntSet  # so that every var/field exists only once
+                            # in the struct
+                            # 'nimtv' is incredibly hard to modularize! Best
+                            # effort is to store all thread vars in a ROD
+                            # section and with their type deps and load them
+                            # unconditionally...
+                            # nimtvDeps is VERY hard to cache because it's
+                            # not a list of IDs nor can it be made to be one.
 
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -148,6 +162,9 @@ type
     g*: BModuleList
     ndi*: NdiFile
 
+template config*(m: BModule): ConfigRef = m.g.config
+template config*(p: BProc): ConfigRef = p.module.g.config
+
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
     this.headerFiles.add header
@@ -165,14 +182,15 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.prc = prc
   result.module = module
   if prc != nil: result.options = prc.options
-  else: result.options = gOptions
+  else: result.options = module.config.options
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
   result.sigConflicts = initCountTable[string]()
 
-proc newModuleList*(config: ConfigRef): BModuleList =
-  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope](), config: config)
+proc newModuleList*(g: ModuleGraph): BModuleList =
+  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
+    graph: g, nimtvDeps: @[], nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for i in 0..high(g.modules):

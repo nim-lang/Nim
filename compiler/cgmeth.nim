@@ -11,9 +11,9 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs
+  sempass2, strutils, modulegraphs, lineinfos
 
-proc genConv(n: PNode, d: PType, downcast: bool): PNode =
+proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
   var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject):
@@ -24,12 +24,12 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
     elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
-      if downcast: internalError(n.info, "cgmeth.genConv: no upcast allowed")
+      if downcast: internalError(conf, n.info, "cgmeth.genConv: no upcast allowed")
     elif diff > 0:
       result = newNodeIT(nkObjDownConv, n.info, d)
       addSon(result, n)
       if not downcast:
-        internalError(n.info, "cgmeth.genConv: no downcast allowed")
+        internalError(conf, n.info, "cgmeth.genConv: no downcast allowed")
     else:
       result = n
   else:
@@ -42,7 +42,7 @@ proc getDispatcher*(s: PSym): PSym =
     let disp = dispn.sym
     if sfDispatcher in disp.flags: result = disp
 
-proc methodCall*(n: PNode): PNode =
+proc methodCall*(n: PNode; conf: ConfigRef): PNode =
   result = n
   # replace ordinary method by dispatcher method:
   let disp = getDispatcher(result.sons[0].sym)
@@ -50,9 +50,9 @@ proc methodCall*(n: PNode): PNode =
     result.sons[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
     for i in countup(1, sonsLen(result)-1):
-      result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
+      result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true, conf)
   else:
-    localError(n.info, "'" & $result.sons[0] & "' lacks a dispatcher")
+    localError(conf, n.info, "'" & $result.sons[0] & "' lacks a dispatcher")
 
 type
   MethodResult = enum No, Invalid, Yes
@@ -115,7 +115,7 @@ proc createDispatcher(s: PSym): PSym =
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
   disp.ast = copyTree(s.ast)
-  disp.ast.sons[bodyPos] = ast.emptyNode
+  disp.ast.sons[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = nil
   if s.typ.sons[0] != nil:
     if disp.ast.sonsLen > resultPos:
@@ -124,20 +124,20 @@ proc createDispatcher(s: PSym): PSym =
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
       # be updated in fixupDispatcher().
-      disp.ast.addSon(ast.emptyNode)
+      disp.ast.addSon(newNodeI(nkEmpty, s.info))
   attachDispatcher(s, newSymNode(disp))
   # attach to itself to prevent bugs:
   attachDispatcher(disp, newSymNode(disp))
   return disp
 
-proc fixupDispatcher(meth, disp: PSym) =
+proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   # We may have constructed the dispatcher from a method prototype
   # and need to augment the incomplete dispatcher with information
   # from later definitions, particularly the resultPos slot. Also,
   # the lock level of the dispatcher needs to be updated/checked
   # against that of the method.
   if disp.ast.sonsLen > resultPos and meth.ast.sonsLen > resultPos and
-     disp.ast.sons[resultPos] == ast.emptyNode:
+     disp.ast.sons[resultPos].kind == nkEmpty:
     disp.ast.sons[resultPos] = copyTree(meth.ast.sons[resultPos])
 
   # The following code works only with lock levels, so we disable
@@ -149,7 +149,7 @@ proc fixupDispatcher(meth, disp: PSym) =
       disp.typ.lockLevel = meth.typ.lockLevel
     elif meth.typ.lockLevel != UnspecifiedLockLevel and
          meth.typ.lockLevel != disp.typ.lockLevel:
-      message(meth.info, warnLockLevel,
+      message(conf, meth.info, warnLockLevel,
         "method has lock level $1, but another method has $2" %
         [$meth.typ.lockLevel, $disp.typ.lockLevel])
       # XXX The following code silences a duplicate warning in
@@ -166,13 +166,13 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     of Yes:
       add(g.methods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
-      fixupDispatcher(s, disp)
+      fixupDispatcher(s, disp, g.config)
       #echo "fixup ", disp.name.s, " ", disp.id
-      when useEffectSystem: checkMethodEffects(disp, s)
+      when useEffectSystem: checkMethodEffects(g, disp, s)
       if {sfBase, sfFromGeneric} * s.flags == {sfBase} and
            g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
-        localError(s.info, "method is not a base")
+        localError(g.config, s.info, "method is not a base")
       return
     of No: discard
     of Invalid:
@@ -183,10 +183,10 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   #if fromCache:
   #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
-    localError(s.info, "invalid declaration order; cannot attach '" & s.name.s &
-                       "' to method defined here: " & $witness.info)
+    localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
+                       "' to method defined here: " & g.config$witness.info)
   elif sfBase notin s.flags:
-    message(s.info, warnUseBase)
+    message(g.config, s.info, warnUseBase)
 
 proc relevantCol(methods: TSymSeq, col: int): bool =
   # returns true iff the position is relevant
@@ -225,32 +225,33 @@ proc sortBucket(a: var TSymSeq, relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
+proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
   var paramLen = sonsLen(base.typ)
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
-  var ands = getSysSym("and")
-  var iss = getSysSym("of")
+  var ands = getSysSym(g, unknownLineInfo(), "and")
+  var iss = getSysSym(g, unknownLineInfo(), "of")
+  let boolType = getSysType(g, unknownLineInfo(), tyBool)
   for col in countup(1, paramLen - 1):
     if contains(relevantCols, col):
       let param = base.typ.n.sons[col].sym
       if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
         addSon(nilchecks, newTree(nkCall,
-            newSymNode(getCompilerProc"chckNilDisp"), newSymNode(param)))
+            newSymNode(getCompilerProc(g, "chckNilDisp")), newSymNode(param)))
   for meth in countup(0, high(methods)):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
     for col in countup(1, paramLen - 1):
       if contains(relevantCols, col):
-        var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
+        var isn = newNodeIT(nkCall, base.info, boolType)
         addSon(isn, newSymNode(iss))
         let param = base.typ.n.sons[col].sym
         addSon(isn, newSymNode(param))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil:
-          var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
+          var a = newNodeIT(nkCall, base.info, boolType)
           addSon(a, newSymNode(ands))
           addSon(a, cond)
           addSon(a, isn)
@@ -262,7 +263,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
     addSon(call, newSymNode(curr))
     for col in countup(1, paramLen - 1):
       addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
-                           curr.typ.sons[col], false))
+                           curr.typ.sons[col], false, g.config))
     var ret: PNode
     if retTyp != nil:
       var a = newNodeI(nkFastAsgn, base.info)
@@ -290,4 +291,4 @@ proc generateMethodDispatchers*(g: ModuleGraph): PNode =
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
     sortBucket(g.methods[bucket].methods, relevantCols)
     addSon(result,
-           newSymNode(genDispatcher(g.methods[bucket].methods, relevantCols)))
+           newSymNode(genDispatcher(g, g.methods[bucket].methods, relevantCols)))

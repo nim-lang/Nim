@@ -47,12 +47,14 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
   ##   discard parseHex("0x38", value)
   ##   assert value == -200
   ##
-  ## If 'maxLen==0' the length of the hexadecimal number has no
-  ## upper bound. Not more than ```maxLen`` characters are parsed.
+  ## If ``maxLen == 0`` the length of the hexadecimal number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  let last = if maxLen == 0: s.len else: i+maxLen
-  if i+1 < last and s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'x', 'X'}): inc(i, 2)
   elif i < last and s[i] == '#': inc(i)
   while i < last:
     case s[i]
@@ -70,14 +72,20 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseOct*(s: string, number: var int, start = 0): int  {.
+proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseOct", noSideEffect.} =
-  ## parses an octal number and stores its value in ``number``. Returns
+  ## Parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ##
+  ## If ``maxLen == 0`` the length of the octal number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while i < s.len:
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+  while i < last:
     case s[i]
     of '_': discard
     of '0'..'7':
@@ -87,14 +95,20 @@ proc parseOct*(s: string, number: var int, start = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseBin*(s: string, number: var int, start = 0): int  {.
+proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseBin", noSideEffect.} =
-  ## parses an binary number and stores its value in ``number``. Returns
+  ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ##
+  ## If ``maxLen == 0`` the length of the binary number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  if i+1 < s.len and s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
-  while i < s.len:
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
+  while i < last:
     case s[i]
     of '_': discard
     of '0'..'1':
@@ -197,6 +211,9 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
+  if until.len == 0:
+    token.setLen(0)
+    return 0
   var i = start
   while i < s.len:
     if s[i] == until[0]:

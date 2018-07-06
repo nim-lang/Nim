@@ -181,7 +181,7 @@ Conventions for multi-line statements and expressions
       LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
                          wordyTupleMemberThree: float]
 
-- Similarly, any procedure and procedure type declarations that are longer#
+- Similarly, any procedure and procedure type declarations that are longer
   than one line should do the same thing.
 
   .. code-block:: nim

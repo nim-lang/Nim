@@ -11,7 +11,7 @@
 
 import strutils, os, parseopt
 import compiler/[options, commands, modules, sem,
-  passes, passaux, nimfix/pretty,
+  passes, passaux, linter,
   msgs, nimconf,
   extccomp, condsyms,
   modulegraphs, idents]
@@ -38,7 +38,7 @@ In addition, all command line options of Nim are supported.
 proc mainCommand =
   registerPass verbosePass
   registerPass semPass
-  gCmd = cmdPretty
+  conf.cmd = cmdPretty
   searchPaths.add options.libpath
   if gProjectFull.len != 0:
     # current path is always looked first for modules

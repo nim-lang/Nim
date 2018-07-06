@@ -576,18 +576,3 @@ proc nimBoolToStr(x: bool): string {.compilerRtl.} =
 proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
-
-proc binaryStrSearch(x: openArray[string], y: string): int {.compilerproc.} =
-  var
-    a = 0
-    b = len(x)
-  while a < b:
-    var mid = (a + b) div 2
-    if x[mid] < y:
-      a = mid + 1
-    else:
-      b = mid
-  if a < len(x) and x[a] == y:
-    result = a
-  else:
-    result = -1

@@ -11,7 +11,7 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen
+  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos
 
 from modulegraphs import ModuleGraph
 
@@ -25,8 +25,8 @@ template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
   #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
-  if (g.module.owner.id == gMainPackageId and gWholeProject) or
-    sfMainModule in g.module.flags:
+  if (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+      sfMainModule in g.module.flags:
     body
     try:
       generateIndex(g.doc)
@@ -35,11 +35,11 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
+    writeOutput(g.doc, toFilename(graph.config, FileIndex g.module.position), HtmlExt, useWarning)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutputJson(g.doc, g.module.filename, ".json", useWarning)
+    writeOutputJson(g.doc, toFilename(graph.config, FileIndex g.module.position), ".json", useWarning)
 
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
@@ -51,11 +51,11 @@ proc processNodeJson(c: PPassContext, n: PNode): PNode =
   var g = PGen(c)
   generateJson(g.doc, n)
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(module.filename, options.gConfigVars)
+  var d = newDocumentor(toFilename(graph.config, FileIndex module.position), graph.cache, graph.config)
   d.hasToc = true
   g.doc = d
   result = g

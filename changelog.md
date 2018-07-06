@@ -20,6 +20,8 @@
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely
   become an error in the future.
+- The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
+  bring the language in line with the standard library (e.g. ``parseOct``).
 
 
 #### Breaking changes in the standard library
@@ -29,7 +31,7 @@
 - The returned tuple of ``system.instantiationInfo`` now has a third field
   containing the column of the instantiation.
 
-- ``cookies.setCookie` no longer assumes UTC for the expiration date.
+- ``cookies.setCookie`` no longer assumes UTC for the expiration date.
 - ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
   strings anymore for its ``unit`` parameter. Instead the space is controlled
   by a new parameter ``useUnitSpace``.
@@ -38,6 +40,19 @@
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
+
+- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
+  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
+
+- For string inputs, ``unicode.isUpper`` and ``unicode.isLower`` now require a
+  second mandatory parameter ``skipNonAlpha``.
+
+- For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
+  require a second mandatory parameter ``skipNonAlpha``.
+
+- The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
+    and strings containing only valid prefixes, e.g. "0x" for hex integers.
+
 
 #### Breaking changes in the compiler
 
@@ -56,6 +71,17 @@
 - Added the type ``times.Duration`` for representing fixed durations of time.
 - Added the proc ``times.convert`` for converting between different time units,
   e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
+- Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
+- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
+- Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
+- Added the proc ``flush`` for memory mapped files.
+- Added the ``MemMapFileStream``.
 
 ### Library changes
 
@@ -74,15 +100,34 @@
   deprecated.
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
+- An exception raised from a ``test`` block of ``unittest`` now shows its type in
+  error message.
+- The ``compiler/nimeval`` API was rewritten to simplify the "compiler as an
+  API". Using the Nim compiler and its VM as a scripting engine has never been
+  easier. See ``tests/compilerapi/tcompilerapi.nim`` for an example of how to
+  use the Nim VM in a native Nim application.
+- Added the parameter ``val`` for the ``CritBitTree[T].incl`` proc.
+- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
+  object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
+  iterators.
 
 ### Language additions
 
 - Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
   the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- the `typedesc` special type has been renamed to just `type`.
+- `static` and `type` are now also modifiers similar to `ref` and `ptr`.
+  They denote the special types `static[T]` and `type[T]`.
+- Forcing compile-time evaluation with `static` now supports specifying
+  the desired target type (as a concrete type or as a type class)
+- The `type` operator now supports checking that the supplied expression
+  matches an expected type constraint.
 
 ### Language changes
 
@@ -110,6 +155,8 @@
 
 - Nim now supports `except` clause in the export statement.
 
+- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
@@ -136,5 +183,8 @@
 
 - ``experimental`` is now a pragma / command line switch that can enable specific
   language extensions, it is not an all-or-nothing switch anymore.
+
+- Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
+  for more info.
 
 ### Bugfixes

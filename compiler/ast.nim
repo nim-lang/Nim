@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, std / sha1, ropes, idents,
+  lineinfos, hashes, nversion, options, strutils, std / sha1, ropes, idents,
   intsets, idgen
 
 type
@@ -293,6 +293,10 @@ const
     # the compiler will avoid printing such names
     # in user messages.
 
+  sfHoisted* = sfForward
+    # an expression was hoised to an anonymous variable.
+    # the flag is applied to the var/let symbol
+
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
   sfReorder* = sfForward
@@ -454,6 +458,9 @@ type
     nfPreventCg # this node should be ignored by the codegen
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
     nfFromTemplate # a top-level node returned from a template
+    nfDefaultParam # an automatically inserter default parameter
+    nfDefaultRefsParam # a default param value references another parameter
+                       # the flag is applied to proc default values and to calls
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -571,8 +578,8 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
-    mEcho, mShallowCopy, mSlurp, mStaticExec,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mType, mTypeOf,
+    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
@@ -634,14 +641,18 @@ type
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
-    mNKind, mNSymKind
+    mNKind, mNSymKind,
+
+    mNccValue, mNccInc, mNcsAdd, mNcsIncl, mNcsLen, mNcsAt,
+    mNctPut, mNctLen, mNctGet, mNctHasNext, mNctNext,
+
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
+    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo, mNGenSym,
+    mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
     mException, mBuiltinType
 
@@ -734,7 +745,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'gCmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -967,7 +978,7 @@ const
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
-                                      nfFromTemplate}
+                                      nfFromTemplate, nfDefaultRefsParam}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -998,8 +1009,8 @@ const
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
-var
-  gMainPackageId*: int
+#var
+#  gMainPackageId*: int
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -1058,34 +1069,18 @@ proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
     result.info = children[0].info
   result.sons = @children
 
-proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
-  result = newNode(kind)
-  result.intVal = intVal
-
-proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
-  result = newIntNode(kind, intVal)
-  result.typ = typ
-
-proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
-  result = newNode(kind)
-  result.floatVal = floatVal
-
-proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
-  result = newNode(kind)
-  result.strVal = strVal
-
 template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
-             info: TLineInfo): PSym =
+             info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   new(result)
   result.name = name
   result.kind = symKind
   result.flags = {}
   result.info = info
-  result.options = gOptions
+  result.options = options
   result.owner = owner
   result.offset = -1
   result.id = getID()
@@ -1094,9 +1089,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   #if result.id == 93289:
   #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
-
-var emptyNode* = newNode(nkEmpty)
-# There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1224,18 +1216,35 @@ proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
   result.info = info
   result.typ = typ
 
+proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
+  result = newNode(kind)
+  result.intVal = intVal
+
+proc newIntTypeNode*(kind: TNodeKind, intVal: BiggestInt, typ: PType): PNode =
+  result = newIntNode(kind, intVal)
+  result.typ = typ
+
+proc newFloatNode*(kind: TNodeKind, floatVal: BiggestFloat): PNode =
+  result = newNode(kind)
+  result.floatVal = floatVal
+
+proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
+  result = newNode(kind)
+  result.strVal = strVal
+
+proc newStrNode*(strVal: string; info: TLineInfo): PNode =
+  result = newNodeI(nkStrLit, info)
+  result.strVal = strVal
+
 proc addSon*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-var emptyParams = newNode(nkFormalParams)
-emptyParams.addSon(emptyNode)
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
-                 params = emptyParams,
+                 params,
                  name, pattern, genericParams,
-                 pragmas, exceptions = ast.emptyNode): PNode =
+                 pragmas, exceptions: PNode): PNode =
   result = newNodeI(kind, info)
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]
@@ -1325,7 +1334,7 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym, keepId: bool = false): PSym =
-  result = newSym(s.kind, s.name, s.owner, s.info)
+  result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   if keepId:
@@ -1344,8 +1353,9 @@ proc copySym*(s: PSym, keepId: bool = false): PSym =
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
 
-proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
-  result = newSym(s.kind, newIdent, s.owner, info)
+proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
+                        options: TOptions): PSym =
+  result = newSym(s.kind, newIdent, s.owner, info, options)
   # keep ID!
   result.ast = s.ast
   result.id = s.id
@@ -1564,15 +1574,17 @@ proc getInt*(a: PNode): BiggestInt =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
-    internalError(a.info, "getInt")
-    result = 0
+    #internalError(a.info, "getInt")
+    doAssert false, "getInt"
+    #result = 0
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
   else:
-    internalError(a.info, "getFloat")
-    result = 0.0
+    doAssert false, "getFloat"
+    #internalError(a.info, "getFloat")
+    #result = 0.0
 
 proc getStr*(a: PNode): string =
   case a.kind
@@ -1581,16 +1593,18 @@ proc getStr*(a: PNode): string =
     # let's hope this fixes more problems than it creates:
     result = nil
   else:
-    internalError(a.info, "getStr")
-    result = ""
+    doAssert false, "getStr"
+    #internalError(a.info, "getStr")
+    #result = ""
 
 proc getStrOrChar*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
   else:
-    internalError(a.info, "getStrOrChar")
-    result = ""
+    doAssert false, "getStrOrChar"
+    #internalError(a.info, "getStrOrChar")
+    #result = ""
 
 proc isGenericRoutine*(s: PSym): bool =
   case s.kind
@@ -1689,9 +1703,9 @@ proc isException*(t: PType): bool =
     base = base.lastSon
   return false
 
-proc isImportedException*(t: PType): bool =
+proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert(t != nil)
-  if optNoCppExceptions in gGlobalOptions:
+  if optNoCppExceptions in conf.globalOptions:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
@@ -1700,7 +1714,7 @@ proc isImportedException*(t: PType): bool =
     result = true
 
 proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
@@ -1725,3 +1739,5 @@ template incompleteType*(t: PType): bool =
 
 template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
+
+template getBody*(s: PSym): PNode = s.ast[bodyPos]

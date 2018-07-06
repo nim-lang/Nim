@@ -23,6 +23,10 @@ when defined(windows):
   import winlean
 elif defined(posix):
   import posix
+
+  proc toTime(ts: Timespec): times.Time {.inline.} =
+    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+
 else:
   {.error: "OS module not ported to your operating system!".}
 
@@ -70,7 +74,8 @@ when defined(windows):
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect].} =
-  ## Returns true if the file exists, false otherwise.
+  ## Returns true if `filename` exists and is a regular file or symlink.
+  ## (directories, device files, named pipes and sockets return false)
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, filename)
@@ -139,6 +144,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
   ## If the system supports symlinks it also resolves them until it
   ## meets the actual file. This behavior can be disabled if desired.
+  if exe.len == 0: return
   template checkCurrentDir() =
     for ext in extensions:
       result = addFileExt(exe, ext)
@@ -149,6 +155,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     checkCurrentDir()
   let path = string(getEnv("PATH"))
   for candidate in split(path, PathSep):
+    if candidate.len == 0: continue
     when defined(windows):
       var x = (if candidate[0] == '"' and candidate[^1] == '"':
                 substr(candidate, 1, candidate.len-2) else: candidate) /
@@ -183,7 +190,7 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".}
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_mtime.int64)
+    result = res.st_mtim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -196,7 +203,7 @@ proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_atime.int64)
+    result = res.st_atim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -213,7 +220,7 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_ctime.int64)
+    result = res.st_ctim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -225,10 +232,13 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   when defined(posix):
-    result = getLastModificationTime(a) - getLastModificationTime(b) >= DurationZero
-    # Posix's resolution sucks so, we use '>=' for posix.
+    # If we don't have access to nanosecond resolution, use '>='
+    when not StatHasNanoseconds:  
+      result = getLastModificationTime(a) >= getLastModificationTime(b)
+    else:
+      result = getLastModificationTime(a) > getLastModificationTime(b)
   else:
-    result = getLastModificationTime(a) - getLastModificationTime(b) > DurationZero
+    result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
@@ -809,7 +819,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
+            when defined(linux) or defined(macosx) or
+                 defined(bsd) or defined(genode) or defined(nintendoswitch):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -907,7 +918,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno == EEXIST:
       result = false
     else:
-      echo res
+      #echo res
       raiseOSError(osLastError())
   else:
     when useWinUnicode:
@@ -1273,6 +1284,13 @@ elif defined(windows):
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
+elif defined(nintendoswitch):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
+
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib") and
   not defined(genode):
@@ -1429,8 +1447,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(genode):
-      raiseOSError("POSIX command line not supported")
+    elif defined(genode) or defined(nintendoswitch):
+      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:
@@ -1491,7 +1509,7 @@ type
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
-  ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
+  ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
     template merge(a, b): untyped = a or (b shl 32)
@@ -1517,7 +1535,6 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
 
-
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
@@ -1525,9 +1542,9 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
     formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
-    formalInfo.lastAccessTime = fromUnix(rawInfo.st_atime.int64)
-    formalInfo.lastWriteTime = fromUnix(rawInfo.st_mtime.int64)
-    formalInfo.creationTime = fromUnix(rawInfo.st_ctime.int64)
+    formalInfo.lastAccessTime = rawInfo.st_atim.toTime
+    formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
+    formalInfo.creationTime = rawInfo.st_ctim.toTime
 
     result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
@@ -1641,7 +1658,9 @@ proc setLastModificationTime*(file: string, t: times.Time) =
   ## an error.
   when defined(posix):
     let unixt = posix.Time(t.toUnix)
-    var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
+    let micro = convert(Nanoseconds, Microseconds, t.nanosecond)
+    var timevals = [Timeval(tv_sec: unixt, tv_usec: micro),
+      Timeval(tv_sec: unixt, tv_usec: micro)] # [last access, last modification]
     if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
   else:
     let h = openHandle(path = file, writeAccess = true)

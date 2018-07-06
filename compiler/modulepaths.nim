@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os
+import ast, renderer, strutils, msgs, options, idents, os, lineinfos
 
 import nimblecmd
 
@@ -113,16 +113,16 @@ when false:
       localError(pkg.info, "package name must be an identifier or string literal")
       result = ""
 
-proc getModuleName*(n: PNode): string =
+proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
   # e.g. like "system", "importer" or "somepath/module"
   # The proc won't perform any checks that the path is actually valid
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result = pathSubs(n.strVal, n.info.toFullPath().splitFile().dir)
+      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
     except ValueError:
-      localError(n.info, "invalid path: " & n.strVal)
+      localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
   of nkIdent:
     result = n.ident.s
@@ -131,13 +131,13 @@ proc getModuleName*(n: PNode): string =
   of nkInfix:
     let n0 = n[0]
     let n1 = n[1]
-    if n0.kind == nkIdent and n0.ident.id == getIdent("as").id:
+    if n0.kind == nkIdent and n0.ident.s == "as":
       # XXX hack ahead:
       n.kind = nkImportAs
       n.sons[0] = n.sons[1]
       n.sons[1] = n.sons[2]
       n.sons.setLen(2)
-      return getModuleName(n.sons[0])
+      return getModuleName(conf, n.sons[0])
     when false:
       if n1.kind == nkPrefix and n1[0].kind == nkIdent and n1[0].ident.s == "$":
         if n0.kind == nkIdent and n0.ident.s == "/":
@@ -146,16 +146,16 @@ proc getModuleName*(n: PNode): string =
           localError(n.info, "only '/' supported with $package notation")
           result = ""
     else:
-      let modname = getModuleName(n[2])
+      let modname = getModuleName(conf, n[2])
       if $n1 == "std":
         template attempt(a) =
           let x = addFileExt(a, "nim")
           if fileExists(x): return x
         for candidate in stdlibDirs:
-          attempt(options.libpath / candidate / modname)
+          attempt(conf.libpath / candidate / modname)
 
       # hacky way to implement 'x / y /../ z':
-      result = getModuleName(n1)
+      result = getModuleName(conf, n1)
       result.add renderTree(n0, {renderNoComments})
       result.add modname
   of nkPrefix:
@@ -169,19 +169,19 @@ proc getModuleName*(n: PNode): string =
   of nkDotExpr:
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
-    result = getModuleName(n.sons[0])
+    result = getModuleName(conf, n.sons[0])
   else:
-    localError(n.info, errGenerated, "invalid module name: '$1'" % n.renderTree)
+    localError(conf, n.info, "invalid module name: '$1'" % n.renderTree)
     result = ""
 
-proc checkModuleName*(n: PNode; doLocalError=true): FileIndex =
+proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
-  let modulename = n.getModuleName
-  let fullPath = findModule(modulename, n.info.toFullPath)
+  let modulename = getModuleName(conf, n)
+  let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
   if fullPath.len == 0:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
-      localError(n.info, errCannotOpenFile, m)
+      localError(conf, n.info, "cannot open file: " & m)
     result = InvalidFileIDX
   else:
-    result = fullPath.fileInfoIdx
+    result = fileInfoIdx(conf, fullPath)

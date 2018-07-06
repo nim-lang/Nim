@@ -11,7 +11,7 @@
 
 import
   intsets, strutils, options, ast, astalgo, msgs,
-  idents, renderer, types, lowerings
+  idents, renderer, types, lowerings, lineinfos
 
 from pragmas import getPragmaVal
 from wordrecg import wLiftLocals
@@ -20,13 +20,14 @@ type
   Ctx = object
     partialParam: PSym
     objType: PType
+    cache: IdentCache
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skResult} and
     sfGlobal notin s.flags
 
 proc lookupOrAdd(c: var Ctx; s: PSym; info: TLineInfo): PNode =
-  let field = addUniqueField(c.objType, s)
+  let field = addUniqueField(c.objType, s, c.cache)
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = c.objType
   add(deref, newSymNode(c.partialParam, info))
@@ -52,19 +53,19 @@ proc lookupParam(params, dest: PNode): PSym =
     if params[i].kind == nkSym and params[i].sym.name.id == dest.ident.id:
       return params[i].sym
 
-proc liftLocalsIfRequested*(prc: PSym; n: PNode): PNode =
+proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: ConfigRef): PNode =
   let liftDest = getPragmaVal(prc.ast, wLiftLocals)
   if liftDest == nil: return n
   let partialParam = lookupParam(prc.typ.n, liftDest)
   if partialParam.isNil:
-    localError(liftDest.info, "'$1' is not a parameter of '$2'" %
+    localError(conf, liftDest.info, "'$1' is not a parameter of '$2'" %
               [$liftDest, prc.name.s])
     return n
   let objType = partialParam.typ.skipTypes(abstractPtrs)
   if objType.kind != tyObject or tfPartial notin objType.flags:
-    localError(liftDest.info, "parameter '$1' is not a pointer to a partial object" % $liftDest)
+    localError(conf, liftDest.info, "parameter '$1' is not a pointer to a partial object" % $liftDest)
     return n
-  var c = Ctx(partialParam: partialParam, objType: objType)
+  var c = Ctx(partialParam: partialParam, objType: objType, cache: cache)
   let w = newTree(nkStmtList, n)
   liftLocals(w, 0, c)
   result = w[0]

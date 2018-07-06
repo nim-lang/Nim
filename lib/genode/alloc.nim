@@ -8,9 +8,14 @@
 #
 
 # Low level dataspace allocator for Genode.
+# For interacting with dataspaces outside of the
+# standard library see the Genode Nimble package.
 
 when not defined(genode):
   {.error: "Genode only module".}
+
+when not declared(GenodeEnv):
+  include genode/env
 
 type DataspaceCapability {.
   importcpp: "Genode::Dataspace_capability", pure.} = object
@@ -31,35 +36,35 @@ type
 
 const SlabBackendSize = 4096
 
-proc ramAvail(): int {.
-  importcpp: "genodeEnv->pd().avail_ram().value".}
+proc ramAvail(env: GenodeEnv): int {.
+  importcpp: "#->pd().avail_ram().value".}
   ## Return number of bytes available for allocation.
 
-proc capsAvail(): int {.
-  importcpp: "genodeEnv->pd().avail_caps().value".}
+proc capsAvail(env: GenodeEnv): int {.
+  importcpp: "#->pd().avail_caps().value".}
   ## Return the number of available capabilities.
   ## Each dataspace allocation consumes a capability.
 
-proc allocDataspace(size: int): DataspaceCapability {.
-  importcpp: "genodeEnv->pd().alloc(@)".}
+proc allocDataspace(env: GenodeEnv; size: int): DataspaceCapability {.
+  importcpp: "#->pd().alloc(@)".}
   ## Allocate a dataspace and its capability.
 
-proc attachDataspace(ds: DataspaceCapability): pointer {.
-  importcpp: "genodeEnv->rm().attach(@)".}
+proc attachDataspace(env: GenodeEnv; ds: DataspaceCapability): pointer {.
+  importcpp: "#->rm().attach(@)".}
   ## Attach a dataspace into the component address-space.
 
-proc detachAddress(p: pointer) {.
-  importcpp: "genodeEnv->rm().detach(@)".}
+proc detachAddress(env: GenodeEnv; p: pointer) {.
+  importcpp: "#->rm().detach(@)".}
   ## Detach a dataspace from the component address-space.
 
-proc freeDataspace(ds: DataspaceCapability) {.
-  importcpp: "genodeEnv->pd().free(@)".}
+proc freeDataspace(env: GenodeEnv; ds: DataspaceCapability) {.
+  importcpp: "#->pd().free(@)".}
   ## Free a dataspace.
 
 proc newMapSlab(): ptr MapSlab =
   let
-    ds = allocDataspace SlabBackendSize
-    p = attachDataspace ds
+    ds = runtimeEnv.allocDataspace SlabBackendSize
+    p = runtimeEnv.attachDataspace ds
   result = cast[ptr MapSlab](p)
   result.meta.ds = ds
 
@@ -89,13 +94,13 @@ proc osAllocPages(size: int): pointer =
           # tack a new slab on the tail
       slab = slab.meta.next
         # move to next slab in linked list
-  map.ds = allocDataspace size
+  map.ds = runtimeEnv.allocDataspace size
   map.size = size
-  map.attachment = attachDataspace map.ds
+  map.attachment = runtimeEnv.attachDataspace map.ds
   result = map.attachment
 
 proc osTryAllocPages(size: int): pointer =
-  if ramAvail() >= size and capsAvail() > 1:
+  if runtimeEnv.ramAvail() >= size and runtimeEnv.capsAvail() > 4:
     result = osAllocPages size
 
 proc osDeallocPages(p: pointer; size: int) =
@@ -107,8 +112,8 @@ proc osDeallocPages(p: pointer; size: int) =
         if m.size != size:
           echo "cannot partially detach dataspace"
           quit -1
-        detachAddress m.attachment
-        freeDataspace m.ds
+        runtimeEnv.detachAddress m.attachment
+        runtimeEnv.freeDataspace m.ds
         m[] = Map()
         return
     slab = slab.meta.next

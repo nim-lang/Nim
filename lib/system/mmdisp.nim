@@ -146,7 +146,7 @@ when defined(boehmgc):
     proc getFreeMem(): int = return boehmGetFreeBytes()
     proc getTotalMem(): int = return boehmGetHeapSize()
 
-    proc setStackBottom(theStackBottom: pointer) = discard
+    proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
     boehmGCinit()
@@ -305,7 +305,7 @@ elif defined(gogc):
     goRuntime_ReadMemStats(addr mstats)
     result = int(mstats.sys)
 
-  proc setStackBottom(theStackBottom: pointer) = discard
+  proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc alloc(size: Natural): pointer =
     result = c_malloc(size)
@@ -449,7 +449,7 @@ elif defined(nogc) and defined(useMalloc):
     proc getFreeMem(): int = discard
     proc getTotalMem(): int = discard
 
-    proc setStackBottom(theStackBottom: pointer) = discard
+    proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() = discard
 
@@ -523,7 +523,7 @@ elif defined(nogc):
   proc growObj(old: pointer, newsize: int): pointer =
     result = realloc(old, newsize)
 
-  proc setStackBottom(theStackBottom: pointer) = discard
+  proc nimGC_setStackBottom(theStackBottom: pointer) = discard
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
 
@@ -561,13 +561,17 @@ else:
 
 when not declared(nimNewSeqOfCap):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-    let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
-    when declared(newObjNoInit):
-      result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
+    when defined(gcRegions):
+      let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize
+      result = newStr(typ, s, ntfNoRefs notin typ.base.flags)
     else:
-      result = newObj(typ, s)
-    cast[PGenericSeq](result).len = 0
-    cast[PGenericSeq](result).reserved = cap
+      let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
+      when declared(newObjNoInit):
+        result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
+      else:
+        result = newObj(typ, s)
+      cast[PGenericSeq](result).len = 0
+      cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
 

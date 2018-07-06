@@ -15,8 +15,6 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
 
-from options import gProjectPath
-
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
@@ -77,15 +75,15 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
-proc gorgeExWrapper(a: VmArgs) {.nimcall.} =
-  let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
-                       a.currentLineInfo)
-  setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
-
-proc getProjectPathWrapper(a: VmArgs) {.nimcall.} =
-  setResult a, gProjectPath
-
 proc registerAdditionalOps*(c: PCtx) =
+  proc gorgeExWrapper(a: VmArgs) =
+    let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
+                         a.currentLineInfo, c.config)
+    setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
+
+  proc getProjectPathWrapper(a: VmArgs) =
+    setResult a, c.config.projectPath
+
   wrap1f_math(sqrt)
   wrap1f_math(ln)
   wrap1f_math(log10)
@@ -109,15 +107,16 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(ceil)
   wrap2f_math(fmod)
 
-  wrap2s(getEnv, ospathsop)
-  wrap1s(existsEnv, ospathsop)
-  wrap2svoid(putEnv, ospathsop)
-  wrap1s(dirExists, osop)
-  wrap1s(fileExists, osop)
-  wrap2svoid(writeFile, systemop)
-  wrap1s(readFile, systemop)
-  systemop getCurrentExceptionMsg
-  registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
-    setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-  systemop gorgeEx
+  when defined(nimcore):
+    wrap2s(getEnv, ospathsop)
+    wrap1s(existsEnv, ospathsop)
+    wrap2svoid(putEnv, ospathsop)
+    wrap1s(dirExists, osop)
+    wrap1s(fileExists, osop)
+    wrap2svoid(writeFile, systemop)
+    wrap1s(readFile, systemop)
+    systemop getCurrentExceptionMsg
+    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    systemop gorgeEx
   macrosop getProjectPath

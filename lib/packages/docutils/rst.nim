@@ -43,8 +43,8 @@ type
     mwUnsupportedField
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
-                       arg: string) {.nimcall.} ## what to do in case of an error
-  FindFileHandler* = proc (filename: string): string {.nimcall.}
+                       arg: string) {.closure.} ## what to do in case of an error
+  FindFileHandler* = proc (filename: string): string {.closure.}
 
 const
   messages: array[MsgKind, string] = [
@@ -363,6 +363,7 @@ proc addNodes(n: PRstNode): string =
   addNodesAux(n, result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+  if n == nil: return
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
       case n.text[i]

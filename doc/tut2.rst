@@ -618,9 +618,9 @@ Turning the ``log`` proc into a template solves this problem:
   log("x has the value: " & $x)
 
 The parameters' types can be ordinary types or the meta types ``untyped``,
-``typed``, or ``typedesc``.
-``typedesc`` stands for *type description*, and ``untyped`` means symbol lookups and
-type resolution is not performed before the expression is passed to the template.
+``typed``, or ``type``. ``type`` suggests that only a type symbol may be given
+as an argument, and ``untyped`` means symbol lookups and type resolution is not
+performed before the expression is passed to the template.
 
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.

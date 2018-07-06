@@ -14,44 +14,51 @@ import
 
 from modulegraphs import ModuleGraph
 
-proc generateDot*(project: string)
-
 type
   TGen = object of TPassContext
-    module*: PSym
+    module: PSym
+    config: ConfigRef
+    graph: ModuleGraph
   PGen = ref TGen
 
-var gDotGraph: Rope # the generated DOT file; we need a global variable
+  Backend = ref object of RootRef
+    dotGraph: Rope
 
-proc addDependencyAux(importing, imported: string) =
-  addf(gDotGraph, "$1 -> \"$2\";$n", [rope(importing), rope(imported)])
+proc addDependencyAux(b: Backend; importing, imported: string) =
+  addf(b.dotGraph, "$1 -> \"$2\";$n", [rope(importing), rope(imported)])
   # s1 -> s2_4[label="[0-9]"];
 
 proc addDotDependency(c: PPassContext, n: PNode): PNode =
   result = n
-  var g = PGen(c)
+  let g = PGen(c)
+  let b = Backend(g.graph.backend)
   case n.kind
   of nkImportStmt:
     for i in countup(0, sonsLen(n) - 1):
-      var imported = getModuleName(n.sons[i])
-      addDependencyAux(g.module.name.s, imported)
+      var imported = getModuleName(g.config, n.sons[i])
+      addDependencyAux(b, g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
-    var imported = getModuleName(n.sons[0])
-    addDependencyAux(g.module.name.s, imported)
+    var imported = getModuleName(g.config, n.sons[0])
+    addDependencyAux(b, g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
     for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
   else:
     discard
 
-proc generateDot(project: string) =
-  writeRope("digraph $1 {$n$2}$n" % [
-      rope(changeFileExt(extractFilename(project), "")), gDotGraph],
+proc generateDot*(graph: ModuleGraph; project: string) =
+  let b = Backend(graph.backend)
+  discard writeRope("digraph $1 {$n$2}$n" % [
+      rope(changeFileExt(extractFilename(project), "")), b.dotGraph],
             changeFileExt(project, "dot"))
 
-proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
+  g.config = graph.config
+  g.graph = graph
+  if graph.backend == nil:
+    graph.backend = Backend(dotGraph: nil)
   result = g
 
 const gendependPass* = makePass(open = myOpen, process = addDotDependency)

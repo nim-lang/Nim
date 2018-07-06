@@ -9,11 +9,12 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, strtabs, os, options, msgs, sequtils
+import parseutils, strutils, strtabs, os, options, msgs, sequtils,
+  lineinfos
 
-proc addPath*(path: string, info: TLineInfo) =
-  if not options.searchPaths.contains(path):
-    options.searchPaths.insert(path, 0)
+proc addPath*(conf: ConfigRef; path: string, info: TLineInfo) =
+  if not conf.searchPaths.contains(path):
+    conf.searchPaths.insert(path, 0)
 
 type
   Version* = distinct string
@@ -84,7 +85,7 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
   result.name = p[0 .. sepIdx - 1]
   result.version = p.substr(sepIdx + 1)
 
-proc addPackage(packages: StringTableRef, p: string; info: TLineInfo) =
+proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =
   let (name, ver) = getPathVersion(p)
   if isValidVersion(ver):
     let version = newVersion(ver)
@@ -92,14 +93,14 @@ proc addPackage(packages: StringTableRef, p: string; info: TLineInfo) =
       (not packages.hasKey(name)):
       packages[name] = $version
   else:
-    localError(info, "invalid package name: " & p)
+    localError(conf, info, "invalid package name: " & p)
 
 iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
     let res = if val.len == 0: key else: key & '-' & val
     yield res
 
-proc addNimblePath(p: string, info: TLineInfo) =
+proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
   var path = p
   let nimbleLinks = toSeq(walkPattern(p / "*.nimble-link"))
   if nimbleLinks.len > 0:
@@ -111,23 +112,23 @@ proc addNimblePath(p: string, info: TLineInfo) =
     if not path.isAbsolute():
       path = p / path
 
-  if not contains(options.searchPaths, path):
-    message(info, hintPath, path)
-    options.lazyPaths.insert(path, 0)
+  if not contains(conf.searchPaths, path):
+    message(conf, info, hintPath, path)
+    conf.lazyPaths.insert(path, 0)
 
-proc addPathRec(dir: string, info: TLineInfo) =
+proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
   var pos = dir.len-1
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
-      addPackage(packages, p, info)
+      addPackage(conf, packages, p, info)
   for p in packages.chosen:
-    addNimblePath(p, info)
+    addNimblePath(conf, p, info)
 
-proc nimblePath*(path: string, info: TLineInfo) =
-  addPathRec(path, info)
-  addNimblePath(path, info)
+proc nimblePath*(conf: ConfigRef; path: string, info: TLineInfo) =
+  addPathRec(conf, path, info)
+  addNimblePath(conf, path, info)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion
