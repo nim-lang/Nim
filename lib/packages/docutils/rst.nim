@@ -43,8 +43,8 @@ type
     mwUnsupportedField
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
-                       arg: string) {.gcsafe, closure.} ## what to do in case of an error
-  FindFileHandler* = proc (filename: string): string {.gcsafe, closure.}
+                       arg: string) {.closure.} ## what to do in case of an error
+  FindFileHandler* = proc (filename: string): string {.closure.}
 
 const
   messages: array[MsgKind, string] = [
@@ -1406,7 +1406,7 @@ type
   DirFlag = enum
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
-  SectionParser = proc (p: var RstParser): PRstNode {.gcsafe, nimcall.}
+  SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
 
 proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
