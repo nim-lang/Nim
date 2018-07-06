@@ -203,6 +203,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
       rollback()
       if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
+      
+    if mappedSize == 0:
+      raise newException(ValueError, "mapped size cannot be 0")
 
     var flags = if readonly: O_RDONLY else: O_RDWR
 
@@ -232,9 +235,6 @@ proc open*(filename: string, mode: FileMode = fmRead,
         result.size = int(stat.st_size)
       else:
         fail(osLastError(), "error getting file size")
-
-    if result.size == 0:
-      fail(osLastError(), "mapped size cannot be zero")
     
     result.mem = mmap(
       nil,
