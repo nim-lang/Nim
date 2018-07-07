@@ -189,7 +189,7 @@ proc putComment(g: var TSrcGen, s: string) =
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i < s.len and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
@@ -226,7 +226,7 @@ proc maxLineLength(s: string): int =
       break
     of '\x0D':
       inc(i)
-      if s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       result = max(result, lineLen)
       lineLen = 0
     of '\x0A':
@@ -247,7 +247,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
       put(g, kind, str)
       str = ""
       inc(i)
-      if (i <= hi) and (s[i] == '\x0A'): inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, 0)
     of '\x0A':
       put(g, kind, str)
