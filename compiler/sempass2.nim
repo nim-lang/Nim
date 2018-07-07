@@ -552,6 +552,10 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
   # XXX prove the soundness of this effect system rule
   result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
 
+proc isNoEffectList(n: PNode): bool {.inline.} =
+  assert n.kind == nkEffectList
+  n.len == 0 or(n[tagEffects] == nil and n[exceptionEffects] == nil)
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
   let op = a.typ
@@ -561,7 +565,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
     let s = n.skipConv
     if s.kind == nkSym and s.sym.kind in routineKinds:
       propagateEffects(tracked, n, s.sym)
-    elif effectList.len == 0:
+    elif isNoEffectList(effectList):
       if isForwardedProc(n):
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
@@ -723,7 +727,7 @@ proc track(tracked: PEffects, n: PNode) =
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
-      elif effectList.len == 0:
+      elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a, tracked.owner):
