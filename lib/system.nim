@@ -4123,10 +4123,13 @@ else:
 
 template doAssertRaises*(exception, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
-  ## specified exception.
-  runnableExamples:
-    doAssertRaises(ValueError):
-      raise newException(ValueError, "Hello World")
+  ## specified exception. Example:
+  ##
+  ## .. code-block:: nim
+  ##  doAssertRaises(ValueError):
+  ##    raise newException(ValueError, "Hello World")
+  # TODO: investigate why runnableExamples here caused
+  # https://github.com/nim-lang/Nim/issues/8223
   var wrong = false
   try:
     code
