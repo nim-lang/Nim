@@ -2389,19 +2389,22 @@ proc removePrefix*(s: var string, prefix: string) {.
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235"
+    when not defined(js):
+      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."           # <=== bug 8242
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                      ["1,0e-11", "1,0e-011"]
     # bug #6589
-    doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+2"
+    when not defined(js):
+      doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
 
     doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
     doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
 
     block: # formatSize tests
-      #doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"     <==== bug #8231
+      when not defined(js):
+        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"   # <=== bug #8231
       doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
       doAssert formatSize(4096) == "4KiB"
       doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
