@@ -81,13 +81,13 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       conf.projectPath = canonicalizePath(conf, getCurrentDir())
     loadConfigs(DefaultConfig, cache, conf) # load all config files
     let scriptFile = conf.projectFull.changeFileExt("nims")
+    if fileExists(conf.projectPath / "config.nims"):
+      # directory wide NimScript file
+      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
     if fileExists(scriptFile):
       runNimScript(cache, scriptFile, freshDefines=false, conf)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == conf.projectFull: return
-    elif fileExists(conf.projectPath / "config.nims"):
-      # directory wide NimScript file
-      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars(conf)
