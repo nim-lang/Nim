@@ -186,7 +186,7 @@ proc joinPath*(head, tail: string): string {.
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & substr(tail, 1)
     else:
       result = head & tail
