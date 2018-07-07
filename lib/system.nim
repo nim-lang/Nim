@@ -1998,7 +1998,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
     var res = a
     while res >= b:
       yield res
-      dec(res, step)
+      res -= step.T
 
 when defined(nimNewRoof):
   iterator countup*[T](a, b: T, step = 1): T {.inline.} =
@@ -2015,7 +2015,7 @@ when defined(nimNewRoof):
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res, step)
+        res += step.T
 
   iterator `..`*[T](a, b: T): T {.inline.} =
     ## An alias for `countup`.
@@ -2028,7 +2028,7 @@ when defined(nimNewRoof):
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res)
+        res += 1.T
 
   template dotdotImpl(t) {.dirty.} =
     iterator `..`*(a, b: t): t {.inline.} =
@@ -2059,7 +2059,7 @@ else:
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res, step)
+        res += step.T
 
   iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     ## An alias for `countup`.
@@ -2072,7 +2072,8 @@ else:
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res)
+        res += 1.T
+
 
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.

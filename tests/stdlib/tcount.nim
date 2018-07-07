@@ -4,6 +4,21 @@ discard """
 3
 4
 5
+0.0
+-1.0
+-2.0
+-3.0
+-4.0
+-5.0
+0.0
+1.0
+2.0
+0.0
+1.0
+2.0
+0.0
+1.0
+2.0
 done'''
 """
 
@@ -25,5 +40,18 @@ for i in low(arr)..high(arr):
 # check this terminates:
 for x in countdown('\255', '\0'):
   discard
+
+# PR #7668
+for x in countdown(0.0, -5.0):
+  echo x
+
+for x in countup(0.0, 2.0):
+  echo x
+
+for x in 0.0 .. 2.0:
+  echo x
+
+for x in 0.0'f32 .. 2.0'f64:
+  echo x
 
 echo "done"
