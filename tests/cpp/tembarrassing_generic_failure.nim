@@ -1,4 +1,5 @@
 discard """
+  targets: "cpp"
   cmd: "nim cpp --threads:on $file"
 """
 

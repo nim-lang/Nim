@@ -1,5 +1,5 @@
 discard """
-  output: '''(foo: 38, other: string here)
+  output: '''(foo: 38, other: "string here")
 43
 100
 90'''

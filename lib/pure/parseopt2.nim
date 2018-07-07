@@ -17,6 +17,7 @@
 ## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
 ## 3. argument - everything else
 
+{.deprecated: "Use the 'parseopt' module instead".}
 {.push debugger: off.}
 
 include "system/inclrtl"
@@ -39,8 +40,6 @@ type
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
-
-{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
 
 proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
   ## Initalizes option parses with cmdline. cmdline should not contain
@@ -120,8 +119,6 @@ proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1", deprecat
 
 type
   GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]
-
-{.deprecated: [TGetoptResult: GetoptResult].}
 
 iterator getopt*(p: var OptParser): GetoptResult =
   ## This is an convenience iterator for iterating over the given OptParser object.

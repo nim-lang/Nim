@@ -2,7 +2,7 @@ discard """
   output: '''(width: 11, color: 13)
 (width: 15, weight: 13, taste: 11, color: 14)
 (width: 17, color: 16)
-(width: 12.0, taste: yummy, color: 13)
+(width: 12.0, taste: "yummy", color: 13)
 (width: 0, tast_e: 0.0, kind: Smooth, skin: 1.5, color: 12)'''
 """
 # bug #5264

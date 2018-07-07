@@ -24,7 +24,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
   # getUniqueType() is too expensive here:
   var typ = skipTypes(ri.sons[0].typ, abstractInst)
   if typ.sons[0] != nil:
-    if isInvalidReturnType(typ.sons[0]):
+    if isInvalidReturnType(p.config, typ.sons[0]):
       if params != nil: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
@@ -32,14 +32,14 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
-        add(pl, addrLoc(d))
+          discard "resetLoc(p, d)"
+        add(pl, addrLoc(p.config, d))
         add(pl, ~");$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp, needsInit=true)
-        add(pl, addrLoc(tmp))
+        add(pl, addrLoc(p.config, tmp))
         add(pl, ~");$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
@@ -71,7 +71,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
       result = p.prc.id == n.sym.owner.id
   of nkDotExpr, nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyPtr,tyRef}:
+    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyLent,tyPtr,tyRef}:
       result = isInCurrentFrame(p, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = isInCurrentFrame(p, n.sons[1])
@@ -83,6 +83,8 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: discard
 
+proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
+
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
 
@@ -93,18 +95,27 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, q[1], a)
     initLocExpr(p, q[2], b)
     initLocExpr(p, q[3], c)
-    let fmt =
-      case skipTypes(a.t, abstractVar+{tyPtr}).kind
-      of tyOpenArray, tyVarargs, tyArray:
-        "($1)+($2), ($3)-($2)+1"
-      of tyString, tySequence:
-        if skipTypes(n.typ, abstractInst).kind == tyVar and
-            not compileToCpp(p.module):
-          "(*$1)->data+($2), ($3)-($2)+1"
-        else:
-          "$1->data+($2), ($3)-($2)+1"
-      else: (internalError("openArrayLoc: " & typeToString(a.t)); "")
-    result = fmt % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    # but first produce the required index checks:
+    if optBoundsCheck in p.options:
+      genBoundsCheck(p, a, b, c)
+    let ty = skipTypes(a.t, abstractVar+{tyPtr})
+    case ty.kind
+    of tyArray:
+      let first = firstOrd(p.config, ty)
+      if first == 0:
+        result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+      else:
+        result = "($1)+(($2)-($4)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first)]
+    of tyOpenArray, tyVarargs:
+      result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    of tyString, tySequence:
+      if skipTypes(n.typ, abstractInst).kind == tyVar and
+          not compileToCpp(p.module):
+        result = "(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
+      else:
+        result = "$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
+    else:
+      internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
@@ -113,25 +124,25 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
       else:
-        result = "$1->data, $1->$2" % [a.rdLoc, lenField(p)]
+        result = "$1$3, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
     of tyArray:
-      result = "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))]
+      result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
       of tyArray:
-        result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
+        result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:
-        internalError("openArrayLoc: " & typeToString(a.t))
-    else: internalError("openArrayLoc: " & typeToString(a.t))
+        internalError(p.config, "openArrayLoc: " & typeToString(a.t))
+    else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "$1->data" % [a.rdLoc]
+  result = ropecg(p.module, "#nimToCStringConv($1)", [a.rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc
@@ -140,9 +151,9 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n.sons[0]
     result = openArrayLoc(p, n)
-  elif ccgIntroducedPtr(param):
+  elif ccgIntroducedPtr(p.config, param):
     initLocExpr(p, n, a)
-    result = addrLoc(a)
+    result = addrLoc(p.config, a)
   elif p.module.compileToCpp and param.typ.kind == tyVar and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n.sons[0], a)
@@ -152,7 +163,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
     if callee.kind == nkSym and
         {sfImportC, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportC} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
-      result = addrLoc(a)
+      result = addrLoc(p.config, a)
     else:
       result = rdLoc(a)
   else:
@@ -219,7 +230,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   let rawProc = getRawProcType(p, typ)
   let callPattern = if tfIterator in typ.flags: PatIter else: PatProc
   if typ.sons[0] != nil:
-    if isInvalidReturnType(typ.sons[0]):
+    if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
@@ -228,13 +239,13 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
-        add(pl, addrLoc(d))
+          discard "resetLoc(p, d)"
+        add(pl, addrLoc(p.config, d))
         genCallPattern()
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp, needsInit=true)
-        add(pl, addrLoc(tmp))
+        add(pl, addrLoc(p.config, tmp))
         genCallPattern()
         genAssignment(p, d, tmp, {}) # no need for deep copying
     else:
@@ -261,7 +272,7 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
       result = genArgNoParam(p, ri.sons[i]) #, typ.n.sons[i].sym)
   else:
     if tfVarargs notin typ.flags:
-      localError(ri.info, "wrong argument count")
+      localError(p.config, ri.info, "wrong argument count")
       result = nil
     else:
       result = genArgNoParam(p, ri.sons[i])
@@ -325,13 +336,13 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # for better or worse c2nim translates the 'this' argument to a 'var T'.
   # However manual wrappers may also use 'ptr T'. In any case we support both
   # for convenience.
-  internalAssert i < sonsLen(typ)
+  internalAssert p.config, i < sonsLen(typ)
   assert(typ.n.sons[i].kind == nkSym)
   # if the parameter is lying (tyVar) and thus we required an additional deref,
   # skip the deref:
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
-  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias})
+  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias, tySink})
   if t.kind == tyVar:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
@@ -382,7 +393,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
             result.add genOtherArg(p, ri, k, typ)
           result.add(~")")
         else:
-          localError(ri.info, "call expression expected for C++ pattern")
+          localError(p.config, ri.info, "call expression expected for C++ pattern")
         inc i
       elif pat[i+1] == '.':
         result.add genThisArg(p, ri, j, typ)
@@ -420,7 +431,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert pat != nil
+  internalAssert p.config, pat != nil
   if pat.contains({'#', '(', '@', '\''}):
     var pl = genPatternCall(p, ri, pat, typ)
     # simpler version of 'fixupCall' that works with the pl+params combination:
@@ -469,7 +480,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert pat != nil
+  internalAssert p.config, pat != nil
   var start = 3
   if ' ' in pat:
     start = 1
@@ -489,7 +500,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
   for i in countup(start, length-1):
     assert(sonsLen(typ) == sonsLen(typ.n))
     if i >= sonsLen(typ):
-      internalError(ri.info, "varargs for objective C method?")
+      internalError(p.config, ri.info, "varargs for objective C method?")
     assert(typ.n.sons[i].kind == nkSym)
     var param = typ.n.sons[i].sym
     add(pl, ~" ")
@@ -497,20 +508,20 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     add(pl, ~": ")
     add(pl, genArg(p, ri.sons[i], param, ri))
   if typ.sons[0] != nil:
-    if isInvalidReturnType(typ.sons[0]):
+    if isInvalidReturnType(p.config, typ.sons[0]):
       if sonsLen(ri) > 1: add(pl, ~" ")
       # beware of 'result = p(result)'. We always allocate a temporary:
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         add(pl, ~"Result: ")
-        add(pl, addrLoc(d))
+        add(pl, addrLoc(p.config, d))
         add(pl, ~"];$n")
         line(p, cpsStmts, pl)
       else:
         var tmp: TLoc
         getTemp(p, typ.sons[0], tmp, needsInit=true)
-        add(pl, addrLoc(tmp))
+        add(pl, addrLoc(p.config, tmp))
         add(pl, ~"];$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
@@ -527,7 +538,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -538,7 +549,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

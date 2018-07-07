@@ -1,7 +1,8 @@
 
-import 
-  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, 
-  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables
+import
+  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils,
+  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables,
+  lineinfos
 
 type
   DepN = ref object
@@ -10,11 +11,11 @@ type
     onStack: bool
     kids: seq[DepN]
     hAQ, hIS, hB, hCmd: int
-    when not defined(release):
+    when defined(debugReorder):
       expls: seq[string]
   DepG = seq[DepN]
 
-when not defined(release):
+when defined(debugReorder):
   var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
@@ -29,10 +30,10 @@ proc newDepN(id: int, pnode: PNode): DepN =
   result.hIS = -1
   result.hB = -1
   result.hCmd = -1
-  when not defined(release):
+  when defined(debugReorder):
     result.expls = @[]
 
-proc accQuoted(n: PNode): PIdent =
+proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
   for i in 0 ..< n.len:
     let x = n[i]
@@ -40,33 +41,33 @@ proc accQuoted(n: PNode): PIdent =
     of nkIdent: id.add(x.ident.s)
     of nkSym: id.add(x.sym.name.s)
     else: discard
-  result = getIdent(id)
+  result = getIdent(cache, id)
 
-proc addDecl(n: PNode; declares: var IntSet) =
+proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
   case n.kind
-  of nkPostfix: addDecl(n[1], declares)
-  of nkPragmaExpr: addDecl(n[0], declares)
+  of nkPostfix: addDecl(cache, n[1], declares)
+  of nkPragmaExpr: addDecl(cache, n[0], declares)
   of nkIdent:
     declares.incl n.ident.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[n.ident.id] = n.ident.s
   of nkSym:
     declares.incl n.sym.name.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[n.sym.name.id] = n.sym.name.s
   of nkAccQuoted:
-    let a = accQuoted(n)
+    let a = accQuoted(cache, n)
     declares.incl a.id
-    when not defined(release):
+    when defined(debugReorder):
       idNames[a.id] = a.s
   of nkEnumFieldDef:
-    addDecl(n[0], declares)
+    addDecl(cache, n[0], declares)
   else: discard
 
-proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
-  template deps(n) = computeDeps(n, declares, uses, false)
+proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLevel: bool) =
+  template deps(n) = computeDeps(cache, n, declares, uses, false)
   template decl(n) =
-    if topLevel: addDecl(n, declares)
+    if topLevel: addDecl(cache, n, declares)
   case n.kind
   of procDefs, nkMacroDef, nkTemplateDef:
     decl(n[0])
@@ -92,11 +93,11 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
       deps(n[i])
   of nkIdent: uses.incl n.ident.id
   of nkSym: uses.incl n.sym.name.id
-  of nkAccQuoted: uses.incl accQuoted(n).id
+  of nkAccQuoted: uses.incl accQuoted(cache, n).id
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n.sons[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
-    for i in 0..<len(n): computeDeps(n[i], declares, uses, topLevel)
+    for i in 0..<len(n): computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
     let a = n.sons[0]
     if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and
@@ -135,15 +136,13 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
-                    cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx, cache)
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+  result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
-  graph.addIncludeDep(s.position.int32, fileIdx)
+  graph.addIncludeDep(FileIndex s.position, fileIdx)
 
-proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode, 
-                    modulePath: string, includedFiles: var IntSet,
-                    cache: IdentCache): PNode =
+proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
+                    modulePath: string, includedFiles: var IntSet): PNode =
   # Parses includes and injects them in the current tree
   if not n.hasIncludes:
     return n
@@ -151,15 +150,16 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   for a in n:
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
-        var f = checkModuleName(a.sons[i])
+        var f = checkModuleName(graph.config, a.sons[i])
         if f != InvalidFileIDX:
-          if containsOrIncl(includedFiles, f):
-            localError(a.info, errRecursiveDependencyX, f.toFilename)
+          if containsOrIncl(includedFiles, f.int):
+            localError(graph.config, a.info, "recursive dependency: '$1'" %
+              toFilename(graph.config, f))
           else:
-            let nn = includeModule(graph, module, f, cache)
-            let nnn = expandIncludes(graph, module, nn, modulePath, 
-                                      includedFiles, cache)
-            excl(includedFiles, f)
+            let nn = includeModule(graph, module, f)
+            let nnn = expandIncludes(graph, module, nn, modulePath,
+                                      includedFiles)
+            excl(includedFiles, f.int)
             for b in nnn:
               result.add b
     else:
@@ -189,7 +189,7 @@ proc haveSameKind(dns: seq[DepN]): bool =
     if dn.pnode.kind != kind:
       return false
 
-proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
+proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
   # Merges typeSections and ConstSections when they form
   # a strong component (ex: circular type definition)
   for c in comps:
@@ -214,7 +214,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
           # consecutive type and const sections
           var wmsg = "Circular dependency detected. reorder pragma may not be able to" &
             " reorder some nodes properely"
-          when not defined(release):
+          when defined(debugReorder):
             wmsg &= ":\n"
             for i in 0..<cs.len-1:
                 for j in i..<cs.len:
@@ -229,7 +229,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
                     wmsg &= "line " & $cs[^1].pnode.info.line &
                       " depends on line " & $cs[j].pnode.info.line &
                       ": " & cs[^1].expls[ci] & "\n"
-          message(cs[0].pnode.info, warnUser, wmsg)
+          message(conf, cs[0].pnode.info, warnUser, wmsg)
 
           var i = 0
           while i < cs.len:
@@ -273,9 +273,9 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
-        for a in n:
-          if a.hasCommand:
-            return true
+    for a in n:
+      if a.hasCommand:
+        return true
   else:
     return false
 
@@ -353,13 +353,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
       if j < i and nj.hasCommand and niHasCmd:
         # Preserve order for commands and calls
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "both have commands and one comes after the other"
       elif j < i and nj.hasImportStmt:
         # Every node that comes after an import statement must
         # depend on that import
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "parent is, or contains, an import statement and child comes after it"
       elif j < i and niHasBody and nj.hasAccQuotedDef:
         # Every function, macro, template... with a body depends
@@ -367,13 +367,13 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         # That's because it is hard to detect the use of functions
         # like "[]=", "[]", "or" ... in their bodies.
         ni.kids.add nj
-        when not defined(release):
+        when defined(debugReorder):
           ni.expls.add "one declares a quoted identifier and the other has a body and comes after it"
       elif j < i and niHasBody and not nj.hasBody and
         intersects(deps[i][0], declares):
           # Keep function declaration before function definition
           ni.kids.add nj
-          when not defined(release):
+          when defined(debugReorder):
             for dep in deps[i][0]:
               if dep in declares:
                 ni.expls.add "one declares \"" & idNames[dep] & "\" and the other defines it"
@@ -381,7 +381,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
         for d in declares:
           if uses.contains(d):
             ni.kids.add nj
-            when not defined(release):
+            when defined(debugReorder):
               ni.expls.add "one declares \"" & idNames[d] & "\" and the other uses it"
 
 proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
@@ -425,20 +425,20 @@ proc hasForbiddenPragma(n: PNode): bool =
         a[0].ident.s == "push":
           return true
 
-proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PNode =
+proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   if n.hasForbiddenPragma:
     return n
   var includedFiles = initIntSet()
-  let mpath = module.fileIdx.toFullPath
-  let n = expandIncludes(graph, module, n, mpath, 
-                          includedFiles, cache).splitSections
+  let mpath = toFullPath(graph.config, module.fileIdx)
+  let n = expandIncludes(graph, module, n, mpath,
+                          includedFiles).splitSections
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
     deps[i][0] = initIntSet()
     deps[i][1] = initIntSet()
-    computeDeps(n[i], deps[i][0], deps[i][1], true)
+    computeDeps(graph.cache, n[i], deps[i][0], deps[i][1], true)
 
   var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)
-  mergeSections(comps, result)
+  mergeSections(graph.config, comps, result)

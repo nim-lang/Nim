@@ -1,10 +1,10 @@
 discard """
-  errormsg: "got (ref Matrix[2, 2, system.float], ref Matrix[2, 1, system.float])"
+  errormsg: "got <ref Matrix[2, 2, system.float], ref Matrix[2, 1, system.float]>"
   line: 27
 """
 
 type
-  Matrix[M,N: static[int]; T: SomeReal] = distinct array[0..(M*N - 1), T]
+  Matrix[M,N: static[int]; T: SomeFloat] = distinct array[0..(M*N - 1), T]
 
 let a = new Matrix[2,2,float]
 let b = new Matrix[2,1,float]

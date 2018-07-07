@@ -30,7 +30,6 @@ when not declared(system.StackTrace):
   type StackTrace = object
     lines: array[0..20, cstring]
     files: array[0..20, cstring]
-  {.deprecated: [TStackTrace: StackTrace].}
   proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
@@ -39,7 +38,6 @@ type
     total: int
     st: StackTrace
   ProfileData = array[0..64*1024-1, ptr ProfileEntry]
-{.deprecated: [TProfileEntry: ProfileEntry, TProfileData: ProfileData].}
 
 proc `==`(a, b: StackTrace): bool =
   for i in 0 .. high(a.lines):

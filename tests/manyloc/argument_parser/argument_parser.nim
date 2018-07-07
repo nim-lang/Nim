@@ -174,7 +174,7 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ##     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)
   ##     parsed_param2 = new_parsed_parameter(PK_BIGGEST_INT, 2358123 * 23123)
   ##     # The following line doesn't compile due to
-  ##     # type mismatch: got (string) but expected 'int'
+  ##     # type mismatch: got <string> but expected 'int'
   ##     #parsed_param3 = new_parsed_parameter(PK_INT, "231")
   var result {.gensym.}: Tparsed_parameter
   result.kind = tkind
@@ -209,7 +209,7 @@ proc `$`*(data: Tcommandline_results): string =
 
 # - Parse code
 
-template raise_or_quit(exception, message: expr): stmt {.immediate.} =
+template raise_or_quit(exception, message: untyped) =
   ## Avoids repeating if check based on the default quit_on_failure variable.
   ##
   ## As a special case, if message has a zero length the call to quit won't
@@ -230,15 +230,15 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   ##
   ## Pass in the string of the parameter triggering the call. If the
   if not custom_validator.isNil:
+    try:
+      let message = custom_validator(parameter, parsed_parameter)
+      if not message.isNil and message.len > 0:
+        raise_or_quit(ValueError, ("Failed to validate value for " &
+          "parameter $1:\n$2" % [escape(parameter), message]))
     except:
       raise_or_quit(ValueError, ("Couldn't run custom proc for " &
         "parameter $1:\n$2" % [escape(parameter),
         getCurrentExceptionMsg()]))
-    let message = custom_validator(parameter, parsed_parameter)
-    if not message.isNil and message.len > 0:
-      raise_or_quit(ValueError, ("Failed to validate value for " &
-        "parameter $1:\n$2" % [escape(parameter), message]))
-
 
 proc parse_parameter(quit_on_failure: bool, param, value: string,
     param_kind: Tparam_kind): Tparsed_parameter =

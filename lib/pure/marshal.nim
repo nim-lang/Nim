@@ -270,6 +270,8 @@ proc store*[T](s: Stream, data: T) =
 
 proc `$$`*[T](x: T): string =
   ## returns a string representation of `x`.
+  ##
+  ## Note: to serialize `x` to JSON use $(%x) from the ``json`` module
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -309,7 +311,6 @@ when not defined(testing) and isMainModule:
     Node = object
       next, prev: PNode
       data: string
-  {.deprecated: [TNode: Node].}
 
   proc buildList(): PNode =
     new(result)

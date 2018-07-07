@@ -9,7 +9,8 @@ implicit generic
 generic
 false
 true
--1'''
+-1
+Meow'''
 """
 
 # https://github.com/nim-lang/Nim/issues/1147
@@ -31,7 +32,7 @@ type ConcretePointOfFloat = object
 type ConcretePoint[Value] = object
   x, y: Value
 
-type AbstractPointOfFloat = generic p
+type AbstractPointOfFloat = concept p
   p.x is float and p.y is float
 
 let p1 = ConcretePointOfFloat(x: 0, y: 0)
@@ -89,12 +90,24 @@ type
   B = object
 
 proc size(self: B): int =
-  return -1  
+  return -1
 
 proc size(self: A): int =
-  return 0  
+  return 0
 
 let b = B()
 echo b is A
 echo b.size()
 
+# https://github.com/nim-lang/Nim/issues/7125
+type
+  Thing = concept x
+    x.hello is string
+  Cat = object
+
+proc hello(d: Cat): string = "Meow"
+
+proc sayHello(c: Thing) = echo(c.hello)
+
+var a: Thing = Cat()
+a.sayHello()

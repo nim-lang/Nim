@@ -30,14 +30,16 @@ type
     wordCounter: int
     idAnon*, idDelegator*, emptyIdent*: PIdent
 
-var
-  legacy: IdentCache
+when false:
+  var
+    legacy: IdentCache
 
 proc resetIdentCache*() =
-  for i in low(legacy.buckets)..high(legacy.buckets):
-    legacy.buckets[i] = nil
+  when false:
+    for i in low(legacy.buckets)..high(legacy.buckets):
+      legacy.buckets[i] = nil
 
-proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
+proc cmpIgnoreStyle*(a, b: cstring, blen: int): int =
   if a[0] != b[0]: return 1
   var i = 0
   var j = 0
@@ -111,25 +113,15 @@ proc getIdent*(self: IdentCache; identifier: string, h: Hash): PIdent =
   result = getIdent(cstring(identifier), len(identifier), h)
 
 proc newIdentCache*(): IdentCache =
-  if legacy.isNil:
-    result = IdentCache()
-    result.idAnon = result.getIdent":anonymous"
-    result.wordCounter = 1
-    result.idDelegator = result.getIdent":delegator"
-    result.emptyIdent = result.getIdent("")
-    # initialize the keywords:
-    for s in countup(succ(low(specialWords)), high(specialWords)):
-      result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
-    legacy = result
-  else:
-    result = legacy
+  result = IdentCache()
+  result.idAnon = result.getIdent":anonymous"
+  result.wordCounter = 1
+  result.idDelegator = result.getIdent":delegator"
+  result.emptyIdent = result.getIdent("")
+  # initialize the keywords:
+  for s in countup(succ(low(specialWords)), high(specialWords)):
+    result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
-
-proc getIdent*(identifier: string): PIdent =
-  ## for backwards compatibility.
-  if legacy.isNil:
-    discard newIdentCache()
-  legacy.getIdent identifier

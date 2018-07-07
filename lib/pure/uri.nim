@@ -18,14 +18,12 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-{.deprecated: [TUrl: Url, TUri: Uri].}
-
 {.push warning[deprecated]: off.}
-proc `$`*(url: Url): string {.deprecated.} =
+proc `$`*(url: Url): string {.deprecated: "use Uri instead".} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
 
-proc `/`*(a, b: Url): Url {.deprecated.} =
+proc `/`*(a, b: Url): Url {.deprecated: "use Uri instead".} =
   ## Joins two URLs together, separating them with / if needed.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
@@ -40,18 +38,76 @@ proc `/`*(a, b: Url): Url {.deprecated.} =
     urlS.add(bs)
   result = Url(urlS)
 
-proc add*(url: var Url, a: Url) {.deprecated.} =
+proc add*(url: var Url, a: Url) {.deprecated: "use Uri instead".} =
   ## Appends url to url.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   url = url / a
 {.pop.}
 
+proc encodeUrl*(s: string, usePlus=true): string =
+  ## Encodes a URL according to RFC3986.
+  ##
+  ## This means that characters in the set
+  ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
+  ## carried over to the result.
+  ## All other characters are encoded as ``''%xx'`` where ``xx``
+  ## denotes its hexadecimal value.
+  ##
+  ## As a special rule, when the value of ``usePlus`` is true,
+  ## spaces are encoded as ``'+'`` instead of ``'%20'``.
+  result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
+  let fromSpace = if usePlus: "+" else: "%20"
+  for c in s:
+    case c
+    of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~': add(result, c)
+    of ' ': add(result, fromSpace)
+    else:
+      add(result, '%')
+      add(result, toHex(ord(c), 2))
+
+proc decodeUrl*(s: string, decodePlus=true): string =
+  ## Decodes a URL according to RFC3986.
+  ##
+  ## This means that any ``'%xx'`` (where ``xx`` denotes a hexadecimal
+  ## value) are converted to the character with ordinal number ``xx``,
+  ## and every other character is carried over.
+  ##
+  ## As a special rule, when the value of ``decodePlus`` is true, ``'+'``
+  ## characters are converted to a space.
+  proc handleHexChar(c: char, x: var int) {.inline.} =
+    case c
+    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
+    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
+    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
+    else: assert(false)
+
+  result = newString(s.len)
+  var i = 0
+  var j = 0
+  while i < s.len:
+    case s[i]
+    of '%':
+      var x = 0
+      handleHexChar(s[i+1], x)
+      handleHexChar(s[i+2], x)
+      inc(i, 2)
+      result[j] = chr(x)
+    of '+':
+      if decodePlus:
+        result[j] = ' '
+      else:
+        result[j] = s[i]
+    else: result[j] = s[i]
+    inc(i)
+    inc(j)
+  setLen(result, j)
+
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
   var inIPv6 = false
-  while true:
+  while i < authority.len:
     case authority[i]
     of '@':
       swap result.password, result.port
@@ -68,7 +124,6 @@ proc parseAuthority(authority: string, result: var Uri) =
       inIPv6 = true
     of ']':
       inIPv6 = false
-    of '\0': break
     else:
       if inPort:
         result.port.add(authority[i])
@@ -85,11 +140,11 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     parseAuthority(result.path, result)
     result.path.setLen(0)
 
-  if uri[i] == '?':
+  if i < uri.len and uri[i] == '?':
     i.inc # Skip '?'
     i.inc parseUntil(uri, result.query, {'#'}, i)
 
-  if uri[i] == '#':
+  if i < uri.len and uri[i] == '#':
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
@@ -113,7 +168,7 @@ proc parseUri*(uri: string, result: var Uri) =
 
   # Check if this is a reference URI (relative URI)
   let doubleSlash = uri.len > 1 and uri[1] == '/'
-  if uri[i] == '/':
+  if i < uri.len and uri[i] == '/':
     # Make sure ``uri`` doesn't begin with '//'.
     if not doubleSlash:
       parsePath(uri, i, result)
@@ -121,7 +176,7 @@ proc parseUri*(uri: string, result: var Uri) =
 
   # Scheme
   i.inc parseWhile(uri, result.scheme, Letters + Digits + {'+', '-', '.'}, i)
-  if uri[i] != ':' and not doubleSlash:
+  if (i >= uri.len or uri[i] != ':') and not doubleSlash:
     # Assume this is a reference URI (relative URI)
     i = 0
     result.scheme.setLen(0)
@@ -131,13 +186,12 @@ proc parseUri*(uri: string, result: var Uri) =
     i.inc # Skip ':'
 
   # Authority
-  if uri[i] == '/' and uri[i+1] == '/':
+  if i+1 < uri.len and uri[i] == '/' and uri[i+1] == '/':
     i.inc(2) # Skip //
     var authority = ""
     i.inc parseUntil(uri, authority, {'/', '?', '#'}, i)
-    if authority == "":
-      raise newException(ValueError, "Expected authority got nothing.")
-    parseAuthority(authority, result)
+    if authority.len > 0:
+      parseAuthority(authority, result)
   else:
     result.opaque = true
 
@@ -155,13 +209,13 @@ proc removeDotSegments(path: string): string =
   let endsWithSlash = path[path.len-1] == '/'
   var i = 0
   var currentSegment = ""
-  while true:
+  while i < path.len:
     case path[i]
     of '/':
       collection.add(currentSegment)
       currentSegment = ""
     of '.':
-      if path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i+1] == '.' and path[i+2] == '/':
         if collection.len > 0:
           discard collection.pop()
           i.inc 3
@@ -170,13 +224,11 @@ proc removeDotSegments(path: string): string =
         i.inc 2
         continue
       currentSegment.add path[i]
-    of '\0':
-      if currentSegment != "":
-        collection.add currentSegment
-      break
     else:
       currentSegment.add path[i]
     i.inc
+  if currentSegment != "":
+    collection.add currentSegment
 
   result = collection.join("/")
   if endsWithSlash: result.add '/'
@@ -278,18 +330,18 @@ proc `/`*(x: Uri, path: string): Uri =
   result = x
 
   if result.path.len == 0:
-    if path[0] != '/':
+    if path.len == 0 or path[0] != '/':
       result.path = "/"
     result.path.add(path)
     return
 
-  if result.path[result.path.len-1] == '/':
-    if path[0] == '/':
+  if result.path.len > 0 and result.path[result.path.len-1] == '/':
+    if path.len > 0 and path[0] == '/':
       result.path.add(path[1 .. path.len-1])
     else:
       result.path.add(path)
   else:
-    if path[0] != '/':
+    if path.len == 0 or path[0] != '/':
       result.path.add '/'
     result.path.add(path)
 
@@ -308,11 +360,16 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  result.add(u.hostname)
+  if u.hostname.endswith('/'):
+    result.add(u.hostname[0..^2])
+  else:
+    result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)
   if u.path.len > 0:
+    if u.hostname.len > 0 and u.path[0] != '/':
+      result.add('/')
     result.add(u.path)
   if u.query.len > 0:
     result.add("?")
@@ -322,6 +379,14 @@ proc `$`*(u: Uri): string =
     result.add(u.anchor)
 
 when isMainModule:
+  block:
+    const test1 = "abc\L+def xyz"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+    doAssert decodeUrl(encodeUrl(test1)) == test1
+    doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
+    doAssert decodeUrl(encodeUrl(test1, false), false) == test1
+    doAssert decodeUrl(encodeUrl(test1)) == test1
+
   block:
     let str = "http://localhost"
     let test = parseUri(str)
@@ -413,6 +478,15 @@ when isMainModule:
     doAssert test.port == "dom96"
     doAssert test.path == "/packages"
 
+  block:
+    let str = "file:///foo/bar/baz.txt"
+    let test = parseUri(str)
+    doAssert test.scheme == "file"
+    doAssert test.username == ""
+    doAssert test.hostname == ""
+    doAssert test.port == ""
+    doAssert test.path == "/foo/bar/baz.txt"
+
   # Remove dot segments tests
   block:
     doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
@@ -482,6 +556,34 @@ when isMainModule:
   block:
     let foo = parseUri("http://localhost:9515") / "status"
     doAssert $foo == "http://localhost:9515/status"
+
+  # bug #6649 #6652
+  block:
+    var foo = parseUri("http://example.com")
+    foo.hostname = "example.com"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.port = "8000"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com:8000/baz"
+
+    foo = parseUri("file:/dir/file")
+    foo.path = "relative"
+    doAssert $foo == "file:relative"
 
   # isAbsolute tests
   block:

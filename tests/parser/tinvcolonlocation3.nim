@@ -1,8 +1,8 @@
 discard """
   file: "tinvcolonlocation3.nim"
   line: 12
-  column: 3
-  errormsg: "':' expected"
+  column: 7
+  errormsg: "expected: ':', but got: 'echo'"
 """
 try:
   echo "try"

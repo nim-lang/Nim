@@ -12,12 +12,12 @@
 proc hlo(c: PContext, n: PNode): PNode
 
 proc evalPattern(c: PContext, n, orig: PNode): PNode =
-  internalAssert n.kind == nkCall and n.sons[0].kind == nkSym
+  internalAssert c.config, n.kind == nkCall and n.sons[0].kind == nkSym
   # we need to ensure that the resulting AST is semchecked. However, it's
   # aweful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
   var rule: string
-  if optHints in gOptions and hintPattern in gNotes:
+  if optHints in c.config.options and hintPattern in c.config.notes:
     rule = renderTree(n, {renderNoComments})
   let s = n.sons[0].sym
   case s.kind
@@ -27,8 +27,8 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
     result = semTemplateExpr(c, n, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
-  if optHints in gOptions and hintPattern in gNotes:
-    message(orig.info, hintPattern, rule & " --> '" &
+  if optHints in c.config.options and hintPattern in c.config.notes:
+    message(c.config, orig.info, hintPattern, rule & " --> '" &
       renderTree(result, {renderNoComments}) & "'")
 
 proc applyPatterns(c: PContext, n: PNode): PNode =
@@ -43,9 +43,9 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
       if not isNil(x):
         assert x.kind in {nkStmtList, nkCall}
         # better be safe than sorry, so check evalTemplateCounter too:
-        inc(evalTemplateCounter)
-        if evalTemplateCounter > 100:
-          globalError(n.info, errTemplateInstantiationTooNested)
+        inc(c.config.evalTemplateCounter)
+        if c.config.evalTemplateCounter > evalTemplateLimit:
+          globalError(c.config, n.info, "template instantiation too nested")
         # deactivate this pattern:
         c.patterns[i] = nil
         if x.kind == nkStmtList:
@@ -54,7 +54,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
           result = flattenStmts(x)
         else:
           result = evalPattern(c, x, result)
-        dec(evalTemplateCounter)
+        dec(c.config.evalTemplateCounter)
         # activate this pattern again:
         c.patterns[i] = pattern
 
@@ -86,18 +86,18 @@ proc hlo(c: PContext, n: PNode): PNode =
       else:
         result = fitNode(c, n.typ, result, n.info)
       # optimization has been applied so check again:
-      result = commonOptimizations(c.module, result)
+      result = commonOptimizations(c.graph, c.module, result)
       result = hlo(c, result)
-      result = commonOptimizations(c.module, result)
+      result = commonOptimizations(c.graph, c.module, result)
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)
 
 proc hloStmt(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)

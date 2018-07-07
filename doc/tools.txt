@@ -27,7 +27,3 @@ The standard distribution ships with the following tools:
 
 - | `estp <estp.html>`_
   | Nim's slow platform independent embedded stack trace profiler.
-
-- | `nimfix <nimfix.html>`_
-  | Nimfix is a tool to help you upgrade from Nimrod (<= version 0.9.6) to
-    Nim (=> version 0.10.0).

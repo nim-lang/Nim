@@ -52,7 +52,7 @@ proc initConfigData(c: var TConfigData) =
   c.pdf = @[]
   c.infile = ""
   c.outdir = ""
-  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off "
+  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot "
   c.authors = ""
   c.projectTitle = ""
   c.projectName = ""
@@ -307,7 +307,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = findNim() & " doc $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim() & " doc0 $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
@@ -418,7 +418,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
           href = rss.url),
         updatedDate(rss.year, rss.month, rss.day),
         "<author><name>Nim</name></author>",
-        content(xmltree.escape(rss.content), `type` = "text"),
+        content(xmltree.escape(rss.content), `type` = "text")
       ))
 
   output.write("""</feed>""")

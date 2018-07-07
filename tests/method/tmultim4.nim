@@ -3,15 +3,15 @@ discard """
   output: "hello"
 """
 type
-  Test = object of TObject
+  Test = object of RootObj
 
-method doMethod(a: ref TObject) {.base, raises: [EIO].} =
+method doMethod(a: ref RootObj) {.base, raises: [IoError].} =
   quit "override"
 
 method doMethod(a: ref Test) =
   echo "hello"
   if a == nil:
-    raise newException(EIO, "arg")
+    raise newException(IoError, "arg")
 
 proc doProc(a: ref Test) =
   echo "hello"

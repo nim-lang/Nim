@@ -13,8 +13,6 @@ type
   MimeDB* = object
     mimes: StringTableRef
 
-{.deprecated: [TMimeDB: MimeDB].}
-
 const mimes* = {
     "ez": "application/andrew-inset",
     "anx": "application/annodex",
@@ -491,6 +489,8 @@ const mimes* = {
     "vrml": "x-world/x-vrml",
     "wrl": "x-world/x-vrml"}
 
+from strutils import startsWith
+
 proc newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
@@ -498,8 +498,11 @@ proc newMimetypes*(): MimeDB =
 
 proc getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
-  ## could not be found.
-  result = mimedb.mimes.getOrDefault(ext)
+  ## could not be found. ``ext`` can start with an optional dot which is ignored.
+  if ext.startsWith("."):
+    result = mimedb.mimes.getOrDefault(ext.substr(1))
+  else:
+    result = mimedb.mimes.getOrDefault(ext)
   if result == "":
     return default
 

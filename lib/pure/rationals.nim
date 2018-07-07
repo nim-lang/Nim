@@ -39,7 +39,7 @@ proc toRational*[T:SomeInteger](x: T): Rational[T] =
   result.num = x
   result.den = 1
 
-proc toRational*(x: float, n: int = high(int32)): Rational[int] =
+proc toRational*(x: float, n: int = high(int) shr (sizeof(int) div 2 * 8)): Rational[int] =
   ## Calculates the best rational numerator and denominator
   ## that approximates to `x`, where the denominator is
   ## smaller than `n` (default is the largest possible
@@ -241,6 +241,33 @@ proc abs*[T](x: Rational[T]): Rational[T] =
   result.num = abs x.num
   result.den = abs x.den
 
+proc `div`*[T: SomeInteger](x, y: Rational[T]): T =
+  ## Computes the rational truncated division.
+  (x.num * y.den) div (y.num * x.den)
+
+proc `mod`*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
+  ## Computes the rational modulo by truncated division (remainder).
+  ## This is same as ``x - (x div y) * y``.
+  result = ((x.num * y.den) mod (y.num * x.den)) // (x.den * y.den)
+  reduce(result)
+
+proc floorDiv*[T: SomeInteger](x, y: Rational[T]): T =
+  ## Computes the rational floor division.
+  ##
+  ## Floor division is conceptually defined as ``floor(x / y)``.
+  ## This is different from the ``div`` operator, which is defined
+  ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
+  ## rounds down.
+  floorDiv(x.num * y.den, y.num * x.den)
+
+proc floorMod*[T: SomeInteger](x, y: Rational[T]): Rational[T] =
+  ## Computes the rational modulo by floor division (modulo).
+  ##
+  ## This is same as ``x - floorDiv(x, y) * y``.
+  ## This proc behaves the same as the ``%`` operator in python.
+  result = floorMod(x.num * y.den, y.num * x.den) // (x.den * y.den)
+  reduce(result)
+
 proc hash*[T](x: Rational[T]): Hash =
   ## Computes hash for rational `x`
   # reduce first so that hash(x) == hash(y) for x == y
@@ -323,8 +350,13 @@ when isMainModule:
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
 
-  assert toRational(0.98765432) == 2111111029 // 2137499919
-  assert toRational(PI) == 817696623 // 260280919
+  when sizeof(int) == 8:
+    assert toRational(0.98765432) == 2111111029 // 2137499919
+    assert toRational(PI) == 817696623 // 260280919
+  when sizeof(int) == 4:
+    assert toRational(0.98765432) == 80 // 81
+    assert toRational(PI) == 355 // 113
+
   assert toRational(0.1) == 1 // 10
   assert toRational(0.9) == 9 // 10
 
@@ -334,3 +366,12 @@ when isMainModule:
   assert toRational(0.33) == 33 // 100
   assert toRational(0.22) == 11 // 50
   assert toRational(10.0) == 10 // 1
+
+  assert (1//1) div (3//10) == 3
+  assert (-1//1) div (3//10) == -3
+  assert (3//10) mod (1//1) == 3//10
+  assert (-3//10) mod (1//1) == -3//10
+  assert floorDiv(1//1, 3//10) == 3
+  assert floorDiv(-1//1, 3//10) == -4
+  assert floorMod(3//10, 1//1) == 3//10
+  assert floorMod(-3//10, 1//1) == 7//10

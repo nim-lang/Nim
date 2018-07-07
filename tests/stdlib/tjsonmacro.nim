@@ -2,7 +2,7 @@ discard """
   file: "tjsonmacro.nim"
   output: ""
 """
-import json, strutils
+import json, strutils, options, tables
 
 when isMainModule:
   # Tests inspired by own use case (with some additional tests).
@@ -247,3 +247,174 @@ when isMainModule:
     let jnode = %b
     let data = jnode.to(Bird)
     doAssert data == b
+
+  block:
+    type
+      MsgBase = ref object of RootObj
+        name*: string
+
+      MsgChallenge = ref object of MsgBase
+        challenge*: string
+
+    let data = %*{"name": "foo", "challenge": "bar"}
+    let msg = data.to(MsgChallenge)
+    doAssert msg.name == "foo"
+    doAssert msg.challenge == "bar"
+
+  block:
+    type
+      Color = enum Red, Brown
+      Thing = object
+        animal: tuple[fur: bool, legs: int]
+        color: Color
+
+    var j = parseJson("""
+      {"animal":{"fur":true,"legs":6},"color":"Red"}
+    """)
+
+    let parsed = to(j, Thing)
+    doAssert parsed.animal.fur
+    doAssert parsed.animal.legs == 6
+    doAssert parsed.color == Red
+
+  block:
+    type
+      Car = object
+        engine: tuple[name: string, capacity: float]
+        model: string
+
+    let j = """
+      {"engine": {"name": "V8", "capacity": 5.5}, "model": "Skyline"}
+    """
+
+    var i = 0
+    proc mulTest: JsonNode =
+      i.inc()
+      return parseJson(j)
+
+    let parsed = mulTest().to(Car)
+    doAssert parsed.engine.name == "V8"
+
+    doAssert i == 1
+
+  block:
+    # Option[T] support!
+    type
+      Car1 = object # TODO: Codegen bug when `Car`
+        engine: tuple[name: string, capacity: Option[float]]
+        model: string
+        year: Option[int]
+
+    let noYear = """
+      {"engine": {"name": "V8", "capacity": 5.5}, "model": "Skyline"}
+    """
+
+    let noYearParsed = parseJson(noYear)
+    let noYearDeser = to(noYearParsed, Car1)
+    doAssert noYearDeser.engine.capacity == some(5.5)
+    doAssert noYearDeser.year.isNone
+    doAssert noYearDeser.engine.name == "V8"
+
+    # Issue #7433
+    type
+      Obj2 = object
+        n1: int
+        n2: Option[string]
+        n3: bool
+
+    var j = %*[ { "n1": 4, "n2": "ABC", "n3": true },
+                { "n1": 1, "n3": false },
+                { "n1": 1, "n2": "XYZ", "n3": false } ]
+
+    let jDeser = j.to(seq[Obj2])
+    doAssert jDeser[0].n2.get() == "ABC"
+    doAssert jDeser[1].n2.isNone()
+
+    # Issue #6902
+    type
+      Obj = object
+        n1: int
+        n2: Option[int]
+        n3: Option[string]
+        n4: Option[bool]
+        
+    var j0 = parseJson("""{"n1": 1, "n2": null, "n3": null, "n4": null}""")
+    let j0Deser = j0.to(Obj)
+    doAssert j0Deser.n1 == 1
+    doAssert j0Deser.n2.isNone()
+    doAssert j0Deser.n3.isNone()
+    doAssert j0Deser.n4.isNone()
+
+  # Table[T, Y] support.
+  block:
+    type
+      Friend = object
+        name: string
+        age: int
+
+      Dynamic = object
+        name: string
+        friends: Table[string, Friend]
+
+    let data = """
+      {"friends": {
+                    "John": {"name": "John", "age": 35},
+                    "Elizabeth": {"name": "Elizabeth", "age": 23}
+                  }, "name": "Dominik"}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Dynamic)
+    doAssert dataDeser.name == "Dominik"
+    doAssert dataDeser.friends["John"].age == 35
+    doAssert dataDeser.friends["Elizabeth"].age == 23
+
+  # JsonNode support
+  block:
+    type
+      Test = object
+        name: string
+        fallback: JsonNode
+
+    let data = """
+      {"name": "FooBar", "fallback": 56.42}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Test)
+    doAssert dataDeser.name == "FooBar"
+    doAssert dataDeser.fallback.kind == JFloat
+    doAssert dataDeser.fallback.getFloat() == 56.42
+
+  # int64, float64 etc support.
+  block:
+    type
+      Test1 = object
+        a: int8
+        b: int16
+        c: int32
+        d: int64
+        e: uint8
+        f: uint16
+        g: uint32
+        h: uint64
+        i: float32
+        j: float64
+
+    let data = """
+      {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7,
+       "h": 8, "i": 9.9, "j": 10.10}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Test1)
+    doAssert dataDeser.a == 1
+    doAssert dataDeser.f == 6
+    doAssert dataDeser.i == 9.9'f32
+  
+  # deserialize directly into a table
+  block:
+    let s = """{"a": 1, "b": 2}"""
+    let t = parseJson(s).to(Table[string, int])
+    doAssert t["a"] == 1
+    doAssert t["b"] == 2

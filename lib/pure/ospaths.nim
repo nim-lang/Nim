@@ -29,11 +29,6 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
-    FReadDir: ReadDirEffect,
-    FWriteDir: WriteDirEffect,
-    TOSErrorCode: OSErrorCode
-].}
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
@@ -191,12 +186,12 @@ proc joinPath*(head, tail: string): string {.
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & substr(tail, 1)
     else:
       result = head & tail
   else:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & tail
     else:
       result = head & DirSep & tail
@@ -469,6 +464,9 @@ proc unixToNativePath*(path: string, drive=""): string {.
   when defined(unix):
     result = path
   else:
+    if path.len == 0:
+        return ""
+
     var start: int
     if path[0] == '/':
       # an absolute path
@@ -482,17 +480,17 @@ proc unixToNativePath*(path: string, drive=""): string {.
       else:
         result = $DirSep
       start = 1
-    elif path[0] == '.' and path[1] == '/':
+    elif path[0] == '.' and (path.len == 1 or path[1] == '/'):
       # current directory
       result = $CurDir
-      start = 2
+      start = when doslikeFileSystem: 1 else: 2
     else:
       result = ""
       start = 0
 
     var i = start
     while i < len(path): # ../../../ --> ::::
-      if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
         # parent directory
         when defined(macos):
           if result[high(result)] == ':':
@@ -573,3 +571,67 @@ proc expandTilde*(path: string): string {.
     result = getHomeDir() / path.substr(2)
   else:
     result = path
+
+proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote s, so it can be safely passed to Windows API.
+  ## Based on Python's subprocess.list2cmdline
+  ## See http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
+  let needQuote = {' ', '\t'} in s or s.len == 0
+
+  result = ""
+  var backslashBuff = ""
+  if needQuote:
+    result.add("\"")
+
+  for c in s:
+    if c == '\\':
+      backslashBuff.add(c)
+    elif c == '\"':
+      result.add(backslashBuff)
+      result.add(backslashBuff)
+      backslashBuff.setLen(0)
+      result.add("\\\"")
+    else:
+      if backslashBuff.len != 0:
+        result.add(backslashBuff)
+        backslashBuff.setLen(0)
+      result.add(c)
+
+  if needQuote:
+    result.add("\"")
+
+proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote ``s``, so it can be safely passed to POSIX shell.
+  ## Based on Python's pipes.quote
+  const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
+                         '0'..'9', 'A'..'Z', 'a'..'z'}
+  if s.len == 0:
+    return "''"
+
+  let safe = s.allCharsInSet(safeUnixChars)
+
+  if safe:
+    return s
+  else:
+    return "'" & s.replace("'", "'\"'\"'") & "'"
+
+when defined(windows) or defined(posix) or defined(nintendoswitch):
+  proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+    ## Quote ``s``, so it can be safely passed to shell.
+    when defined(windows):
+      return quoteShellWindows(s)
+    else:
+      return quoteShellPosix(s)
+
+when isMainModule:
+  assert quoteShellWindows("aaa") == "aaa"
+  assert quoteShellWindows("aaa\"") == "aaa\\\""
+  assert quoteShellWindows("") == "\"\""
+
+  assert quoteShellPosix("aaa") == "aaa"
+  assert quoteShellPosix("aaa a") == "'aaa a'"
+  assert quoteShellPosix("") == "''"
+  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+
+  when defined(posix):
+    assert quoteShell("") == "''"

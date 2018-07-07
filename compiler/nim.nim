@@ -20,8 +20,8 @@ when defined(i386) and defined(windows) and defined(vcc):
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt, service,
-  nodejs, scriptconfig, idents, modulegraphs
+  extccomp, strutils, os, osproc, platform, main, parseopt,
+  nodejs, scriptconfig, idents, modulegraphs, lineinfos
 
 when hasTinyCBackend:
   import tccgen
@@ -37,77 +37,89 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
+proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
+  var p = parseopt.initOptParser(cmd)
+  var argsCount = 0
+  while true:
+    parseopt.next(p)
+    case p.kind
+    of cmdEnd: break
+    of cmdLongoption, cmdShortOption:
+      if p.key == " ":
+        p.key = "-"
+        if processArgument(pass, p, argsCount, config): break
+      else:
+        processSwitch(pass, p, config)
+    of cmdArgument:
+      if processArgument(pass, p, argsCount, config): break
+  if pass == passCmd2:
+    if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
+      rawMessage(config, errGenerated, errArgsNeedRunOption)
+
+proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  condsyms.initDefines(conf.symbols)
   if paramCount() == 0:
-    writeCommandLineUsage()
+    writeCommandLineUsage(conf, conf.helpWritten)
   else:
     # Process command line arguments:
-    processCmdLine(passCmd1, "")
-    if gProjectName == "-":
-      gProjectName = "stdinfile"
-      gProjectFull = "stdinfile"
-      gProjectPath = canonicalizePath getCurrentDir()
-      gProjectIsStdin = true
-    elif gProjectName != "":
+    processCmdLine(passCmd1, "", conf)
+    if conf.projectName == "-":
+      conf.projectName = "stdinfile"
+      conf.projectFull = "stdinfile"
+      conf.projectPath = canonicalizePath(conf, getCurrentDir())
+      conf.projectIsStdin = true
+    elif conf.projectName != "":
       try:
-        gProjectFull = canonicalizePath(gProjectName)
+        conf.projectFull = canonicalizePath(conf, conf.projectName)
       except OSError:
-        gProjectFull = gProjectName
-      let p = splitFile(gProjectFull)
+        conf.projectFull = conf.projectName
+      let p = splitFile(conf.projectFull)
       let dir = if p.dir.len > 0: p.dir else: getCurrentDir()
-      gProjectPath = canonicalizePath dir
-      gProjectName = p.name
+      conf.projectPath = canonicalizePath(conf, dir)
+      conf.projectName = p.name
     else:
-      gProjectPath = canonicalizePath getCurrentDir()
-    loadConfigs(DefaultConfig, config) # load all config files
-    let scriptFile = gProjectFull.changeFileExt("nims")
+      conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    loadConfigs(DefaultConfig, cache, conf) # load all config files
+    let scriptFile = conf.projectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false, config)
+      runNimScript(cache, scriptFile, freshDefines=false, conf)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if scriptFile == gProjectFull: return
-    elif fileExists(gProjectPath / "config.nims"):
+      if scriptFile == conf.projectFull: return
+    elif fileExists(conf.projectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
+      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
-    extccomp.initVars()
-    processCmdLine(passCmd2, "")
-    if options.command == "":
-      rawMessage(errNoCommand, command)
-    mainCommand(newModuleGraph(config), cache)
-    if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
+    extccomp.initVars(conf)
+    processCmdLine(passCmd2, "", conf)
+    if conf.command == "":
+      rawMessage(conf, errGenerated, "command missing")
+    mainCommand(newModuleGraph(cache, conf))
+    if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
-    if msgs.gErrorCounter == 0:
+    if conf.errorCounter == 0:
       when hasTinyCBackend:
-        if gCmd == cmdRun:
-          tccgen.run(commands.arguments)
-      if optRun in gGlobalOptions:
-        if gCmd == cmdCompileToJS:
+        if conf.cmd == cmdRun:
+          tccgen.run(conf.arguments)
+      if optRun in conf.globalOptions:
+        if conf.cmd == cmdCompileToJS:
           var ex: string
-          if options.outFile.len > 0:
-            ex = options.outFile.prependCurDir.quoteShell
+          if conf.outFile.len > 0:
+            ex = conf.outFile.prependCurDir.quoteShell
           else:
             ex = quoteShell(
-              completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
-          execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
-        elif gCmd == cmdCompileToPHP:
-          var ex: string
-          if options.outFile.len > 0:
-            ex = options.outFile.prependCurDir.quoteShell
-          else:
-            ex = quoteShell(
-              completeCFilePath(changeFileExt(gProjectFull, "php").prependCurDir))
-          execExternalProgram("php " & ex & ' ' & commands.arguments)
+              completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
+          execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
         else:
           var binPath: string
-          if options.outFile.len > 0:
+          if conf.outFile.len > 0:
             # If the user specified an outFile path, use that directly.
-            binPath = options.outFile.prependCurDir
+            binPath = conf.outFile.prependCurDir
           else:
             # Figure out ourselves a valid binary name.
-            binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
+            binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
           var ex = quoteShell(binPath)
-          execExternalProgram(ex & ' ' & commands.arguments)
+          execExternalProgram(conf, ex & ' ' & conf.arguments)
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
@@ -115,10 +127,10 @@ when declared(GC_setMaxPause):
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
-condsyms.initDefines()
 
 when not defined(selftest):
-  handleCmdLine(newIdentCache(), newConfigRef())
+  let conf = newConfigRef()
+  handleCmdLine(newIdentCache(), conf)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
-  msgQuit(int8(msgs.gErrorCounter > 0))
+  msgQuit(int8(conf.errorCounter > 0))

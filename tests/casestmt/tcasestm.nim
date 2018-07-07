@@ -36,5 +36,73 @@ var z = case i
 echo z
 #OUT ayyy
 
+let str1 = "Y"
+let str2 = "NN"
+let a = case str1:
+  of "Y": true
+  of "N": false
+  else: 
+    echo "no good"
+    quit("quiting")
+
+proc toBool(s: string): bool = 
+  case s:
+    of nil, "": raise newException(ValueError, "Invalid boolean")
+    elif s[0] == 'Y': true
+    elif s[0] == 'N': false
+    else: "error".quit(2)
 
 
+let b = "NN".toBool()
+
+doAssert(a == true)
+doAssert(b == false)
+
+static:
+  #bug #7407
+  let bstatic = "N".toBool()
+  doAssert(bstatic == false)
+
+var bb: bool
+doassert(not compiles(
+  bb = case str2:
+    of nil, "": raise newException(ValueError, "Invalid boolean")
+    elif str.startsWith("Y"): true
+    elif str.startsWith("N"): false
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": true
+    of "N": false
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": true
+    of "N": raise newException(ValueError, "N not allowed")
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": raise newException(ValueError, "Invalid Y")
+    else: raise newException(ValueError, "Invalid N")
+))
+
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      raise newException(ValueError, "Invalid Y")
+      true    
+    else: raise newException(ValueError, "Invalid")
+))
+
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      "invalid Y".quit(3)
+      true    
+    else: raise newException(ValueError, "Invalid")
+))

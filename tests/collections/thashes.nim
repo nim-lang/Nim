@@ -3,7 +3,7 @@ discard """
 """
 
 import tables
-from hashes import THash
+from hashes import Hash
 
 # Test with int
 block:
@@ -66,7 +66,7 @@ block:
 # The same test with a custom hash(s: string) does
 # work though.
 block:
-  proc hash(x: int): THash {.inline.} =
+  proc hash(x: int): Hash {.inline.} =
     echo "overloaded hash"
     result = x
   var t = initTable[int, int]()

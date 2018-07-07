@@ -7,6 +7,14 @@ discard """
 import
   strutils
 
+import macros
+
+template rejectParse(e) =
+  try:
+    discard e
+    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+  except ValueError: discard
+
 proc testStrip() =
   write(stdout, strip("  ha  "))
 
@@ -148,7 +156,6 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-
 proc testIsAlphaNumeric =
   assert isAlphaNumeric("abcdABC1234") == true
   assert isAlphaNumeric("a") == true
@@ -203,10 +210,50 @@ proc testCountLines =
   assertCountLines("\nabc\n123")
   assertCountLines("\nabc\n123\n")
 
+proc testParseInts =
+  # binary
+  assert "0b1111".parseBinInt == 15
+  assert "0B1111".parseBinInt == 15
+  assert "1111".parseBinInt == 15
+  assert "1110".parseBinInt == 14
+  assert "1_1_1_1".parseBinInt == 15
+  assert "0b1_1_1_1".parseBinInt == 15
+  rejectParse "".parseBinInt
+  rejectParse "_".parseBinInt
+  rejectParse "0b".parseBinInt
+  rejectParse "0b1234".parseBinInt
+  # hex
+  assert "0x72".parseHexInt == 114
+  assert "0X72".parseHexInt == 114
+  assert "#72".parseHexInt == 114
+  assert "72".parseHexInt == 114
+  assert "FF".parseHexInt == 255
+  assert "ff".parseHexInt == 255
+  assert "fF".parseHexInt == 255  
+  assert "0x7_2".parseHexInt == 114
+  rejectParse "".parseHexInt
+  rejectParse "_".parseHexInt
+  rejectParse "0x".parseHexInt
+  rejectParse "0xFFG".parseHexInt
+  rejectParse "reject".parseHexInt
+  # octal
+  assert "0o17".parseOctInt == 15
+  assert "0O17".parseOctInt == 15
+  assert "17".parseOctInt == 15
+  assert "10".parseOctInt == 8
+  assert "0o1_0_0".parseOctInt == 64
+  rejectParse "".parseOctInt
+  rejectParse "_".parseOctInt
+  rejectParse "0o".parseOctInt
+  rejectParse "9".parseOctInt
+  rejectParse "0o9".parseOctInt
+  rejectParse "reject".parseOctInt
+
 testDelete()
 testFind()
 testRFind()
 testCountLines()
+testParseInts()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
@@ -228,6 +275,24 @@ assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
 assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
+
+assert "".parseHexStr == ""
+assert "00Ff80".parseHexStr == "\0\xFF\x80"
+try:
+  discard "00Ff8".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+try:
+  discard "0k".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+assert "".toHex == ""
+assert "\x00\xFF\x80".toHex == "00FF80"
+assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
 assert(' '.repeat(8)== "        ")
 assert(" ".repeat(8) == "        ")

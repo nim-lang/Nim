@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nim representation.
 
 import
-  lexer, options, idents, strutils, ast, msgs
+  lexer, options, idents, strutils, ast, msgs, lineinfos
 
 type
   TRenderFlag* = enum
@@ -39,8 +39,8 @@ type
     inPragma: int
     when defined(nimpretty):
       pendingNewlineCount: int
-      origContent: string
-
+    fid*: FileIndex
+    config*: ConfigRef
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -91,7 +91,7 @@ const
   MaxLineLen = 80
   LineCommentColumn = 30
 
-proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
+proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.comStack = @[]
   g.tokens = @[]
   g.indent = 0
@@ -103,6 +103,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.pendingNL = -1
   g.pendingWhitespace = -1
   g.inGenericParams = false
+  g.config = config
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
   var length = len(g.tokens)
@@ -173,25 +174,14 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
   else:
     g.pendingWhitespace = s.len
 
-proc toNimChar(c: char): string =
-  case c
-  of '\0': result = "\\0"
-  of '\x01'..'\x1F', '\x80'..'\xFF': result = "\\x" & strutils.toHex(ord(c), 2)
-  of '\'', '\"', '\\': result = '\\' & c
-  else: result = c & ""
-
-proc makeNimString(s: string): string =
-  result = "\""
-  for i in countup(0, len(s)-1): add(result, toNimChar(s[i]))
-  add(result, '\"')
-
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
+  let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
   var com = "## "
-  while true:
+  while i <= hi:
     case s[i]
     of '\0':
       break
@@ -199,7 +189,7 @@ proc putComment(g: var TSrcGen, s: string) =
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if s[i] == '\x0A': inc(i)
+      if i < s.len and s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
@@ -214,12 +204,12 @@ proc putComment(g: var TSrcGen, s: string) =
       # gets too long:
       # compute length of the following word:
       var j = i
-      while s[j] > ' ': inc(j)
+      while j <= hi and s[j] > ' ': inc(j)
       if not isCode and (g.lineLen + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
-      while s[i] > ' ':
+      while i <= hi and s[i] > ' ':
         add(com, s[i])
         inc(i)
   put(g, tkComment, com)
@@ -228,8 +218,9 @@ proc putComment(g: var TSrcGen, s: string) =
 proc maxLineLength(s: string): int =
   if s.isNil: return 0
   var i = 0
+  let hi = len(s) - 1
   var lineLen = 0
-  while true:
+  while i <= hi:
     case s[i]
     of '\0':
       break
@@ -248,7 +239,7 @@ proc maxLineLength(s: string): int =
 
 proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   var i = 0
-  var hi = len(s) - 1
+  let hi = len(s) - 1
   var str = ""
   while i <= hi:
     case s[i]
@@ -316,8 +307,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct,
-                          tyOrdinal, tyAlias}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+                          tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
@@ -339,23 +330,27 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
+    doAssert g.config != nil, "g.config not initialized!"
     let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
-                    " " & substr(g.origContent, n.info.commentOffsetA, n.info.commentOffsetB)
+                    " " & fileSection(g.config, g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
                   else:
                     ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return substr(g.origContent, n.info.offsetA, n.info.offsetB) & comment
+      return fileSection(g.config, g.fid, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""
   of nkIdent: result = n.ident.s
   of nkSym: result = n.sym.name.s
-  of nkStrLit: result = makeNimString(n.strVal)
-  of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"")  & '\"'
+  of nkStrLit: result = ""; result.addQuoted(n.strVal)
+  of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
-  of nkCharLit: result = '\'' & toNimChar(chr(int(n.intVal))) & '\''
+  of nkCharLit:
+    result = "\'"
+    result.addEscapedChar(chr(int(n.intVal)));
+    result.add '\''
   of nkIntLit: result = litAux(g, n, n.intVal, 4)
   of nkInt8Lit: result = litAux(g, n, n.intVal, 1) & "\'i8"
   of nkInt16Lit: result = litAux(g, n, n.intVal, 2) & "\'i16"
@@ -385,15 +380,17 @@ proc atom(g: TSrcGen; n: PNode): string =
     if (n.typ != nil) and (n.typ.sym != nil): result = n.typ.sym.name.s
     else: result = "[type node]"
   else:
-    internalError("rnimsyn.atom " & $n.kind)
+    internalError(g.config, "rnimsyn.atom " & $n.kind)
     result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
   for i in countup(start, sonsLen(n) + theEnd):
-    inc(result, lsub(g, n.sons[i]))
-    inc(result, 2)            # for ``, ``
+    let param = n.sons[i]
+    if nfDefaultParam notin param.flags:
+      inc(result, lsub(g, param))
+      inc(result, 2)          # for ``, ``
   if result > 0:
     dec(result, 2)            # last does not get a comma!
 
@@ -423,6 +420,9 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkCommand: result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(g, n) + 3
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(g, n) + 2
+  of nkTupleConstr:
+    # assume the trailing comma:
+    result = lcomma(g, n) + 3
   of nkArgList: result = lcomma(g, n)
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
@@ -710,6 +710,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
   var length = sonsLen(n)
+  if length == 0: return
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")
@@ -813,8 +814,8 @@ proc gident(g: var TSrcGen, n: PNode) =
 
   var t: TTokType
   var s = atom(g, n)
-  if (s[0] in lexer.SymChars):
-    if (n.kind == nkIdent):
+  if s.len > 0 and s[0] in lexer.SymChars:
+    if n.kind == nkIdent:
       if (n.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
         t = tkSymbol
@@ -826,7 +827,10 @@ proc gident(g: var TSrcGen, n: PNode) =
     t = tkOpr
   put(g, t, s)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
-    put(g, tkIntLit, $n.sym.id)
+    when defined(debugMagics):
+      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
+    else:
+      put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -857,7 +861,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
-  of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
+  of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(g, n))
   of nkSym, nkIdent: gident(g, n)
@@ -885,6 +889,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n, 2)
       put(g, tkBracketRi, "]")
+    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+      gsub(g, n[0])
+      if n.len > 2:
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1, -2)
+        put(g, tkParRi, ")")
+      put(g, tkColon, ":")
+      gsub(g, n, n.len-1)
     else:
       if sonsLen(n) >= 1: gsub(g, n.sons[0])
       put(g, tkParLe, "(")
@@ -981,6 +993,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gcomma(g, n, c)
     put(g, tkParRi, ")")
+  of nkTupleConstr:
+    put(g, tkParLe, "(")
+    gcomma(g, n, c)
+    if n.len == 1: put(g, tkComma, ",")
+    put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")
     gcomma(g, n, c)
@@ -1054,6 +1071,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
+                elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
       if n[1].kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
@@ -1394,26 +1412,36 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketRi, "]")
   of nkTupleClassTy:
     put(g, tkTuple, "tuple")
-  of nkMetaNode_Obsolete:
-    put(g, tkParLe, "(META|")
+  of nkComesFrom:
+    put(g, tkParLe, "(ComesFrom|")
     gsub(g, n, 0)
     put(g, tkParRi, ")")
-  of nkGotoState, nkState:
+  of nkGotoState:
     var c: TContext
     initContext c
-    putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
+    putWithSpace g, tkSymbol, "goto"
     gsons(g, n, c)
+  of nkState:
+    var c: TContext
+    initContext c
+    putWithSpace g, tkSymbol, "state"
+    gsub(g, n[0], c)
+    putWithSpace(g, tkColon, ":")
+    indentNL(g)
+    gsons(g, n, c, 1)
+    dedent(g)
+
   of nkBreakState:
     put(g, tkTuple, "breakstate")
   of nkTypeClassTy:
     gTypeClassTy(g, n)
   else:
     #nkNone, nkExplicitTypeListCall:
-    internalError(n.info, "rnimsyn.gsub(" & $n.kind & ')')
+    internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
 
 proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
   var g: TSrcGen
-  initSrcGen(g, renderFlags)
+  initSrcGen(g, renderFlags, newPartialConfigRef())
   # do not indent the initial statement list so that
   # writeFile("file.nim", repr n)
   # produces working Nim code:
@@ -1426,17 +1454,14 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 proc `$`*(n: PNode): string = n.renderTree
 
 proc renderModule*(n: PNode, infile, outfile: string,
-                   renderFlags: TRenderFlags = {}) =
+                   renderFlags: TRenderFlags = {};
+                   fid = FileIndex(-1);
+                   conf: ConfigRef = nil) =
   var
     f: File
     g: TSrcGen
-  initSrcGen(g, renderFlags)
-  when defined(nimpretty):
-    try:
-      g.origContent = readFile(infile)
-    except IOError:
-      rawMessage(errCannotOpenFile, infile)
-
+  initSrcGen(g, renderFlags, conf)
+  g.fid = fid
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
     optNL(g)
@@ -1445,16 +1470,14 @@ proc renderModule*(n: PNode, infile, outfile: string,
        nkCommentStmt: putNL(g)
     else: discard
   gcoms(g)
-  if optStdout in gGlobalOptions:
-    write(stdout, g.buf)
-  elif open(f, outfile, fmWrite):
+  if open(f, outfile, fmWrite):
     write(f, g.buf)
     close(f)
   else:
-    rawMessage(errCannotOpenFile, outfile)
+    rawMessage(g.config, errGenerated, "cannot open file: " & outfile)
 
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
-  initSrcGen(r, renderFlags)
+  initSrcGen(r, renderFlags, newPartialConfigRef())
   gsub(r, n)
 
 proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =

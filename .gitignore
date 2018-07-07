@@ -57,3 +57,7 @@ dist/
 # Private directories and files (IDEs)
 .*/
 ~*
+
+# testament cruft
+testresults/
+test.txt

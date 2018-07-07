@@ -10,63 +10,50 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread
+  ast, astalgo, hashes, msgs, platform, nversion, times, idents,
+  modulegraphs, lineinfos
 
-var systemModule*: PSym
+export createMagic
 
-var
-  gSysTypes: array[TTypeKind, PType]
-  compilerprocs: TStrTable
-  exposed: TStrTable
+proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
-proc nilOrSysInt*: PType = gSysTypes[tyInt]
+proc registerSysType*(g: ModuleGraph; t: PType) =
+  if g.sysTypes[t.kind] == nil: g.sysTypes[t.kind] = t
 
-proc registerSysType*(t: PType) =
-  if gSysTypes[t.kind] == nil: gSysTypes[t.kind] = t
-
-proc newSysType(kind: TTypeKind, size: int): PType =
-  result = newType(kind, systemModule)
+proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
+  result = newType(kind, g.systemModule)
   result.size = size
   result.align = size.int16
 
-proc getSysSym*(name: string): PSym =
-  result = strTableGet(systemModule.tab, getIdent(name))
+proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
+  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
   if result == nil:
-    rawMessage(errSystemNeeds, name)
-    result = newSym(skError, getIdent(name), systemModule, systemModule.info)
-    result.typ = newType(tyError, systemModule)
-  if result.kind == skStub: loadStub(result)
+    localError(g.config, info, "system module needs: " & name)
+    result = newSym(skError, getIdent(g.cache, name), g.systemModule, g.systemModule.info, {})
+    result.typ = newType(tyError, g.systemModule)
   if result.kind == skAlias: result = result.owner
 
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
-let
-  opNot* = createMagic("not", mNot)
-  opContains* = createMagic("contains", mInSet)
-
-proc getSysMagic*(name: string, m: TMagic): PSym =
+proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   var ti: TIdentIter
-  let id = getIdent(name)
-  var r = initIdentIter(ti, systemModule.tab, id)
+  let id = getIdent(g.cache, name)
+  var r = initIdentIter(ti, g.systemModule.tab, id)
   while r != nil:
-    if r.kind == skStub: loadStub(r)
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ.sons[0] != nil and r.typ.sons[0].kind == tyInt: return r
       result = r
-    r = nextIdentIter(ti, systemModule.tab)
+    r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
-  rawMessage(errSystemNeeds, name)
-  result = newSym(skError, id, systemModule, systemModule.info)
-  result.typ = newType(tyError, systemModule)
+  localError(g.config, info, "system module needs: " & name)
+  result = newSym(skError, id, g.systemModule, g.systemModule.info, {})
+  result.typ = newType(tyError, g.systemModule)
 
-proc sysTypeFromName*(name: string): PType =
-  result = getSysSym(name).typ
+proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
+  result = getSysSym(g, info, name).typ
 
-proc getSysType*(kind: TTypeKind): PType =
-  result = gSysTypes[kind]
+proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
+  template sysTypeFromName(s: string): untyped = sysTypeFromName(g, info, s)
+  result = g.sysTypes[kind]
   if result == nil:
     case kind
     of tyInt: result = sysTypeFromName("int")
@@ -88,51 +75,49 @@ proc getSysType*(kind: TTypeKind): PType =
     of tyString: result = sysTypeFromName("string")
     of tyCString: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
-    of tyNil: result = newSysType(tyNil, ptrSize)
-    else: internalError("request for typekind: " & $kind)
-    gSysTypes[kind] = result
+    of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
+    else: internalError(g.config, "request for typekind: " & $kind)
+    g.sysTypes[kind] = result
   if result.kind != kind:
-    internalError("wanted: " & $kind & " got: " & $result.kind)
-  if result == nil: internalError("type not found: " & $kind)
+    internalError(g.config, "wanted: " & $kind & " got: " & $result.kind)
+  if result == nil: internalError(g.config, "type not found: " & $kind)
 
-var
-  intTypeCache: array[-5..64, PType]
+proc resetSysTypes*(g: ModuleGraph) =
+  g.systemModule = nil
+  initStrTable(g.compilerprocs)
+  initStrTable(g.exposed)
+  for i in low(g.sysTypes)..high(g.sysTypes):
+    g.sysTypes[i] = nil
 
-proc resetSysTypes* =
-  systemModule = nil
-  initStrTable(compilerprocs)
-  initStrTable(exposed)
-  for i in low(gSysTypes)..high(gSysTypes):
-    gSysTypes[i] = nil
+  for i in low(g.intTypeCache)..high(g.intTypeCache):
+    g.intTypeCache[i] = nil
 
-  for i in low(intTypeCache)..high(intTypeCache):
-    intTypeCache[i] = nil
-
-proc getIntLitType*(literal: PNode): PType =
+proc getIntLitType*(g: ModuleGraph; literal: PNode): PType =
   # we cache some common integer literal types for performance:
   let value = literal.intVal
-  if value >= low(intTypeCache) and value <= high(intTypeCache):
-    result = intTypeCache[value.int]
+  if value >= low(g.intTypeCache) and value <= high(g.intTypeCache):
+    result = g.intTypeCache[value.int]
     if result == nil:
-      let ti = getSysType(tyInt)
+      let ti = getSysType(g, literal.info, tyInt)
       result = copyType(ti, ti.owner, false)
       result.n = literal
-      intTypeCache[value.int] = result
+      g.intTypeCache[value.int] = result
   else:
-    let ti = getSysType(tyInt)
+    let ti = getSysType(g, literal.info, tyInt)
     result = copyType(ti, ti.owner, false)
     result.n = literal
 
-proc getFloatLitType*(literal: PNode): PType =
+proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   # for now we do not cache these:
-  result = newSysType(tyFloat, size=8)
+  result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
 proc skipIntLit*(t: PType): PType {.inline.} =
-  if t.n != nil:
-    if t.kind in {tyInt, tyFloat}:
-      return getSysType(t.kind)
-  result = t
+  if t.n != nil and t.kind in {tyInt, tyFloat}:
+    result = copyType(t, t.owner, false)
+    result.n = nil
+  else:
+    result = t
 
 proc addSonSkipIntLit*(father, son: PType) =
   if isNil(father.sons): father.sons = @[]
@@ -140,60 +125,52 @@ proc addSonSkipIntLit*(father, son: PType) =
   add(father.sons, s)
   propagateToOwner(father, s)
 
-proc setIntLitType*(result: PNode) =
+proc setIntLitType*(g: ModuleGraph; result: PNode) =
   let i = result.intVal
-  case platform.intSize
-  of 8: result.typ = getIntLitType(result)
+  case g.config.target.intSize
+  of 8: result.typ = getIntLitType(g, result)
   of 4:
     if i >= low(int32) and i <= high(int32):
-      result.typ = getIntLitType(result)
+      result.typ = getIntLitType(g, result)
     else:
-      result.typ = getSysType(tyInt64)
+      result.typ = getSysType(g, result.info, tyInt64)
   of 2:
     if i >= low(int16) and i <= high(int16):
-      result.typ = getIntLitType(result)
+      result.typ = getIntLitType(g, result)
     elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(tyInt32)
+      result.typ = getSysType(g, result.info, tyInt32)
     else:
-      result.typ = getSysType(tyInt64)
+      result.typ = getSysType(g, result.info, tyInt64)
   of 1:
     # 8 bit CPUs are insane ...
     if i >= low(int8) and i <= high(int8):
-      result.typ = getIntLitType(result)
+      result.typ = getIntLitType(g, result)
     elif i >= low(int16) and i <= high(int16):
-      result.typ = getSysType(tyInt16)
+      result.typ = getSysType(g, result.info, tyInt16)
     elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(tyInt32)
+      result.typ = getSysType(g, result.info, tyInt32)
     else:
-      result.typ = getSysType(tyInt64)
-  else: internalError(result.info, "invalid int size")
-
-proc getCompilerProc*(name: string): PSym =
-  let ident = getIdent(name)
-  result = strTableGet(compilerprocs, ident)
-  if result == nil:
-    result = strTableGet(rodCompilerprocs, ident)
-    if result != nil:
-      strTableAdd(compilerprocs, result)
-      if result.kind == skStub: loadStub(result)
-      if result.kind == skAlias: result = result.owner
-
-proc registerCompilerProc*(s: PSym) =
-  strTableAdd(compilerprocs, s)
-
-proc registerNimScriptSymbol*(s: PSym) =
-  # Nimscript symbols must be al unique:
-  let conflict = strTableGet(exposed, s.name)
-  if conflict == nil:
-    strTableAdd(exposed, s)
+      result.typ = getSysType(g, result.info, tyInt64)
   else:
-    localError(s.info, "symbol conflicts with other .exportNims symbol at: " &
-      $conflict.info)
+    internalError(g.config, result.info, "invalid int size")
 
-proc getNimScriptSymbol*(name: string): PSym =
-  strTableGet(exposed, getIdent(name))
+proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
+  let ident = getIdent(g.cache, name)
+  result = strTableGet(g.compilerprocs, ident)
 
-proc resetNimScriptSymbols*() = initStrTable(exposed)
+proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
+  strTableAdd(g.compilerprocs, s)
 
-initStrTable(compilerprocs)
-initStrTable(exposed)
+proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
+  # Nimscript symbols must be al unique:
+  let conflict = strTableGet(g.exposed, s.name)
+  if conflict == nil:
+    strTableAdd(g.exposed, s)
+  else:
+    localError(g.config, s.info,
+      "symbol conflicts with other .exportNims symbol at: " & g.config$conflict.info)
+
+proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
+  strTableGet(g.exposed, getIdent(g.cache, name))
+
+proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)

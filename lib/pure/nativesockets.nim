@@ -31,7 +31,7 @@ else:
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
-  Sockaddr_in6,
+  Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
   freeAddrInfo
 
@@ -84,9 +84,6 @@ type
     addrtype*: Domain
     length*: int
     addrList*: seq[string]
-
-{.deprecated: [TPort: Port, TDomain: Domain, TType: SockType,
-    TProtocol: Protocol, TServent: Servent, THostent: Hostent].}
 
 when useWinVersion:
   let
@@ -184,19 +181,39 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
     SOCK_RAW
 
-proc newNativeSocket*(domain: Domain = AF_INET,
+proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newNativeSocket*(domain: cint, sockType: cint,
+proc createNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
   socket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: Domain = AF_INET,
+                      sockType: SockType = SOCK_STREAM,
+                      protocol: Protocol = IPPROTO_TCP): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: cint, sockType: cint,
+                      protocol: cint): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
   ## closes a socket.
@@ -375,7 +392,15 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
-  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  if result.addrtype == AF_INET:
+    result.addrlist = @[]
+    var i = 0
+    while not isNil(s.h_addrlist[i]):
+      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      inc(i)
+  else:
+    result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
 proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
@@ -396,7 +421,15 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
-  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  if result.addrtype == AF_INET:
+    result.addrlist = @[]
+    var i = 0
+    while not isNil(s.h_addrlist[i]):
+      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      inc(i)
+  else:
+    result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
 proc getHostname*(): string {.tags: [ReadIOEffect].} =
@@ -580,8 +613,12 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when useWinVersion:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    else:
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
@@ -600,7 +637,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} =
+proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated: "use selectRead instead".} =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## read from. The sockets which can be read from will also be removed
@@ -665,6 +702,19 @@ proc selectWrite*(writefds: var seq[SocketHandle],
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
 
   pruneSocketSet(writefds, (wr))
+
+proc accept*(fd: SocketHandle): (SocketHandle, string) =
+  ## Accepts a new client connection.
+  ##
+  ## Returns (osInvalidSocket, "") if an error occurred.
+  var sockAddress: Sockaddr_in
+  var addrLen = sizeof(sockAddress).SockLen
+  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
+                    addr(addrLen))
+  if sock == osInvalidSocket:
+    return (osInvalidSocket, "")
+  else:
+    return (sock, $inet_ntoa(sockAddress.sin_addr))
 
 when defined(Windows):
   var wsa: WSAData

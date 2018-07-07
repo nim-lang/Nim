@@ -9,7 +9,8 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, securehash, os, osproc, streams, strutils, options
+import msgs, std / sha1, os, osproc, streams, strutils, options,
+  lineinfos
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""
@@ -21,11 +22,11 @@ proc readOutput(p: Process): (string, int) =
     result[0].setLen(result[0].len - "\n".len)
   result[1] = p.waitForExit
 
-proc opGorge*(cmd, input, cache: string, info: TLineInfo): (string, int) =
-  let workingDir = parentDir(info.toFullPath)
+proc opGorge*(cmd, input, cache: string, info: TLineInfo; conf: ConfigRef): (string, int) =
+  let workingDir = parentDir(toFullPath(conf, info))
   if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
-    let filename = options.toGeneratedFile("gorge_" & $h, "txt")
+    let filename = options.toGeneratedFile(conf, "gorge_" & $h, "txt")
     var f: File
     if open(f, filename):
       result = (f.readAll, 0)

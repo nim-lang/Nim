@@ -8,7 +8,7 @@ import strutils
 proc foo(s: static[string]): string =
   static: echo s
 
-  const R = s.toUpper
+  const R = s.toUpperAscii
   return R
 
 echo foo("test 1")

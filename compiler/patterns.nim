@@ -77,7 +77,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   if isNil(n.typ):
     result = p.typ.kind in {tyVoid, tyStmt}
   else:
-    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ)
+    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, fromHlo = true)
 
 proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
   result = p.kind == nkSym and p.sym.kind == skParam and p.sym.owner == c.owner
@@ -150,7 +150,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "*": result = matchNested(c, p, n, rpn=false)
     of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
-    else: internalError(p.info, "invalid pattern")
+    else: doAssert(false, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
@@ -289,7 +289,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
         # constraint not fulfilled:
         if not ok: return nil
 
-  markUsed(n.info, s, c.graph.usageSym)
+  markUsed(c.config, n.info, s, c.graph.usageSym)
   if ctx.subMatch:
     assert m.len == 3
     m.sons[1] = result

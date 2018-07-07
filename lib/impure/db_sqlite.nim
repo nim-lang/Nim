@@ -31,7 +31,7 @@
 ##
 ## .. code-block:: Nim
 ##     import db_sqlite
-##     let db = open("localhost", "user", "password", "dbname")
+##     let db = open("mytest.db", nil, nil, nil)  # user, password, database name can be nil
 ##     db.close()
 ##
 ## Creating a table
@@ -57,7 +57,7 @@
 ##
 ##  import db_sqlite, math
 ##
-##  let theDb = open("mytest.db", nil, nil, nil)
+##  let theDb = open("mytest.db", "", "", "")
 ##
 ##  theDb.exec(sql"Drop table if exists myTestTbl")
 ##  theDb.exec(sql("""create table myTestTbl (
@@ -81,7 +81,7 @@
 ##
 ##  theDb.close()
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 import strutils, sqlite3
 
@@ -126,6 +126,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
+  assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
@@ -144,6 +145,7 @@ proc newRow(L: int): Row =
 
 proc setupQuery(db: DbConn, query: SqlQuery,
                 args: varargs[string]): Pstmt =
+  assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
@@ -267,6 +269,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
                   {.tags: [WriteDbEffect], raises: [].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
+  assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
   result = -1

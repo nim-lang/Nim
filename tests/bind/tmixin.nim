@@ -3,7 +3,7 @@ discard """
 """
 
 type
-  TFoo1 = object of TObject
+  TFoo1 = object of RootObj
     v: int
   TFoo2 = object of TFoo1
     v2: int

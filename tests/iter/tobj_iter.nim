@@ -4,8 +4,6 @@ discard """
 
 # bug #2023
 
-{.deadCodeElim:on.}
-
 type
     Obj = object
         iter: iterator (): int8 {.closure.}

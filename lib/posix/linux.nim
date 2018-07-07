@@ -1,4 +1,4 @@
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 import posix
 

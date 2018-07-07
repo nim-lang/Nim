@@ -3,12 +3,12 @@ template accept(x) =
 
 template reject(x) =
   static: assert(not compiles(x))
-
+{.experimental: "notnil".}
 type
   TRefObj = ref object
     x: int
 
-  THasNotNils = object of TObject
+  THasNotNils = object of RootObj
     a: TRefObj not nil
     b: TRefObj not nil
     c: TRefObj

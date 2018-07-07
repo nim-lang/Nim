@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim cpp $file"
+  targets: "cpp"
 """
 
 {.emit: """
@@ -22,10 +22,18 @@ proc getSubsystem*[T](): ptr T {.
 let input: ptr Input = getSubsystem[Input]()
 
 
-# bug #4910
+# bugs #4910, #6892 
+proc modify(x: var int) = 
+  x = 123
 
 proc foo() =
-  var ts: array[10, int]
+  var ts: array[2, int]
   for t in mitems(ts):
-     t = 123
+    discard
+
+  for t in mitems(ts):
+     modify(t)
+
+  for i, t in mpairs(ts):
+    modify(t)
 

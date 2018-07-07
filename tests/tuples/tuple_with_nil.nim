@@ -353,7 +353,7 @@ proc writeformat(o: var Writer; p: pointer; fmt: Format) =
     f.baseprefix = true
   writeformat(o, add, cast[uint](p), f)
 
-proc writeformat(o: var Writer; x: SomeReal; fmt: Format) =
+proc writeformat(o: var Writer; x: SomeFloat; fmt: Format) =
   ## Write real number `x` according to format `fmt` using output
   ## object `o` and output function `add`.
   var fmt = fmt
@@ -401,8 +401,8 @@ proc writeformat(o: var Writer; x: SomeReal; fmt: Format) =
       else:
         len += 4 # exponent
       # shift y so that 1 <= abs(y) < 2
-      if exp > 0: y /= pow(10.SomeReal, abs(exp).SomeReal)
-      elif exp < 0: y *= pow(10.SomeReal, abs(exp).SomeReal)
+      if exp > 0: y /= pow(10.SomeFloat, abs(exp).SomeFloat)
+      elif exp < 0: y *= pow(10.SomeFloat, abs(exp).SomeFloat)
     elif fmt.typ == ftPercent:
       len += 1 # percent sign
 
@@ -413,7 +413,7 @@ proc writeformat(o: var Writer; x: SomeReal; fmt: Format) =
     var mult = 1'i64
     for i in 1..prec: mult *= 10
     var num = y.int64
-    var fr = ((y - num.SomeReal) * mult.SomeReal).int64
+    var fr = ((y - num.SomeFloat) * mult.SomeFloat).int64
     # build integer part string
     while num != 0:
       numstr[numlen] = ('0'.int + (num mod 10)).char
@@ -485,7 +485,7 @@ proc writeformat(o: var Writer; b: bool; fmt: Format) =
   else:
     raise newException(FormatError, "Boolean values must of one of the following types: s,b,o,x,X,d,n")
 
-proc writeformat(o: var Writer; ary: openarray[any]; fmt: Format) =
+proc writeformat(o: var Writer; ary: openarray[system.any]; fmt: Format) =
   ## Write array `ary` according to format `fmt` using output object
   ## `o` and output function `add`.
   if ary.len == 0: return

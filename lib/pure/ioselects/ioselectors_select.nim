@@ -154,7 +154,7 @@ when defined(windows):
     result.rsock = rsock
     result.wsock = wsock
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if winlean.send(ev.wsock, cast[pointer](addr data),
                     cint(sizeof(uint64)), 0) != sizeof(uint64):
@@ -178,7 +178,7 @@ else:
     result.rsock = SocketHandle(fds[0])
     result.wsock = SocketHandle(fds[1])
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if posix.write(cint(ev.wsock), addr data, sizeof(uint64)) != sizeof(uint64):
       raiseIOSelectorsError(osLastError())
@@ -229,7 +229,7 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
   doAssert(i < FD_SETSIZE,
            "Descriptor [" & $int(fd) & "] is not registered in the queue!")
 
-proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
+proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   when not defined(windows):
     let fdi = int(fd)
@@ -255,7 +255,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
     IOFD_SET(ev.rsock, addr s.rSet)
     inc(s.count)
 
-proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
+proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
                       events: set[Event]) =
   let maskEvents = {Event.Timer, Event.Signal, Event.Process, Event.Vnode,
                     Event.User, Event.Oneshot, Event.Error}
@@ -279,8 +279,9 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
         inc(s.count)
       pkey.events = events
 
-proc unregister*[T](s: Selector[T], fd: SocketHandle) =
+proc unregister*[T](s: Selector[T], fd: SocketHandle|int) =
   s.withSelectLock():
+    let fd = fd.SocketHandle
     var pkey = s.getKey(fd)
     if Event.Read in pkey.events:
       IOFD_CLR(fd, addr s.rSet)
@@ -379,6 +380,16 @@ proc flush*[T](s: Selector[T]) = discard
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
+proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  s.withSelectLock():
+    result = false
+
+    let fdi = int(fd)
+    for i in 0..<FD_SETSIZE:
+      if s.fds[i].ident == fdi:
+        return true
+      inc(i)
+
 when hasThreadSupport:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     acquire(s.lock)
@@ -391,15 +402,12 @@ else:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     body
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   s.withSelectLock():
     let fdi = int(fd)
-    var i = 0
-    while i < FD_SETSIZE:
+    for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
-        result = s.fds[i].data
-        break
-      inc(i)
+        return s.fds[i].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   s.withSelectLock():
@@ -431,16 +439,20 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                       body1, body2: untyped) =
   mixin withSelectLock
   s.withSelectLock():
-    var value: ptr T
-    let fdi = int(fd)
-    var i = 0
-    while i < FD_SETSIZE:
-      if s.fds[i].ident == fdi:
-        value = addr(s.fds[i].data)
-        break
-      inc(i)
-    if i != FD_SETSIZE:
-      body1
-    else:
-      body2
+    block:
+      var value: ptr T
+      let fdi = int(fd)
+      var i = 0
+      while i < FD_SETSIZE:
+        if s.fds[i].ident == fdi:
+          value = addr(s.fds[i].data)
+          break
+        inc(i)
+      if i != FD_SETSIZE:
+        body1
+      else:
+        body2
 
+
+proc getFd*[T](s: Selector[T]): int =
+  return -1

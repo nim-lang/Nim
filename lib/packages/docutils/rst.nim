@@ -43,10 +43,8 @@ type
     mwUnsupportedField
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
-                       arg: string) {.nimcall.} ## what to do in case of an error
-  FindFileHandler* = proc (filename: string): string {.nimcall.}
-{.deprecated: [TRstParseOptions: RstParseOptions, TRstParseOption: RstParseOption,
-              TMsgKind: MsgKind].}
+                       arg: string) {.closure.} ## what to do in case of an error
+  FindFileHandler* = proc (filename: string): string {.closure.}
 
 const
   messages: array[MsgKind, string] = [
@@ -127,8 +125,6 @@ type
     bufpos*: int
     line*, col*, baseIndent*: int
     skipPounds*: bool
-{.deprecated: [TTokType: TokType, TToken: Token, TTokenSeq: TokenSeq,
-              TLexer: Lexer].}
 
 proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   tok.kind = tkWord
@@ -288,10 +284,6 @@ type
     hasToc*: bool
 
   EParseError* = object of ValueError
-{.deprecated: [TLevelMap: LevelMap, TSubstitution: Substitution,
-              TSharedState: SharedState, TRstParser: RstParser,
-              TMsgHandler: MsgHandler, TFindFileHandler: FindFileHandler,
-              TMsgClass: MsgClass].}
 
 proc whichMsgClass*(k: MsgKind): MsgClass =
   ## returns which message class `k` belongs to.
@@ -341,11 +333,6 @@ proc rstMessage(p: RstParser, msgKind: MsgKind) =
                              p.col + p.tok[p.idx].col, msgKind,
                              p.tok[p.idx].symbol)
 
-when false:
-  proc corrupt(p: RstParser) =
-    assert p.indentStack[0] == 0
-    for i in 1 .. high(p.indentStack): assert p.indentStack[i] < 1_000
-
 proc currInd(p: RstParser): int =
   result = p.indentStack[high(p.indentStack)]
 
@@ -376,6 +363,7 @@ proc addNodes(n: PRstNode): string =
   addNodesAux(n, result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+  if n == nil: return
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
       case n.text[i]
@@ -866,7 +854,6 @@ type
   DirKind = enum             # must be ordered alphabetically!
     dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
     dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
-{.deprecated: [TDirKind: DirKind].}
 
 const
   DirIds: array[0..12, string] = ["", "author", "authors", "code",
@@ -1127,7 +1114,6 @@ proc parseHeadline(p: var RstParser): PRstNode =
 
 type
   IntSeq = seq[int]
-{.deprecated: [TIntSeq: IntSeq].}
 
 proc tokEnd(p: RstParser): int =
   result = p.tok[p.idx].col + len(p.tok[p.idx].symbol) - 1
@@ -1421,8 +1407,6 @@ type
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
   SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
-{.deprecated: [TDirFlag: DirFlag, TDirFlags: DirFlags,
-              TSectionParser: SectionParser].}
 
 proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.

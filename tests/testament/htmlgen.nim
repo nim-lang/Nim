@@ -9,54 +9,33 @@
 
 ## HTML generator for the tester.
 
-import cgi, backend, strutils, json, os
+import cgi, backend, strutils, json, os, tables, times
 
 import "testamenthtml.templ"
 
-proc generateTestRunTabListItemPartial(outfile: File, testRunRow: JsonNode, firstRow = false) =
+proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
   let
-    # The first tab gets the bootstrap class for a selected tab
-    firstTabActiveClass = if firstRow: "active"
-                          else: ""
-    commitId = htmlQuote testRunRow["commit"].str
-    hash = htmlQuote(testRunRow["commit"].str)
-    branch = htmlQuote(testRunRow["branch"].str)
-    machineId = htmlQuote testRunRow["machine"].str
-    machineName = htmlQuote(testRunRow["machine"].str)
-
-  outfile.generateHtmlTabListItem(
-      firstTabActiveClass,
-      commitId,
-      machineId,
-      branch,
-      hash,
-      machineName
-    )
-
-proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode, onlyFailing = false) =
-  let
-    trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str)
+    trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str).
+        multiReplace({".": "_", " ": "_", ":": "_"})
     name = testResultRow["name"].str.htmlQuote()
     category = testResultRow["category"].str.htmlQuote()
     target = testResultRow["target"].str.htmlQuote()
     action = testResultRow["action"].str.htmlQuote()
     result = htmlQuote testResultRow["result"].str
-    expected = htmlQuote testResultRow["expected"].str
-    gotten = htmlQuote testResultRow["given"].str
+    expected = testResultRow["expected"].str
+    gotten = testResultRow["given"].str
     timestamp = "unknown"
-  var panelCtxClass, textCtxClass, bgCtxClass, resultSign, resultDescription: string
+  var
+    panelCtxClass, textCtxClass, bgCtxClass: string
+    resultSign, resultDescription: string
   case result
   of "reSuccess":
-    if onlyFailing:
-      return
     panelCtxClass = "success"
     textCtxClass = "success"
     bgCtxClass = "success"
     resultSign = "ok"
     resultDescription = "PASS"
   of "reIgnored":
-    if onlyFailing:
-      return
     panelCtxClass = "info"
     textCtxClass = "info"
     bgCtxClass = "info"
@@ -71,9 +50,7 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode, only
 
   outfile.generateHtmlTestresultPanelBegin(
     trId, name, target, category, action, resultDescription,
-    timestamp,
-    result, resultSign,
-    panelCtxClass, textCtxClass, bgCtxClass
+    timestamp, result, resultSign, panelCtxClass, textCtxClass, bgCtxClass
   )
   if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
     outfile.generateHtmlTestresultOutputNone()
@@ -90,7 +67,7 @@ type
     totalCount, successCount, ignoredCount, failedCount: int
     successPercentage, ignoredPercentage, failedPercentage: BiggestFloat
 
-proc allTestResults(): AllTests =
+proc allTestResults(onlyFailing = false): AllTests =
   result.data = newJArray()
   for file in os.walkFiles("testresults/*.json"):
     let data = parseFile(file)
@@ -98,69 +75,74 @@ proc allTestResults(): AllTests =
       echo "[ERROR] ignoring json file that is not an array: ", file
     else:
       for elem in data:
-        result.data.add elem
         let state = elem["result"].str
+        inc result.totalCount
         if state.contains("reSuccess"): inc result.successCount
         elif state.contains("reIgnored"): inc result.ignoredCount
+        if not onlyFailing or not(state.contains("reSuccess")):
+          result.data.add elem
+  result.successPercentage = 100 *
+    (result.successCount.toBiggestFloat / result.totalCount.toBiggestFloat)
+  result.ignoredPercentage = 100 *
+    (result.ignoredCount.toBiggestFloat / result.totalCount.toBiggestFloat)
+  result.failedCount = result.totalCount -
+    result.successCount - result.ignoredCount
+  result.failedPercentage = 100 *
+    (result.failedCount.toBiggestFloat / result.totalCount.toBiggestFloat)
 
-  result.totalCount = result.data.len
-  result.successPercentage = 100 * (result.successCount.toBiggestFloat() / result.totalCount.toBiggestFloat())
-  result.ignoredPercentage = 100 * (result.ignoredCount.toBiggestFloat() / result.totalCount.toBiggestFloat())
-  result.failedCount = result.totalCount - result.successCount - result.ignoredCount
-  result.failedPercentage = 100 * (result.failedCount.toBiggestFloat() / result.totalCount.toBiggestFloat())
-
-
-proc generateTestResultsPanelGroupPartial(outfile: File, allResults: JsonNode, onlyFailing = false) =
+proc generateTestResultsPanelGroupPartial(outfile: File, allResults: JsonNode) =
   for testresultRow in allResults:
-    generateTestResultPanelPartial(outfile, testresultRow, onlyFailing)
+    generateTestResultPanelPartial(outfile, testresultRow)
 
-proc generateTestRunTabContentPartial(outfile: File, allResults: AllTests, testRunRow: JsonNode, onlyFailing = false, firstRow = false) =
+proc generateAllTestsContent(outfile: File, allResults: AllTests,
+  onlyFailing = false) =
+  if allResults.data.len < 1: return # Nothing to do if there is no data.
+  # Only results from one test run means that test run environment info is the
+  # same for all tests
   let
-    # The first tab gets the bootstrap classes for a selected and displaying tab content
-    firstTabActiveClass = if firstRow: " in active"
-                          else: ""
-    commitId = htmlQuote testRunRow["commit"].str
-    hash = htmlQuote(testRunRow["commit"].str)
-    branch = htmlQuote(testRunRow["branch"].str)
-    machineId = htmlQuote testRunRow["machine"].str
-    machineName = htmlQuote(testRunRow["machine"].str)
-    os = htmlQuote("unknown_os")
-    cpu = htmlQuote("unknown_cpu")
+    firstRow = allResults.data[0]
+    commit = htmlQuote firstRow["commit"].str
+    branch = htmlQuote firstRow["branch"].str
+    machine = htmlQuote firstRow["machine"].str
 
-  outfile.generateHtmlTabPageBegin(
-    firstTabActiveClass, commitId,
-    machineId, branch, hash, machineName, os, cpu,
+  outfile.generateHtmlAllTestsBegin(
+    machine, commit, branch,
     allResults.totalCount,
-    allResults.successCount, formatBiggestFloat(allResults.successPercentage, ffDecimal, 2) & "%",
-    allResults.ignoredCount, formatBiggestFloat(allResults.ignoredPercentage, ffDecimal, 2) & "%",
-    allResults.failedCount, formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%"
+    allResults.successCount,
+    formatBiggestFloat(allResults.successPercentage, ffDecimal, 2) & "%",
+    allResults.ignoredCount,
+    formatBiggestFloat(allResults.ignoredPercentage, ffDecimal, 2) & "%",
+    allResults.failedCount,
+    formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%",
+    onlyFailing
   )
-  generateTestResultsPanelGroupPartial(outfile, allResults.data, onlyFailing)
-  outfile.generateHtmlTabPageEnd()
-
-proc generateTestRunsHtmlPartial(outfile: File, allResults: AllTests, onlyFailing = false) =
-  # Iterating the results twice, get entire result set in one go
-  outfile.generateHtmlTabListBegin()
-  if allResults.data.len > 0:
-    generateTestRunTabListItemPartial(outfile, allResults.data[0], true)
-  outfile.generateHtmlTabListEnd()
-
-  outfile.generateHtmlTabContentsBegin()
-  var firstRow = true
-  for testRunRow in allResults.data:
-    generateTestRunTabContentPartial(outfile, allResults, testRunRow, onlyFailing, firstRow)
-    if firstRow:
-      firstRow = false
-  outfile.generateHtmlTabContentsEnd()
+  generateTestResultsPanelGroupPartial(outfile, allResults.data)
+  outfile.generateHtmlAllTestsEnd()
 
 proc generateHtml*(filename: string, onlyFailing: bool) =
+  let
+    currentTime = getTime().local()
+    timestring = htmlQuote format(currentTime, "yyyy-MM-dd HH:mm:ss 'UTC'zzz")
   var outfile = open(filename, fmWrite)
 
   outfile.generateHtmlBegin()
 
-  generateTestRunsHtmlPartial(outfile, allTestResults(), onlyFailing)
+  generateAllTestsContent(outfile, allTestResults(onlyFailing), onlyFailing)
 
-  outfile.generateHtmlEnd()
+  outfile.generateHtmlEnd(timestring)
 
   outfile.flushFile()
   close(outfile)
+
+proc dumpJsonTestResults*(prettyPrint, onlyFailing: bool) =
+  var
+    outfile = stdout
+    jsonString: string
+
+  let results = allTestResults(onlyFailing)
+  if prettyPrint:
+    jsonString = results.data.pretty()
+  else:
+    jsonString = $ results.data
+
+  outfile.writeLine(jsonString)

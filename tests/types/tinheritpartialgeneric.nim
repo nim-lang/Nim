@@ -1,6 +1,6 @@
 discard """
-  output: '''(c: hello, a: 10, b: 12.0)
-(a: 15.5, b: hello)
+  output: '''(c: "hello", a: 10, b: 12.0)
+(a: 15.5, b: "hello")
 (a: 11.75, b: 123)'''
 """
 
