@@ -554,7 +554,7 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
 
 proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
-  n.len == 0 or(n[tagEffects] == nil and n[exceptionEffects] == nil)
+  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
