@@ -219,7 +219,7 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
+proc getUserConfigPath*(filename: string): string =
   result = joinPath(getConfigDir(), filename)
 
 proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
