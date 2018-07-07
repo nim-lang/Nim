@@ -303,17 +303,13 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
     doAssert absolutePath("a") == getCurrentDir() / "a"
   if isAbsolute(path): path
   else:
-    doAssert root.isAbsolute, root
+    if not root.isAbsolute:
+      # CHECKME: is that the correct exception type?
+      raise newException(ValueError, root)
     joinPath(root, path)
 
 when isMainModule:
-  # TODO: use doAssertRaises pending https://github.com/nim-lang/Nim/issues/8223
-  try:
-    let a = absolutePath("a", "b")
-    doAssert false, "should've thrown"
-  except:
-    discard
-
+  doAssertRaises(ValueError): discard absolutePath("a", "b")
   doAssert absolutePath("a") == getCurrentDir() / "a"
   doAssert absolutePath("a", "/b") == "/b" / "a"
   when defined(Posix):
