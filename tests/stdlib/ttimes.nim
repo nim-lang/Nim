@@ -486,6 +486,15 @@ suite "ttimes":
     check dt.format("yyyy") == "+12346"
     check dt.format("uuuu") == "-12345"
 
+    expect ValueError:
+      discard initTimeFormat("'")
+
+    expect ValueError:
+      discard initTimeFormat("'foo")
+
+    expect ValueError:
+      discard initTimeFormat("foo'")
+
   test "parse":
     check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
     parseTestExcp("+120180101", "yyyyMMdd")

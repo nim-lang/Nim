@@ -42,7 +42,7 @@
     let dt = parse("2000-01-01", "yyyy-MM-dd")
     echo dt.format("yyyy-MM-dd")
 
-  The different layout patterns that are supported are documented below.
+  The different format patterns that are supported are documented below.
 
   =============  =================================================================================  ================================================
   Pattern        Description                                                                        Example
@@ -117,8 +117,8 @@
   inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ``,``. A literal ``'`` can be specified with ``''``.
 
-  However you don't need to necessarily separate layout patterns, a
-  unambiguous layout string like ``yyyyMMddhhmmss`` is valid too (although
+  However you don't need to necessarily separate format patterns, a
+  unambiguous format string like ``yyyyMMddhhmmss`` is valid too (although
   only for years in the range 1..9999).
 ]##
 
@@ -1514,10 +1514,10 @@ type
     second: int
     nanosecond: int
 
-  LayoutTokenKind = enum
+  FormatTokenKind = enum
     tkPattern, tkLiteral
 
-  LayoutPattern {.pure.} = enum
+  FormatPattern {.pure.} = enum
     d, dd, ddd, dddd
     h, hh, H, HH
     m, mm, M, MM, MMM, MMMM
@@ -1531,11 +1531,11 @@ type
     z, zz, zzz, zzzz
     g
 
-    # This is a special value used to mark literal layout values.
-    # See the doc comment for ``TimeLayout.patterns``.
+    # This is a special value used to mark literal format values.
+    # See the doc comment for ``TimeFormat.patterns``.
     Lit
 
-  TimeLayout* = object ## Represents a format for parsing and printing
+  TimeFormat* = object ## Represents a format for parsing and printing
                        ## time types.
     patterns: seq[byte] ## \
       ## Contains the patterns encoded as bytes.
@@ -1543,27 +1543,26 @@ type
       ## They start with ``Lit.byte``, then the length of the literal, then the
       ## raw char values of the literal. For example, the literal `foo` would
       ## be encoded as ``@[Lit.byte, 3.byte, 'f'.byte, 'o'.byte, 'o'.byte]``.
-    layout: string
+    formatStr: string
 
-const LayoutPatternSeperators = { ' ', '-', '/', ':', '(', ')', '[', ']', ',' }
+const FormatLiterals = { ' ', '-', '/', ':', '(', ')', '[', ']', ',' }
 
-proc `$`*(f: TimeLayout): string =
-  ## Returns the layout that was used to construct ``f``.
+proc `$`*(f: TimeFormat): string =
+  ## Returns the format string that was used to construct ``f``.
   runnableExamples:
-    let f = initTimeLayout("yyyy-MM-dd")
+    let f = initTimeFormat("yyyy-MM-dd")
     doAssert $f == "yyyy-MM-dd"
-  f.layout
+  f.formatStr
 
-proc raiseParseException(f: TimeLayout, input: string, msg: string) =
+proc raiseParseException(f: TimeFormat, input: string, msg: string) =
   raise newException(ValueError,
-                     &"Failed to parse '{input}' with layout '{f}'. {msg}")
+                     &"Failed to parse '{input}' with format '{f}'. {msg}")
 
-iterator tokens(f: string): tuple[kind: LayoutTokenKind, token: string] =
-  var formattedToken: string
+iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
   var i = 0
   var currToken = ""
 
-  template yieldcurrToken() =
+  template yieldCurrToken() =
     if currToken.len != 0:
       yield (tkPattern, currToken)
       currToken = ""
@@ -1571,20 +1570,25 @@ iterator tokens(f: string): tuple[kind: LayoutTokenKind, token: string] =
   while i < f.len:
     case f[i]
     of '\'':
-      yieldcurrToken()
-      if f[i.succ] == '\'':
+      yieldCurrToken()
+      if i.succ < f.len and f[i.succ] == '\'':
         yield (tkLiteral, "'")
         i.inc 2
       else:
         var token = ""
         inc(i) # Skip '
-        while f[i] != '\'' and i < f.high:
+        while i < f.len and f[i] != '\'':
           token.add f[i]
           i.inc
+
+        if i > f.high:
+          raise newException(ValueError,
+                             &"Unclosed ' in time format string. " &
+                             "For a literal ', use ''.")
         i.inc
         yield (tkLiteral, token)
-    of LayoutPatternSeperators:
-        yieldcurrToken()
+    of FormatLiterals:
+        yieldCurrToken()
         yield (tkLiteral, $f[i])
         i.inc
     else:
@@ -1597,9 +1601,9 @@ iterator tokens(f: string): tuple[kind: LayoutTokenKind, token: string] =
         currToken = $f[i]
         i.inc
 
-  yieldcurrToken()
+  yieldCurrToken()
 
-proc stringToPattern(str: string): LayoutPattern =
+proc stringToPattern(str: string): FormatPattern =
   case str
   of "d": result = d
   of "dd": result = dd
@@ -1637,32 +1641,32 @@ proc stringToPattern(str: string): LayoutPattern =
   of "g": result = g
   else: raise newException(ValueError, &"'{str}' is not a valid pattern")
 
-proc initTimeLayout*(layout: string): TimeLayout =
-  ## Construct a new time layout for parsing & formatting time types.
+proc initTimeFormat*(format: string): TimeFormat =
+  ## Construct a new time format for parsing & formatting time types.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``layout`` argument.
+  ## ``format`` argument.
   runnableExamples:
-    let f = initTimeLayout("yyyy-MM-dd")
+    let f = initTimeFormat("yyyy-MM-dd")
     doAssert "2000-01-01" == f.format(f.parse("2000-01-01"))
-  result.layout = layout
+  result.formatStr = format
   result.patterns = @[]
-  for kind, token in layout.tokens:
+  for kind, token in format.tokens:
     case kind
     of tkLiteral:
       case token
       else:
-        result.patterns.add(LayoutPattern.Lit.byte)
+        result.patterns.add(FormatPattern.Lit.byte)
         if token.len > 255:
           raise newException(ValueError,
-                             "Layout literal is to long:" & token)
+                             "Format literal is to long:" & token)
         result.patterns.add(token.len.byte)
         for c in token:
           result.patterns.add(c.byte)
     of tkPattern:
       result.patterns.add(stringToPattern(token).byte)
 
-proc formatPattern(dt: DateTime, pattern: LayoutPattern, result: var string) =
+proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   template yearOfEra(dt: DateTime): int =
     if dt.year <= 0: abs(dt.year) + 1 else: dt.year
 
@@ -1770,7 +1774,7 @@ proc formatPattern(dt: DateTime, pattern: LayoutPattern, result: var string) =
       result.add if dt.year < 1: "BC" else: "AD"
   of Lit: assert false # Can't happen
 
-proc parsePattern(input: string, pattern: LayoutPattern, i: var int,
+proc parsePattern(input: string, pattern: FormatPattern, i: var int,
                   parsed: var ParsedTime): bool =
   template takeInt(allowedWidth: Slice[int]): int =
     var sv: int
@@ -1998,11 +2002,12 @@ proc parsePattern(input: string, pattern: LayoutPattern, i: var int,
                       &"The pattern '{pattern}' is only valid for formatting")
   of Lit: assert false # Can't happen
 
-proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeLayout,
+proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
   var month = mJan
   var year: int
   var monthday: int
+  # `now()` is an expensive call, so we avoid it when possible
   (year, month, monthday) =
     if p.year.isNone or p.month.isNone or p.monthday.isNone:
       let n = now()
@@ -2065,15 +2070,15 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeLayout,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(f: TimeLayout, dt: DateTime): string {.raises: [].} =
+proc format*(f: TimeFormat, dt: DateTime): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
-    let f = initTimeLayout("yyyy-MM-dd")
+    let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == f.format(dt)
   var idx = 0
   while idx <= f.patterns.high:
-    case f.patterns[idx].LayoutPattern
+    case f.patterns[idx].FormatPattern
     of Lit:
       idx.inc
       let len = f.patterns[idx]
@@ -2082,57 +2087,57 @@ proc format*(f: TimeLayout, dt: DateTime): string {.raises: [].} =
         result.add f.patterns[idx].char
       idx.inc
     else:
-      formatPattern(dt, f.patterns[idx].LayoutPattern, result = result)
+      formatPattern(dt, f.patterns[idx].FormatPattern, result = result)
       idx.inc
 
-proc format*(dt: DateTime, layout: string): string =
-  ## Shorthand for constructing a ``TimeLayout`` and using it to format ``dt``.
+proc format*(dt: DateTime, f: string): string =
+  ## Shorthand for constructing a ``TimeFormat`` and using it to format ``dt``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``layout`` argument.
+  ## ``format`` argument.
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == format(dt, "yyyy-MM-dd")
-  let dtFormat = initTimeLayout(layout)
+  let dtFormat = initTimeFormat(f)
   result = dtFormat.format(dt)
 
-proc format*(dt: DateTime, layout: static[string]): string {.raises: [].} =
-  ## Overload that validates ``layout`` at compile time.
-  const f = initTimeLayout(layout)
+proc format*(dt: DateTime, format: static[string]): string {.raises: [].} =
+  ## Overload that validates ``format`` at compile time.
+  const f = initTimeFormat(format)
   result = f.format(dt)
 
-proc format*(time: Time, layout: string, zone: Timezone = local()): string {.tags: [].} =
-  ## Shorthand for constructing a ``TimeLayout`` and using it to format
+proc format*(time: Time, format: string, zone: Timezone = local()): string {.tags: [].} =
+  ## Shorthand for constructing a ``TimeFormat`` and using it to format
   ## ``time``. Will use the timezone specified by ``zone``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``layout`` argument.
+  ## ``format`` argument.
   runnableExamples:
     var dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
     var tm = dt.toTime()
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
-  time.inZone(zone).format(layout)
+  time.inZone(zone).format(format)
 
-proc format*(time: Time, layout: static[string],
-              zone: Timezone = local()): string {.tags: [].} =
-  ## Overload that validates ``layout`` at compile time.
-  const f = initTimeLayout(layout)
+proc format*(time: Time, format: static[string],
+             zone: Timezone = local()): string {.tags: [].} =
+  ## Overload that validates ``format`` at compile time.
+  const f = initTimeFormat(format)
   result = f.format(time.inZone(zone))
 
-proc parse*(f: TimeLayout, input: string, zone: Timezone = local()): DateTime =
+proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
   ## converted to the ``zone`` timezone.
   runnableExamples:
-    let f = initTimeLayout("yyyy-MM-dd")
+    let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert dt == f.parse("2000-01-01", utc())
   var inpIdx = 0 # Input index
   var patIdx = 0 # Pattern index
   var parsed: ParsedTime
   while inpIdx <= input.high and patIdx <= f.patterns.high:
-    let pattern = f.patterns[patIdx].LayoutPattern
+    let pattern = f.patterns[patIdx].FormatPattern
     case pattern
     of Lit:
       patIdx.inc
@@ -2159,37 +2164,37 @@ proc parse*(f: TimeLayout, input: string, zone: Timezone = local()): DateTime =
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, layout: string, tz: Timezone = local()): DateTime =
-  ## Shorthand for constructing a ``TimeLayout`` and using it to parse
+proc parse*(input, format: string, tz: Timezone = local()): DateTime =
+  ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``layout`` argument.
+  ## ``format`` argument.
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert dt == parse("2000-01-01", "yyyy-MM-dd", utc())
-  let dtFormat = initTimeLayout(layout)
+  let dtFormat = initTimeFormat(format)
   result = dtFormat.parse(input, tz)
 
-proc parse*(input: string, layout: static[string], zone: Timezone = local()): DateTime =
-  ## Overload that validates ``layout`` at compile time.
-  const f = initTimeLayout(layout)
+proc parse*(input: string, format: static[string], zone: Timezone = local()): DateTime =
+  ## Overload that validates ``format`` at compile time.
+  const f = initTimeFormat(format)
   result = f.parse(input, zone)
 
-proc parseTime*(input, layout: string, zone: Timezone): Time =
-  ## Shorthand for constructing a ``TimeLayout`` and using it to parse
+proc parseTime*(input, format: string, zone: Timezone): Time =
+  ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``, then converting it a ``Time``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``layout`` argument.
+  ## ``format`` argument.
   runnableExamples:
     let tStr = "1970-01-01T00:00:00+00:00"
     doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", utc()) == fromUnix(0)
-  parse(input, layout, zone).toTime()
+  parse(input, format, zone).toTime()
 
-proc parseTime*(input: string, layout: static[string], zone: Timezone): Time =
-  ## Overload that validates ``layout`` at compile time.
-  const f = initTimeLayout(layout)
+proc parseTime*(input: string, format: static[string], zone: Timezone): Time =
+  ## Overload that validates ``format`` at compile time.
+  const f = initTimeFormat(format)
   result = f.parse(input, zone).toTime()
 
 #
@@ -2202,7 +2207,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
     doAssert $dt == "2000-01-01T12:00:00Z"
-  result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
+  result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
 
 proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
