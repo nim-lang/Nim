@@ -1801,7 +1801,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # 'f <- dest' in order to not break the unification:
     # see tests/tgenericconverter:
     let srca = typeRel(m, src, a)
-    if srca notin {isEqual, isGeneric}: continue
+    if srca notin {isEqual, isGeneric, isSubtype}: continue
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
@@ -1814,7 +1814,12 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       s.info = arg.info
       result = newNodeIT(nkHiddenCallConv, arg.info, dest)
       addSon(result, s)
-      addSon(result, copyTree(arg))
+      var param: PNode = nil
+      if srca == isSubtype:
+        param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
+      else:
+        param = copyTree(arg)
+      addSon(result, param)
       inc(m.convMatches)
       m.genericConverter = srca == isGeneric or destIsGeneric
       return result
