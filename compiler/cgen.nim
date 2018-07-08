@@ -574,11 +574,13 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   if lib.name == nil: internalError(m.config, "loadDynamicLib")
 
 proc mangleDynLibProc(sym: PSym): Rope =
+  # we have to build this as a single rope in order not to trip the
+  # optimization in genInfixCall
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.r is the external name!
     result = rope(sym.name.s)
   else:
-    result = "Dl_$1_" % [rope(sym.id)]
+    result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
 proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
