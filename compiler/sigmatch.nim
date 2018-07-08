@@ -2231,6 +2231,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
       m.baseTypeMatch = false
+      m.typedescMatched = false
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
       var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
@@ -2266,6 +2267,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # beware of the side-effects in 'prepareOperand'! So only do it for
           # varargs matching. See tests/metatype/tstatic_overloading.
           m.baseTypeMatch = false
+          m.typedescMatched = false
           incl(marker, formal.position)
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
@@ -2300,6 +2302,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           addSon(container, n.sons[a])
         else:
           m.baseTypeMatch = false
+          m.typedescMatched = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
           var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
