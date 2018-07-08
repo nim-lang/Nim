@@ -106,6 +106,8 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
 
+{.deprecated: [SomeReal: SomeFloat].}
+
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
@@ -4121,10 +4123,13 @@ else:
 
 template doAssertRaises*(exception, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
-  ## specified exception.
-  runnableExamples:
-    doAssertRaises(ValueError):
-      raise newException(ValueError, "Hello World")
+  ## specified exception. Example:
+  ##
+  ## .. code-block:: nim
+  ##  doAssertRaises(ValueError):
+  ##    raise newException(ValueError, "Hello World")
+  # TODO: investigate why runnableExamples here caused
+  # https://github.com/nim-lang/Nim/issues/8223
   var wrong = false
   try:
     code
@@ -4162,7 +4167,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
     magic: "Slice".}
-
+  proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
+    magic: "Slice".}
 
 type
   ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
