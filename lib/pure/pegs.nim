@@ -21,11 +21,10 @@ const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
 import strutils, macros
-export macros
 
 when useUnicode:
   import unicode
-  export unicode
+  export unicode.`==`
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
@@ -575,312 +574,381 @@ when not useUnicode:
   proc isTitle(a: char): bool {.inline.} = return false
   proc isWhiteSpace(a: char): bool {.inline.} = return a in {' ', '\9'..'\13'}
 
-template matchOrParse*(mopProc: untyped): untyped {.dirty.} =
-  ## Internal use only.
+template matchOrParse(mopProc: untyped): typed =
+  # Used to make the main matcher proc *rawMatch* as well as event parser
+  # procs. For the former, *enter* and *leave* event handler code generators
+  # are provided which just return *discard*.
 
-  proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
-    # Parse handler code must run in an *of* clause of its own for each
-    # *PegKind*, so we encapsulate the identical clause body for
-    # *pkBackRef..pkBackRefIgnoreStyle* here.
-    var (a, b) = c.matches[p.index]
-    var n: Peg
-    n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
-    n.term = s.substr(a, b)
-    result = mopProc(s, n, start, c)
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+    proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
+      # Parse handler code must run in an *of* clause of its own for each
+      # *PegKind*, so we encapsulate the identical clause body for
+      # *pkBackRef..pkBackRefIgnoreStyle* here.
+      var (a, b) = c.matches[p.index]
+      var n: Peg
+      n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
+      n.term = s.substr(a, b)
+      mopProc(s, n, start, c)
 
-  case p.kind
-  of pkEmpty:
-    enter(pkEmpty, p, start)
-    result = 0 # match of length 0
-    leave(pkEmpty, p, start, result)
-  of pkAny:
-    enter(pkAny, p, start)
-    if start < s.len: result = 1
-    else: result = -1
-    leave(pkAny, p, start, result)
-  of pkAnyRune:
-    enter(pkAnyRune, p, start)
-    if start < s.len:
-      result = runeLenAt(s, start)
-    else:
-      result = -1
-    leave(pkAnyRune, p, start, result)
-  of pkLetter:
-    enter(pkLetter, p, start)
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isAlpha(a): dec(result, start)
+    case p.kind
+    of pkEmpty:
+      enter(pkEmpty, s, p, start)
+      result = 0 # match of length 0
+      leave(pkEmpty, s, p, start, result)
+    of pkAny:
+      enter(pkAny, s, p, start)
+      if start < s.len: result = 1
       else: result = -1
-    else:
-      result = -1
-    leave(pkLetter, p, start, result)
-  of pkLower:
-    enter(pkLower, p, start)
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isLower(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-    leave(pkLower, p, start, result)
-  of pkUpper:
-    enter(pkUpper, p, start)
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isUpper(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-    leave(pkUpper, p, start, result)
-  of pkTitle:
-    enter(pkTitle, p, start)
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isTitle(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-    leave(pkTitle, p, start, result)
-  of pkWhitespace:
-    enter(pkWhitespace, p, start)
-    if start < s.len:
-      var a: Rune
-      result = start
-      fastRuneAt(s, result, a)
-      if isWhiteSpace(a): dec(result, start)
-      else: result = -1
-    else:
-      result = -1
-    leave(pkWhitespace, p, start, result)
-  of pkGreedyAny:
-    enter(pkGreedyAny, p, start)
-    result = len(s) - start
-    leave(pkGreedyAny, p, start, result)
-  of pkNewLine:
-    enter(pkNewLine, p, start)
-    if start < s.len and s[start] == '\L': result = 1
-    elif start < s.len and s[start] == '\C':
-      if start+1 < s.len and s[start+1] == '\L': result = 2
-      else: result = 1
-    else: result = -1
-    leave(pkNewLine, p, start, result)
-  of pkTerminal:
-    enter(pkTerminal, p, start)
-    result = len(p.term)
-    for i in 0..result-1:
-      if start+i >= s.len or p.term[i] != s[start+i]:
+      leave(pkAny, s, p, start, result)
+    of pkAnyRune:
+      enter(pkAnyRune, s, p, start)
+      if start < s.len:
+        result = runeLenAt(s, start)
+      else:
         result = -1
-        break
-    leave(pkTerminal, p, start, result)
-  of pkTerminalIgnoreCase:
-    enter(pkTerminalIgnoreCase, p, start)
-    var
-      i = 0
-      a, b: Rune
-    result = start
-    while i < len(p.term):
-      if result >= s.len:
+      leave(pkAnyRune, s, p, start, result)
+    of pkLetter:
+      enter(pkLetter, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isAlpha(a): dec(result, start)
+        else: result = -1
+      else:
         result = -1
-        break
-      fastRuneAt(p.term, i, a)
-      fastRuneAt(s, result, b)
-      if toLower(a) != toLower(b):
+      leave(pkLetter, s, p, start, result)
+    of pkLower:
+      enter(pkLower, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isLower(a): dec(result, start)
+        else: result = -1
+      else:
         result = -1
-        break
-    dec(result, start)
-    leave(pkTerminalIgnoreCase, p, start, result)
-  of pkTerminalIgnoreStyle:
-    enter(pkTerminalIgnoreStyle, p, start)
-    var
-      i = 0
-      a, b: Rune
-    result = start
-    while i < len(p.term):
-      while i < len(p.term):
-        fastRuneAt(p.term, i, a)
-        if a != Rune('_'): break
-      while result < s.len:
-        fastRuneAt(s, result, b)
-        if b != Rune('_'): break
-      if result >= s.len:
-        if i >= p.term.len: break
-        else:
+      leave(pkLower, s, p, start, result)
+    of pkUpper:
+      enter(pkUpper, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isUpper(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkUpper, s, p, start, result)
+    of pkTitle:
+      enter(pkTitle, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isTitle(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkTitle, s, p, start, result)
+    of pkWhitespace:
+      enter(pkWhitespace, s, p, start)
+      if start < s.len:
+        var a: Rune
+        result = start
+        fastRuneAt(s, result, a)
+        if isWhiteSpace(a): dec(result, start)
+        else: result = -1
+      else:
+        result = -1
+      leave(pkWhitespace, s, p, start, result)
+    of pkGreedyAny:
+      enter(pkGreedyAny, s, p, start)
+      result = len(s) - start
+      leave(pkGreedyAny, s, p, start, result)
+    of pkNewLine:
+      enter(pkNewLine, s, p, start)
+      if start < s.len and s[start] == '\L': result = 1
+      elif start < s.len and s[start] == '\C':
+        if start+1 < s.len and s[start+1] == '\L': result = 2
+        else: result = 1
+      else: result = -1
+      leave(pkNewLine, s, p, start, result)
+    of pkTerminal:
+      enter(pkTerminal, s, p, start)
+      result = len(p.term)
+      for i in 0..result-1:
+        if start+i >= s.len or p.term[i] != s[start+i]:
           result = -1
           break
-      elif toLower(a) != toLower(b):
-        result = -1
-        break
-    dec(result, start)
-    leave(pkTerminalIgnoreStyle, p, start, result)
-  of pkChar:
-    enter(pkChar, p, start)
-    if start < s.len and p.ch == s[start]: result = 1
-    else: result = -1
-    leave(pkChar, p, start, result)
-  of pkCharChoice:
-    enter(pkCharChoice, p, start)
-    if start < s.len and contains(p.charChoice[], s[start]): result = 1
-    else: result = -1
-    leave(pkCharChoice, p, start, result)
-  of pkNonTerminal:
-    enter(pkNonTerminal, p, start)
-    var oldMl = c.ml
-    when false: echo "enter: ", p.nt.name
-    result = mopProc(s, p.nt.rule, start, c)
-    when false: echo "leave: ", p.nt.name
-    if result < 0: c.ml = oldMl
-    leave(pkNonTerminal, p, start, result)
-  of pkSequence:
-    enter(pkSequence, p, start)
-    var oldMl = c.ml
-    result = 0
-    for i in 0..high(p.sons):
-      var x = mopProc(s, p.sons[i], start+result, c)
-      if x < 0:
+      leave(pkTerminal, s, p, start, result)
+    of pkTerminalIgnoreCase:
+      enter(pkTerminalIgnoreCase, s, p, start)
+      var
+        i = 0
+        a, b: Rune
+      result = start
+      while i < len(p.term):
+        if result >= s.len:
+          result = -1
+          break
+        fastRuneAt(p.term, i, a)
+        fastRuneAt(s, result, b)
+        if toLower(a) != toLower(b):
+          result = -1
+          break
+      dec(result, start)
+      leave(pkTerminalIgnoreCase, s, p, start, result)
+    of pkTerminalIgnoreStyle:
+      enter(pkTerminalIgnoreStyle, s, p, start)
+      var
+        i = 0
+        a, b: Rune
+      result = start
+      while i < len(p.term):
+        while i < len(p.term):
+          fastRuneAt(p.term, i, a)
+          if a != Rune('_'): break
+        while result < s.len:
+          fastRuneAt(s, result, b)
+          if b != Rune('_'): break
+        if result >= s.len:
+          if i >= p.term.len: break
+          else:
+            result = -1
+            break
+        elif toLower(a) != toLower(b):
+          result = -1
+          break
+      dec(result, start)
+      leave(pkTerminalIgnoreStyle, s, p, start, result)
+    of pkChar:
+      enter(pkChar, s, p, start)
+      if start < s.len and p.ch == s[start]: result = 1
+      else: result = -1
+      leave(pkChar, s, p, start, result)
+    of pkCharChoice:
+      enter(pkCharChoice, s, p, start)
+      if start < s.len and contains(p.charChoice[], s[start]): result = 1
+      else: result = -1
+      leave(pkCharChoice, s, p, start, result)
+    of pkNonTerminal:
+      enter(pkNonTerminal, s, p, start)
+      var oldMl = c.ml
+      when false: echo "enter: ", p.nt.name
+      result = mopProc(s, p.nt.rule, start, c)
+      when false: echo "leave: ", p.nt.name
+      if result < 0: c.ml = oldMl
+      leave(pkNonTerminal, s, p, start, result)
+    of pkSequence:
+      enter(pkSequence, s, p, start)
+      var oldMl = c.ml
+      result = 0
+      for i in 0..high(p.sons):
+        var x = mopProc(s, p.sons[i], start+result, c)
+        if x < 0:
+          c.ml = oldMl
+          result = -1
+          break
+        else: inc(result, x)
+      leave(pkSequence, s, p, start, result)
+    of pkOrderedChoice:
+      enter(pkOrderedChoice, s, p, start)
+      var oldMl = c.ml
+      for i in 0..high(p.sons):
+        result = mopProc(s, p.sons[i], start, c)
+        if result >= 0: break
+        c.ml = oldMl
+      leave(pkOrderedChoice, s, p, start, result)
+    of pkSearch:
+      enter(pkSearch, s, p, start)
+      var oldMl = c.ml
+      result = 0
+      while start+result <= s.len:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        if x >= 0:
+          inc(result, x)
+          return
+        inc(result)
+      result = -1
+      c.ml = oldMl
+      leave(pkSearch, s, p, start, result)
+    of pkCapturedSearch:
+      enter(pkCapturedSearch, s, p, start)
+      var idx = c.ml # reserve a slot for the subpattern
+      inc(c.ml)
+      result = 0
+      while start+result <= s.len:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        if x >= 0:
+          if idx < MaxSubpatterns:
+            c.matches[idx] = (start, start+result-1)
+          #else: silently ignore the capture
+          inc(result, x)
+          return
+        inc(result)
+      result = -1
+      c.ml = idx
+      leave(pkCapturedSearch, s, p, start, result)
+    of pkGreedyRep:
+      enter(pkGreedyRep, s, p, start)
+      result = 0
+      while true:
+        var x = mopProc(s, p.sons[0], start+result, c)
+        # if x == 0, we have an endless loop; so the correct behaviour would be
+        # not to break. But endless loops can be easily introduced:
+        # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
+        # expected thing in this case.
+        if x <= 0: break
+        inc(result, x)
+      leave(pkGreedyRep, s, p, start, result)
+    of pkGreedyRepChar:
+      enter(pkGreedyRepChar, s, p, start)
+      result = 0
+      var ch = p.ch
+      while start+result < s.len and ch == s[start+result]: inc(result)
+      leave(pkGreedyRepChar, s, p, start, result)
+    of pkGreedyRepSet:
+      enter(pkGreedyRepSet, s, p, start)
+      result = 0
+      while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
+      leave(pkGreedyRepSet, s, p, start, result)
+    of pkOption:
+      enter(pkOption, s, p, start)
+      result = max(0, mopProc(s, p.sons[0], start, c))
+      leave(pkOption, s, p, start, result)
+    of pkAndPredicate:
+      enter(pkAndPredicate, s, p, start)
+      var oldMl = c.ml
+      result = mopProc(s, p.sons[0], start, c)
+      if result >= 0: result = 0 # do not consume anything
+      else: c.ml = oldMl
+      leave(pkAndPredicate, s, p, start, result)
+    of pkNotPredicate:
+      enter(pkNotPredicate, s, p, start)
+      var oldMl = c.ml
+      result = mopProc(s, p.sons[0], start, c)
+      if result < 0: result = 0
+      else:
         c.ml = oldMl
         result = -1
-        break
-      else: inc(result, x)
-    leave(pkSequence, p, start, result)
-  of pkOrderedChoice:
-    enter(pkOrderedChoice, p, start)
-    var oldMl = c.ml
-    for i in 0..high(p.sons):
-      result = mopProc(s, p.sons[i], start, c)
-      if result >= 0: break
-      c.ml = oldMl
-    leave(pkOrderedChoice, p, start, result)
-  of pkSearch:
-    enter(pkSearch, p, start)
-    var oldMl = c.ml
-    result = 0
-    while start+result <= s.len:
-      var x = mopProc(s, p.sons[0], start+result, c)
-      if x >= 0:
-        inc(result, x)
-        return
-      inc(result)
-    result = -1
-    c.ml = oldMl
-    leave(pkSearch, p, start, result)
-  of pkCapturedSearch:
-    enter(pkCapturedSearch, p, start)
-    var idx = c.ml # reserve a slot for the subpattern
-    inc(c.ml)
-    result = 0
-    while start+result <= s.len:
-      var x = mopProc(s, p.sons[0], start+result, c)
-      if x >= 0:
+      leave(pkNotPredicate, s, p, start, result)
+    of pkCapture:
+      enter(pkCapture, s, p, start)
+      var idx = c.ml # reserve a slot for the subpattern
+      inc(c.ml)
+      result = mopProc(s, p.sons[0], start, c)
+      if result >= 0:
         if idx < MaxSubpatterns:
           c.matches[idx] = (start, start+result-1)
         #else: silently ignore the capture
-        inc(result, x)
-        return
-      inc(result)
-    result = -1
-    c.ml = idx
-    leave(pkCapturedSearch, p, start, result)
-  of pkGreedyRep:
-    enter(pkGreedyRep, p, start)
-    result = 0
-    while true:
-      var x = mopProc(s, p.sons[0], start+result, c)
-      # if x == 0, we have an endless loop; so the correct behaviour would be
-      # not to break. But endless loops can be easily introduced:
-      # ``(comment / \w*)*`` is such an example. Breaking for x == 0 does the
-      # expected thing in this case.
-      if x <= 0: break
-      inc(result, x)
-    leave(pkGreedyRep, p, start, result)
-  of pkGreedyRepChar:
-    enter(pkGreedyRepChar, p, start)
-    result = 0
-    var ch = p.ch
-    while start+result < s.len and ch == s[start+result]: inc(result)
-    leave(pkGreedyRepChar, p, start, result)
-  of pkGreedyRepSet:
-    enter(pkGreedyRepSet, p, start)
-    result = 0
-    while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
-    leave(pkGreedyRepSet, p, start, result)
-  of pkOption:
-    enter(pkOption, p, start)
-    result = max(0, mopProc(s, p.sons[0], start, c))
-    leave(pkOption, p, start, result)
-  of pkAndPredicate:
-    enter(pkAndPredicate, p, start)
-    var oldMl = c.ml
-    result = mopProc(s, p.sons[0], start, c)
-    if result >= 0: result = 0 # do not consume anything
-    else: c.ml = oldMl
-    leave(pkAndPredicate, p, start, result)
-  of pkNotPredicate:
-    enter(pkNotPredicate, p, start)
-    var oldMl = c.ml
-    result = mopProc(s, p.sons[0], start, c)
-    if result < 0: result = 0
-    else:
-      c.ml = oldMl
-      result = -1
-    leave(pkNotPredicate, p, start, result)
-  of pkCapture:
-    enter(pkCapture, p, start)
-    var idx = c.ml # reserve a slot for the subpattern
-    inc(c.ml)
-    result = mopProc(s, p.sons[0], start, c)
-    if result >= 0:
-      if idx < MaxSubpatterns:
-        c.matches[idx] = (start, start+result-1)
-      #else: silently ignore the capture
-    else:
-      c.ml = idx
-    leave(pkCapture, p, start, result)
-  of pkBackRef:
-    enter(pkBackRef, p, start)
-    if p.index >= c.ml: return -1
-    result = matchBackRef(s, p, start, c)
-    leave(pkBackRef, p, start, result)
-  of pkBackRefIgnoreCase:
-    enter(pkBackRefIgnoreCase, p, start)
-    if p.index >= c.ml: return -1
-    result = matchBackRef(s, p, start, c)
-    leave(pkBackRefIgnoreCase, p, start, result)
-  of pkBackRefIgnoreStyle:
-    enter(pkBackRefIgnoreStyle, p, start)
-    if p.index >= c.ml: return -1
-    result = matchBackRef(s, p, start, c)
-    leave(pkBackRefIgnoreStyle, p, start, result)
-  of pkStartAnchor:
-    enter(pkStartAnchor, p, start)
-    if c.origStart == start: result = 0
-    else: result = -1
-    leave(pkStartAnchor, p, start, result)
-  of pkRule, pkList: assert false
+      else:
+        c.ml = idx
+      leave(pkCapture, s, p, start, result)
+    of pkBackRef:
+      enter(pkBackRef, s, p, start)
+      if p.index >= c.ml: return -1
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRef, s, p, start, result)
+    of pkBackRefIgnoreCase:
+      enter(pkBackRefIgnoreCase, s, p, start)
+      if p.index >= c.ml: return -1
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRefIgnoreCase, s, p, start, result)
+    of pkBackRefIgnoreStyle:
+      enter(pkBackRefIgnoreStyle, s, p, start)
+      if p.index >= c.ml: return -1
+      result = matchBackRef(s, p, start, c)
+      leave(pkBackRefIgnoreStyle, s, p, start, result)
+    of pkStartAnchor:
+      enter(pkStartAnchor, s, p, start)
+      if c.origStart == start: result = 0
+      else: result = -1
+      leave(pkStartAnchor, s, p, start, result)
+    of pkRule, pkList: assert false
 
 proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int
-      {.nosideEffect, rtl, extern: "npegs$1".} =
+      {.noSideEffect, rtl, extern: "npegs$1".} =
   ## low-level matching proc that implements the PEG interpreter. Use this
   ## for maximum efficiency (every other PEG operation ends up calling this
   ## proc).
   ## Returns -1 if it does not match, else the length of the match
 
   # Set the handler generators to produce do-nothing handlers.
-  template enter(pk, p, start) =
+  template enter(pk, s, p, start) =
     discard
-  template leave(pk, p, start, length) =
+  template leave(pk, s, p, start, length) =
     discard
-  matchOrParse(rawMatch)
+  matchOrParse(matchIt)
+  result = matchIt(s, p, start, c)
 
-template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
-    {.dirty.} =
+macro mkHandlerTplts(handlers: untyped): untyped =
+  # Transforms the handler spec in *handlers* into handler templates.
+  # The AST structure of *handlers[0]*:
+  # 
+  # .. code-block::
+  # StmtList
+  #   Call
+  #     Ident "pkNonTerminal"
+  #     StmtList
+  #       Call
+  #         Ident "enter"
+  #         StmtList
+  #           <handler code block>
+  #       Call
+  #         Ident "leave"
+  #         StmtList
+  #           <handler code block>
+  #   Call
+  #     Ident "pkChar"
+  #     StmtList
+  #       Call
+  #         Ident "leave"
+  #         StmtList
+  #           <handler code block>
+  #   ...
+  proc mkEnter(hdName, body: NimNode): NimNode =
+    quote do:
+      template `hdName`(s, p, start) =
+        let s {.inject.} = s
+        let p {.inject.} = p
+        let start {.inject.} = start
+        `body`
+
+  template mkLeave(hdPostf, body) {.dirty.} =
+    # this has to be dirty to be able to capture *result* as *length* in
+    # *leaveXX* calls.
+    template `leave hdPostf`(s, p, start, length) =
+      if length != -1:
+        body
+
+  result = newStmtList()
+  for topCall in handlers[0]:
+    if nnkCall != topCall.kind:
+      error("Call syntax expected.", topCall)
+    let pegKind = topCall[0]
+    if nnkIdent != pegKind.kind:
+      error("PegKind expected.", pegKind)
+    if 2 == topCall.len:
+      for hdDef in topCall[1]:
+        if nnkCall != hdDef.kind:
+          error("Call syntax expected.", hdDef)
+        if nnkIdent != hdDef[0].kind:
+          error("Handler identifier expected.", hdDef[0])
+        if 2 == hdDef.len:
+          let hdPostf = substr(pegKind.strVal, 2)
+          case hdDef[0].strVal
+          of "enter":
+            result.add mkEnter(newIdentNode("enter" & hdPostf), hdDef[1])
+          of "leave":
+            result.add getAst(mkLeave(ident(hdPostf), hdDef[1]))
+          else:
+            error(
+              "Unsupported handler identifier, expected 'enter' or 'leave'.",
+              hdDef[0]
+            )
+
+template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## Generates an interpreting event parser *proc* according to the specified
   ## PEG AST and handler code blocks. The *proc* can be called with a string
   ## to be parsed and will execute the handler code blocks whenever their
@@ -912,7 +980,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
   ##        leave:
   ##          pStack.setLen pStack.high
   ##          if length > 0:
-  ##            let matchStr = txt.substr(start, start+length-1)
+  ##            let matchStr = s.substr(start, start+length-1)
   ##            case p.nt.name
   ##            of "Value":
   ##              try:
@@ -931,13 +999,13 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
   ##                  of '*': valStack[^2] * valStack[^1]
   ##                  else: valStack[^2] / valStack[^1]
   ##                  valStack.setLen valStack.high
-  ##                  echo valStack 
+  ##                  echo valStack
   ##                  opStack.setLen opStack.high
-  ##                  echo opStack 
+  ##                  echo opStack
   ##      pkChar:
   ##        leave:
   ##          if length == 1 and "Value" != pStack[^1]:
-  ##            let matchChar = txt[start]
+  ##            let matchChar = s[start]
   ##            opStack.add matchChar
   ##            echo opStack
   ##
@@ -955,105 +1023,49 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int)
   ##
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
-  template mkEnter(hdPostf, body) {.dirty.} =
-    template `enter hdPostf`(pegNode, start) =
-      body
+  proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
+      {.genSym.} =
 
-  template mkLeave(hdPostf, body) {.dirty.} =
-    template `leave hdPostf`(pegNode, start, length) =
-      if length != -1:
-        body
+    # binding from *macros*
+    bind strVal
 
-  macro mkHandlerTplts(hdlrs: untyped): untyped =
-    # Transforms the handler spec in *hdlrs* into handler templates.
-    # The AST structure of *hdlrs[0]*:
-    # 
-    # .. code-block::
-    # StmtList
-    #   Call
-    #     Ident "pkNonTerminal"
-    #     StmtList
-    #       Call
-    #         Ident "enter"
-    #         StmtList
-    #           <handler code block>
-    #       Call
-    #         Ident "leave"
-    #         StmtList
-    #           <handler code block>
-    #   Call
-    #     Ident "pkChar"
-    #     StmtList
-    #       Call
-    #         Ident "leave"
-    #         StmtList
-    #           <handler code block>
-    #   ...
-    let hdc = newStmtList()
-    for topCall in hdlrs[0]:
-      if nnkCall != topCall.kind:
-        error("Call syntax expected.", topCall)
-      let pegKind = topCall[0]
-      if nnkIdent != pegKind.kind:
-        error("PegKind expected.", pegKind)
-      if 2 == topCall.len:
-        for hdDef in topCall[1]:
-          if nnkCall != hdDef.kind:
-            error("Call syntax expected.", hdDef)
-          if nnkIdent != hdDef[0].kind:
-            error("Handler identifier expected.", hdDef[0])
-          if 2 == hdDef.len:
-            let hdPostf = ident(substr(pegKind.strVal, 2))
-            case hdDef[0].strVal
-            of "enter":
-              hdc.add getAst(mkEnter(hdPostf, hdDef[1]))
-            of "leave":
-              hdc.add getAst(mkLeave(hdPostf, hdDef[1]))
-            else:
-              error(
-                "Unsupported handler identifier, expected 'enter' or 'leave'.",
-                hdDef[0]
-              )
-    hdc
+    mkHandlerTplts:
+      handlers
 
-  block:
-    proc parser(s: string): int =
-      # the proc to be returned
-      var
-        ms: array[MaxSubpatterns, (int, int)]
-        cs = Captures(matches: ms, ml: 0, origStart: 0)
-      proc parseIt(s: string, p: Peg, start: int, c: var Captures): int =
+    macro enter(pegKind, s, pegNode, start: untyped): untyped =
+      # This is called by the matcher code in *matchOrParse* at the
+      # start of the code for a grammar element of kind *pegKind*.
+      # Expands to a call to the handler template if one was generated
+      # by *mkHandlerTplts*.
+      template mkDoEnter(hdPostf, s, pegNode, start) =
+        when declared(`enter hdPostf`):
+          `enter hdPostf`(s, pegNode, start):
+        else:
+          discard
+      let hdPostf = ident(substr(strVal(pegKind), 2))
+      getAst(mkDoEnter(hdPostf, s, pegNode, start))
 
-        mkHandlerTplts:
-          handlers
+    macro leave(pegKind, s, pegNode, start, length: untyped): untyped =
+      # Like *enter*, but called at the end of the matcher code for
+      # a grammar element of kind *pegKind*.
+      template mkDoLeave(hdPostf, s, pegNode, start, length) =
+        when declared(`leave hdPostf`):
+          `leave hdPostf`(s, pegNode, start, length):
+        else:
+          discard
+      let hdPostf = ident(substr(strVal(pegKind), 2))
+      getAst(mkDoLeave(hdPostf, s, pegNode, start, length))
 
-        macro enter(pegKind, pegNode, start: untyped): untyped =
-          # This is called by the matcher code in *matchOrParse* at the
-          # start of the code for a grammar element of kind *pegKind*.
-          # Expands to a call to the handler template if one was generated
-          # by *mkHandlerTplts*.
-          template mkDoEnter(hdPostf, pegNode, start) =
-            when declared(`enter hdPostf`):
-              `enter hdPostf`(pegNode, start):
-            else:
-              discard
-          let hdPostf = ident(substr(pegKind.strVal, 2))
-          getAst(mkDoEnter(hdPostf, pegNode, start))
+    matchOrParse(parseIt)
+    parseIt(s, p, start, c)
 
-        macro leave(pegKind, pegNode, start, length: untyped): untyped =
-          # Like *enter*, but called at the end of the matcher code for
-          # a grammar element of kind *pegKind*.
-          template mkDoLeave(hdPostf, pegNode, start, length) =
-            when declared(`leave hdPostf`):
-              `leave hdPostf`(pegNode, start, length):
-            else:
-              discard
-          let hdPostf = ident(substr(pegKind.strVal, 2))
-          getAst(mkDoLeave(hdPostf, pegNode, start, length))
-
-        matchOrParse(parseIt)
-      parseIt(s, pegAst, 0, cs)
-    parser
+  proc parser(s: string): int {.genSym.} =
+    # the proc to be returned
+    var
+      ms: array[MaxSubpatterns, (int, int)]
+      cs = Captures(matches: ms, ml: 0, origStart: 0)
+    rawParse(s, pegAst, 0, cs)
+  parser
 
 template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:
