@@ -303,9 +303,9 @@ symbols in the `system module <system.html>`_.
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: typedesc; message: string): expr`` **=>**
-  `#newException.t,typedesc,string
-  <system.html#newException.t,typedesc,string>`_
+* ``template newException[](exceptn: type; message: string): expr`` **=>**
+  `#newException.t,type,string
+  <system.html#newException.t,type,string>`_
 
 
 Index (idx) file format

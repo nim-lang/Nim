@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nim representation.
 
 import
-  lexer, options, idents, strutils, ast, msgs, configuration
+  lexer, options, idents, strutils, ast, msgs, lineinfos
 
 type
   TRenderFlag* = enum
@@ -189,7 +189,7 @@ proc putComment(g: var TSrcGen, s: string) =
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i < s.len and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
@@ -226,7 +226,7 @@ proc maxLineLength(s: string): int =
       break
     of '\x0D':
       inc(i)
-      if s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       result = max(result, lineLen)
       lineLen = 0
     of '\x0A':
@@ -247,7 +247,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
       put(g, kind, str)
       str = ""
       inc(i)
-      if (i <= hi) and (s[i] == '\x0A'): inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, 0)
     of '\x0A':
       put(g, kind, str)
@@ -330,14 +330,15 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
+    doAssert g.config != nil, "g.config not initialized!"
     let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
-                    " " & fileSection(g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
+                    " " & fileSection(g.config, g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
                   else:
                     ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return fileSection(g.fid, n.info.offsetA, n.info.offsetB) & comment
+      return fileSection(g.config, g.fid, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""
@@ -386,8 +387,10 @@ proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)
   result = 0
   for i in countup(start, sonsLen(n) + theEnd):
-    inc(result, lsub(g, n.sons[i]))
-    inc(result, 2)            # for ``, ``
+    let param = n.sons[i]
+    if nfDefaultParam notin param.flags:
+      inc(result, lsub(g, param))
+      inc(result, 2)          # for ``, ``
   if result > 0:
     dec(result, 2)            # last does not get a comma!
 
@@ -811,8 +814,8 @@ proc gident(g: var TSrcGen, n: PNode) =
 
   var t: TTokType
   var s = atom(g, n)
-  if (s[0] in lexer.SymChars):
-    if (n.kind == nkIdent):
+  if s.len > 0 and s[0] in lexer.SymChars:
+    if n.kind == nkIdent:
       if (n.ident.id < ord(tokKeywordLow) - ord(tkSymbol)) or
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
         t = tkSymbol
@@ -1452,11 +1455,12 @@ proc `$`*(n: PNode): string = n.renderTree
 
 proc renderModule*(n: PNode, infile, outfile: string,
                    renderFlags: TRenderFlags = {};
-                   fid = FileIndex(-1)) =
+                   fid = FileIndex(-1);
+                   conf: ConfigRef = nil) =
   var
     f: File
     g: TSrcGen
-  initSrcGen(g, renderFlags, newPartialConfigRef())
+  initSrcGen(g, renderFlags, conf)
   g.fid = fid
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])

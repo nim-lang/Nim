@@ -1,6 +1,6 @@
 
 type
-  TIdObj* = object of TObject
+  TIdObj* = object of RootObj
     id*: int                  # unique id; use this for comparisons and not the pointers
 
   PIdObj* = ref TIdObj

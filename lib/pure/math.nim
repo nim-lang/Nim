@@ -147,6 +147,18 @@ when not defined(JS): # C
   proc ln*(x: float32): float32 {.importc: "logf", header: "<math.h>".}
   proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
     ## Computes the natural log of `x`
+else: # JS
+  proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
+  proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
+
+  proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
+  proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
+
+proc log*[T: SomeFloat](x, base: T): T =
+  ## Computes the logarithm ``base`` of ``x``
+  ln(x) / ln(base)
+
+when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of `x`
@@ -204,11 +216,6 @@ when not defined(JS): # C
     ## Computes the inverse hyperbolic tangent of `x`
 
 else: # JS
-  proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
-  proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
-
-  proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
-  proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
   proc log10*(x: float32): float32 {.importc: "Math.log10", nodecl.}
   proc log10*(x: float64): float64 {.importc: "Math.log10", nodecl.}
   proc log2*(x: float32): float32 {.importc: "Math.log2", nodecl.}
@@ -682,3 +689,6 @@ when isMainModule:
 
     doAssert floorMod(8.0, -3.0) ==~ -1.0
     doAssert floorMod(-8.5, 3.0) ==~ 0.5
+
+  block: # log
+    doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)

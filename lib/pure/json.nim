@@ -1496,22 +1496,23 @@ when isMainModule:
   doAssert parsedAgain["abc"].num == 5
 
   # Bounds checking
-  try:
-    let a = testJson["a"][9]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    let a = testJson["a"][-1]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
-  except:
-    doAssert(false, "IndexError thrown for valid index")
+  when compileOption("boundChecks"):
+    try:
+      let a = testJson["a"][9]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      let a = testJson["a"][-1]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+    except:
+      doAssert(false, "IndexError thrown for valid index")
 
-  doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(testJson{"b"}.getStr()=="asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
@@ -1602,5 +1603,3 @@ when isMainModule:
   # bug #6438
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
-
-  echo("Tests succeeded!")

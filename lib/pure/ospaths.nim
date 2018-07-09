@@ -186,7 +186,7 @@ proc joinPath*(head, tail: string): string {.
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & substr(tail, 1)
     else:
       result = head & tail
@@ -449,6 +449,9 @@ proc unixToNativePath*(path: string, drive=""): string {.
   when defined(unix):
     result = path
   else:
+    if path.len == 0:
+        return ""
+
     var start: int
     if path[0] == '/':
       # an absolute path
@@ -462,10 +465,10 @@ proc unixToNativePath*(path: string, drive=""): string {.
       else:
         result = $DirSep
       start = 1
-    elif path[0] == '.' and path[1] == '/':
+    elif path[0] == '.' and (path.len == 1 or path[1] == '/'):
       # current directory
       result = $CurDir
-      start = 2
+      start = when doslikeFileSystem: 1 else: 2
     else:
       result = ""
       start = 0
@@ -597,7 +600,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
   else:
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
-when defined(windows) or defined(posix):
+when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote ``s``, so it can be safely passed to shell.
     when defined(windows):

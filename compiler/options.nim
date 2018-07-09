@@ -8,7 +8,8 @@
 #
 
 import
-  os, strutils, strtabs, osproc, sets, configuration, platform
+  os, strutils, strtabs, osproc, sets, lineinfos, platform,
+  prefixmatches
 
 from terminal import isatty
 
@@ -17,8 +18,6 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(useFFI)
-  newScopeForIf* = true
-  useCaas* = not defined(noCaas)
   copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
@@ -53,7 +52,7 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optCaasEnabled            # compiler-as-a-service is running
+    optCheckNep1,             # check that the names adhere to NEP-1
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
     optSkipUserConfigFile,    # skip the users's config file
@@ -73,6 +72,7 @@ type                          # please make sure we have under 32 options
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
     optWholeProject           # for 'doc2': output any dependency
+    optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths
     optNoNimblePath
     optDynlibOverrideAll
@@ -116,26 +116,65 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil,
-    oldIterTransf
+    notnil
 
   SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf
 
-  ConfigRef* = ref object ## eventually all global configuration should be moved here
+  TSystemCC* = enum
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+
+  CfileFlag* {.pure.} = enum
+    Cached,    ## no need to recompile this time
+    External   ## file was introduced via .compile pragma
+
+  Cfile* = object
+    cname*, obj*: string
+    flags*: set[CFileFlag]
+  CfileList* = seq[Cfile]
+
+  Suggest* = ref object
+    section*: IdeCmd
+    qualifiedPath*: seq[string]
+    name*: ptr string         # not used beyond sorting purposes; name is also
+                              # part of 'qualifiedPath'
+    filePath*: string
+    line*: int                   # Starts at 1
+    column*: int                 # Starts at 0
+    doc*: string           # Not escaped (yet)
+    forth*: string               # type
+    quality*: range[0..100]   # matching quality
+    isGlobal*: bool # is a global variable
+    contextFits*: bool # type/non-type context matches
+    prefix*: PrefixMatch
+    symkind*: byte
+    scope*, localUsages*, globalUsages*: int # more usages is better
+    tokenLen*: int
+    version*: int
+  Suggestions* = seq[Suggest]
+
+  ConfigRef* = ref object ## every global configuration
+                          ## fields marked with '*' are subject to
+                          ## the incremental compilation mechanisms
+                          ## (+) means "part of the dependency"
+    target*: Target       # (+)
     linesCompiled*: int  # all lines that have been compiled
-    options*: TOptions
-    globalOptions*: TGlobalOptions
+    options*: TOptions    # (+)
+    globalOptions*: TGlobalOptions # (+)
+    m*: MsgConfig
+    evalTemplateCounter*: int
+    evalMacroCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
-    selectedGC*: TGCMode       # the selected GC
+    selectedGC*: TGCMode       # the selected GC (+)
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     evalExpr*: string          # expression for idetools --eval
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
 
-    cppDefines*: HashSet[string]
+    cppDefines*: HashSet[string] # (*)
     headerFile*: string
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
@@ -143,11 +182,13 @@ type
     helpWritten*: bool
     ideCmd*: IdeCmd
     oldNewlines*: bool
+    cCompiler*: TSystemCC
     enableNotes*: TNoteKinds
     disableNotes*: TNoteKinds
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds
     mainPackageNotes*: TNoteKinds
+    mainPackageId*: int
     errorCounter*: int
     hintCounter*: int
     warnCounter*: int
@@ -165,7 +206,7 @@ type
     projectPath*: string # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: string # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    projectMainIdx*: int32 # the canonical path id of the main module
+    projectMainIdx*: FileIndex # the canonical path id of the main module
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     keepComments*: bool # whether the parser needs to keep comments
@@ -173,6 +214,33 @@ type
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
+
+     # the used compiler
+    cIncludes*: seq[string]  # directories to search for included files
+    cLibs*: seq[string]      # directories to search for lib files
+    cLinkedLibs*: seq[string]  # libraries to link
+
+    externalToLink*: seq[string]  # files to link in addition to the file
+                                  # we compiled (*)
+    linkOptionsCmd*: string
+    compileOptionsCmd*: seq[string]
+    linkOptions*: string          # (*)
+    compileOptions*: string       # (*)
+    ccompilerpath*: string
+    toCompile*: CfileList         # (*)
+    suggestionResultHook*: proc (result: Suggest) {.closure.}
+    suggestVersion*: int
+    suggestMaxResults*: int
+    lastLineInfo*: TLineInfo
+    writelnHook*: proc (output: string) {.closure.}
+    structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
+                                severity: Severity) {.closure.}
+
+template depConfigFields*(fn) {.dirty.} =
+  fn(target)
+  fn(options)
+  fn(globalOptions)
+  fn(selectedGC)
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -196,9 +264,11 @@ template newPackageCache*(): untyped =
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
+    cCompiler: ccGcc,
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
+    m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
@@ -216,15 +286,28 @@ proc newConfigRef*(): ConfigRef =
     projectPath: "", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: "", # projectPath/projectName
     projectIsStdin: false, # whether we're compiling from stdin
-    projectMainIdx: 0'i32, # the canonical path id of the main module
+    projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
-    arguments: ""
+    cIncludes: @[],   # directories to search for included files
+    cLibs: @[],       # directories to search for lib files
+    cLinkedLibs: @[],  # libraries to link
+
+    externalToLink: @[],
+    linkOptionsCmd: "",
+    compileOptionsCmd: @[],
+    linkOptions: "",
+    compileOptions: "",
+    ccompilerpath: "",
+    toCompile: @[],
+    arguments: "",
+    suggestMaxResults: 10_000
   )
+  setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
@@ -246,39 +329,41 @@ proc cppDefine*(c: ConfigRef; define: string) =
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
     result = conf.symbols[symbol] != "false"
-  elif cmpIgnoreStyle(symbol, CPU[targetCPU].name) == 0:
+  elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
-  elif cmpIgnoreStyle(symbol, platform.OS[targetOS].name) == 0:
+  elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
     result = true
   else:
     case symbol.normalize
-    of "x86": result = targetCPU == cpuI386
-    of "itanium": result = targetCPU == cpuIa64
-    of "x8664": result = targetCPU == cpuAmd64
+    of "x86": result = conf.target.targetCPU == cpuI386
+    of "itanium": result = conf.target.targetCPU == cpuIa64
+    of "x8664": result = conf.target.targetCPU == cpuAmd64
     of "posix", "unix":
-      result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
+      result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx,
-                            osAndroid}
+                            osAndroid, osNintendoSwitch}
     of "linux":
-      result = targetOS in {osLinux, osAndroid}
+      result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
-      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
+      result = conf.target.targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
     of "emulatedthreadvars":
-      result = platform.OS[targetOS].props.contains(ospLacksThreadVars)
-    of "msdos": result = targetOS == osDos
-    of "mswindows", "win32": result = targetOS == osWindows
-    of "macintosh": result = targetOS in {osMacos, osMacosx}
-    of "sunos": result = targetOS == osSolaris
-    of "littleendian": result = CPU[targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[targetCPU].endian == platform.bigEndian
-    of "cpu8": result = CPU[targetCPU].bit == 8
-    of "cpu16": result = CPU[targetCPU].bit == 16
-    of "cpu32": result = CPU[targetCPU].bit == 32
-    of "cpu64": result = CPU[targetCPU].bit == 64
+      result = platform.OS[conf.target.targetOS].props.contains(ospLacksThreadVars)
+    of "msdos": result = conf.target.targetOS == osDos
+    of "mswindows", "win32": result = conf.target.targetOS == osWindows
+    of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
+    of "sunos": result = conf.target.targetOS == osSolaris
+    of "nintendoswitch":
+      result = conf.target.targetOS == osNintendoSwitch
+    of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
+    of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
+    of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
+    of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
+    of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
+    of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+      result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: discard
 
@@ -286,8 +371,7 @@ proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc,
 proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  conf.symbolFiles in {enabledSf, writeOnlySf}
-#  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+  conf.symbolFiles in {v2Sf, writeOnlySf}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
@@ -432,8 +516,10 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: string, createSubDir: bool =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc rawFindFile(conf: ConfigRef; f: string): string =
+proc rawFindFile(conf: ConfigRef; f: string; suppressStdlib: bool): string =
   for it in conf.searchPaths:
+    if suppressStdlib and it.startsWith(conf.libpath):
+      continue
     result = joinPath(it, f)
     if existsFile(result):
       return canonicalizePath(conf, result)
@@ -457,13 +543,13 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = ov
 
-proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.procvar.} =
   if f.isAbsolute:
     result = if f.existsFile: f else: ""
   else:
-    result = rawFindFile(conf, f)
+    result = rawFindFile(conf, f, suppressStdlib)
     if result.len == 0:
-      result = rawFindFile(conf, f.toLowerAscii)
+      result = rawFindFile(conf, f.toLowerAscii, suppressStdlib)
       if result.len == 0:
         result = rawFindFile2(conf, f)
         if result.len == 0:
@@ -472,21 +558,15 @@ proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
 
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
-  when defined(nimfix):
-    # '.nimfix' modules are preferred over '.nim' modules so that specialized
-    # versions can be kept for 'nimfix'.
-    block:
-      let m = addFileExt(modulename, "nimfix")
-      let currentPath = currentModule.splitFile.dir
-      result = currentPath / m
-      if not existsFile(result):
-        result = findFile(conf, m)
-        if existsFile(result): return result
+  const pkgPrefix = "pkg/"
   let m = addFileExt(modulename, NimExt)
-  let currentPath = currentModule.splitFile.dir
-  result = currentPath / m
-  if not existsFile(result):
-    result = findFile(conf, m)
+  if m.startsWith(pkgPrefix):
+    result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
+  else:
+    let currentPath = currentModule.splitFile.dir
+    result = currentPath / m
+    if not existsFile(result):
+      result = findFile(conf, m)
   patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =

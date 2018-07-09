@@ -22,7 +22,7 @@ proc p =
 
     try:
       z = parseInt("1233")
-    except E_Base:
+    except Exception:
       case x
       of 34: z = 123
       of 13: z = 34

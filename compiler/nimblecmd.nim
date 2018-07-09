@@ -10,7 +10,7 @@
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
 import parseutils, strutils, strtabs, os, options, msgs, sequtils,
-  configuration
+  lineinfos
 
 proc addPath*(conf: ConfigRef; path: string, info: TLineInfo) =
   if not conf.searchPaths.contains(path):

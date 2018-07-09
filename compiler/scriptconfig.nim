@@ -13,7 +13,7 @@
 import
   ast, modules, idents, passes, passaux, condsyms,
   options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, configuration
+  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -152,28 +152,27 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 proc runNimScript*(cache: IdentCache; scriptName: string;
                    freshDefines=true; conf: ConfigRef) =
   rawMessage(conf, hintConf, scriptName)
-  passes.gIncludeFile = includeModule
-  passes.gImportModule = importModule
-  let graph = newModuleGraph(conf)
+
+  let graph = newModuleGraph(cache, conf)
+  connectCallbacks(graph)
   if freshDefines: initDefines(conf.symbols)
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(semPass)
-  registerPass(evalPass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
 
   conf.searchPaths.add(conf.libpath)
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, cache, scriptName, graph)
+  graph.vm = setupVM(m, cache, scriptName, graph)
 
-  graph.compileSystemModule(cache)
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
+  graph.compileSystemModule()
+  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)
-  vm.globalCtx = nil
   # do not remove the defined symbols
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")

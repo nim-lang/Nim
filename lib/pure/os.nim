@@ -298,8 +298,8 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full (`absolute`:idx:) path of the file `filename`,
-  ## raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
+  ## raises OSError in case of an error. Follows symlinks.
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -337,6 +337,47 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     else:
       result = $r
       c_free(cast[pointer](r))
+
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path.
+  ##
+  ## Consecutive directory separators are collapsed, including an initial double slash.
+  ##
+  ## On relative paths, double dot (..) sequences are collapsed if possible.
+  ## On absolute paths they are always collapsed.
+  ##
+  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ## Triple dot is not handled.
+  let isAbs = isAbsolute(path)
+  var stack: seq[string] = @[]
+  for p in split(path, {DirSep}):
+    case p
+    of "", ".":
+      continue
+    of "..":
+      if stack.len == 0:
+        if isAbs:
+          discard  # collapse all double dots on absoluta paths
+        else:
+          stack.add(p)
+      elif stack[^1] == "..":
+        stack.add(p)
+      else:
+        discard stack.pop()
+    else:
+      stack.add(p)
+
+  if isAbs:
+    path = DirSep & join(stack, $DirSep)
+  elif stack.len > 0:
+    path = join(stack, $DirSep)
+  else:
+    path = "."
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+  ## Returns a normalized path for the current OS. See `<#normalizePath>`_
+  result = path
+  normalizePath(result)
 
 when defined(Windows):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
@@ -819,7 +860,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
+            when defined(linux) or defined(macosx) or
+                 defined(bsd) or defined(genode) or defined(nintendoswitch):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -917,7 +959,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno == EEXIST:
       result = false
     else:
-      echo res
+      #echo res
       raiseOSError(osLastError())
   else:
     when useWinUnicode:
@@ -1283,6 +1325,13 @@ elif defined(windows):
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
+elif defined(nintendoswitch):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
+
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib") and
   not defined(genode):
@@ -1439,7 +1488,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(genode):
+    elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()

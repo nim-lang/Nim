@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs, configuration
+  sempass2, strutils, modulegraphs, lineinfos
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
@@ -115,7 +115,7 @@ proc createDispatcher(s: PSym): PSym =
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
   disp.ast = copyTree(s.ast)
-  disp.ast.sons[bodyPos] = ast.emptyNode
+  disp.ast.sons[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = nil
   if s.typ.sons[0] != nil:
     if disp.ast.sonsLen > resultPos:
@@ -124,7 +124,7 @@ proc createDispatcher(s: PSym): PSym =
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
       # be updated in fixupDispatcher().
-      disp.ast.addSon(ast.emptyNode)
+      disp.ast.addSon(newNodeI(nkEmpty, s.info))
   attachDispatcher(s, newSymNode(disp))
   # attach to itself to prevent bugs:
   attachDispatcher(disp, newSymNode(disp))
@@ -137,7 +137,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   # the lock level of the dispatcher needs to be updated/checked
   # against that of the method.
   if disp.ast.sonsLen > resultPos and meth.ast.sonsLen > resultPos and
-     disp.ast.sons[resultPos] == ast.emptyNode:
+     disp.ast.sons[resultPos].kind == nkEmpty:
     disp.ast.sons[resultPos] = copyTree(meth.ast.sons[resultPos])
 
   # The following code works only with lock levels, so we disable
@@ -184,7 +184,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
   #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
-                       "' to method defined here: " & $witness.info)
+                       "' to method defined here: " & g.config$witness.info)
   elif sfBase notin s.flags:
     message(g.config, s.info, warnUseBase)
 
@@ -231,8 +231,8 @@ proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym
   var paramLen = sonsLen(base.typ)
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
-  var ands = getSysSym(g, unknownLineInfo(), "and")
-  var iss = getSysSym(g, unknownLineInfo(), "of")
+  var ands = getSysMagic(g, unknownLineInfo(), "and", mAnd)
+  var iss = getSysMagic(g, unknownLineInfo(), "of", mOf)
   let boolType = getSysType(g, unknownLineInfo(), tyBool)
   for col in countup(1, paramLen - 1):
     if contains(relevantCols, col):

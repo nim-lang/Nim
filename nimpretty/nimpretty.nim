@@ -12,7 +12,7 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer]
+import ../compiler / [idents, msgs, ast, syntaxes, renderer, options]
 
 import parseopt, strutils, os
 
@@ -25,6 +25,7 @@ Usage:
   nimpretty [options] file.nim
 Options:
   --backup:on|off     create a backup file before overwritting (default: ON)
+  --output:file       set the output file (default: overwrite the .nim file)
   --version           show the version
   --help              show this help
 """
@@ -39,14 +40,18 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
-proc prettyPrint(infile: string) =
-  let fileIdx = fileInfoIdx(infile)
-  let tree = parseFile(fileIdx, newIdentCache())
-  let outfile = changeFileExt(infile, ".pretty.nim")
-  renderModule(tree, infile, outfile, {}, fileIdx)
+proc prettyPrint(infile, outfile: string) =
+  var conf = newConfigRef()
+  let fileIdx = fileInfoIdx(conf, infile)
+  conf.outFile = outfile
+  when defined(nimpretty2):
+    discard parseFile(fileIdx, newIdentCache(), conf)
+  else:
+    let tree = parseFile(fileIdx, newIdentCache(), conf)
+    renderModule(tree, infile, outfile, {}, fileIdx, conf)
 
 proc main =
-  var infile: string
+  var infile, outfile: string
   var backup = true
   for kind, key, val in getopt():
     case kind
@@ -57,12 +62,14 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
+      of "output", "o": outfile = val
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
   if infile.len == 0:
     quit "[Error] no input file."
   if backup:
     os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
-  prettyPrint(infile)
+  if outfile.len == 0: outfile = infile
+  prettyPrint(infile, outfile)
 
 main()

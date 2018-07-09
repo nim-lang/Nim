@@ -1,4 +1,4 @@
-template filterIt2*(seq, pred: expr, body: stmt): stmt {.immediate, dirty.} =
+template filterIt2*(seq, pred: untyped, body: untyped) =
   ## sequtils defines a filterIt() that returns a new seq, but this one is called
   ## with a statement body to iterate directly over it
   for it in items(seq):
@@ -13,8 +13,8 @@ proc mapInPlace*[A](x: var seq[A], fun: proc(y: A): A {.closure.}) =
   for i in 0..x.len-1:
     x[i] = fun(x[i])
 
-template unless*(condition: expr; body: stmt): stmt {.dirty.} =
-  if not(condition):
+template unless*(condition: untyped; body: untyped) {.dirty.} =
+  if not condition:
     body
 
 when isMainModule:

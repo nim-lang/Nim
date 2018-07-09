@@ -4,9 +4,9 @@ type
   Base = object of RootObj
   Child = object of Base
 
-proc pr(T: typedesc[Base]) = echo "proc " & T.name
-method me(T: typedesc[Base]) = echo "method " & T.name
-iterator it(T: typedesc[Base]): auto = yield "yield " & T.name
+proc pr(T: type[Base]) = echo "proc " & T.name
+method me(T: type[Base]) = echo "method " & T.name
+iterator it(T: type[Base]): auto = yield "yield " & T.name
 
 Base.pr
 Child.pr

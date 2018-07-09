@@ -431,9 +431,9 @@ type
   GlobalMarkerProc = proc () {.nimcall, benign.}
 var
   globalMarkersLen: int
-  globalMarkers: array[0.. 3499, GlobalMarkerProc]
+  globalMarkers: array[0..3499, GlobalMarkerProc]
   threadLocalMarkersLen: int
-  threadLocalMarkers: array[0.. 3499, GlobalMarkerProc]
+  threadLocalMarkers: array[0..3499, GlobalMarkerProc]
   gHeapidGenerator: int
 
 proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =

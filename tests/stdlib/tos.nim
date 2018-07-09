@@ -43,6 +43,7 @@ true
 true
 true
 true
+
 '''
 """
 # test os path creation, iteration, and deletion
@@ -137,5 +138,69 @@ import times
 let tm = fromUnix(0) + 100.microseconds
 writeFile("a", "")
 setLastModificationTime("a", tm)
-echo getLastModificationTime("a") == tm
+
+when defined(macosx):
+  echo "true"
+else:
+  echo getLastModificationTime("a") == tm
 removeFile("a")
+
+when defined(Linux) or defined(osx):
+
+  block normalizedPath:
+    block relative:
+      doAssert normalizedPath(".") == "."
+      doAssert normalizedPath("..") == ".."
+      doAssert normalizedPath("../") == ".."
+      doAssert normalizedPath("../..") == "../.."
+      doAssert normalizedPath("../a/..") == ".."
+      doAssert normalizedPath("../a/../") == ".."
+      doAssert normalizedPath("./") == "."
+
+    block absolute:
+      doAssert normalizedPath("/") == "/"
+      doAssert normalizedPath("/.") == "/"
+      doAssert normalizedPath("/..") == "/"
+      doAssert normalizedPath("/../") == "/"
+      doAssert normalizedPath("/../..") == "/"
+      doAssert normalizedPath("/../../") == "/"
+      doAssert normalizedPath("/../../../") == "/"
+      doAssert normalizedPath("/a/b/../../foo") == "/foo"
+      doAssert normalizedPath("/a/b/../../../foo") == "/foo"
+      doAssert normalizedPath("/./") == "/"
+      doAssert normalizedPath("//") == "/"
+      doAssert normalizedPath("///") == "/"
+      doAssert normalizedPath("/a//b") == "/a/b"
+      doAssert normalizedPath("/a///b") == "/a/b"
+      doAssert normalizedPath("/a/b/c/..") == "/a/b"
+      doAssert normalizedPath("/a/b/c/../") == "/a/b"
+
+else:
+
+  block normalizedPath:
+    block relative:
+      doAssert normalizedPath(".") == "."
+      doAssert normalizedPath("..") == ".."
+      doAssert normalizedPath("..\\") == ".."
+      doAssert normalizedPath("..\\..") == "..\\.."
+      doAssert normalizedPath("..\\a\\..") == ".."
+      doAssert normalizedPath("..\\a\\..\\") == ".."
+      doAssert normalizedPath(".\\") == "."
+
+    block absolute:
+      doAssert normalizedPath("\\") == "\\"
+      doAssert normalizedPath("\\.") == "\\"
+      doAssert normalizedPath("\\..") == "\\"
+      doAssert normalizedPath("\\..\\") == "\\"
+      doAssert normalizedPath("\\..\\..") == "\\"
+      doAssert normalizedPath("\\..\\..\\") == "\\"
+      doAssert normalizedPath("\\..\\..\\..\\") == "\\"
+      doAssert normalizedPath("\\a\\b\\..\\..\\foo") == "\\foo"
+      doAssert normalizedPath("\\a\\b\\..\\..\\..\\foo") == "\\foo"
+      doAssert normalizedPath("\\.\\") == "\\"
+      doAssert normalizedPath("\\\\") == "\\"
+      doAssert normalizedPath("\\\\\\") == "\\"
+      doAssert normalizedPath("\\a\\\\b") == "\\a\\b"
+      doAssert normalizedPath("\\a\\\\\\b") == "\\a\\b"
+      doAssert normalizedPath("\\a\\b\\c\\..") == "\\a\\b"
+      doAssert normalizedPath("\\a\\b\\c\\..\\") == "\\a\\b"

@@ -44,6 +44,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimcomputedgoto")
   defineSymbol("nimunion")
   defineSymbol("nimnewshared")
+  defineSymbol("nimNewTypedesc")
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
@@ -70,3 +71,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoNil")
   defineSymbol("nimNoZeroTerminator")
   defineSymbol("nimNotNil")
+  defineSymbol("nimVmExportFixed")

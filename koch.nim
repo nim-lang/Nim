@@ -254,15 +254,13 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(latest: bool) =
-  let nimsugExe = "bin/nimsuggest".exe
-  nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
+  nimexec "c --noNimblePath -p:compiler -d:release -o:" & ("bin/nimsuggest".exe) &
       " nimsuggest/nimsuggest.nim"
 
-  let nimgrepExe = "bin/nimgrep".exe
-  nimexec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
+  nimexec "c -d:release -o:" & ("bin/nimgrep".exe) & " tools/nimgrep.nim"
   when defined(windows): buildVccTool()
 
-  #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
+  nimexec "c -o:" & ("bin/nimpretty".exe) & " nimpretty/nimpretty.nim"
 
   buildNimble(latest)
 
@@ -472,7 +470,7 @@ proc temp(args: string) =
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
+  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 

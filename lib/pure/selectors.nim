@@ -312,6 +312,8 @@ else:
     include ioselects/ioselectors_poll # need to replace it with event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
+  elif defined(nintendoswitch):
+    include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll
 

@@ -188,12 +188,15 @@ proc addTexChar(dest: var string, c: char) =
   of '`': add(dest, "\\symbol{96}")
   else: add(dest, c)
 
-var splitter*: string = "<wbr />"
-
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
+
+proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
+  case target
+  of outHtml: add(dest, "<wbr />")
+  of outLatex: add(dest, "\\-")
 
 proc nextSplitPoint*(s: string, start: int): int =
   result = start
@@ -215,9 +218,9 @@ proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
     var j = 0
     while j < len(s):
       var k = nextSplitPoint(s, j)
-      if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
-        partLen = 0
-        add(result, splitter)
+      #if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
+      partLen = 0
+      addSplitter(target, result)
       for i in countup(j, k): escChar(target, result, s[i])
       inc(partLen, k - j + 1)
       j = k + 1

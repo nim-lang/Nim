@@ -116,8 +116,8 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, rodread, tables, modulegraphs,
-  configuration
+  strutils, options, dfa, lowerings, tables, modulegraphs,
+  lineinfos
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -132,10 +132,11 @@ type
     destroys, topLevelVars: PNode
     toDropBit: Table[int, PSym]
     graph: ModuleGraph
+    emptyNode: PNode
 
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   # XXX why are temps fields in an object here?
-  let f = newSym(skField, getIdent(":d" & $c.tmpObj.n.len), c.owner, info)
+  let f = newSym(skField, getIdent(c.graph.cache, ":d" & $c.tmpObj.n.len), c.owner, info)
   f.typ = typ
   rawAddField c.tmpObj, f
   result = rawDirectAccess(c.tmp, f)
@@ -243,17 +244,17 @@ proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   genOp(t.destructor, "=destroy")
 
 proc addTopVar(c: var Con; v: PNode) =
-  c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
+  c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
 proc dropBit(c: var Con; s: PSym): PSym =
   result = c.toDropBit.getOrDefault(s.id)
   assert result != nil
 
 proc registerDropBit(c: var Con; s: PSym) =
-  let result = newSym(skTemp, getIdent(s.name.s & "_AliveBit"), c.owner, s.info)
+  let result = newSym(skTemp, getIdent(c.graph.cache, s.name.s & "_AliveBit"), c.owner, s.info)
   result.typ = getSysType(c.graph, s.info, tyBool)
   let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
-  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, emptyNode, trueVal)
+  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, c.emptyNode, trueVal)
   c.toDropBit[s.id] = result
   # generate:
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
@@ -322,13 +323,13 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
-  var temp = newSym(skLet, getIdent("blitTmp"), c.owner, n.info)
+  var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
   var v = newNodeI(nkLetSection, n.info)
   let tempAsNode = newSymNode(temp)
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = c.emptyNode
   vpart.sons[2] = n
   add(v, vpart)
 
@@ -427,13 +428,14 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echo "injecting into ", n
   var c: Con
   c.owner = owner
-  c.tmp = newSym(skTemp, getIdent":d", owner, n.info)
+  c.tmp = newSym(skTemp, getIdent(g.cache, ":d"), owner, n.info)
   c.tmpObj = createObj(g, owner, n.info)
   c.tmp.typ = c.tmpObj
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.toDropBit = initTable[int, PSym]()
   c.graph = g
+  c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
   shallowCopy(c.g, cfg)
   c.jumpTargets = initIntSet()

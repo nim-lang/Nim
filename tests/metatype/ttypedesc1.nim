@@ -5,15 +5,16 @@ type
     x: T
     y: U
 
-proc getTypeName(t: typedesc): string = t.name
+proc getTypeName1(t: typedesc): string = t.name
+proc getTypeName2(t: type): string = t.name
 
-proc foo(T: typedesc[float], a: auto): string =
+proc foo(T: type float, a: auto): string =
   result = "float " & $(a.len > 5)
 
 proc foo(T: typedesc[TFoo], a: int): string =
   result = "TFoo "  & $(a)
 
-proc foo(T: typedesc[int or bool]): string =
+proc foo(T: type[int or bool]): string =
   var a: T
   a = 10
   result = "int or bool " & ($a)
@@ -23,8 +24,8 @@ template foo(T: typedesc[seq]): string = "seq"
 test "types can be used as proc params":
   # XXX: `check` needs to know that TFoo[int, float] is a type and
   # cannot be assigned for a local variable for later inspection
-  check ((string.getTypeName == "string"))
-  check ((getTypeName(int) == "int"))
+  check ((string.getTypeName1 == "string"))
+  check ((getTypeName2(int) == "int"))
 
   check ((foo(TFoo[int, float], 1000) == "TFoo 1000"))
 
@@ -37,6 +38,25 @@ test "types can be used as proc params":
   check ((foo(seq[int]) == "seq"))
   check ((foo(seq[TFoo[bool, string]]) == "seq"))
 
-when false:
-  proc foo(T: typedesc[seq], s: T) = nil
+template accept(x) =
+  static: assert(compiles(x))
+
+template reject(x) =
+  static: assert(not compiles(x))
+
+var
+  si: seq[int]
+  ss: seq[string]
+
+proc foo(T: typedesc[seq], s: T) =
+  discard
+
+accept:
+  foo seq[int], si
+
+reject:
+  foo seq[string], si
+
+reject:
+  foo seq[int], ss
 
