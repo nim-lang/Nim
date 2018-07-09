@@ -50,6 +50,7 @@
 - For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
   require a second mandatory parameter ``skipNonAlpha``.
 
+- ``osLastError`` is now marked with ``sideEffect``
 - The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
     and strings containing only valid prefixes, e.g. "0x" for hex integers.
 

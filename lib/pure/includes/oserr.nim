@@ -66,7 +66,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   raise e
 
 {.push stackTrace:off.}
-proc osLastError*(): OSErrorCode =
+proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## Retrieves the last operating system error code.
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
