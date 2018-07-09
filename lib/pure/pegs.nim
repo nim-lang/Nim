@@ -24,7 +24,7 @@ import strutils, macros
 
 when useUnicode:
   import unicode
-  export unicode.`==`
+  # export unicode.`==`
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
