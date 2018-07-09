@@ -179,7 +179,11 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if {sfNoForward, sfReorder} * module.flags != {}:
+        #if {sfNoForward, sfReorder} * module.flags != {}:
+        when true:
+          # we now process the full AST in one go, so that destructor injection for top
+          # level statements works correctly.
+          if graph.stopCompile(): break
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
           sl.add n
@@ -191,7 +195,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
             sl = reorder(graph, sl, module)
           discard processTopLevelStmt(sl, a)
           break
-        elif not processTopLevelStmt(n, a): break
+        #elif not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)
