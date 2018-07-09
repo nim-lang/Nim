@@ -552,6 +552,10 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
   # XXX prove the soundness of this effect system rule
   result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
 
+proc isNoEffectList(n: PNode): bool {.inline.} =
+  assert n.kind == nkEffectList
+  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
   let op = a.typ
@@ -561,7 +565,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
     let s = n.skipConv
     if s.kind == nkSym and s.sym.kind in routineKinds:
       propagateEffects(tracked, n, s.sym)
-    elif effectList.len == 0:
+    elif isNoEffectList(effectList):
       if isForwardedProc(n):
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
@@ -723,7 +727,7 @@ proc track(tracked: PEffects, n: PNode) =
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
-      elif effectList.len == 0:
+      elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a, tracked.owner):
@@ -897,19 +901,18 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
           [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
-  var effects = t.n.sons[0]
+  var effects = t.n[0]
   if t.kind != tyProc or effects.kind != nkEffectList: return
-
-  let
-    raisesSpec = effectSpec(n, wRaises)
-    tagsSpec = effectSpec(n, wTags)
-  if not isNil(raisesSpec) or not isNil(tagsSpec):
+  if n.kind != nkEmpty:
     internalAssert g.config, effects.len == 0
     newSeq(effects.sons, effectListLen)
+    let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
-      effects.sons[exceptionEffects] = raisesSpec
+      effects[exceptionEffects] = raisesSpec
+    let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
-      effects.sons[tagEffects] = tagsSpec
+      effects[tagEffects] = tagsSpec
+    effects[pragmasEffects] = n
 
 proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
@@ -917,6 +920,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   effects.sons[tagEffects] = newNodeI(nkArgList, s.info)
   effects.sons[usesEffects] = g.emptyNode
   effects.sons[writeEffects] = g.emptyNode
+  effects.sons[pragmasEffects] = g.emptyNode
 
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
