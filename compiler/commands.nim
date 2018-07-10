@@ -215,7 +215,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "refc":         result = conf.selectedGC == gcRefc
     of "v2":           result = conf.selectedGC == gcV2
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "generational": result = conf.selectedGC == gcGenerational
+    of "generational": result = false
+    of "destructors":  result = conf.selectedGC == gcDestructors
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
@@ -435,9 +436,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "markandsweep":
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
-    of "generational":
-      conf.selectedGC = gcGenerational
-      defineSymbol(conf.symbols, "gcgenerational")
+    of "destructors":
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
     of "go":
       conf.selectedGC = gcGo
       defineSymbol(conf.symbols, "gogc")

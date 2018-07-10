@@ -164,7 +164,7 @@ proc canMove(n: PNode): bool =
   #  result = false
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
-  if dest.storage == OnStack or not usesNativeGC(p.config):
+  if dest.storage == OnStack or not usesWriteBarrier(p.config):
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
     # location is on heap
@@ -256,7 +256,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
-    if dest.storage == OnStack or not usesNativeGC(p.config):
+    if dest.storage == OnStack or not usesWriteBarrier(p.config):
       useStringh(p.module)
       linefmt(p, cpsStmts,
            "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
@@ -290,7 +290,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
-      if dest.storage == OnStack or not usesNativeGC(p.config):
+      if dest.storage == OnStack or not usesWriteBarrier(p.config):
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
       elif dest.storage == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
@@ -1150,7 +1150,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
 
   let args = [getTypeDesc(p.module, typ), ti, sizeExpr]
-  if a.storage == OnHeap and usesNativeGC(p.config):
+  if a.storage == OnHeap and usesWriteBarrier(p.config):
     # use newObjRC1 as an optimization
     if canFormAcycle(a.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
@@ -1181,7 +1181,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
               genTypeInfo(p.module, seqtype, dest.lode.info), length]
   var call: TLoc
   initLoc(call, locExpr, dest.lode, OnHeap)
-  if dest.storage == OnHeap and usesNativeGC(p.config):
+  if dest.storage == OnHeap and usesWriteBarrier(p.config):
     if canFormAcycle(dest.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     else:

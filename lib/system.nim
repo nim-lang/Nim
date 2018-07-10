@@ -3264,6 +3264,7 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when hasAlloc: include "system/sysstr"
     {.pop.}
+    when hasAlloc: include "system/strmantle"
 
     when hostOS != "standalone": include "system/sysio"
     when hasThreadSupport:
