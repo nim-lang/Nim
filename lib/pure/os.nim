@@ -304,8 +304,7 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
   if isAbsolute(path): path
   else:
     if not root.isAbsolute:
-      # CHECKME: is that the correct exception type?
-      raise newException(ValueError, root)
+      raise newException(ValueError, "The specified root is not absolute: " & root)
     joinPath(root, path)
 
 when isMainModule:
