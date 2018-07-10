@@ -408,9 +408,6 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # semExprWithType(c, result)
       result = semExpr(c, result, flags)
     of tyStmt:
-      # this is not `stmt` anymore, this is `typed`. Therefore the
-      # following line might be the better solution.
-      # result = semExprWithType(c, result, flags)
       result = semStmt(c, result)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType

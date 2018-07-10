@@ -439,9 +439,6 @@ when declared(echo):
   proc debug(n: PNode; conf: ConfigRef) =
     echo($debugTree(conf, n, 0, 100))
 
-  proc debug(arg: Rope): void {.exportc: "debugRope".} =
-    echo($arg)
-
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
   # For any initial h in range(maxHash), repeating that maxHash times
