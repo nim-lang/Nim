@@ -5,7 +5,7 @@ import gdb
 # machine interface of gdb. This means if if this test passes gdb
 # frontends might still be broken.
 
-gdb.execute("source nim-gdb.py")
+gdb.execute("source ../tools/nim-gdb.py")
 # debug all instances of the generic function `myDebug`, should be 8
 gdb.execute("rbreak myDebug")
 gdb.execute("run")
