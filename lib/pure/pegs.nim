@@ -919,8 +919,7 @@ macro mkHandlerTplts(handlers: untyped): untyped =
     # this has to be dirty to be able to capture *result* as *length* in
     # *leaveXX* calls.
     template `leave hdPostf`(s, p, start, length) =
-      if length != -1:
-        body
+      body
 
   result = newStmtList()
   for topCall in handlers[0]:
@@ -1018,8 +1017,8 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## PEG AST node being matched as *p*, the entire parsed string as *s*
   ## and the position of the matched text segment in *s* as *start*. A *leave*
   ## handler can access *p*, *s*, *start* and also the length of the matched
-  ## text segment as *length*. For an unsuccessful match, the *enter* handler
-  ## will be executed, but not the *leave* handler.
+  ## text segment as *length*. For an unsuccessful match, the *enter* and
+  ## *leave* handlers will be executed, with *length* set to -1.
   ##
   ## Symbols  declared in an *enter* handler can be made visible in the
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
