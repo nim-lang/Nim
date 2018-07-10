@@ -162,7 +162,16 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   if fullPath.isEmpty:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
-      localError(conf, n.info, "cannot open file: " & m)
+      var msg = "cannot open file: " & m
+
+      # Check if this module is in `std` namespace only.
+      let stdPath = findModule(
+        conf, "std/" & m, toFullPath(conf, n.info)
+      )
+      if stdPath.len > 0:
+        msg.add(". Did you mean `std/$1`?" % m)
+
+      localError(conf, n.info, msg)
     result = InvalidFileIDX
   else:
     result = fileInfoIdx(conf, fullPath)
