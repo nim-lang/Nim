@@ -52,7 +52,6 @@ Event parser output
 
 import strutils, streams
 import pegs
-import unicode
 
 const
   indent = "  "
