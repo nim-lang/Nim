@@ -583,6 +583,7 @@ template matchOrParse(mopProc: untyped): typed =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
       # *pkBackRef..pkBackRefIgnoreStyle* here.
+      if p.index >= c.ml: return -1
       var (a, b) = c.matches[p.index]
       var n: Peg
       n.kind = succ(pkTerminal, ord(p.kind)-ord(pkBackRef))
@@ -767,6 +768,7 @@ template matchOrParse(mopProc: untyped): typed =
         var x = mopProc(s, p.sons[0], start+result, c)
         if x >= 0:
           inc(result, x)
+          leave(pkSearch, s, p, start, result)
           return
         inc(result)
       result = -1
@@ -784,6 +786,7 @@ template matchOrParse(mopProc: untyped): typed =
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
           inc(result, x)
+          leave(pkCapturedSearch, s, p, start, result)
           return
         inc(result)
       result = -1
@@ -846,17 +849,14 @@ template matchOrParse(mopProc: untyped): typed =
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
-      if p.index >= c.ml: return -1
       result = matchBackRef(s, p, start, c)
       leave(pkBackRef, s, p, start, result)
     of pkBackRefIgnoreCase:
       enter(pkBackRefIgnoreCase, s, p, start)
-      if p.index >= c.ml: return -1
       result = matchBackRef(s, p, start, c)
       leave(pkBackRefIgnoreCase, s, p, start, result)
     of pkBackRefIgnoreStyle:
       enter(pkBackRefIgnoreStyle, s, p, start)
-      if p.index >= c.ml: return -1
       result = matchBackRef(s, p, start, c)
       leave(pkBackRefIgnoreStyle, s, p, start, result)
     of pkStartAnchor:
