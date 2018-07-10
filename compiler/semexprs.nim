@@ -909,10 +909,9 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 proc semExprNoType(c: PContext, n: PNode): PNode =
   let isPush = hintExtendedContext in c.config.notes
   if isPush: pushInfoContext(c.config, n.info)
-  defer:
-    if isPush: popInfoContext(c.config)
   result = semExpr(c, n, {efWantStmt})
   discardCheck(c, result)
+  if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
   case n.kind

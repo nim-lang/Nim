@@ -1149,8 +1149,6 @@ proc genStmts(p: BProc, t: PNode) =
 
   let isPush = hintExtendedContext in p.config.notes
   if isPush: pushInfoContext(p.config, t.info)
-  defer:
-    if isPush: popInfoContext(p.config)
-
   expr(p, t, a)
+  if isPush: popInfoContext(p.config)
   internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}

@@ -162,8 +162,7 @@ type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
 
-const
-  NotesVerbosity* = (proc(): array[0..3, TNoteKinds] =
+proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
     result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
     result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
     result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
@@ -171,9 +170,9 @@ const
       hintSource, hintGlobalVar, hintGCStats}
     result[0] = result[1] - {hintSuccessX, hintConf, hintProcessing,
       hintPattern, hintExecuting, hintLinking}
-  )()
 
 const
+  NotesVerbosity* = computeNotesVerbosity()
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
   errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
 
