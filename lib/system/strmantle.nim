@@ -9,36 +9,23 @@
 
 ## Compilerprocs for strings that do not depend on the string implementation.
 
-proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
-  if a == b: return 0
-  when defined(nimNoNil):
-    let alen = if a == nil: 0 else: a.len
-    let blen = if b == nil: 0 else: b.len
-  else:
-    if a == nil: return -1
-    if b == nil: return 1
-    let alen = a.len
-    let blen = b.len
+proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
+  let alen = a.len
+  let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], minlen.csize)
     if result == 0:
       result = alen - blen
   else:
     result = alen - blen
 
-proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
-  if a == b: return true
-  when defined(nimNoNil):
-    let alen = if a == nil: 0 else: a.len
-    let blen = if b == nil: 0 else: b.len
-  else:
-    if a == nil or b == nil: return false
-    let alen = a.len
-    let blen = b.len
+proc eqStrings(a, b: string): bool {.inline, compilerProc.} =
+  let alen = a.len
+  let blen = b.len
   if alen == blen:
     if alen == 0: return true
-    return equalMem(addr(a.data), addr(b.data), alen)
+    return equalMem(unsafeAddr(a[0]), unsafeAddr(b[0]), alen)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
