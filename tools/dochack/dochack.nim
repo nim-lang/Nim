@@ -1,6 +1,5 @@
-
-
 import karax
+import fuzzysearch
 
 proc findNodeWith(x: Element; tag, content: cstring): Element =
   if x.nodeName == tag and x.textContent == content:
@@ -88,11 +87,11 @@ proc toHtml(x: TocEntry; isRoot=false): Element =
   if ul.len != 0: result.add ul
   if result.len == 0: result = nil
 
-proc containsWord(a, b: cstring): bool {.asmNoStackFrame.} =
-  {.emit: """
-     var escaped = `b`.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-     return new RegExp("\\b" + escaped + "\\b").test(`a`);
-  """.}
+#proc containsWord(a, b: cstring): bool {.asmNoStackFrame.} =
+  #{.emit: """
+     #var escaped = `b`.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+     #return new RegExp("\\b" + escaped + "\\b").test(`a`);
+  #""".}
 
 proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
   {.emit: """
@@ -252,24 +251,29 @@ proc dosearch(value: cstring): Element =
 
     `stuff` = doc.documentElement;
     """.}
-    db = stuff.getElementsByClass"reference external"
+    db = stuff.getElementsByClass"reference"
     contents = @[]
     for ahref in db:
-      contents.add ahref.textContent.normalize
+      contents.add ahref.getAttribute("data-doc-search-tag")
   let ul = tree("UL")
   result = tree("DIV")
   result.setClass"search_results"
   var matches: seq[(Element, int)] = @[]
-  let key = value.normalize
   for i in 0..<db.len:
     let c = contents[i]
-    if c.containsWord(key):
-      matches.add((db[i], -(30_000 - c.len)))
-    elif c.contains(key):
-      matches.add((db[i], c.len))
+    if c == "Examples" or c == "PEG construction":
+    # Some manual exclusions.
+    # Ideally these should be fixed in the index to be more
+    # descriptive of what they are.
+      continue
+    let matchResult = fuzzymatch(value, c)
+    if matchResult.ismatch:
+      matches.add((db[i],matchResult.score))
+
   matches.sort do (a, b: auto) -> int:
-    a[1] - b[1]
-  for i in 0..min(<matches.len, 19):
+    b[1] - a[1]
+  for i in 0 ..< min(matches.len, 19):
+    matches[i][0].innerHTML = matches[i][0].getAttribute("data-doc-search-tag")
     ul.add(tree("LI", matches[i][0]))
   if ul.len == 0:
     result.add tree("B", text"no search results")
