@@ -22,6 +22,6 @@ outputs = [
 ]
 
 for expected in outputs:
-    output = str(gdb.parse_and_eval("arg"))
-    assert output == expected, output + " != " + expected
-    gdb.execute("continue")
+  output = str(gdb.parse_and_eval("arg"))
+  assert output == expected, output + " != " + expected
+  gdb.execute("continue")
