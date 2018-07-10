@@ -16,7 +16,7 @@ type
     moFoure,
 
 
-var counter = 1
+var counter = 0
 
 proc myDebug[T](arg: T): void =
   counter += 1
