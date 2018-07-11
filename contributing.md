@@ -46,10 +46,10 @@ bad:
 * "explain this behavior for me"
 * "i have some question !?"
 
-## code
-
-### documentation
+## documentation
 exported functions should have nimdoc comments (eg with `##`)
+
+## testing
 
 ### runnableExamples
 * try to use `runnableExamples:` block to make generated docs more illustrative and for testing purposes
@@ -75,12 +75,31 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 ### integration tests
 TODO
 
-### proc vs template vs macro
-as general rule of thumb, a proc should be preferred over a template, and a template should be preferred over a macro.
+## code
+
+### prefer `proc` > `template` > `macro` when possible
+As general rule of thumb, a `proc` should be preferred over a `template`, and a `template` should be preferred over a `macro` whenever possible (use the simplest tool for the job).
 
 rationale:
-* proc are more hygienic
-* macros don't work well with UFCS
+* procedures are more hygienic and easier to debug
+* procedures are compiled only once (or once per instantiating type for generics), unlike templates and macros which are evaluated at every call site; this can affect compile time performance
 * templates and macros don't appear in stackraces, making debugging harder
 * at high enough optimization levels, the C/C++ compiler will inline the corresponding proc anyways so shouldn't affect performance
 
+Caveats with templates and macros: `untyped` parameters can prevent method call syntax in some cases, eg `myIter.toSeq` see [docs](https://nim-lang.org/docs/manual.html#templates-limitations-of-the-method-call-syntax)
+
+### prefer `any` or `void` (or even `auto`) over `untyped` for `template` and `macro` output when possible
+rationale: early type checking makes it easier to debug errors
+
+### prefer `any` or a explicit or generic type over `untyped` for `template` and `macro` parameters when possible
+rationale: early type checking makes it easier to debug errors
+
+###  use `void` instead of `typed` for `template` and `macro` output
+```nim
+# don't use that, `typed` as output means something very different from `typed` as parameter
+template foo(): typed = discard
+
+# instead use one of these which are synonyms and more readable
+template foo(): void = discard
+template foo() = discard
+```
