@@ -13,6 +13,7 @@
 include "system/inclrtl"
 
 import strutils
+import sequtils
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
@@ -570,6 +571,8 @@ proc expandTilde*(path: string): string {.
     # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
+# TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
+# belong in `strutils` instead; they are not specific to paths
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
@@ -620,6 +623,15 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       return quoteShellWindows(s)
     else:
       return quoteShellPosix(s)
+
+  proc quoteShellCommand*(args: openArray[string]): string =
+    ## Concatenates and quotes shell arguments `args`
+    runnableExamples:
+      when defined(posix):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
+      when defined(windows):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
+    result = args.map(quoteShell).join(" ")
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
