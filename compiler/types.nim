@@ -278,6 +278,8 @@ proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
 proc isGCRef(t: PType): bool =
   result = t.kind in GcTypeKinds or
     (t.kind == tyProc and t.callConv == ccClosure)
+  if result and t.kind in {tyString, tySequence} and tfHasAsgn in t.flags:
+    result = false
 
 proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the

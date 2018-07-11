@@ -72,3 +72,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoZeroTerminator")
   defineSymbol("nimNotNil")
   defineSymbol("nimVmExportFixed")
+  defineSymbol("nimNewRuntime")

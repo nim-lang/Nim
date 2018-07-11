@@ -1671,6 +1671,8 @@ proc processMagicType(c: PContext, m: PSym) =
   of mString:
     setMagicType(c.config, m, tyString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
+    if c.config.selectedGc == gcDestructors:
+      incl m.typ.flags, tfHasAsgn
   of mCstring:
     setMagicType(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
@@ -1710,6 +1712,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(c.config, m, tySet, 0)
   of mSeq:
     setMagicType(c.config, m, tySequence, 0)
+    if c.config.selectedGc == gcDestructors:
+      incl m.typ.flags, tfHasAsgn
   of mOpt:
     setMagicType(c.config, m, tyOpt, 0)
   of mOrdinal:

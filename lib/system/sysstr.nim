@@ -63,6 +63,8 @@ proc mnewString(len: int): NimString {.compilerProc.} =
   result.len = len
 
 proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
+  # This is not used by most recent versions of the compiler anymore, but
+  # required for bootstrapping purposes.
   let start = max(start, 0)
   let len = min(last, s.len-1) - start + 1
   if len > 0:
@@ -73,12 +75,14 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   else:
     result = rawNewString(len)
 
+proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
+  # This is not used by most recent versions of the compiler anymore, but
+  # required for bootstrapping purposes.
+  result = copyStrLast(s, start, s.len-1)
+
 proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
   if s == nil or s.len == 0: result = cstring""
   else: result = cstring(addr s.data)
-
-proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
-  result = copyStrLast(s, start, s.len-1)
 
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)

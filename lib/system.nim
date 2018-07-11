@@ -413,7 +413,7 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
-when not defined(JS):
+when not defined(JS) and not defined(gcDestructors):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -1701,17 +1701,6 @@ proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
 # Support for addQuitProc() is done by Ansi C's facilities here.
 # In case of an unhandled exeption the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
-
-proc substr*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect.}
-proc substr*(s: string, first, last: int): string {.
-  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect.}
-  ## copies a slice of `s` into a new string and returns this new
-  ## string. The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
-  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
-  ## or `limit`:idx: a string's length.
 
 when not defined(nimscript) and not defined(JS):
   proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
@@ -3262,7 +3251,11 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/mmdisp"
     {.pop.}
     {.push stack_trace: off, profiler:off.}
-    when hasAlloc: include "system/sysstr"
+    when hasAlloc:
+      when defined(gcDestructors):
+        include "core/strs"
+      else:
+        include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
 
@@ -4170,6 +4163,21 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
     magic: "Slice".}
+
+proc substr*(s: string, first, last: int): string =
+  let L = max(min(last, high(s)) - first + 1, 0)
+  result = newString(L)
+  for i in 0 .. L-1:
+    result[i] = s[i+first]
+
+proc substr*(s: string, first = 0): string =
+  ## copies a slice of `s` into a new string and returns this new
+  ## string. The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If ``last``
+  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
+  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
+  ## or `limit`:idx: a string's length.
+  result = substr(s, first, high(s))
 
 type
   ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
