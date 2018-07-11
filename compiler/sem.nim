@@ -620,14 +620,11 @@ proc testExamples(c: PContext) =
     quit "[Examples] failed"
   else:
     removeFile(outp)
-    when defined(windows):
-      removeFile(outp.changeFileExt"" & ".exe")
-    else:
-      removeFile(outp.changeFileExt"")
-      try:
-        removeDir(nimcache)
-      except:
-        discard
+    removeFile(outp.changeFileExt(ExeExt))
+    try:
+      removeDir(nimcache)
+    except OSError:
+      discard
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
