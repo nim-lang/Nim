@@ -209,6 +209,7 @@ type
     projectMainIdx*: FileIndex # the canonical path id of the main module
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
+    commandPath*: string # holds the path of where the compiler is executed from
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
@@ -289,6 +290,7 @@ proc newConfigRef*(): ConfigRef =
     projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
+    commandPath: getCurrentDir(),
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
@@ -559,11 +561,17 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.pro
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
   const pkgPrefix = "pkg/"
-  let m = addFileExt(modulename, NimExt)
+  const commandPrefix = "~"
+  var m = addFileExt(modulename, NimExt)
+  var currentPath: string
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
-    let currentPath = currentModule.splitFile.dir
+    if m.startsWith(commandPrefix):
+      currentPath = conf.commandPath
+      m = m.replace(commandPrefix)
+    else:
+      currentPath = currentModule.splitFile.dir
     result = currentPath / m
     if not existsFile(result):
       result = findFile(conf, m)
