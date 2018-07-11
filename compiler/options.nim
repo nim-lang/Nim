@@ -569,7 +569,7 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   else:
     if m.startsWith(commandPrefix):
       currentPath = conf.commandPath
-      m = m.replace(commandPrefix)
+      m.delete(0, 0)
     else:
       currentPath = currentModule.splitFile.dir
     result = currentPath / m
