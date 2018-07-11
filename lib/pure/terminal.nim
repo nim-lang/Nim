@@ -471,11 +471,12 @@ type
     styleBright = 1,     ## bright text
     styleDim,            ## dim text
     styleItalic,         ## italic (or reverse on terminals not supporting)
-    styleUnderscore = 4, ## underscored text
+    styleUnderscore,     ## underscored text
     styleBlink,          ## blinking/bold text
-    styleReverse = 7,    ## reverse
-    styleHidden          ## hidden text
-    styleStrikethrough,  ## strikethrough
+    styleBlinkRapid,     ## rapid blinking/bold text (not widely supported)
+    styleReverse,        ## reverse
+    styleHidden,         ## hidden text
+    styleStrikethrough   ## strikethrough
 
 {.deprecated: [TStyle: Style].}
 {.deprecated: [styleUnknown: styleItalic].}
@@ -921,6 +922,8 @@ proc disableTrueColors*() =
     trueColorIsEnabled = false
 
 when not defined(testing) and isMainModule:
+  assert ansiStyleCode(styleBright) == "\e[1m"
+  assert ansiStyleCode(styleStrikethrough) == "\e[9m"
   #system.addQuitProc(resetAttributes)
   write(stdout, "never mind")
   stdout.eraseLine()
