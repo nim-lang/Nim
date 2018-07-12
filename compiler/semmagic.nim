@@ -171,7 +171,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
   let parType = n.sons[1].typ
-  if isOrdinalType(parType):
+  if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)

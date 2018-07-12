@@ -133,18 +133,18 @@ proc elemType*(t: PType): PType =
   else: result = t.lastSon
   assert(result != nil)
 
-proc isOrdinalType*(t: PType): bool =
+proc enumHasHoles*(t: PType): bool =
+  var b = t.skipTypes({tyRange, tyGenericInst, tyAlias, tySink})
+  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
+
+proc isOrdinalType*(t: PType, allowEnumWithHoles = false): bool =
   assert(t != nil)
   const
     # caution: uint, uint64 are no ordinal types!
     baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
-  t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
-
-proc enumHasHoles*(t: PType): bool =
-  var b = t
-  while b.kind in {tyRange, tyGenericInst, tyAlias, tySink}: b = b.sons[0]
-  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
+  (t.kind in baseKinds and not (t.enumHasHoles and not allowEnumWithHoles)) or
+    (t.kind in parentKinds and isOrdinalType(t.lastSon))
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool
