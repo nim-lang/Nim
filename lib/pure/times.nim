@@ -1646,7 +1646,7 @@ proc initTimeFormat*(format: string): TimeFormat =
   ## ``format`` argument.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
-    doAssert "2000-01-01" == f.format(f.parse("2000-01-01"))
+    doAssert "2000-01-01" == f.parse("2000-01-01").format(f)
   result.formatStr = format
   result.patterns = @[]
   for kind, token in format.tokens:
@@ -2068,12 +2068,12 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(f: TimeFormat, dt: DateTime): string {.raises: [].} =
+proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
-    doAssert "2000-01-01" == f.format(dt)
+    doAssert "2000-01-01" == dt.format(f)
   var idx = 0
   while idx <= f.patterns.high:
     case f.patterns[idx].FormatPattern
@@ -2097,12 +2097,12 @@ proc format*(dt: DateTime, f: string): string =
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == format(dt, "yyyy-MM-dd")
   let dtFormat = initTimeFormat(f)
-  result = dtFormat.format(dt)
+  result = dt.format(dtFormat)
 
 proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   ## Overload that validates ``format`` at compile time.
   const f2 = initTimeFormat(f)
-  result = f2.format(dt)
+  result = dt.format(f2)
 
 proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
@@ -2120,7 +2120,7 @@ proc format*(time: Time, f: static[string],
              zone: Timezone = local()): string {.tags: [].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
-  result = f2.format(time.inZone(zone))
+  result = time.inZone(zone).format(f2)
 
 proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
