@@ -32,7 +32,7 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
     let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    result = nimCmpMem(addr a.data, addr b.data, minlen.csize)
     if result == 0:
       result = alen - blen
   else:

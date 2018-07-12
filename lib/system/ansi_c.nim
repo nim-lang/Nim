@@ -25,6 +25,8 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
+proc c_strlen(a: cstring): csize {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
 
 when defined(linux) and defined(amd64):
   type
