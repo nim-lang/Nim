@@ -2099,10 +2099,10 @@ proc format*(dt: DateTime, f: string): string =
   let dtFormat = initTimeFormat(f)
   result = dtFormat.format(dt)
 
-proc format*(dt: DateTime, format: static[string]): string {.raises: [].} =
+proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.format(dt)
+  const f2 = initTimeFormat(f)
+  result = f2.format(dt)
 
 proc format*(time: Time, format: string, zone: Timezone = local()): string {.tags: [].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
