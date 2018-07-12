@@ -424,12 +424,11 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ##
   ## On Windows, network paths are considered absolute too.
   runnableExamples:
-    doAssert "".isAbsolute.not
-    doAssert nil.isAbsolute.not
-    doAssert ".".isAbsolute.not
+    doAssert(not "".isAbsolute)
+    doAssert(not ".".isAbsolute)
     when defined(posix):
       doAssert "/".isAbsolute
-      doAssert "a/".isAbsolute.not
+      doAssert(not "a/".isAbsolute)
 
   if len(path) == 0: return false
 
