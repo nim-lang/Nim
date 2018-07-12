@@ -263,14 +263,14 @@ proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ##  high(2) #=> 9223372036854775807
   ##  high(int) #=> 9223372036854775807
 
-proc high*[T: Ordinal](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
 proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
 proc high*(x: cstring): int {.magic: "High", noSideEffect.}
 proc high*(x: string): int {.magic: "High", noSideEffect.}
 
-proc low*[T: Ordinal](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
@@ -792,7 +792,7 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ##  var i = {1,2,3,4}
   ##  card(i) #=> 4
 
-proc ord*[T](x: T): int {.magic: "Ord", noSideEffect.}
+proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## returns the internal int value of an ordinal value ``x``.
   ##
   ## .. code-block:: nim
