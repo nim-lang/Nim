@@ -2104,23 +2104,23 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = f2.format(dt)
 
-proc format*(time: Time, format: string, zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
   ## ``time``. Will use the timezone specified by ``zone``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``format`` argument.
+  ## ``f`` argument.
   runnableExamples:
     var dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
     var tm = dt.toTime()
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
-  time.inZone(zone).format(format)
+  time.inZone(zone).format(f)
 
-proc format*(time: Time, format: static[string],
+proc format*(time: Time, f: static[string],
              zone: Timezone = local()): string {.tags: [].} =
-  ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.format(time.inZone(zone))
+  ## Overload that validates ``f`` at compile time.
+  const f2 = initTimeFormat(f)
+  result = f2.format(time.inZone(zone))
 
 proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
