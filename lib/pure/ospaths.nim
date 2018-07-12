@@ -437,6 +437,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = (path[0] in {'/', '\\'}) or
               (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
   elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
     result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
