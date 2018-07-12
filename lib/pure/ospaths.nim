@@ -423,12 +423,22 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Checks whether a given `path` is absolute.
   ##
   ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    doAssert "".isAbsolute.not
+    doAssert nil.isAbsolute.not
+    doAssert ".".isAbsolute.not
+    when defined(posix):
+      doAssert "/".isAbsolute
+      doAssert "a/".isAbsolute.not
+
+  if len(path) == 0: return false
+
   when doslikeFileSystem:
     var len = len(path)
-    result = (len > 0 and path[0] in {'/', '\\'}) or
+    result = (path[0] in {'/', '\\'}) or
               (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
   elif defined(macos):
-    result = path.len > 0 and path[0] != ':'
+    result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
   elif defined(posix):
