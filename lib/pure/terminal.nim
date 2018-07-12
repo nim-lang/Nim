@@ -26,9 +26,6 @@ when defined(windows):
 
 type
   PTerminal = ref object
-    colorsFGCache: Table[Color, string]
-    colorsBGCache: Table[Color, string]
-    styleCache: Table[int, string]
     trueColorIsSupported: bool
     trueColorIsEnabled: bool
     fgSetColor: bool
@@ -493,12 +490,7 @@ when not defined(windows):
     gBG {.threadvar.}: int
 
 proc ansiStyleCode*(style: int): string =
-  var term = getTerminal()
-  if term.styleCache.hasKey(style):
-    result = term.styleCache[style]
-  else:
-    result = fmt"{stylePrefix}{style}m"
-    term.styleCache[style] = result
+  result = fmt"{stylePrefix}{style}m"
 
 template ansiStyleCode*(style: Style): string =
   ansiStyleCode(style.int)
@@ -638,26 +630,16 @@ template ansiForegroundColorCode*(fg: static[ForegroundColor],
   ansiStyleCode(fg.int + bright.int * 60)
 
 proc ansiForegroundColorCode*(color: Color): string =
-  var term = getTerminal()
-  if term.colorsFGCache.hasKey(color):
-    result = term.colorsFGCache[color]
-  else:
-    let rgb = extractRGB(color)
-    result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
-    term.colorsFGCache[color] = result
+  let rgb = extractRGB(color)
+  result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
 
 template ansiForegroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
   (static(fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
 
 proc ansiBackgroundColorCode*(color: Color): string =
-  var term = getTerminal()
-  if term.colorsBGCache.hasKey(color):
-    result = term.colorsBGCache[color]
-  else:
-    let rgb = extractRGB(color)
-    result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
-    term.colorsFGCache[color] = result
+  let rgb = extractRGB(color)
+  result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
 
 template ansiBackgroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
@@ -714,7 +696,7 @@ template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == bgColor:
     fgSetColor = false
 
-macro styledWrite*(f: File, m: varargs[untyped]): untyped =
+macro styledWrite*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``write``, but treating terminal style arguments specially.
   ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
   ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
@@ -924,9 +906,6 @@ proc disableTrueColors*() =
 
 proc newTerminal(): PTerminal =
   new result
-  result.colorsFGCache = initTable[Color, string]()
-  result.colorsBGCache = initTable[Color, string]()
-  result.styleCache = initTable[int, string]()
   when defined(windows):
     initTerminal(result)
 
