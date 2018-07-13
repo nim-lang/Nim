@@ -44,7 +44,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
 
   template transition(nextState) =
     scoreState = nextState
-    inc(score, ord(scoreState)) 
+    score += ord(scoreState)
 
   while (strIndex < str.len) and (patIndex < pattern.len):
     var
