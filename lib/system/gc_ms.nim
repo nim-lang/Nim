@@ -264,12 +264,13 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
     of tyRef, tyOptAsRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      var d = cast[ByteAddress](cellToUsr(cell))
-      var s = cast[PGenericSeq](d)
-      if s != nil:
-        for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+      when not defined(gcDestructors):
+        var d = cast[ByteAddress](cellToUsr(cell))
+        var s = cast[PGenericSeq](d)
+        if s != nil:
+          for i in 0..s.len-1:
+            forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
+              GenericSeqSize), cell.typ.base, op)
     else: discard
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
@@ -310,53 +311,54 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  # `newObj` already uses locks, so no need for them here.
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
-  cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).reserved = len
-  when defined(memProfiler): nimProfile(size)
-
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
-  cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).reserved = len
-  when defined(memProfiler): nimProfile(size)
+when not defined(gcDestructors):
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+    # `newObj` already uses locks, so no need for them here.
+    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    result = newObj(typ, size)
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+    when defined(memProfiler): nimProfile(size)
 
-proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-  acquire(gch)
-  collectCT(gch, newsize + sizeof(Cell))
-  var ol = usrToCell(old)
-  sysAssert(ol.typ != nil, "growObj: 1")
-  gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
+  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    result = newObj(typ, size)
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+    when defined(memProfiler): nimProfile(size)
 
-  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-  var elemSize = 1
-  if ol.typ.kind != tyString: elemSize = ol.typ.base.size
-  incTypeSize ol.typ, newsize
+  proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
+    acquire(gch)
+    collectCT(gch, newsize + sizeof(Cell))
+    var ol = usrToCell(old)
+    sysAssert(ol.typ != nil, "growObj: 1")
+    gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  copyMem(res, ol, oldsize + sizeof(Cell))
-  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
-          newsize-oldsize)
-  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  when withBitvectors: incl(gch.allocated, res)
-  when useCellIds:
-    inc gch.idGenerator
-    res.id = gch.idGenerator
-  release(gch)
-  result = cellToUsr(res)
-  when defined(memProfiler): nimProfile(newsize-oldsize)
+    var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
+    var elemSize = 1
+    if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+    incTypeSize ol.typ, newsize
 
-proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
-  result = growObj(old, newsize, gch)
+    var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+    copyMem(res, ol, oldsize + sizeof(Cell))
+    zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
+            newsize-oldsize)
+    sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
+    when withBitvectors: incl(gch.allocated, res)
+    when useCellIds:
+      inc gch.idGenerator
+      res.id = gch.idGenerator
+    release(gch)
+    result = cellToUsr(res)
+    when defined(memProfiler): nimProfile(newsize-oldsize)
+
+  proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+    result = growObj(old, newsize, gch)
 
 {.push profiler:off.}
 

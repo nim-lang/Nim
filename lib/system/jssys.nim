@@ -31,8 +31,6 @@ type
 
   JSRef = ref RootObj # Fake type.
 
-{.deprecated: [TSafePoint: SafePoint, TCallFrame: CallFrame].}
-
 var
   framePtr {.importc, nodecl, volatile.}: PCallFrame
   excHandler {.importc, nodecl, volatile.}: int = 0
@@ -506,7 +504,7 @@ proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
     sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
-type NimString = string # hack for hti.nim
+const ThisIsSystem = true # for hti.nim
 include "system/hti"
 
 proc isFatPointer(ti: PNimType): bool =

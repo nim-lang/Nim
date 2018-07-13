@@ -148,7 +148,7 @@ proc readLine(f: File, line: var TaintedString): bool =
   if line.string.isNil:
     line = TaintedString(newStringOfCap(80))
   else:
-    when not defined(nimscript):
+    when not defined(nimscript) and not defined(gcDestructors):
       sp = cint(cast[PGenericSeq](line.string).space)
     line.string.setLen(sp)
   while true:

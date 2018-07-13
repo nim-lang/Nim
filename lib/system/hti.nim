@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when declared(NimString):
+when declared(ThisIsSystem):
   # we are in system module:
   {.pragma: codegenType, compilerproc.}
 else:

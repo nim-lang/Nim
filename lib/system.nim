@@ -211,6 +211,7 @@ proc new*(T: typedesc): auto =
   new(r)
   return r
 
+const ThisIsSystem = true
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
@@ -426,8 +427,9 @@ when not defined(JS) and not defined(gcDestructors):
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
-  template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not (seqShallowFlag or strlitFlag)
+  when not defined(gcDestructors):
+    template space(s: PGenericSeq): int {.dirty.} =
+      s.reserved and not (seqShallowFlag or strlitFlag)
   include "system/hti"
 
 type
@@ -730,7 +732,8 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ## ``cap``.
   discard
 
-when not defined(JS):
+when not defined(JS) and not defined(gcDestructors):
+  # XXX enable this for --gc:destructors
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
@@ -1502,11 +1505,11 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc:
+when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
-proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
-proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
@@ -2829,6 +2832,58 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+when not defined(JS):
+  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+
+template likely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be true.
+  ##
+  ## You can use this template to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if likely(value <= 100):
+  ##       process(value)
+  ##     else:
+  ##       echo "Value too big!"
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      likely_proc(val)
+
+template unlikely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be false.
+  ##
+  ## You can use this proc to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if unlikely(value > 100):
+  ##       echo "Value too big!"
+  ##     else:
+  ##       process(value)
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      unlikely_proc(val)
+
 type
   FileSeekPos* = enum ## Position relative to which seek should happen
                       # The values are ordered so that they match with stdio
@@ -2862,10 +2917,11 @@ when not defined(JS): #and not defined(nimscript):
       when declared(nimGC_setStackBottom):
         nimGC_setStackBottom(locals)
 
-    {.push profiler: off.}
-    var
-      strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
-    {.pop.}
+    when not defined(gcDestructors):
+      {.push profiler: off.}
+      var
+        strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+      {.pop.}
 
 
   # ----------------- IO Part ------------------------------------------------
@@ -3302,8 +3358,9 @@ when not defined(JS): #and not defined(nimscript):
       while f.readLine(res): yield res
 
   when not defined(nimscript) and hasAlloc:
-    include "system/assign"
-    include "system/repr"
+    when not defined(gcDestructors):
+      include "system/assign"
+      include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
@@ -3409,58 +3466,6 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 
 {.pop.} # checks
 {.pop.} # hints
-
-when not defined(JS):
-  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-
-template likely*(val: bool): bool =
-  ## Hints the optimizer that `val` is likely going to be true.
-  ##
-  ## You can use this template to decorate a branch condition. On certain
-  ## platforms this can help the processor predict better which branch is
-  ## going to be run. Example:
-  ##
-  ## .. code-block:: nim
-  ##   for value in inputValues:
-  ##     if likely(value <= 100):
-  ##       process(value)
-  ##     else:
-  ##       echo "Value too big!"
-  ##
-  ## On backends without branch prediction (JS and the nimscript VM), this
-  ## template will not affect code execution.
-  when nimvm:
-    val
-  else:
-    when defined(JS):
-      val
-    else:
-      likely_proc(val)
-
-template unlikely*(val: bool): bool =
-  ## Hints the optimizer that `val` is likely going to be false.
-  ##
-  ## You can use this proc to decorate a branch condition. On certain
-  ## platforms this can help the processor predict better which branch is
-  ## going to be run. Example:
-  ##
-  ## .. code-block:: nim
-  ##   for value in inputValues:
-  ##     if unlikely(value > 100):
-  ##       echo "Value too big!"
-  ##     else:
-  ##       process(value)
-  ##
-  ## On backends without branch prediction (JS and the nimscript VM), this
-  ## template will not affect code execution.
-  when nimvm:
-    val
-  else:
-    when defined(JS):
-      val
-    else:
-      unlikely_proc(val)
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
@@ -4090,6 +4095,21 @@ template once*(body: untyped): untyped =
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
+proc substr*(s: string, first, last: int): string =
+  let L = max(min(last, high(s)) - first + 1, 0)
+  result = newString(L)
+  for i in 0 .. L-1:
+    result[i] = s[i+first]
+
+proc substr*(s: string, first = 0): string =
+  ## copies a slice of `s` into a new string and returns this new
+  ## string. The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If ``last``
+  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
+  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
+  ## or `limit`:idx: a string's length.
+  result = substr(s, first, high(s))
+
 when defined(nimconfig):
   include "system/nimscript"
 
@@ -4163,21 +4183,6 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArrayByte*(x: string; first, last: int): openarray[byte] {.
     magic: "Slice".}
-
-proc substr*(s: string, first, last: int): string =
-  let L = max(min(last, high(s)) - first + 1, 0)
-  result = newString(L)
-  for i in 0 .. L-1:
-    result[i] = s[i+first]
-
-proc substr*(s: string, first = 0): string =
-  ## copies a slice of `s` into a new string and returns this new
-  ## string. The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
-  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
-  ## or `limit`:idx: a string's length.
-  result = substr(s, first, high(s))
 
 type
   ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro

@@ -235,8 +235,19 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc rdLoc(a: TLoc): Rope =
+  # 'read' location (deref if indirect)
+  result = a.r
+  if lfIndirect in a.flags: result = "(*$1)" % [result]
+
 proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
+
+proc lenExpr(p: BProc; a: TLoc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = rdLoc(a) & ".len"
+  else:
+    result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
   result = rope"->data"
@@ -245,11 +256,6 @@ include ccgliterals
 include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
-
-proc rdLoc(a: TLoc): Rope =
-  # 'read' location (deref if indirect)
-  result = a.r
-  if lfIndirect in a.flags: result = "(*$1)" % [result]
 
 proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r

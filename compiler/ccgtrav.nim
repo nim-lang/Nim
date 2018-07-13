@@ -107,8 +107,11 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var i: TLoc
   getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
   let oldCode = p.s(cpsStmts)
-  lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
-      [i.r, accessor, lenField(c.p)])
+  var a: TLoc
+  a.r = accessor
+
+  lineF(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
+      [i.r, lenExpr(c.p, a)])
   let oldLen = p.s(cpsStmts).len
   genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.sons[0])
   if p.s(cpsStmts).len == oldLen:

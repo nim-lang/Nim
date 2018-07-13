@@ -282,7 +282,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyString:
     case detectStrVersion(m)
     of 2:
-      discard cgsym(m, "string")
+      discard cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
     else:
       discard cgsym(m, "NimStringDesc")

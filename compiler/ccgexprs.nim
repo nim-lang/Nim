@@ -254,7 +254,12 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # tfShallow flag for the built-in string type too! So we check only
   # here for this flag, where it is reasonably safe to do so
   # (for objects, etc.):
-  if needToCopy notin flags or
+  if p.config.selectedGC == gcDestructors:
+    useStringh(p.module)
+    linefmt(p, cpsStmts,
+         "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+         addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
+  elif needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if dest.storage == OnStack or not usesWriteBarrier(p.config):
       useStringh(p.module)
@@ -280,14 +285,18 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyRef:
     genRefAssign(p, dest, src, flags)
   of tySequence:
-    if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
+    if p.config.selectedGC == gcDestructors:
+      genGenericAsgn(p, dest, src, flags)
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(p.config, dest), rdLoc(src),
               genTypeInfo(p.module, dest.t, dest.lode.info))
   of tyString:
-    if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
+    if p.config.selectedGC == gcDestructors:
+      genGenericAsgn(p, dest, src, flags)
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       if dest.storage == OnStack or not usesWriteBarrier(p.config):
@@ -456,6 +465,13 @@ proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   lineCg(p, cpsStmts, frmt, rdLoc(a), rdLoc(b))
+
+proc binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
+  var a, b: TLoc
+  if d.k != locNone: internalError(p.config, e.info, "binaryStmtAddr")
+  initLocExpr(p, e.sons[1], a)
+  initLocExpr(p, e.sons[2], b)
+  lineCg(p, cpsStmts, frmt, addrLoc(p.config, a), rdLoc(b))
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -893,8 +909,8 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "(!$3 || (NU)($1) >= (NU)($3->$4) || (NU)($2) >= (NU)($3->$4))) #raiseIndexError();$n",
-      rdLoc(a), rdLoc(b), rdLoc(arr), lenField(p))
+      "((NU)($1) >= (NU)$3 || (NU)($2) >= (NU)$3)) #raiseIndexError();$n",
+      rdLoc(a), rdLoc(b), lenExpr(p, arr))
   else: discard
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
@@ -918,12 +934,12 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options:
     if ty.kind == tyString and (not defined(nimNoZeroTerminator) or optLaxStrings in p.options):
       linefmt(p, cpsStmts,
-              "if (!$2 || (NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
-              rdLoc(b), rdLoc(a), lenField(p))
+              "if ((NU)($1) > (NU)$2) #raiseIndexError();$n",
+              rdLoc(b), lenExpr(p, a))
     else:
       linefmt(p, cpsStmts,
-              "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
-              rdLoc(b), rdLoc(a), lenField(p))
+              "if ((NU)($1) >= (NU)$2) #raiseIndexError();$n",
+              rdLoc(b), lenExpr(p, a))
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", a.r)
@@ -1013,6 +1029,12 @@ proc genEcho(p: BProc, n: PNode) =
 proc gcUsage(conf: ConfigRef; n: PNode) =
   if conf.selectedGC == gcNone: message(conf, n.info, warnGcMem, n.renderTree)
 
+proc strLoc(p: BProc; d: TLoc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = addrLoc(p.config, d)
+  else:
+    result = rdLoc(d)
+
 proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
   #   <Nim code>
   #   s = 'Hello ' & name & ', how do you feel?' & 'z'
@@ -1040,13 +1062,14 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e.sons[i + 1], a)
     if skipTypes(e.sons[i + 1].typ, abstractVarRange).kind == tyChar:
       inc(L)
-      add(appends, ropecg(p.module, "#appendChar($1, $2);$n", tmp.r, rdLoc(a)))
+      add(appends, ropecg(p.module, "#appendChar($1, $2);$n", strLoc(p, tmp), rdLoc(a)))
     else:
       if e.sons[i + 1].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 1].strVal))
       else:
-        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
-      add(appends, ropecg(p.module, "#appendString($1, $2);$n", tmp.r, rdLoc(a)))
+        add(lens, lenExpr(p, a))
+        add(lens, " + ")
+      add(appends, ropecg(p.module, "#appendString($1, $2);$n", strLoc(p, tmp), rdLoc(a)))
   linefmt(p, cpsStmts, "$1 = #rawNewString($2$3);$n", tmp.r, lens, rope(L))
   add(p.s(cpsStmts), appends)
   if d.k == locNone:
@@ -1079,16 +1102,21 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
     if skipTypes(e.sons[i + 2].typ, abstractVarRange).kind == tyChar:
       inc(L)
       add(appends, ropecg(p.module, "#appendChar($1, $2);$n",
-                        rdLoc(dest), rdLoc(a)))
+                        strLoc(p, dest), rdLoc(a)))
     else:
       if e.sons[i + 2].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 2].strVal))
       else:
-        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
+        add(lens, lenExpr(p, a))
+        add(lens, " + ")
       add(appends, ropecg(p.module, "#appendString($1, $2);$n",
-                        rdLoc(dest), rdLoc(a)))
-  linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
-          rdLoc(dest), lens, rope(L))
+                        strLoc(p, dest), rdLoc(a)))
+  if p.config.selectedGC == gcDestructors:
+    linefmt(p, cpsStmts, "#prepareAdd($1, $2$3);$n",
+            addrLoc(p.config, dest), lens, rope(L))
+  else:
+    linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
+            rdLoc(dest), lens, rope(L))
   add(p.s(cpsStmts), appends)
   gcUsage(p.config, e)
 
@@ -1440,7 +1468,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1$3, ($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p), dataField(p)], a.storage)
+                  "$1$3, $2" % [rdLoc(a), lenExpr(p, a), dataField(p)], a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))], a.storage)
@@ -1787,11 +1815,11 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
   if a.kind in {nkStrLit..nkTripleStrLit} and a.strVal == "":
     initLocExpr(p, e.sons[2], x)
     putIntoDest(p, d, e,
-      ropecg(p.module, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+      ropecg(p.module, "($1 == 0)", lenExpr(p, x)))
   elif b.kind in {nkStrLit..nkTripleStrLit} and b.strVal == "":
     initLocExpr(p, e.sons[1], x)
     putIntoDest(p, d, e,
-      ropecg(p.module, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+      ropecg(p.module, "($1 == 0)", lenExpr(p, x)))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
 
@@ -1851,7 +1879,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         getTypeDesc(p.module, ranged), res])
 
   of mConStrStr: genStrConcat(p, e, d)
-  of mAppendStrCh: binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
+  of mAppendStrCh:
+    if p.config.selectedGC == gcDestructors:
+      binaryStmtAddr(p, e, d, "#nimAddCharV1($1, $2);$n")
+    else:
+      binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem: genSeqElemAppend(p, e, d)
   of mEqStr: genStrEquals(p, e, d)
