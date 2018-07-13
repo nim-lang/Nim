@@ -18,11 +18,11 @@ const
 
 
 type 
-  ScoreCard {.pure.} = enum 
-    Start                = -100 ## The state machine has started.
-    UnmatchedLeadingChar = -3   ## An unmatched, leading character was found.
-    UnmatchedChar        = -1   ## An unmatched character was found.
-    MatchedChar          = 0    ## A matched character was found.
+  ScoreCard = enum 
+    StartMatch           = -100 ## Start matching.
+    LeadingCharDiff      = -3   ## An unmatched, leading character was found.
+    CharDiff             = -1   ## An unmatched character was found.
+    CharMatch            = 0    ## A matched character was found.
     ConsecutiveMatch     = 5    ## A consecutive match was found.
     LeadingCharMatch     = 10   ## The character matches the begining of the
                                 ## string or the first character of a word
@@ -34,7 +34,7 @@ type
 
 proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
   var
-    scoreState = ScoreCard.Start
+    scoreState = StartMatch
     headerMatched = false
     unmatchedLeadingCharCount = 0
     consecutiveMatchCount = 0
@@ -63,7 +63,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
     # the below logic prioritizes headers.
     if not headerMatched and strChar == ':':
       headerMatched = true
-      scoreState = ScoreCard.Start
+      scoreState = StartMatch
       score = toInt(floor(HeadingScaleFactor * toFloat(score)))
       patIndex = 0
       strIndex += 1
@@ -71,19 +71,19 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
 
     if strChar == patternChar:
       case scoreState 
-      of ScoreCard.Start, ScoreCard.WordBoundryMatch:
-        scoreState = ScoreCard.LeadingCharMatch
+      of StartMatch, WordBoundryMatch:
+        scoreState = LeadingCharMatch
 
-      of ScoreCard.MatchedChar:
-        transition(ScoreCard.ConsecutiveMatch)
+      of CharMatch:
+        transition(ConsecutiveMatch)
 
-      of ScoreCard.LeadingCharMatch, ScoreCard.ConsecutiveMatch:
+      of LeadingCharMatch, ConsecutiveMatch:
         consecutiveMatchCount += 1
-        scoreState = ScoreCard.ConsecutiveMatch
-        score += ord(ScoreCard.ConsecutiveMatch) * consecutiveMatchCount
+        scoreState = ConsecutiveMatch
+        score += ord(ConsecutiveMatch) * consecutiveMatchCount
 
-        if scoreState == ScoreCard.LeadingCharMatch:
-          score += ord(ScoreCard.LeadingCharMatch)
+        if scoreState == LeadingCharMatch:
+          score += ord(LeadingCharMatch)
           
         var onBoundary = (patIndex == high(pattern))
         if not onBoundary:
@@ -97,9 +97,9 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
           )
         
         if onBoundary:
-          transition(ScoreCard.WordBoundryMatch)
+          transition(WordBoundryMatch)
 
-      of ScoreCard.UnmatchedChar, ScoreCard.UnmatchedLeadingChar:
+      of CharDiff, LeadingCharDiff:
         var isLeadingChar = (
           str[strIndex - 1] notin Letters or
           str[strIndex - 1] in {'a'..'z'} and
@@ -107,29 +107,29 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
         )
 
         if isLeadingChar:
-          scoreState = ScoreCard.LeadingCharMatch
+          scoreState = LeadingCharMatch
           #a non alpha or a camel case transition counts as a leading char.
           # Transition the state, but don't give the bonus yet; wait until we verify a consecutive match.
         else:
-          transition(ScoreCard.MatchedChar)
+          transition(CharMatch)
       patIndex += 1
 
     else:
       case scoreState 
-      of ScoreCard.Start:
-        transition(ScoreCard.UnmatchedLeadingChar)
+      of StartMatch:
+        transition(LeadingCharDiff)
 
-      of ScoreCard.ConsecutiveMatch:
-        transition(ScoreCard.UnmatchedChar)
+      of ConsecutiveMatch:
+        transition(CharDiff)
         consecutiveMatchCount = 0
 
-      of ScoreCard.UnmatchedLeadingChar:
+      of LeadingCharDiff:
         if unmatchedLeadingCharCount < MaxUnmatchedLeadingChar:
-          transition(ScoreCard.UnmatchedLeadingChar)
+          transition(LeadingCharDiff)
         unmatchedLeadingCharCount += 1
 
       else:
-        transition(ScoreCard.UnmatchedChar)
+        transition(CharDiff)
 
     strIndex += 1
 
