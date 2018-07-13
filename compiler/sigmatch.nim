@@ -569,7 +569,10 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       # signature. There is a change that the target
       # type is already fully-determined, so we are
       # going to try resolve it
-      f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+      if c.call != nil:
+        f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+      else:
+        f = nil
       if f == nil or f.isMetaType:
         # no luck resolving the type, so the inference fails
         return isBothMetaConvertible
