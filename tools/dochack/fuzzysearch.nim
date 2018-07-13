@@ -105,7 +105,7 @@ proc fuzzymatch* (pattern, str: cstring) : FuzzyMatchResult =
               (strIndex < str.len - 1) and
               (
                 (str[strIndex + 1].toLowerAscii != pattern[patIndex + 1].toLowerAscii) and
-                ((not str[strIndex + 1].isAlphaAScii) or str[strIndex + 1].isUpperAscii)
+                (not str[strIndex + 1].isLowerAscii) 
               )
             ):
           scoreState.stateTransition(ScoreCard.WordBoundryMatch, curScore)
@@ -118,7 +118,7 @@ proc fuzzymatch* (pattern, str: cstring) : FuzzyMatchResult =
               (strIndex < str.len - 1) and
               (
                 (str[strIndex + 1].toLowerAscii != pattern[patIndex + 1].toLowerAscii) and
-                ((not str[strIndex + 1].isAlphaAScii) or str[strIndex + 1].isUpperAscii)
+                (not str[strIndex + 1].isLowerAscii) 
               )
             ):
           scoreState.stateTransition(ScoreCard.WordBoundryMatch, curScore)
@@ -170,6 +170,3 @@ proc fuzzymatch* (pattern, str: cstring) : FuzzyMatchResult =
 
   result = FuzzyMatchResult(ismatch: (curScore > 0), score: max(0, curScore))
 
-template echoAssert(expr: untyped, expected: untyped): untyped =
-  echo `expr`
-  doAssert `expr` == `expected`
