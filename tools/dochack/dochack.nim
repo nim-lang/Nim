@@ -268,7 +268,7 @@ proc dosearch(value: cstring): Element =
       continue
     let (score, matched) = fuzzymatch(value, c)
     if matched:
-      matches.add((db[i],matchResult.score))
+      matches.add((db[i], score))
 
   matches.sort do (a, b: auto) -> int:
     b[1] - a[1]
