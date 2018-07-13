@@ -2903,6 +2903,22 @@ when not defined(JS): #and not defined(nimscript):
                        ## useful for low-level file access
 
   include "system/ansi_c"
+  include "system/memory"
+
+  proc zeroMem(p: pointer, size: Natural) =
+    nimZeroMem(p, size)
+    when declared(memTrackerOp):
+      memTrackerOp("zeroMem", p, size)
+  proc copyMem(dest, source: pointer, size: Natural) =
+    nimCopyMem(dest, source, size)
+    when declared(memTrackerOp):
+      memTrackerOp("copyMem", dest, size)
+  proc moveMem(dest, source: pointer, size: Natural) =
+    c_memmove(dest, source, size)
+    when declared(memTrackerOp):
+      memTrackerOp("moveMem", dest, size)
+  proc equalMem(a, b: pointer, size: Natural): bool =
+    nimCmpMem(a, b, size) == 0
 
   proc cmp(x, y: string): int =
     when nimvm:
@@ -2911,7 +2927,7 @@ when not defined(JS): #and not defined(nimscript):
       else: result = 0
     else:
       let minlen = min(x.len, y.len)
-      result = int(c_memcmp(x.cstring, y.cstring, minlen.csize))
+      result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
       if result == 0:
         result = x.len - y.len
 
@@ -3199,22 +3215,6 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
-
-    when not defined(nimscript):
-      proc zeroMem(p: pointer, size: Natural) =
-        c_memset(p, 0, size)
-        when declared(memTrackerOp):
-          memTrackerOp("zeroMem", p, size)
-      proc copyMem(dest, source: pointer, size: Natural) =
-        c_memcpy(dest, source, size)
-        when declared(memTrackerOp):
-          memTrackerOp("copyMem", dest, size)
-      proc moveMem(dest, source: pointer, size: Natural) =
-        c_memmove(dest, source, size)
-        when declared(memTrackerOp):
-          memTrackerOp("moveMem", dest, size)
-      proc equalMem(a, b: pointer, size: Natural): bool =
-        c_memcmp(a, b, size) == 0
 
     when hostOS == "standalone":
       include "system/embedded"

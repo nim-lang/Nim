@@ -830,7 +830,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     c.freeList = f
     when overwriteFree:
       # set to 0xff to check for usage after free bugs:
-      c_memset(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
+      nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                s -% sizeof(FreeCell))
     # check if it is not in the freeSmallChunks[s] list:
     if c.free < s:
@@ -847,7 +847,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
-    when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
+    when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
     # free big chunk
     var c = cast[PBigChunk](c)
     dec a.occ, c.size
