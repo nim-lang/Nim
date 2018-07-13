@@ -3,7 +3,10 @@ discard """
 5
 str2
 str2
-4'''
+4
+0
+1
+2'''
 """
 
 proc`[]` (t: tuple, key: string): string =
@@ -38,3 +41,7 @@ tt["b"] = "str2"
 echo tt["b"] 
 echo `[]`(tt, "b")
 echo tt["b", proc(s: string) : int = s.len]
+
+echo tt.low
+echo tt.high
+echo tt.len

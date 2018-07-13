@@ -617,16 +617,22 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           result = nil
           # XXX: size computation for complex types is still wrong
       of mLow:
-        result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
+        if n.sons[1].typ.kind == tyTuple:
+          result = newIntNodeT(0, n, g)
+        else:
+          result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
       of mHigh:
         if skipTypes(n.sons[1].typ, abstractVar+{tyUserTypeClassInst}).kind notin
             {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
           result = newIntNodeT(lastOrd(g.config, skipTypes(n[1].typ, abstractVar)), n, g)
         else:
-          var a = getArrayConstr(m, n.sons[1], g)
-          if a.kind == nkBracket:
-            # we can optimize it away:
-            result = newIntNodeT(sonsLen(a)-1, n, g)
+          if n.sons[1].typ.kind == tyTuple:
+            result = newIntNodeT(sonsLen(n.sons[1])-1, n, g)
+          else:
+            var a = getArrayConstr(m, n.sons[1], g)
+            if a.kind == nkBracket:
+              # we can optimize it away:
+              result = newIntNodeT(sonsLen(a)-1, n, g)
       of mLengthOpenArray:
         var a = getArrayConstr(m, n.sons[1], g)
         if a.kind == nkBracket:
