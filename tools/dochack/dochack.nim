@@ -266,8 +266,8 @@ proc dosearch(value: cstring): Element =
     # Ideally these should be fixed in the index to be more
     # descriptive of what they are.
       continue
-    let matchResult = fuzzymatch(value, c)
-    if matchResult.ismatch:
+    let (score, matched) = fuzzymatch(value, c)
+    if matched:
       matches.add((db[i],matchResult.score))
 
   matches.sort do (a, b: auto) -> int:
