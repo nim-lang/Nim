@@ -305,15 +305,6 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
       raise newException(ValueError, "The specified root is not absolute: " & root)
     joinPath(root, path)
 
-when isMainModule:
-  doAssertRaises(ValueError): discard absolutePath("a", "b")
-  doAssert absolutePath("a") == getCurrentDir() / "a"
-  doAssert absolutePath("a", "/b") == "/b" / "a"
-  when defined(Posix):
-    doAssert absolutePath("a", "/b/") == "/b" / "a"
-    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
-    doAssert absolutePath("/a", "b/") == "/a"
-
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
   ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
@@ -1724,13 +1715,22 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     rawToFormalFileInfo(rawInfo, path, result)
 
 proc isHidden*(path: string): bool =
-  ## Determines whether a given path is hidden or not. Returns false if the
-  ## file doesn't exist. The given path must be accessible from the current
-  ## working directory of the program.
+  ## Determines whether ``path`` is hidden or not, using this
+  ## reference https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory
   ##
-  ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
-  ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
-  ## and is not *just* '.' or '..' ' ."
+  ## On Windows: returns true if it exists and its "hidden" attribute is set.
+  ##
+  ## On posix: returns true if ``lastPathPart(path)`` starts with ``.`` and is
+  ## not ``.`` or ``..``. Note: paths are not normalized to determine `isHidden`.
+  runnableExamples:
+    when defined(posix):
+      doAssert ".foo".isHidden
+      doAssert: not ".foo/bar".isHidden
+      doAssert: not ".".isHidden
+      doAssert: not "..".isHidden
+      doAssert: not "".isHidden
+      doAssert ".foo/".isHidden
+
   when defined(Windows):
     when useWinUnicode:
       wrapUnary(attributes, getFileAttributesW, path)
@@ -1739,14 +1739,8 @@ proc isHidden*(path: string): bool =
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
   else:
-    if fileExists(path):
-      let
-        fileName = extractFilename(path)
-        nameLen = len(fileName)
-      if nameLen == 2:
-        result = (fileName[0] == '.') and (fileName[1] != '.')
-      elif nameLen > 2:
-        result = (fileName[0] == '.') and (fileName[3] != '.')
+    let fileName = lastPathPart(path)
+    result = len(fileName) >= 2 and fileName[0] == '.' and fileName != ".."
 
 {.pop.}
 

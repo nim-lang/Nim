@@ -58,6 +58,8 @@ let dirs = @["some", "created", "test", "dirs"]
 
 let dname = "__really_obscure_dir_name"
 
+# TODO: move these under `block XXX`, see `block normalizedPath` below, to
+# avoid variable scoping bugs.
 createDir(dname)
 echo dirExists(dname)
 
@@ -168,9 +170,8 @@ else:
   echo getLastModificationTime("a") == tm
 removeFile("a")
 
-when defined(posix):
-
-  block normalizedPath:
+block normalizedPath:
+  when defined(posix):
     block relative:
       doAssert normalizedPath(".") == "."
       doAssert normalizedPath("..") == ".."
@@ -198,9 +199,7 @@ when defined(posix):
       doAssert normalizedPath("/a/b/c/..") == "/a/b"
       doAssert normalizedPath("/a/b/c/../") == "/a/b"
 
-else:
-
-  block normalizedPath:
+  else:
     block relative:
       doAssert normalizedPath(".") == "."
       doAssert normalizedPath("..") == ".."
@@ -227,3 +226,23 @@ else:
       doAssert normalizedPath("\\a\\\\\\b") == "\\a\\b"
       doAssert normalizedPath("\\a\\b\\c\\..") == "\\a\\b"
       doAssert normalizedPath("\\a\\b\\c\\..\\") == "\\a\\b"
+
+block isHidden:
+  when defined(posix):
+    doAssert ".foo.txt".isHidden
+    doAssert "bar/.foo.ext".isHidden
+    doAssert: not "bar".isHidden
+    doAssert: not "foo/".isHidden
+    # Corner cases: paths are not normalized when determining `isHidden`
+    doAssert: not ".foo/.".isHidden
+    doAssert: not ".foo/..".isHidden
+
+block absolutePath:
+  doAssertRaises(ValueError): discard absolutePath("a", "b")
+  doAssert absolutePath("a") == getCurrentDir() / "a"
+  doAssert absolutePath("a", "/b") == "/b" / "a"
+  when defined(Posix):
+    doAssert absolutePath("a", "/b/") == "/b" / "a"
+    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
+    doAssert absolutePath("/a", "b/") == "/a"
+
