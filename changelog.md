@@ -54,6 +54,11 @@
 - The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
     and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
+- ``terminal.setCursorPos`` and ``terminal.setCursorXPos`` now work correctly
+  with 0-based coordinates on POSIX (previously, you needed to use
+  1-based coordinates on POSIX for correct behaviour; the Windows behaviour
+  was always correct).
+
 
 #### Breaking changes in the compiler
 
