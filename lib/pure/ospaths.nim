@@ -157,55 +157,127 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-
-proc joinPath*(head, tail: string): string {.
-  noSideEffect, rtl, extern: "nos$1".} =
-  ## Joins two directory names to one.
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
+  ## Returns whether ``path`` is absolute.
   ##
-  ## If head is the empty string, tail is returned. If tail is the empty
-  ## string, head is returned with a trailing path separator. If tail starts
-  ## with a path separator it will be removed when concatenated to head. Other
-  ## path separators not located on boundaries won't be modified.
+  ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    doAssert(not "".isAbsolute)
+    doAssert(not ".".isAbsolute)
+    doAssert(not "foo".isAbsolute)
+    when defined(posix):
+      doAssert "/".isAbsolute
+      doAssert(not "a/".isAbsolute)
+    when defined(Windows):
+      doAssert "C:\\foo".isAbsolute
+
+  if len(path) == 0: return false
+
+  when doslikeFileSystem:
+    var len = len(path)
+    result = (path[0] in {'/', '\\'}) or
+              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    result = path[0] != ':'
+  elif defined(RISCOS):
+    result = path[0] == '$'
+  elif defined(posix):
+    result = path[0] == '/'
+
+proc normalizePathEnd(path: var string, trailingSep = false) =
+  ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
+  ## ``trailingSep``, and taking care of edge cases: it preservers whether
+  ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
+  ## not `AltSep`.
+  if path.len == 0: return
+  var i = path.len
+  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
+  if trailingSep:
+    # foo// => foo
+    path.setLen(i)
+    # foo => foo/
+    path.add DirSep
+  elif i>0:
+    # foo// => foo
+    path.setLen(i)
+  else:
+    # // => / (empty case was already taken care of)
+    path = $DirSep
+
+proc normalizePathEnd(path: string, trailingSep = false): string =
+  result = path
+  result.normalizePathEnd(trailingSep)
+
+const absOverridesDefault = false
+
+proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Concatenates paths ``head`` and ``tail``.
+  ##
+  ## If ``tail`` is absolute and ``absOverrides`` is true, or ``head`` is empty,
+  ## returns ``tail``. If ``tail`` is empty returns ``head``. Else, returns the
+  ## concatenation with normalized spearator between ``head`` and ``tail``.
   runnableExamples:
     when defined(posix):
       doAssert joinPath("usr", "lib") == "usr/lib"
       doAssert joinPath("usr", "") == "usr/"
       doAssert joinPath("", "lib") == "lib"
-      doAssert joinPath("", "/lib") == "/lib"
       doAssert joinPath("usr/", "/lib") == "usr/lib"
+      doAssert joinPath("usr/", "/lib", absOverrides = true) == "/lib"
+      doAssert joinPath("usr///", "//lib") == "usr/lib" ## `//` gets compressed
+      doAssert joinPath("//", "lib") == "/lib" ## ditto
+    when defined(Windows):
+      doAssert joinPath(r"C:\foo", r"D:\bar") == r"C:\foo\bar"
+
+  if absOverrides and tail.isAbsolute:
+    return tail
 
   if len(head) == 0:
     result = tail
-  elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-      result = head & substr(tail, 1)
-    else:
-      result = head & tail
   else:
-    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-      result = head & tail
-    else:
-      result = head & DirSep & tail
+    var tail2 = tail
+    if tail.isAbsolute:
+      when defined(posix):
+        tail2 = strip(tail, leading = true, trailing = false, {DirSep})
+      elif doslikeFileSystem:
+        # TODO: factor this logic with isAbsolute; is `\bar` allowed?
+        # TODO: how to handle "C:\foo" / "D:\bar" ?
+        doAssert tail.len>=2 and tail[1] == ':'
+        tail2 = tail[2..^1]
+    result = normalizePathEnd(head, trailingSep = true) & tail2
 
-proc joinPath*(parts: varargs[string]): string {.noSideEffect,
-  rtl, extern: "nos$1OpenArray".} =
-  ## The same as `joinPath(head, tail)`, but works with any number of
-  ## directory parts. You need to pass at least one element or the proc
-  ## will assert in debug builds and crash on release builds.
+proc joinPath*(parts: varargs[string], absOverrides: bool): string {.noSideEffect,
+  rtl, extern: "nos$1varargs".} =
+  if parts.len == 0:
+    return ""
   result = parts[0]
   for i in 1..high(parts):
-    result = joinPath(result, parts[i])
+    result = joinPath(result, parts[i], absOverrides)
+
+proc joinPath*(parts: varargs[string]): string {.noSideEffect,
+  rtl, extern: "nos$1varargs2".} =
+  ## The same as `joinPath(head, tail, absOverrides)`, but works with any number
+  ## of directory parts.
+  runnableExamples:
+    doAssert joinPath() == ""
+    doAssert joinPath("foo") == "foo"
+    when defined(posix):
+      doAssert joinPath("foo", "bar") == "foo/bar"
+      doAssert joinPath("foo//", "bar/") == "foo/bar/"
+      doAssert joinPath("foo//", "bar/", absOverrides = true) == "foo/bar/"
+      doAssert joinPath("foo", "/bar", "/baz", "tail", absOverrides = true) == "/baz/tail"
+      doAssert joinPath("foo", "/bar", "/baz", "tail", absOverrides = false) == "foo/bar/baz/tail"
+  joinPath(parts, absOverridesDefault)
 
 proc `/` * (head, tail: string): string {.noSideEffect.} =
-  ## The same as ``joinPath(head, tail)``
-  ##
-  ## Here are some examples for Unix:
-  ##
-  ## .. code-block:: nim
-  ##   assert "usr" / "" == "usr/"
-  ##   assert "" / "lib" == "lib"
-  ##   assert "" / "/lib" == "/lib"
-  ##   assert "usr/" / "/lib" == "usr/lib"
+  ## The same as ``joinPath(head, tail)``.
+  runnableExamples:
+    when defined(posix):
+      doAssert "usr" / "" == "usr/"
+      doAssert "" / "lib" == "lib"
+      doAssert "" / "/lib" == "/lib"
+      doAssert "usr/" / "/lib" == "usr/lib"
   return joinPath(head, tail)
 
 proc splitPath*(path: string): tuple[head, tail: string] {.
@@ -414,56 +486,6 @@ proc cmpPaths*(pathA, pathB: string): int {.
     elif defined(nimdoc): discard
     else:
       result = cmpIgnoreCase(pathA, pathB)
-
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
-  ## Checks whether a given `path` is absolute.
-  ##
-  ## On Windows, network paths are considered absolute too.
-  runnableExamples:
-    doAssert(not "".isAbsolute)
-    doAssert(not ".".isAbsolute)
-    when defined(posix):
-      doAssert "/".isAbsolute
-      doAssert(not "a/".isAbsolute)
-
-  if len(path) == 0: return false
-
-  when doslikeFileSystem:
-    var len = len(path)
-    result = (path[0] in {'/', '\\'}) or
-              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
-  elif defined(macos):
-    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
-    result = path[0] != ':'
-  elif defined(RISCOS):
-    result = path[0] == '$'
-  elif defined(posix):
-    result = path[0] == '/'
-
-
-proc normalizePathEnd(path: var string, trailingSep = false) =
-  ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
-  ## ``trailingSep``, and taking care of edge cases: it preservers whether
-  ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
-  ## not `AltSep`.
-  if path.len == 0: return
-  var i = path.len
-  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
-  if trailingSep:
-    # foo// => foo
-    path.setLen(i)
-    # foo => foo/
-    path.add DirSep
-  elif i>0:
-    # foo// => foo
-    path.setLen(i)
-  else:
-    # // => / (empty case was already taken care of)
-    path = $DirSep
-
-proc normalizePathEnd(path: string, trailingSep = false): string =
-  result = path
-  result.normalizePathEnd(trailingSep)
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
