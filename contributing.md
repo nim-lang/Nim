@@ -76,6 +76,19 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 TODO
 
 ## code
+Here's a sample code that can serve as reference:
+```nim
+proc myStringify(a: int) : string =
+  ## Stringifies ``a``.
+  ##
+  ## On Windows, follows this [spec](https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory).
+  ##
+  ## **Warning:** may call ``mod.funName`` depending on ``a``.
+  runnableExamples:
+    doAssert foo(0) == "0"
+  result = $(a)
+```
+* we use double backticks (bolds text in RST) as ooposed to single backticks (italicizes it)
 
 ### prefer `proc` > `template` > `macro` when possible
 As general rule of thumb, a `proc` should be preferred over a `template`, and a `template` should be preferred over a `macro` whenever possible (use the simplest tool for the job).
