@@ -117,13 +117,12 @@ proc cleanPath(s: string): string =
       result.add c
 
 proc joinPath(parts: seq[string]): string =
-  let nb = parts.len
-  assert nb > 0
-  if nb == 1:
-    return parts[0]
-  result = parts[0] / parts[1]
-  for i in 2..<parts.len:
-    result = result / parts[i]
+  if parts.len == 0:
+    result = ""
+  else:
+    result = parts[0]
+    for i in 1..<parts.len:
+      result = result / parts[i]
 
 proc getIncludePath(n: PNode, modulePath: string): string =
   let istr = n.renderTree.cleanPath
