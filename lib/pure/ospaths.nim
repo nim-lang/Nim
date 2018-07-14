@@ -162,27 +162,18 @@ proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
-  ## For example on Unix:
-  ##
-  ## .. code-block:: nim
-  ##   joinPath("usr", "lib")
-  ##
-  ## results in:
-  ##
-  ## .. code-block:: nim
-  ##   "usr/lib"
-  ##
   ## If head is the empty string, tail is returned. If tail is the empty
   ## string, head is returned with a trailing path separator. If tail starts
   ## with a path separator it will be removed when concatenated to head. Other
-  ## path separators not located on boundaries won't be modified. More
-  ## examples on Unix:
-  ##
-  ## .. code-block:: nim
-  ##   assert joinPath("usr", "") == "usr/"
-  ##   assert joinPath("", "lib") == "lib"
-  ##   assert joinPath("", "/lib") == "/lib"
-  ##   assert joinPath("usr/", "/lib") == "usr/lib"
+  ## path separators not located on boundaries won't be modified.
+  runnableExamples:
+    when defined(posix):
+      doAssert joinPath("usr", "lib") == "usr/lib"
+      doAssert joinPath("usr", "") == "usr/"
+      doAssert joinPath("", "lib") == "lib"
+      doAssert joinPath("", "/lib") == "/lib"
+      doAssert joinPath("usr/", "/lib") == "usr/lib"
+
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
