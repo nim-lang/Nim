@@ -1646,7 +1646,7 @@ proc initTimeFormat*(format: string): TimeFormat =
   ## ``format`` argument.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
-    doAssert "2000-01-01" == f.format(f.parse("2000-01-01"))
+    doAssert "2000-01-01" == "2000-01-01".parse(f).format(f)
   result.formatStr = format
   result.patterns = @[]
   for kind, token in format.tokens:
@@ -2068,12 +2068,12 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
     result.utcOffset = p.utcOffset.get()
     result = result.toTime.inZone(zone)
 
-proc format*(f: TimeFormat, dt: DateTime): string {.raises: [].} =
+proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
   ## Format ``dt`` using the format specified by ``f``.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
-    doAssert "2000-01-01" == f.format(dt)
+    doAssert "2000-01-01" == dt.format(f)
   var idx = 0
   while idx <= f.patterns.high:
     case f.patterns[idx].FormatPattern
@@ -2097,32 +2097,32 @@ proc format*(dt: DateTime, f: string): string =
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == format(dt, "yyyy-MM-dd")
   let dtFormat = initTimeFormat(f)
-  result = dtFormat.format(dt)
+  result = dt.format(dtFormat)
 
-proc format*(dt: DateTime, format: static[string]): string {.raises: [].} =
+proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.format(dt)
+  const f2 = initTimeFormat(f)
+  result = dt.format(f2)
 
-proc format*(time: Time, format: string, zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
   ## ``time``. Will use the timezone specified by ``zone``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``format`` argument.
+  ## ``f`` argument.
   runnableExamples:
     var dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
     var tm = dt.toTime()
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
-  time.inZone(zone).format(format)
+  time.inZone(zone).format(f)
 
-proc format*(time: Time, format: static[string],
+proc format*(time: Time, f: static[string],
              zone: Timezone = local()): string {.tags: [].} =
-  ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.format(time.inZone(zone))
+  ## Overload that validates ``f`` at compile time.
+  const f2 = initTimeFormat(f)
+  result = time.inZone(zone).format(f2)
 
-proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
@@ -2130,7 +2130,7 @@ proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
-    doAssert dt == f.parse("2000-01-01", utc())
+    doAssert dt == "2000-01-01".parse(f, utc())
   var inpIdx = 0 # Input index
   var patIdx = 0 # Pattern index
   var parsed: ParsedTime
@@ -2162,24 +2162,24 @@ proc parse*(f: TimeFormat, input: string, zone: Timezone = local()): DateTime =
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, format: string, tz: Timezone = local()): DateTime =
+proc parse*(input, f: string, tz: Timezone = local()): DateTime =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
-  ## ``format`` argument.
+  ## ``f`` argument.
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert dt == parse("2000-01-01", "yyyy-MM-dd", utc())
-  let dtFormat = initTimeFormat(format)
-  result = dtFormat.parse(input, tz)
+  let dtFormat = initTimeFormat(f)
+  result = input.parse(dtFormat, tz)
 
-proc parse*(input: string, format: static[string], zone: Timezone = local()): DateTime =
-  ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.parse(input, zone)
+proc parse*(input: string, f: static[string], zone: Timezone = local()): DateTime =
+  ## Overload that validates ``f`` at compile time.
+  const f2 = initTimeFormat(f)
+  result = input.parse(f2, zone)
 
-proc parseTime*(input, format: string, zone: Timezone): Time =
+proc parseTime*(input, f: string, zone: Timezone): Time =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``, then converting it a ``Time``.
   ##
@@ -2188,12 +2188,12 @@ proc parseTime*(input, format: string, zone: Timezone): Time =
   runnableExamples:
     let tStr = "1970-01-01T00:00:00+00:00"
     doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", utc()) == fromUnix(0)
-  parse(input, format, zone).toTime()
+  parse(input, f, zone).toTime()
 
-proc parseTime*(input: string, format: static[string], zone: Timezone): Time =
+proc parseTime*(input: string, f: static[string], zone: Timezone): Time =
   ## Overload that validates ``format`` at compile time.
-  const f = initTimeFormat(format)
-  result = f.parse(input, zone).toTime()
+  const f2 = initTimeFormat(f)
+  result = input.parse(f2, zone).toTime()
 
 #
 # End of parse & format implementation
