@@ -38,7 +38,19 @@ def getNimRti(type_name):
       return None
 
 class NimTypeRecognizer:
+  # this type map maps from types that are generated in the C files to
+  # how they are called in nim. To not mix up the name ``int`` from
+  # system.nim with the name ``int`` that could still appear in
+  # generated code, ``NI`` is mapped to ``system.int`` and not just
+  # ``int``.
 
+  type_map_static = {
+    'NI': 'system.int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'int64',
+    'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32', 'NU64': 'uint64',
+    'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
+    'NIM_BOOL': 'bool', 'NIM_CHAR': 'char', 'NCSTRING': 'cstring',
+    'NimStringDesc': 'string'
+  }
 
   # Normally gdb distinguishes between the command `ptype` and
   # `whatis`.  `ptype` prints a very detailed view of the type, and
@@ -53,14 +65,6 @@ class NimTypeRecognizer:
   # control with `ptype myval` and `ptype *myval` if I want to have
   # detail or not.  I this this method stinks but I could not figure
   # out a better solution.
-
-  type_map_static = {
-    'NI': 'long',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'int64',
-    'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32', 'NU64': 'uint64',
-    'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
-    'NIM_BOOL': 'bool', 'NIM_CHAR': 'char', 'NCSTRING': 'cstring',
-    'NimStringDesc': 'string'
-  }
 
   object_type_pattern = re.compile("^(\w*):ObjectType$")
 
