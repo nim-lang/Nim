@@ -222,10 +222,6 @@ proc getPlainDocstring(n: PNode): string =
       result = getPlainDocstring(n.sons[i])
       if result.len > 0: return
 
-func htmlCollapse(html: string): string =
-  ## Strip whitespace and remove trailing newlines from every line
-  return html.splitLines().mapIt(strip(it)).join("")
-
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
   var r: TSrcGen
   var literal = ""
@@ -265,18 +261,18 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkCurlyDotLe:
       dispA(d.conf, result, """
 <span><!-- pragma tease (i.e. {...}) -->
-    <span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
 </span>
 <span class="pragmawrap"><!-- actual pragma content -->
-    <span class="Other">$1</span>
-    <span class="pragma">""".htmlCollapse,
+<span class="Other">$1</span>
+<span class="pragma">""",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
       dispA(d.conf, result, """
-    </span>
-    <span class="Other">$1</span>
-</span>""".htmlCollapse,
+</span>
+<span class="Other">$1</span>
+</span>""",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
