@@ -55,9 +55,9 @@ class NimTypeRecognizer:
   # out a better solution.
 
   type_map_static = {
-    'NI': 'int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'in64',
+    'NI': 'long',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'int64',
     'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32', 'NU64': 'uint64',
-    'NF': 'float', 'NF32': 'float32', 'NF32': 'float64',
+    'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
     'NIM_BOOL': 'bool', 'NIM_CHAR': 'char', 'NCSTRING': 'cstring',
     'NimStringDesc': 'string'
   }
