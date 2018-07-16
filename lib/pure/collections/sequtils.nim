@@ -199,22 +199,18 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
         result[i].add(s[g])
       first = last
 
-proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
-                                                            seq[S]{.inline.} =
+proc map*[Fun, T](s: openArray[T], op: Fun): auto{.inline.} =
   ## Returns a new sequence with the results of `op` applied to every item in
   ## the container `s`.
   ##
   ## Since the input is not modified you can use this version of ``map`` to
   ## transform the type of the elements in the input container.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     a = @[1, 2, 3, 4]
-  ##     b = map(a, proc(x: int): string = $x)
-  ##   assert b == @["1", "2", "3", "4"]
-  newSeq(result, s.len)
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = map(a, proc(x: int): string = $x)
+    doAssert b == @["1", "2", "3", "4"]
+  result = newSeq[type(op(s[0]))](s.len)
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
