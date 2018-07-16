@@ -1772,7 +1772,7 @@ when not defined(nimscript):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr UncheckedArray[T] {.inline, benign.} =
+    proc create*(T: typedesc, size: Positive): ptr UncheckedArray[T] {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``dealloc(block)``. The block is initialized with all bytes
