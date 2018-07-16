@@ -77,8 +77,7 @@ proc atEnd*(s: Stream): bool =
 
 proc size*(s: Stream): int =
   ## retrieves the current size of the stream `s`.
-  ## returns -1 if `s.sizeImpl` isn't implemented.
-  result = if not isNil(s.sizeImpl): s.sizeImpl(s) else: -1
+  result = s.sizeImpl(s)
 
 proc setPosition*(s: Stream, pos: int) =
   ## sets the position `pos` of the stream `s`.
