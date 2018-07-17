@@ -1344,6 +1344,10 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName = param
       dummyType = candidateTypeSlot
 
+    # this can be true for 'nim check' on incomplete concepts,
+    # see bug #8230
+    if dummyName.kind == nkEmpty: continue
+
     internalAssert c.config, dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
                             dummyName.ident, owner, param.info)
