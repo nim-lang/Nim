@@ -264,14 +264,14 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 </span>
 <span class="pragmawrap">
 <span class="Other">$1</span>
-<span class="pragma">""",
+<span class="pragma">""".replace("\n", ""),  # Must remove newlines because wrapped in a <pre>
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
       dispA(d.conf, result, """
 </span>
 <span class="Other">$1</span>
-</span>""",
+</span>""".replace("\n", ""),
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
