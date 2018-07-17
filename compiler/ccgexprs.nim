@@ -1224,8 +1224,14 @@ proc genNewSeq(p: BProc, e: PNode) =
   var a, b: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  genNewSeqAux(p, a, b.rdLoc)
-  gcUsage(p.config, e)
+  if p.config.selectedGC == gcDestructors:
+    let seqtype = skipTypes(e.sons[1].typ, abstractVarRange)
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+      a.rdLoc, b.rdLoc, getTypeDesc(p.module, seqtype.lastSon),
+      getSeqPayloadType(p.module, seqtype))
+  else:
+    genNewSeqAux(p, a, b.rdLoc)
+    gcUsage(p.config, e)
 
 proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
@@ -1543,6 +1549,9 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   else: internalError(p.config, e.info, "genArrayLen()")
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
+  if p.config.selectedGc == gcDestructors:
+    genCall(p, e, d)
+    return
   var a, b: TLoc
   assert(d.k == locNone)
   var x = e.sons[1]
@@ -1561,8 +1570,11 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
-  binaryStmt(p, e, d, "$1 = #setLengthStr($1, $2);$n")
-  gcUsage(p.config, e)
+  if p.config.selectedGc == gcDestructors:
+    binaryStmtAddr(p, e, d, "#setLengthStrV2($1, $2);$n")
+  else:
+    binaryStmt(p, e, d, "$1 = #setLengthStr($1, $2);$n")
+    gcUsage(p.config, e)
 
 proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # swap(a, b) -->

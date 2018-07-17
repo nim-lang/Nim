@@ -230,6 +230,17 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 
+when defined(nimNewRuntime):
+  proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+    ## resets an object `obj` to its initial (binary zero) value to signify
+    ## it was "moved" and to signify its destructor should do nothing and
+    ## ideally be optimized away.
+    discard
+
+  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+    result = x
+    wasMoved(x)
+
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
@@ -3310,6 +3321,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc:
       when defined(gcDestructors):
         include "core/strs"
+        include "core/seqs"
       else:
         include "system/sysstr"
     {.pop.}

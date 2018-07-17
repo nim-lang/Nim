@@ -504,7 +504,6 @@ proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
     sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
-const ThisIsSystem = true # for hti.nim
 include "system/hti"
 
 proc isFatPointer(ti: PNimType): bool =

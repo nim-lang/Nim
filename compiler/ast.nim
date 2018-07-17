@@ -626,6 +626,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
+    mMove, mWasMoved,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,

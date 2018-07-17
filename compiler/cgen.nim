@@ -250,7 +250,10 @@ proc lenExpr(p: BProc; a: TLoc): Rope =
     result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
 
 proc dataField(p: BProc): Rope =
-  result = rope"->data"
+  if p.config.selectedGc == gcDestructors:
+    result = rope".p->data"
+  else:
+    result = rope"->data"
 
 include ccgliterals
 include ccgtypes

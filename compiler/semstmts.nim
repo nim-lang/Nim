@@ -1553,7 +1553,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
           ("'" & proto.name.s & "' from " & c.config$proto.info))
-    if sfForward notin proto.flags:
+    if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s)
     excl(proto.flags, sfForward)
     closeScope(c)         # close scope with wrong parameter symbols
@@ -1619,7 +1619,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         openScope(c)
         n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
         closeScope(c)
-        fixupInstantiatedSymbols(c, s)
+        if s.magic == mNone:
+          fixupInstantiatedSymbols(c, s)
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       if sfImportc in s.flags:
         # so we just ignore the body after semantic checking for importc:

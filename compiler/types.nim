@@ -1335,14 +1335,23 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
     if typ.callConv == ccClosure: result = 2 * conf.target.ptrSize
     else: result = conf.target.ptrSize
     a = conf.target.ptrSize
-  of tyString, tyNil:
+  of tyString:
+    if tfHasAsgn in typ.flags:
+      result = conf.target.ptrSize * 2
+    else:
+      result = conf.target.ptrSize
+  of tyNil:
     result = conf.target.ptrSize
     a = result
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion
-    else: result = conf.target.ptrSize
+    else:
+      if typ.kind == tySequence and tfHasAsgn in typ.flags:
+        result = conf.target.ptrSize * 2
+      else:
+        result = conf.target.ptrSize
     a = result
   of tyArray:
     let elemSize = computeSizeAux(conf, typ.sons[1], a)

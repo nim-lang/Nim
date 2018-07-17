@@ -100,12 +100,12 @@ Rule      Pattern                 Transformed into
                                   finally: `=destroy`(x)
 1.2       var x: sink T; stmts    var x: sink T; stmts; ensureEmpty(x)
 2         x = f()                 `=sink`(x, f())
-3         x = lastReadOf z        `=sink`(x, z)
+3         x = lastReadOf z        `=sink`(x, z); wasMoved(z)
 4.1       y = sinkParam           `=sink`(y, sinkParam)
 4.2       x = y                   `=`(x, y) # a copy
 5.1       f_sink(g())             f_sink(g())
 5.2       f_sink(y)               f_sink(copy y); # copy unless we can see it's the last read
-5.3       f_sink(move y)          f_sink(y); reset(y) # explicit moves empties 'y'
+5.3       f_sink(move y)          f_sink(y); wasMoved(y) # explicit moves empties 'y'
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
 Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
@@ -282,6 +282,11 @@ proc destructiveMoveSink(n: PNode; c: var Con): PNode =
     newIntTypeNode(nkIntLit, 0, getSysType(c.graph, n.info, tyBool)))
   result.add n
 
+proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
+  result = newNodeI(nkCall, n.info)
+  result.add(newSymNode(createMagic(c.graph, magicname, m)))
+  result.add n
+
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   if ri.kind in constrExprs:
     result = genSink(c, ri.typ, dest)
@@ -290,8 +295,10 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     recurse(ri, ri2)
     result.add ri2
   elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
-    result = genSink(c, ri.typ, dest)
-    result.add p(ri, c)
+    # Rule 3: `=sink`(x, z); wasMoved(z)
+    var snk = genSink(c, ri.typ, dest)
+    snk.add p(ri, c)
+    result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
   elif ri.kind == nkSym and isSinkParam(ri.sym):
     result = genSink(c, ri.typ, dest)
     result.add destructiveMoveSink(ri, c)
@@ -313,11 +320,9 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
 
-proc genReset(n: PNode; c: var Con): PNode =
-  result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, "reset", mReset)))
-  # The mReset builtin does not take the address:
-  result.add n
+proc genWasMoved(n: PNode; c: var Con): PNode =
+  # The mWasMoved builtin does not take the address.
+  result = genMagicCall(n, c, "wasMoved", mWasMoved)
 
 proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
@@ -334,7 +339,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   add(v, vpart)
 
   result.add v
-  result.add genReset(n, c)
+  result.add genWasMoved(n, c)
   result.add tempAsNode
 
 proc p(n: PNode; c: var Con): PNode =

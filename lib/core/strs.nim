@@ -15,7 +15,6 @@ when false:
   #proc rawNewStringNoInit(space: int): NimString {.compilerProc.}
   # seems to be unused.
   proc copyDeepString(src: NimString): NimString {.inline.}
-  proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.}
   # ----------------- sequences ----------------------------------------------
 
   proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
@@ -27,14 +26,14 @@ when false:
 import allocators
 
 type
-  StrContent = object
+  NimStrPayload {.core.} = object
     cap: int
     region: Allocator
     data: UncheckedArray[char]
 
   NimStringV2 {.core.} = object
     len: int
-    p: ptr StrContent ## can be nil if len == 0.
+    p: ptr NimStrPayload ## can be nil if len == 0.
 
 const nimStrVersion {.core.} = 2
 
@@ -73,7 +72,7 @@ proc `=`(a: var NimStringV2; b: NimStringV2) =
     # we have to allocate the 'cap' here, consider
     # 'let y = newStringOfCap(); var x = y'
     # on the other hand... These get turned into moves now.
-    a.p = cast[ptr StrContent](region.alloc(region, contentSize(b.len)))
+    a.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(b.len)))
     a.p.region = region
     a.p.cap = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
@@ -88,7 +87,7 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
     let region = getLocalAllocator()
-    s.p = cast[ptr StrContent](region.alloc(region, contentSize(s.len + addlen)))
+    s.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(s.len + addlen)))
     s.p.region = region
     s.p.cap = s.len + addlen
     if s.len > 0:
@@ -96,7 +95,7 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
       copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   elif s.len + addlen > s.p.cap:
     let cap = max(s.len + addlen, resize(s.p.cap))
-    s.p = cast[ptr StrContent](s.p.region.realloc(s.p.region, s.p,
+    s.p = cast[ptr NimStrPayload](s.p.region.realloc(s.p.region, s.p,
       oldSize = contentSize(s.p.cap),
       newSize = contentSize(cap)))
     s.p.cap = cap
@@ -112,7 +111,7 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: 0, p: nil)
   else:
     let region = getLocalAllocator()
-    var p = cast[ptr StrContent](region.alloc(region, contentSize(len)))
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
     p.region = region
     p.cap = len
     if len > 0:
@@ -144,7 +143,7 @@ proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: 0, p: nil)
   else:
     let region = getLocalAllocator()
-    var p = cast[ptr StrContent](region.alloc(region, contentSize(space)))
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(space)))
     p.region = region
     p.cap = space
     result = NimStringV2(len: 0, p: p)
@@ -154,7 +153,15 @@ proc mnewString(len: int): NimStringV2 {.compilerProc.} =
     result = NimStringV2(len: 0, p: nil)
   else:
     let region = getLocalAllocator()
-    var p = cast[ptr StrContent](region.alloc(region, contentSize(len)))
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
     p.region = region
     p.cap = len
     result = NimStringV2(len: len, p: p)
+
+proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
+  if newLen > s.len:
+    prepareAdd(s, newLen - s.len)
+  else:
+    s.len = newLen
+    # this also only works because the destructor
+    # looks at s.p and not s.len
