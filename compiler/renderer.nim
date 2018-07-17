@@ -627,11 +627,12 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
       gcoms(g)
     if doIndent: dedent(g)
   else:
-    if rfLongMode in c.flags: indentNL(g)
+    indentNL(g)
     gsub(g, n)
     gcoms(g)
+    dedent(g)
     optNL(g)
-    if rfLongMode in c.flags: dedent(g)
+
 
 proc gif(g: var TSrcGen, n: PNode) =
   var c: TContext
@@ -785,10 +786,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   if longMode(g, n) or (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
-  # XXX I don't get why this is needed here! gstmts should already handle this!
-  indentNL(g)
   gstmts(g, n.sons[1], c)
-  dedent(g)
 
 proc gstaticStmt(g: var TSrcGen, n: PNode) =
   var c: TContext
