@@ -253,7 +253,7 @@ the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
-it was not case-sensitive and underscores were ignored and there was no even a
+it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
 
 
