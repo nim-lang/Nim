@@ -189,7 +189,7 @@ proc `$`*[T](self: Option[T]): string =
   if self.isSome:
     "Some(" & $self.val & ")"
   else:
-    "None[" & T.name & "]"
+    "None[" & name(T) & "]"
 
 when isMainModule:
   import unittest, sequtils
@@ -298,3 +298,17 @@ when isMainModule:
     test "none[T]":
       check(none[int]().isNone)
       check(none(int) == none[int]())
+
+    test "$ on typed with .name":
+      type Named = object
+        name: string
+
+      let nobody = none(Named)
+      check($nobody == "None[Named]")
+
+    test "$ on type with name()":
+      type Person = object
+        myname: string
+
+      let noperson = none(Person)
+      check($noperson == "None[Person]")

@@ -154,7 +154,7 @@ proc readLine(f: File, line: var TaintedString): bool =
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    c_memset(addr line.string[pos], '\L'.ord, sp)
+    nimSetMem(addr line.string[pos], '\L'.ord, sp)
     var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
     if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)

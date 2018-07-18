@@ -189,7 +189,7 @@ proc putComment(g: var TSrcGen, s: string) =
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i < s.len and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
       put(g, tkComment, com)
@@ -226,7 +226,7 @@ proc maxLineLength(s: string): int =
       break
     of '\x0D':
       inc(i)
-      if s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       result = max(result, lineLen)
       lineLen = 0
     of '\x0A':
@@ -247,7 +247,7 @@ proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
       put(g, kind, str)
       str = ""
       inc(i)
-      if (i <= hi) and (s[i] == '\x0A'): inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
       optNL(g, 0)
     of '\x0A':
       put(g, kind, str)
@@ -416,7 +416,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkCast: result = lsub(g, n.sons[0]) + lsub(g, n.sons[1]) + len("cast[]()")
   of nkAddr: result = (if n.len>0: lsub(g, n.sons[0]) + len("addr()") else: 4)
   of nkStaticExpr: result = lsub(g, n.sons[0]) + len("static_")
-  of nkHiddenAddr, nkHiddenDeref: result = lsub(g, n.sons[0])
+  of nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString: result = lsub(g, n.sons[0])
   of nkCommand: result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(g, n) + 3
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(g, n) + 2
@@ -446,7 +446,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkChckRangeF: result = len("chckRangeF") + 2 + lcomma(g, n)
   of nkChckRange64: result = len("chckRange64") + 2 + lcomma(g, n)
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
-  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
+  of nkObjDownConv, nkObjUpConv:
     result = 2
     if sonsLen(n) >= 1: result = result + lsub(g, n.sons[0])
     result = result + lcomma(g, n, 1)
@@ -968,7 +968,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gcomma(g, n)
     put(g, tkParRi, ")")
-  of nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
+  of nkObjDownConv, nkObjUpConv:
     if sonsLen(n) >= 1: gsub(g, n.sons[0])
     put(g, tkParLe, "(")
     gcomma(g, n, 1)
@@ -1020,7 +1020,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
-  of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref:
+  of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
     gsub(g, n, 0)
   of nkLambda:
     putWithSpace(g, tkProc, "proc")
@@ -1073,9 +1073,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      if n[1].kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
+      var n_next = n[1]
+      while n_next.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, 
+                  nkStringToCString, nkCStringToString} and n_next.len > 0:
+        n_next = n_next[0]
+      if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
-      if n.sons[1].kind == nkInfix:
+      if n_next.kind == nkInfix:
         put(g, tkParLe, "(")
         gsub(g, n.sons[1])
         put(g, tkParRi, ")")

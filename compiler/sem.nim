@@ -610,14 +610,21 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
 proc testExamples(c: PContext) =
   let inp = toFullPath(c.config, c.module.info)
   let outp = inp.changeFileExt"" & "_examples.nim"
+  let nimcache = outp.changeFileExt"" & "_nimcache"
   renderModule(c.runnableExamples, inp, outp)
   let backend = if isDefined(c.config, "js"): "js"
                 elif isDefined(c.config, "cpp"): "cpp"
                 elif isDefined(c.config, "objc"): "objc"
                 else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend & " -r " & outp) != 0:
+  if os.execShellCmd(os.getAppFilename() & " " & backend & " --nimcache:" & nimcache & " -r " & outp) != 0:
     quit "[Examples] failed"
-  removeFile(outp)
+  else:
+    removeFile(outp)
+    removeFile(outp.changeFileExt(ExeExt))
+    try:
+      removeDir(nimcache)
+    except OSError:
+      discard
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)

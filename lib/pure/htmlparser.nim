@@ -1890,7 +1890,7 @@ proc entityToUtf8*(entity: string): string =
 proc addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
-proc parse(x: var XmlParser, errors: var seq[string]): XmlNode
+proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
 
 proc expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")

@@ -1284,7 +1284,9 @@ proc customPragmaNode(n: NimNode): NimNode =
   let
     typ = n.getTypeInst()
 
-  if typ.typeKind == ntyTypeDesc:
+  if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy: 
+    return typ[1][1]
+  elif typ.typeKind == ntyTypeDesc:
     let impl = typ[1].getImpl()
     if impl[0].kind == nnkPragmaExpr:
       return impl[0][1]

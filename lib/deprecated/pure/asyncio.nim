@@ -272,7 +272,7 @@ proc asyncSockHandleWrite(h: RootRef) =
         AsyncSocket(h).deleg.mode = fmRead
 
 when defined(ssl):
-  proc asyncSockDoHandshake(h: PObject) {.gcsafe.} =
+  proc asyncSockDoHandshake(h: RootRef) {.gcsafe.} =
     if AsyncSocket(h).socket.isSSL and not
          AsyncSocket(h).socket.gotHandshake:
       if AsyncSocket(h).sslNeedAccept:

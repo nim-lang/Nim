@@ -533,8 +533,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let s = regs[rb].node.strVal
       if s.isNil:
         stackTrace(c, tos, pc, errNilAccess)
-      elif idx <=% s.len:
+      elif idx <% s.len:
         regs[ra].intVal = s[idx].ord
+      elif idx == s.len and optLaxStrings in c.config.options:
+        regs[ra].intVal = 0
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:

@@ -275,14 +275,14 @@ proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ##  high(2) #=> 9223372036854775807
   ##  high(int) #=> 9223372036854775807
 
-proc high*[T: Ordinal](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
 proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
 proc high*(x: cstring): int {.magic: "High", noSideEffect.}
 proc high*(x: string): int {.magic: "High", noSideEffect.}
 
-proc low*[T: Ordinal](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
@@ -806,7 +806,7 @@ proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ##  var i = {1,2,3,4}
   ##  card(i) #=> 4
 
-proc ord*[T](x: T): int {.magic: "Ord", noSideEffect.}
+proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## returns the internal int value of an ordinal value ``x``.
   ##
   ## .. code-block:: nim
@@ -2959,6 +2959,22 @@ when not defined(JS): #and not defined(nimscript):
                        ## useful for low-level file access
 
   include "system/ansi_c"
+  include "system/memory"
+
+  proc zeroMem(p: pointer, size: Natural) =
+    nimZeroMem(p, size)
+    when declared(memTrackerOp):
+      memTrackerOp("zeroMem", p, size)
+  proc copyMem(dest, source: pointer, size: Natural) =
+    nimCopyMem(dest, source, size)
+    when declared(memTrackerOp):
+      memTrackerOp("copyMem", dest, size)
+  proc moveMem(dest, source: pointer, size: Natural) =
+    c_memmove(dest, source, size)
+    when declared(memTrackerOp):
+      memTrackerOp("moveMem", dest, size)
+  proc equalMem(a, b: pointer, size: Natural): bool =
+    nimCmpMem(a, b, size) == 0
 
   proc cmp(x, y: string): int =
     when nimvm:
@@ -2967,7 +2983,7 @@ when not defined(JS): #and not defined(nimscript):
       else: result = 0
     else:
       let minlen = min(x.len, y.len)
-      result = int(c_memcmp(x.cstring, y.cstring, minlen.csize))
+      result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
       if result == 0:
         result = x.len - y.len
 
@@ -3255,22 +3271,6 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
-
-    when not defined(nimscript):
-      proc zeroMem(p: pointer, size: Natural) =
-        c_memset(p, 0, size)
-        when declared(memTrackerOp):
-          memTrackerOp("zeroMem", p, size)
-      proc copyMem(dest, source: pointer, size: Natural) =
-        c_memcpy(dest, source, size)
-        when declared(memTrackerOp):
-          memTrackerOp("copyMem", dest, size)
-      proc moveMem(dest, source: pointer, size: Natural) =
-        c_memmove(dest, source, size)
-        when declared(memTrackerOp):
-          memTrackerOp("moveMem", dest, size)
-      proc equalMem(a, b: pointer, size: Natural): bool =
-        c_memcmp(a, b, size) == 0
 
     when hostOS == "standalone":
       include "system/embedded"
@@ -4154,11 +4154,10 @@ template doAssertRaises*(exception, code: untyped): typed =
   ## .. code-block:: nim
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
-  # TODO: investigate why runnableExamples here caused
-  # https://github.com/nim-lang/Nim/issues/8223
   var wrong = false
   try:
-    code
+    if true:
+      code
     wrong = true
   except exception:
     discard

@@ -1,12 +1,12 @@
 discard """
-  output:""
+  output: ""
 """
 
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
-doAssert """["", "foo", "bar"]""" ==  $(["", "foo", "bar"])
-doAssert """["", "foo", "bar"]""" ==  $(@["", "foo", "bar"].toOpenArray(0, 2))
+doAssert """["", "foo", "bar"]""" == $(["", "foo", "bar"])
+doAssert """["", "foo", "bar"]""" == $(@["", "foo", "bar"].toOpenArray(0, 2))
 
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}
@@ -69,13 +69,13 @@ var yy: string
 doAssert xx == @[]
 doAssert yy == ""
 
-proc bar(arg: cstring): void =
+proc bar(arg: cstring) =
   doAssert arg[0] == '\0'
 
-proc baz(arg: openarray[char]): void =
+proc baz(arg: openarray[char]) =
   doAssert arg.len == 0
 
-proc stringCompare(): void =
+proc stringCompare() =
   var a,b,c,d,e,f,g: string
   a.add 'a'
   doAssert a == "a"
@@ -102,9 +102,12 @@ proc stringCompare(): void =
   doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
 
   var nilstring: string
-  bar(nilstring)
+  #bar(nilstring)
   baz(nilstring)
 
 stringCompare()
+var nilstring: string
+bar(nilstring)
+
 static:
   stringCompare()

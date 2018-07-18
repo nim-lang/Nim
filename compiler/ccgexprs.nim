@@ -255,16 +255,14 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # here for this flag, where it is reasonably safe to do so
   # (for objects, etc.):
   if p.config.selectedGC == gcDestructors:
-    useStringh(p.module)
     linefmt(p, cpsStmts,
-         "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-         addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
+        "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+        addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
   elif needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if dest.storage == OnStack or not usesWriteBarrier(p.config):
-      useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
     else:
       linefmt(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
@@ -345,9 +343,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needsComplexAssignment(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
-      useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
+           "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            rdLoc(dest), rdLoc(src), getTypeDesc(p.module, dest.t))
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
@@ -358,16 +355,14 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            addrLoc(p.config, dest), addrLoc(p.config, src),
            genTypeInfo(p.module, dest.t, dest.lode.info))
     else:
-      useStringh(p.module)
       linefmt(p, cpsStmts,
-           # bug #4799, keep the memcpy for a while
-           #"memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len_0);$n",
+           # bug #4799, keep the nimCopyMem for a while
+           #"#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len_0);$n",
            "$1 = $2;$n",
            rdLoc(dest), rdLoc(src))
   of tySet:
     if mapType(p.config, ty) == ctArray:
-      useStringh(p.module)
-      linefmt(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
+      linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               rdLoc(dest), rdLoc(src), rope(getSize(p.config, dest.t)))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
@@ -412,8 +407,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
          genTypeInfo(p.module, dest.t, dest.lode.info))
   of tySet:
     if mapType(p.config, ty) == ctArray:
-      useStringh(p.module)
-      linefmt(p, cpsStmts, "memcpy((void*)$1, (NIM_CONST void*)$2, $3);$n",
+      linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               rdLoc(dest), rdLoc(src), rope(getSize(p.config, dest.t)))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
@@ -1515,9 +1509,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
     else: unaryExpr(p, e, d, "$1Len_0")
   of tyCString:
-    useStringh(p.module)
-    if op == mHigh: unaryExpr(p, e, d, "($1 ? (strlen($1)-1) : -1)")
-    else: unaryExpr(p, e, d, "($1 ? strlen($1) : 0)")
+    if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
+    else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
   of tyString:
     if not p.module.compileToCpp:
       if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->Sup.len-1) : -1)")
@@ -1672,7 +1665,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
         "  if (!$3) break;}$n", "for ($1 = 0; $1 < $2; $1++) { $n" &
         "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" & "  if (!$3) break;}$n" &
-        "if ($3) $3 = (memcmp($4, $5, $2) != 0);$n",
+        "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
       "&", "|", "& ~", "^"]
   var a, b, i: TLoc
   var setType = skipTypes(e.sons[1].typ, abstractVar)
@@ -1711,11 +1704,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
       if d.k == locNone: getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyBool), d)
-      lineF(p, cpsStmts, lookupOpr[op],
+      linefmt(p, cpsStmts, lookupOpr[op],
            [rdLoc(i), rope(size), rdLoc(d), rdLoc(a), rdLoc(b)])
     of mEqSet:
-      useStringh(p.module)
-      binaryExprChar(p, e, d, "(memcmp($1, $2, " & $(size) & ")==0)")
+      binaryExprChar(p, e, d, "(#nimCmpMem($1, $2, " & $(size) & ")==0)")
     of mMulSet, mPlusSet, mMinusSet, mSymDiffSet:
       # we inline the simple for loop for better code generation:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i) # our counter
@@ -1979,7 +1971,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   # example: { a..b, c, d, e, f..g }
   # we have to emit an expression of the form:
-  # memset(tmp, 0, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
+  # nimZeroMem(tmp, sizeof(tmp)); inclRange(tmp, a, b); incl(tmp, c);
   # incl(tmp, d); incl(tmp, e); inclRange(tmp, f, g);
   var
     a, b, idx: TLoc
@@ -1989,8 +1981,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     if d.k == locNone: getTemp(p, e.typ, d)
     if getSize(p.config, e.typ) > 8:
       # big set:
-      useStringh(p.module)
-      lineF(p, cpsStmts, "memset($1, 0, sizeof($2));$n",
+      linefmt(p, cpsStmts, "#nimZeroMem($1, sizeof($2));$n",
           [rdLoc(d), getTypeDesc(p.module, e.typ)])
       for it in e.sons:
         if it.kind == nkRange:
