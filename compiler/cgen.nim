@@ -664,6 +664,7 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef linux\L")
   add(m.s[cfsHeaders], "#undef mips\L")
   add(m.s[cfsHeaders], "#undef near\L")
+  add(m.s[cfsHeaders], "#undef far\L")
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 
