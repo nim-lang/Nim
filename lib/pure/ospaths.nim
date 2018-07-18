@@ -13,6 +13,7 @@
 include "system/inclrtl"
 
 import strutils
+import sugar
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
@@ -157,6 +158,65 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
+# TODO: MOVE to strutils, sequtils, or algorithms
+proc countWhile*(str: string, pred : proc(a:char):bool, prefix = true): int =
+  ## returns the number of elements in ``str`` that satisfy ``pred`` predicate.
+  ## without interruption, starting from beginning (when ``prefix`` is true)
+  ## or end (when ``prefix`` is false)
+  runnableExamples:
+    import sugar
+    doAssert countWhile("abc", a=>a == '/') == 0
+    doAssert countWhile("//abc", a=>a == '/') == 2
+    doAssert countWhile("//", a=>a == '/') == 2
+    doAssert countWhile("", a=>a == '/') == 0
+
+    doAssert countWhile("abc", a=>a == '/', prefix = false) == 0
+    doAssert countWhile("abc//", a=>a == '/', prefix = false) == 2
+    doAssert countWhile("//", a=>a == '/', prefix = false) == 2
+    doAssert countWhile("", a=>a == '/', prefix = false) == 0
+  let lenS = len(str)
+  if prefix:
+    for i in 0..<lenS:
+      if not pred(str[i]): return i
+  else:
+    for i in 0..<lenS:
+      if not pred(str[lenS - i - 1]): return i
+  return lenS
+
+proc rootPrefixLength(path: string) : int =
+  ## Returns the length of the prefix that makes ``path`` absolute, or 0
+  ## if ``path`` is relative.
+  if len(path) == 0: return 0
+
+  when doslikeFileSystem:
+    if path[0] in {DirSep, AltSep}:
+      return countWhile(path, a => a in {DirSep, AltSep})
+    if len(path) > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':':
+      # eg: C:\\bar
+      return 2 + countWhile(path[2..^1], a => a in {DirSep, AltSep})
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    if path[0] == ':':
+      result = 0
+    else:
+      result = countWhile(path, a => a != ':')
+  elif defined(RISCOS):
+    result = if path[0] == '$': 1 else: 0
+  elif defined(posix):
+    result = countWhile(path, a => a == '/')
+
+proc rootPrefix*(path: string) : string =
+  ## returns the prefix that makes ``path`` absolute, or ""
+  ## if ``path`` is relative.
+  runnableExamples:
+    doAssert "foo".rootPrefix == ""
+    doAssert "//foo".rootPrefix == "//"
+    when doslikeFileSystem:
+      doAssert r"/\foo".rootPrefix == r"/\"
+      doAssert r"C:\\foo".rootPrefix == r"C:\\"
+  let n = path.rootPrefixLength
+  result = path[0..<n]
+
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Returns whether ``path`` is absolute.
   ##
@@ -171,19 +231,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     when defined(Windows):
       doAssert "C:\\foo".isAbsolute
 
-  if len(path) == 0: return false
-
-  when doslikeFileSystem:
-    var len = len(path)
-    result = (path[0] in {'/', '\\'}) or
-              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
-  elif defined(macos):
-    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
-    result = path[0] != ':'
-  elif defined(RISCOS):
-    result = path[0] == '$'
-  elif defined(posix):
-    result = path[0] == '/'
+  return rootPrefixLength(path) > 0
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -217,7 +265,7 @@ proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {
   ##
   ## If ``tail`` is absolute and ``absOverrides`` is true, or ``head`` is empty,
   ## returns ``tail``. If ``tail`` is empty returns ``head``. Else, returns the
-  ## concatenation with normalized spearator between ``head`` and ``tail``.
+  ## concatenation with normalized separator between ``head`` and ``tail``.
   runnableExamples:
     when defined(posix):
       doAssert joinPath("usr", "lib") == "usr/lib"
@@ -228,7 +276,11 @@ proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {
       doAssert joinPath("usr///", "//lib") == "usr/lib" ## `//` gets compressed
       doAssert joinPath("//", "lib") == "/lib" ## ditto
     when defined(Windows):
-      doAssert joinPath(r"C:\foo", r"D:\bar") == r"C:\foo\bar"
+      ## Note: network paths are removed in this example:
+      doAssert joinPath(r"E:\foo", r"D:\bar") == r"E:\foo\bar"
+      doAssert joinPath("", r"D:\bar") == r"D:\bar"
+      doAssert joinPath(r"/foo", r"\bar") == r"/foo\bar"
+      doAssert joinPath(r"\foo", r"\bar", absOverrides = true) == r"\bar"
 
   if absOverrides and tail.isAbsolute:
     return tail
@@ -236,15 +288,7 @@ proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {
   if len(head) == 0:
     result = tail
   else:
-    var tail2 = tail
-    if tail.isAbsolute:
-      when defined(posix):
-        tail2 = strip(tail, leading = true, trailing = false, {DirSep})
-      elif doslikeFileSystem:
-        # TODO: factor this logic with isAbsolute; is `\bar` allowed?
-        # TODO: how to handle "C:\foo" / "D:\bar" ?
-        doAssert tail.len>=2 and tail[1] == ':'
-        tail2 = tail[2..^1]
+    var tail2 = tail[rootPrefixLength(tail)..^1]
     result = normalizePathEnd(head, trailingSep = true) & tail2
 
 proc joinPath*(parts: varargs[string], absOverrides: bool): string {.noSideEffect,
@@ -294,6 +338,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   ##   splitPath("/bin") -> ("", "bin")
   ##   splitPath("") -> ("", "")
   var sepPos = -1
+  # TODO: here and elsewhere, use countWhile
   for i in countdown(len(path)-1, 0):
     if path[i] in {DirSep, AltSep}:
       sepPos = i
@@ -708,3 +753,16 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+  block rootPrefixLengthTest:
+    doAssert "foo".rootPrefixLength == 0
+    doAssert "/foo".rootPrefixLength == 1
+    doAssert "//foo".rootPrefixLength == 2
+    when doslikeFileSystem:
+      doAssert r"\foo".rootPrefixLength == 1
+      doAssert r"/foo".rootPrefixLength == 1
+      doAssert r"C:".rootPrefixLength == 2
+      doAssert r"C:\foo".rootPrefixLength == 3
+      doAssert r"//foo".rootPrefixLength == 2
+      doAssert r"C:\\foo".rootPrefixLength == 4
+
