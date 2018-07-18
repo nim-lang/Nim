@@ -548,23 +548,21 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Expands a path starting with ``~/`` to a full path.
+  ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
+  ## ``~`` with ``getHomeDir()`` (otherwise returns ``path`` unmodified).
   ##
-  ## If `path` starts with the tilde character and is followed by `/` or `\\`
-  ## this proc will return the reminder of the path appended to the result of
-  ## the getHomeDir() proc, otherwise the input path will be returned without
-  ## modification.
-  ##
-  ## The behaviour of this proc is the same on the Windows platform despite
-  ## not having this convention. Example:
-  ##
-  ## .. code-block:: nim
-  ##   let configFile = expandTilde("~" / "appname.cfg")
-  ##   echo configFile
-  ##   # --> C:\Users\amber\appname.cfg
-  if len(path) > 1 and path[0] == '~' and (path[1] == '/' or path[1] == '\\'):
+  ## Windows: this is still supported despite Windows platform not having this
+  ## convention; also, both ``~/`` and ``~\`` are handled.
+  runnableExamples:
+    doAssert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
+  if len(path) == 0 or path[0] != '~':
+    result = path
+  elif len(path) == 1:
+    result = getHomeDir()
+  elif (path[1] in {DirSep, AltSep}):
     result = getHomeDir() / path.substr(2)
   else:
+    # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
