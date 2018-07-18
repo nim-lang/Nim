@@ -2031,9 +2031,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
           c.runnableExamples = newTree(nkStmtList,
             newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
         let imports = newTree(nkStmtList)
-        extractImports(n.lastSon, imports)
+        var saved_lastSon = copyTree n.lastSon
+        extractImports(saved_lastSon, imports)
         for imp in imports: c.runnableExamples.add imp
-        c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree n.lastSon)
+        c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree saved_lastSon)
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
