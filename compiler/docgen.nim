@@ -288,7 +288,7 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   of nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      dispA(d.conf, dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+      dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter
