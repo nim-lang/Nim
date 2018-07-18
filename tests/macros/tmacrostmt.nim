@@ -44,3 +44,18 @@ macro repr_and_parse(fn: typed): typed =
   result = parseStmt(fn_impl.repr)
 
 repr_and_parse(f)
+
+
+#------------------------------------
+# bugs #8343 and #8344 
+proc one_if_proc(x, y : int): int =
+  if x < y: result = x
+  else: result = y
+
+proc test_block(x, y : int): int =
+  block label:
+    result = x
+    result = y
+
+repr_and_parse(one_if_proc)
+repr_and_parse(test_block)
