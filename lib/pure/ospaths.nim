@@ -185,6 +185,8 @@ proc joinPath*(head, tail: string): string {.
   ##   assert joinPath("usr/", "/lib") == "usr/lib"
   if len(head) == 0:
     result = tail
+  elif head[0] notin {DirSep, AltSep} and head[len(head) - 1] notin {DirSep, AltSep}:
+    result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
     if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & substr(tail, 1)
