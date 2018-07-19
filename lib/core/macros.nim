@@ -176,6 +176,22 @@ proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
   ## set `n`'s `i`'th child to `child`.
   n[n.len - i.int] = child
 
+template `or`*(a,b: NimNode): NimNode =
+  ## Evalutuate ``a`` and when it is not an empty node, return return
+  ## it. Otherwise evaluate to ``b``. Can be used to chain several
+  ## expressions that evaluates to the first expression that is not
+  ## empty.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   let node = mightBeEmpty() or mightAlsoBeEmpty() or fallbackNode
+
+  let arg = a
+  if arg != nil and arg.kind != nnkEmpty:
+    arg
+  else:
+    b
+
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
   noSideEffect, locks: 0.}
   ## Adds the `child` to the `father` node. Returns the
@@ -1433,4 +1449,3 @@ proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project, not to
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
-
