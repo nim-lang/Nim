@@ -176,7 +176,7 @@ proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
   ## set `n`'s `i`'th child to `child`.
   n[n.len - i.int] = child
 
-template `or`*(a,b: NimNode): NimNode =
+template `or`*(x, y: NimNode): NimNode =
   ## Evalutuate ``a`` and when it is not an empty node, return return
   ## it. Otherwise evaluate to ``b``. Can be used to chain several
   ## expressions that evaluates to the first expression that is not
@@ -186,11 +186,11 @@ template `or`*(a,b: NimNode): NimNode =
   ##
   ##   let node = mightBeEmpty() or mightAlsoBeEmpty() or fallbackNode
 
-  let arg = a
+  let arg = x
   if arg != nil and arg.kind != nnkEmpty:
     arg
   else:
-    b
+    y
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
   noSideEffect, locks: 0.}
