@@ -139,32 +139,33 @@ proc get*[T](self: Option[T], otherwise: T): T =
   else:
     otherwise
 
-template `or`*[T](x: Option[T], y: T): T =
+template `or`*[T](x: Option[T]; y: T): T =
   ## Alias for the ``get`` proc, but useful when chaining several `or`
   ## operations. It might also be more readable to use this operator
   ## than to use the get proc.
   get(x,y)
 
-template `or`*[T](x: Option[T], y: Option[T]): Option[T] =
+template `or`*[T](x, y: Option[T]): Option[T] =
   let xx = x
   if xx.isSome:
     xx
   else:
     y
 
-template `and`*[T](x: Option[T], y: T): Option[T] =
+template `and`*[T,U](x: Option[T]; y: Option[U]): Option[U] =
   ## When ``x`` is some, then return ``y``, else return ``None``
   if x.isSome:
     y
   else:
-    none[T]()
+    none[U]()
 
-template `and`*[T](x: Option[T], y: Option[T]): Option[T] =
-  ## when ``x`` is some, then evaluate ``y``, else return ``None``.
+template `and`*[T,U](x: Option[T], y: U): Option[U] =
+  ## When ``x`` is some, then return ``y``, else return ``None``
   if x.isSome:
-    y
+    some(y)
   else:
-    none[T]()
+    none[U]()
+
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
@@ -396,20 +397,21 @@ when isMainModule:
       check(sideEffects == 2)
       reset()
 
-      check((genSome() and genNone() and "c") == )
+      check((genSome() and genNone() and "c") == none[string]())
       check(sideEffects == 2)
       reset()
 
-      check((genSome() and genSome() and "c") == "c")
+      check((genSome() and genSome() and "c") == some("c"))
       check(sideEffects == 2)
       reset()
 
-      check((genNone() and genSome() and genNone() and "c") == "a")
+      check((genNone() and genSome() and genNone() and "c") == none[string]())
       check(sideEffects == 1)
       reset()
 
-
-
+      # change the type during the expression and mix ``and`` with ``or``
+      check((genNone() and 1 or 2) == 2)
+      check((genSome() and 1 or 2) == 1)
 
       #check((a or some("thing")) == some("thing"))
       #check((a or b) == none[string]())
