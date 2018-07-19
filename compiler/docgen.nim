@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, lineinfos
+  typesrenderer, astalgo, modulepaths, lineinfos, sequtils
 
 type
   TSections = array[TSymKind, Rope]
@@ -259,11 +259,19 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+      dispA(d.conf, result, "<span>" &  # This span is required for the JS to work properly
+        """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+</span>
+<span class="pragmawrap">
+<span class="Other">$1</span>
+<span class="pragma">""".replace("\n", ""),  # Must remove newlines because wrapped in a <pre>
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
-      dispA(d.conf, result, "</div><span class=\"Other pragmaend\">$1</span>",
+      dispA(d.conf, result, """
+</span>
+<span class="Other">$1</span>
+</span>""".replace("\n", ""),
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
@@ -280,7 +288,7 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   of nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      dispA(d.conf, dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+      dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter

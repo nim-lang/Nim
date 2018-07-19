@@ -308,7 +308,7 @@ proc setCursorPos*(f: File, x, y: int) =
     let h = conHandle(f)
     setCursorPos(h, x, y)
   else:
-    f.write(fmt"{stylePrefix}{y};{x}f")
+    f.write(fmt"{stylePrefix}{y+1};{x+1}f")
 
 proc setCursorXPos*(f: File, x: int) =
   ## Sets the terminal's cursor to the x position.
@@ -323,7 +323,7 @@ proc setCursorXPos*(f: File, x: int) =
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
   else:
-    f.write(fmt"{stylePrefix}{x}G")
+    f.write(fmt"{stylePrefix}{x+1}G")
 
 when defined(windows):
   proc setCursorYPos*(f: File, y: int) =

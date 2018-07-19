@@ -4128,11 +4128,10 @@ template doAssertRaises*(exception, code: untyped): typed =
   ## .. code-block:: nim
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
-  # TODO: investigate why runnableExamples here caused
-  # https://github.com/nim-lang/Nim/issues/8223
   var wrong = false
   try:
-    code
+    if true:
+      code
     wrong = true
   except exception:
     discard

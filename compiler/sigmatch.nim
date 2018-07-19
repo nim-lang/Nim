@@ -640,7 +640,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation = 
+  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation =
     if a0 == f0 and a1 == f1:
       isEqual
     elif a0 >= f0 and a1 <= f1:
@@ -650,12 +650,12 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
       isConvertible
     else:
       isNone
-  
-  if f.isOrdinalType: 
+
+  if f.isOrdinalType:
     checkRange(firstOrd(nil, a), lastOrd(nil, a), firstOrd(nil, f), lastOrd(nil, f))
-  else: 
+  else:
     checkRange(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
-    
+
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var
