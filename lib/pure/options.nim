@@ -359,6 +359,8 @@ when isMainModule:
       proc reset(): void =
         sideEffects = 0
 
+      # test ``or`` operator
+
       check((genNone() or genNone() or genNone()) == none[string]())
       check(sideEffects == 3)
       reset()
@@ -383,7 +385,7 @@ when isMainModule:
       check(sideEffects == 1)
       reset()
 
-
+      # test ``and`` operator
 
       check((genSome() and genSome() and genSome()) == some("c"))
       check(sideEffects == 3)
@@ -412,8 +414,3 @@ when isMainModule:
       # change the type during the expression and mix ``and`` with ``or``
       check((genNone() and 1 or 2) == 2)
       check((genSome() and 1 or 2) == 1)
-
-      #check((a or some("thing")) == some("thing"))
-      #check((a or b) == none[string]())
-      #check((echo a or b or "Hi!") == "Hi!")
-      #check((echo a or b))
