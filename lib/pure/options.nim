@@ -139,6 +139,33 @@ proc get*[T](self: Option[T], otherwise: T): T =
   else:
     otherwise
 
+template `or`*[T](x: Option[T], y: T): T =
+  ## Alias for the ``get`` proc, but useful when chaining several `or`
+  ## operations. It might also be more readable to use this operator
+  ## than to use the get proc.
+  get(x,y)
+
+template `or`*[T](x: Option[T], y: Option[T]): Option[T] =
+  let xx = x
+  if xx.isSome:
+    xx
+  else:
+    y
+
+template `and`*[T](x: Option[T], y: T): Option[T] =
+  ## When ``x`` is some, then return ``y``, else return ``None``
+  if x.isSome:
+    y
+  else:
+    none[T]()
+
+template `and`*[T](x: Option[T], y: Option[T]): Option[T] =
+  ## when ``x`` is some, then evaluate ``y``, else return ``None``.
+  if x.isSome:
+    y
+  else:
+    none[T]()
+
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
   if self.isSome:
@@ -312,3 +339,79 @@ when isMainModule:
 
       let noperson = none(Person)
       check($noperson == "None[Person]")
+
+    test "logical operatior()":
+      let a = none[string]()
+      let b = none[string]()
+
+      let strings = ["a", "b", "c", "d", "e"]
+      var sideEffects = 0
+
+      proc genSome(): Option[string] =
+        result = some(strings[sideEffects])
+        sideEffects += 1
+
+      proc genNone(): Option[string] =
+        result = none[string]()
+        sideEffects += 1
+
+      proc reset(): void =
+        sideEffects = 0
+
+      check((genNone() or genNone() or genNone()) == none[string]())
+      check(sideEffects == 3)
+      reset()
+
+      check((genNone() or genSome()) == some("b"))
+      check(sideEffects == 2)
+      reset()
+
+      check((genNone() or genSome() or genSome()) == some("b"))
+      check(sideEffects == 2)
+      reset()
+
+      check((genNone() or genSome() or "c") == "b")
+      check(sideEffects == 2)
+      reset()
+
+      check((genNone() or genNone() or "c") == "c")
+      check(sideEffects == 2)
+      reset()
+
+      check((genSome() or genNone() or genSome() or "c") == "a")
+      check(sideEffects == 1)
+      reset()
+
+
+
+      check((genSome() and genSome() and genSome()) == some("c"))
+      check(sideEffects == 3)
+      reset()
+
+      check((genSome() and genNone()) == none[string]())
+      check(sideEffects == 2)
+      reset()
+
+      check((genSome() and genNone() and genNone()) == none[string]())
+      check(sideEffects == 2)
+      reset()
+
+      check((genSome() and genNone() and "c") == )
+      check(sideEffects == 2)
+      reset()
+
+      check((genSome() and genSome() and "c") == "c")
+      check(sideEffects == 2)
+      reset()
+
+      check((genNone() and genSome() and genNone() and "c") == "a")
+      check(sideEffects == 1)
+      reset()
+
+
+
+
+      #check((a or some("thing")) == some("thing"))
+      #check((a or b) == none[string]())
+      #check((echo a or b or "Hi!") == "Hi!")
+      #check((echo a or b))
