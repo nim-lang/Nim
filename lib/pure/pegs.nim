@@ -24,6 +24,7 @@ import strutils, macros
 
 when useUnicode:
   import unicode
+  export unicode.`==`
 
 const
   InlineThreshold = 5  ## number of leaves; -1 to disable inlining
@@ -1023,9 +1024,6 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## corresponding *leave* handler by annotating them with an *inject* pragma.
   proc rawParse(s: string, p: Peg, start: int, c: var Captures): int
       {.genSym.} =
-
-    # It's either this hack or an *export unicode.`==`* at the top.
-    proc `==`(a, b: Rune): bool = return int(a) == int(b)
 
     # binding from *macros*
     bind strVal
