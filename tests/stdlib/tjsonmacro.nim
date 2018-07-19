@@ -477,3 +477,43 @@ when isMainModule:
     doAssert t.dog.name == "honey"
     doAssert t.fruit.color == 10
     doAssert seq[string](t.emails) == @["abc", "123"]
+
+    block test_table:
+      var y = parseJson("""{"a": 1, "b": 2, "c": 3}""")
+      var u = y.to(MyTable)
+      var v = y.to(Table[string, int])
+      doAssert Table[string, int](u)["a"] == 1
+      doAssert Table[string, int](u)["b"] == 2
+      doAssert Table[string, int](u)["c"] == 3
+      doAssert v["a"] == 1
+
+    block primitive_string:
+      const kApple = "apple"
+      var u = newJString(kApple)
+      var v = u.to(Email)
+      var w = u.to(Apple)
+      var x = u.to(String)
+      doAssert string(v) == kApple
+      doAssert string(w) == kApple
+      doAssert string(x) == kApple
+
+    block test_option:
+      var u = newJInt(1137)
+      var v = u.to(MyYear)
+      var w = u.to(Option[int])
+      doAssert Option[int](v).get() == 1137
+      doAssert w.get() == 1137
+
+    block test_object:
+      var u = parseJson("""{"color": 987}""")
+      var v = u.to(MyObj)
+      var w = u.to(MyDistObj)
+      doAssert v.color == 987
+      doAssert MyObj(w).color == 987
+
+    block test_ref_object:
+      var u = parseJson("""{"name": "smith"}""")
+      var v = u.to(MyRef)
+      var w = u.to(MyDistRef)
+      doAssert v.name == "smith"
+      doAssert MyRef(w).name == "smith"

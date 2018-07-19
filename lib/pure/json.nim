@@ -1291,7 +1291,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
     # Handle all other types.
     let obj = getType(typeSym)
-    if obj.kind == nnkBracketExpr:
+    let typeNode = getTypeImpl(typeSym)
+    if typeNode.typeKind == ntyDistinct:
+      result = createConstructor(typeNode, jsonNode)
+    elif obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
