@@ -811,7 +811,8 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      #scope*: PScope          # the scope where the proc was defined
+      astNoTransformation*: PNode # syntax tree of proc including header before transf pass
+      #scope*: PScope          # the scope where the proc was defined      
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
