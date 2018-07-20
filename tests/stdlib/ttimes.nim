@@ -131,41 +131,41 @@ template parseTestTimeOnly(s, f, sExpected: string) =
 # explicit timezone offsets in all tests.
 template runTimezoneTests() =
   parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
-      "dddd 'at' hh:mmtt 'on' MMM d, yyyy z", "2015-12-15T09:04:00Z", 348)
+      "dddd 'at' hh:mmtt 'on' MMM d, yyyy z", "2015-12-15T09:04:00.000Z", 348)
   # ANSIC       = "Mon Jan _2 15:04:05 2006"
   parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-      "2006-01-12T15:04:05Z", 11)
+      "2006-01-12T15:04:05.000Z", 11)
   # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
   parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-      "2006-01-12T15:04:05Z", 11)
+      "2006-01-12T15:04:05.000Z", 11)
   # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
   parseTest("Mon Feb 29 15:04:05 -07:00 2016 +0", "ddd MMM dd HH:mm:ss zzz yyyy z",
-      "2016-02-29T15:04:05Z", 59) # leap day
+      "2016-02-29T15:04:05.000Z", 59) # leap day
   # RFC822      = "02 Jan 06 15:04 MST"
   parseTest("12 Jan 16 15:04 +0", "dd MMM yy HH:mm z",
-      "2016-01-12T15:04:00Z", 11)
+      "2016-01-12T15:04:00.000Z", 11)
   # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
   parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
-      "2016-03-01T22:04:00Z", 60) # day after february in leap year
+      "2016-03-01T22:04:00.000Z", 60) # day after february in leap year
   # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
   parseTest("Monday, 12-Jan-06 15:04:05 +0", "dddd, dd-MMM-yy HH:mm:ss z",
-      "2006-01-12T15:04:05Z", 11)
+      "2006-01-12T15:04:05.000Z", 11)
   # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
   parseTest("Sun, 01 Mar 2015 15:04:05 +0", "ddd, dd MMM yyyy HH:mm:ss z",
-      "2015-03-01T15:04:05Z", 59) # day after february in non-leap year
+      "2015-03-01T15:04:05.000Z", 59) # day after february in non-leap year
   # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
   parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
-      "2006-01-12T22:04:05Z", 11)
+      "2006-01-12T22:04:05.000Z", 11)
   # RFC3339     = "2006-01-02T15:04:05Z07:00"
   parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
-      "2006-01-12T22:04:05Z", 11)
+      "2006-01-12T22:04:05.000Z", 11)
   # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
   parseTest("2006-01-12T15:04:05.999999999Z-07:00",
-      "yyyy-MM-dd'T'HH:mm:ss'.999999999Z'zzz", "2006-01-12T22:04:05Z", 11)
+      "yyyy-MM-dd'T'HH:mm:ss'.999999999Z'zzz", "2006-01-12T22:04:05.000Z", 11)
   for tzFormat in ["z", "zz", "zzz"]:
     # formatting timezone as 'Z' for UTC
     parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
-        "2001-01-12T22:04:05Z", 11)
+        "2001-01-12T22:04:05.000Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 
@@ -198,7 +198,7 @@ suite "ttimes":
   when defined(Linux) or defined(macosx):
     const tz_dir = "/usr/share/zoneinfo"
     const f = "yyyy-MM-dd HH:mm zzz"
-    
+
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
     for tz_fn in walkFiles(tz_dir & "/**/*"):
@@ -225,7 +225,7 @@ suite "ttimes":
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
       check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
-      
+
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
 
     test "issue #6520":
@@ -243,22 +243,22 @@ suite "ttimes":
       check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")      
+      putEnv("TZ", "Europe/Stockholm")
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
-      check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
-      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
+      check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00.000+02:00"
+      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00.000+02:00"
 
     test "datetime before epoch":
-      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
+      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52.000Z"
 
     test "adding/subtracting time across dst":
       putenv("TZ", "Europe/Stockholm")
 
       let dt1 = initDateTime(26, mMar, 2017, 03, 00, 00)
-      check $(dt1 - 1.seconds) == "2017-03-26T01:59:59+01:00"
+      check $(dt1 - 1.seconds) == "2017-03-26T01:59:59.000+01:00"
 
       var dt2 = initDateTime(29, mOct, 2017, 02, 59, 59)
-      check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00+01:00"
+      check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00.000+01:00"
 
     putEnv("TZ", orig_tz)
 
@@ -341,8 +341,8 @@ suite "ttimes":
     let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
     check dt.utcOffset == -9000
     check dt.isDst == false
-    check $dt == "2000-01-01T12:00:00+02:30"
-    check $dt.utc == "2000-01-01T09:30:00Z"
+    check $dt == "2000-01-01T12:00:00.000+02:30"
+    check $dt.utc == "2000-01-01T09:30:00.000Z"
     check $dt.utc.inZone(tz) == $dt
 
   test "isLeapYear":
@@ -353,12 +353,12 @@ suite "ttimes":
 
   test "subtract months":
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
-    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00Z"
+    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00.000Z"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
-    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00Z"
+    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00.000Z"
     dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
     # This happens due to monthday overflow. It's consistent with Phobos.
-    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00Z"
+    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00.000Z"
 
   test "duration":
     let d = initDuration
@@ -390,7 +390,7 @@ suite "ttimes":
       initDuration(seconds = 1)
     check dt.second == 1
     let dt2 = dt + 35_001.years
-    check $dt2 == "0001-01-01T12:00:01Z"
+    check $dt2 == "0001-01-01T12:00:01.000Z"
 
   test "compare datetimes":
     var dt1 = now()
@@ -422,7 +422,7 @@ suite "ttimes":
     let day = 24.hours
     let tomorrow = now + day
     check tomorrow - now == initDuration(days = 1)
-  
+
   test "fromWinTime/toWinTime":
     check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
     check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
@@ -496,7 +496,7 @@ suite "ttimes":
       discard initTimeFormat("foo'")
 
   test "parse":
-    check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
+    check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00.000Z"
     parseTestExcp("+120180101", "yyyyMMdd")
 
     check parse("1", "YYYY", utc()).year == 1

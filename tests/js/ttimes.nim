@@ -35,9 +35,9 @@ let utcPlus2 = Timezone(zoneInfoFromUtc: staticZoneInfoFromUtc, zoneInfoFromTz: 
 
 block timezoneTests:
   let dt = initDateTime(01, mJan, 2017, 12, 00, 00, utcPlus2)
-  doAssert $dt == "2017-01-01T12:00:00+02:00"
-  doAssert $dt.utc == "2017-01-01T10:00:00Z"
+  doAssert $dt == "2017-01-01T12:00:00.000+02:00"
+  doAssert $dt.utc == "2017-01-01T10:00:00.000Z"
   doAssert $dt.utc.inZone(utcPlus2) == $dt
 
-doAssert $initDateTime(01, mJan, 1911, 12, 00, 00, utc()) == "1911-01-01T12:00:00Z"
-doAssert $initDateTime(01, mJan, 0023, 12, 00, 00, utc()) == "0023-01-01T12:00:00Z"
+doAssert $initDateTime(01, mJan, 1911, 12, 00, 00, utc()) == "1911-01-01T12:00:00.000Z"
+doAssert $initDateTime(01, mJan, 0023, 12, 00, 00, utc()) == "0023-01-01T12:00:00.000Z"
