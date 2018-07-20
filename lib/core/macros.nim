@@ -1319,9 +1319,8 @@ proc customPragmaNode(n: NimNode): NimNode =
           if identDefs.kind == nnkRecCase:
             identDefsStack.add(identDefs[0])
             for i in 1..<identDefs.len:
-              # if it is and empty 'else' branch, skip
-              if identDefs[i].kind == nnkElse and
-                identDefs[i][0].kind == nnkNilLit: continue
+              # if it is and empty branch, skip
+              if identDefs[i][0].kind == nnkNilLit: continue
               if identDefs[i][1].kind == nnkIdentDefs:
                 identDefsStack.add(identDefs[i][1])
               else: # nnkRecList

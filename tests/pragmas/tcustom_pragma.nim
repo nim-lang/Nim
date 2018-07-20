@@ -168,6 +168,7 @@ type
       b {.thingy.}: int
     of east:
       c: int
+    of south: discard
     else: discard
 
 var foo: Something
