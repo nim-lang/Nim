@@ -449,10 +449,11 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
         desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
-          title="$3" href="$1">$2</a></li>
+          title="$3" data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text, desc])
       else:
-        result.addf("""<li><a class="reference external" href="$1">$2</a></li>
+        result.addf("""<li><a class="reference external" 
+          data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text])
       inc j
     result.add("</ul></dd>\n")
@@ -493,6 +494,7 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
   # Build a list of levels and extracted titles to make processing easier.
   var
     titleRef: string
+    titleTag: string
     levels: seq[tuple[level: int, text: string]]
     L = 0
     level = 1
@@ -519,10 +521,12 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
     let link = entries[L].link
     if link.isDocumentationTitle:
       titleRef = link
+      titleTag = levels[L].text
     else:
       result.add(level.indentToLevel(levels[L].level))
-      result.add("<li><a href=\"" & link & "\">" &
-        levels[L].text & "</a></li>\n")
+      result.addf("""<li><a class="reference" data-doc-search-tag="$1" href="$2"> 
+        $3</a></li>
+        """, [titleTag & " : " & levels[L].text, link, levels[L].text])
     inc L
   result.add(level.indentToLevel(1) & "</ul>\n")
   assert(not titleRef.isNil,
