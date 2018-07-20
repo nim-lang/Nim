@@ -631,7 +631,8 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
       when defined(windows):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
-    result = args.map(quoteShell).join(" ")
+    # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    result = args.mapIt(quoteShell(it)).join(" ")
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
