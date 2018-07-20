@@ -40,7 +40,7 @@ proc f(name: MyString): int =
 macro repr_and_parse(fn: typed): typed =
   let fn_impl = fn.getImpl
   fn_impl.name = genSym(nskProc, $fn_impl.name)
-  echo fn_impl.tree_repr
+  echo fn_impl.repr
   result = parseStmt(fn_impl.repr)
 
 repr_and_parse(f)
