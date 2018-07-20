@@ -183,3 +183,19 @@ test(Vec4[float32]):
 # bug #4862
 static:
   discard typedesc[(int, int)].getTypeImpl
+  
+# bug 7737
+type
+  CustomSeq*[T] = object
+    data*: seq[T]
+
+macro foo(arg: typed): untyped =    
+  arg.getTypeInst.repr
+
+macro bar(args: varargs[typed]): untyped =
+  args[0].getTypeInst.repr
+
+var
+  b: CustomSeq[int]
+
+doAssert foo(b) == bar(b)

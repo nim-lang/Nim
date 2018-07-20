@@ -952,6 +952,10 @@ when false:
     of tyFloat64: greater({tyFloat128})
     else: discard
 
+template isVarargsUntyped(x): untyped =
+  x.kind == tyVarargs and x.sons[0].kind == tyExpr and
+    tfOldSchoolExprStmt notin x.sons[0].flags
+
 proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1037,7 +1041,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       skipTypes(f, {tyVar, tyLent}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
-    return typeRel(c, f, lastSon(a))
+    if not isVarargsUntyped(f):
+      return typeRel(c, f, lastSon(a))
 
   if a.isResolvedUserTypeClass:
     return typeRel(c, f, a.lastSon)
@@ -2171,10 +2176,6 @@ proc arrayConstr(c: PContext, info: TLineInfo): PType =
 proc incrIndexType(t: PType) =
   assert t.kind == tyArray
   inc t.sons[0].n.sons[1].intVal
-
-template isVarargsUntyped(x): untyped =
-  x.kind == tyVarargs and x.sons[0].kind == tyExpr and
-    tfOldSchoolExprStmt notin x.sons[0].flags
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =
