@@ -40,7 +40,7 @@ proc f(name: MyString): int =
 macro repr_and_parse(fn: typed): typed =
   let fn_impl = fn.getImpl
   fn_impl.name = genSym(nskProc, $fn_impl.name)
-  echo fn_impl.repr
+  echo fn_impl.tree_repr
   result = parseStmt(fn_impl.repr)
 
 repr_and_parse(f)
@@ -57,5 +57,21 @@ proc test_block(x, y : int): int =
     result = x
     result = y
 
+#------------------------------------
+# bugs #8343 and #8344 
+
+template `>`(x, y: untyped): untyped =
+  ## "is greater" operator. This is the same as ``y < x``.
+  y < x
+
+proc test_cond_stmtlist(x, y: int): int =
+  result = x
+  if x > y:
+    result = x
+
+
 repr_and_parse(one_if_proc)
 repr_and_parse(test_block)
+repr_and_parse(test_cond_stmtlist)
+
+
