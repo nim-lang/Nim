@@ -58,7 +58,7 @@ proc test_block(x, y : int): int =
     result = y
 
 #------------------------------------
-# bugs #8343 and #8344 
+# bugs #8348
 
 template `>`(x, y: untyped): untyped =
   ## "is greater" operator. This is the same as ``y < x``.
