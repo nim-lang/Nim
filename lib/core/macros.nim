@@ -1284,7 +1284,7 @@ proc customPragmaNode(n: NimNode): NimNode =
   let
     typ = n.getTypeInst()
 
-  if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy: 
+  if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
     return typ[1][1]
   elif typ.typeKind == ntyTypeDesc:
     let impl = typ[1].getImpl()
@@ -1319,6 +1319,9 @@ proc customPragmaNode(n: NimNode): NimNode =
           if identDefs.kind == nnkRecCase:
             identDefsStack.add(identDefs[0])
             for i in 1..<identDefs.len:
+              # if it is and empty 'else' branch, skip
+              if identDefs[i].kind == nnkElse and
+                identDefs[i][0].kind == nnkNilLit: continue
               if identDefs[i][1].kind == nnkIdentDefs:
                 identDefsStack.add(identDefs[i][1])
               else: # nnkRecList

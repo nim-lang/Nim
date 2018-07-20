@@ -154,3 +154,22 @@ block:
 let a: proc(x: int) {.defaultValue(5).} = nil
 static:
   doAssert hasCustomPragma(a.type, defaultValue)
+
+# bug #8371
+template thingy {.pragma.}
+
+type
+  Cardinal = enum
+    north, east, south, west
+  Something = object
+    a: float32
+    case cardinal: Cardinal
+    of north:
+      b {.thingy.}: int
+    of east:
+      c: int
+    else: discard
+
+var foo: Something
+foo.cardinal = north
+doAssert foo.b.hasCustomPragma(thingy) == true
