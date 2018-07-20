@@ -116,6 +116,8 @@ type
     nextChunkSize: int
     bottomData: AvlNode
     heapLinks: HeapLinks
+    when defined(nimTypeNames):
+      allocCounter, deallocCounter: int
 
 const
   fsLookupTable: array[byte, int8] = [
@@ -737,6 +739,8 @@ when false:
         result = nil
 
 proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
+  when defined(nimTypeNames):
+    inc(a.allocCounter)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
@@ -810,6 +814,8 @@ proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
+  when defined(nimTypeNames):
+    inc(a.deallocCounter)
   #sysAssert(isAllocatedPtr(a, p), "rawDealloc: no allocated pointer")
   sysAssert(allocInv(a), "rawDealloc: begin")
   var c = pageAddr(p)
@@ -975,6 +981,10 @@ proc getOccupiedMem(a: MemRegion): int {.inline.} =
   result = a.occ
   # a.currMem - a.freeMem
 
+when defined(nimTypeNames):
+  proc getMemCounters(a: MemRegion): (int, int) {.inline.} =
+    (a.allocCounter, a.deallocCounter)
+
 # ---------------------- thread memory region -------------------------------
 
 template instantiateForRegion(allocator: untyped) =
@@ -1017,6 +1027,9 @@ template instantiateForRegion(allocator: untyped) =
   proc getTotalMem(): int = return allocator.currMem
   proc getOccupiedMem(): int = return allocator.occ #getTotalMem() - getFreeMem()
   proc getMaxMem*(): int = return getMaxMem(allocator)
+
+  when defined(nimTypeNames):
+    proc getMemCounters*(): (int, int) = getMemCounters(allocator)
 
   # -------------------- shared heap region ----------------------------------
   when hasThreadSupport:
