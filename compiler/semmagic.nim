@@ -197,6 +197,11 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
+    # bug #7875
+    let t = s.typ
+    if t.sym == s:
+      s.typ = newType(tyTypeDesc, s)
+      s.typ.rawAddSon(t)
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
     if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
