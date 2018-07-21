@@ -263,7 +263,7 @@ type
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
                      ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
                      ## and are only exported so that ``Timezone`` can be implemented by other modules.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.tags: [], raises: [], benign.}
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.tags: [], raises: [], gcsafe.}
     zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.tags: [], raises: [], benign.}
     name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
                   ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -328,14 +328,14 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
 # Forward declarations
 proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], gcsafe .}
 proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc initTime*(unix: int64, nanosecond: NanosecondRange): Time
   {.tags: [], raises: [], benign noSideEffect.}
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration
-  {.tags: [], raises: [], benign noSideEffect.}
+  {.tags: [], raises: [], gcsafe, noSideEffect.}
 
 proc nanosecond*(time: Time): NanosecondRange =
   ## Get the fractional part of a ``Time`` as the number
@@ -395,13 +395,13 @@ proc fractional*(dur: Duration): Duration {.inline.} =
   initDuration(nanoseconds = dur.nanosecond)
 
 
-proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
+proc fromUnix*(unix: int64): Time {.tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
   runnableExamples:
     doAssert $fromUnix(0).utc == "1970-01-01T00:00:00Z"
   initTime(unix, 0)
 
-proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
+proc toUnix*(t: Time): int64 {.tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
@@ -474,7 +474,7 @@ proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month,
   let m = mp + (if mp < 10: 3 else: -9)
   return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
 
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .} =
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [] .} =
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(day, month, year).yearday``.
   assertValidDate monthday, month, year
@@ -486,7 +486,7 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
   else:
     result = daysUntilMonth[month] + monthday - 1
 
-proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
+proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [] .} =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initDateTime(day, month, year).weekday``.
   assertValidDate monthday, month, year
@@ -499,7 +499,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.
   result = if wd == 0: dSun else: WeekDay(wd - 1)
 
 
-{. pragma: operator, rtl, noSideEffect, benign .}
+{. pragma: operator, rtl, noSideEffect .}
 
 template subImpl[T: Duration|Time](a: Duration|Time, b: Duration|Time): T =
   normalize[T](a.seconds - b.seconds, a.nanosecond - b.nanosecond)
@@ -734,7 +734,7 @@ proc abs*(a: Duration): Duration =
       initDuration(milliseconds = 1500)
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
-proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
+proc toTime*(dt: DateTime): Time {.tags: [], raises: [] .} =
   ## Converts a broken-down time structure to
   ## calendar time representation.
   let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
@@ -775,12 +775,12 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     utcOffset: zt.utcOffset
   )
 
-proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [], benign.} =
+proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [] .} =
   ## Break down ``time`` into a ``DateTime`` using ``zone`` as the timezone.
   let zoneInfo = zone.zoneInfoFromUtc(time)
   result = initDateTime(zoneInfo, zone)
 
-proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], benign.} =
+proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], .} =
   ## Convert ``dt`` into a ``DateTime`` using ``zone`` as the timezone.
   dt.toTime.inZone(zone)
 
@@ -968,7 +968,7 @@ proc local*(t: Time): DateTime =
   ## Shorthand for ``t.inZone(local())``.
   t.inZone(local())
 
-proc getTime*(): Time {.tags: [TimeEffect], benign.} =
+proc getTime*(): Time {.tags: [TimeEffect] .} =
   ## Gets the current time as a ``Time`` with nanosecond resolution.
   when defined(JS):
     let millis = newDate().getTime()
@@ -990,7 +990,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     getSystemTimeAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
 
-proc now*(): DateTime {.tags: [TimeEffect], benign.} =
+proc now*(): DateTime {.tags: [TimeEffect] .} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
   ##
   ## Shorthand for ``getTime().local``.
@@ -2199,7 +2199,7 @@ proc parseTime*(input: string, f: static[string], zone: Timezone): Time =
 # End of parse & format implementation
 #
 
-proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
+proc `$`*(dt: DateTime): string {.tags: [], raises: [] .} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
   runnableExamples:
@@ -2207,7 +2207,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
     doAssert $dt == "2000-01-01T12:00:00Z"
   result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
 
-proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
+proc `$`*(time: Time): string {.tags: [], raises: [] .} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
   runnableExamples:
@@ -2326,7 +2326,7 @@ proc initInterval*(seconds, minutes, hours, days, months,
   ## **Deprecated since v0.18.0:** use ``initTimeInterval`` instead.
   initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
 
-proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
+proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
   ##
@@ -2334,34 +2334,34 @@ proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprec
   let nanos = ((since1970 - since1970.int64.float) * convert(Seconds, Nanoseconds, 1).float).int
   initTime(since1970.int64, nanos)
 
-proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
+proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], deprecated.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   fromUnix(since1970)
 
-proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
+proc toSeconds*(time: Time): float {.tags: [], raises: [], deprecated.} =
   ## Returns the time in seconds since the unix epoch.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   time.seconds.float + time.nanosecond / convert(Seconds, Nanoseconds, 1)
 
-proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
+proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
   ##
   ## **Deprecated since v0.18.0:** use ``local`` instead
   time.local
 
-proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
+proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
   ##
   ## **Deprecated since v0.18.0:** use ``utc`` instead
   time.utc
 
-proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
+proc getTimezone*(): int {.tags: [TimeEffect], raises: [], deprecated.} =
   ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
   ##
   ## **Deprecated since v0.18.0:** use ``now().utcOffset`` to get the current
@@ -2378,7 +2378,7 @@ proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} 
   else:
     return timezone
 
-proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
+proc timeInfoToTime*(dt: DateTime): Time {.tags: [], deprecated.} =
   ## Converts a broken-down time structure to calendar time representation.
   ##
   ## **Deprecated since v0.14.0:** use ``toTime`` instead.
@@ -2386,14 +2386,14 @@ proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
 
 when defined(JS):
   var start = getTime()
-  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
+  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect].} =
     ## get the milliseconds from the start of the program.
     ## **Deprecated since v0.8.10:** use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
     result = (convert(Seconds, Milliseconds, dur.seconds) +
       convert(Nanoseconds, Milliseconds, dur.nanosecond)).int
 else:
-  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
+  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect].} =
     when defined(macosx):
       result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
     else:
@@ -2406,7 +2406,7 @@ proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   # Milliseconds not available from Time
   t.toTimeInterval()
 
-proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
+proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], deprecated.} =
   ## **Deprecated since v0.18.0:** use
   ## ``getDayOfWeek(monthday: MonthdayRange; month: Month; year: int)`` instead.
   getDayOfWeek(day, month.Month, year)
