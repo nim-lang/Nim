@@ -1519,7 +1519,13 @@ when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
 when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
-proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+when defined(gcDestructors):
+  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+    let xl = x.len
+    setLen(x, xl + 1)
+    x[xl] = y
+else:
+  proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
 proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
@@ -3856,7 +3862,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization
   ## purposes.
-  when not defined(JS) and not defined(nimscript):
+  when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
     var s = cast[PGenericSeq](s)
     # string literals cannot become 'shallow':
     if (s.reserved and strlitFlag) == 0:
@@ -4031,7 +4037,9 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hasAlloc and not defined(nimscript) and not defined(JS):
+when hasAlloc and not defined(nimscript) and not defined(JS) and
+    not defined(gcDestructors):
+  # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## performs a deep copy of `y` and copies it into `x`.
     ## This is also used by the code generator

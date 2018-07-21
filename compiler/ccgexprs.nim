@@ -256,8 +256,8 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if p.config.selectedGC == gcDestructors:
     linefmt(p, cpsStmts,
-        "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
-        addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
+        "$1.len = $2.len; $1.p = $2.p;$n",
+        rdLoc(dest), rdLoc(src))
   elif needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
     if dest.storage == OnStack or not usesWriteBarrier(p.config):
@@ -1512,28 +1512,19 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
   of tyString:
-    if not p.module.compileToCpp:
-      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->Sup.len-1) : -1)")
-      else: unaryExpr(p, e, d, "($1 ? $1->Sup.len : 0)")
-    else:
-      if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->len-1) : -1)")
-      else: unaryExpr(p, e, d, "($1 ? $1->len : 0)")
+    var a: TLoc
+    initLocExpr(p, e.sons[1], a)
+    var x = lenExpr(p, a)
+    if op == mHigh: x = "($1-1)" % [x]
+    putIntoDest(p, d, e, x)
   of tySequence:
+    # we go through a temporary here because people write bullshit code.
     var a, tmp: TLoc
     initLocExpr(p, e[1], a)
     getIntTemp(p, tmp)
-    var frmt: FormatStr
-    if not p.module.compileToCpp:
-      if op == mHigh:
-        frmt = "$1 = ($2 ? ($2->Sup.len-1) : -1);$n"
-      else:
-        frmt = "$1 = ($2 ? $2->Sup.len : 0);$n"
-    else:
-      if op == mHigh:
-        frmt = "$1 = ($2 ? ($2->len-1) : -1);$n"
-      else:
-        frmt = "$1 = ($2 ? $2->len : 0);$n"
-    lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
+    var x = lenExpr(p, a)
+    if op == mHigh: x = "($1-1)" % [x]
+    lineCg(p, cpsStmts, "$1 = $2;$n", tmp.r, x)
     putIntoDest(p, d, e, tmp.r)
   of tyArray:
     # YYY: length(sideeffect) is optimized away incorrectly?
@@ -1889,7 +1880,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
   of mAppendStrStr: genStrAppend(p, e, d)
-  of mAppendSeqElem: genSeqElemAppend(p, e, d)
+  of mAppendSeqElem:
+    if p.config.selectedGc == gcDestructors:
+      genCall(p, e, d)
+    else:
+      genSeqElemAppend(p, e, d)
   of mEqStr: genStrEquals(p, e, d)
   of mLeStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) <= 0)")
   of mLtStr: binaryExpr(p, e, d, "(#cmpStrings($1, $2) < 0)")
@@ -2537,6 +2532,13 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
       result = genConstSimpleList(p, n)
   of nkObjConstr:
     result = genConstObjConstr(p, n)
+  of nkStrLit..nkTripleStrLit:
+    if p.config.selectedGc == gcDestructors:
+      result = genStringLiteralV2Const(p.module, n)
+    else:
+      var d: TLoc
+      initLocExpr(p, n, d)
+      result = rdLoc(d)
   else:
     var d: TLoc
     initLocExpr(p, n, d)

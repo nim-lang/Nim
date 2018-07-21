@@ -25,24 +25,6 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
     discard c_sprintf(buf, "%p", x)
     return $buf
 
-proc `$`(x: uint64): string =
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
-
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"

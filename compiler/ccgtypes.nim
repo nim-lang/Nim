@@ -359,8 +359,11 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
       result = getTypeForward(m, t, hashType(t))
       pushType(m, t)
   of tySequence:
-    result = getTypeForward(m, t, hashType(t)) & seqStar(m)
-    pushType(m, t)
+    if m.config.selectedGC == gcDestructors:
+      result = getTypeDescAux(m, t, check)
+    else:
+      result = getTypeForward(m, t, hashType(t)) & seqStar(m)
+      pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check)
 
@@ -491,7 +494,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
-      elif fieldType.kind == tySequence:
+      elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
       elif field.bitsize != 0:
@@ -606,12 +609,13 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
                else: result.elemType
 
 proc getSeqPayloadType(m: BModule; t: PType): Rope =
-  var check = initIntSet()
-  result = getTypeForward(m, t, hashType(t))
-  # XXX remove this duplication:
-  appcg(m, m.s[cfsSeqTypes],
-    "struct $2_Content { NI cap; void* allocator; $1 data[SEQ_DECL_SIZE];$n } ",
-    [getTypeDescAux(m, t.sons[0], check), result])
+  result = getTypeForward(m, t, hashType(t)) & "_Content"
+  when false:
+    var check = initIntSet()
+    # XXX remove this duplication:
+    appcg(m, m.s[cfsSeqTypes],
+      "struct $2_Content { NI cap; void* allocator; $1 data[SEQ_DECL_SIZE]; };$n",
+      [getTypeDescAux(m, t.sons[0], check), result])
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
@@ -725,11 +729,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           cSeq = "struct $2 {$n" &
                  "  #TGenericSeq Sup;$n"
         if m.config.selectedGC == gcDestructors:
-          appcg(m, m.s[cfsSeqTypes],
-              "struct $2_Content { NI cap; void* allocator; $1 data[SEQ_DECL_SIZE];$n } " &
-              "struct $2 {$n" &
-              "  NI len; $2_Content* p;$n" &
-              "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+          appcg(m, m.s[cfsTypes],
+            "typedef struct{ NI cap;void* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
+            "struct $2 {$n" &
+            "  NI len; $2_Content* p;$n" &
+            "};$n", [getTypeDescAux(m, t.sons[0], check), result])
         else:
           appcg(m, m.s[cfsSeqTypes],
               (if m.compileToCpp: cppSeq else: cSeq) &
@@ -1198,7 +1202,13 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     else:
       let x = fakeClosureType(m, t.owner)
       genTupleInfo(m, x, x, result, info)
-  of tySequence, tyRef, tyOptAsRef:
+  of tySequence:
+    if tfHasAsgn notin t.flags:
+      genTypeInfoAux(m, t, t, result, info)
+      if m.config.selectedGC >= gcMarkAndSweep:
+        let markerProc = genTraverseProc(m, origType, sig)
+        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
+  of tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)

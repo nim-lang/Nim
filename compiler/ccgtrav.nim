@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Generates traversal procs for the C backend. Traversal procs are only an
-## optimization; the GC works without them too.
+## Generates traversal procs for the C backend.
 
 # included from cgen.nim
 
@@ -61,6 +60,7 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
   else:
     result = accessor
 
+proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
 
@@ -93,8 +93,18 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
       genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i.rope), typ.sons[i])
-  of tyRef, tyString, tySequence:
+  of tyRef:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
+  of tySequence:
+    if tfHasAsgn notin typ.flags:
+      lineCg(p, cpsStmts, c.visitorFrmt, accessor)
+    elif containsGarbageCollectedRef(typ.lastSon):
+      # destructor based seqs are themselves not traced but their data is, if
+      # they contain a GC'ed type:
+      genTraverseProcSeq(c, accessor, typ)
+  of tyString:
+    if tfHasAsgn notin typ.flags:
+      lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
       lineCg(p, cpsStmts, c.visitorFrmt, ropecg(c.p.module, "$1.ClE_0", accessor))

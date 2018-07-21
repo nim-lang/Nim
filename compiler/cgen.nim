@@ -334,7 +334,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if not isComplexValueType(typ):
+  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
+  elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
   else:
