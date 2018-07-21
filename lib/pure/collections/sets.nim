@@ -348,8 +348,9 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   for item in other: discard exclImpl(s, item)
 
 proc pop*[A](s: var HashSet[A]): A =
-  ## Remove and return an arbitrary element from the set.
-  ## Raises KeyError if the set is empty.
+  ## Remove and return an arbitrary element from the set `s`.
+  ##
+  ## Raises KeyError if the set `s` is empty.
   ##
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode):
