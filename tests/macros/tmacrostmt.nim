@@ -57,5 +57,21 @@ proc test_block(x, y : int): int =
     result = x
     result = y
 
+#------------------------------------
+# bugs #8348
+
+template `>`(x, y: untyped): untyped =
+  ## "is greater" operator. This is the same as ``y < x``.
+  y < x
+
+proc test_cond_stmtlist(x, y: int): int =
+  result = x
+  if x > y:
+    result = x
+
+
 repr_and_parse(one_if_proc)
 repr_and_parse(test_block)
+repr_and_parse(test_cond_stmtlist)
+
+
