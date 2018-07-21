@@ -351,12 +351,11 @@ proc pop*[A](s: var HashSet[A]): A =
   ## Remove and return an arbitrary element from the set.
   ## Raises KeyError if the set is empty.
   ##
-  var elem: A
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode):
-      elem = s.data[h].key
-      excl(s, elem)
-      return elem
+      result = s.data[h].key
+      excl(s, result)
+      return result
   raise newException(KeyError, "set is empty")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
