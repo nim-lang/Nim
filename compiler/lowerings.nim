@@ -10,7 +10,7 @@
 ## This module implements common simple lowerings.
 
 const
-  genPrefix* = "tmp"         # prefix for generated names
+  genPrefix* = ":tmp"         # prefix for generated names
 
 import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
   lineinfos
@@ -31,9 +31,8 @@ proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
-  vpart.sons[1] = if v.kind == nkSym and v.sym != nil: newNodeIT(nkType, v.info, v.sym.typ)
-                  else: newNodeI(nkEmpty, v.info)
-  vpart.sons[2] = newNodeI(nkEmpty, v.info)
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
+  vpart.sons[2] = vpart[1]
   addSon(father, vpart)
 
 proc newAsgnStmt(le, ri: PNode): PNode =
