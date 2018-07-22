@@ -67,6 +67,34 @@
 ##     assert(false)  # This will not be reached
 ##   except UnpackError:  # Because an exception is raised
 ##     discard
+##
+## When you have a value of type ``Option[T]`` and you want to have
+## it's value of type ``T``, you can access the value with ``get``.
+## If you don't provide a fallback value there will be an exception.
+## With the ``or`` operator you can chain together several expressions
+## of type ``Option[T]`` and the whole expression will evaluate the
+## operand from left to right until an the operand that is not
+## none.  This operand will be returned.  If all operands are none, then
+## the expression evaluates to none. For convenience the last operand
+## of such an expression does not need to be of type ``Option[T]``, it
+## can be just of type ``T`` for the last fallback. If that is the
+## case the whole expression will be of type ``T``, because it could
+## not evaluate to none anymore.
+##
+## .. code-block:: nim
+##
+##   var myOpt: Option[string]
+##   # Pick the first option that is not none.
+##   myOpt = some("abc") or some("def")
+##   assert myOpt == some("abc")
+##   var myStr: string
+##   # Pick the first option that is not none with final fallback.
+##   myStr = none(string) or some("abc") or "fallback"
+##   assert myStr == "abc"
+##   myStr = none(string) or none(string) or "fallback"
+##   assert myStr == "fallback"
+
+
 import typetraits
 
 type
@@ -140,12 +168,19 @@ proc get*[T](self: Option[T], otherwise: T): T =
     otherwise
 
 template `or`*[T](x: Option[T]; y: T): T =
-  ## Alias for the ``get`` proc, but useful when chaining several `or`
-  ## operations. It might also be more readable to use this operator
-  ## than to use the get proc.
-  get(x,y)
+  ## When ``x`` is some return the content of ``x``. Otherwise
+  ## evaluate ``y`` and return it.  This operator can be used to
+  ## convert a value of type ``Option[T]`` into a value of type ``T``
+  ## by providing a fallback value in ``y``.
+  let xx = x
+  if xx.isSome:
+    xx.val
+  else:
+    y
 
 template `or`*[T](x, y: Option[T]): Option[T] =
+  ## When ``x`` is some, then return ``x``, else return
+  ## ``y``. Evaluate ``y`` only when necessary.
   let xx = x
   if xx.isSome:
     xx
@@ -191,7 +226,7 @@ proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Opti
   ## Applies a callback to the value in this Option and returns an
   ## option containing the new value. If this option is None, None will be
   ## returned. Similar to ``map``, with the difference that the callback
-  ## returns an Option, not a raw value. This allows multiple procs with a
+  ## returns an Option, not a raw value. This allows multiple procedures with a
   ## signature of ``A -> Option[B]`` (including A = B) to be chained together.
   map(self, callback).flatten()
 
@@ -341,7 +376,7 @@ when isMainModule:
       let noperson = none(Person)
       check($noperson == "None[Person]")
 
-    test "logical operatior()":
+    test "logical operator()":
       let a = none[string]()
       let b = none[string]()
 
@@ -354,6 +389,10 @@ when isMainModule:
 
       proc genNone(): Option[string] =
         result = none[string]()
+        sideEffects += 1
+
+      proc genStr(): string =
+        result = strings[sideEffects]
         sideEffects += 1
 
       proc reset(): void =
@@ -373,12 +412,12 @@ when isMainModule:
       check(sideEffects == 2)
       reset()
 
-      check((genNone() or genSome() or "c") == "b")
+      check((genNone() or genSome() or genStr()) == "b")
       check(sideEffects == 2)
       reset()
 
-      check((genNone() or genNone() or "c") == "c")
-      check(sideEffects == 2)
+      check((genNone() or genNone() or genStr()) == "c")
+      check(sideEffects == 3)
       reset()
 
       check((genSome() or genNone() or genSome() or "c") == "a")
@@ -399,15 +438,15 @@ when isMainModule:
       check(sideEffects == 2)
       reset()
 
-      check((genSome() and genNone() and "c") == none[string]())
+      check((genSome() and genNone() and genStr()) == none[string]())
       check(sideEffects == 2)
       reset()
 
-      check((genSome() and genSome() and "c") == some("c"))
-      check(sideEffects == 2)
+      check((genSome() and genSome() and genStr()) == some("c"))
+      check(sideEffects == 3)
       reset()
 
-      check((genNone() and genSome() and genNone() and "c") == none[string]())
+      check((genNone() and genSome() and genNone() and genStr()) == none[string]())
       check(sideEffects == 1)
       reset()
 
