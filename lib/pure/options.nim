@@ -187,21 +187,6 @@ template `or`*[T](x, y: Option[T]): Option[T] =
   else:
     y
 
-template `and`*[T,U](x: Option[T]; y: Option[U]): Option[U] =
-  ## When ``x`` is some, then return ``y``, else return ``None``
-  if x.isSome:
-    y
-  else:
-    none[U]()
-
-template `and`*[T,U](x: Option[T], y: U): Option[U] =
-  ## When ``x`` is some, then return ``y``, else return ``None``
-  if x.isSome:
-    some(y)
-  else:
-    none[U]()
-
-
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
   if self.isSome:
@@ -377,9 +362,6 @@ when isMainModule:
       check($noperson == "None[Person]")
 
     test "logical operator()":
-      let a = none[string]()
-      let b = none[string]()
-
       let strings = ["a", "b", "c", "d", "e"]
       var sideEffects = 0
 
@@ -423,33 +405,3 @@ when isMainModule:
       check((genSome() or genNone() or genSome() or "c") == "a")
       check(sideEffects == 1)
       reset()
-
-      # test ``and`` operator
-
-      check((genSome() and genSome() and genSome()) == some("c"))
-      check(sideEffects == 3)
-      reset()
-
-      check((genSome() and genNone()) == none[string]())
-      check(sideEffects == 2)
-      reset()
-
-      check((genSome() and genNone() and genNone()) == none[string]())
-      check(sideEffects == 2)
-      reset()
-
-      check((genSome() and genNone() and genStr()) == none[string]())
-      check(sideEffects == 2)
-      reset()
-
-      check((genSome() and genSome() and genStr()) == some("c"))
-      check(sideEffects == 3)
-      reset()
-
-      check((genNone() and genSome() and genNone() and genStr()) == none[string]())
-      check(sideEffects == 1)
-      reset()
-
-      # change the type during the expression and mix ``and`` with ``or``
-      check((genNone() and 1 or 2) == 2)
-      check((genSome() and 1 or 2) == 1)
