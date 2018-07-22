@@ -347,6 +347,18 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: discard exclImpl(s, item)
 
+proc pop*[A](s: var HashSet[A]): A =
+  ## Remove and return an arbitrary element from the set `s`.
+  ##
+  ## Raises KeyError if the set `s` is empty.
+  ##
+  for h in 0..high(s.data):
+    if isFilled(s.data[h].hcode):
+      result = s.data[h].key
+      excl(s, result)
+      return result
+  raise newException(KeyError, "set is empty")
+
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
   ##
