@@ -784,13 +784,13 @@ template excl*[T](s: var set[T], flags: set[T]) =
   ## excludes the set of flags to ``s``.
   s = s - flags
   
-template `+=` *[T](s: var set[T], y: set[T]|T) =
+template `+=` *[T](x: var set[T], y: set[T]|T) =
   ## Alias for ``incl``.
-  s.incl(flags)
+  x.incl(y)
 
-template `-=` *[T](s: var set[T], y: set[T]|T) =
+template `-=` *[T](x: var set[T], y: set[T]|T) =
   ## Alias for ``excl``.
-  s.excl(flags)
+  x.excl(y)
 
 proc card*[T](x: set[T]): int {.magic: "Card", noSideEffect.}
   ## returns the cardinality of the set ``x``, i.e. the number of elements
