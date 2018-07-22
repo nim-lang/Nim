@@ -177,8 +177,8 @@ proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
   n[n.len - i.int] = child
 
 template `or`*(x, y: NimNode): NimNode =
-  ## Evalutuate ``a`` and when it is not an empty node, return return
-  ## it. Otherwise evaluate to ``b``. Can be used to chain several
+  ## Evalutuate ``x`` and when it is not an empty node, return return
+  ## it. Otherwise evaluate to ``y``. Can be used to chain several
   ## expressions that evaluates to the first expression that is not
   ## empty.
   ##
