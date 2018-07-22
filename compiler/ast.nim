@@ -1265,7 +1265,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
   result.kind = kind
   result.owner = owner
-  result.size = - 1
+  result.size = -1
   result.align = 2            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
