@@ -588,7 +588,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkOfBranch:
-            branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
+            branch[^1] = ctx.convertExprBodyToAsgn(branch[^1], tmp)
           of nkElse:
             branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
           else:
