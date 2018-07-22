@@ -206,3 +206,13 @@ echo warnUninit in gNotes
 # 7555
 doAssert {-1.int8, -2, -2}.card == 2
 doAssert {1, 2, 2, 3..5, 4..6}.card == 6
+
+block:
+  var
+    a = {0, 1, 2, 3}
+    b = {2, 3, 4, 5}
+  a += b
+  doAssert a == {0, 1, 2, 3, 4, 5}
+  var c = {0, 1}
+  a -= c
+  doAssert a == {2, 3, 4, 5}
