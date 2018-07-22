@@ -214,6 +214,8 @@ type
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
+    runnableExamplesDir*: string # outputs runnableExamples generated files
+      # under there
 
      # the used compiler
     cIncludes*: seq[string]  # directories to search for included files
@@ -293,6 +295,7 @@ proc newConfigRef*(): ConfigRef =
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
+    runnableExamplesDir: "",
     cIncludes: @[],   # directories to search for included files
     cLibs: @[],       # directories to search for lib files
     cLinkedLibs: @[],  # libraries to link
