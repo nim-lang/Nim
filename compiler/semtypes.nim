@@ -1504,7 +1504,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
-    of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mSeq:
+      result = semContainer(c, n, tySequence, "seq", prev)
+      if c.config.selectedGc == gcDestructors:
+        incl result.flags, tfHasAsgn
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mTypeTy:
