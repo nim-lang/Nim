@@ -654,6 +654,8 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   of tyChar: result = 255
   of tySet, tyVar: result = lastOrd(conf, t.sons[0])
   of tyArray: result = lastOrd(conf, t.sons[0])
+  of tyTuple:
+    result = len(t.sons) - 1
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)

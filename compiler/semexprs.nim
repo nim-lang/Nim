@@ -291,7 +291,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     var typ = skipTypes(n.sons[1].typ, abstractVarRange + {tyTypeDesc, tyUserTypeClassInst})
     case typ.kind
-    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
+    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs, tyTuple:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
       n.typ = typ.sons[0] # indextype

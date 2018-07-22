@@ -134,6 +134,7 @@
   the desired target type (as a concrete type or as a type class)
 - The `type` operator now supports checking that the supplied expression
   matches an expected type constraint.
+- Added the procs ``low``, ``high`` and ``len`` for tuples.
 
 ### Language changes
 

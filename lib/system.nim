@@ -252,9 +252,9 @@ when defined(nimNewRuntime):
   type lent*{.magic: "BuiltinType".}[T]
 
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
-  ## returns the highest possible index of an array, a sequence, a string or
-  ## the highest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
+  ## returns the highest possible index of an array, a sequence, a tuple,
+  ## a string or the highest possible value of an ordinal value `x`.
+  ## As a special semantic rule, `x` may also be a type identifier.
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
   ##
   ## .. code-block:: nim
@@ -269,17 +269,18 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
 proc high*(x: cstring): int {.magic: "High", noSideEffect.}
 proc high*(x: string): int {.magic: "High", noSideEffect.}
+proc high*(x: tuple): int {.magic: "High", noSideEffect.}
 
 proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
 proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
 proc low*(x: string): int {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
-  ## the lowest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
+  ## returns the lowest possible index of an array, a sequence, a tuple,
+  ## a string or the lowest possible value of an ordinal value `x`.
+  ## As a special semantic rule, `x` may also be a type identifier.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
@@ -757,6 +758,7 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ##  len(arr) #=> 5
   ##  for i in 0..<arr.len:
   ##    echo arr[i] #=> 1,1,1,1,1
+proc len*(x: tuple): int {.noSideEffect.} = x.high.succ
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
