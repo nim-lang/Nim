@@ -555,8 +555,12 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   discard c.breakSyms.pop
 
+  var checkUnique = initIntSet()   
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3):
+    var new_sym = copyTree(n.sons[i])
+    if containsOrIncl(checkUnique, new_sym.sym.id):
+      echo "dublicate found"      
     addVar(v, copyTree(n.sons[i])) # declare new vars
   add(stmtList, v.PTransNode)
 
