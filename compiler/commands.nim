@@ -380,6 +380,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
+  of "runnableexamplesdir":
+    expectArg(conf, switch, arg, pass, info)
+    conf.runnableExamplesDir = arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
