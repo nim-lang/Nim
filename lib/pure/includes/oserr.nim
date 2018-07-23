@@ -60,7 +60,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   if additionalInfo.len == 0:
     e.msg = osErrorMsg(errorCode)
   else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: " & additionalInfo
+    e.msg = osErrorMsg(errorCode) & "\nAdditional info: '" & additionalInfo & "'"
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e
