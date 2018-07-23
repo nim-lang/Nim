@@ -147,7 +147,7 @@ else: # UNIX-like operating system
     DirSep* = '/'
     AltSep* = DirSep
     PathSep* = ':'
-    FileSystemCaseSensitive* = true
+    FileSystemCaseSensitive* = when defined(macosx): false else: true
     ExeExt* = ""
     ScriptExt* = ""
     DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
@@ -410,6 +410,11 @@ proc cmpPaths*(pathA, pathB: string): int {.
   ## | 0 iff pathA == pathB
   ## | < 0 iff pathA < pathB
   ## | > 0 iff pathA > pathB
+  runnableExamples:
+    when defined(macosx):
+      doAssert cmpPaths("foo", "Foo") == 0
+    elif defined(posix):
+      doAssert cmpPaths("foo", "Foo") > 0
   if FileSystemCaseSensitive:
     result = cmp(pathA, pathB)
   else:
