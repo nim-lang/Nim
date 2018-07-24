@@ -1577,8 +1577,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
-    if s.kind == skType and s.typ != nil:
-      var t = s.typ
+    if s.kind == skType and s.typ != nil or
+      s.kind == skParam and s.typ.kind == tyTypeDesc:
+      var t =
+        if s.kind == skType:
+          s.typ
+        else:
+          internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
+          s.typ.base
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias
