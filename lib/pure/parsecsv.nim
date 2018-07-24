@@ -49,7 +49,7 @@
 ##   p.close()
 
 import
-  lexbase, streams
+  lexbase, streams, strutils
 
 type
   CsvRow* = seq[string] ## a row in a CSV file
@@ -190,7 +190,10 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
           else: break
       of '\0': discard
       else: error(my, my.bufpos, my.sep & " expected")
-      break
+      if oldpos == 0 and col == 1 and my.row[col-1].isNilOrWhiteSpace:
+        col = 0
+      else:
+        break
 
   setLen(my.row, col)
   result = col > 0
@@ -233,7 +236,6 @@ when not defined(testing) and isMainModule:
 
 when isMainModule:
   import os
-  import strutils
   block: # Tests for reading the header row
     let content = "One,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
     writeFile("temp.csv", content)
@@ -261,5 +263,20 @@ when isMainModule:
       removeFile("temp.csv")
 
     # Tidy up
+    removeFile("temp.csv")
+  block: # Test for empty line at the beginning of file
+    let content = "\r\nOne,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
+    writeFile("temp.csv", content)
+    
+    var p: CsvParser
+    p.open("temp.csv")
+    p.readHeaderRow()
+    while p.readRow():
+      let zeros = repeat('0', p.currRow-2)
+      doAssert p.rowEntry("One") == "1" & zeros
+      doAssert p.rowEntry("Two") == "2" & zeros
+      doAssert p.rowEntry("Three") == "3" & zeros
+      doAssert p.rowEntry("Four") == "4" & zeros
+    p.close()
     removeFile("temp.csv")
 
