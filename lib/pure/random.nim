@@ -115,6 +115,10 @@ proc rand*(r: var Rand; max: int): int {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
+  when not defined(release):
+    if max < 0:
+      raise newException(ValueError, "max must be a positive number.")
+
   if max == 0: return
   while true:
     let x = next(r)
@@ -133,6 +137,10 @@ proc rand*(r: var Rand; max: float): float {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
+  when not defined(release):
+    if max < 0:
+      raise newException(ValueError, "max must be a positive number.")
+
   let x = next(r)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -217,5 +225,17 @@ when isMainModule:
 
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
+
+    try:
+      discard rand(-1)
+      doAssert false
+    except ValueError:
+      discard
+
+    try:
+      discard rand(-1.0)
+      doAssert false
+    except ValueError:
+      discard
 
   main()
