@@ -147,14 +147,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
-    b = hloBody(c, b)
-    let transformedBody = transformBody(c.graph, c.module, b, result)
-    result.astNoTransformation = result.ast
-    result.ast = shallowCopy(result.astNoTransformation)
-    for i in 0..<result.ast.len:
-      result.ast[i] = result.astNoTransformation[i]
-    result.ast.sons[bodyPos] = transformedBody
-    #echo "code instantiated ", result.name.s
+    result.ast[bodyPos] = hloBody(c, b)
+    transformRoutine(c.graph, c.module, result)
     excl(result.flags, sfForward)
     dec c.inGenericInst
 

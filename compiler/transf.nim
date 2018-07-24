@@ -1016,6 +1016,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
+
 proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n
@@ -1037,6 +1038,17 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     incl(result.flags, nfTransf)
       #if prc.name.s == "testbody":
     #  echo renderTree(result)
+
+proc transformRoutine*(g: ModuleGraph; module: PSym, prc: PSym) =
+  if prc.kind in {skTemplate} or nfTransf in prc.ast.flags:
+    return
+  
+  # save AST before transformation via shallow copy
+  prc.astNoTransformation = prc.ast
+  prc.ast = shallowCopy(prc.astNoTransformation)
+  for i in 0..<prc.ast.len:
+    prc.ast[i] = prc.astNoTransformation[i]
+    prc.ast.sons[bodyPos] = transformBody(g, module, prc.ast[bodyPos], prc)
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
