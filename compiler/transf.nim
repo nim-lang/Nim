@@ -1048,7 +1048,7 @@ proc transformRoutine*(g: ModuleGraph; module: PSym, prc: PSym) =
   prc.ast = shallowCopy(prc.astNoTransformation)
   for i in 0..<prc.ast.len:
     prc.ast[i] = prc.astNoTransformation[i]
-    prc.ast.sons[bodyPos] = transformBody(g, module, prc.ast[bodyPos], prc)
+  prc.ast.sons[bodyPos] = transformBody(g, module, prc.ast[bodyPos], prc)
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
