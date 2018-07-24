@@ -614,19 +614,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rc = instr.regC
       case regs[ra].kind
       of rkNodeAddr:
-        # XXX: Workaround for vmgen bug:
         let n = regs[rc].regToNode
-        if (nfIsRef in regs[ra].nodeAddr[].flags or
-            regs[ra].nodeAddr[].kind == nkNilLit) and nfIsRef notin n.flags:
-          if regs[ra].nodeAddr[].kind == nkNilLit:
-            stackTrace(c, tos, pc, errNilAccess)
-          regs[ra].nodeAddr[][] = n[]
-          regs[ra].nodeAddr[].flags.incl nfIsRef
         # `var object` parameters are sent as rkNodeAddr. When they are mutated
         # vmgen generates opcWrDeref, which means that we must dereference
         # twice.
         # TODO: This should likely be handled differently in vmgen.
-        elif (nfIsRef notin regs[ra].nodeAddr[].flags and
+        if (nfIsRef notin regs[ra].nodeAddr[].flags and
             nfIsRef notin n.flags):
           regs[ra].nodeAddr[][] = n[]
         else:
