@@ -110,15 +110,11 @@ proc random*[T](a: openArray[T]): T {.deprecated.} =
   ## Use ``rand`` instead.
   result = a[random(a.low..a.len)]
 
-proc rand*(r: var Rand; max: int): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  when compileOption("rangeChecks"):
-    if max < 0:
-      raise newException(ValueError, "max must be a positive number.")
-
   if max == 0: return
   while true:
     let x = next(r)
@@ -132,15 +128,11 @@ proc rand*(max: int): int {.benign.} =
   ## number, i.e. a tickcount.
   rand(state, max)
 
-proc rand*(r: var Rand; max: float): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  when compileOption("rangeChecks"):
-    if max < 0:
-      raise newException(ValueError, "max must be a positive number.")
-
   let x = next(r)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -230,13 +222,13 @@ when isMainModule:
       try:
         discard rand(-1)
         doAssert false
-      except ValueError:
+      except RangeError:
         discard
 
       try:
         discard rand(-1.0)
         doAssert false
-      except ValueError:
+      except RangeError:
         discard
 
   main()
