@@ -609,7 +609,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         if computeSize(g.config, a.typ) < 0:
           localError(g.config, a.info, "cannot evaluate 'sizeof' because its type is not defined completely")
           result = nil
-        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
+        elif skipTypes(a.typ, typedescInst+{tyRange, tyArray}).kind in
              IntegralTypes+NilableTypes+{tySet}:
           #{tyArray,tyObject,tyTuple}:
           result = newIntNodeT(getSize(g.config, a.typ), n, g)
