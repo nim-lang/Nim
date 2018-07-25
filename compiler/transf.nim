@@ -1040,7 +1040,7 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     #  echo renderTree(result)
 
 proc transformRoutine*(g: ModuleGraph; module: PSym, prc: PSym) =
-  if prc.kind in {skTemplate} or nfTransf in prc.ast.flags:
+  if prc.kind in {skTemplate} or nfTransf in prc.ast[bodyPos].flags:
     return
   
   # save AST before transformation via shallow copy
