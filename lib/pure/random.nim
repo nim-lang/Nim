@@ -115,7 +115,7 @@ proc rand*(r: var Rand; max: int): int {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  when not defined(release):
+  when compileOption("rangeChecks"):
     if max < 0:
       raise newException(ValueError, "max must be a positive number.")
 
@@ -137,7 +137,7 @@ proc rand*(r: var Rand; max: float): float {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  when not defined(release):
+  when compileOption("rangeChecks"):
     if max < 0:
       raise newException(ValueError, "max must be a positive number.")
 
