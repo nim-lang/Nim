@@ -226,16 +226,17 @@ when isMainModule:
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
 
-    try:
-      discard rand(-1)
-      doAssert false
-    except ValueError:
-      discard
+    when compileOption("rangeChecks"):
+      try:
+        discard rand(-1)
+        doAssert false
+      except ValueError:
+        discard
 
-    try:
-      discard rand(-1.0)
-      doAssert false
-    except ValueError:
-      discard
+      try:
+        discard rand(-1.0)
+        doAssert false
+      except ValueError:
+        discard
 
   main()
