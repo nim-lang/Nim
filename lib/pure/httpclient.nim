@@ -129,7 +129,11 @@
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams
 import asyncnet, asyncdispatch, asyncfile
-import nativesockets
+when defined(genode):
+  type Port = net.Port
+else:
+  import nativesockets
+  type Port = nativesockets.Port
 
 export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
@@ -1091,14 +1095,13 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
       client.close()
       client.connected = false
 
-    # TODO: I should be able to write 'net.Port' here...
     let port =
       if connectionUrl.port == "":
         if isSsl:
-          nativesockets.Port(443)
+          net.Port(443)
         else:
-          nativesockets.Port(80)
-      else: nativesockets.Port(connectionUrl.port.parseInt)
+          net.Port(80)
+      else: Port(connectionUrl.port.parseInt)
 
     when client is HttpClient:
       client.socket = await net.dial(connectionUrl.hostname, port)

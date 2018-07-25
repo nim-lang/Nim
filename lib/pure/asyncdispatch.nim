@@ -12,9 +12,11 @@ include "system/inclrtl"
 import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
 import asyncfutures except callSoon
 
-import nativesockets, net, deques
+when not defined(genode):
+  import nativesockets, net
+  export SocketFlag, Port
 
-export Port, SocketFlag
+import deques
 export asyncfutures, asyncstreams
 
 #{.injectStmt: newGcInvariant().}
@@ -1053,6 +1055,76 @@ when defined(windows) or defined(nimdoc):
     ev.hWaiter = pcd.waitFd
 
   initAll()
+
+elif defined(genode) and defined(vfs):
+  # Genode VFS dispatching
+  import genode/vfs
+  include genode/env
+    # need this for access to the initial entrypoint
+
+  const
+    InitDelayedCallbackListSize = 64
+      ## initial size of delayed callbacks queue.
+  type
+    AsyncFD* = VfsContext
+    Callback = VfsCallback
+    PDispatcher* = PDispatcherBase
+
+  proc newDispatcher*(): PDispatcher =
+    new result
+    result.timers.newHeapQueue()
+    result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
+
+  var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
+
+  proc setGlobalDispatcher*(disp: PDispatcher) =
+    if not gDisp.isNil:
+      assert gDisp.callbacks.len == 0
+    gDisp = disp
+    initCallSoonProc()
+
+  proc getGlobalDispatcher*(): PDispatcher =
+    if gDisp.isNil:
+      setGlobalDispatcher(newDispatcher())
+    result = gDisp
+
+  proc register*(fd: AsyncFD) =
+    raiseAssert "register"
+
+  proc addWrite*(fd: AsyncFD, cb: Callback) =
+    raiseAssert "addWrite"
+
+  proc runOnce(timeout = 500): bool =
+    raiseAssert "runOnce"
+
+  proc hasPendingOperations*(): bool =
+    ## Returns `true` if the global dispatcher has pending operations.
+    raiseAssert "hasPendingOperations"
+
+  proc closeSocket*(sock: AsyncFD) =
+    raiseAssert "closeSocket"
+
+  proc acceptAddr*(socket: AsyncFD):
+      Future[tuple[address: string, client: AsyncFD]] =
+    raiseAssert "acceptAddr"
+  
+  proc nim_handle_vfs_io_response(p: pointer) {.exportc.} =
+    let ctx = cast[VfsContext](p)
+    if (not ctx.isNil) and (not ctx.handler.isNil):
+      assert(not ctx.handle.isNil)
+      if not ctx.handler.isNil:
+        let handler = ctx.handler
+        reset ctx.handler
+        callSoon do ():
+          try: handler(ctx)
+          except:
+            let e = getCurrentException()
+            if ctx.future.isNil:
+              quit("future not set on VFS context")
+            else:
+              ctx.future.fail e
+            # Exceptions must not wreck asyncdispatch
+
 else:
   import selectors
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
@@ -1510,8 +1582,9 @@ proc poll*(timeout = 500) =
   ## `epoll`:idx: or `kqueue`:idx: primitive only once.
   discard runOnce(timeout)
 
-# Common procedures between current and upcoming asyncdispatch
-include includes.asynccommon
+when not defined(genode):
+  # Common procedures between current and upcoming asyncdispatch
+  include includes.asynccommon
 
 proc sleepAsync*(ms: int | float): Future[void] =
   ## Suspends the execution of the current async procedure for the next
@@ -1539,42 +1612,44 @@ proc withTimeout*[T](fut: Future[T], timeout: int): Future[bool] =
       if not retFuture.finished: retFuture.complete(false)
   return retFuture
 
-proc accept*(socket: AsyncFD,
-    flags = {SocketFlag.SafeDisconn}): Future[AsyncFD] =
-  ## Accepts a new connection. Returns a future containing the client socket
-  ## corresponding to that connection.
-  ## The future will complete when the connection is successfully accepted.
-  var retFut = newFuture[AsyncFD]("accept")
-  var fut = acceptAddr(socket, flags)
-  fut.callback =
-    proc (future: Future[tuple[address: string, client: AsyncFD]]) =
-      assert future.finished
-      if future.failed:
-        retFut.fail(future.error)
-      else:
-        retFut.complete(future.read.client)
-  return retFut
-
-proc send*(socket: AsyncFD, data: string,
-           flags = {SocketFlag.SafeDisconn}): Future[void] =
-  ## Sends ``data`` to ``socket``. The returned future will complete once all
-  ## data has been sent.
-  var retFuture = newFuture[void]("send")
-
-  var copiedData = data
-  GC_ref(copiedData) # we need to protect data until send operation is completed
-                     # or failed.
-
-  let sendFut = socket.send(addr copiedData[0], data.len, flags)
-  sendFut.callback =
-    proc () =
-      GC_unref(copiedData)
-      if sendFut.failed:
-        retFuture.fail(sendFut.error)
-      else:
-        retFuture.complete()
-
-  return retFuture
+when not defined(genode) and defined(vfs):
+  
+  proc accept*(socket: AsyncFD,
+      flags = {SocketFlag.SafeDisconn}): Future[AsyncFD] =
+    ## Accepts a new connection. Returns a future containing the client socket
+    ## corresponding to that connection.
+    ## The future will complete when the connection is successfully accepted.
+    var retFut = newFuture[AsyncFD]("accept")
+    var fut = acceptAddr(socket, flags)
+    fut.callback =
+      proc (future: Future[tuple[address: string, client: AsyncFD]]) =
+        assert future.finished
+        if future.failed:
+          retFut.fail(future.error)
+        else:
+          retFut.complete(future.read.client)
+    return retFut
+  
+  proc send*(socket: AsyncFD, data: string,
+             flags = {SocketFlag.SafeDisconn}): Future[void] =
+    ## Sends ``data`` to ``socket``. The returned future will complete once all
+    ## data has been sent.
+    var retFuture = newFuture[void]("send")
+  
+    var copiedData = data
+    GC_ref(copiedData) # we need to protect data until send operation is completed
+                       # or failed.
+  
+    let sendFut = socket.send(addr copiedData[0], data.len, flags)
+    sendFut.callback =
+      proc () =
+        GC_unref(copiedData)
+        if sendFut.failed:
+          retFuture.fail(sendFut.error)
+        else:
+          retFuture.complete()
+  
+    return retFuture
 
 # -- Await Macro
 include asyncmacro
@@ -1590,66 +1665,77 @@ proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
     else:
       break
 
-proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
-  ## Reads a line of data from ``socket``. Returned future will complete once
-  ## a full line is read or an error occurs.
-  ##
-  ## If a full line is read ``\r\L`` is not
-  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
-  ## will be set to it.
-  ##
-  ## If the socket is disconnected, ``line`` will be set to ``""``.
-  ##
-  ## If the socket is disconnected in the middle of a line (before ``\r\L``
-  ## is read) then line will be set to ``""``.
-  ## The partial line **will be lost**.
-  ##
-  ## **Warning**: This assumes that lines are delimited by ``\r\L``.
-  ##
-  ## **Note**: This procedure is mostly used for testing. You likely want to
-  ## use ``asyncnet.recvLine`` instead.
-  ##
-  ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
-
-  template addNLIfEmpty(): typed =
-    if result.len == 0:
-      result.add("\c\L")
-
-  result = ""
-  var c = ""
-  while true:
-    c = await recv(socket, 1)
-    if c.len == 0:
-      return ""
-    if c == "\r":
+when not defined(genode) and defined(vfs):
+  
+  proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
+    ## Reads a line of data from ``socket``. Returned future will complete once
+    ## a full line is read or an error occurs.
+    ##
+    ## If a full line is read ``\r\L`` is not
+    ## added to ``line``, however if solely ``\r\L`` is read then ``line``
+    ## will be set to it.
+    ##
+    ## If the socket is disconnected, ``line`` will be set to ``""``.
+    ##
+    ## If the socket is disconnected in the middle of a line (before ``\r\L``
+    ## is read) then line will be set to ``""``.
+    ## The partial line **will be lost**.
+    ##
+    ## **Warning**: This assumes that lines are delimited by ``\r\L``.
+    ##
+    ## **Note**: This procedure is mostly used for testing. You likely want to
+    ## use ``asyncnet.recvLine`` instead.
+    ##
+    ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
+  
+    template addNLIfEmpty(): typed =
+      if result.len == 0:
+        result.add("\c\L")
+  
+    result = ""
+    var c = ""
+    while true:
       c = await recv(socket, 1)
-      assert c == "\l"
-      addNLIfEmpty()
-      return
-    elif c == "\L":
-      addNLIfEmpty()
-      return
-    add(result, c)
+      if c.len == 0:
+        return ""
+      if c == "\r":
+        c = await recv(socket, 1)
+        assert c == "\l"
+        addNLIfEmpty()
+        return
+      elif c == "\L":
+        addNLIfEmpty()
+        return
+      add(result, c)
 
 proc callSoon(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
   getGlobalDispatcher().callbacks.addLast(cbproc)
 
-proc runForever*() =
-  ## Begins a never ending global dispatcher poll loop.
-  while true:
-    poll()
+when defined(genode) and defined(vfs):
+  proc waitFor*[T](fut: Future[T]): T =
+    let p = getGlobalDispatcher()
+    while not fut.finished:
+      waitAndDispatchOneIoSignal()
+      var didSomeWork: bool
+      processPendingCallbacks(p, didSomeWork)
+    fut.read
+else:
+  proc runForever*() =
+    ## Begins a never ending global dispatcher poll loop.
+    while true:
+      poll()
 
-proc waitFor*[T](fut: Future[T]): T =
-  ## **Blocks** the current thread until the specified future completes.
-  while not fut.finished:
-    poll()
+  proc waitFor*[T](fut: Future[T]): T =
+    ## **Blocks** the current thread until the specified future completes.
+    while not fut.finished:
+      poll()
+    fut.read
 
-  fut.read
-
-proc setEvent*(ev: AsyncEvent) {.deprecated.} =
-  ## Set event ``ev`` to signaled state.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
-  ev.trigger()
+when not (defined(genode) and defined(vfs)):
+  proc setEvent*(ev: AsyncEvent) {.deprecated.} =
+    ## Set event ``ev`` to signaled state.
+    ##
+    ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+    ev.trigger()

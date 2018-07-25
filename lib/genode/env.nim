@@ -27,3 +27,8 @@ const runtimeEnvSym = "nim_runtime_env"
 
 when not defined(nimscript):
   var runtimeEnv {.importcpp: runtimeEnvSym.}: GenodeEnvPtr
+
+  proc waitAndDispatchOneIoSignal() {.tags: [IOEffect].} =
+    proc waitCpp() {.importcpp:
+      runtimeEnvSym & "->ep().wait_and_dispatch_one_io_signal()".}
+    waitCpp()

@@ -165,6 +165,14 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.value = val
   fut.callbacks.call()
 
+proc fail*(future: FutureBase, error: ref Exception) =
+  ## Completes ``future`` with ``error``.
+  future.finished = true
+  future.error = error
+  future.errorStackTrace =
+    if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
+  future.callbacks.call()
+
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")

@@ -12,6 +12,9 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
+when defined(genode):
+  {.error: "BSD sockets not native to Genode, import genode/tcpip instead".}
+
 import os, options
 
 when hostOS == "solaris":

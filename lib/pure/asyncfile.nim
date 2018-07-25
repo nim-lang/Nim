@@ -31,10 +31,17 @@ when defined(windows) or defined(nimdoc):
 else:
   import posix
 
-type
-  AsyncFile* = ref object
-    fd: AsyncFd
-    offset: int64
+when defined(genode):
+  import genode/vfs
+  type
+    AsyncFile* = VfsContext
+  proc offset(f: AsyncFile): int64 = f.seek.int64
+  proc `offset=`(f: AsyncFile; n: int64) = f.seek(n.FileSize)
+else:
+  type
+    AsyncFile* = ref object
+      fd: AsyncFd
+      offset: int64
 
 when defined(windows) or defined(nimdoc):
   proc getDesiredAccess(mode: FileMode): int32 =
@@ -77,17 +84,20 @@ proc getFileSize*(f: AsyncFile): int64 =
     if low == INVALID_FILE_SIZE:
       raiseOSError(osLastError())
     result = (high shl 32) or low
+  elif defined(genode):
+    raiseAssert("getFileSize not implemented for Genode")
   else:
     let curPos = lseek(f.fd.cint, 0, SEEK_CUR)
     result = lseek(f.fd.cint, 0, SEEK_END)
     f.offset = lseek(f.fd.cint, curPos, SEEK_SET)
     assert(f.offset == curPos)
 
-proc newAsyncFile*(fd: AsyncFd): AsyncFile =
-  ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
-  new result
-  result.fd = fd
-  register(fd)
+when not defined(genode):
+  proc newAsyncFile*(fd: AsyncFd): AsyncFile =
+    ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
+    new result
+    result.fd = fd
+    register(fd)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -112,6 +122,9 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
 
     if mode == fmAppend:
       result.offset = getFileSize(result)
+
+  elif defined(genode):
+    openFileContext(filename, mode)
 
   else:
     let flags = getPosixFlags(mode)
@@ -179,6 +192,20 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
         assert bytesRead <= size
         f.offset.inc bytesRead
         retFuture.complete(bytesRead)
+  elif defined(genode):
+    var size = (FileSize)size
+    proc cb(ctx: VfsContext) {.closure, gcsafe.} =
+      if ctx.readReady:
+        if not ctx.readQueued:
+          ctx.queueRead(size)
+        if ctx.readQueued:
+          let n = ctx.completeRead(buf, size)
+          ctx.advanceSeek(n)
+          retFuture.complete(n.int)
+      if not retFuture.finished:
+        f.onIOResponse(cb, retFuture)
+    cb(f)
+
   else:
     proc cb(fd: AsyncFD): bool =
       result = true
@@ -270,6 +297,24 @@ proc read*(f: AsyncFile, size: int): Future[string] =
         copyMem(addr data[0], buffer, bytesRead)
         f.offset.inc bytesRead
         retFuture.complete($data)
+
+  elif defined(genode):
+    var
+      buf = newString(size)
+      size = (FileSize)size
+    proc cb(ctx: VfsContext) {.closure, gcsafe.} =
+      if ctx.readReady:
+        if not ctx.readQueued:
+          ctx.queueRead(size)
+        if ctx.readQueued:
+          let n = ctx.completeRead(addr buf[0], buf.len.FileSize)
+          ctx.advanceSeek(n)
+          buf.setLen(n)
+          retFuture.complete(buf)
+      if not retFuture.finished:
+        f.onIOResponse(cb, retFuture)
+    cb(f)
+
   else:
     var readBuffer = newString(size)
 
@@ -319,7 +364,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## Sets the position of the file pointer that is used for read/write
   ## operations. The file's first byte has the index zero.
   f.offset = pos
-  when not defined(windows) and not defined(nimdoc):
+  when not defined(windows) and not defined(genode) and not defined(nimdoc):
     let ret = lseek(f.fd.cint, pos.Off, SEEK_SET)
     if ret == -1:
       raiseOSError(osLastError())
@@ -377,6 +422,21 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
       else:
         assert bytesWritten == size.int32
         retFuture.complete()
+
+  elif defined(genode):
+    var size = (FileSize)size
+    let n = f.write(buf, size)
+    if n != size:
+      raise newException(IOError, "short write, wrote " & $n & "of " & $size)
+    proc cb(ctx: VfsContext) {.closure, gcsafe.} =
+      if not ctx.syncQueued:
+        ctx.queueSync(size)
+      if ctx.syncQueued and ctx.completeSync():
+        retFuture.complete()
+      else:
+        f.onIOResponse(cb, retFuture)
+    cb(f)
+
   else:
     var written = 0
 
@@ -453,6 +513,21 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       else:
         assert bytesWritten == data.len.int32
         retFuture.complete()
+
+  elif defined(genode):
+    var size = (FileSize)copy.len
+    let n = f.write(addr copy[0], size)
+    if n != size:
+      raise newException(IOError, "short write, wrote " & $n & "of " & $size)
+    proc cb(ctx: VfsContext) {.closure, gcsafe.} =
+      if not ctx.syncQueued:
+        ctx.queueSync(size)
+      if ctx.syncQueued and ctx.completeSync():
+        retFuture.complete()
+      else:
+        f.onIOResponse(cb, retFuture)
+    cb(f)
+
   else:
     var written = 0
 
@@ -490,6 +565,8 @@ proc setFileSize*(f: AsyncFile, length: int64) =
     if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
        (setEndOfFile(f.fd.Handle) == 0):
       raiseOSError(osLastError())
+  elif defined(genode):
+    vfs.truncate(f, (vfs.FileSize)length)
   else:
     # will truncate if Off is a 32-bit type!
     if ftruncate(f.fd.cint, length.Off) == -1:
@@ -497,10 +574,11 @@ proc setFileSize*(f: AsyncFile, length: int64) =
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
-  unregister(f.fd)
   when defined(windows) or defined(nimdoc):
     if not closeHandle(f.fd.Handle).bool:
       raiseOSError(osLastError())
+  elif defined(genode):
+    vfs.close(f)
   else:
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
