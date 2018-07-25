@@ -31,7 +31,11 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
   if errorMessageWriter != nil:
     errorMessageWriter($data)
   else:
-    writeToStdErr(data)
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo data
+    else:
+      writeToStdErr(data)
 
 proc quitOrDebug() {.inline.} =
   when not defined(endb):

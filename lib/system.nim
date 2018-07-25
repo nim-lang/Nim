@@ -4153,8 +4153,12 @@ when defined(cpp) and appType != "lib" and
 
     let ex = getCurrentException()
     let trace = ex.getStackTrace()
-    stderr.write trace & "Error: unhandled exception: " & ex.msg &
-                 " [" & $ex.name & "]\n"
+    when defined(genode):
+      echo trace & "Error: unhandled exception: " & ex.msg &
+                   " [" & $ex.name & "]\n"
+    else:
+      stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                   " [" & $ex.name & "]\n"
     quit 1
 
 when not defined(js):
