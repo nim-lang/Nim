@@ -193,4 +193,7 @@
 - Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
   for more info.
 
+- Compiler switch ``--uniqueMain`` was added. See [the compiler user guide](https://nim-lang.org/docs/nimc.html#linking-a-nim-generated-static-library-in-nim) for more info.
+
+
 ### Bugfixes

@@ -946,19 +946,27 @@ proc genFilenames(m: BModule): Rope =
   for i in 0..<m.config.m.fileInfos.len:
     result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
 
+proc genHashName(m: PSym, name: string): string =
+  name & $hashProc(m)
+
+proc maybeHashMain(m: BModule, name: string): string =
+  result = name
+  if optUniqueMain in m.config.globalOptions:
+    result = m.module.genHashName(name)
+
 proc genMainProc(m: BModule) =
-  const
+  let
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
-      "void PreMainInner(void) {$N" &
+      "static void PreMainInner(void) {$N" &
       "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
-      "void PreMain(void) {$N" &
+      "static void PreMain(void) {$N" &
       "\tvoid (*volatile inner)(void);$N" &
       "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
@@ -967,17 +975,17 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     MainProcs =
-      "\tNimMain();$N"
+      "\t" & m.maybeHashMain("NimMain") & "();$N"
 
     MainProcsWithResult =
       MainProcs & "\treturn nim_program_result;$N"
 
-    NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_CDECL(static void, NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
 
     NimMainProc =
-      "N_CDECL(void, NimMain)(void) {$N" &
+      "N_CDECL(void, " & m.maybeHashMain("NimMain") & ")(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &
@@ -1025,7 +1033,7 @@ proc genMainProc(m: BModule) =
     PosixNimDllMain = WinNimDllMain
 
     PosixCDllMain =
-      "void NIM_POSIX_INIT NimMainInit(void) {$N" &
+      "static void NIM_POSIX_INIT NimMainInit(void) {$N" &
         MainProcs &
       "}$N$N"
 
@@ -1116,7 +1124,10 @@ proc registerModuleToMain(g: BModuleList; m: PSym) =
   var
     init = m.getInitName
     datInit = m.getDatInitName
-  addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
+  if sfMainModule in m.flags:
+    addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(static void, $1)(void);$N", [init])
+  else:
+    addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
   addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
   if sfSystemModule notin m.flags:
     addf(g.mainDatInit, "\t$1();$N", [datInit])
@@ -1128,7 +1139,11 @@ proc registerModuleToMain(g: BModuleList; m: PSym) =
 
 proc genInitCode(m: BModule) =
   var initname = getInitName(m.module)
-  var prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" % [initname]
+  var prc: Rope
+  if sfMainModule in m.module.flags:
+    prc = "N_LIB_PRIVATE N_NIMCALL(static void, $1)(void) {$N" % [initname]
+  else:
+    prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" % [initname]
   if m.typeNodes > 0:
     appcg(m, m.s[cfsTypeInit1], "static #TNimNode $1[$2];$n",
           [m.typeNodesName, rope(m.typeNodes)])

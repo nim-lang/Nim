@@ -426,6 +426,37 @@ on Linux::
 
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
 
+Linking a Nim generated static library in Nim
+=============================================
+
+By default, Nim generates a publicly visible main function in C that is always
+named the same thing (NimMain) in order to make it easy for clients written in
+other languages to link to Nim generated code. However, this causes issues
+when Nim clients want to link to Nim static libraries because of multiple
+definitions of the same function, which C doesn't allow.
+
+In order to work around this issue, a compiler flag exists that generates a
+unique name for ``NimMain`` by hashing the name of the module it's in and
+appending it to the end of the ``NimMain``, separated by an underscore.
+
+An example to compile a static library on Linux and then link it is as follows::
+
+  nim --noMain --uniqueMain --app:staticLib c static.nim
+  nim --passL:libstatic.a c main.nim
+
+Where an example of ``static.nim`` could be:
+
+.. code-block:: Nim
+  proc testing*(testInt: int): int {.cdecl, exportc.} =
+    return testInt + 100
+
+and an example of ``main.nim`` could be:
+
+.. code-block:: Nim
+  proc testing*(testInt: int): int {.importc, cdecl.}
+
+  echo testing(50) # Should output "150"
+
 
 Backend language options
 ========================

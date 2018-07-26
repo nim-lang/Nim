@@ -34,6 +34,8 @@ Advanced options:
   -c, --compileOnly         compile Nim files only; do not assemble or link
   --noLinking               compile Nim and generated files but do not link
   --noMain                  do not generate a main procedure
+  --uniqueMain              generate a unique main function call which is usefull
+                            for linking to static libaries written in Nim
   --genScript               generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
                             implies --compileOnly
