@@ -765,7 +765,7 @@ proc getRelPathFromAbs*(path, baseDir: string): string {.
     return path
 
   if not sameDrive(path, baseDir):
-      return path
+    return path
 
   let alast = path.len
   let blast = rSkipDirSep(baseDir, baseDir.len - 1, 0) + 1
