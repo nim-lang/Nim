@@ -92,7 +92,7 @@ compiler nintendoSwitchGCC:
     optSize: " -Os -ffast-math ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
-    compileTmpl: "-MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",

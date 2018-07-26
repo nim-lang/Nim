@@ -971,7 +971,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno in {EEXIST, ENOSYS}:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
   elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
@@ -980,7 +980,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       #echo res
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
   else:
     when useWinUnicode:
       wrapUnary(res, createDirectoryW, dir)
@@ -992,7 +992,7 @@ proc rawCreateDir(dir: string): bool =
     elif getLastError() == 183'i32:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
 
 proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect].} =
@@ -1005,7 +1005,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   if result:
     # path already exists - need to check that it is indeed a directory
     if not existsDir(dir):
-      raise newException(IOError, "Failed to create the directory")
+      raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect].} =
