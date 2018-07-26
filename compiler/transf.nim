@@ -1016,7 +1016,6 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-
 proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
   if nfTransf in n.flags or prc.kind in {skTemplate}:
     result = n

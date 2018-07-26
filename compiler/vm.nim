@@ -918,10 +918,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcGetImpl:
       decodeB(rkNode)
       let a = regs[rb].node
+      regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+      else: copyTree(a.sym.ast)
       if a.kind == nkSym:
-        regs[ra].node = 
-            if a.sym.ast.isNil: newNode(nkNilLit)
-            else: copyTree(a.sym.ast)
+        if a.kind == nkSym:
+          regs[ra].node = 
+              if a.sym.ast.isNil: newNode(nkNilLit)
+              else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
