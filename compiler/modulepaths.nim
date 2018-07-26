@@ -45,13 +45,6 @@ when false:
     if best.len > 0 and fileExists(res):
       result = res
 
-const stdlibDirs = [
-  "pure", "core", "arch",
-  "pure/collections",
-  "pure/concurrency", "impure",
-  "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
-
 when false:
   proc resolveDollar(project, source, pkg, subdir: string; info: TLineInfo): string =
     template attempt(a) =
@@ -120,7 +113,9 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
+      result =
+        pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
+          .replace(" ")
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -147,16 +142,9 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           result = ""
     else:
       let modname = getModuleName(conf, n[2])
-      if $n1 == "std":
-        template attempt(a) =
-          let x = addFileExt(a, "nim")
-          if fileExists(x): return x
-        for candidate in stdlibDirs:
-          attempt(conf.libpath / candidate / modname)
-
       # hacky way to implement 'x / y /../ z':
       result = getModuleName(conf, n1)
-      result.add renderTree(n0, {renderNoComments})
+      result.add renderTree(n0, {renderNoComments}).replace(" ")
       result.add modname
   of nkPrefix:
     when false:
