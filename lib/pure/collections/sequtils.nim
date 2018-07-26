@@ -680,7 +680,7 @@ template applyIt*(varSeq, op: untyped) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.applyIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
-  for i in low(varSeq) ..< high(varSeq):
+  for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
