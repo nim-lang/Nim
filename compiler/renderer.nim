@@ -853,6 +853,18 @@ proc isBracket*(n: PNode): bool =
   of nkSym: result = n.sym.name.s == "[]"
   else: result = false
 
+proc skipHiddenNodes(n: PNode): PNode = 
+  result = n
+  while true:
+    case result.kind 
+      of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
+        if result.len >= 1:
+          result = result[0]
+      of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
+        if result.len >= 2:
+          result = result[1]
+      else: break
+      
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
@@ -1071,10 +1083,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      var n_next = n[1]
-      while n_next.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, 
-                  nkStringToCString, nkCStringToString} and n_next.len > 0:
-        n_next = n_next[0]
+      let n_next = skipHiddenNodes(n[1])
       if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
       if n_next.kind == nkInfix:

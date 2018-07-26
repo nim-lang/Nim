@@ -655,7 +655,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType
+    mException, mBuiltinType, mGetImplNoTransf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
