@@ -680,10 +680,14 @@ template applyIt*(varSeq, op: untyped) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.applyIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
-  ##   var a: array[1..10, int]
-  ##   a.applyIt(it)
-  ##   assert a[0] + a[9] == 11
-
+  runnableExamples:
+    var nums: array[1..10, int]
+    nums[1] = 5
+    nums[10] = 9
+    nums.applyIt(it + 1)
+    doAssert nums[1] + nums[10] == 16
+    doAssert nums[4] == 1
+    
   for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
