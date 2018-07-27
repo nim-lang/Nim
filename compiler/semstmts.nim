@@ -1017,8 +1017,8 @@ proc checkForMetaFields(c: PContext; n: PNode) =
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyLent, tyPtr, tyRef,
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink:
-      let start = int ord(t.kind in {tyGenericInvocation, tyGenericInst})
-      for i in start ..< t.sons.len:
+      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
+      for i in start ..< t.len:
         checkMeta(t.sons[i])
     else:
       checkMeta(t)
@@ -1337,7 +1337,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
         elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
         else: break
-      if obj.kind in {tyObject, tyDistinct}:
+      if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
         if obj.destructor.isNil:
           obj.destructor = s
         else:
@@ -1359,7 +1359,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         if t.kind == tyGenericBody: t = t.lastSon
         elif t.kind == tyGenericInvocation: t = t.sons[0]
         else: break
-      if t.kind in {tyObject, tyDistinct, tyEnum}:
+      if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
         if t.deepCopy.isNil: t.deepCopy = s
         else:
           localError(c.config, n.info, errGenerated,
@@ -1388,7 +1388,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif objB.kind in {tyGenericInvocation, tyGenericInst}:
           objB = objB.sons[0]
         else: break
-      if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
+      if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s

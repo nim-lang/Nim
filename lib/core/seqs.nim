@@ -34,7 +34,8 @@ when false:
   proc `=trace`[T](s: NimSeqV2[T]) =
     for i in 0 ..< s.len: `=trace`(s.data[i])
 
-proc `=destroy`[T](x: var NimSeqV2[T]) =
+proc `=destroy`[T](s: var seq[T]) =
+  var x = cast[ptr NimSeqV2[T]](addr s)
   var p = x.p
   if p != nil:
     when not supportsCopyMem(T):
@@ -43,7 +44,10 @@ proc `=destroy`[T](x: var NimSeqV2[T]) =
     x.p = nil
     x.len = 0
 
-proc `=`[T](a: var NimSeqV2[T]; b: NimSeqV2[T]) =
+proc `=`[T](x: var seq[T]; y: seq[T]) =
+  var a = cast[ptr NimSeqV2[T]](addr x)
+  var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
+
   if a.p == b.p: return
   `=destroy`(a)
   a.len = b.len
@@ -56,7 +60,9 @@ proc `=`[T](a: var NimSeqV2[T]; b: NimSeqV2[T]) =
       for i in 0..<a.len:
         a.p.data[i] = b.p.data[i]
 
-proc `=sink`[T](a: var NimSeqV2[T]; b: NimSeqV2[T]) =
+proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+  var a = cast[ptr NimSeqV2[T]](addr x)
+  var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:
     `=destroy`(a)
   a.len = b.len

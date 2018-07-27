@@ -1088,9 +1088,9 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id == 93289:
+  #if result.id == 77131:
   #  writeStacktrace()
-  #  MessageOut(name.s & " has id: " & toString(result.id))
+  #  echo name.s
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1272,7 +1272,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   when debugIds:
     registerId(result)
   when false:
-    if result.id == 205734:
+    if result.id == 76426:
       echo "KNID ", kind
       writeStackTrace()
 

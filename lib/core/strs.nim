@@ -45,22 +45,27 @@ template frees(s) =
   if not isLiteral(s):
     s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
 
-proc `=destroy`(s: var NimStringV2) =
-  frees(s)
-  s.len = 0
-  s.p = nil
+proc `=destroy`(s: var string) =
+  var a = cast[ptr NimStringV2[T]](addr s)
+  frees(a)
+  a.len = 0
+  a.p = nil
 
 template lose(a) =
   frees(a)
 
-proc `=sink`(a: var NimStringV2, b: NimStringV2) =
+proc `=sink`(x: var string, y: string) =
+  var a = cast[ptr NimStringV2](addr x)
+  var b = cast[ptr NimStringV2](unsafeAddr y)
   # we hope this is optimized away for not yet alive objects:
   if unlikely(a.p == b.p): return
   lose(a)
   a.len = b.len
   a.p = b.p
 
-proc `=`(a: var NimStringV2; b: NimStringV2) =
+proc `=`(x: var string, y: string) =
+  var a = cast[ptr NimStringV2](addr x)
+  var b = cast[ptr NimStringV2](unsafeAddr y)
   if unlikely(a.p == b.p): return
   lose(a)
   a.len = b.len
