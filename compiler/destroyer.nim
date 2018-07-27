@@ -258,8 +258,10 @@ proc registerDropBit(c: var Con; s: PSym) =
   c.toDropBit[s.id] = result
   # generate:
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
-  c.destroys.add newTree(nkIfStmt,
-    newTree(nkElifBranch, newSymNode result, genDestroy(c, s.typ, newSymNode s)))
+  let t = s.typ.skipTypes({tyGenericInst, tyAlias, tySink})
+  if t.destructor != nil:
+    c.destroys.add newTree(nkIfStmt,
+      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s)))
 
 proc p(n: PNode; c: var Con): PNode
 
