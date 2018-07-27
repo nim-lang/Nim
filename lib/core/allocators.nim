@@ -15,6 +15,7 @@ type
     alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.}
     dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall.}
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
+    deallocAll*: proc (a: Allocator) {.nimcall.}
     flags*: set[AllocatorFlag]
 
 var
