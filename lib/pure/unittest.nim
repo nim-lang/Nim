@@ -525,8 +525,6 @@ proc checkpoint*(msg: string) =
   ##  checkpoint("Checkpoint B")
   ##
   ## outputs "Checkpoint A" once it fails.
-  if checkpoints == nil:
-    checkpoints = @[]
   checkpoints.add(msg)
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
