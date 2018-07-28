@@ -333,6 +333,8 @@ when defined(windows):
     # educated guess of capacity:
     var cap = s.len + s.len shr 2
     result = newStringOfCap(cap*2)
+    # bug #8468, the result.len must not zero
+    setLen(result, cap)
     # convert to utf-16 LE
     var m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
                                 lpMultiByteStr = cstring(s),
@@ -348,6 +350,8 @@ when defined(windows):
                                 cchWideChar = cint(0))
       # and do the conversion properly:
       result = newStringOfCap(cap*2)
+      # bug #8468, the result.len must not zero
+      setLen(result, cap)
       m = multiByteToWideChar(codePage = c.src, dwFlags = 0'i32,
                               lpMultiByteStr = cstring(s),
                               cbMultiByte = cint(s.len),
@@ -365,6 +369,8 @@ when defined(windows):
     # otherwise the fun starts again:
     cap = s.len + s.len shr 2
     var res = newStringOfCap(cap)
+    # bug #8468, the res.len must not zero
+    setLen(res, cap)
     m = wideCharToMultiByte(
       codePage = c.dest,
       dwFlags = 0'i32,
@@ -383,6 +389,8 @@ when defined(windows):
         cbMultiByte = cint(0))
       # and do the conversion properly:
       res = newStringOfCap(cap)
+      # bug #8468, the res.len must not zero
+      setLen(res, cap)
       m = wideCharToMultiByte(
         codePage = c.dest,
         dwFlags = 0'i32,
