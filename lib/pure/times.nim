@@ -415,7 +415,7 @@ proc fractional*(dur: Duration): Duration {.inline.} =
 proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
   runnableExamples:
-    doAssert $fromUnix(0).utc == "1970-01-01T00:00:00Z"
+    doAssert $fromUnix(0).utc == "1970-01-01T00:00:00.000Z"
   initTime(unix, 0)
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
@@ -1024,7 +1024,7 @@ proc initTimeInterval*(nanoseconds, microseconds, milliseconds,
   runnableExamples:
     let day = initTimeInterval(hours=24)
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
-    doAssert $(dt + day) == "2000-01-02T12:00:00Z"
+    doAssert $(dt + day) == "2000-01-02T12:00:00.000Z"
   result.nanoseconds = nanoseconds
   result.microseconds = microseconds
   result.milliseconds = milliseconds
@@ -1221,7 +1221,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
   ## Create a new ``DateTime`` in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00Z"
+    doAssert $dt1 == "2017-03-30T00:00:00.000Z"
 
   assertValidDate monthday, month, year
   let dt = DateTime(
@@ -1241,7 +1241,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
   ## Create a new ``DateTime`` in the specified timezone.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00Z"
+    doAssert $dt1 == "2017-03-30T00:00:00.000Z"
   initDateTime(monthday, month, year, hour, minute, second, 0, zone)
 
 
@@ -1257,9 +1257,9 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ##
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $(dt + 1.months) == "2017-04-30T00:00:00Z"
+    doAssert $(dt + 1.months) == "2017-04-30T00:00:00.000Z"
     # This is correct and happens due to monthday overflow.
-    doAssert $(dt - 1.months) == "2017-03-02T00:00:00Z"
+    doAssert $(dt - 1.months) == "2017-03-02T00:00:00.000Z"
   let (adjDur, absDur) = evaluateInterval(dt, interval)
 
   if adjDur != DurationZero:
@@ -1280,7 +1280,7 @@ proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $(dt - 5.days) == "2017-03-25T00:00:00Z"
+    doAssert $(dt - 5.days) == "2017-03-25T00:00:00.000Z"
 
   dt + (-interval)
 
@@ -1288,7 +1288,7 @@ proc `+`*(dt: DateTime, dur: Duration): DateTime =
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
     let dur = initDuration(hours = 5)
-    doAssert $(dt + dur) == "2017-03-30T05:00:00Z"
+    doAssert $(dt + dur) == "2017-03-30T05:00:00.000Z"
 
   (dt.toTime + dur).inZone(dt.timezone)
 
@@ -1296,7 +1296,7 @@ proc `-`*(dt: DateTime, dur: Duration): DateTime =
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
     let dur = initDuration(days = 5)
-    doAssert $(dt - dur) == "2017-03-25T00:00:00Z"
+    doAssert $(dt - dur) == "2017-03-25T00:00:00.000Z"
 
   (dt.toTime - dur).inZone(dt.timezone)
 
@@ -1546,7 +1546,7 @@ type
       ## be encoded as ``@[Lit.byte, 3.byte, 'f'.byte, 'o'.byte, 'o'.byte]``.
     formatStr: string
 
-const FormatLiterals = { ' ', '-', '/', ':', '(', ')', '[', ']', ',' }
+const FormatLiterals = { ' ', '-', '/', ':', '(', ')', '[', ']', ',', '.' }
 
 proc `$`*(f: TimeFormat): string =
   ## Returns the format string that was used to construct ``f``.
@@ -2204,19 +2204,19 @@ proc parseTime*(input: string, f: static[string], zone: Timezone): Time =
 
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
-  ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  ## It uses the format ``yyyy-MM-dd'T'HH-mm-ss.fffzzz``.
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
-    doAssert $dt == "2000-01-01T12:00:00Z"
-  result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
+    doAssert $dt == "2000-01-01T12:00:00.000Z"
+  result = format(dt, "yyyy-MM-dd'T'HH:mm:ss.fffzzz")
 
 proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
-  ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-ss.fffzzz``.
   runnableExamples:
     let dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
     let tm = dt.toTime()
-    doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
+    doAssert $tm == "1970-01-01T00:00:00.000" & format(dt, "zzz")
   $time.local
 
 {.pop.}
