@@ -55,3 +55,8 @@ static:
     var ss = s
     s[] = 1
     doAssert ss[] == 1
+
+static: # bug #8402
+  type R = ref object
+  var empty: R
+  let otherEmpty = empty
