@@ -14,11 +14,11 @@ proc handleRequest(query: string): StringTableRef =
   let x = foo
   result = x()
 
-const Limit = when compileOption("gc", "markAndSweep"): 5*1024*1024 else: 700_000
+const Limit = 5*1024*1024
 
 proc main =
   var counter = 0
-  for i in 0 .. 100_000:
+  for i in 0 .. 10_000_000:
     for k, v in handleRequest("nick=Elina2&type=activate"):
       inc counter
       if counter mod 100 == 0:

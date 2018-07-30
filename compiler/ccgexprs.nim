@@ -1092,17 +1092,20 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if not p.module.compileToCpp:
-                           "$1 = ($2) #incrSeqV3(&($1)->Sup, $3);$n"
+                           "($2) #incrSeqV3(&($1)->Sup, $3)"
                          else:
-                           "$1 = ($2) #incrSeqV3($1, $3);$n"
-  var a, b, dest, tmpL: TLoc
+                           "($2) #incrSeqV3($1, $3)"
+  var a, b, dest, tmpL, call: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   let seqType = skipTypes(e.sons[1].typ, {tyVar})
-  lineCg(p, cpsStmts, seqAppendPattern, [
-      rdLoc(a),
-      getTypeDesc(p.module, e.sons[1].typ),
-      genTypeInfo(p.module, seqType, e.info)])
+  initLoc(call, locCall, e, OnHeap)
+  call.r = ropecg(p.module, seqAppendPattern, [rdLoc(a),
+    getTypeDesc(p.module, e.sons[1].typ),
+    genTypeInfo(p.module, seqType, e.info)])
+  # emit the write barrier if required, but we can always move here, so
+  # use 'genRefAssign' for the seq.
+  genRefAssign(p, a, call, {})
   #if bt != b.t:
   #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
   initLoc(dest, locExpr, e.sons[2], OnHeap)
