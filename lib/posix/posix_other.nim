@@ -10,7 +10,7 @@
 {.deadCodeElim: on.}  # dce option deprecated
 
 const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
+  hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
