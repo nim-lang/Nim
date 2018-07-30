@@ -255,7 +255,7 @@ when defined(windows):
 
 else:
   when defined(haiku):
-    const iconvDll = "(libc.so.6|libiconv.so|libtextencoding.so)"
+    const iconvDll = "libiconv.so"
   elif defined(macosx):
     const iconvDll = "libiconv.dylib"
   else:
@@ -272,6 +272,8 @@ else:
     const EILSEQ = 86.cint
   elif defined(solaris):
     const EILSEQ = 88.cint
+  elif defined(haiku):
+    const EILSEQ = -2147454938.cint
 
   var errno {.importc, header: "<errno.h>".}: cint
 
