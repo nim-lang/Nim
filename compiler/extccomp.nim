@@ -668,8 +668,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
     else: result = joinPath(conf.cCompilerpath, linkerExe)
-    let buildgui = if optGenGuiApp in conf.globalOptions: CC[conf.cCompiler].buildGui
-                   else: ""
+    let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
+                     CC[conf.cCompiler].buildGui
+                   else:
+                     ""
     var exefile, builddll: string
     if optGenDynLib in conf.globalOptions:
       exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
