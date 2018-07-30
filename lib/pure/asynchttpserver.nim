@@ -107,6 +107,95 @@ proc respond*(req: Request, code: HttpCode, content: string,
   msg.add(content)
   result = req.client.send(msg)
 
+proc respondHeader*(req: Request, headers: HttpHeaders, code: HttpCode = Http200): Future[void] =
+  ## Sends the specified headers to the requesting client.
+  ## If you send headers individually, [Transfer-Encoding:chunked] header will be added automatically.
+  var msg = "HTTP/1.1 " & $code & "\c\L"
+
+  if not headers.hasKey("Transfer-Encoding") :
+    headers.add("Transfer-Encoding","chunked")
+  else : 
+    headers["Transfer-Encoding"] = "chunked"
+  
+  addHeaders(msg, headers)
+  msg.add("\c\L")
+  return req.client.send(msg)
+
+proc respondContent*(req: Request, content:string): Future[void] =
+  ## Send to the specified content on chunked.
+  ## 
+  ## Before using this procedure, you need to send a header with ``respondHeader`` procedure
+  ## Finally, we need to call ``sendChunkedEnd`` to send chunk end signal
+  ## 
+  ## Examples
+  ## --------
+  ## Download of large file.  
+  ## 
+  ## .. code-block::nim
+  ##    import asyncdispatch, asynchttpserver, json, os
+  ##    proc handler(req: Request) {.async.} =
+  ##      if req.url.path == "/download":
+  ##    
+  ##        const buflen = 10000
+  ##        let fileName = "largefile.zip"
+  ##        let f : File = open(fileName ,FileMode.fmRead)
+  ##        defer : close(f)
+  ##    
+  ##        # header
+  ##        let size = f.getFileSize()
+  ##        let headers = newHttpHeaders([("Content-Type","application/zip"),
+  ##                                      ("content-disposition", "attachment; filename=\"" & fileName & "\""),
+  ##                                      ("Content-Length",$size)])
+  ##        # send header
+  ##        await req.respondHeader(headers)
+  ##    
+  ##        # read to send
+  ##        var buf = ""
+  ##        buf.setLen(buflen)
+  ##        while (let ret = f.readBuffer(addr buf[0], buflen); ret > 0) :
+  ##          await req.respondContent(buf[0..<ret])
+  ##    
+  ##        # send chunked ending signal
+  ##        await req.sendChunkedEnd()
+  ##      else:
+  ##        await req.respond(Http404, "Not Found")
+  
+  # Chunked Transfer Coding has the following specification
+  # https://tools.ietf.org/html/rfc2616#page-25
+  # 
+  #        Chunked-Body   = *chunk
+  #                         last-chunk
+  #                         trailer
+  #                         CRLF
+  # 
+  # chunk          = chunk-size [ chunk-extension ] CRLF
+  #                  chunk-data CRLF
+  # chunk-size     = 1*HEX
+  # last-chunk     = 1*("0") [ chunk-extension ] CRLF
+  # 
+  # chunk-extension= *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
+  # chunk-ext-name = token
+  # chunk-ext-val  = token | quoted-string
+  # chunk-data     = chunk-size(OCTET)
+  # trailer        = *(entity-header CRLF)
+  if content.len == 0 : return
+
+  # length to HEX
+  var msg = "0\c\L"
+  let hex = content.len.toHex
+  for i,h in hex :
+    if h != '0' : 
+      msg = hex[i..<hex.len] & "\c\L"
+      break
+
+  msg.add(content & "\c\L")
+  result = req.client.send(msg)
+    
+proc sendChunkedEnd*(req: Request): Future[void] =
+  ## Send chunk ending signal.
+  ## For chunked transmission only
+  result = req.client.send("0\c\L\c\L")
+  
 proc respondError(req: Request, code: HttpCode): Future[void] =
   ## Responds to the request with the specified ``HttpCode``.
   let content = $code
