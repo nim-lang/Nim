@@ -110,7 +110,7 @@ proc random*[T](a: openArray[T]): T {.deprecated.} =
   ## Use ``rand`` instead.
   result = a[random(a.low..a.len)]
 
-proc rand*(r: var Rand; max: int): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -128,7 +128,7 @@ proc rand*(max: int): int {.benign.} =
   ## number, i.e. a tickcount.
   rand(state, max)
 
-proc rand*(r: var Rand; max: float): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -217,5 +217,18 @@ when isMainModule:
 
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
+
+    when compileOption("rangeChecks"):
+      try:
+        discard rand(-1)
+        doAssert false
+      except RangeError:
+        discard
+
+      try:
+        discard rand(-1.0)
+        doAssert false
+      except RangeError:
+        discard
 
   main()
