@@ -50,6 +50,7 @@ Boot options:
 
 Commands for core developers:
   web [options]            generates the website and the full documentation
+                           (see `nimweb.nim` for cmd line options)
   website [options]        generates only the website
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
