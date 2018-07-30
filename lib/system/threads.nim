@@ -714,3 +714,13 @@ elif defined(solaris):
     if threadId == 0:
       threadId = int(thr_self())
     result = threadId
+
+elif defined(haiku):
+  type thr_id {.importc: "thread_id", header: "<OS.h>".} = distinct int32
+  proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
+
+  proc getThreadId*(): int =
+    ## get the ID of the currently running thread.
+    if threadId == 0:
+      threadId = int(find_thread(nil))
+    result = threadId
