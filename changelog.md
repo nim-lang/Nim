@@ -23,7 +23,6 @@
 - The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
   bring the language in line with the standard library (e.g. ``parseOct``).
 
-
 #### Breaking changes in the standard library
 
 - ``re.split`` for empty regular expressions now yields every character in
@@ -59,6 +58,8 @@
   1-based coordinates on POSIX for correct behaviour; the Windows behaviour
   was always correct).
 
+- ``lineInfoObj`` now returns absolute path instead of project path.
+  It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
 #### Breaking changes in the compiler
 

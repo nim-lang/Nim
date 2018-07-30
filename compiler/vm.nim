@@ -1416,7 +1416,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, toMsgFilename(c.config, n.info))
+      regs[ra].node = newStrNode(nkStrLit, toFullPath(c.config, n.info))
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetLine:
