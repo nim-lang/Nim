@@ -114,7 +114,7 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
-  for i in 0 ..< MAX_KQUEUE_EVENTS:
+  for i in 0 ..< maxFD:
     result.fds[i].ident = InvalidIdent
 
   result.sock = usock
