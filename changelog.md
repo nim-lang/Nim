@@ -22,6 +22,8 @@
   become an error in the future.
 - The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
   bring the language in line with the standard library (e.g. ``parseOct``).
+- The dot style for import paths (e.g ``import path.to.module`` instead of
+  ``import path/to/module``) has been deprecated.
 
 
 #### Breaking changes in the standard library
