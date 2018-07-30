@@ -32,7 +32,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, transf
 
 from modulegraphs import ModuleGraph
 
@@ -1953,7 +1953,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  p.nested: genStmt(p, prc.getBody)
+  let transformed_body = transformBody(oldProc.module.graph, oldProc.module.module, prc.ast[bodyPos], prc)
+  p.nested: genStmt(p, transformed_body)
 
   var def: Rope
   if not prc.constraint.isNil:

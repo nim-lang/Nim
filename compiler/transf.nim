@@ -1026,7 +1026,6 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
-    when useEffectSystem: trackProc(g, prc, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
@@ -1057,7 +1056,6 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    when useEffectSystem: trackTopLevelStmt(g, module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
     if c.needsDestroyPass:

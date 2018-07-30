@@ -29,7 +29,7 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos
+  trees, intsets, magicsys, options, lowerings, lineinfos, transf
 import platform
 from os import splitFile
 
@@ -2034,7 +2034,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = s.getBody
+    let body = transformBody(c.graph, c.module, s.getBody, s)
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
