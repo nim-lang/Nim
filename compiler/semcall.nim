@@ -505,7 +505,15 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
-    let arg = n[i].typ
+    var arg = n[i].typ
+    # try transforming the argument into a static one before feeding it into
+    # typeRel
+    if formal.kind == tyStatic and arg.kind != tyStatic:
+      let evaluated = c.semTryConstExpr(c, n[i])
+      if evaluated != nil:
+        arg = newTypeS(tyStatic, c)
+        arg.sons = @[evaluated.typ]
+        arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
