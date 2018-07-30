@@ -496,9 +496,15 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     result.add "]"
   of tyAnd:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+    for i, son in t.sons:
+      result.add(typeToString(son))
+      if i < t.sons.high:
+        result.add(" and ")
   of tyOr:
-    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
+    for i, son in t.sons:
+      result.add(typeToString(son))
+      if i < t.sons.high:
+        result.add(" or ")
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:
