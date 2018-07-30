@@ -359,6 +359,9 @@ proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
   msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
 
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
+  # fail early but show inflight message before raising
+  doAssert conf != nil,
+    "ICE: inflight TMsgKind: '" & $msg & "', args: '" & $args & "'"
   var
     title: string
     color: ForegroundColor
