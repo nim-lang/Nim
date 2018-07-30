@@ -43,6 +43,9 @@ type
 
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+    when defined(haiku):
+      d_dev*: Dev ## Device (not POSIX)
+      d_pdev*: Dev ## Parent device (only for queries) (not POSIX)
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
@@ -54,6 +57,9 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+    elif defined(haiku):
+      d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
+      d_reclen*: cushort ## Length of this record. (not POSIX)
 
     d_name*: array[0..255, char] ## Name of entry.
 
