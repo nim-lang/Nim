@@ -102,3 +102,20 @@ proc foo(a: openArray[byte]) =
 
 let str = "0123456789"
 foo(toOpenArrayByte(str, 0, str.high))
+
+
+# use `block default:` pending https://github.com/nim-lang/Nim/issues/8506
+block default2:
+  doAssert int.default == 0
+
+  # test case from https://github.com/nim-lang/Nim/issues/8485
+  proc len(T: typedesc[tuple]):auto=
+    const t=default(T)
+    var n=0
+    for _ in t.fields:
+      inc n
+    return n
+
+  var a=(1,2,3)
+  const length = a.type.len
+  doAssert length == 3

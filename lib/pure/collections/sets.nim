@@ -41,11 +41,6 @@ type
 
 {.deprecated: [TSet: HashSet].}
 
-template default[T](t: typedesc[T]): T =
-  ## Used by clear methods to get a default value.
-  var v: T
-  v
-
 proc clear*[A](s: var HashSet[A]) =
   ## Clears the HashSet back to an empty state, without shrinking
   ## any of the existing storage. O(n) where n is the size of the hash bucket.
@@ -280,10 +275,6 @@ template doWhile(a, b) =
   while true:
     b
     if not a: break
-
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
 
 proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."

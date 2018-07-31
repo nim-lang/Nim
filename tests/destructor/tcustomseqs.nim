@@ -98,10 +98,6 @@ proc grow*[T](x: var myseq[T]; newLen: int; value: T) =
     x.data[i] = value
   x.len = newLen
 
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
-
 proc setLen*[T](x: var myseq[T]; newLen: int) {.deprecated.} =
   if newlen < x.len: shrink(x, newLen)
   else: grow(x, newLen, default(T))

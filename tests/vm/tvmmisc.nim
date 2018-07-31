@@ -13,10 +13,10 @@ block:
 
 # #4412
 block:
-  proc default[T](t: typedesc[T]): T {.inline.} = discard
+  proc default2[T](t: typedesc[T]): T {.inline.} = discard
 
   static:
-    var x = default(type(0))
+    var x = default2(type(0))
 
 # #6379
 import algorithm

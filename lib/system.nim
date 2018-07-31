@@ -4193,3 +4193,19 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+# needed pending https://github.com/nim-lang/Nim/issues/8486
+proc defaultImpl[T]():T=
+  var a: T
+  result = a
+
+template default*[T](t: typedesc[T]): T =
+  ## returns default value for type ``T``, and can work at compile time; V2
+  runnableExamples:
+    const a = (1,2).type.default
+    doAssert a == (0, 0)
+  defaultImpl[T]()
+
+when isMainModule:
+  # needed pending https://github.com/nim-lang/Nim/issues/7280
+  discard int.default
