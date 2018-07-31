@@ -162,10 +162,12 @@ elif defined(genode):
       mainTls
 
 else:
-  when not defined(macosx):
+  when not (defined(macosx) or defined(haiku)):
     {.passL: "-pthread".}
 
-  {.passC: "-pthread".}
+  when not defined(haiku):
+    {.passC: "-pthread".}
+
   const
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
