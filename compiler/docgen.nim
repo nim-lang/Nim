@@ -259,7 +259,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, "<span>" &  # This span is required for the JS to work properly
+      dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
 </span>
 <span class="pragmawrap">
