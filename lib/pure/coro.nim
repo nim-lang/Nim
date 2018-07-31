@@ -194,7 +194,7 @@ proc switchTo(current, to: CoroutinePtr) =
         elif to.state == CORO_CREATED:
           # Coroutine is started.
           coroExecWithStack(runCurrentTask, to.stack.bottom)
-          doAssert false
+          #doAssert false
     else:
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
