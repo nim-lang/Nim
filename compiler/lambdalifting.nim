@@ -113,8 +113,9 @@ discard """
 #   local storage requirements for efficiency. This means closure iterators
 #   have slightly different semantics from ordinary closures.
 
-# ---------------- essential helpers -------------------------------------
+proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode
 
+# ---------------- essential helpers -------------------------------------
 const
   upName* = ":up" # field name for the 'up' reference
   paramName* = ":envP"
@@ -173,9 +174,12 @@ proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
     result = hidden.sym
     assert sfFromGeneric in result.flags
   else:
+    var tooEarly: bool
+    routine.ast[bodyPos] = liftLambdas(g, routine, routine.ast[bodyPos], tooEarly)
+    result = getHiddenParam(g, routine)
     # writeStackTrace()
-    localError(g.config, routine.info, "internal error: could not find env param for " & routine.name.s)
-    result = routine
+    #localError(g.config, routine.info, "internal error: could not find env param for " & routine.name.s)
+    #result = routine
 
 proc getEnvParam*(routine: PSym): PSym =
   let params = routine.ast.sons[paramsPos]
