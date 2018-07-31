@@ -605,6 +605,10 @@ else:
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
       ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
 
+when defined(haiku):
+  const
+    SIGKILLTHR* = 21 ## BeOS specific: Kill just the thread, not team
+
 when hasSpawnH:
   when defined(linux):
     # better be safe than sorry; Linux has this flag, macosx doesn't, don't
