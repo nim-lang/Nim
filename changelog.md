@@ -25,7 +25,6 @@
 - The dot style for import paths (e.g ``import path.to.module`` instead of
   ``import path/to/module``) has been deprecated.
 
-
 #### Breaking changes in the standard library
 
 - ``re.split`` for empty regular expressions now yields every character in
@@ -61,6 +60,8 @@
   1-based coordinates on POSIX for correct behaviour; the Windows behaviour
   was always correct).
 
+- ``lineInfoObj`` now returns absolute path instead of project path.
+  It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
 #### Breaking changes in the compiler
 
