@@ -1063,7 +1063,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
   #    appendChar(s, 'z');
   #  }
   var
-    a, dest: TLoc
+    a, dest, call: TLoc
     appends, lens: Rope
   assert(d.k == locNone)
   var L = 0
@@ -1082,8 +1082,9 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
         addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
       add(appends, ropecg(p.module, "#appendString($1, $2);$n",
                         rdLoc(dest), rdLoc(a)))
-  linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
-          rdLoc(dest), lens, rope(L))
+  initLoc(call, locCall, e, OnHeap)
+  call.r = ropecg(p.module, "#resizeString($1, $2$3)", [rdLoc(dest), lens, rope(L)])
+  genAssignment(p, dest, call, {})
   add(p.s(cpsStmts), appends)
   gcUsage(p.config, e)
 
@@ -1512,7 +1513,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   else: internalError(p.config, e.info, "genArrayLen()")
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
-  var a, b: TLoc
+  var a, b, call: TLoc
   assert(d.k == locNone)
   var x = e.sons[1]
   if x.kind in {nkAddr, nkHiddenAddr}: x = x[0]
@@ -1520,17 +1521,27 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[2], b)
   let t = skipTypes(e.sons[1].typ, {tyVar})
   let setLenPattern = if not p.module.compileToCpp:
-      "$1 = ($3) #setLengthSeqV2(&($1)->Sup, $4, $2);$n"
+      "($3) #setLengthSeqV2(&($1)->Sup, $4, $2)"
     else:
-      "$1 = ($3) #setLengthSeqV2($1, $4, $2);$n"
+      "($3) #setLengthSeqV2($1, $4, $2)"
 
-  lineCg(p, cpsStmts, setLenPattern, [
+  initLoc(call, locCall, e, OnHeap)
+  call.r = ropecg(p.module, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
       genTypeInfo(p.module, t.skipTypes(abstractInst), e.info)])
+  genAssignment(p, a, call, {})
   gcUsage(p.config, e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
-  binaryStmt(p, e, d, "$1 = #setLengthStr($1, $2);$n")
+  var a, b, call: TLoc
+  if d.k != locNone: internalError(p.config, e.info, "genSetLengthStr")
+  initLocExpr(p, e.sons[1], a)
+  initLocExpr(p, e.sons[2], b)
+
+  initLoc(call, locCall, e, OnHeap)
+  call.r = ropecg(p.module, "#setLengthStr($1, $2)", [
+      rdLoc(a), rdLoc(b)])
+  genAssignment(p, a, call, {})
   gcUsage(p.config, e)
 
 proc genSwap(p: BProc, e: PNode, d: var TLoc) =
