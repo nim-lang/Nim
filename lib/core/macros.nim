@@ -386,7 +386,7 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
-  ## if called from template, `ident` and `rule` must be
+  ## if called from template / regular code, `ident` and `rule` must be
   ## constant expression/literal value.
   ## if called from macros/compile time procs/static blocks,
   ## `ident` and `rule` can be VM computed value.

@@ -197,7 +197,6 @@
 
 - macros.bindSym now capable to accepts not only literal string or string constant expression.
   bindSym enhancement make it also can accepts computed string or ident node inside macros /
-  compile time functions / static blocks. Only in template it retain it's old behavior.
-
+  compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
 
 ### Bugfixes
