@@ -179,33 +179,57 @@ proc semOrd(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
-proc semBindSym(c: PContext, n: PNode): PNode =
-  result = copyNode(n)
-  result.add(n.sons[0])
-
-  let sl = semConstExpr(c, n.sons[1])
-  if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    localError(c.config, n.sons[1].info, errStringLiteralExpected)
+proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
+  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
+    localError(c.config, info.info, errStringOrIdentNodeExpected)
     return errorNode(c, n)
 
-  let isMixin = semConstExpr(c, n.sons[2])
-  if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
-      isMixin.intVal > high(TSymChoiceRule).int:
-    localError(c.config, n.sons[2].info, errConstExprExpected)
+  if isMixin < 0 or isMixin > high(TSymChoiceRule).int:
+    localError(c.config, info.info, errConstExprExpected)
     return errorNode(c, n)
 
-  let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
+  let id = if n.kind == nkIdent: n
+    else: newIdentNode(getIdent(c.cache, n.strVal), info.info)
+
+  let tmpScope = c.currentScope
+  c.currentScope = scope
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
-    var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
-    if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
-      # inside regular code, bindSym resolves to the sym-choice
-      # nodes (see tinspectsymbol)
-      return sc
-    result.add(sc)
+    result = symChoice(c, id, s, TSymChoiceRule(isMixin))
   else:
-    errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
+    errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
+      else: n.strVal)
+  c.currentScope = tmpScope
+
+proc semBindSym(c: PContext, n: PNode): PNode =
+  if c.graph.vm.isNil:
+    setupGlobalCtx(c.module, c.graph)
+
+  let
+    vm = PCtx c.graph.vm
+    # cache the current scope to
+    # prevent it lost into oblivion
+    scope = c.currentScope
+
+  proc bindSymWrapper(a: VmArgs) =
+    # capture PContext and currentScope
+    # param description:
+    #   0. ident, a string literal / computed string / or ident node
+    #   1. bindSym rule
+    #   2. info node
+    a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
+
+  let
+    # cannot use VM callback here, we need another machinery
+    idx = vm.registerPayload(bindSymWrapper)
+    # dummy node to carry idx information to VM
+    idxNode = newIntTypeNode(nkIntLit, idx, c.graph.getSysType(TLineInfo(), tyInt))
+
+  result = copyNode(n)
+  for x in n: result.add x
+  result.add n # info node
+  result.add idxNode
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
