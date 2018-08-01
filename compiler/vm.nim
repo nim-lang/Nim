@@ -1226,7 +1226,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rb = instr.regB
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
-        callback = c.specialOps[idx]
+        callback = c.callbacks[idx].value
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
                  currentException: c.currentExceptionB,
                  currentLineInfo: c.debug[pc])

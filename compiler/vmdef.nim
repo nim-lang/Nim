@@ -207,7 +207,6 @@ type
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[tuple[key: string, value: VmCallback]]
-    specialOps*: seq[VmCallback]
     errorFlag*: string
     cache*: IdentCache
     config*: ConfigRef
@@ -222,7 +221,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], specialOps: @[], errorFlag: "",
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
@@ -230,12 +229,9 @@ proc refresh*(c: PCtx, module: PSym) =
   c.prc = PProc(blocks: @[])
   c.loopIterations = MaxLoopIterations
 
-proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
+proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
+  result = c.callbacks.len
   c.callbacks.add((name, callback))
-
-proc registerSpecialOps*(c: PCtx; callback: VmCallback): int =
-  result = c.specialOps.len
-  c.specialOps.add callback
 
 const
   firstABxInstr* = opcTJmp
