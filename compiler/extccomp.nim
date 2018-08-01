@@ -645,7 +645,7 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, if hintCC in conf.notes: "CC: " & name else: "")
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, "\n")
@@ -773,7 +773,8 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     when declared(echo):
-      echo prettyCmds[idx]
+      let cmd = prettyCmds[idx]
+      if cmd != "": echo cmd
   compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
