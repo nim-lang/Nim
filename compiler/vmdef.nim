@@ -158,7 +158,7 @@ type
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
     allowFFI,                 ## allow the FFI
-    allowInfiniteLoops       ## allow endless loops
+    allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 
   TSlotKind* = enum   # We try to re-use slots in a smart way to
@@ -207,7 +207,7 @@ type
     loopIterations*: int
     comesFromHeuristic*: TLineInfo # Heuristic for better macro stack traces
     callbacks*: seq[tuple[key: string, value: VmCallback]]
-    payloads*: seq[VmCallback]
+    specialOps*: seq[VmCallback]
     errorFlag*: string
     cache*: IdentCache
     config*: ConfigRef
@@ -222,7 +222,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], payloads: @[], errorFlag: "",
+    comesFromHeuristic: unknownLineInfo(), callbacks: @[], specialOps: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
@@ -233,9 +233,9 @@ proc refresh*(c: PCtx, module: PSym) =
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
   c.callbacks.add((name, callback))
 
-proc registerPayload*(c: PCtx; callback: VmCallback): int =
-  result = c.payloads.len
-  c.payloads.add callback
+proc registerSpecialOps*(c: PCtx; callback: VmCallback): int =
+  result = c.specialOps.len
+  c.specialOps.add callback
 
 const
   firstABxInstr* = opcTJmp

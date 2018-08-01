@@ -247,7 +247,7 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
   let
     # cannot use VM callback here, we need another machinery
-    idx = vm.registerPayload(bindSymWrapper)
+    idx = vm.registerSpecialOps(bindSymWrapper)
     # dummy node to carry idx information to VM
     idxNode = newIntTypeNode(nkIntLit, idx, c.graph.getSysType(TLineInfo(), tyInt))
 
