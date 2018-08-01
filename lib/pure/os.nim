@@ -1352,9 +1352,15 @@ elif defined(nintendoswitch):
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
+elif defined(genode):
+  proc paramStr*(i: int): TaintedString =
+    raise newException(OSError, "paramStr is not implemented on Genode")
+
+  proc paramCount*(): int =
+    raise newException(OSError, "paramCount is not implemented on Genode")
+
 elif not defined(createNimRtl) and
-  not(defined(posix) and appType == "lib") and
-  not defined(genode):
+  not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
