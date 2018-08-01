@@ -1,4 +1,9 @@
 discard """
+  msg: '''initApple
+deinitApple
+Coral
+enum
+  redCoral, blackCoral'''
   output: '''TFoo
 TBar'''
 """
@@ -23,3 +28,39 @@ macro test: untyped =
         bindSym("TBar"))
 
 test()
+
+# issue 7827, bindSym power up
+type
+  Apple = ref object
+    name: string
+    color: int
+    weight: int
+
+proc initApple(name: string): Apple =
+  discard
+
+proc deinitApple(x: Apple) =
+  discard
+
+macro wrapObject(obj: typed, n: varargs[untyped]): untyped =
+  let m = n[0]
+  for x in m:
+    var z = bindSym x
+    echo z.repr
+
+wrapObject(Apple):
+  initApple
+  deinitApple
+
+type
+  Coral = enum
+    redCoral
+    blackCoral
+
+macro mixer(): untyped =
+  let m = "Co" & "ral"
+  let x = bindSym(m)
+  echo x.repr
+  echo getType(x).repr
+
+mixer()

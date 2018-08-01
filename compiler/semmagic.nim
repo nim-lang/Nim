@@ -179,6 +179,26 @@ proc semOrd(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
+proc semBindSymAux(c: PContext, n: PNode): PNode =
+  let sl = semConstExpr(c, n.sons[1])
+  if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
+    localError(c.config, n.sons[1].info, errStringLiteralExpected)
+    return errorNode(c, n)
+
+  let isMixin = semConstExpr(c, n.sons[2])
+  if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
+      isMixin.intVal > high(TSymChoiceRule).int:
+    localError(c.config, n.sons[2].info, errConstExprExpected)
+    return errorNode(c, n)
+
+  let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
+  if s != nil:
+    # we need to mark all symbols:
+    result = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+  else:
+    errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
+
 proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
   if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
     localError(c.config, info.info, errStringOrIdentNodeExpected)
@@ -203,6 +223,11 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
   c.currentScope = tmpScope
 
 proc semBindSym(c: PContext, n: PNode): PNode =
+  # inside regular code, bindSym resolves to the sym-choice
+  # nodes (see tinspectsymbol)
+  if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+    return semBindSymAux(c, n)
+
   if c.graph.vm.isNil:
     setupGlobalCtx(c.module, c.graph)
 
