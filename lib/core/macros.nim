@@ -386,6 +386,11 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
+  ## if called from template, `ident` and `rule` must be
+  ## constant expression/literal value.
+  ## if called from macros/compile time procs/static blocks,
+  ## `ident` and `rule` can be VM computed value.
+  ## if `ident` is a NimNode, it must have nkIdent kind.
   ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brOpen`` either an ``nkOpenSymChoice`` tree is
