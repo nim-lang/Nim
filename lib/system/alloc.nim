@@ -436,8 +436,9 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
         a.nextChunkSize = PageSize*4
       else:
         a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
-  var size = size
+        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize)
 
+  var size = size
   if size > a.nextChunkSize:
     result = cast[PBigChunk](osAllocPages(size))
   else:
