@@ -136,7 +136,7 @@ type
     opcLdGlobalAddr, # dest = addr(globals[Bx])
 
     opcLdImmInt,  # dest = immediate value
-    opcNBindSym,
+    opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,

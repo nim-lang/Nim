@@ -817,6 +817,43 @@ proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
+proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
+  # nah, cannot use c.config.features because sempass context
+  # can have local experimental switch
+  # if dynamicBindSym notin c.config.features:
+  if n.len == 2: # hmm, reliable?
+    # bindSym with static input
+    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
+      let idx = c.genLiteral(n[1])
+      if dest < 0: dest = c.getTemp(n.typ)
+      c.gABx(n, opcNBindSym, dest, idx)
+    else:
+      localError(c.config, n.info, "invalid bindSym usage")
+  else:
+    # experimental bindSym
+    if dest < 0: dest = c.getTemp(n.typ)
+    let x = c.getTempRange(n.len, slotTempUnknown)
+
+    # callee symbol
+    var tmp0 = TDest(x)
+    c.genLit(n.sons[0], tmp0)
+
+    # original parameters
+    for i in 1..<n.len-2:
+      var r = TRegister(x+i)
+      c.gen(n.sons[i], r)
+
+    # info node
+    var tmp1 = TDest(x+n.len-2)
+    c.genLit(n.sons[^2], tmp1)
+
+    # payload idx
+    var tmp2 = TDest(x+n.len-1)
+    c.genLit(n.sons[^1], tmp2)
+
+    c.gABC(n, opcNDynBindSym, dest, x, n.len)
+    c.freeTempRange(x, n.len)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1137,29 +1174,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNNewNimNode: genBinaryABC(c, n, dest, opcNNewNimNode)
   of mNCopyNimNode: genUnaryABC(c, n, dest, opcNCopyNimNode)
   of mNCopyNimTree: genUnaryABC(c, n, dest, opcNCopyNimTree)
-  of mNBindSym:
-    if dest < 0: dest = c.getTemp(n.typ)
-    let x = c.getTempRange(n.len, slotTempUnknown)
-
-    # callee symbol
-    var tmp0 = TDest(x)
-    c.genLit(n.sons[0], tmp0)
-
-    # original parameters
-    for i in 1..<n.len-2:
-      var r = TRegister(x+i)
-      c.gen(n.sons[i], r)
-
-    # info node
-    var tmp1 = TDest(x+n.len-2)
-    c.genLit(n.sons[^2], tmp1)
-
-    # payload idx
-    var tmp2 = TDest(x+n.len-1)
-    c.genLit(n.sons[^1], tmp2)
-
-    c.gABC(n, opcNBindSym, dest, x, n.len)
-    c.freeTempRange(x, n.len)
+  of mNBindSym: genBindSym(c, n, dest)
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)

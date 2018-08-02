@@ -116,7 +116,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    dynamicBindSym
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

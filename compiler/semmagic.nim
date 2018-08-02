@@ -179,7 +179,10 @@ proc semOrd(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
-proc semBindSymAux(c: PContext, n: PNode): PNode =
+proc semBindSym(c: PContext, n: PNode): PNode =
+  result = copyNode(n)
+  result.add(n.sons[0])
+
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
     localError(c.config, n.sons[1].info, errStringLiteralExpected)
@@ -195,7 +198,12 @@ proc semBindSymAux(c: PContext, n: PNode): PNode =
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
-    result = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+    var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+    if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+      # inside regular code, bindSym resolves to the sym-choice
+      # nodes (see tinspectsymbol)
+      return sc
+    result.add(sc)
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
@@ -222,11 +230,11 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
       else: n.strVal)
   c.currentScope = tmpScope
 
-proc semBindSym(c: PContext, n: PNode): PNode =
+proc semDynamicBindSym(c: PContext, n: PNode): PNode =
   # inside regular code, bindSym resolves to the sym-choice
   # nodes (see tinspectsymbol)
   if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
-    return semBindSymAux(c, n)
+    return semBindSym(c, n)
 
   if c.graph.vm.isNil:
     setupGlobalCtx(c.module, c.graph)
@@ -236,6 +244,9 @@ proc semBindSym(c: PContext, n: PNode): PNode =
     # cache the current scope to
     # prevent it lost into oblivion
     scope = c.currentScope
+
+  # cannot use this
+  # vm.config.features.incl dynamicBindSym
 
   proc bindSymWrapper(a: VmArgs) =
     # capture PContext and currentScope
@@ -320,7 +331,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
-  of mNBindSym: result = semBindSym(c, n)
+  of mNBindSym:
+    if dynamicBindSym notin c.features:
+      result = semBindSym(c, n)
+    else:
+      result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ

@@ -1222,14 +1222,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
           node.sons[1].kind == nkNilLit))
     of opcNBindSym:
+      # cannot use this simple check
+      # if dynamicBindSym notin c.config.features:
+
+      # bindSym with static input
+      decodeBx(rkNode)
+      regs[ra].node = copyTree(c.constants.sons[rbx])
+      regs[ra].node.flags.incl nfIsRef
+    of opcNDynBindSym:
+      # experimental bindSym
       let
         rb = instr.regB
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
-                 currentException: c.currentExceptionB,
-                 currentLineInfo: c.debug[pc])
+                currentException: c.currentExceptionB,
+                currentLineInfo: c.debug[pc])
       callback(args)
       regs[ra].node.flags.incl nfIsRef
     of opcNChild:

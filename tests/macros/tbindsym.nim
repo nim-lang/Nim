@@ -30,6 +30,7 @@ macro test: untyped =
 test()
 
 # issue 7827, bindSym power up
+{.experimental: "dynamicBindSym".}
 type
   Apple = ref object
     name: string
