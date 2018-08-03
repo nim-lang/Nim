@@ -198,3 +198,34 @@ macro dump*(x: typed): untyped =
   let r = quote do:
     debugEcho `s`, " = ", `x`
   return r
+
+macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
+  ## reverses ``type T = distinct A``
+  runnableExamples:
+    import typetraits
+    type T = distinct int
+    doAssert distinctBase(T) is int
+    doAssert: not compiles(distinctBase(int))
+    type T2 = distinct T
+    doAssert distinctBase(T2, recursive = false) is T
+    doAssert distinctBase(int, recursive = true) is int
+    doAssert distinctBase(T2, recursive = true) is int
+
+  let typeNode = getTypeImpl(T)
+  expectKind(typeNode, nnkBracketExpr)
+  if $typeNode[0] != "typeDesc":
+    error "expected typeDesc, got " & $typeNode[0]
+  var typeSym = typeNode[1]
+  if not recursive:
+    let impl = getTypeImpl(typeSym)
+    if $impl.typeKind != "ntyDistinct":
+      error "type is not distinct"
+    getTypeInst(impl[0])
+  else:
+    while true:
+      let impl = getTypeImpl(typeSym)
+      if $impl.typeKind != "ntyDistinct":
+        typeSym = impl
+        break
+      typeSym=getTypeInst(impl[0])
+    typeSym

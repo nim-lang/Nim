@@ -1673,7 +1673,8 @@ A ``distinct`` type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
-base type and vice versa are allowed.
+base type and vice versa are allowed. See also ``distinctBase`` to get the
+reverse operation.
 
 
 Modelling currencies
