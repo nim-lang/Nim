@@ -21,17 +21,17 @@ doAssert b - a == initDuration(seconds = 500_000_000)
 
 # Because we can't change the timezone JS uses, we define a simple static timezone for testing.
 
-proc staticZoneInfoFromUtc(time: Time): ZonedTime =
+proc zonedTimeFromTime(time: Time): ZonedTime =
   result.utcOffset = -7200
   result.isDst = false
-  result.adjTime = time + 7200.seconds
+  result.time = time
 
-proc staticZoneInfoFromTz(adjTime: Time): ZonedTIme =
+proc zonedTimeFromAdjTime(adjTime: Time): ZonedTIme =
   result.utcOffset = -7200
   result.isDst = false
-  result.adjTime = adjTime
+  result.time = adjTime + initDuration(seconds = -7200)
 
-let utcPlus2 = Timezone(zoneInfoFromUtc: staticZoneInfoFromUtc, zoneInfoFromTz: staticZoneInfoFromTz, name: "")
+let utcPlus2 = newTimezone("", zonedTimeFromTime, zonedTimeFromAdjTime)
 
 block timezoneTests:
   let dt = initDateTime(01, mJan, 2017, 12, 00, 00, utcPlus2)
