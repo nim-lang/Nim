@@ -198,3 +198,14 @@ macro dump*(x: typed): untyped =
   let r = quote do:
     debugEcho `s`, " = ", `x`
   return r
+
+
+proc `cast`*[T](a:T, T2: typedesc): T2 =
+  ## allows running cast in UFCS chains
+  runnableExamples:
+    doAssert 10.cast(float) == cast[float](10)
+  cast[T2](a)
+
+when isMainModule:
+  # pending https://github.com/nim-lang/Nim/issues/7280
+  discard 10.cast(float)
