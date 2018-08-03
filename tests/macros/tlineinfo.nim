@@ -7,10 +7,8 @@ type
 
 macro mixer(n: typed): untyped =
   let x = newIdentNode("echo")
-  let y = newStrLitNode("Hello World")
   x.lineInfo = n
-  y.lineInfo(n)
-  result = newLit(x.lineInfo == y.lineInfo)
+  result = newLit(x.lineInfo == n.lineInfo)
 
 var z = mixer(Test)
 doAssert z

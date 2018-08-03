@@ -432,11 +432,8 @@ proc getLine(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 
-proc lineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffect.}
-  ## set / copy lineinfo from info node
-
 proc `lineInfo=`*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffect.}
-  ## set / copy lineinfo from info node, setter syntax
+  ## copy lineinfo from info node
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
   ## returns ``LineInfo`` of ``n``, using absolute path for ``filename``

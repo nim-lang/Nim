@@ -91,7 +91,7 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
-- Added ``macros.lineInfo`` and ``macros.lineInfo=`` to set or copy lineInfo from other node
+- Added ``macros.lineInfo=`` to copy lineInfo from other node
 
 ### Library changes
 
