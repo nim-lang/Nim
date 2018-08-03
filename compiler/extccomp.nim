@@ -659,7 +659,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
         libname = getCurrentDir() / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", libname,
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
                                        "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
