@@ -184,8 +184,13 @@ proc addChar(s: NimString, c: char): NimString =
     result = s
     if result.len >= result.space:
       let r = resize(result.space)
-      result = cast[NimString](growObj(result,
-        sizeof(TGenericSeq) + r + 1))
+      when defined(nimIncrSeqV3):
+        result = rawNewStringNoInit(r)
+        result.len = s.len
+        copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
+      else:
+        result = cast[NimString](growObj(result,
+          sizeof(TGenericSeq) + r + 1))
       result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
@@ -229,7 +234,12 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
-    result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
+    when defined(nimIncrSeqV3):
+      result = rawNewStringNoInit(sp)
+      result.len = dest.len
+      copyMem(addr result.data[0], unsafeAddr(dest.data[0]), dest.len+1)
+    else:
+      result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
     result.reserved = sp
     #result = rawNewString(sp)
     #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
@@ -282,6 +292,9 @@ proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
                                GenericSeqSize))
     result.reserved = r
 
+template `+!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) +% s)
+
 proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.} =
   if s == nil:
     result = cast[PGenericSeq](newSeq(typ, 1))
@@ -290,9 +303,16 @@ proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.} =
     result = s
     if result.len >= result.space:
       let r = resize(result.space)
-      result = cast[PGenericSeq](growObj(result, typ.base.size * r +
+      when defined(nimIncrSeqV3):
+        result = cast[PGenericSeq](newSeq(typ, r))
+        result.len = s.len
+        copyMem(result +! GenericSeqSize, s +! GenericSeqSize, s.len * typ.base.size)
+        # since we steal the content from 's', it's crucial to set s's len to 0.
+        s.len = 0
+      else:
+        result = cast[PGenericSeq](growObj(result, typ.base.size * r +
                                 GenericSeqSize))
-      result.reserved = r
+        result.reserved = r
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl, inl.} =
@@ -336,10 +356,43 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
 
 proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
     compilerRtl.} =
+  sysAssert typ.kind == tySequence, "setLengthSeqV2: type is not a seq"
   if s == nil:
     result = cast[PGenericSeq](newSeq(typ, newLen))
   else:
-    result = setLengthSeq(s, typ.base.size, newLen)
+    when defined(nimIncrSeqV3):
+      let elemSize = typ.base.size
+      if s.space < newLen:
+        let r = max(resize(s.space), newLen)
+        result = cast[PGenericSeq](newSeq(typ, r))
+        copyMem(result +! GenericSeqSize, s +! GenericSeqSize, s.len * elemSize)
+        # since we steal the content from 's', it's crucial to set s's len to 0.
+        s.len = 0
+      elif newLen < s.len:
+        result = s
+        # we need to decref here, otherwise the GC leaks!
+        when not defined(boehmGC) and not defined(nogc) and
+            not defined(gcMarkAndSweep) and not defined(gogc) and
+            not defined(gcRegions):
+          if ntfNoRefs notin typ.base.flags:
+            for i in newLen..result.len-1:
+              forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
+                                GenericSeqSize +% (i*%elemSize)),
+                                extGetCellType(result).base, waZctDecRef)
+
+        # XXX: zeroing out the memory can still result in crashes if a wiped-out
+        # cell is aliased by another pointer (ie proc parameter or a let variable).
+        # This is a tough problem, because even if we don't zeroMem here, in the
+        # presence of user defined destructors, the user will expect the cell to be
+        # "destroyed" thus creating the same problem. We can destoy the cell in the
+        # finalizer of the sequence, but this makes destruction non-deterministic.
+        zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
+              (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
+      else:
+        result = s
+      result.len = newLen
+    else:
+      result = setLengthSeq(s, typ.base.size, newLen)
 
 # --------------- other string routines ----------------------------------
 proc add*(result: var string; x: int64) =
