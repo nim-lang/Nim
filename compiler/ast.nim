@@ -655,7 +655,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType
+    mException, mBuiltinType, mGetImplNoTransf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -811,7 +811,7 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      #scope*: PScope          # the scope where the proc was defined
+      astNoTransformation*: PNode # syntax tree of proc including header before transf pass   
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to

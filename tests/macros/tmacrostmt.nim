@@ -38,7 +38,7 @@ proc f(name: MyString): int =
   !! $ name
 
 macro repr_and_parse(fn: typed): typed =
-  let fn_impl = fn.getImpl
+  let fn_impl = fn.getImplNoTransform
   fn_impl.name = genSym(nskProc, $fn_impl.name)
   echo fn_impl.repr
   result = parseStmt(fn_impl.repr)
@@ -69,9 +69,15 @@ proc test_cond_stmtlist(x, y: int): int =
   if x > y:
     result = x
 
+#------------------------------------
+# bugs #8397
+proc test_for(x, y : int): int =
+  for i in 0..<x:
+    result.inc i
+    
 
 repr_and_parse(one_if_proc)
 repr_and_parse(test_block)
 repr_and_parse(test_cond_stmtlist)
-
+repr_and_parse(test_for)
 
