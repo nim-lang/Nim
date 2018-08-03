@@ -509,7 +509,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.
   assertValidDate monthday, month, year
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
   let days = toEpochday(monthday, month, year) - 3
-  let weeks = (if days >= 0: days else: days - 6) div 7
+  let weeks = floorDiv(days, 7)
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
@@ -766,8 +766,7 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   ## Create a new ``DateTime`` using ``ZonedTime`` in the specified timezone.
-  let s = zt.adjTime.seconds
-  let epochday = (if s >= 0: s else: s - (secondsInDay - 1)) div secondsInDay
+  let epochday = floorDiv(s, secondsInDay)
   var rem = s - epochday * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
