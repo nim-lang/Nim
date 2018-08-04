@@ -86,21 +86,6 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-when not defined(js):
-  proc readAll*(s: Stream): string =
-    ## Reads all available data.
-    const bufferSize = 1024
-    var buffer {.noinit.}: array[bufferSize, char]
-    while true:
-      let readBytes = readData(s, addr(buffer[0]), bufferSize)
-      if readBytes == 0:
-        break
-      let prevLen = result.len
-      result.setLen(prevLen + readBytes)
-      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
-      if readBytes < bufferSize:
-        break
-
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position
@@ -116,6 +101,79 @@ proc writeData*(s, unused: Stream, buffer: pointer,
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
+
+when not defined(js):
+  proc readAll*(s: Stream): string =
+    ## Reads all available data.
+
+    ## **Warning**: Uses the current position of the stream.
+    const bufferSize = 1024
+    var buffer {.noinit.}: array[bufferSize, char]
+    while true:
+      let readBytes = readData(s, addr(buffer[0]), bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+      if readBytes < bufferSize:
+        break
+
+  proc copy*(source, dest: Stream, bufSize: int = 4096, progress: proc(pos: int, size: int): bool {.closure.} = nil) =
+    ## Copies data from `source` to `dest`.
+    ## Copying stops when the end of the `source` is reached or the `progress` callback returns `true`.
+
+    ## **Warning**: Copying and writing use the current position of the streams.
+    proc defaultProc(pos: int, size: int): bool = false
+
+    var progressProc: proc(pos: int, size: int): bool = defaultProc
+    var buf: seq[byte] = @[]
+
+    buf.setLen(bufSize)
+
+    if not progress.isNil:
+      progressProc = progress
+
+    while true:
+      if progressProc(source.getPosition, source.size):
+        break
+
+      var bytes = source.readData(buf[0].addr, bufSize)
+
+      if bytes == 0:
+        break
+
+      dest.writeData(buf[0].addr, bytes)
+
+  proc transform*(source, dest: Stream, bufSize: int = 4096, progress: proc(pos: int, size: int, buf: var seq[byte]): bool {.closure.} = nil) =
+    ## Transforms and copies data from `source` to `dest`.
+    ## Transforming stops when the end of the `source` is reached or the `progress` callback returns `true`.
+    ## The len and content of `buf` can be changed in the callback.
+
+    ## **Warning**: Copying and writing use the current position of the streams.
+    proc defaultProc(pos: int, size: int, buf: var seq[byte]): bool = false
+
+    var progressProc: proc(pos: int, size: int, buf: var seq[byte]): bool = defaultProc
+    var buf: seq[byte] = @[]
+
+    if not progress.isNil:
+      progressProc = progress
+
+    while true:
+      if buf.len < bufSize:
+        buf.setLen(bufSize)
+
+      var bytes = source.readData(buf[0].addr, bufSize)
+
+      if bytes == 0:
+        break
+
+      buf.setLen(bytes)
+
+      if progressProc(source.getPosition, source.size, buf):
+        break
+
+      dest.writeData(buf[0].addr, buf.len)
 
 proc write*[T](s: Stream, x: T) =
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:

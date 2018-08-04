@@ -91,6 +91,7 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
+- Added the procs ``streams.copy`` and ``streams.transform``.
 
 ### Library changes
 
