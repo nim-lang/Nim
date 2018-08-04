@@ -202,7 +202,6 @@ macro dump*(x: typed): untyped =
 macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
   ## reverses ``type T = distinct A``
   runnableExamples:
-    import typetraits
     type T = distinct int
     doAssert distinctBase(T) is int
     doAssert: not compiles(distinctBase(int))
@@ -229,3 +228,17 @@ macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
         break
       typeSym=getTypeInst(impl[0])
     typeSym
+
+proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
+  ## converts a distinct variable to it's original type
+  runnableExamples:
+    type T = distinct int
+    var a: T = T(1)
+    let b = a.distinctBase
+    doAssert b is int
+    doAssert b == 1
+  cast[distinctBase(T, recursive)](a)
+
+when isMainModule:
+  # pending https://github.com/nim-lang/Nim/issues/7280
+  discard distinctBase[int](0)
