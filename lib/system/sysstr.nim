@@ -268,10 +268,9 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
       result.len = s.len
       copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
       zeroMem(addr result.data[s.len], newLen - s.len)
+      result.reserved = sp
     else:
-      result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
-    result.reserved = sp
-    #result = resizeString(s, n)
+      result = resizeString(s, n)
   result.len = n
   result.data[n] = '\0'
 
