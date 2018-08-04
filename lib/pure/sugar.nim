@@ -241,4 +241,4 @@ proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
 
 when isMainModule:
   # pending https://github.com/nim-lang/Nim/issues/7280
-  discard distinctBase[int](0)
+  discard distinctBase[int](0, recursive = true)
