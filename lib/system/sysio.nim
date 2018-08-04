@@ -417,12 +417,18 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stdin, nil, IONBF, 0)
 
 when declared(stdout):
+  when defined(windows) and compileOption("threads"):
+    var echoLock: SysLock
+    initSysLock echoLock
+
   proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
     # flockfile deadlocks some versions of Android 5.x.x
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       proc flockfile(f: File) {.importc, noDecl.}
       proc funlockfile(f: File) {.importc, noDecl.}
       flockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      acquireSys echoLock
     for s in args:
       discard c_fwrite(s.cstring, s.len, 1, stdout)
     const linefeed = "\n" # can be 1 or more chars
@@ -430,5 +436,7 @@ when declared(stdout):
     discard c_fflush(stdout)
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       funlockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      releaseSys echoLock
 
 {.pop.}
