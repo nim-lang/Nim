@@ -11,7 +11,8 @@
 
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
-  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos
+  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, 
+  lineinfos, transf
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -174,8 +175,7 @@ proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
     result = hidden.sym
     assert sfFromGeneric in result.flags
   else:
-    var tooEarly: bool
-    routine.ast[bodyPos] = liftLambdas(g, routine, routine.ast[bodyPos], tooEarly)
+    routine.ast[bodyPos] = transformBody(g, routine.getModule, routine.ast[bodyPos], routine)
     result = getHiddenParam(g, routine)
     # writeStackTrace()
     #localError(g.config, routine.info, "internal error: could not find env param for " & routine.name.s)
