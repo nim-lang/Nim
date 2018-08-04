@@ -517,12 +517,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      var commit = getConfigVar(d.conf, "git.commit")
-      if commit.len == 0: commit = "master"
+      let commit = getConfigVar(d.conf, "git.commit", "master")
+      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
-          ["path", "line", "url", "commit"], [rope path,
-          rope($n.info.line), rope gitUrl,
-          rope commit])])
+          ["path", "line", "url", "commit", "devel"], [rope path,
+          rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
 
   add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",

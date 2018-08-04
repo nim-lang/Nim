@@ -6229,10 +6229,10 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpper
+  import strutils except `%`, toUpperAscii
 
   # doesn't work then:
-  echo "$1" % "abc".toUpper
+  echo "$1" % "abc".toUpperAscii
 
 
 It is not checked that the ``except`` list is really exported from the module.
@@ -6261,24 +6261,24 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
-can be used to refer to a module in subdirectories:
+The original module name is then not accessible. The notations
+``path/to/module`` or ``"path/to/module"`` can be used to refer to a module
+in subdirectories:
 
 .. code-block:: nim
-  import lib.pure.strutils, lib/pure/os, "lib/pure/times"
+  import lib/pure/os, "lib/pure/times"
 
-Note that the module name is still ``strutils`` and not ``lib.pure.strutils``
+Note that the module name is still ``strutils`` and not ``lib/pure/strutils``
 and so one **cannot** do:
 
 .. code-block:: nim
-  import lib.pure.strutils
-  echo lib.pure.strutils
+  import lib/pure/strutils
+  echo lib/pure/strutils.toUpperAscii("abc")
 
 Likewise the following does not make sense as the name is ``strutils`` already:
 
 .. code-block:: nim
-  import lib.pure.strutils as strutils
+  import lib/pure/strutils as strutils
 
 
 Collective imports from a directory
@@ -6297,7 +6297,8 @@ name is not a valid Nim identifier it needs to be a string literal:
 Pseudo import/include paths
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A directory can also be a so called "pseudo directory".
+A directory can also be a so called "pseudo directory". They can be used to
+avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
 

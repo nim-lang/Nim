@@ -645,7 +645,7 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, if hintCC in conf.notes: "CC: " & name else: "")
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, "\n")
@@ -659,7 +659,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
         libname = getCurrentDir() / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", libname,
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
                                        "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
@@ -773,7 +773,8 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     when declared(echo):
-      echo prettyCmds[idx]
+      let cmd = prettyCmds[idx]
+      if cmd != "": echo cmd
   compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)

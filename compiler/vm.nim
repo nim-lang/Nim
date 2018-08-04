@@ -616,19 +616,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rc = instr.regC
       case regs[ra].kind
       of rkNodeAddr:
-        # XXX: Workaround for vmgen bug:
         let n = regs[rc].regToNode
-        if (nfIsRef in regs[ra].nodeAddr[].flags or
-            regs[ra].nodeAddr[].kind == nkNilLit) and nfIsRef notin n.flags:
-          if regs[ra].nodeAddr[].kind == nkNilLit:
-            stackTrace(c, tos, pc, errNilAccess)
-          regs[ra].nodeAddr[][] = n[]
-          regs[ra].nodeAddr[].flags.incl nfIsRef
         # `var object` parameters are sent as rkNodeAddr. When they are mutated
         # vmgen generates opcWrDeref, which means that we must dereference
         # twice.
         # TODO: This should likely be handled differently in vmgen.
-        elif (nfIsRef notin regs[ra].nodeAddr[].flags and
+        if (nfIsRef notin regs[ra].nodeAddr[].flags and
             nfIsRef notin n.flags):
           regs[ra].nodeAddr[][] = n[]
         else:
@@ -1229,8 +1222,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
           node.sons[1].kind == nkNilLit))
     of opcNBindSym:
+      # cannot use this simple check
+      # if dynamicBindSym notin c.config.features:
+
+      # bindSym with static input
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
+      regs[ra].node.flags.incl nfIsRef
+    of opcNDynBindSym:
+      # experimental bindSym
+      let
+        rb = instr.regB
+        rc = instr.regC
+        idx = int(regs[rb+rc-1].intVal)
+        callback = c.callbacks[idx].value
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+                currentException: c.currentExceptionB,
+                currentLineInfo: c.debug[pc])
+      callback(args)
       regs[ra].node.flags.incl nfIsRef
     of opcNChild:
       decodeBC(rkNode)
@@ -1416,7 +1425,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, toFilename(c.config, n.info))
+      regs[ra].node = newStrNode(nkStrLit, toFullPath(c.config, n.info))
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetLine:
@@ -1780,7 +1789,7 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-proc setupGlobalCtx(module: PSym; graph: ModuleGraph) =
+proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
   if graph.vm.isNil:
     graph.vm = newCtx(module, graph.cache, graph)
     registerAdditionalOps(PCtx graph.vm)

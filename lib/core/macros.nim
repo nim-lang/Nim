@@ -382,16 +382,24 @@ type
 
 {.deprecated: [TBindSymRule: BindSymRule].}
 
-proc bindSym*(ident: static[string], rule: BindSymRule = brClosed): NimNode {.
+proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
+  ## if `ident` is a NimNode, it must have nkIdent kind.
   ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brOpen`` either an ``nkOpenSymChoice`` tree is
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
+  ##
+  ## experimental feature:
+  ## use {.experimental: "dynamicBindSym".} to activate it
+  ## if called from template / regular code, `ident` and `rule` must be
+  ## constant expression / literal value.
+  ## if called from macros / compile time procs / static blocks,
+  ## `ident` and `rule` can be VM computed value.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
@@ -425,6 +433,7 @@ proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
+  ## returns ``LineInfo`` of ``n``, using absolute path for ``filename``
   result.filename = n.getFile
   result.line = n.getLine
   result.column = n.getColumn

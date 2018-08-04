@@ -116,7 +116,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    dynamicBindSym
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -406,8 +407,8 @@ proc mainCommandArg*(conf: ConfigRef): string =
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
 
-proc getConfigVar*(conf: ConfigRef; key: string): string =
-  result = conf.configVars.getOrDefault key
+proc getConfigVar*(conf: ConfigRef; key: string, default = ""): string =
+  result = conf.configVars.getOrDefault(key, default)
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val

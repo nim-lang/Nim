@@ -207,6 +207,67 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
+proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
+  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
+    localError(c.config, info.info, errStringOrIdentNodeExpected)
+    return errorNode(c, n)
+
+  if isMixin < 0 or isMixin > high(TSymChoiceRule).int:
+    localError(c.config, info.info, errConstExprExpected)
+    return errorNode(c, n)
+
+  let id = if n.kind == nkIdent: n
+    else: newIdentNode(getIdent(c.cache, n.strVal), info.info)
+
+  let tmpScope = c.currentScope
+  c.currentScope = scope
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
+  if s != nil:
+    # we need to mark all symbols:
+    result = symChoice(c, id, s, TSymChoiceRule(isMixin))
+  else:
+    errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
+      else: n.strVal)
+  c.currentScope = tmpScope
+
+proc semDynamicBindSym(c: PContext, n: PNode): PNode =
+  # inside regular code, bindSym resolves to the sym-choice
+  # nodes (see tinspectsymbol)
+  if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+    return semBindSym(c, n)
+
+  if c.graph.vm.isNil:
+    setupGlobalCtx(c.module, c.graph)
+
+  let
+    vm = PCtx c.graph.vm
+    # cache the current scope to
+    # prevent it lost into oblivion
+    scope = c.currentScope
+
+  # cannot use this
+  # vm.config.features.incl dynamicBindSym
+
+  proc bindSymWrapper(a: VmArgs) =
+    # capture PContext and currentScope
+    # param description:
+    #   0. ident, a string literal / computed string / or ident node
+    #   1. bindSym rule
+    #   2. info node
+    a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
+
+  let
+    # altough we use VM callback here, it is not
+    # executed like 'normal' VM callback
+    idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
+    # dummy node to carry idx information to VM
+    idxNode = newIntTypeNode(nkIntLit, idx, c.graph.getSysType(TLineInfo(), tyInt))
+
+  result = copyNode(n)
+  for x in n: result.add x
+  result.add n # info node
+  result.add idxNode
+
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
@@ -270,7 +331,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
-  of mNBindSym: result = semBindSym(c, n)
+  of mNBindSym:
+    if dynamicBindSym notin c.features:
+      result = semBindSym(c, n)
+    else:
+      result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ
