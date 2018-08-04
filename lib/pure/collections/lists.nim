@@ -37,6 +37,14 @@ type
   DoublyLinkedRing*[T] = object ## a doubly linked ring
     head*: DoublyLinkedNode[T]
 
+  SomeLinkedList*[T] = SinglyLinkedList[T] | DoublyLinkedList[T]
+
+  SomeLinkedRing*[T] = SinglyLinkedRing[T] | DoublyLinkedRing[T]
+
+  SomeLinkedCollection*[T] = SomeLinkedList[T] | SomeLinkedRing[T]
+
+  SomeLinkedNode*[T] = SinglyLinkedNode[T] | DoublyLinkedNode[T]
+
 {.deprecated: [TDoublyLinkedNode: DoublyLinkedNodeObj,
     PDoublyLinkedNode: DoublyLinkedNode,
     TSinglyLinkedNode: SinglyLinkedNodeObj,
@@ -86,14 +94,34 @@ template itemsRingImpl() {.dirty.} =
       it = it.next
       if it == L.head: break
 
-template nodesListImpl() {.dirty.} =
+iterator items*[T](L: SomeLinkedList[T]): T =
+  ## yields every value of `L`.
+  itemsListImpl()
+
+iterator items*[T](L: SomeLinkedRing[T]): T =
+  ## yields every value of `L`.
+  itemsRingImpl()
+
+iterator mitems*[T](L: var SomeLinkedList[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsListImpl()
+
+iterator mitems*[T](L: var SomeLinkedRing[T]): var T =
+  ## yields every value of `L` so that you can modify it.
+  itemsRingImpl()
+
+iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
+  ## iterates over every node of `x`. Removing the current node from the
+  ## list during traversal is supported.
   var it = L.head
   while it != nil:
     var nxt = it.next
     yield it
     it = nxt
 
-template nodesRingImpl() {.dirty.} =
+iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
+  ## iterates over every node of `x`. Removing the current node from the
+  ## list during traversal is supported.
   var it = L.head
   if it != nil:
     while true:
@@ -102,121 +130,21 @@ template nodesRingImpl() {.dirty.} =
       it = nxt
       if it == L.head: break
 
-template findImpl() {.dirty.} =
-  for x in nodes(L):
-    if x.value == value: return x
-
-iterator items*[T](L: DoublyLinkedList[T]): T =
-  ## yields every value of `L`.
-  itemsListImpl()
-
-iterator items*[T](L: SinglyLinkedList[T]): T =
-  ## yields every value of `L`.
-  itemsListImpl()
-
-iterator items*[T](L: SinglyLinkedRing[T]): T =
-  ## yields every value of `L`.
-  itemsRingImpl()
-
-iterator items*[T](L: DoublyLinkedRing[T]): T =
-  ## yields every value of `L`.
-  itemsRingImpl()
-
-iterator mitems*[T](L: var DoublyLinkedList[T]): var T =
-  ## yields every value of `L` so that you can modify it.
-  itemsListImpl()
-
-iterator mitems*[T](L: var SinglyLinkedList[T]): var T =
-  ## yields every value of `L` so that you can modify it.
-  itemsListImpl()
-
-iterator mitems*[T](L: var SinglyLinkedRing[T]): var T =
-  ## yields every value of `L` so that you can modify it.
-  itemsRingImpl()
-
-iterator mitems*[T](L: var DoublyLinkedRing[T]): var T =
-  ## yields every value of `L` so that you can modify it.
-  itemsRingImpl()
-
-iterator nodes*[T](L: SinglyLinkedList[T]): SinglyLinkedNode[T] =
-  ## iterates over every node of `x`. Removing the current node from the
-  ## list during traversal is supported.
-  nodesListImpl()
-
-iterator nodes*[T](L: DoublyLinkedList[T]): DoublyLinkedNode[T] =
-  ## iterates over every node of `x`. Removing the current node from the
-  ## list during traversal is supported.
-  nodesListImpl()
-
-iterator nodes*[T](L: SinglyLinkedRing[T]): SinglyLinkedNode[T] =
-  ## iterates over every node of `x`. Removing the current node from the
-  ## list during traversal is supported.
-  nodesRingImpl()
-
-iterator nodes*[T](L: DoublyLinkedRing[T]): DoublyLinkedNode[T] =
-  ## iterates over every node of `x`. Removing the current node from the
-  ## list during traversal is supported.
-  nodesRingImpl()
-
-template dollarImpl() {.dirty.} =
+proc `$`*[T](L: SomeLinkedCollection[T]): string =
+  ## turns a list into its string representation.
   result = "["
   for x in nodes(L):
     if result.len > 1: result.add(", ")
-    result.add($x.value)
+    result.addQuoted(x.value)
   result.add("]")
 
-proc `$`*[T](L: SinglyLinkedList[T]): string =
-  ## turns a list into its string representation.
-  dollarImpl()
-
-proc `$`*[T](L: DoublyLinkedList[T]): string =
-  ## turns a list into its string representation.
-  dollarImpl()
-
-proc `$`*[T](L: SinglyLinkedRing[T]): string =
-  ## turns a list into its string representation.
-  dollarImpl()
-
-proc `$`*[T](L: DoublyLinkedRing[T]): string =
-  ## turns a list into its string representation.
-  dollarImpl()
-
-proc find*[T](L: SinglyLinkedList[T], value: T): SinglyLinkedNode[T] =
+proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
-  findImpl()
+  for x in nodes(L):
+    if x.value == value: return x
 
-proc find*[T](L: DoublyLinkedList[T], value: T): DoublyLinkedNode[T] =
-  ## searches in the list for a value. Returns nil if the value does not
-  ## exist.
-  findImpl()
-
-proc find*[T](L: SinglyLinkedRing[T], value: T): SinglyLinkedNode[T] =
-  ## searches in the list for a value. Returns nil if the value does not
-  ## exist.
-  findImpl()
-
-proc find*[T](L: DoublyLinkedRing[T], value: T): DoublyLinkedNode[T] =
-  ## searches in the list for a value. Returns nil if the value does not
-  ## exist.
-  findImpl()
-
-proc contains*[T](L: SinglyLinkedList[T], value: T): bool {.inline.} =
-  ## searches in the list for a value. Returns false if the value does not
-  ## exist, true otherwise.
-  result = find(L, value) != nil
-
-proc contains*[T](L: DoublyLinkedList[T], value: T): bool {.inline.} =
-  ## searches in the list for a value. Returns false if the value does not
-  ## exist, true otherwise.
-  result = find(L, value) != nil
-
-proc contains*[T](L: SinglyLinkedRing[T], value: T): bool {.inline.} =
-  ## searches in the list for a value. Returns false if the value does not
-  ## exist, true otherwise.
-  result = find(L, value) != nil
-
-proc contains*[T](L: DoublyLinkedRing[T], value: T): bool {.inline.} =
+proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
   ## searches in the list for a value. Returns false if the value does not
   ## exist, true otherwise.
   result = find(L, value) != nil
@@ -265,7 +193,6 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   if n == L.head: L.head = n.next
   if n.next != nil: n.next.prev = n.prev
   if n.prev != nil: n.prev.next = n.next
-
 
 proc append*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
   ## appends a node `n` to `L`. Efficiency: O(1).

@@ -17,11 +17,11 @@ type
     p: BProc
     visitorFrmt: string
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType)
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
                      typ: PType) =
   if n == nil: return
   case n.kind
@@ -29,12 +29,12 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
     for i in countup(0, sonsLen(n) - 1):
       genTraverseProc(c, accessor, n.sons[i], typ)
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
+    if (n.sons[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
     if disc.loc.r == nil: fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
-      internalError(n.info, "genTraverseProc()")
+      internalError(c.p.config, n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
     for i in countup(1, sonsLen(n) - 1):
       let branch = n.sons[i]
@@ -51,9 +51,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
     if field.typ.kind == tyVoid: return
     if field.loc.r == nil: fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
-      internalError(n.info, "genTraverseProc()")
+      internalError(c.p.config, n.info, "genTraverseProc()")
     genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
-  else: internalError(n.info, "genTraverseProc()")
+  else: internalError(c.p.config, n.info, "genTraverseProc()")
 
 proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
   if not m.compileToCpp:
@@ -61,22 +61,23 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
   else:
     result = accessor
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
 
   var p = c.p
   case typ.kind
-  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct:
+  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
+     tySink:
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
-    let arraySize = lengthOrd(typ.sons[0])
+    let arraySize = lengthOrd(c.p.config, typ.sons[0])
     var i: TLoc
-    getTemp(p, getSysType(tyInt), i)
+    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
     let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             i.r, arraySize.rope)
     let oldLen = p.s(cpsStmts).len
-    genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
+    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", accessor, i.r), typ.sons[1])
     if p.s(cpsStmts).len == oldLen:
       # do not emit dummy long loops for faster debug builds:
       p.s(cpsStmts) = oldCode
@@ -91,41 +92,36 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   of tyTuple:
     let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, rfmt(nil, "$1.Field$2", accessor, i.rope), typ.sons[i])
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i.rope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClE_0", accessor))
+      lineCg(p, cpsStmts, c.visitorFrmt, ropecg(c.p.module, "$1.ClE_0", accessor))
   else:
     discard
 
-proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
+proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
   var i: TLoc
-  getTemp(p, getSysType(tyInt), i)
+  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
   let oldCode = p.s(cpsStmts)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
-      [i.r, accessor, rope(if c.p.module.compileToCpp: "len" else: "Sup.len")])
+      [i.r, accessor, lenField(c.p)])
   let oldLen = p.s(cpsStmts).len
-  genTraverseProc(c, "$1->data[$2]" % [accessor, i.r], typ.sons[0])
+  genTraverseProc(c, "$1$3[$2]" % [accessor, i.r, dataField(c.p)], typ.sons[0])
   if p.s(cpsStmts).len == oldLen:
     # do not emit dummy long loops for faster debug builds:
     p.s(cpsStmts) = oldCode
   else:
     lineF(p, cpsStmts, "}$n", [])
 
-proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
-                     reason: TTypeInfoReason): Rope =
+proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
-  let typ = origTyp.skipTypes(abstractInst)
-
-  case reason
-  of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
-  else: assert false
+  var typ = origTyp.skipTypes(abstractInst)
 
   let header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [result]
 
@@ -134,6 +130,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
   c.p = p
+  c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
+
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)
@@ -150,15 +148,15 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   m.s[cfsProcHeaders].addf("$1;$n", [header])
   m.s[cfsProcs].add(generatedProc)
 
-proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
-  discard genTypeInfo(m, s.loc.t)
+proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
+  discard genTypeInfo(m, s.loc.t, info)
 
   var c: TTraversalClosure
   var p = newProc(nil, m)
   var sLoc = s.loc.r
   result = getTempName(m)
 
-  if sfThread in s.flags and emulatedThreadVars():
+  if sfThread in s.flags and emulatedThreadVars(m.config):
     accessThreadLocalVar(p, s)
     sLoc = "NimTV_->" & sLoc
 

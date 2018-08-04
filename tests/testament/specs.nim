@@ -12,6 +12,9 @@ import parseutils, strutils, os, osproc, streams, parsecfg
 
 var compilerPrefix* = "compiler" / "nim "
 
+let isTravis = existsEnv("TRAVIS")
+let isAppVeyor = existsEnv("APPVEYOR")
+
 proc cmdTemplate*(): string =
   compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
@@ -113,7 +116,7 @@ proc specDefaults*(result: var TSpec) =
   result.maxCodeSize = 0
 
 proc parseTargets*(value: string): set[TTarget] =
-  for v in value.normalize.split:
+  for v in value.normalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
     of "cpp", "c++": result.incl(targetCpp)
@@ -149,11 +152,12 @@ proc parseSpec*(filename: string): TSpec =
       result.sortoutput = parseCfgBool(e.value)
     of "exitcode":
       discard parseInt(e.value, result.exitCode)
+      result.action = actionRun
     of "msg":
       result.msg = e.value
       if result.action != actionRun:
         result.action = actionCompile
-    of "errormsg":
+    of "errormsg", "errmsg":
       result.msg = e.value
       result.action = actionReject
     of "nimout":
@@ -174,6 +178,10 @@ proc parseSpec*(filename: string): TSpec =
         when defined(unix): result.err = reIgnored
       of "posix":
         when defined(posix): result.err = reIgnored
+      of "travis":
+        if isTravis: result.err = reIgnored
+      of "appveyor":
+        if isAppVeyor: result.err = reIgnored
       else:
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
@@ -184,7 +192,7 @@ proc parseSpec*(filename: string): TSpec =
     of "ccodecheck": result.ccodeCheck = e.value
     of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
     of "target", "targets":
-      for v in e.value.normalize.split:
+      for v in e.value.normalize.splitWhitespace:
         case v
         of "c": result.targets.incl(targetC)
         of "cpp", "c++": result.targets.incl(targetCpp)

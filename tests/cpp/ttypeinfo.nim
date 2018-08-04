@@ -1,6 +1,6 @@
 discard """
+  targets: "cpp"
   output: '''100'''
-  cmd: "nim cpp $file"
 """
 
 import typeinfo

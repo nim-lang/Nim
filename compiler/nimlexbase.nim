@@ -46,6 +46,7 @@ type
                               # private data:
     sentinel*: int
     lineStart*: int           # index of last line start in buffer
+    offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
 
 
 proc openBaseLexer*(L: var TBaseLexer, inputstream: PLLStream,
@@ -122,7 +123,8 @@ proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
     result = pos + 1          # nothing to do
   else:
     fillBuffer(L)
-    L.bufpos = 0              # XXX: is this really correct?
+    L.offsetBase += pos + 1
+    L.bufpos = 0
     result = 0
   L.lineStart = result
 
@@ -146,6 +148,7 @@ proc skipUTF8BOM(L: var TBaseLexer) =
 proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   assert(bufLen > 0)
   L.bufpos = 0
+  L.offsetBase = 0
   L.bufLen = bufLen
   L.buf = cast[cstring](alloc(bufLen * chrSize))
   L.sentinel = bufLen - 1

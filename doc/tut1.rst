@@ -30,6 +30,7 @@ The first program
 We start the tour with a modified "hello world" program:
 
 .. code-block:: Nim
+    :test: "nim c $1"
   # This is a comment
   echo "What's your name? "
   var name: string = readLine(stdin)
@@ -40,7 +41,7 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the ``--run`` `switch <nimc.html#command-line-switches>`_ Nim
+With the ``--run`` `switch <nimc.html#compiler-usage-command-line-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
 command line arguments by appending them after the filename::
 
@@ -57,7 +58,7 @@ To compile a release version use::
 By default the Nim compiler generates a large amount of runtime checks
 aiming for your debugging pleasure. With ``-d:release`` these checks are
 `turned off and optimizations are turned on
-<nimc.html#compile-time-symbols>`_.
+<nimc.html#compiler-usage-compile-time-symbols>`_.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
@@ -72,6 +73,7 @@ you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
 .. code-block:: Nim
+    :test: "nim c $1"
   var name = readLine(stdin)
 
 Note that this is basically the only form of type inference that exists in
@@ -116,6 +118,7 @@ Comments start anywhere outside a string or character literal with the
 hash character ``#``. Documentation comments start with ``##``:
 
 .. code-block:: nim
+    :test: "nim c $1"
   # A comment.
 
   var myVariable: int ## a documentation comment
@@ -129,6 +132,7 @@ Multiline comments are started with ``#[`` and terminated with ``]#``.  Multilin
 comments can also be nested.
 
 .. code-block:: nim
+    :test: "nim c $1"
   #[
   You can have any Nim code text commented
   out inside this with no indentation restrictions.
@@ -142,6 +146,7 @@ You can also use the `discard statement <#procedures-discard-statement>`_ togeth
 literals* to create block comments:
 
 .. code-block:: nim
+    :test: "nim c $1"
   discard """ You can have any Nim code text commented
   out inside this with no indentation restrictions.
         yes("May I ask a pointless question?") """
@@ -169,6 +174,7 @@ Indentation can be used after the ``var`` keyword to list a whole section of
 variables:
 
 .. code-block::
+    :test: "nim c $1"
   var
     x, y: int
     # a comment can occur here too
@@ -185,12 +191,12 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-``=`` is the *assignment operator*. The assignment operator cannot be
-overloaded, overwritten or forbidden, but this might change in a future version
-of Nim. You can declare multiple variables with a single assignment
+``=`` is the *assignment operator*. The assignment operator can be
+overloaded. You can declare multiple variables with a single assignment
 statement and all the variables will have the same value:
 
 .. code-block::
+    :test: "nim c $1"
   var x, y = 3  # assigns 3 to the variables `x` and `y`
   echo "x ", x  # outputs "x 3"
   echo "y ", y  # outputs "y 3"
@@ -202,7 +208,8 @@ Note that declaring multiple variables with a single assignment which calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use only constant values.
+different values! For safety use side-effect free procedures if making multiple
+assignments.
 
 
 Constants
@@ -213,12 +220,14 @@ cannot change. The compiler must be able to evaluate the expression in a
 constant declaration at compile time:
 
 .. code-block:: nim
+    :test: "nim c $1"
   const x = "abc" # the constant x contains the string "abc"
 
 Indentation can be used after the ``const`` keyword to list a whole section of
 constants:
 
 .. code-block::
+    :test: "nim c $1"
   const
     x = 1
     # a comment can occur here too
@@ -244,6 +253,7 @@ and put it into a data section":
   const input = readLine(stdin) # Error: constant expression expected
 
 .. code-block::
+    :test: "nim c $1"
   let input = readLine(stdin)   # works
 
 
@@ -261,6 +271,7 @@ If statement
 The if statement is one way to branch the control flow:
 
 .. code-block:: nim
+    :test: "nim c $1"
   let name = readLine(stdin)
   if name == "":
     echo "Poor soul, you lost your name?"
@@ -282,6 +293,7 @@ Another way to branch is provided by the case statement. A case statement is
 a multi-branch:
 
 .. code-block:: nim
+    :test: "nim c $1"
   let name = readLine(stdin)
   case name
   of "":
@@ -339,6 +351,7 @@ While statement
 The while statement is a simple looping construct:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   echo "What's your name? "
   var name = readLine(stdin)
@@ -359,6 +372,7 @@ provides. The example uses the built-in `countup <system.html#countup>`_
 iterator:
 
 .. code-block:: nim
+    :test: "nim c $1"
   echo "Counting to ten: "
   for i in countup(1, 10):
     echo i
@@ -410,6 +424,7 @@ Other useful iterators for collections (like arrays and sequences) are
 * ``pairs`` and ``mpairs`` which provides the element and an index number (immutable and mutable respectively)
 
 .. code-block:: nim
+    :test: "nim c $1"
   for index, item in ["a","b"].pairs:
     echo item, " at index ", index
   # => a at index 0
@@ -422,6 +437,8 @@ new scope. This means that in the following example, ``x`` is not accessible
 outside the loop:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
   while false:
     var x = "hi"
   echo x # does not work
@@ -431,6 +448,8 @@ are only visible within the block they have been declared. The ``block``
 statement can be used to open a new block explicitly:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
   block myblock:
     var x = "hi"
   echo x # does not work either
@@ -445,6 +464,7 @@ can leave a ``while``, ``for``, or a ``block`` statement. It leaves the
 innermost construct, unless a label of a block is given:
 
 .. code-block:: nim
+    :test: "nim c $1"
   block myblock:
     echo "entering block"
     while true:
@@ -466,6 +486,7 @@ Like in many other programming languages, a ``continue`` statement starts
 the next iteration immediately:
 
 .. code-block:: nim
+    :test: "nim c $1"
   while true:
     let x = readLine(stdin)
     if x == "": continue
@@ -478,6 +499,7 @@ When statement
 Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   when system.hostOS == "windows":
     echo "running on Windows!"
@@ -550,6 +572,7 @@ an expression is allowed:
 
 .. code-block:: nim
   # computes fac(4) at compile time:
+    :test: "nim c $1"
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
 
@@ -562,6 +585,7 @@ is needed. (Some languages call them *methods* or *functions*.) In Nim new
 procedures are defined with the ``proc`` keyword:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc yes(question: string): bool =
     echo question, " (y/n)"
     while true:
@@ -598,6 +622,7 @@ automatically at the end of a procedure if there is no ``return`` statement at
 the exit.
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc sumTillNegative(x: varargs[int]): int =
     for i in x:
       if i < 0:
@@ -618,13 +643,14 @@ initialisation.
 
 Parameters
 ----------
-Parameters are constant in the procedure body. By default, their value cannot be
+Parameters are immutable in the procedure body. By default, their value cannot be
 changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
 is possible, and actually an idiom:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
     for i in 0 .. <nprinted:
@@ -634,6 +660,7 @@ If the procedure needs to modify the argument for the
 caller, a ``var`` parameter can be used:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc divmod(a, b: int; res, remainder: var int) =
     res = a div b        # integer division
     remainder = a mod b  # integer modulo operation
@@ -664,6 +691,7 @@ The return value can be ignored implicitly if the called proc/iterator has
 been declared with the ``discardable`` pragma:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc p(x, y: int): int {.discardable.} =
     return x + y
 
@@ -773,6 +801,7 @@ The "``" notation can also be used to call an operator just like any other
 procedure:
 
 .. code-block:: nim
+    :test: "nim c $1"
   if `==`( `+`(3, 4), 7): echo "True"
 
 
@@ -820,6 +849,7 @@ Iterators
 Let's return to the simple counting example:
 
 .. code-block:: nim
+    :test: "nim c $1"
   echo "Counting to ten: "
   for i in countup(1, 10):
     echo i
@@ -841,6 +871,7 @@ the only thing left to do is to replace the ``proc`` keyword by ``iterator``
 and here it is - our first iterator:
 
 .. code-block:: nim
+    :test: "nim c $1"
   iterator countup(a, b: int): int =
     var res = a
     while res <= b:
@@ -860,7 +891,7 @@ important differences:
   future version of the compiler.)
 
 However, you can also use a ``closure`` iterator to get a different set of
-restrictions. See `first class iterators <manual.html#first-class-iterators>`_
+restrictions. See `first class iterators <manual.html#iterators-and-the-for-statement-first-class-iterators>`_
 for details. Iterators can have the same name and parameters as a proc, since
 essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the
@@ -895,7 +926,8 @@ evaluation. For example:
 Characters
 ----------
 The `character type` is called ``char``. Its size is always one byte, so
-it cannot represent most UTF-8 characters; but it *can* represent one of the bytes that makes up a multi-byte UTF-8 character.
+it cannot represent most UTF-8 characters; but it *can* represent one of the bytes
+that makes up a multi-byte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
@@ -913,12 +945,8 @@ String variables are **mutable**, so appending to a string
 is possible, and quite efficient. Strings in Nim are both zero-terminated and have a
 length field. A string's length can be retrieved with the builtin ``len``
 procedure; the length never counts the terminating zero. Accessing the
-terminating zero is not an error and often leads to simpler code:
-
-.. code-block:: nim
-  if s[i] == 'a' and s[i+1] == 'b':
-    # no need to check whether ``i < len(s)``!
-    ...
+terminating zero is an error, it only exists so that a Nim string can be converted
+to a ``cstring`` without doing a copy.
 
 The assignment operator for strings copies the string. You can use the ``&``
 operator to concatenate strings and ``add`` to append to a string.
@@ -929,11 +957,7 @@ enforced. For example, when reading strings from binary files, they are merely
 a sequence of bytes. The index operation ``s[i]`` means the i-th *char* of
 ``s``, not the i-th *unichar*.
 
-String variables are initialized with a special value, called ``nil``. However,
-most string operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. It is best to use empty strings ``""``
-rather than ``nil`` as the *empty* value. But ``""`` often creates a string
-object on the heap, so there is a trade-off to be made here.
+A string variable is initialized with the empty string ``""``.
 
 
 Integers
@@ -946,6 +970,7 @@ to specify a non-default integer type:
 
 
 .. code-block:: nim
+    :test: "nim c $1"
   let
     x = 0     # x is of type ``int``
     y = 0'i8  # y is of type ``int8``
@@ -982,6 +1007,7 @@ Float literals can have a *type suffix* to specify a non-default float
 type:
 
 .. code-block:: nim
+    :test: "nim c $1"
   var
     x = 0.0      # x is of type ``float``
     y = 0.0'f32  # y is of type ``float32``
@@ -999,10 +1025,11 @@ procs for these conversions.
 
 Type Conversion
 ---------------
-Conversion between basic types is performed by using the
+Conversion between numerical types is performed by using the
 type as a function:
 
 .. code-block:: nim
+    :test: "nim c $1"
   var
     x: int32 = 1.int32   # same as calling int32(1)
     y: int8  = int8('a') # 'a' == 97'i8
@@ -1024,6 +1051,7 @@ graphs with cycles. The following example shows that even for basic types
 there is a difference between the ``$`` and ``repr`` outputs:
 
 .. code-block:: nim
+    :test: "nim c $1"
   var
     myBool = true
     myCharacter = 'n'
@@ -1048,6 +1076,7 @@ Advanced types
 In Nim new types can be defined within a ``type`` statement:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     biggestInt = int64      # biggest integer type that is available
     biggestFloat = float64  # biggest float type that is available
@@ -1064,6 +1093,7 @@ to an integer value internally. The first symbol is represented
 at runtime by 0, the second by 1 and so on. For example:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
     Direction = enum
@@ -1088,6 +1118,7 @@ explicitly given is assigned the value of the previous symbol + 1.
 An explicit ordered enum can have *holes*:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     MyEnum = enum
       a = 2, b = 4, c = 89
@@ -1126,6 +1157,7 @@ A subrange type is a range of values from an integer or enumeration type
 (the base type). Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     MySubrange = range[0..5]
 
@@ -1156,6 +1188,7 @@ an array has the same type. The array's index type can be any ordinal type.
 Arrays can be constructed using ``[]``:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
     IntArray = array[0..5, int] # an array that is indexed with 0..5
@@ -1178,6 +1211,7 @@ length. `low(a) <system.html#low>`_ returns the lowest valid index for the
 array `a` and `high(a) <system.html#high>`_ the highest valid index.
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     Direction = enum
       north, east, south, west
@@ -1229,6 +1263,7 @@ It is quite common to have arrays start at zero, so there's a shortcut syntax
 to specify a range from zero to the specified index minus one:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     IntArray = array[0..5, int] # an array that is indexed with 0..5
     QuickArray = array[6, int]  # an array that is indexed with 0..5
@@ -1261,16 +1296,13 @@ A sequence may be passed to an openarray parameter.
 Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   var
     x: seq[int] # a reference to a sequence of integers
   x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence allocated on the heap
 
-Sequence variables are initialized with ``nil``. However, most sequence
-operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. Thus one should use empty sequences ``@[]``
-rather than ``nil`` as the *empty* value. But ``@[]`` creates a sequence
-object on the heap, so there is a trade-off to be made here.
+Sequence variables are initialized with ``@[]``.
 
 The ``for`` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
@@ -1283,6 +1315,7 @@ value. Here the ``for`` statement is looping over the results from the
 <system.html>`_ module.  Examples:
 
 .. code-block:: nim
+    :test: "nim c $1"
   for value in @[3, 4, 5]:
     echo value
   # --> 3
@@ -1309,11 +1342,10 @@ with a compatible base type can be passed to an openarray parameter, the index
 type does not matter.
 
 .. code-block:: nim
+    :test: "nim c $1"
   var
-    fruits:   seq[string]       # reference to a sequence of strings that is initialized with 'nil'
+    fruits:   seq[string]       # reference to a sequence of strings that is initialized with '@[]'
     capitals: array[3, string]  # array of strings with a fixed size
-
-  fruits = @[]                  # creates an empty sequence on the heap that will be referenced by 'fruits'
 
   capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows assignment of only three elements
   fruits.add("Banana")          # sequence 'fruits' is dynamically expandable during runtime
@@ -1338,6 +1370,7 @@ arguments to a procedure. The compiler converts the list of arguments
 to an array automatically:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc myWriteln(f: File, a: varargs[string]) =
     for s in items(a):
       write(f, s)
@@ -1352,6 +1385,7 @@ last parameter in the procedure header. It is also possible to perform
 type conversions in this context:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc myWriteln(f: File, a: varargs[string, `$`]) =
     for s in items(a):
       write(f, s)
@@ -1375,6 +1409,7 @@ context. A slice is just an object of type Slice which contains two bounds,
 define operators which accept Slice objects to define ranges.
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   var
     a = "Nim is a progamming language"
@@ -1389,27 +1424,31 @@ slice's bounds can hold any value supported by
 their type, but it is the proc using the slice object which defines what values
 are accepted.
 
- To understand some of the different ways of specifying the indices of strings, arrays, sequences, etc.,
- it must be remembered that Nim uses zero-based indices.
+To understand some of the different ways of specifying the indices of
+strings, arrays, sequences, etc., it must be remembered that Nim uses
+zero-based indices.
 
- So the string ``b`` is of length 19, and two different ways of specifying the indices are
+So the string ``b`` is of length 19, and two different ways of specifying the
+indices are
 
- .. code-block:: nim
+.. code-block:: nim
 
   "Slices are useless."
    |          |     |
    0         11    17   using indices
   ^19        ^8    ^2   using ^ syntax
 
- where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``
+where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it
+can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``.
 
- In the above example, because the string ends in a period, to get the portion of the string that is "useless" and replace it with "useful"
+In the above example, because the string ends in a period, to get the portion of the
+string that is "useless" and replace it with "useful".
 
- ``b[11..^2]`` is the portion "useless", and
- ``b[11..^2] = "useful"`` replaces the "useless" portion with "useful",
- giving the result "Slices are useful."
+``b[11..^2]`` is the portion "useless", and ``b[11..^2] = "useful"`` replaces the
+"useless" portion with "useful", giving the result "Slices are useful."
 
- Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"`` or as ....
+Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or
+as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"``.
 
 Tuples
 ------
@@ -1426,6 +1465,7 @@ The assignment operator for tuples copies each component. The notation
 integer.
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
     Person = tuple[name: string, age: int] # type representing a person:
@@ -1471,6 +1511,7 @@ otherwise you will be assigning the same value to all the individual
 variables! For example:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   import os
 
@@ -1510,10 +1551,10 @@ tuple/object field operator) and ``[]`` (array/string/sequence index operator)
 operators perform implicit dereferencing operations for reference types:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
-    Node = ref NodeObj
-    NodeObj = object
+    Node = ref object
       le, ri: Node
       data: int
   var
@@ -1540,6 +1581,7 @@ techniques.
 Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
   proc echoItem(x: int) = echo x
 
   proc forEach(action: proc (x: int)) =
@@ -1557,9 +1599,11 @@ listed in the `manual <manual.html#types-procedural-type>`_.
 
 Distinct type
 -------------
-A Distinct type allows for the creation of new type that "does not imply a subtype relationship between it and its base type".
+A Distinct type allows for the creation of new type that "does not imply a
+subtype relationship between it and its base type".
 You must **explicitly** define all behaviour for the distinct type.
-To help with this, both the distinct type and its base type can cast from one type to the other.
+To help with this, both the distinct type and its base type can cast from one
+type to the other.
 Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
@@ -1593,39 +1637,6 @@ This can be used to initialize complex data structures for example.
 Each module has a special magic constant ``isMainModule`` that is true if the
 module is compiled as the main file. This is very useful to embed tests within
 the module as shown by the above example.
-
-Modules that depend on each other are possible, but strongly discouraged,
-because then one module cannot be reused without the other.
-
-The algorithm for compiling modules is:
-
-- Compile the whole module as usual, following import statements recursively.
-- If there is a cycle only import the already parsed symbols (that are
-  exported); if an unknown identifier occurs then abort.
-
-This is best illustrated by an example:
-
-.. code-block:: nim
-  # Module A
-  type
-    T1* = int  # Module A exports the type ``T1``
-  import B     # the compiler starts parsing B
-
-  proc main() =
-    var i = p(3) # works because B has been parsed completely here
-
-  main()
-
-.. code-block:: nim
-  # Module B
-  import A  # A is not parsed here! Only the already known symbols
-            # of A are imported.
-
-  proc p*(x: A.T1): A.T1 =
-    # this works because the compiler has already
-    # added T1 to A's interface symbol table
-    result = x + 1
-
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. And if
 a symbol is ambiguous, it *must* be qualified. A symbol is ambiguous
@@ -1667,7 +1678,7 @@ rules apply:
   write(stdout, x(3))   # no error: A.x is called
   write(stdout, x(""))  # no error: B.x is called
 
-  proc x*(a: int): string = nil
+  proc x*(a: int): string = discard
   write(stdout, x(3))   # ambiguous: which `x` is to call?
 
 

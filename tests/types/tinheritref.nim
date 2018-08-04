@@ -1,5 +1,7 @@
 discard """
-  output: "23"
+  output: '''23
+1.5
+'''
 """
 
 # bug #554, #179
@@ -25,3 +27,24 @@ type
 var
   it: TKeysIterator[int, string] = nil
 
+#bug #5521
+type
+  Texture = enum
+    Smooth
+    Coarse
+
+  FruitBase = object of RootObj
+    color: int
+    case kind: Texture
+    of Smooth:
+      skin: float64
+    of Coarse:
+      grain: int
+
+  Apple = object of FruitBase
+    width: int
+    taste: float64
+
+var x = Apple(kind: Smooth, skin: 1.5)
+var u = x.skin
+echo u

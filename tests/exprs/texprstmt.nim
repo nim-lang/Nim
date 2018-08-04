@@ -1,6 +1,6 @@
 discard """
   line: 10
-  errormsg: "expression 'result[1 .. -(len(result), 1)]' is of type 'string' and has to be discarded"
+  errormsg: "expression 'result[1 .. BackwardsIndex(1)]' is of type 'string' and has to be discarded"
 """
 
 # bug #578

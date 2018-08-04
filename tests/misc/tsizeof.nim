@@ -311,5 +311,21 @@ proc main(): void =
   testOffsetOf(RecursiveStuff, kindU.S3.d1,            d1)
   testOffsetOf(RecursiveStuff, kindU.S3.d2,            d2)
 
-
 main()
+
+  TMyEnum = enum
+    tmOne, tmTwo, tmThree, tmFour
+
+  TMyArray1 = array[3, uint8]
+  TMyArray2 = array[1..3, int32]
+  TMyArray3 = array[TMyEnum, float64]
+
+const
+  mysize1 = sizeof(TMyArray1)
+  mysize2 = sizeof(TMyArray2)
+  mysize3 = sizeof(TMyArray3)
+
+# assert sizeof(TMyRecord) == 40
+assert mysize1 == 3
+assert mysize2 == 12
+assert mysize3 == 32

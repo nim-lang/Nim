@@ -8,22 +8,31 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils
+import strutils, math
 
-proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
-  if f != f:
+  case classify(f)
+  of fcNaN:
     result = "NAN"
-  elif f == 0.0:
+  of fcNegZero:
+    result = "-0.0" & literalPostfix
+  of fcZero:
     result = "0.0" & literalPostfix
-  elif f == 0.5 * f:
-    if f > 0.0: result = "INF"
-    else: result = "-INF"
+  of fcInf:
+    result = "INF"
+  of fcNegInf:
+    result = "-INF"
   else:
-    var buf: array[0..80, char]
-    c_sprintf(buf, "%#.16e" & literalPostfix, f)
-    result = $buf
+    when defined(nimNoArrayToCstringConversion):
+      result = newString(81)
+      let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      setLen(result, n)
+    else:
+      var buf: array[0..80, char]
+      discard c_snprintf(buf.cstring, buf.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      result = $buf.cstring
 
 proc encodeStr*(s: string, result: var string) =
   for i in countup(0, len(s) - 1):
@@ -57,6 +66,8 @@ proc decodeStr*(s: cstring, pos: var int): string =
 
 const
   chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+{.push overflowChecks: off.}
 
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
@@ -122,6 +133,8 @@ proc decodeVInt*(s: cstring, pos: var int): int =
 proc decodeVBiggestInt*(s: cstring, pos: var int): BiggestInt =
   decodeIntImpl()
 
+{.pop.}
+
 iterator decodeVIntArray*(s: cstring): int =
   var i = 0
   while s[i] != '\0':
@@ -133,4 +146,3 @@ iterator decodeStrArray*(s: cstring): string =
   while s[i] != '\0':
     yield decodeStr(s, i)
     if s[i] == ' ': inc i
-

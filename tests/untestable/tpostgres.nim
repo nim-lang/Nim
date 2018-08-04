@@ -304,7 +304,24 @@ doAssert parseInt(dbCols[40].typ.name) > 0
 doAssert dbCols[41].name == "range_col"
 doAssert dbCols[41].typ.kind == DbTypeKind.dbComposite
 doAssert dbCols[41].typ.name == "int4range"
-    
+
+# issue 6571
+db.exec(sql"DROP TABLE IF EXISTS DICTIONARY")
+db.exec(sql("""CREATE TABLE DICTIONARY(
+               id             SERIAL PRIMARY KEY,
+               entry      VARCHAR(1000) NOT NULL,
+               definition VARCHAR(4000) NOT NULL
+            );"""))
+var entry = "あっそ"
+var definition = "(int) (See ああそうそう) oh, really (uninterested)/oh yeah?/hmmmmm"
+discard db.getRow(
+  SqlQuery("INSERT INTO DICTIONARY(entry, definition) VALUES(\'$1\', \'$2\') RETURNING id" % [entry, definition]))
+doAssert db.getValue(sql"SELECT definition FROM DICTIONARY WHERE entry = ?", entry) == definition
+entry = "Format string entry"
+definition = "Format string definition"
+db.exec(sql"INSERT INTO DICTIONARY(entry, definition) VALUES (?, ?)", entry, definition)
+doAssert db.getValue(sql"SELECT definition FROM DICTIONARY WHERE entry = ?", entry) == definition
+
 echo("All tests succeeded!")
 
 db.close()

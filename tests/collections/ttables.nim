@@ -48,7 +48,7 @@ block tableTest1:
     for y in 0..1:
       assert t[(x,y)] == $x & $y
   assert($t ==
-    "{(x: 0, y: 1): 01, (x: 0, y: 0): 00, (x: 1, y: 0): 10, (x: 1, y: 1): 11}")
+    "{(x: 0, y: 1): \"01\", (x: 0, y: 0): \"00\", (x: 1, y: 0): \"10\", (x: 1, y: 1): \"11\"}")
 
 block tableTest2:
   var t = initTable[string, float]()
@@ -213,7 +213,8 @@ block clearCountTableTest:
   assert t.len() == 0
 
 block withKeyTest:
-  var t = initSharedTable[int, int]()
+  var t: SharedTable[int, int]
+  t.init()
   t.withKey(1) do (k: int, v: var int, pairExists: var bool):
     assert(v == 0)
     pairExists = true

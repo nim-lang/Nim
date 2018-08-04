@@ -64,7 +64,7 @@ proc TestLoops() =
 
 var
   glob: int
-  a: array [0..5, int]
+  a: array[0..5, int]
 
 proc main() =
   #glob = 0

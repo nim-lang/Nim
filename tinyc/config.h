@@ -1,6 +1,6 @@
 /* Modified to not rely on a configure script: */
 #define CONFIG_SYSROOT ""
-#define TCC_VERSION "0.9.25"
+#define TCC_VERSION "0.9.27"
 
 #if defined(WIN32) || defined(_WIN32)
 #  define TCC_TARGET_PE   1

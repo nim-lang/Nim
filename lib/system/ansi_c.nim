@@ -25,6 +25,11 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
+proc c_strlen(a: cstring): csize {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_abort() {.
+  importc: "abort", header: "<stdlib.h>", noSideEffect.}
+
 
 when defined(linux) and defined(amd64):
   type
@@ -45,7 +50,7 @@ when defined(windows):
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
-     defined(dragonfly):
+     defined(dragonfly) or defined(nintendoswitch):
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)
@@ -103,8 +108,12 @@ proc c_sprintf(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_fileno(f: File): cint {.
-  importc: "fileno", header: "<fcntl.h>".}
+when defined(windows):
+  proc c_fileno(f: File): cint {.
+      importc: "_fileno", header: "<stdio.h>".}
+else:
+  proc c_fileno(f: File): cint {.
+      importc: "fileno", header: "<fcntl.h>".}
 
 proc c_malloc(size: csize): pointer {.
   importc: "malloc", header: "<stdlib.h>".}

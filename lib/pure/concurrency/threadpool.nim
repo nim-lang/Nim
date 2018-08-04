@@ -149,7 +149,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
 proc cleanFlowVars(w: ptr Worker) =
   let q = addr(w.q)
   acquire(q.lock)
-  for i in 0 .. <q.len:
+  for i in 0 ..< q.len:
     GC_unref(cast[RootRef](q.data[i]))
     #echo "GC_unref"
   q.len = 0
@@ -167,6 +167,15 @@ proc wakeupWorkerToProcessQueue(w: ptr Worker) =
     cleanFlowVars(w)
     signal(w.q.empty)
   signal(w.taskArrived)
+
+proc attach(fv: FlowVarBase; i: int): bool =
+  acquire(fv.cv.L)
+  if fv.cv.counter <= 0:
+    fv.idx = i
+    result = true
+  else:
+    result = false
+  release(fv.cv.L)
 
 proc finished(fv: FlowVarBase) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
@@ -245,26 +254,27 @@ proc `^`*[T](fv: FlowVar[T]): T =
 proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## awaits any of the given flowVars. Returns the index of one flowVar for
   ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
-  ## the same time. That means if you await([a,b]) and await([b,c]) the second
+  ## the same time. That means if you awaitAny([a,b]) and awaitAny([b,c]) the second
   ## call will only await 'c'. If there is no flowVar left to be able to wait
   ## on, -1 is returned.
-  ## **Note**: This results in non-deterministic behaviour and so should be
-  ## avoided.
+  ## **Note**: This results in non-deterministic behaviour and should be avoided.
   var ai: AwaitInfo
   ai.cv.initSemaphore()
   var conflicts = 0
+  result = -1
   for i in 0 .. flowVars.high:
     if cas(addr flowVars[i].ai, nil, addr ai):
-      flowVars[i].idx = i
+      if not attach(flowVars[i], i):
+        result = i
+        break
     else:
       inc conflicts
   if conflicts < flowVars.len:
-    await(ai.cv)
-    result = ai.idx
+    if result < 0:
+      await(ai.cv)
+      result = ai.idx
     for i in 0 .. flowVars.high:
       discard cas(addr flowVars[i].ai, addr ai, nil)
-  else:
-    result = -1
   destroySemaphore(ai.cv)
 
 proc isReady*(fv: FlowVarBase): bool =
@@ -321,7 +331,7 @@ proc slave(w: ptr Worker) {.thread.} =
     await(w.taskArrived)
     # XXX Somebody needs to look into this (why does this assertion fail
     # in Visual Studio?)
-    when not defined(vcc): assert(not w.ready)
+    when not defined(vcc) and not defined(tcc): assert(not w.ready)
 
     withLock numSlavesLock:
       inc numSlavesRunning
@@ -401,7 +411,7 @@ proc setup() =
     gCpus = p
   currentPoolSize = min(p, MaxThreadPoolSize)
   readyWorker = addr(workersData[0])
-  for i in 0.. <currentPoolSize: activateWorkerThread(i)
+  for i in 0..<currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
   ## Use this proc to determine quickly if a 'spawn' or a direct call is
@@ -446,14 +456,24 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
   # implementation of 'spawn' that is used by the code generator.
   while true:
     if selectWorker(readyWorker, fn, data): return
-    for i in 0.. <currentPoolSize:
+    for i in 0..<currentPoolSize:
       if selectWorker(addr(workersData[i]), fn, data): return
+
     # determine what to do, but keep in mind this is expensive too:
     # state.calls < maxPoolSize: warmup phase
     # (state.calls and 127) == 0: periodic check
     if state.calls < maxPoolSize or (state.calls and 127) == 0:
       # ensure the call to 'advice' is atomic:
       if tryAcquire(stateLock):
+        if currentPoolSize < minPoolSize:
+          if not workersData[currentPoolSize].initialized:
+            activateWorkerThread(currentPoolSize)
+          let w = addr(workersData[currentPoolSize])
+          atomicInc currentPoolSize
+          if selectWorker(w, fn, data):
+            release(stateLock)
+            return
+
         case advice(state)
         of doNothing: discard
         of doCreateThread:
@@ -533,7 +553,7 @@ proc sync*() =
   var toRelease = 0
   while true:
     var allReady = true
-    for i in 0 .. <currentPoolSize:
+    for i in 0 ..< currentPoolSize:
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break

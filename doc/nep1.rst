@@ -134,6 +134,18 @@ changed in the future.
   as what they are: Real words. So it's ``parseUrl`` rather than
   ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
 
+- Operations like ``mitems`` or ``mpairs`` (or the now deprecated ``mget``)
+  that allow a *mutating view* into some data structure should start with an ``m``.
+- When both in-place mutation and 'returns transformed copy' are available the latter
+  is a past participle of the former:
+
+  - reverse and reversed in algorithm
+  - sort and sorted
+  - rotate and rotated
+
+- When the 'returns transformed copy' version already exists like ``strutils.replace``
+  an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
+
 
 Coding Conventions
 ------------------
@@ -169,7 +181,7 @@ Conventions for multi-line statements and expressions
       LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
                          wordyTupleMemberThree: float]
 
-- Similarly, any procedure and procedure type declarations that are longer#
+- Similarly, any procedure and procedure type declarations that are longer
   than one line should do the same thing.
 
   .. code-block:: nim

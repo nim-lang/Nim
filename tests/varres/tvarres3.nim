@@ -6,7 +6,7 @@ var
   g = 5
 
 proc p(): var int =
-  var bla = addr(g) #: array [0..7, int]
+  var bla = addr(g) #: array[0..7, int]
   result = bla[]
 
 p() = 45

@@ -63,16 +63,16 @@ proc recvLine*(sock: SecureSocket, line: var TaintedString): bool =
   setLen(line.string, 0)
   while true:
     var c: array[0..0, char]
-    var n = BIO_read(sock.bio, c, c.len.cint)
+    var n = BIO_read(sock.bio, addr c, c.len.cint)
     if n <= 0: return false
     if c[0] == '\r':
-      n = BIO_read(sock.bio, c, c.len.cint)
+      n = BIO_read(sock.bio, addr c, c.len.cint)
       if n > 0 and c[0] == '\L':
         return true
       elif n <= 0:
         return false
     elif c[0] == '\L': return true
-    add(line.string, c)
+    add(line.string, c[0])
 
 
 proc send*(sock: SecureSocket, data: string) =

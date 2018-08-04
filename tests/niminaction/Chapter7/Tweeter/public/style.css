@@ -1,0 +1,117 @@
+body {
+  background-color: #f1f9ea;
+  margin: 0;
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+div#main {
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+div#user {
+  background-color: #66ac32;
+  width: 100%;
+  color: #c7f0aa;
+  padding: 5pt;
+}
+
+div#user > h1 {
+  color: #ffffff;
+}
+
+h1 {
+  margin: 0;
+  display: inline;
+  padding-left: 10pt;
+  padding-right: 10pt;
+}
+
+div#user > form {
+  float: right;
+  margin-right: 10pt;
+}
+
+div#user > form > input[type="submit"] {
+  border: 0px none;
+  padding: 5pt;
+  font-size: 108%;
+  color: #ffffff;
+  background-color: #515d47;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+div#user > form > input[type="submit"]:hover {
+  background-color: #538c29;
+}
+
+
+div#messages {
+  background-color: #a2dc78;
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  color: #1a1a1a;
+}
+
+div#messages > div {
+  border-left: 1px solid #869979;
+  border-right: 1px solid #869979;
+  border-bottom: 1px solid #869979;
+  padding: 5pt;
+}
+
+div#messages > div > a, div#messages > div > span {
+  color: #475340;
+}
+
+div#messages > div > a:hover {
+  text-decoration: none;
+  color: #c13746;
+}
+
+h3 {
+  margin-bottom: 0;
+  font-weight: normal;
+}
+
+div#login {
+  width: 200px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 20%;
+
+  font-size: 130%;
+}
+
+div#login span.small {
+  display: block;
+  font-size: 56%;
+}
+
+div#newMessage {
+  background-color: #538c29;
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  color: #ffffff;
+  padding: 5pt;
+}
+
+div#newMessage span {
+  padding-right: 5pt;
+}
+
+div#newMessage form {
+  display: inline;
+}
+
+div#newMessage > form > input[type="text"] {
+  width: 80%;
+}
+
+div#newMessage > form > input[type="submit"] {
+  font-size: 80%;
+}

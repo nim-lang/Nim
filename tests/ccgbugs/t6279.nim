@@ -1,6 +1,6 @@
 discard """
 cmd: "nim c -r -d:fulldebug -d:smokeCycles --gc:refc $file"
-output: '''@[a]'''
+output: '''@["a"]'''
 """
 
 # bug #6279

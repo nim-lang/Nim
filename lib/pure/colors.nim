@@ -10,11 +10,10 @@
 ## the ``graphics`` module.
 
 import strutils
+from algorithm import binarySearch
 
 type
   Color* = distinct int ## a color stored as RGB
-
-{.deprecated: [TColor: Color].}
 
 proc `==` *(a, b: Color): bool {.borrow.}
   ## compares two colors.
@@ -373,37 +372,28 @@ proc `$`*(c: Color): string =
   ## converts a color into its textual representation. Example: ``#00FF00``.
   result = '#' & toHex(int(c), 6)
 
-proc binaryStrSearch(x: openArray[tuple[name: string, col: Color]],
-                     y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmp(x[mid].name, y)
-    if c < 0: a = mid + 1
-    elif c > 0: b = mid - 1
-    else: return mid
-  result = - 1
+proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
+  result = cmpIgnoreCase(x.name, y)
 
 proc parseColor*(name: string): Color =
   ## parses `name` to a color value. If no valid color could be
-  ## parsed ``EInvalidValue`` is raised.
+  ## parsed ``EInvalidValue`` is raised. Case insensitive.
   if name[0] == '#':
     result = Color(parseHexInt(name))
   else:
-    var idx = binaryStrSearch(colorNames, name)
+    var idx = binarySearch(colorNames, name, colorNameCmp)
     if idx < 0: raise newException(ValueError, "unknown color: " & name)
     result = colorNames[idx][1]
 
 proc isColor*(name: string): bool =
   ## returns true if `name` is a known color name or a hexadecimal color
-  ## prefixed with ``#``.
+  ## prefixed with ``#``. Case insensitive.
   if name[0] == '#':
     for i in 1 .. name.len-1:
       if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
     result = true
   else:
-    result = binaryStrSearch(colorNames, name) >= 0
+    result = binarySearch(colorNames, name, colorNameCmp) >= 0
 
 proc rgb*(r, g, b: range[0..255]): Color =
   ## constructs a color from RGB values.

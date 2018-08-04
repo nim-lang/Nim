@@ -37,16 +37,26 @@ block setTest2:
   t.incl("111")
   t.incl("123")
   t.excl("111")
-
   t.incl("012")
   t.incl("123") # test duplicates
 
   assert "123" in t
   assert "111" notin t # deleted
 
+  assert t.missingOrExcl("000") == true
+  assert "000" notin t
+  assert t.missingOrExcl("012") == false
+  assert "012" notin t
+
+  assert t.containsOrIncl("012") == false 
+  assert t.containsOrIncl("012") == true
+  assert "012" in t # added back 
+
   for key in items(data): t.incl(key)
   for key in items(data): assert key in t
 
+  for key in items(data): t.excl(key)
+  for key in items(data): assert key notin t
 
 block orderedSetTest1:
   var t = data.toOrderedSet

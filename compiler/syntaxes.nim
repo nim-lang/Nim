@@ -11,17 +11,17 @@
 
 import
   strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
-  pbraces, filters, filter_tmpl, renderer
+  filters, filter_tmpl, renderer, lineinfos
 
 type
   TFilterKind* = enum
     filtNone, filtTemplate, filtReplace, filtStrip
   TParserKind* = enum
-    skinStandard, skinStrongSpaces, skinBraces, skinEndX
+    skinStandard, skinStrongSpaces, skinEndX
 
 const
   parserNames*: array[TParserKind, string] = ["standard", "strongspaces",
-                                              "braces", "endx"]
+                                              "endx"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
                                               "strip"]
 
@@ -30,40 +30,37 @@ type
     skin*: TParserKind
     parser*: TParser
 
+template config(p: TParsers): ConfigRef = p.parser.lex.config
+
 proc parseAll*(p: var TParsers): PNode =
   case p.skin
   of skinStandard, skinStrongSpaces:
     result = parser.parseAll(p.parser)
-  of skinBraces:
-    result = pbraces.parseAll(p.parser)
   of skinEndX:
-    internalError("parser to implement")
-    result = ast.emptyNode
+    internalError(p.config, "parser to implement")
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
   case p.skin
   of skinStandard, skinStrongSpaces:
     result = parser.parseTopLevelStmt(p.parser)
-  of skinBraces:
-    result = pbraces.parseTopLevelStmt(p.parser)
   of skinEndX:
-    internalError("parser to implement")
-    result = ast.emptyNode
+    internalError(p.config, "parser to implement")
 
 proc utf8Bom(s: string): int =
-  if s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
+  if s.len >= 3 and s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
     result = 3
   else:
     result = 0
 
 proc containsShebang(s: string, i: int): bool =
-  if s[i] == '#' and s[i+1] == '!':
+  if i+1 < s.len and s[i] == '#' and s[i+1] == '!':
     var j = i + 2
-    while s[j] in Whitespace: inc(j)
+    while j < s.len and s[j] in Whitespace: inc(j)
     result = s[j] == '/'
 
-proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNode =
-  result = ast.emptyNode
+proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache;
+               config: ConfigRef): PNode =
+  result = newNode(nkEmpty)
   var s = llStreamOpen(filename, fmRead)
   if s != nil:
     var line = newStringOfCap(80)
@@ -74,11 +71,11 @@ proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNo
       discard llStreamReadLine(s, line)
       i = 0
       inc linenumber
-    if line[i] == '#' and line[i+1] == '?':
+    if i+1 < line.len and line[i] == '#' and line[i+1] == '?':
       inc(i, 2)
-      while line[i] in Whitespace: inc(i)
+      while i < line.len and line[i] in Whitespace: inc(i)
       var q: TParser
-      parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache)
+      parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
       result = parser.parseAll(q)
       parser.closeParser(q)
     llStreamClose(s)
@@ -89,42 +86,44 @@ proc getFilter(ident: PIdent): TFilterKind =
       return i
   result = filtNone
 
-proc getParser(ident: PIdent): TParserKind =
+proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
   for i in countup(low(TParserKind), high(TParserKind)):
     if cmpIgnoreStyle(ident.s, parserNames[i]) == 0:
       return i
-  rawMessage(errInvalidDirectiveX, ident.s)
+  localError(conf, n.info, "unknown parser: " & ident.s)
 
-proc getCallee(n: PNode): PIdent =
+proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   if n.kind in nkCallKinds and n.sons[0].kind == nkIdent:
     result = n.sons[0].ident
   elif n.kind == nkIdent:
     result = n.ident
   else:
-    rawMessage(errXNotAllowedHere, renderTree(n))
+    localError(conf, n.info, "invalid filter: " & renderTree(n))
 
 proc applyFilter(p: var TParsers, n: PNode, filename: string,
                  stdin: PLLStream): PLLStream =
-  var ident = getCallee(n)
+  var ident = getCallee(p.config, n)
   var f = getFilter(ident)
   case f
   of filtNone:
-    p.skin = getParser(ident)
+    p.skin = getParser(p.config, n, ident)
     result = stdin
   of filtTemplate:
-    result = filterTmpl(stdin, filename, n)
+    result = filterTmpl(stdin, filename, n, p.config)
   of filtStrip:
-    result = filterStrip(stdin, filename, n)
+    result = filterStrip(p.config, stdin, filename, n)
   of filtReplace:
-    result = filterReplace(stdin, filename, n)
+    result = filterReplace(p.config, stdin, filename, n)
   if f != filtNone:
-    if hintCodeBegin in gNotes:
-      rawMessage(hintCodeBegin, [])
-      msgWriteln(result.s)
-      rawMessage(hintCodeEnd, [])
+    assert p.config != nil
+    if hintCodeBegin in p.config.notes:
+      rawMessage(p.config, hintCodeBegin, [])
+      msgWriteln(p.config, result.s)
+      rawMessage(p.config, hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string,
               start: PLLStream): PLLStream =
+  assert p.config != nil
   result = start
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
@@ -138,31 +137,33 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
   else:
     result = applyFilter(p, n, filename, result)
 
-proc openParsers*(p: var TParsers, fileIdx: int32, inputstream: PLLStream;
-                  cache: IdentCache) =
+proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
+                  cache: IdentCache; config: ConfigRef) =
+  assert config != nil
   var s: PLLStream
   p.skin = skinStandard
-  let filename = fileIdx.toFullPathConsiderDirty
-  var pipe = parsePipe(filename, inputstream, cache)
+  let filename = toFullPathConsiderDirty(config, fileIdx)
+  var pipe = parsePipe(filename, inputstream, cache, config)
+  p.config() = config
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
   else: s = inputstream
   case p.skin
-  of skinStandard, skinBraces, skinEndX:
-    parser.openParser(p.parser, fileIdx, s, cache, false)
+  of skinStandard, skinEndX:
+    parser.openParser(p.parser, fileIdx, s, cache, config, false)
   of skinStrongSpaces:
-    parser.openParser(p.parser, fileIdx, s, cache, true)
+    parser.openParser(p.parser, fileIdx, s, cache, config, true)
 
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)
 
-proc parseFile*(fileIdx: int32; cache: IdentCache): PNode {.procvar.} =
+proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
   var
     p: TParsers
     f: File
-  let filename = fileIdx.toFullPathConsiderDirty
+  let filename = toFullPathConsiderDirty(config, fileIdx)
   if not open(f, filename):
-    rawMessage(errCannotOpenFile, filename)
+    rawMessage(config, errGenerated, "cannot open file: " & filename)
     return
-  openParsers(p, fileIdx, llStreamOpen(f), cache)
+  openParsers(p, fileIdx, llStreamOpen(f), cache, config)
   result = parseAll(p)
   closeParsers(p)

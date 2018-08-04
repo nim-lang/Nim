@@ -1,7 +1,11 @@
 discard """
   output: '''@[2, 3, 4]321
 9.0 4.0
-(a: 1.0, b: 2.0, c: 8.0)2.0'''
+3
+@[(Field0: 1, Field1: 2), (Field0: 3, Field1: 5)]
+2
+@["a", "new one", "c"]
+@[1, 2, 3]'''
 """
 
 proc foo[T](x, y: T): T = x
@@ -11,26 +15,29 @@ var b: array[3, array[2, float]] = [[1.0,2], [3.0,4], [8.0,9]]
 echo a[1.. ^1], a[^2], a[^3], a[^4]
 echo b[^1][^1], " ", (b[^2]).foo(b[^1])[^1]
 
-type
-  MyArray = object
-    a, b, c: float
+b[^1] = [8.8, 8.9]
 
-var
-  ma = MyArray(a: 1.0, b: 2.0, c: 3.0)
+var c: seq[(int, int)] = @[(1,2), (3,4)]
 
-proc len(x: MyArray): int = 3
+proc takeA(x: ptr int) = echo x[]
 
-proc `[]=`(x: var MyArray; idx: range[0..2]; val: float) =
-  case idx
-  of 0: x.a = val
-  of 1: x.b = val
-  of 2: x.c = val
+takeA(addr c[^1][0])
+c[^1][1] = 5
+echo c
 
-proc `[]`(x: var MyArray; idx: range[0..2]): float =
-  case idx
-  of 0: result = x.a
-  of 1: result = x.b
-  of 2: result = x.c
+proc useOpenarray(x: openArray[int]) =
+  echo x[^2]
 
-ma[^1] = 8.0
-echo ma, ma[^2]
+proc mutOpenarray(x: var openArray[string]) =
+  x[^2] = "new one"
+
+useOpenarray([1, 2, 3])
+
+var z = @["a", "b", "c"]
+mutOpenarray(z)
+echo z
+
+# bug #6675
+var y: array[1..5, int] = [1,2,3,4,5]
+y[3..5] = [1, 2, 3]
+echo y[3..5]

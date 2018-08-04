@@ -9,13 +9,13 @@
 # The generic ``repr`` procedure for the javascript backend.
 
 proc reprInt(x: int64): string {.compilerproc.} = return $x
-proc reprFloat(x: float): string {.compilerproc.} = 
+proc reprFloat(x: float): string {.compilerproc.} =
   # Js toString doesn't differentiate between 1.0 and 1,
   # but we do.
   if $x == $(x.int): $x & ".0"
   else: $x
 
-proc reprPointer(p: pointer): string {.compilerproc.} = 
+proc reprPointer(p: pointer): string {.compilerproc.} =
   # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
   var tmp: int
   {. emit: """
@@ -35,10 +35,10 @@ proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefin
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   if not typ.node.sons[e].isUndefined:
-    result = $typ.node.sons[e].name
+    result = makeNimstrLit(typ.node.sons[e].name)
   else:
     result = $e & " (invalid data!)"
-  
+
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
   case x
@@ -50,16 +50,16 @@ proc reprChar(x: char): string {.compilerRtl.} =
 
 proc reprStrAux(result: var string, s: cstring, len: int) =
   add(result, "\"")
-  for i in 0 .. <len:
+  for i in 0 .. len-1:
     let c = s[i]
     case c
     of '"': add(result, "\\\"")
     of '\\': add(result, "\\\\")
-    of '\10': add(result, "\\10\"\n\"")
-    of '\127'..'\255', '\0'..'\9', '\11'..'\31':
-      add( result, "\\" & reprInt(ord(c)) )
+    #of '\10': add(result, "\\10\"\n\"")
+    of '\127'..'\255', '\0'..'\31':
+      add(result, "\\" & reprInt(ord(c)))
     else:
-      add( result, reprInt(ord(c)) ) # Not sure about this.
+      add(result, c)
   add(result, "\"")
 
 proc reprStr(s: string): string {.compilerRtl.} =
@@ -67,7 +67,7 @@ proc reprStr(s: string): string {.compilerRtl.} =
   if cast[pointer](s).isNil:
     # Handle nil strings here because they don't have a length field in js
     # TODO: check for null/undefined before generating call to length in js?
-    # Also: c backend repr of a nil string is <pointer>"", but repr of an 
+    # Also: c backend repr of a nil string is <pointer>"", but repr of an
     # array of string that is not initialized is [nil, nil, ...] ??
     add(result, "nil")
   else:
@@ -86,7 +86,7 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) =
 
 iterator setKeys(s: int): int {.inline.} =
   # The type of s is a lie, but it's expected to be a set.
-  # Iterate over the JS object representing a set 
+  # Iterate over the JS object representing a set
   # and returns the keys as int.
   var len: int
   var yieldRes: int
@@ -124,16 +124,16 @@ proc initReprClosure(cl: var ReprClosure) =
   cl.recDepth = -1 # default is to display everything!
   cl.indent = 0
 
-proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure) 
+proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure)
 
-proc reprArray(a: pointer, typ: PNimType, 
+proc reprArray(a: pointer, typ: PNimType,
               cl: var ReprClosure): string {.compilerRtl.} =
   var isNilArrayOrSeq: bool
   # isnil is not enough here as it would try to deref `a` without knowing what's inside
   {. emit: """
-    if (`a` == null) { 
+    if (`a` == null) {
       `isNilArrayOrSeq` = true;
-    } else if (`a`[0] == null) { 
+    } else if (`a`[0] == null) {
       `isNilArrayOrSeq` = true;
     } else {
       `isNilArrayOrSeq` = false;
@@ -146,19 +146,19 @@ proc reprArray(a: pointer, typ: PNimType,
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
   var i: int = 0
-    
+
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
-  for i in 0 .. < len:
+  for i in 0 .. len-1:
     if i > 0 :
       add(result, ", ")
     # advance pointer and point to element at index
     {. emit: """
-    `dereffed`_Idx = `i`; 
+    `dereffed`_Idx = `i`;
     `dereffed` = `a`[`dereffed`_Idx];
     """ .}
     reprAux(result, dereffed, typ.base, cl)
-  
+
   add(result, "]")
 
 proc isPointedToNil(p: pointer): bool {.inline.}=
@@ -181,7 +181,7 @@ proc reprRef(result: var string, p: pointer, typ: PNimType,
 
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprClosure) =
   add(result, "[")
-  
+
   var first: bool = true
   var val: pointer = o
   if typ.node.len == 0:
@@ -192,7 +192,7 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
     reprAux(result, val, typ.node.typ, cl)
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
-    for i in 0 .. <typ.node.len:
+    for i in 0 .. typ.node.len-1:
       if first: first = false
       else: add(result, ",\n")
 
@@ -214,11 +214,11 @@ proc reprJSONStringify(p: int): string {.compilerRtl.} =
   {. emit: "`tmp` = JSON.stringify(`p`);\n" .}
   result = $tmp
 
-proc reprAux(result: var string, p: pointer, typ: PNimType, 
+proc reprAux(result: var string, p: pointer, typ: PNimType,
             cl: var ReprClosure) =
   if cl.recDepth == 0:
     add(result, "...")
-    return 
+    return
   dec(cl.recDepth)
   case typ.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:

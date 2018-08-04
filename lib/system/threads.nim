@@ -116,6 +116,7 @@ when defined(windows):
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
+  import genode/env
   const
     GenodeHeader = "genode_cpp/threads.h"
   type
@@ -125,10 +126,12 @@ elif defined(genode):
     ThreadVarSlot = int
 
   proc initThread(s: var SysThread,
+                  env: GenodeEnv,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
-                  arg: pointer) {.
-    importcpp: "#.initThread(genodeEnv, @)".}
+                  arg: pointer,
+                  affinity: cuint) {.
+    importcpp: "#.initThread(@)".}
 
   proc threadVarAlloc(): ThreadVarSlot = 0
 
@@ -173,7 +176,7 @@ else:
     else:
       type Time = int
 
-  when defined(linux) and defined(amd64):
+  when (defined(linux) or defined(nintendoswitch)) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t",
                   header: "<sys/types.h>" .} = distinct culong
@@ -254,9 +257,9 @@ when emulatedThreadVars:
   proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
 # we preallocate a fixed size for thread local storage, so that no heap
-# allocations are needed. Currently less than 7K are used on a 64bit machine.
+# allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
-const nimTlsSize {.intdefine.} = 8000
+const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
@@ -397,7 +400,7 @@ template afterThreadRuns() =
     threadDestructionHandlers[i]()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages()
+  proc deallocOsPages() {.rtl.}
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
@@ -439,7 +442,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
       # init the GC for refc/markandsweep
-      setStackBottom(addr(p))
+      nimGC_setStackBottom(addr(p))
       initGC()
       when declared(threadType):
         threadType = ThreadType.NimThread
@@ -567,6 +570,9 @@ when hostOS == "windows":
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
 elif defined(genode):
+  var affinityOffset: cuint = 1
+    ## CPU affinity offset for next thread, safe to roll-over
+
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
@@ -576,8 +582,10 @@ elif defined(genode):
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
+      runtimeEnv,
       ThreadStackSize.culonglong,
-      threadProcWrapper[TArg], addr(t))
+      threadProcWrapper[TArg], addr(t), affinityOffset)
+    inc affinityOffset
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     {.hint: "cannot change Genode thread CPU affinity after initialization".}
@@ -637,7 +645,10 @@ when defined(windows):
 
 elif defined(linux):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: int
+  when defined(amd64):
+    const NR_gettid = clong(186)
+  else:
+    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.

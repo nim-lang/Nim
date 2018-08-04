@@ -2,7 +2,7 @@ The cross platform calculator illustrates how to use Nim to create a backend
 called by different native user interfaces.
 
 Since the purpose of the example is to show how the cross platform code
-interacts with Nimrod the actual backend code is just a simple addition proc.
+interacts with Nim the actual backend code is just a simple addition proc.
 By keeping your program logic in Nim you can easily reuse it in different
 platforms.
 

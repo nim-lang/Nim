@@ -1,4 +1,4 @@
-import os, tables, strutils, times, heapqueue, options, deques
+import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
@@ -26,8 +26,6 @@ type
 
   FutureError* = object of Exception
     cause*: FutureBase
-
-{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
 
 when not defined(release):
   var currentID = 0
@@ -177,7 +175,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
 
-proc clearCallbacks(future: FutureBase) =
+proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
@@ -217,17 +215,78 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc injectStacktrace[T](future: Future[T]) =
-  # TODO: Come up with something better.
-  when not defined(release):
-    var msg = ""
-    msg.add("\n  " & future.fromProc & "'s lead up to read of failed Future:")
+proc getHint(entry: StackTraceEntry): string =
+  ## We try to provide some hints about stack trace entries that the user
+  ## may not be familiar with, in particular calls inside the stdlib.
+  result = ""
+  if entry.procname == "processPendingCallbacks":
+    if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
+      return "Executes pending callbacks"
+  elif entry.procname == "poll":
+    if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
+      return "Processes asynchronous completion events"
 
-    if not future.errorStackTrace.isNil and future.errorStackTrace != "":
-      msg.add("\n" & indent(future.errorStackTrace.strip(), 4))
-    else:
-      msg.add("\n    Empty or nil stack trace.")
-    future.error.msg.add(msg)
+  if entry.procname.endsWith("_continue"):
+    if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
+      return "Resumes an async procedure"
+
+proc `$`*(entries: seq[StackTraceEntry]): string =
+  result = ""
+  # Find longest filename & line number combo for alignment purposes.
+  var longestLeft = 0
+  for entry in entries:
+    if entry.procName.isNil: continue
+
+    let left = $entry.filename & $entry.line
+    if left.len > longestLeft:
+      longestLeft = left.len
+
+  var indent = 2
+  # Format the entries.
+  for entry in entries:
+    if entry.procName.isNil:
+      if entry.line == -10:
+        result.add(spaces(indent) & "#[\n")
+        indent.inc(2)
+      else:
+        indent.dec(2)
+        result.add(spaces(indent)& "]#\n")
+      continue
+
+    let left = "$#($#)" % [$entry.filename, $entry.line]
+    result.add((spaces(indent) & "$#$# $#\n") % [
+      left,
+      spaces(longestLeft - left.len + 2),
+      $entry.procName
+    ])
+    let hint = getHint(entry)
+    if hint.len > 0:
+      result.add(spaces(indent+2) & "## " & hint & "\n")
+
+proc injectStacktrace[T](future: Future[T]) =
+  when not defined(release):
+    const header = "\nAsync traceback:\n"
+
+    var exceptionMsg = future.error.msg
+    if header in exceptionMsg:
+      # This is messy: extract the original exception message from the msg
+      # containing the async traceback.
+      let start = exceptionMsg.find(header)
+      exceptionMsg = exceptionMsg[0..<start]
+
+
+    var newMsg = exceptionMsg & header
+
+    let entries = getStackTraceEntries(future.error)
+    newMsg.add($entries)
+
+    newMsg.add("Exception message: " & exceptionMsg & "\n")
+    newMsg.add("Exception type:")
+
+    # # For debugging purposes
+    # for entry in getStackTraceEntries(future.error):
+    #   newMsg.add "\n" & $entry
+    future.error.msg = newMsg
 
 proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
@@ -263,12 +322,12 @@ proc mget*[T](future: FutureVar[T]): var T =
   ## Future has not been finished.
   result = Future[T](future).value
 
-proc finished*[T](future: Future[T] | FutureVar[T]): bool =
+proc finished*(future: FutureBase | FutureVar): bool =
   ## Determines whether ``future`` has completed.
   ##
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
-  when future is FutureVar[T]:
-    result = (Future[T](future)).finished
+  when future is FutureVar:
+    result = (FutureBase(future)).finished
   else:
     result = future.finished
 
@@ -281,6 +340,7 @@ proc asyncCheck*[T](future: Future[T]) =
   ## finished with an error.
   ##
   ## This should be used instead of ``discard`` to discard void futures.
+  assert(not future.isNil, "Future is nil")
   future.callback =
     proc () =
       if future.failed:
@@ -333,7 +393,7 @@ proc all*[T](futs: varargs[Future[T]]): auto =
     let totalFutures = len(futs)
 
     for fut in futs:
-      fut.callback = proc(f: Future[T]) =
+      fut.addCallback proc (f: Future[T]) =
         inc(completedFutures)
         if not retFuture.finished:
           if f.failed:
@@ -355,7 +415,7 @@ proc all*[T](futs: varargs[Future[T]]): auto =
 
     for i, fut in futs:
       proc setCallback(i: int) =
-        fut.callback = proc(f: Future[T]) =
+        fut.addCallback proc (f: Future[T]) =
           inc(completedFutures)
           if not retFuture.finished:
             if f.failed:

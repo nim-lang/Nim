@@ -6,7 +6,7 @@ type
 
   TPoint {.final.} = object
     x, y, z: int
-    s: array [0..1, string]
+    s: array[0..1, string]
     e: TEnum
 
 var

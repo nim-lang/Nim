@@ -74,18 +74,19 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var newByte = 0
     block blockX:
       while newbyte < key.len:
-        if it.key[newbyte] != key[newbyte]:
-          newotherbits = it.key[newbyte].ord xor key[newbyte].ord
+        let ch = if newbyte < it.key.len: it.key[newbyte] else: '\0'
+        if ch != key[newbyte]:
+          newotherbits = ch.ord xor key[newbyte].ord
           break blockX
         inc newbyte
-      if it.key[newbyte] != '\0':
+      if newbyte < it.key.len:
         newotherbits = it.key[newbyte].ord
       else:
         return it
     while (newOtherBits and (newOtherBits-1)) != 0:
       newOtherBits = newOtherBits and (newOtherBits-1)
     newOtherBits = newOtherBits xor 255
-    let ch = it.key[newByte]
+    let ch = if newByte < it.key.len: it.key[newByte] else: '\0'
     let dir = (1 + (ord(ch) or newOtherBits)) shr 8
 
     var inner: Node[T]
@@ -110,6 +111,42 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     wherep[] = inner
   inc c.count
 
+proc exclImpl[T](c: var CritBitTree[T], key: string) : int =
+  var p = c.root
+  var wherep = addr(c.root)
+  var whereq: ptr Node[T] = nil
+  if p == nil: return c.count
+  var dir = 0
+  var q: Node[T]
+  while not p.isLeaf:
+    whereq = wherep
+    q = p
+    let ch = if p.byte < key.len: key[p.byte] else: '\0'
+    dir = (1 + (ch.ord or p.otherBits.ord)) shr 8
+    wherep = addr(p.child[dir])
+    p = wherep[]
+  if p.key == key:
+    # else: not in tree at all
+    if whereq == nil:
+      c.root = nil
+    else:
+      whereq[] = q.child[1 - dir]
+    dec c.count
+
+  return c.count
+
+proc excl*[T](c: var CritBitTree[T], key: string) =
+  ## removes `key` (and its associated value) from the set `c`.
+  ## If the `key` does not exist, nothing happens.
+  discard exclImpl(c, key)
+
+proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
+  ## Returns true iff `c` does not contain the given `key`. If the key
+  ## does exist, c.excl(key) is performed.
+  let oldCount = c.count
+  var n = exclImpl(c, key)
+  result = c.count == oldCount
+
 proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
   ## returns true iff `c` contains the given `key`. If the key does not exist
   ## ``c[key] = val`` is performed.
@@ -126,17 +163,19 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
-proc inc*(c: var CritBitTree[int]; key: string) =
-  ## counts the 'key'.
-  let oldCount = c.count
+proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
+  ## increments `c[key]` by `val`.
   var n = rawInsert(c, key)
-  if c.count == oldCount:
-    # not a new key:
-    inc n.val
+  inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
+
+proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+  ## inserts `key` with value `val` into `c`.
+  var n = rawInsert(c, key)
+  n.val = val
 
 proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## puts a (key, value)-pair into `t`.
@@ -170,30 +209,6 @@ proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} 
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   get(c, key)
-
-proc excl*[T](c: var CritBitTree[T], key: string) =
-  ## removes `key` (and its associated value) from the set `c`.
-  ## If the `key` does not exist, nothing happens.
-  var p = c.root
-  var wherep = addr(c.root)
-  var whereq: ptr Node[T] = nil
-  if p == nil: return
-  var dir = 0
-  var q: Node[T]
-  while not p.isLeaf:
-    whereq = wherep
-    q = p
-    let ch = if p.byte < key.len: key[p.byte] else: '\0'
-    dir = (1 + (ch.ord or p.otherBits.ord)) shr 8
-    wherep = addr(p.child[dir])
-    p = wherep[]
-  if p.key == key:
-    # else: not in tree at all
-    if whereq == nil:
-      c.root = nil
-    else:
-      whereq[] = q.child[1 - dir]
-    dec c.count
 
 iterator leaves[T](n: Node[T]): Node[T] =
   if n != nil:
@@ -245,7 +260,7 @@ proc allprefixedAux[T](c: CritBitTree[T], key: string; longestMatch: bool): Node
       p = p.child[dir]
       if q.byte < key.len: top = p
     if not longestMatch:
-      for i in 0 .. <key.len:
+      for i in 0 ..< key.len:
         if p.key[i] != key[i]: return
     result = top
 
@@ -309,12 +324,16 @@ proc `$`*[T](c: CritBitTree[T]): string =
       const avgItemLen = 16
     result = newStringOfCap(c.count * avgItemLen)
     result.add("{")
-    for key, val in pairs(c):
-      if result.len > 1: result.add(", ")
-      result.add($key)
-      when T isnot void:
+    when T is void:
+      for key in keys(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
+    else:
+      for key, val in pairs(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
         result.add(": ")
-        result.add($val)
+        result.addQuoted(val)
     result.add("}")
 
 when isMainModule:
@@ -326,11 +345,50 @@ when isMainModule:
   r.incl "def"
   r.incl "definition"
   r.incl "prefix"
+  r.incl "foo"
 
   doAssert r.contains"def"
 
   r.excl "def"
+  assert r.missingOrExcl("foo") == false
+  assert "foo" notin toSeq(r.items)
+
+  assert r.missingOrExcl("foo") == true
 
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
   assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
+  var c = CritBitTree[int]()
+
+  c.inc("a")
+  assert c["a"] == 1
+
+  c.inc("a", 4)
+  assert c["a"] == 5
+
+  c.inc("a", -5)
+  assert c["a"] == 0
+
+  c.inc("b", 2)
+  assert c["b"] == 2
+
+  c.inc("c", 3)
+  assert c["c"] == 3
+
+  c.inc("a", 1)
+  assert c["a"] == 1
+
+  var cf = CritBitTree[float]()
+
+  cf.incl("a", 1.0)
+  assert cf["a"] == 1.0
+
+  cf.incl("b", 2.0)
+  assert cf["b"] == 2.0
+
+  cf.incl("c", 3.0)
+  assert cf["c"] == 3.0
+
+  assert cf.len == 3
+  cf.excl("c")
+  assert cf.len == 2

@@ -1,3 +1,34 @@
+discard """
+  output: '''obj = (inner: (kind: Just, id: 7))
+obj.inner.id = 7
+id = 7
+obj = (inner: (kind: Just, id: 7))'''
+"""
+
+# bug #6960
+
+import future
+type
+  Kind = enum None, Just, Huge
+  Inner = object
+    case kind: Kind
+    of None: discard
+    of Just: id: int
+    of Huge: a,b,c,d,e,f: string
+  Outer = object
+    inner: Inner
+
+
+proc shouldDoNothing(id: int): Inner =
+  dump id
+  Inner(kind: Just, id: id)
+
+var obj = Outer(inner: Inner(kind: Just, id: 7))
+dump obj
+dump obj.inner.id
+obj.inner = shouldDoNothing(obj.inner.id)
+dump obj
+
 import os
 
 type

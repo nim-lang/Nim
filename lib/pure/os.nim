@@ -10,7 +10,7 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger: off.}
 
@@ -23,6 +23,10 @@ when defined(windows):
   import winlean
 elif defined(posix):
   import posix
+
+  proc toTime(ts: Timespec): times.Time {.inline.} =
+    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+
 else:
   {.error: "OS module not ported to your operating system!".}
 
@@ -70,7 +74,8 @@ when defined(windows):
 
 proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect].} =
-  ## Returns true if the file exists, false otherwise.
+  ## Returns true if `filename` exists and is a regular file or symlink.
+  ## (directories, device files, named pipes and sockets return false)
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, filename)
@@ -139,11 +144,18 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
   ## If the system supports symlinks it also resolves them until it
   ## meets the actual file. This behavior can be disabled if desired.
-  for ext in extensions:
-    result = addFileExt(exe, ext)
-    if existsFile(result): return
-  var path = string(getEnv("PATH"))
+  if exe.len == 0: return
+  template checkCurrentDir() =
+    for ext in extensions:
+      result = addFileExt(exe, ext)
+      if existsFile(result): return
+  when defined(posix):
+    if '/' in exe: checkCurrentDir()
+  else:
+    checkCurrentDir()
+  let path = string(getEnv("PATH"))
   for candidate in split(path, PathSep):
+    if candidate.len == 0: continue
     when defined(windows):
       var x = (if candidate[0] == '"' and candidate[^1] == '"':
                 substr(candidate, 1, candidate.len-2) else: candidate) /
@@ -173,33 +185,33 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         return x
   result = ""
 
-proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_mtime
+    result = res.st_mtim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
+    result = fromWinTime(rdFileTime(f.ftLastWriteTime))
     findClose(h)
 
-proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_atime
+    result = res.st_atim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
+    result = fromWinTime(rdFileTime(f.ftLastAccessTime))
     findClose(h)
 
-proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
   ##
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
@@ -208,22 +220,25 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_ctime
+    result = res.st_ctim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
+    result = fromWinTime(rdFileTime(f.ftCreationTime))
     findClose(h)
 
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   when defined(posix):
-    result = getLastModificationTime(a) - getLastModificationTime(b) >= 0
-    # Posix's resolution sucks so, we use '>=' for posix.
+    # If we don't have access to nanosecond resolution, use '>='
+    when not StatHasNanoseconds:  
+      result = getLastModificationTime(a) >= getLastModificationTime(b)
+    else:
+      result = getLastModificationTime(a) > getLastModificationTime(b)
   else:
-    result = getLastModificationTime(a) - getLastModificationTime(b) > 0
+    result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
@@ -281,10 +296,30 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
+  ## if `path` is absolute, return it, ignoring `root`
+  runnableExamples:
+    doAssert absolutePath("a") == getCurrentDir() / "a"
+  if isAbsolute(path): path
+  else:
+    if not root.isAbsolute:
+      raise newException(ValueError, "The specified root is not absolute: " & root)
+    joinPath(root, path)
+
+when isMainModule:
+  doAssertRaises(ValueError): discard absolutePath("a", "b")
+  doAssert absolutePath("a") == getCurrentDir() / "a"
+  doAssert absolutePath("a", "/b") == "/b" / "a"
+  when defined(Posix):
+    doAssert absolutePath("a", "/b/") == "/b" / "a"
+    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
+    doAssert absolutePath("/a", "b/") == "/a"
+
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full (`absolute`:idx:) path of the file `filename`,
-  ## raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
+  ## raises OSError in case of an error. Follows symlinks.
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -323,21 +358,63 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       result = $r
       c_free(cast[pointer](r))
 
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path.
+  ##
+  ## Consecutive directory separators are collapsed, including an initial double slash.
+  ##
+  ## On relative paths, double dot (..) sequences are collapsed if possible.
+  ## On absolute paths they are always collapsed.
+  ##
+  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ## Triple dot is not handled.
+  let isAbs = isAbsolute(path)
+  var stack: seq[string] = @[]
+  for p in split(path, {DirSep}):
+    case p
+    of "", ".":
+      continue
+    of "..":
+      if stack.len == 0:
+        if isAbs:
+          discard  # collapse all double dots on absoluta paths
+        else:
+          stack.add(p)
+      elif stack[^1] == "..":
+        stack.add(p)
+      else:
+        discard stack.pop()
+    else:
+      stack.add(p)
+
+  if isAbs:
+    path = DirSep & join(stack, $DirSep)
+  elif stack.len > 0:
+    path = join(stack, $DirSep)
+  else:
+    path = "."
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+  ## Returns a normalized path for the current OS. See `<#normalizePath>`_
+  result = path
+  normalizePath(result)
+
 when defined(Windows):
-  proc openHandle(path: string, followSymlink=true): Handle =
+  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+    let access = if writeAccess: GENERIC_WRITE else: 0'i32
 
     when useWinUnicode:
       result = createFileW(
-        newWideCString(path), 0'i32,
+        newWideCString(path), access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
     else:
       result = createFileA(
-        path, 0'i32,
+        path, access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
@@ -424,8 +501,6 @@ type
     fpOthersExec,          ## execute access for others
     fpOthersWrite,         ## write access for others
     fpOthersRead           ## read access for others
-
-{.deprecated: [TFilePermission: FilePermission].}
 
 proc getFilePermissions*(filename: string): set[FilePermission] {.
   rtl, extern: "nos$1", tags: [ReadDirEffect].} =
@@ -610,6 +685,7 @@ proc tryMoveFSObject(source, dest: string): bool =
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  ## Can be used to `rename files`:idx:
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
       # Fallback to copy & del
@@ -630,7 +706,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(linux):
+  when defined(posix):
     result = c_system(command) shr 8
   else:
     result = c_system(command)
@@ -672,7 +748,10 @@ template walkCommon(pattern: string, filter) =
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
             yield splitFile(pattern).dir / extractFilename(ff)
-        if findNextFile(res, f) == 0'i32: break
+        if findNextFile(res, f) == 0'i32:
+          let errCode = getLastError()
+          if errCode == ERROR_NO_MORE_FILES: break
+          else: raiseOSError(errCode.OSErrorCode)
   else: # here we use glob
     var
       f: Glob
@@ -719,8 +798,6 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
-
-{.deprecated: [TPathComponent: PathComponent].}
 
 
 when defined(posix):
@@ -782,7 +859,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
-          if findNextFile(h, f) == 0'i32: break
+          if findNextFile(h, f) == 0'i32:
+            let errCode = getLastError()
+            if errCode == ERROR_NO_MORE_FILES: break
+            else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
       if d != nil:
@@ -790,14 +870,18 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $x.d_name
+          when defined(nimNoArrayToCstringConversion):
+            var y = $cstring(addr x.d_name)
+          else:
+            var y = $x.d_name.cstring
           if y != "." and y != "..":
             var s: Stat
             if not relative:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
+            when defined(linux) or defined(macosx) or
+                 defined(bsd) or defined(genode) or defined(nintendoswitch):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -813,32 +897,40 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               k = getSymlinkFileKind(y)
             yield (k, y)
 
-iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
-  tags: [ReadDirEffect].} =
-  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
-  ## The full path for each file is returned. Directories are not returned.
+iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
+                     followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
+  ## Recursively walks over the directory `dir` and yields for each file
+  ## or directory in `dir`.
+  ## The full path for each file or directory is returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
   ##
-  ## Walking is recursive. `filter` controls the behaviour of the iterator:
+  ## Walking is recursive. `filters` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
-  ## filter                  meaning
+  ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
   ## ``pcFile``              yield real files
   ## ``pcLinkToFile``        yield symbolic links to files
+  ## ``pcDir``               yield real directories
+  ## ``pcLinkToDir``         yield symbolic links to directories
+  ## ---------------------   ---------------------------------------------
+  ##
+  ## ---------------------   ---------------------------------------------
+  ## followFilter            meaning
+  ## ---------------------   ---------------------------------------------
   ## ``pcDir``               follow real directories
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   var stack = @[dir]
   while stack.len > 0:
-    for k,p in walkDir(stack.pop()):
-      if k in filter:
-        case k
-        of pcFile, pcLinkToFile: yield p
-        of pcDir, pcLinkToDir: stack.add(p)
+    for k, p in walkDir(stack.pop()):
+      if k in {pcDir, pcLinkToDir} and k in followFilter:
+        stack.add(p)
+      if k in yieldFilter:
+        yield p
 
 proc rawRemoveDir(dir: string) =
   when defined(windows):
@@ -879,7 +971,7 @@ proc rawCreateDir(dir: string): bool =
     elif errno in {EEXIST, ENOSYS}:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
   elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
@@ -887,8 +979,8 @@ proc rawCreateDir(dir: string): bool =
     elif errno == EEXIST:
       result = false
     else:
-      echo res
-      raiseOSError(osLastError())
+      #echo res
+      raiseOSError(osLastError(), dir)
   else:
     when useWinUnicode:
       wrapUnary(res, createDirectoryW, dir)
@@ -900,9 +992,10 @@ proc rawCreateDir(dir: string): bool =
     elif getLastError() == 183'i32:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
 
-proc existsOrCreateDir*(dir: string): bool =
+proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
+  tags: [WriteDirEffect, ReadDirEffect].} =
   ## Check if a `directory`:idx: `dir` exists, and create it otherwise.
   ##
   ## Does not create parent directories (fails if parent does not exist).
@@ -912,7 +1005,7 @@ proc existsOrCreateDir*(dir: string): bool =
   if result:
     # path already exists - need to check that it is indeed a directory
     if not existsDir(dir):
-      raise newException(IOError, "Failed to create the directory")
+      raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect].} =
@@ -1035,18 +1128,17 @@ proc parseCmdLine*(c: string): seq[string] {.
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] == ' ' or c[i] == '\t' or c[i] == '\l' or c[i] == '\r' : inc(i)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
     when defined(windows):
       # parse a single argument according to the above rules:
-      if c[i] == '\0': break
       var inQuote = false
-      while true:
+      while i < c.len:
         case c[i]
-        of '\0': break
         of '\\':
           var j = i
-          while c[j] == '\\': inc(j)
-          if c[j] == '"':
+          while j < c.len and c[j] == '\\': inc(j)
+          if j < c.len and c[j] == '"':
             for k in 1..(j-i) div 2: a.add('\\')
             if (j-i) mod 2 == 0:
               i = j
@@ -1059,7 +1151,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         of '"':
           inc(i)
           if not inQuote: inQuote = true
-          elif c[i] == '"':
+          elif i < c.len and c[i] == '"':
             a.add(c[i])
             inc(i)
           else:
@@ -1077,13 +1169,12 @@ proc parseCmdLine*(c: string): seq[string] {.
       of '\'', '\"':
         var delim = c[i]
         inc(i) # skip ' or "
-        while c[i] != '\0' and c[i] != delim:
+        while i < c.len and c[i] != delim:
           add a, c[i]
           inc(i)
-        if c[i] != '\0': inc(i)
-      of '\0': break
+        if i < c.len: inc(i)
       else:
-        while c[i] > ' ':
+        while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
     add(result, a)
@@ -1192,14 +1283,15 @@ when defined(nimdoc):
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
-    ## If your binary was called without parameters this will return zero.  You
-    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## Unlike `argc`:idx: in C, if your binary was called without parameters this
+    ## will return zero.
+    ## You can query each individual paramater with `paramStr() <#paramStr>`_
     ## or retrieve all of them in one go with `commandLineParams()
     ## <#commandLineParams>`_.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1216,13 +1308,14 @@ when defined(nimdoc):
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
     ##
-    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## Similarly to `argv`:idx: in C,
+    ## it is possible to call ``paramStr(0)`` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1251,6 +1344,13 @@ elif defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
+
+elif defined(nintendoswitch):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib") and
@@ -1408,25 +1508,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(genode):
-      raiseOSError("POSIX command line not supported")
+    elif defined(genode) or defined(nintendoswitch):
+      raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
-
-proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the filename of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppFilename``
-  ## instead.
-  result = getAppFilename()
-
-proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the directory of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppDir``
-  ## instead.
-  result = splitFile(getAppFilename()).dir
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
@@ -1438,7 +1526,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
-    a.tv_sec = Time(milsecs div 1000)
+    a.tv_sec = posix.Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
@@ -1476,24 +1564,23 @@ type
     size*: BiggestInt # Size of file.
     permissions*: set[FilePermission] # File permissions
     linkCount*: BiggestInt # Number of hard links the file object has.
-    lastAccessTime*: Time # Time file was last accessed.
-    lastWriteTime*: Time # Time file was last modified/written to.
-    creationTime*: Time # Time file was created. Not supported on all systems!
+    lastAccessTime*: times.Time # Time file was last accessed.
+    lastWriteTime*: times.Time # Time file was last modified/written to.
+    creationTime*: times.Time # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
-  ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
+  ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e: FILETIME): untyped {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
     template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
     formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
-    formalInfo.lastAccessTime = toTime(rawInfo.ftLastAccessTime)
-    formalInfo.lastWriteTime = toTime(rawInfo.ftLastWriteTime)
-    formalInfo.creationTime = toTime(rawInfo.ftCreationTime)
+    formalInfo.lastAccessTime = fromWinTime(rdFileTime(rawInfo.ftLastAccessTime))
+    formalInfo.lastWriteTime = fromWinTime(rdFileTime(rawInfo.ftLastWriteTime))
+    formalInfo.creationTime = fromWinTime(rdFileTime(rawInfo.ftCreationTime))
 
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
@@ -1509,7 +1596,6 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
 
-
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
@@ -1517,9 +1603,9 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
     formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
-    formalInfo.lastAccessTime = rawInfo.st_atime
-    formalInfo.lastWriteTime = rawInfo.st_mtime
-    formalInfo.creationTime = rawInfo.st_ctime
+    formalInfo.lastAccessTime = rawInfo.st_atim.toTime
+    formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
+    formalInfo.creationTime = rawInfo.st_ctim.toTime
 
     result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
@@ -1627,3 +1713,20 @@ proc isHidden*(path: string): bool =
         result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}
+
+proc setLastModificationTime*(file: string, t: times.Time) =
+  ## Sets the `file`'s last modification time. `OSError` is raised in case of
+  ## an error.
+  when defined(posix):
+    let unixt = posix.Time(t.toUnix)
+    let micro = convert(Nanoseconds, Microseconds, t.nanosecond)
+    var timevals = [Timeval(tv_sec: unixt, tv_usec: micro),
+      Timeval(tv_sec: unixt, tv_usec: micro)] # [last access, last modification]
+    if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
+  else:
+    let h = openHandle(path = file, writeAccess = true)
+    if h == INVALID_HANDLE_VALUE: raiseOSError(osLastError())
+    var ft = t.toWinTime.toFILETIME
+    let res = setFileTime(h, nil, nil, ft.addr)
+    discard h.closeHandle
+    if res == 0'i32: raiseOSError(osLastError())

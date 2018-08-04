@@ -10,13 +10,14 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets
+import ast, passes, msgs, idents, intsets, options, modulegraphs, lineinfos,
+  tables, btrees
 
 const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
-  MaxLoopIterations* = 1500_000 # max iterations of all loops
+  MaxLoopIterations* = 1_000_000_000 # max iterations of all loops
 
 
 type
@@ -35,7 +36,6 @@ type
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
-    opcRegToNode,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
@@ -79,6 +79,7 @@ type
     opcNAdd,
     opcNAddMultiple,
     opcNKind,
+    opcNSymKind,
     opcNIntVal,
     opcNFloatVal,
     opcNSymbol,
@@ -89,6 +90,9 @@ type
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
+
+    opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
+    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext,
 
     opcSlurp,
     opcGorge,
@@ -101,7 +105,6 @@ type
     opcNGetLine, opcNGetColumn, opcNGetFile,
     opcEqIdent,
     opcStrToIdent,
-    opcIdentToStr,
     opcGetImpl,
 
     opcEcho,
@@ -133,7 +136,7 @@ type
     opcLdGlobalAddr, # dest = addr(globals[Bx])
 
     opcLdImmInt,  # dest = immediate value
-    opcNBindSym,
+    opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
@@ -206,24 +209,28 @@ type
     callbacks*: seq[tuple[key: string, value: VmCallback]]
     errorFlag*: string
     cache*: IdentCache
+    config*: ConfigRef
+    graph*: ModuleGraph
+    oldErrorCount*: int
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache)
+    cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = MaxLoopIterations
 
-proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
+proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
+  result = c.callbacks.len
   c.callbacks.add((name, callback))
 
 const
@@ -233,6 +240,9 @@ const
     opcMarshalLoad, opcMarshalStore}
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
+
+# flag is used to signal opcSeqLen if node is NimNode.
+const nimNodeFlag* = 16
 
 template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
 template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)

@@ -10,7 +10,7 @@
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
@@ -102,31 +102,32 @@ proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## represented by object pointed to by `envp` and raise exceptions
   ## according to saved exceptions.
 
-var FP_RADIX_INTERNAL {. importc: "FLT_RADIX" header: "<float.h>" .} : int
+const 
+  FLT_RADIX = 2 ## the radix of the exponent representation
 
-template fpRadix* : int = FP_RADIX_INTERNAL
+  FLT_MANT_DIG = 24 ## the number of base FLT_RADIX digits in the mantissa part of a float
+  FLT_DIG = 6 ## the number of digits of precision of a float
+  FLT_MIN_EXP = -125 # the minimum value of base FLT_RADIX in the exponent part of a float
+  FLT_MAX_EXP = 128 # the maximum value of base FLT_RADIX in the exponent part of a float
+  FLT_MIN_10_EXP = -37 ## the minimum value in base 10 of the exponent part of a float
+  FLT_MAX_10_EXP = 38 ## the maximum value in base 10 of the exponent part of a float
+  FLT_MIN = 1.17549435e-38'f32  ## the minimum value of a float
+  FLT_MAX = 3.40282347e+38'f32 ## the maximum value of a float
+  FLT_EPSILON = 1.19209290e-07'f32  ## the difference between 1 and the least value greater than 1 of a float
+ 
+  DBL_MANT_DIG = 53 ## the number of base FLT_RADIX digits in the mantissa part of a double
+  DBL_DIG = 15 ## the number of digits of precision of a double
+  DBL_MIN_EXP = -1021 ## the minimum value of base FLT_RADIX in the exponent part of a double
+  DBL_MAX_EXP = 1024 ## the maximum value of base FLT_RADIX in the exponent part of a double
+  DBL_MIN_10_EXP = -307 ## the minimum value in base 10 of the exponent part of a double
+  DBL_MAX_10_EXP = 308 ## the maximum value in base 10 of the exponent part of a double
+  DBL_MIN = 2.2250738585072014E-308 ## the minimal value of a double
+  DBL_MAX = 1.7976931348623157E+308 ## the minimal value of a double
+  DBL_EPSILON = 2.2204460492503131E-16 ## the difference between 1 and the least value greater than 1 of a double
+
+template fpRadix* : int = FLT_RADIX
   ## The (integer) value of the radix used to represent any floating
   ## point type on the architecture used to build the program.
-
-var FLT_MANT_DIG {. importc: "FLT_MANT_DIG" header: "<float.h>" .} : int
-var FLT_DIG {. importc: "FLT_DIG" header: "<float.h>" .} : int
-var FLT_MIN_EXP {. importc: "FLT_MIN_EXP" header: "<float.h>" .} : int
-var FLT_MAX_EXP {. importc: "FLT_MAX_EXP" header: "<float.h>" .} : int
-var FLT_MIN_10_EXP {. importc: "FLT_MIN_10_EXP" header: "<float.h>" .} : int
-var FLT_MAX_10_EXP {. importc: "FLT_MAX_10_EXP" header: "<float.h>" .} : int
-var FLT_MIN {. importc: "FLT_MIN" header: "<float.h>" .} : cfloat
-var FLT_MAX {. importc: "FLT_MAX" header: "<float.h>" .} : cfloat
-var FLT_EPSILON {. importc: "FLT_EPSILON" header: "<float.h>" .} : cfloat
-
-var DBL_MANT_DIG {. importc: "DBL_MANT_DIG" header: "<float.h>" .} : int
-var DBL_DIG {. importc: "DBL_DIG" header: "<float.h>" .} : int
-var DBL_MIN_EXP {. importc: "DBL_MIN_EXP" header: "<float.h>" .} : int
-var DBL_MAX_EXP {. importc: "DBL_MAX_EXP" header: "<float.h>" .} : int
-var DBL_MIN_10_EXP {. importc: "DBL_MIN_10_EXP" header: "<float.h>" .} : int
-var DBL_MAX_10_EXP {. importc: "DBL_MAX_10_EXP" header: "<float.h>" .} : int
-var DBL_MIN {. importc: "DBL_MIN" header: "<float.h>" .} : cdouble
-var DBL_MAX {. importc: "DBL_MAX" header: "<float.h>" .} : cdouble
-var DBL_EPSILON {. importc: "DBL_EPSILON" header: "<float.h>" .} : cdouble
 
 template mantissaDigits*(T : typedesc[float32]) : int = FLT_MANT_DIG
   ## Number of digits (in base ``floatingPointRadix``) in the mantissa
@@ -179,3 +180,11 @@ template maximumPositiveValue*(T : typedesc[float64]) : float64 = DBL_MAX
 template epsilon*(T : typedesc[float64]): float64 = DBL_EPSILON
   ## The difference between 1.0 and the smallest number greater than
   ## 1.0 that can be represented in a 64-bit floating-point type.
+
+
+when isMainModule:
+  func is_significant(x: float): bool = 
+    if x > minimumPositiveValue(float) and x < maximumPositiveValue(float): true
+    else: false
+
+  doAssert is_significant(10.0)

@@ -4,7 +4,7 @@ discard """
 """
 
 import strutils
-
+{.experimental: "notnil".}
 
 type
   TObj = object
@@ -18,13 +18,13 @@ proc q(s: superstring) =
   echo s
 
 proc p2() =
-  var  a: string = "I am not nil"
+  var a: string = "I am not nil"
   q(a) # but this should and does not
 
 p2()
 
 proc q(x: pointer not nil) =
-  nil
+  discard
 
 proc p() =
   var x: pointer

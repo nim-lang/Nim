@@ -32,7 +32,7 @@
 
 include "system/inclrtl"
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -262,7 +262,7 @@ proc socket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
 
   # TODO: Perhaps this should just raise EOS when an error occurs.
   when defined(Windows):
-    result = newTSocket(winlean.socket(ord(domain), ord(typ), ord(protocol)), buffered)
+    result = newTSocket(winlean.socket(cint(domain), cint(typ), cint(protocol)), buffered)
   else:
     result = newTSocket(posix.socket(toInt(domain), toInt(typ), toInt(protocol)), buffered)
 
@@ -953,8 +953,12 @@ when defined(ssl):
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when defined(posix):
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
+    else:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
 proc createFdSet(fd: var TFdSet, s: seq[Socket], m: var int) =
   FD_ZERO(fd)

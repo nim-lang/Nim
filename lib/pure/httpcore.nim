@@ -45,10 +45,6 @@ type
                       ## TCP/IP tunnel, usually used for proxies.
     HttpPatch         ## Applies partial modifications to a resource.
 
-{.deprecated: [httpGet: HttpGet, httpHead: HttpHead, httpPost: HttpPost,
-               httpPut: HttpPut, httpDelete: HttpDelete, httpTrace: HttpTrace,
-               httpOptions: HttpOptions, httpConnect: HttpConnect].}
-
 
 const
   Http100* = HttpCode(100)
@@ -112,6 +108,9 @@ proc newHttpHeaders*(keyValuePairs:
     pairs.add((pair.key.toLowerAscii(), @[pair.val]))
   new result
   result.table = newTable[string, seq[string]](pairs)
+
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
 
 proc clear*(headers: HttpHeaders) =
   headers.table.clear()
@@ -187,11 +186,11 @@ proc len*(headers: HttpHeaders): int = return headers.table.len
 proc parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
   var current = ""
-  while line[start + i] notin {'\c', '\l', '\0'}:
+  while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
     list.add(current)
-    if line[start + i] == ',':
+    if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
     current.setLen(0)
 

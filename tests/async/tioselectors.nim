@@ -2,7 +2,7 @@ discard """
   file: "tioselectors.nim"
   output: "All tests passed!"
 """
-import ioselectors
+import selectors
 
 const hasThreadSupport = compileOption("threads")
 
@@ -579,9 +579,9 @@ else:
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
     discard selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc1 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
     assert(len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
@@ -611,7 +611,7 @@ else:
       var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
-      event.setEvent()
+      event.trigger()
       joinThreads(thr)
       assert(counter == 1)
       result = true

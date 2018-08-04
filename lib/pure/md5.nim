@@ -78,10 +78,10 @@ proc encode(dest: var MD5Block, src: cstring) =
 proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
   var i = 0
   for j in 0..high(src):
-    dest[i] = src[j] and 0xff'u32
-    dest[i+1] = src[j] shr 8 and 0xff'u32
-    dest[i+2] = src[j] shr 16 and 0xff'u32
-    dest[i+3] = src[j] shr 24 and 0xff'u32
+    dest[i] = uint8(src[j] and 0xff'u32)
+    dest[i+1] = uint8(src[j] shr 8 and 0xff'u32)
+    dest[i+2] = uint8(src[j] shr 16 and 0xff'u32)
+    dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
 proc transform(buffer: pointer, state: var MD5State) =
@@ -216,8 +216,8 @@ proc `$`*(d: MD5Digest): string =
   const digits = "0123456789abcdef"
   result = ""
   for i in 0..15:
-    add(result, digits[(d[i] shr 4) and 0xF])
-    add(result, digits[d[i] and 0xF])
+    add(result, digits[(d[i].int shr 4) and 0xF])
+    add(result, digits[d[i].int and 0xF])
 
 proc getMD5*(s: string): string =
   ## computes an MD5 value of `s` and returns its string representation

@@ -32,8 +32,6 @@ type
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
   Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
-{.deprecated: [TRawChannel: RawChannel, TLoadStoreMode: LoadStoreMode,
-              TChannel: Channel].}
 
 const ChannelDeadMask = -2
 
@@ -118,7 +116,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
       if mode == mStore:
         x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
-        unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
+        unsureAsgnRef(x, newSeq(mt, seq.len))
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
       var dstseq = cast[PGenericSeq](dst)
       dstseq.len = seq.len
@@ -144,7 +142,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     for i in 0..(mt.size div mt.base.size)-1:
       storeAux(cast[pointer](d +% i*% mt.base.size),
                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
-  of tyRef:
+  of tyRef, tyOptAsRef:
     var s = cast[PPointer](src)[]
     var x = cast[PPointer](dest)
     if s == nil:

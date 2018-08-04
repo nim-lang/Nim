@@ -7,44 +7,44 @@ const
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 
-proc computeSizeAlign(typ: PType): void
+proc computeSizeAlign(conf: ConfigRef; typ: PType): void
 
-proc computeSubObjectAlign(n: PNode): BiggestInt =
+proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
   ## returns object size and align
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    result = computeSubObjectAlign(n.sons[0])
+    result = computeSubObjectAlign(conf, n.sons[0])
 
     for i in 1 ..< sonsLen(n):
       let child = n.sons[i]
       case child.kind
       of nkOfBranch, nkElse:
-        let align = computeSubObjectAlign(child.lastSon)
+        let align = computeSubObjectAlign(conf, child.lastSon)
         if align < 0:
           return align
         result = max(result, align)
       else:
-        internalError("computeSubObjectAlign")
+        internalError(conf, "computeSubObjectAlign")
 
   of nkRecList:
     result = 1
 
     for i, child in n.sons:
-      let align = computeSubObjectAlign(n.sons[i])
+      let align = computeSubObjectAlign(conf, n.sons[i])
       if align < 0:
         return align
 
       result = max(result, align)
 
   of nkSym:
-    n.sym.typ.computeSizeAlign
+    computeSizeAlign(conf, n.sym.typ)
     result = n.sym.typ.align
 
   else:
     result = 1
 
-proc computeObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
+proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
 
@@ -62,7 +62,7 @@ proc computeObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt): tupl
       case child.kind
       of nkOfBranch, nkElse:
         # offset parameter cannot be known yet, it needs to know the alignment first
-        let align = computeSubObjectAlign(n.sons[i].lastSon)
+        let align = computeSubObjectAlign(conf, n.sons[i].lastSon)
 
         if align < 0:
           result.offset  = align
@@ -71,7 +71,7 @@ proc computeObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt): tupl
 
         maxChildAlign = max(maxChildAlign, align)
       else:
-        internalError("computeObjectOffsetsFoldFunction(record case branch)")
+        internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
 
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = align(kindOffset, maxChildAlign)
@@ -106,7 +106,7 @@ proc computeObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt): tupl
     result.offset  = align(offset, result.align)
 
   of nkSym:
-    n.sym.typ.computeSizeAlign
+    computeSizeAlign(conf, n.sym.typ)
     let size  = n.sym.typ.size
     let align = n.sym.typ.align
     result.align  = align
@@ -157,7 +157,7 @@ proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt,
         break
 
   of nkSym:
-    n.sym.typ.computeSizeAlign
+    computeSizeAlign(conf, n.sym.typ)
     n.sym.offset = initialOffset.int
     result = n.sym.offset + n.sym.typ.size
 
@@ -166,7 +166,7 @@ proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt,
 
 # TODO this one needs an alignment map of the individual types
 
-proc computeSizeAlign(typ: PType): void =
+proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
   let hasSize = typ.size >= 0
@@ -207,7 +207,7 @@ proc computeSizeAlign(typ: PType): void =
     of 8:
       tk = tyInt64
     else:
-      internalError("unhandled insize: " & $intSize)
+      internalError(conf, "unhandled insize: " & $intSize)
   elif tk == tyUInt:
     case intSize
     of 2:
@@ -217,42 +217,43 @@ proc computeSizeAlign(typ: PType): void =
     of 8:
       tk = tyUInt64
     else:
-      internalError("unhandled insize: " & $intSize)
+      internalError(conf, "unhandled insize: " & $intSize)
 
   case tk
   of tyInt, tyUInt:
-    internalError("this should already have been handled")
+    internalError(conf, "this should already have been handled")
 
   of tyInt8, tyUInt8, tyBool, tyChar:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size = 1
     typ.align = 1
 
   of tyInt16, tyUInt16:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size = 2
     typ.align = 2
 
   of tyInt32, tyUInt32, tyFloat32:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size = 4
     typ.align = 4
 
   of tyInt64, tyUInt64, tyFloat64:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size = 8
-    if CPU[targetCPU].bit == 32 and targetOS == osLinux:
+    if CPU[conf.target.targetCPU].bit == 32 and conf.target.targetOS == osLinux:
       typ.align = 4
     else:
       typ.align = 8
 
   of tyFloat128:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size  = 16
     typ.align = 16
 
   of tyFloat:
-    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
+    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
     typ.size = floatSize
     typ.align = int16(floatSize)
 
@@ -277,7 +278,7 @@ proc computeSizeAlign(typ: PType): void =
       typ.align = int16(ptrSize)
 
   of tyArray:
-    typ.sons[1].computeSizeAlign
+    computeSizeAlign(conf, typ.sons[1])
     let elemSize = typ.sons[1].size
     if elemSize < 0:
       typ.size  = elemSize
@@ -326,7 +327,7 @@ proc computeSizeAlign(typ: PType): void =
     typ.align = int16(typ.size)
 
   of tyRange:
-    typ.sons[0].computeSizeAlign
+    computeSizeAlign(conf, typ.sons[0])
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
 
@@ -336,7 +337,7 @@ proc computeSizeAlign(typ: PType): void =
 
     for i in countup(0, sonsLen(typ) - 1):
       let child = typ.sons[i]
-      child.computeSizeAlign
+      computeSizeAlign(conf, child)
 
       if child.size < 0:
         typ.size  = child.size
@@ -359,7 +360,7 @@ proc computeSizeAlign(typ: PType): void =
       while st.kind in skipPtrs:
         st = st.sons[^1]
 
-      st.computeSizeAlign
+      computeSizeAlign(conf, st)
 
       if st.size < 0:
         typ.size = st.size
@@ -402,18 +403,18 @@ proc computeSizeAlign(typ: PType): void =
 
   of tyInferred:
     if typ.len > 1:
-      typ.lastSon.computeSizeAlign
+      computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
 
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
-    typ.lastSon.computeSizeAlign
+    computeSizeAlign(conf, typ.lastSon)
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align
 
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
-      typ.lastSon.computeSizeAlign
+      computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
@@ -421,7 +422,7 @@ proc computeSizeAlign(typ: PType): void =
       typ.align = szUnknownSize
 
   of tyTypeDesc:
-    typ.base.computeSizeAlign
+    computeSizeAlign(conf, typ.base)
     typ.size = typ.base.size
     typ.align = typ.base.align
 
@@ -432,7 +433,7 @@ proc computeSizeAlign(typ: PType): void =
 
   of tyStatic:
     if typ.n != nil:
-      typ.lastSon.computeSizeAlign
+      computeSizeAlign(conf, typ.lastSon)
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:

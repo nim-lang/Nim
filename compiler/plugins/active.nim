@@ -10,4 +10,15 @@
 ## Include file that imports all plugins that are active.
 
 import
-  locals.locals, itersgen
+  "../compiler" / [pluginsupport, idents, ast], locals, itersgen
+
+const
+  plugins: array[2, Plugin] = [
+    ("stdlib", "system", "iterToProc", iterToProcImpl),
+    ("stdlib", "system", "locals", semLocals)
+  ]
+
+proc getPlugin*(ic: IdentCache; fn: PSym): Transformation =
+  for p in plugins:
+    if pluginMatches(ic, p, fn): return p.t
+  return nil

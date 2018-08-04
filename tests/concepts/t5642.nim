@@ -19,7 +19,7 @@ proc nrow*(dt: DataTable) : Natural =
   return totalLen
 
 let
- stud = Students (id : @[1,2,3], name : @["Vas", "Pas", "NafNaf"], age : @[10,16,32])
+  stud = Students(id : @[1,2,3], name : @["Vas", "Pas", "NafNaf"], age : @[10,16,32])
 
 echo nrow(stud)
 

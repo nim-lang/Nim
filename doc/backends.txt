@@ -20,10 +20,12 @@ to compile to C++, Objective-C or JavaScript. This document tries to
 concentrate in a single place all the backend and interfacing options.
 
 The Nim compiler supports mainly two backend families: the C, C++ and
-Objective-C targets and the JavaScript target. `The C like targets`_ creates
-source files which can be compiled into a library or a final executable. `The
-JavaScript target`_ can generate a ``.js`` file which you reference from an
-HTML file or create a `standalone nodejs program <http://nodejs.org>`_.
+Objective-C targets and the JavaScript target. `The C like targets
+<#backends-the-c-like-targets>`_ creates source files which can be compiled
+into a library or a final executable. `The JavaScript target
+<#backends-the-javascript-target>`_ can generate a ``.js`` file which you
+reference from an HTML file or create a `standalone nodejs program
+<http://nodejs.org>`_.
 
 On top of generating libraries or standalone applications, Nim offers
 bidirectional interfacing with the backend targets through generic and
@@ -205,9 +207,10 @@ from the previous section):
 
 Compile the Nim code to JavaScript with ``nim js -o:calculator.js
 calculator.nim`` and open ``host.html`` in a browser. If the browser supports
-javascript, you should see the value ``10``. In JavaScript the `echo proc
-<system.html#echo>`_ will modify the HTML DOM and append the string. Use the
-`dom module <dom.html>`_ for specific DOM querying and modification procs.
+javascript, you should see the value ``10`` in the browser's console. Use the
+`dom module <dom.html>`_ for specific DOM querying and modification procs
+or take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
+develop browser based applications.
 
 
 Backend code calling Nim

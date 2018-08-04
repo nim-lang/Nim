@@ -149,7 +149,7 @@ template delImpl() {.dirty.} =
   delImplIdx(t, i)
 
 template clearImpl() {.dirty.} =
-  for i in 0 .. <t.data.len:
+  for i in 0 ..< t.data.len:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
     t.data[i].key = default(type(t.data[i].key))

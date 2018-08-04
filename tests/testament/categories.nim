@@ -15,58 +15,73 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() =
-  try:
-    removeDir(nimcacheDir)
-  except OSError:
-    echo "[Warning] could not delete: ", nimcacheDir
+proc delNimCache(filename, options: string) =
+  for target in low(TTarget)..high(TTarget):
+    let dir = nimcacheDir(filename, options, target)
+    try:
+      removeDir(dir)
+    except OSError:
+      echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: string, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
-  delNimCache()
 
   # test basic recompilation scheme:
-  test "hallo"
+  test "hallo", true
   test "hallo"
   when false:
     # test incremental type information:
     test "hallo2"
-    delNimCache()
 
   # test type converters:
-  test "aconv"
+  test "aconv", true
   test "bconv"
-  delNimCache()
 
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
+  test "deada", true
   test "deada2"
-  delNimCache()
 
   when false:
     # test method generation:
-    test "bmethods"
+    test "bmethods", true
     test "bmethods2"
-    delNimCache()
 
     # test generics:
-    test "tgeneric1"
+    test "tgeneric1", true
     test "tgeneric2"
-    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: untyped, clearCacheFirst=true) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
-  delNimCache()
   # test DLL interfacing:
-  test "gtkex1"
+  test "gtkex1", true
   test "gtkex2"
-  delNimCache()
+
+# --------------------- flags tests -------------------------------------------
+
+proc flagTests(r: var TResults, cat: Category, options: string) =
+  # --genscript
+  const filename = "tests"/"flags"/"tgenscript"
+  const genopts = " --genscript"
+  let nimcache = nimcacheDir(filename, genopts, targetC)
+  testSpec r, makeTest(filename, genopts, cat)
+
+  when defined(windows):
+    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
+                         " && compile_tgenscript.bat", cat)
+
+  when defined(linux):
+    testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
+                         " && sh compile_tgenscript.sh\"", cat)
+
+  # Run
+  testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -83,9 +98,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -96,12 +111,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
+    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv("LD_LIBRARY_PATH", libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -153,7 +168,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
@@ -172,9 +187,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
-    let cOptions = "gcc -ldl -DWIN"
+    let cOptions = "-ldl -DWIN"
   else:
-    let cOptions = "gcc -ldl"
+    let cOptions = "-ldl"
 
   var c = initResults()
   # According to ioTests, this should compile the file
@@ -205,7 +220,6 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 proc asyncTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
-    testSpec r, makeTest(filename, options & " -d:upcoming", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
@@ -219,9 +233,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -232,11 +246,86 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
     test "lib/pure/" & testfile & ".nim"
+
+# ------------------------- nim in action -----------
+
+proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped, action: untyped) =
+    testSpec r, makeTest(filename, options, cat, action)
+
+  template testJS(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
+
+  template testCPP(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
+
+  let tests = [
+    "niminaction/Chapter1/various1",
+    "niminaction/Chapter2/various2",
+    "niminaction/Chapter2/resultaccept",
+    "niminaction/Chapter2/resultreject",
+    "niminaction/Chapter2/explicit_discard",
+    "niminaction/Chapter2/no_def_eq",
+    "niminaction/Chapter2/no_iterator",
+    "niminaction/Chapter2/no_seq_type",
+    "niminaction/Chapter3/ChatApp/src/server",
+    "niminaction/Chapter3/ChatApp/src/client",
+    "niminaction/Chapter3/various3",
+    "niminaction/Chapter6/WikipediaStats/concurrency_regex",
+    "niminaction/Chapter6/WikipediaStats/concurrency",
+    "niminaction/Chapter6/WikipediaStats/naive",
+    "niminaction/Chapter6/WikipediaStats/parallel_counts",
+    "niminaction/Chapter6/WikipediaStats/race_condition",
+    "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
+    "niminaction/Chapter7/Tweeter/src/tweeter",
+    "niminaction/Chapter7/Tweeter/src/createDatabase",
+    "niminaction/Chapter7/Tweeter/tests/database_test",
+    "niminaction/Chapter8/sdl/sdl_test"
+    ]
+
+  # Verify that the files have not been modified. Death shall fall upon
+  # whoever edits these hashes without dom96's permission, j/k. But please only
+  # edit when making a conscious breaking change, also please try to make your
+  # commit message clear and notify me so I can easily compile an errata later.
+  var testHashes: seq[string] = @[]
+
+  for test in tests:
+    testHashes.add(getMD5(readFile("tests" / test.addFileExt("nim")).string))
+
+  const refHashes = @[
+    "51afdfa84b3ca3d810809d6c4e5037ba", "30f07e4cd5eaec981f67868d4e91cfcf",
+    "d14e7c032de36d219c9548066a97e846", "2e40bfd5daadb268268727da91bb4e81",
+    "c5d3853ed0aba04bf6d35ba28a98dca0", "058603145ff92d46c009006b06e5b228",
+    "7b94a029b94ddb7efafddd546c965ff6", "586d74514394e49f2370dfc01dd9e830",
+    "e1901837b757c9357dc8d259fd0ef0f6", "097670c7ae12e825debaf8ec3995227b",
+    "a8cb7b78cc78d28535ab467361db5d6e", "bfaec2816a1848991b530c1ad17a0184",
+    "47cb71bb4c1198d6d29cdbee05aa10b9", "87e4436809f9d73324cfc4f57f116770",
+    "7b7db5cddc8cf8fa9b6776eef1d0a31d", "e6e40219f0f2b877869b738737b7685e",
+    "6532ee87d819f2605a443d5e94f9422a", "9a8fe78c588d08018843b64b57409a02",
+    "03a801275b8b76b4170c870cd0da079d", "20bb7d3e2d38d43b0cb5fcff4909a4a8",
+    "af6844598f534fab6942abfa4dfe9ab2", "2a7a17f84f6503d9bc89a5ab8feea127"
+  ]
+  doAssert testHashes == refHashes, "Nim in Action tests were changed."
+
+  # Run the tests.
+  for testfile in tests:
+    test "tests/" & testfile & ".nim", actionCompile
+
+  let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
+  testJS jsFile
+
+  let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
+  testCPP cppFile
+
+
+
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
@@ -262,6 +351,7 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
     if kind == pcDir:
       when defined(windows):
         if dir.endsWith"nake": continue
+      if dir.endsWith"named_argument_bug": continue
       let mainfile = findMainFile(dir)
       if mainfile != "":
         testNoSpec r, makeTest(mainfile, options, cat)
@@ -286,10 +376,11 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
-  packageDir = nimbleDir / "pkgs"
+  #packageDir = nimbleDir / "pkgs" # not used
   packageIndex = nimbleDir / "packages.json"
 
 proc waitForExitEx(p: Process): int =
@@ -348,7 +439,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -357,12 +448,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
@@ -373,26 +464,30 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startswith(a): b else: a & b
 
-proc `&?.`(a, b: string): string =
+#proc `&?.`(a, b: string): string = # not used
   # candidate for the stdlib?
-  result = if a.endswith(b): a else: a & b
+  #result = if a.endswith(b): a else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
-    when false: compileRodFiles(r, cat, options)
-    runRodFiles(r, cat, options)
+    when false:
+      compileRodFiles(r, cat, options)
+      runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
+  of "flags":
+    flagTests(r, cat, options)
   of "gc":
     gcTests(r, cat, options)
   of "longgc":
@@ -420,6 +515,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "niminaction":
+    testNimInAction(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

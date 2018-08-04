@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 # The current PCRE version information.
 

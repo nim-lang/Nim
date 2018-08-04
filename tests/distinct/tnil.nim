@@ -1,15 +1,11 @@
 discard """
   file: "tnil.nim"
-  output: '''0x1
-
-nil
-
-nil
-
+  output: '''1
+0
+0
 '''
-  disabled: "windows"
 """
-
+{.experimental: "notnil".}
 type
   MyPointer = distinct pointer
   MyString = distinct string
@@ -17,7 +13,8 @@ type
   MyInt = distinct int
 
 proc foo(a: MyPointer) =
-  echo a.repr
+  # workaround a Windows 'repr' difference:
+  echo cast[int](a)
 
 foo(cast[MyPointer](1))
 foo(cast[MyPointer](nil))

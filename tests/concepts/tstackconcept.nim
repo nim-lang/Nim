@@ -31,7 +31,7 @@ type
     s.pop() is T
 
     type ValueType = T
-    const ValueTypeName = T.name.toUpper
+    const ValueTypeName = T.name.toUpperAscii
 
 proc genericAlgorithm[T](s: var Stack[T], y: T) =
   static:
