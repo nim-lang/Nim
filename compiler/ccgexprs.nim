@@ -1858,7 +1858,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         getTypeDesc(p.module, ranged), res])
 
   of mConStrStr: genStrConcat(p, e, d)
-  of mAppendStrCh: binaryStmt(p, e, d, "$1 = #addChar($1, $2);$n")
+  of mAppendStrCh:
+    var dest, b, call: TLoc
+    initLoc(call, locCall, e, OnHeap)
+    initLocExpr(p, e.sons[1], dest)
+    initLocExpr(p, e.sons[2], b)
+    call.r = ropecg(p.module, "#addChar($1, $2)", [rdLoc(dest), rdLoc(b)])
+    genAssignment(p, dest, call, {})
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem: genSeqElemAppend(p, e, d)
   of mEqStr: genStrEquals(p, e, d)
