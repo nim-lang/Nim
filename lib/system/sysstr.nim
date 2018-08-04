@@ -233,7 +233,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
   elif dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
-    var sp = max(resize(dest.space), dest.len + addlen)
+    let sp = max(resize(dest.space), dest.len + addlen)
     when defined(nimIncrSeqV3):
       result = rawNewStringNoInit(sp)
       result.len = dest.len
@@ -256,13 +256,22 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   inc(dest.len)
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
-  var n = max(newLen, 0)
+  let n = max(newLen, 0)
   if s == nil:
     result = mnewString(newLen)
   elif n <= s.space:
     result = s
   else:
-    result = resizeString(s, n)
+    let sp = max(resize(s.space), newLen)
+    when defined(nimIncrSeqV3):
+      result = rawNewStringNoInit(sp)
+      result.len = s.len
+      copyMem(addr result.data[0], unsafeAddr(s.data[0]), s.len+1)
+      zeroMem(addr result.data[s.len], newLen - s.len)
+    else:
+      result = cast[NimString](growObj(dest, sizeof(TGenericSeq) + sp + 1))
+    result.reserved = sp
+    #result = resizeString(s, n)
   result.len = n
   result.data[n] = '\0'
 
