@@ -58,6 +58,7 @@ dist/
 .*/
 ~*
 
-# testament cruft
+# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
 testresults/
 test.txt
+/test.ini
