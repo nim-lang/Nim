@@ -1257,7 +1257,7 @@ proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PTyp
 
 include sizealignoffsetimpl
 
-proc computeSize(conf: ConfigRef; typ: PType): BiggestInt =
+proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
 
@@ -1267,14 +1267,14 @@ proc getReturnType*(s: PSym): PType =
   result = s.typ.sons[0]
 
 proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
-  typ.computeSizeAlign
+  computeSizeAlign(conf, typ)
 
   result = typ.align
   if result < 0:
     internalError(conf, "getAlign: " & $typ.kind)
 
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
-  typ.computeSizeAlign
+  computeSizeAlign(conf, typ)
   result = typ.size
   if result < 0:
     internalError(conf, "getSize: " & $typ.kind)

@@ -2262,98 +2262,12 @@ when not defined(JS):
   type
     Clock {.importc: "clock_t".} = distinct int
 
-<<<<<<< HEAD
-  when not defined(windows):
-    # This is not ANSI C, but common enough
-    proc timegm(t: StructTM): Time {.
-      importc: "timegm", header: "<time.h>", tags: [].}
-
-  proc localtime(timer: ptr Time): TimeInfoPtr {.
-    importc: "localtime", header: "<time.h>", tags: [].}
-  proc gmtime(timer: ptr Time): TimeInfoPtr {.
-    importc: "gmtime", header: "<time.h>", tags: [].}
-  proc timec(timer: ptr Time): Time {.
-    importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: ptr StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
-=======
->>>>>>> devel
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
 
   when not defined(useNimRtl):
-<<<<<<< HEAD
-    proc `-` (a, b: Time): int64 =
-      return toBiggestInt(difftime(a, b))
-
-  proc getStartMilsecs(): int =
-    #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
-    #return getClock() div (clocksPerSec div 1000)
-    when defined(macosx):
-      result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
-    else:
-      result = int(getClock()) div (clocksPerSec div 1000)
-    when false:
-      var a: Timeval
-      posix_gettimeofday(a)
-      result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
-      #echo "result: ", result
-
-  proc getTime(): Time = return timec(nil)
-  proc getLocalTime(t: Time): TimeInfo =
-    var a = t
-    let lt = localtime(addr(a))
-    assert(not lt.isNil)
-    result = tmToTimeInfo(lt[], true)
-    # copying is needed anyway to provide reentrancity; thus
-    # the conversion is not expensive
-
-  proc getGMTime(t: Time): TimeInfo =
-    var a = t
-    result = tmToTimeInfo(gmtime(addr(a))[], false)
-    # copying is needed anyway to provide reentrancity; thus
-    # the conversion is not expensive
-
-  proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy
-    # because the header of mktime is broken in my version of libc
-
-    var T1 = timeInfoToTM(cTimeInfo)
-    result = mktime(T1.addr)
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
-
-  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
-
-  const
-    epochDiff = 116444736000000000'i64
-    rateDiff = 10000000'i64 # 100 nsecs
-
-  proc unixTimeToWinTime*(t: Time): int64 =
-    ## converts a UNIX `Time` (``time_t``) to a Windows file time
-    result = int64(t) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(t: int64): Time =
-    ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = Time((t - epochDiff) div rateDiff)
-
-  proc getTimezone(): int =
-    when defined(freebsd) or defined(netbsd) or defined(openbsd):
-      var a = timec(nil)
-      let lt = localtime(addr(a))
-      # BSD stores in `gmtoff` offset east of UTC in seconds,
-      # but posix systems using west of UTC in seconds
-      return -(lt.gmtoff)
-    else:
-      return timezone
-
-  proc fromSeconds(since1970: float): Time = Time(since1970)
-
-  proc toSeconds(time: Time): float = float(time)
-=======
     proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time spent that the CPU spent to run the current process in
       ## seconds. This may be more useful for benchmarking than ``epochTime``.
@@ -2370,7 +2284,6 @@ when not defined(JS):
         echo "CPU time [s] ", cpuTime() - t0
         echo "Fib is [s] ", fib
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
->>>>>>> devel
 
     proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time after the UNIX epoch (1970) in seconds. It is a float

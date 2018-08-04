@@ -53,7 +53,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(n.sons[0], initialOffset)
+    let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset)
 
     var maxChildAlign: BiggestInt = 0
 
@@ -78,7 +78,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
 
     var maxChildOffset: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      let (offset, align) = computeObjectOffsetsFoldFunction(n.sons[i].lastSon, kindUnionOffset)
+      let (offset, align) = computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
       maxChildOffset = max(maxChildOffset, offset)
 
     result.align = max(kindAlign, maxChildAlign)
@@ -91,7 +91,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
     var offset = initialOffset
 
     for i, child in n.sons:
-      let (new_offset, align) = computeObjectOffsetsFoldFunction(child, offset)
+      let (new_offset, align) = computeObjectOffsetsFoldFunction(conf, child, offset)
 
       if new_offset < 0:
         result.offset  = new_offset
@@ -119,7 +119,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
 
 
 var recDepth = 0
-proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt, debug : bool): BiggestInt =
+proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt, debug : bool): BiggestInt =
   ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
   recDepth += 1
   defer:
@@ -135,13 +135,13 @@ proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt,
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let kindOffset = computePackedObjectOffsetsFoldFunction(n.sons[0], initialOffset, debug)
+    let kindOffset = computePackedObjectOffsetsFoldFunction(conf, n.sons[0], initialOffset, debug)
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = kindOffset
 
     var maxChildOffset: BiggestInt = kindUnionOffset
     for i in 1 ..< sonsLen(n):
-      let offset = computePackedObjectOffsetsFoldFunction(n.sons[i].lastSon, kindUnionOffset, debug)
+      let offset = computePackedObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset, debug)
       maxChildOffset = max(maxChildOffset, offset)
 
     if debug:
@@ -152,7 +152,7 @@ proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt,
   of nkRecList:
     result = initialOffset
     for i, child in n.sons:
-      result = computePackedObjectOffsetsFoldFunction(child, result, debug)
+      result = computePackedObjectOffsetsFoldFunction(conf, child, result, debug)
       if result < 0:
         break
 
@@ -199,7 +199,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
 
   var tk = typ.kind
   if tk == tyInt:
-    case intSize
+    case conf.target.intSize
     of 2:
       tk = tyInt16
     of 4:
@@ -207,9 +207,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
     of 8:
       tk = tyInt64
     else:
-      internalError(conf, "unhandled insize: " & $intSize)
+      internalError(conf, "unhandled insize: " & $conf.target.intSize)
   elif tk == tyUInt:
-    case intSize
+    case conf.target.intSize
     of 2:
       tk = tyUInt16
     of 4:
@@ -217,7 +217,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
     of 8:
       tk = tyUInt64
     else:
-      internalError(conf, "unhandled insize: " & $intSize)
+      internalError(conf, "unhandled insize: " & $conf.target.intSize)
 
   case tk
   of tyInt, tyUInt:
@@ -254,28 +254,28 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
 
   of tyFloat:
     echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = floatSize
-    typ.align = int16(floatSize)
+    typ.size = conf.target.floatSize
+    typ.align = int16(conf.target.floatSize)
 
   of tyProc:
     if typ.callConv == ccClosure:
-      typ.size = 2 * ptrSize
+      typ.size = 2 * conf.target.ptrSize
     else:
-      typ.size = ptrSize
-    typ.align = int16(ptrSize)
+      typ.size = conf.target.ptrSize
+    typ.align = int16(conf.target.ptrSize)
 
   of tyNil, tyString:
-    typ.size = ptrSize
-    typ.align = int16(ptrSize)
+    typ.size = conf.target.ptrSize
+    typ.align = int16(conf.target.ptrSize)
 
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       typ.size  = szIllegalRecursion
       typ.align = szIllegalRecursion
     else:
-      typ.size  = ptrSize
-      typ.align = int16(ptrSize)
+      typ.size  = conf.target.ptrSize
+      typ.align = int16(conf.target.ptrSize)
 
   of tyArray:
     computeSizeAlign(conf, typ.sons[1])
@@ -284,15 +284,15 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size  = elemSize
       typ.align = int16(elemSize)
     else:
-      typ.size  = lengthOrd(typ.sons[0]) * elemSize
+      typ.size  = lengthOrd(conf, typ.sons[0]) * elemSize
       typ.align = typ.sons[1].align
 
   of tyEnum:
-    if firstOrd(typ) < 0:
+    if firstOrd(conf, typ) < 0:
       typ.size  = 4              # use signed int32
       typ.align = 4
     else:
-      length = lastOrd(typ)   # BUGFIX: use lastOrd!
+      length = lastOrd(conf, typ)   # BUGFIX: use lastOrd!
       if length + 1 < `shl`(1, 8):
         typ.size  = 1
         typ.align = 1
@@ -311,7 +311,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size  = szUnknownSize
       typ.align = szUnknownSize # in original version this was 1
     else:
-      length = lengthOrd(typ.sons[0])
+      length = lengthOrd(conf, typ.sons[0])
       if length <= 8:
         typ.size = 1
       elif length <= 16:
@@ -372,8 +372,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
 
     elif isObjectWithTypeFieldPredicate(typ):
       # this branch is taken for RootObj
-      headerSize = intSize
-      headerAlign = intSize.int16
+      headerSize = conf.target.intSize
+      headerAlign = conf.target.intSize.int16
 
     else:
       headerSize  = 0
@@ -381,10 +381,10 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
 
     let (offset, align) =
       if tfPacked in typ.flags:
-        (computePackedObjectOffsetsFoldFunction(typ.n, headerSize, false), BiggestInt(1))
-        #(computePackedObjectOffsetsFoldFunction(typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
+        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
+        #(computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
       else:
-        computeObjectOffsetsFoldFunction(typ.n, headerSize)
+        computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
 
     if offset < 0:
       typ.size = offset

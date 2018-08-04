@@ -323,11 +323,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     checkSonsLen(n, 2, c.config)
     result = semTypeOf(c, n.sons[1])
   of mSizeOf:
-    result = newIntNode(nkIntLit, n[1].typ.getSize)
+    result = newIntNode(nkIntLit, getSize(c.config, n[1].typ))
     result.info = n.info
     result.typ = n.typ
   of mAlignOf:
-    result = newIntNode(nkIntLit, n[1].typ.getAlign)
+    result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
     result.info = n.info
     result.typ = n.typ
   of mOffsetOf:
@@ -339,14 +339,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       elif n[1].kind == nkCheckedFieldExpr:
         dotExpr = n[1][0]
       else:
-        illFormedAst(n)
+        illFormedAst(n, c.config)
 
     assert dotExpr != nil
 
     let value = dotExpr[0]
     let member = dotExpr[1]
 
-    discard value.typ.computeSize
+    discard computeSize(c.config, value.typ)
 
     result = newIntNode(nkIntLit, member.sym.offset)
     result.info = n.info
