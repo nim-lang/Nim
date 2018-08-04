@@ -237,3 +237,33 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.freshIdentNodes
+
+macro extractGeneric*(T: typedesc, index:static[int]): untyped =
+  ## extract generic type numbered ``index`` used to construct ``T``. Note:
+  ## ``-1`` returns ``Foo`` in ``Foo[T]``
+  runnableExamples:
+    type Foo[T1, T2]=object
+    doAssert extractGeneric(Foo[float, string], 0) is float
+    doAssert extractGeneric(Foo[float, string], 1) is string
+    doAssert extractGeneric(Foo[float, string], -1) is Foo
+
+  var impl = getTypeImpl(T)
+  expectKind(impl, nnkBracketExpr)
+  impl = impl[1]
+  while true:
+    case impl.kind
+      of nnkSym:
+        impl = impl.getImpl
+        continue
+      of nnkTypeDef:
+        impl = impl[2]
+        continue
+      of nnkBracketExpr:
+        if index == -1:
+          impl=impl[0] #return `Foo` in `Foo[T]`
+        else:
+          impl=impl[1+index]  #return `T` in `Foo[T]` (when index = 0)
+        break
+      else:
+        error "internal error: impl.kind: " & $impl.kind
+  impl

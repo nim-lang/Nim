@@ -4437,7 +4437,7 @@ type classes are called `bind many`:idx: types.
 
 Procs written with the implicitly generic style will often need to refer to the
 type parameters of the matched generic type. They can be easily accessed using
-the dot syntax:
+``sugar.extractGeneric`` or the dot syntax:
 
 .. code-block:: nim
   type Matrix[T, Rows, Columns] = object
@@ -4445,6 +4445,7 @@ the dot syntax:
 
   proc `[]`(m: Matrix, row, col: int): Matrix.T =
     m.data[col * high(Matrix.Columns) + row]
+    # we could've also used ``extractGeneric(Matrix, 0)``
 
 Alternatively, the `type` operator can be used over the proc params for similar
 effect when anonymous or distinct type classes are used.
