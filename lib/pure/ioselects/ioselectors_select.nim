@@ -99,6 +99,9 @@ proc newSelector*[T](): Selector[T] =
     result = Selector[T]()
     result.fds = newSeq[SelectorKey[T]](FD_SETSIZE)
 
+  for i in 0 ..< FD_SETSIZE:
+    result.fds[i].ident = InvalidIdent
+
   IOFD_ZERO(addr result.rSet)
   IOFD_ZERO(addr result.wSet)
   IOFD_ZERO(addr result.eSet)
@@ -195,7 +198,7 @@ proc setSelectKey[T](s: Selector[T], fd: SocketHandle, events: set[Event],
   var i = 0
   let fdi = int(fd)
   while i < FD_SETSIZE:
-    if s.fds[i].ident == 0:
+    if s.fds[i].ident == InvalidIdent:
       var pkey = addr(s.fds[i])
       pkey.ident = fdi
       pkey.events = events
@@ -221,7 +224,7 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
   var i = 0
   while i < FD_SETSIZE:
     if s.fds[i].ident == fd.int:
-      s.fds[i].ident = 0
+      s.fds[i].ident = InvalidIdent
       s.fds[i].events = {}
       s.fds[i].data = empty
       break
@@ -335,7 +338,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
     var k = 0
 
     while (i < FD_SETSIZE) and (k < count):
-      if s.fds[i].ident != 0:
+      if s.fds[i].ident != InvalidIdent:
         var flag = false
         var pkey = addr(s.fds[i])
         var rkey = ReadyKey(fd: int(pkey.ident), events: {})

@@ -231,6 +231,7 @@ const mimes* = {
     "xcf": "application/x-xcf",
     "fig": "application/x-xfig",
     "xpi": "application/x-xpinstall",
+    "wasm": "application/wasm",
     "amr": "audio/amr",
     "awb": "audio/amr-wb",
     "amr": "audio/amr",

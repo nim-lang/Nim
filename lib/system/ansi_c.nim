@@ -27,6 +27,9 @@ proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 proc c_strlen(a: cstring): csize {.
   importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_abort() {.
+  importc: "abort", header: "<stdlib.h>", noSideEffect.}
+
 
 when defined(linux) and defined(amd64):
   type

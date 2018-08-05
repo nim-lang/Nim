@@ -37,7 +37,7 @@ type
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
-    hintSuccess, hintSuccessX,
+    hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
@@ -94,6 +94,7 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -136,7 +137,7 @@ const
     "Spacing", "User"]
 
   HintsToStr* = [
-    "Success", "SuccessX", "LineTooLong",
+    "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",

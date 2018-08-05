@@ -11,6 +11,7 @@
 # included from sem.nim
 
 const
+  errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
@@ -136,7 +137,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
     if base.kind != tyGenericParam:
-      if not isOrdinalType(base):
+      if not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected)
       elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
@@ -1508,26 +1509,20 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq:
-      let s = c.graph.sysTypes[tySequence]
-      assert s != nil
-      assert prev == nil
-      result = copyType(s, s.owner, keepId=false)
-      # XXX figure out why this has children already...
-      result.sons.setLen 0
-      result.n = nil
       if c.config.selectedGc == gcDestructors:
-        result.flags = {tfHasAsgn}
+        let s = c.graph.sysTypes[tySequence]
+        assert s != nil
+        assert prev == nil
+        result = copyType(s, s.owner, keepId=false)
+        # XXX figure out why this has children already...
+        result.sons.setLen 0
+        result.n = nil
+        if c.config.selectedGc == gcDestructors:
+          result.flags = {tfHasAsgn}
+        else:
+          result.flags = {}
+        semContainerArg(c, n, "seq", result)
       else:
-        result.flags = {}
-      semContainerArg(c, n, "seq", result)
-      when false:
-        debugT = true
-        echo "Start!"
-        #debug result
-        assert(not containsGenericType(result))
-        debugT = false
-        echo "End!"
-      when false:
         result = semContainer(c, n, tySequence, "seq", prev)
         if c.config.selectedGc == gcDestructors:
           incl result.flags, tfHasAsgn
@@ -1603,8 +1598,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
-    if s.kind == skType and s.typ != nil:
-      var t = s.typ
+    if s.kind == skType and s.typ != nil or
+      s.kind == skParam and s.typ.kind == tyTypeDesc:
+      var t =
+        if s.kind == skType:
+          s.typ
+        else:
+          internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
+          s.typ.base
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias

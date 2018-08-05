@@ -22,7 +22,8 @@
   become an error in the future.
 - The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
   bring the language in line with the standard library (e.g. ``parseOct``).
-
+- The dot style for import paths (e.g ``import path.to.module`` instead of
+  ``import path/to/module``) has been deprecated.
 
 #### Breaking changes in the standard library
 
@@ -59,6 +60,8 @@
   1-based coordinates on POSIX for correct behaviour; the Windows behaviour
   was always correct).
 
+- ``lineInfoObj`` now returns absolute path instead of project path.
+  It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
 #### Breaking changes in the compiler
 
@@ -192,5 +195,10 @@
 
 - Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
   for more info.
+
+- macros.bindSym now capable to accepts not only literal string or string constant expression.
+  bindSym enhancement make it also can accepts computed string or ident node inside macros /
+  compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
+  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch
 
 ### Bugfixes

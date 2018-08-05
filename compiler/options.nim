@@ -116,7 +116,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    dynamicBindSym
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -406,8 +407,8 @@ proc mainCommandArg*(conf: ConfigRef): string =
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
 
-proc getConfigVar*(conf: ConfigRef; key: string): string =
-  result = conf.configVars.getOrDefault key
+proc getConfigVar*(conf: ConfigRef; key: string, default = ""): string =
+  result = conf.configVars.getOrDefault(key, default)
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
@@ -556,13 +557,28 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.pro
           result = rawFindFile2(conf, f.toLowerAscii)
   patchModule(conf)
 
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
   const pkgPrefix = "pkg/"
-  let m = addFileExt(modulename, NimExt)
+  const stdPrefix = "std/"
+  var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
+    if m.startsWith(stdPrefix):
+      let stripped = m.substr(stdPrefix.len)
+      for candidate in stdlibDirs:
+        let path = (conf.libpath / candidate / stripped)
+        if fileExists(path):
+          m = path
+          break
     let currentPath = currentModule.splitFile.dir
     result = currentPath / m
     if not existsFile(result):

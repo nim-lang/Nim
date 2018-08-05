@@ -627,15 +627,23 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
       gcoms(g)
     if doIndent: dedent(g)
   else:
-    if rfLongMode in c.flags: indentNL(g)
+    indentNL(g)
     gsub(g, n)
     gcoms(g)
+    dedent(g)
     optNL(g)
-    if rfLongMode in c.flags: dedent(g)
+
+
+proc gcond(g: var TSrcGen, n: PNode) =
+  if n.kind == nkStmtListExpr:
+    put(g, tkParLe, "(")
+  gsub(g, n)  
+  if n.kind == nkStmtListExpr:
+    put(g, tkParRi, ")")
 
 proc gif(g: var TSrcGen, n: PNode) =
   var c: TContext
-  gsub(g, n.sons[0].sons[0])
+  gcond(g, n.sons[0].sons[0])
   initContext(c)
   putWithSpace(g, tkColon, ":")
   if longMode(g, n) or (lsub(g, n.sons[0].sons[1]) + g.lineLen > MaxLineLen):
@@ -650,7 +658,7 @@ proc gif(g: var TSrcGen, n: PNode) =
 proc gwhile(g: var TSrcGen, n: PNode) =
   var c: TContext
   putWithSpace(g, tkWhile, "while")
-  gsub(g, n.sons[0])
+  gcond(g, n.sons[0])
   putWithSpace(g, tkColon, ":")
   initContext(c)
   if longMode(g, n) or (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen):
@@ -714,7 +722,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")
-  gsub(g, n.sons[0])
+  gcond(g, n.sons[0])
   gcoms(g)
   optNL(g)
   gsons(g, n, c, 1, last)
@@ -785,10 +793,7 @@ proc gblock(g: var TSrcGen, n: PNode) =
   if longMode(g, n) or (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
-  # XXX I don't get why this is needed here! gstmts should already handle this!
-  indentNL(g)
   gstmts(g, n.sons[1], c)
-  dedent(g)
 
 proc gstaticStmt(g: var TSrcGen, n: PNode) =
   var c: TContext
@@ -1104,13 +1109,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkAccent, "`")
   of nkIfExpr:
     putWithSpace(g, tkIf, "if")
-    if n.len > 0: gsub(g, n.sons[0], 0)
+    if n.len > 0: gcond(g, n.sons[0].sons[0])
     putWithSpace(g, tkColon, ":")
     if n.len > 0: gsub(g, n.sons[0], 1)
     gsons(g, n, emptyContext, 1)
   of nkElifExpr:
     putWithSpace(g, tkElif, " elif")
-    gsub(g, n, 0)
+    gcond(g, n[0])
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkElseExpr:

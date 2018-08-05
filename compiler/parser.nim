@@ -568,6 +568,7 @@ proc parsePar(p: var TParser): PNode =
   result = newNodeP(nkPar, p)
   getTok(p)
   optInd(p, result)
+  flexComment(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
                        tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
                        tkConst, tkLet, tkWhen, tkVar,

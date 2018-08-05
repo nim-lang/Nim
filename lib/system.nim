@@ -1479,8 +1479,8 @@ when defined(nimdoc):
     ##
     ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
     ## have any compile time effect. If you need to stop the compiler inside a
-    ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
-    ## <manual.html#fatal-pragma>`_ pragmas.
+    ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
+    ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
 
 elif defined(genode):
   include genode/env
@@ -2438,7 +2438,7 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## When you iterate over objects with different field types you have to use
   ## the compile time ``when`` instead of a runtime ``if`` to select the code
   ## you want to run for each type. To perform the comparison use the `is
-  ## operator <manual.html#is-operator>`_. Example:
+  ## operator <manual.html#generics-is-operator>`_. Example:
   ##
   ## .. code-block:: Nim
   ##
@@ -3788,7 +3788,9 @@ template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
   bind instantiationInfo
-  {.line: instantiationInfo().}:
+  # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
+  # or not to output full paths.
+  {.line: instantiationInfo(-1, true).}:
     if not cond:
       raiseAssert(astToStr(cond) & ' ' &
                   instantiationInfo(-1, false).fileName & '(' &

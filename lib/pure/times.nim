@@ -181,10 +181,27 @@ elif defined(windows):
 type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``, so ``ord(month)`` will give
                 ## the month number in the range ``[1..12]``.
-    mJan = 1, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
+    mJan = (1, "January")
+    mFeb = "February"
+    mMar = "March"
+    mApr = "April"
+    mMay = "May"
+    mJun = "June"
+    mJul = "July"
+    mAug = "August"
+    mSep = "September"
+    mOct = "October"
+    mNov = "November"
+    mDec = "December"
 
   WeekDay* = enum ## Represents a weekday.
-    dMon, dTue, dWed, dThu, dFri, dSat, dSun
+    dMon = "Monday"
+    dTue = "Tuesday"
+    dWed = "Wednesday"
+    dThu = "Thursday"
+    dFri = "Friday"
+    dSat = "Saturday"
+    dSun = "Sunday"
 
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
@@ -1073,20 +1090,6 @@ proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   var ti = now()
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
     ':' & intToStr(ti.second, 2)
-
-proc `$`*(day: WeekDay): string =
-  ## Stringify operator for ``WeekDay``.
-  const lookup: array[WeekDay, string] = ["Monday", "Tuesday", "Wednesday",
-     "Thursday", "Friday", "Saturday", "Sunday"]
-  return lookup[day]
-
-proc `$`*(m: Month): string =
-  ## Stringify operator for ``Month``.
-  const lookup: array[Month, string] = ["January", "February", "March",
-      "April", "May", "June", "July", "August", "September", "October",
-      "November", "December"]
-  return lookup[m]
-
 
 proc toParts* (ti: TimeInterval): TimeIntervalParts =
   ## Converts a `TimeInterval` into an array consisting of its time units,
