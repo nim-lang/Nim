@@ -303,14 +303,10 @@ proc mexec(cmds: openarray[string], processors: int) =
 proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## Special case documentation sample proc.
   ##
-  ## The docgen sample needs to be generated twice with different commands, so
-  ## it didn't make much sense to integrate into the existing generic
-  ## documentation builders.
-  const src = "doc"/"docgen_sample.nim"
+  ## TODO: consider integrating into the existing generic documentation builders
+  ## now that we have a single `doc` command.
   exec(findNim(c) & " doc $# -o:$# $#" %
-    [c.nimArgs, destPath / "docgen_sample.html", src])
-  exec(findNim(c) & " doc2 $# -o:$# $#" %
-    [c.nimArgs, destPath / "docgen_sample2.html", src])
+    [c.nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
 proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
 
