@@ -647,6 +647,8 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect, compileTime.}
 
 when defined(nimHasalignOf):
   proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+  when defined(nimtypedescfixed):
+    proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
 
   proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
@@ -661,7 +663,6 @@ when defined(nimHasalignOf):
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
-  proc alignof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## unary ``<`` that can be used for nice looking excluding ranges:

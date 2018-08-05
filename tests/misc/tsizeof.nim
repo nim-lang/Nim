@@ -10,20 +10,25 @@ discard """
 
 import macros, typetraits
 
-
 macro testSizeAlignOf(args: varargs[untyped]): untyped =
   result = newStmtList()
   for arg in args:
-    result.add(quote do:
+    result.add quote do:
       let
         c_size = c_sizeof(`arg`)
         nim_size = sizeof(`arg`)
-      if nim_size != c_size:
-        echo strAlign(`arg`.type.name & ": "), " size: ",
-             intAlign(c_size),   " !=  ",
-             intAlign(nim_size), " align: ",
-             intAlign(alignof(`arg`))
-    )
+        c_align = c_alignof(type(`arg`))
+        nim_align = alignof(`arg`)
+
+
+      if nim_size != c_size or nim_align != c_align:
+        var msg = strAlign(`arg`.type.name & ": ")
+        if nim_size != c_size:
+          msg.add  " size(got, expected):  " & $nim_size  & " != " & $c_size
+        if nim_align != c_align:
+          msg.add  " align(get, expected): " & $nim_align & " != " & $c_align
+        echo msg
+
 
 macro testOffsetOf(a,b1,b2: untyped): untyped =
   let typeName = newLit(a.repr)
@@ -72,10 +77,8 @@ macro c_alignof(arg: untyped): untyped =
         member: `arg`
     c_offsetof(`typeSym`, member)
 
-when true:
-  {.pragma: objectconfig.}
-else:
-  {.pragma: objectconfig, packed.}
+{.pragma: objectconfig.}
+#  {.pragma: objectconfig, packed.}
 
 type
   MyEnum {.pure.} = enum
@@ -313,6 +316,7 @@ proc main(): void =
 
 main()
 
+type
   TMyEnum = enum
     tmOne, tmTwo, tmThree, tmFour
 
@@ -325,7 +329,6 @@ const
   mysize2 = sizeof(TMyArray2)
   mysize3 = sizeof(TMyArray3)
 
-# assert sizeof(TMyRecord) == 40
 assert mysize1 == 3
 assert mysize2 == 12
 assert mysize3 == 32

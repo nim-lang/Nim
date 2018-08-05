@@ -695,11 +695,6 @@ const
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}
-  # magics that require special semantic checking and
-  # thus cannot be overloaded (also documented in the spec!):
-  SpecialSemMagics* = {
-    mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
