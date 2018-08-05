@@ -237,7 +237,7 @@ else: # bootstrapping substitute
       n.strValOld
 
 when defined(nimSymImplNoTransform):
-  proc getImplNoTransform*(symbol: NimNode): NimNode {.magic: "GetImplNoTransf", noSideEffect.}
+  #proc getImplNoTransform*(symbol: NimNode): NimNode {.magic: "GetImplNoTransf", noSideEffect.}
     ## for a typed proc returns the AST before transformation pass
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
