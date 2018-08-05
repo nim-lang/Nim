@@ -223,6 +223,7 @@ proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
   let s = newNodeI(nkState, n.info)
   s.add(resLit)
   s.add(n)
+  assert(ctx.states != nil, "ctx states is nil")
   ctx.states.add(s)
   ctx.exceptionTable.add(ctx.curExcHandlingState)
 
@@ -1266,6 +1267,8 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   var ctx: Ctx
   ctx.g = g
   ctx.fn = fn
+  ctx.states = newSeq[PNode]()
+  ctx.exceptionTable = newSeq[int]()
 
   if getEnvParam(fn).isNil:
     # Lambda lifting was not done yet. Use temporary :state sym, which
