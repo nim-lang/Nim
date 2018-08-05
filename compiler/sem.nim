@@ -622,7 +622,7 @@ proc testExamples(c: PContext) =
     quit "[Examples] failed: see " & outp
   else:
     # keep generated source file `outp` to allow inspection.
-    echo "success for genarated " & outp
+    rawMessage(c.config, hintSuccess, ["runnableExamples: " & outp])
     removeFile(outp.changeFileExt(ExeExt))
     try:
       removeDir(nimcache)
