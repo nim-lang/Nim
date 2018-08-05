@@ -223,6 +223,7 @@ proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
   let s = newNodeI(nkState, n.info)
   s.add(resLit)
   s.add(n)
+  assert(ctx.states != nil, "ctx states is nil")
   ctx.states.add(s)
   ctx.exceptionTable.add(ctx.curExcHandlingState)
 
