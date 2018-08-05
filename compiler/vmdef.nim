@@ -102,7 +102,7 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLine, opcNGetColumn, opcNGetFile,
+    opcNGetLineInfo, opcNSetLineInfo,
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
