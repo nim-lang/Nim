@@ -46,7 +46,7 @@ template frees(s) =
     s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
 
 proc `=destroy`(s: var string) =
-  var a = cast[ptr NimStringV2[T]](addr s)
+  var a = cast[ptr NimStringV2](addr s)
   frees(a)
   a.len = 0
   a.p = nil
