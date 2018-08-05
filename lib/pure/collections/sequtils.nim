@@ -654,11 +654,20 @@ template mapIt*(s, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  when compiles(s.len):
+  const isOpenArray = type(s) is openArray
+  # an openArray cannot be used as a LHS in a `let` binding so we have to
+  # special-case this
+  when compiles(s.len) and not isOpenArray:
     let t = s
     var i = 0
     result = newSeq[outType](t.len)
     for it {.inject.} in t:
+      result[i] = op
+      i += 1
+  elif isOpenArray:
+    var i = 0
+    result = newSeq[outType](s.len)
+    for it {.inject.} in s:
       result[i] = op
       i += 1
   else:
@@ -1043,6 +1052,10 @@ when isMainModule:
     doAssert x is array[4, int]
     doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+
+  block: # mapIt with openArray
+    proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
+    doAssert foo([1,2,3]) == @[2,3,4]
 
   when not defined(testing):
     echo "Finished doc tests"
