@@ -199,6 +199,23 @@ macro dump*(x: typed): untyped =
     debugEcho `s`, " = ", `x`
   return r
 
+# TODO: consider exporting this in macros.nim
+proc replaceNodes(ast: NimNode): NimNode =
+  # Replace NimIdent and NimSym by a fresh ident node
+  # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
+  proc inspect(node: NimNode): NimNode =
+    case node.kind:
+    of nnkIdent, nnkSym:
+      return ident($node)
+    of nnkEmpty, nnkLiterals:
+      return node
+    else:
+      var rTree = node.kind.newTree()
+      for child in node:
+        rTree.add inspect(child)
+      return rTree
+  result = inspect(ast)
+
 macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
   ## reverses ``type T = distinct A``
   runnableExamples:
@@ -219,7 +236,7 @@ macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
     let impl = getTypeImpl(typeSym)
     if $impl.typeKind != "ntyDistinct":
       error "type is not distinct"
-    getTypeInst(impl[0])
+    typeSym = getTypeInst(impl[0])
   else:
     while true:
       let impl = getTypeImpl(typeSym)
@@ -227,7 +244,7 @@ macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
         typeSym = impl
         break
       typeSym=getTypeInst(impl[0])
-    typeSym
+  typeSym.replaceNodes
 
 proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
   ## converts a distinct variable to it's original type
@@ -242,3 +259,4 @@ proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
 when isMainModule:
   # pending https://github.com/nim-lang/Nim/issues/7280
   discard distinctBase[int](0, recursive = true)
+
