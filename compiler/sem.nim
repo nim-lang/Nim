@@ -621,7 +621,8 @@ proc testExamples(c: PContext) =
   if os.execShellCmd(os.getAppFilename() & " " & backend & " --nimcache:" & nimcache & " -r " & outp) != 0:
     quit "[Examples] failed: see " & outp
   else:
-    removeFile(outp)
+    # keep generated source file `outp` to allow inspection.
+    echo "success for genarated " & outp
     removeFile(outp.changeFileExt(ExeExt))
     try:
       removeDir(nimcache)
