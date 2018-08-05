@@ -1184,7 +1184,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     of "getFile": genUnaryABI(c, n, dest, opcNGetLineInfo, 0)
     of "getLine": genUnaryABI(c, n, dest, opcNGetLineInfo, 1)
     of "getColumn": genUnaryABI(c, n, dest, opcNGetLineInfo, 2)
-    of "lineInfo=":
+    of "copyLineInfo":
       internalAssert c.config, n.len == 3
       unused(c, n, dest)
       genBinaryStmt(c, n, opcNSetLineInfo)

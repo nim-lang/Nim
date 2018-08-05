@@ -7,7 +7,7 @@ type
 
 macro mixer(n: typed): untyped =
   let x = newIdentNode("echo")
-  x.lineInfo = n
+  x.copyLineInfo(n)
   result = newLit(x.lineInfo == n.lineInfo)
 
 var z = mixer(Test)
