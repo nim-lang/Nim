@@ -76,7 +76,7 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
     testExec r, makeTest(filename, " cmd /c cd " & nimcache &
                          " && compile_tgenscript.bat", cat)
 
-  when defined(linux):
+  elif defined(posix):
     testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
                          " && sh compile_tgenscript.sh\"", cat)
 
