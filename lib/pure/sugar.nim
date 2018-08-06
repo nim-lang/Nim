@@ -254,7 +254,7 @@ proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
     let b = a.distinctBase
     doAssert b is int
     doAssert b == 1
-  cast[distinctBase(T, recursive)](a)
+  distinctBase(T, recursive)(a)
 
 when isMainModule:
   # pending https://github.com/nim-lang/Nim/issues/7280
