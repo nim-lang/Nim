@@ -16,12 +16,12 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
+  semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
 
 from modulegraphs import ModuleGraph
 
 when defined(nimfix):
-  import nimfix.prettybase
+  import nimfix/prettybase
 
 # implementation
 
