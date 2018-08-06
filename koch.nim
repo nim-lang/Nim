@@ -243,11 +243,10 @@ proc zip(args: string) =
        ["tools/niminst/niminst".exe, VersionAsString])
 
 proc ensureCleanGit() =
-   let (outp, status) = osproc.execCmdEx("git diff")
-   if outp.len != 0:
-     quit "Not a clean git repository; 'git diff' not empty!"
-   if status != 0:
-     quit "Not a clean git repository; 'git diff' returned non-zero!"
+  let cmd = "git status --porcelain"
+  let (outp, status) = osproc.execCmdEx(cmd)
+  doAssert status == 0, cmd & " error"
+  doAssert outp.len == 0, "Not a clean git repository"
 
 proc xz(args: string) =
   ensureCleanGit()
