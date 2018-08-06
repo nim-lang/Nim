@@ -939,6 +939,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp2)
 
   of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
+  of mAshrI: genBinaryABCnarrowU(c, n, dest, opcAshrInt)
   of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
   of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)

@@ -971,6 +971,20 @@ else:
   proc `shl`*(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
   proc `shl`*(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
 
+when defined(nimAshr):
+  proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+    ## Shifts right by pushing copies of the leftmost bit in from the left,
+    ## and let the rightmost bits fall off.
+    ##
+    ## .. code-block:: Nim
+    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+    ##   0b1000_0000'i8 shr 8 == 0b1111_1111'i8
+    ##   0b1000_0000'i8 shr 1 == 0b1100_0000'i8
+
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
