@@ -20,7 +20,7 @@
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely
   become an error in the future.
-- The ``'c`` and ``'C'`` prefix for octal literals is now deprecated to
+- The ``'c`` and ``'C'`` suffix for octal literals is now deprecated to
   bring the language in line with the standard library (e.g. ``parseOct``).
 - The dot style for import paths (e.g ``import path.to.module`` instead of
   ``import path/to/module``) has been deprecated.
@@ -67,6 +67,9 @@
 
 - The undocumented ``#? braces`` parsing mode was removed.
 - The undocumented PHP backend was removed.
+- The default location of ``nimcache`` for the native code targets was
+  changed. Read [the compiler user guide](https://nim-lang.org/docs/nimc.html#generated-c-code-directory)
+  for more information.
 
 ### Library additions
 
@@ -162,11 +165,11 @@
 - The command syntax now supports keyword arguments after the first comma.
 
 - Thread-local variables can now be declared inside procs. This implies all
-  the effects of the `global` pragma.
+  the effects of the ``global`` pragma.
 
-- Nim now supports `except` clause in the export statement.
+- Nim now supports ``except`` clause in the export statement.
 
-- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
+- Range float types, example ``range[0.0 .. Inf]``. More details in language manual.
 
 ### Tool changes
 

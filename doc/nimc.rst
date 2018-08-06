@@ -157,36 +157,25 @@ the first matching file is used.
 Generated C code directory
 --------------------------
 The generated files that Nim produces all go into a subdirectory called
-``nimcache`` in your project directory. This makes it easy to delete all
+``nimcache``. Its full path is
+
+- ``~/.cache/$projectname(_r|_d)`` on Posix
+- ``$HOME/nimcache/$projectname(_r|_d)`` on Windows.
+
+The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
+
+This makes it easy to delete all
 generated files. Files generated in this directory follow a naming logic which
 you can read about in the `Nim Backend Integration document
 <backends.html#nimcache-naming-logic>`_.
 
+The ``--nimcache``
+`compiler switch <nimc.html#command-line-switches>`_ can be used to
+to change the ``nimcache`` directory.
+
 However, the generated C code is not platform independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
-
-
-Compilation cache
-=================
-
-**Warning**: The compilation cache is still highly experimental!
-
-The ``nimcache`` directory may also contain so called `rod`:idx:
-or `symbol files`:idx:. These files are pre-compiled modules that are used by
-the compiler to perform `incremental compilation`:idx:. This means that only
-modules that have changed since the last compilation (or the modules depending
-on them etc.) are re-compiled. However, per default no symbol files are
-generated; use the ``--symbolFiles:on`` command line switch to activate them.
-
-Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
-to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even with dead code elimination. So
-the final release build should be done with ``--symbolFiles:off``.
-
-Due to the aggregation of C code it is also recommended that each project
-resides in its own directory so that the generated ``nimcache`` directory
-is not shared between different projects.
 
 
 Compiler Selection
