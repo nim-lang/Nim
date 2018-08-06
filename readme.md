@@ -50,9 +50,8 @@ Next, to build from source you will need:
     other distros as well). 
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
-Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
-of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
-``build64.bat`` on x86_64 Windows):
+Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (for Windows,
+see adjustments needed in `build_all.sh`).
 
 **Note: The following commands are for the development version of the compiler.**
 For most users, installing the latest stable version is enough. Check out
@@ -61,7 +60,8 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 ```
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
-sh build.sh
+# clones `csources.git`, bootstraps Nim compiler and compiles tools
+sh build_all.sh
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
