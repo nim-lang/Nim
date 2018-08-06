@@ -206,14 +206,14 @@ proc replaceNodes(ast: NimNode): NimNode =
   proc inspect(node: NimNode): NimNode =
     case node.kind:
     of nnkIdent, nnkSym:
-      return ident($node)
+      result = ident($node)
     of nnkEmpty, nnkLiterals:
-      return node
+      result = node
     else:
       var rTree = node.kind.newTree()
       for child in node:
         rTree.add inspect(child)
-      return rTree
+      result = rTree
   result = inspect(ast)
 
 macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
@@ -229,24 +229,24 @@ macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
 
   let typeNode = getTypeImpl(T)
   expectKind(typeNode, nnkBracketExpr)
-  if $typeNode[0] != "typeDesc":
+  if typeNode[0].typeKind != ntyTypeDesc:
     error "expected typeDesc, got " & $typeNode[0]
   var typeSym = typeNode[1]
   if not recursive:
     let impl = getTypeImpl(typeSym)
-    if $impl.typeKind != "ntyDistinct":
+    if impl.typeKind != ntyDistinct:
       error "type is not distinct"
     typeSym = getTypeInst(impl[0])
   else:
     while true:
       let impl = getTypeImpl(typeSym)
-      if $impl.typeKind != "ntyDistinct":
+      if impl.typeKind != ntyDistinct:
         typeSym = impl
         break
-      typeSym=getTypeInst(impl[0])
+      typeSym = getTypeInst(impl[0])
   typeSym.replaceNodes
 
-proc distinctBase*[T](a: T, recursive: static[bool] = false): auto =
+func distinctBase*[T](a: T, recursive: static[bool] = false): auto {.inline.} =
   ## converts a distinct variable to it's original type
   runnableExamples:
     type T = distinct int
