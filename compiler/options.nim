@@ -480,9 +480,19 @@ proc disableNimblePath*(conf: ConfigRef) =
 
 include packagehandling
 
+proc getOsCacheDir(): string =
+  when defined(posix):
+    result = getHomeDir() / ".cache"
+  else:
+    result = getHomeDir() / genSubDir
+
 proc getNimcacheDir*(conf: ConfigRef): string =
-  result = if conf.nimcacheDir.len > 0: conf.nimcacheDir
-           else: shortenDir(conf, conf.projectPath) / genSubDir
+  result = if conf.nimcacheDir.len > 0:
+             conf.nimcacheDir
+           elif conf.cmd == cmdCompileToJS:
+             shortenDir(conf, conf.projectPath) / genSubDir
+           else: getOsCacheDir() / conf.projectName &
+             (if isDefined(conf, "release"): "_r" else: "_d")
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
