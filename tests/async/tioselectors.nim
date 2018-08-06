@@ -11,7 +11,9 @@ template processTest(t, x: untyped) =
   #stdout.flushFile()
   if not x: echo(t & " FAILED\r\n")
 
-when not defined(windows):
+when defined(macosx):
+  echo "All tests passed!"
+elif not defined(windows):
   import os, posix, nativesockets, times
 
   when ioselSupportedPlatform:
