@@ -635,21 +635,28 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-macro evalOnce(exp: untyped, v: untyped): untyped =
-  expectKind(v, nnkIdent)
-  var val = exp
+# This is needed in order not to break the bootstrap, the fallback
+# implementation is a "dumb" let that won't work in some cases (eg. when `exp`
+# is an openArray)
+when declared(macros.symKind):
+  macro evalOnce(v, exp: untyped): untyped =
+    expectKind(v, nnkIdent)
+    var val = exp
 
-  result = newStmtList()
+    result = newStmtList()
 
-  # Not a parameter we can pass as-is, evaluate and store in a temporary
-  # variable
-  if exp.kind != nnkSym or exp.symKind != nskParam:
-    val = genSym()
-    result.add(newLetStmt(val, exp))
+    # Not a parameter we can pass as-is, evaluate and store in a temporary
+    # variable
+    if exp.kind != nnkSym or exp.symKind != nskParam:
+      val = genSym()
+      result.add(newLetStmt(val, exp))
 
-  result.add(
-    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
-      body = val, procType = nnkTemplateDef))
+    result.add(
+      newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
+        body = val, procType = nnkTemplateDef))
+else:
+  macro evalOnce(v, exp: untyped): untyped =
+    result = newLetStmt(v, exp)
 
 template mapIt*(s, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
@@ -669,7 +676,7 @@ template mapIt*(s, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  evalOnce(s, t)
+  evalOnce(t, s)
   when compiles(t.len):
     var i = 0
     result = newSeq[outType](t.len)
@@ -1060,8 +1067,9 @@ when isMainModule:
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
 
   block: # mapIt with openArray
-    proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
-    doAssert foo([1,2,3]) == @[2,3,4]
+    when declared(macros.symKind):
+      proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
+      doAssert foo([1,2,3]) == @[2,3,4]
 
   when not defined(testing):
     echo "Finished doc tests"
