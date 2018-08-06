@@ -22,7 +22,6 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install boehmgc; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sfml; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install node@8; fi
 
 before_script:
   - set -e
