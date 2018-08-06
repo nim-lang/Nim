@@ -635,7 +635,8 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-macro evalOnce(exp: untyped, varName: static[string]): untyped =
+macro evalOnce(exp: untyped, v: untyped): untyped =
+  expectKind(v, nnkIdent)
   var val = exp
 
   result = newStmtList()
@@ -647,7 +648,7 @@ macro evalOnce(exp: untyped, varName: static[string]): untyped =
     result.add(newLetStmt(val, exp))
 
   result.add(
-    newProc(name = genSym(nskTemplate, varName), params = [getType(untyped)],
+    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
       body = val, procType = nnkTemplateDef))
 
 template mapIt*(s, op: untyped): untyped =
@@ -668,7 +669,7 @@ template mapIt*(s, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  evalOnce(s, "t")
+  evalOnce(s, t)
   when compiles(t.len):
     var i = 0
     result = newSeq[outType](t.len)
