@@ -61,13 +61,7 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 ```
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
-git clone --depth 1 https://github.com/nim-lang/csources.git
-cd csources
 sh build.sh
-cd ../
-bin/nim c koch
-./koch boot -d:release
-./koch tools # Compile Nimble and other tools.
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
