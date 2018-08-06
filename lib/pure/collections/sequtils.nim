@@ -635,6 +635,20 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
+macro evalOnce(exp: untyped, varName: static[string]): untyped =
+  var val = exp
+
+  result = newStmtList()
+
+  # Not a parameter we can pass as-is, evaluate and store in a temporary
+  # variable
+  if exp.kind != nnkSym or exp.symKind != nskParam:
+    val = genSym()
+    result.add(newLetStmt(val, exp))
+
+  result.add(
+    newProc(name = genSym(nskTemplate, varName), params = [getType(untyped)],
+      body = val, procType = nnkTemplateDef))
 
 template mapIt*(s, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
@@ -654,25 +668,16 @@ template mapIt*(s, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  const isOpenArray = type(s) is openArray
-  # an openArray cannot be used as a LHS in a `let` binding so we have to
-  # special-case this
-  when compiles(s.len) and not isOpenArray:
-    let t = s
+  evalOnce(s, "t")
+  when compiles(t.len):
     var i = 0
     result = newSeq[outType](t.len)
     for it {.inject.} in t:
       result[i] = op
       i += 1
-  elif isOpenArray:
-    var i = 0
-    result = newSeq[outType](s.len)
-    for it {.inject.} in s:
-      result[i] = op
-      i += 1
   else:
     result = @[]
-    for it {.inject.} in s:
+    for it {.inject.} in t:
       result.add(op)
   result
 
