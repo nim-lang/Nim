@@ -216,37 +216,30 @@ proc replaceNodes(ast: NimNode): NimNode =
       result = rTree
   result = inspect(ast)
 
-macro distinctBase*(T: typedesc, recursive: static[bool] = false): untyped =
-  ## reverses ``type T = distinct A``
+macro distinctBase*(T: typedesc): untyped =
+  ## reverses ``type T = distinct A``; works recursively.
   runnableExamples:
     type T = distinct int
     doAssert distinctBase(T) is int
     doAssert: not compiles(distinctBase(int))
     type T2 = distinct T
-    doAssert distinctBase(T2, recursive = false) is T
-    doAssert distinctBase(int, recursive = true) is int
-    doAssert distinctBase(T2, recursive = true) is int
+    doAssert distinctBase(T2) is int
 
   let typeNode = getTypeImpl(T)
   expectKind(typeNode, nnkBracketExpr)
   if typeNode[0].typeKind != ntyTypeDesc:
     error "expected typeDesc, got " & $typeNode[0]
   var typeSym = typeNode[1]
-  if not recursive:
-    let impl = getTypeImpl(typeSym)
-    if impl.typeKind != ntyDistinct:
-      error "type is not distinct"
-    typeSym = getTypeInst(impl[0])
-  else:
-    while true:
-      let impl = getTypeImpl(typeSym)
-      if impl.typeKind != ntyDistinct:
-        typeSym = impl
-        break
-      typeSym = getTypeInst(impl[0])
+  typeSym = getTypeImpl(typeSym)
+  if typeSym.typeKind != ntyDistinct:
+    error "type is not distinct"
+  typeSym = typeSym[0]
+  while typeSym.typeKind == ntyDistinct:
+    typeSym = getTypeImpl(typeSym)[0]
   typeSym.replaceNodes
 
-func distinctBase*[T](a: T, recursive: static[bool] = false): auto {.inline.} =
+# using `auto` return pending https://github.com/nim-lang/Nim/issues/8551
+func distinctBase*[T](a: T): auto {.inline.} =
   ## converts a distinct variable to it's original type
   runnableExamples:
     type T = distinct int
@@ -254,9 +247,9 @@ func distinctBase*[T](a: T, recursive: static[bool] = false): auto {.inline.} =
     let b = a.distinctBase
     doAssert b is int
     doAssert b == 1
-  distinctBase(T, recursive)(a)
+  distinctBase(T)(a)
 
 when isMainModule:
   # pending https://github.com/nim-lang/Nim/issues/7280
-  discard distinctBase[int](0, recursive = true)
-
+  type T=distinct int
+  discard distinctBase(T(0))
