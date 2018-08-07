@@ -2116,7 +2116,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil:
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    if not isOrdinalType(typ):
+    if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:

@@ -76,7 +76,7 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
     testExec r, makeTest(filename, " cmd /c cd " & nimcache &
                          " && compile_tgenscript.bat", cat)
 
-  when defined(linux):
+  elif defined(posix):
     testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
                          " && sh compile_tgenscript.sh\"", cat)
 
@@ -482,8 +482,10 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "js":
-    # XXX JS doesn't need to be special anymore
-    jsTests(r, cat, options)
+    # only run the JS tests on Windows or Linux because Travis is bad
+    # and other OSes like Haiku might lack nodejs:
+    when defined(linux) or defined(windows):
+      jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
   of "flags":

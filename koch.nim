@@ -242,7 +242,15 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
+proc ensureCleanGit() =
+   let (outp, status) = osproc.execCmdEx("git diff")
+   if outp.len != 0:
+     quit "Not a clean git repository; 'git diff' not empty!"
+   if status != 0:
+     quit "Not a clean git repository; 'git diff' returned non-zero!"
+
 proc xz(args: string) =
+  ensureCleanGit()
   bundleNimbleSrc()
   bundleNimsuggest(false)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
