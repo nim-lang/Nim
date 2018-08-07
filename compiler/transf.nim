@@ -1057,7 +1057,7 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
     if prc.isIterator:
       result = g.transformClosureIterator(prc, result)
     if `??`(g.config, n.info, "tclosure"):
-      echo "-- transformed proc ", prc.name.s, " ", prc.kind, "  into ---"
+      echo "-- transformed proc ", prc.name.s, " ", prc.kind, " tooEarly ", c.tooEarly ," into ---"
       echo result.renderTree
       echo "-----------"
 
