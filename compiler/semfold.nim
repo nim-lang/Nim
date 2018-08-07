@@ -269,16 +269,13 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = newIntNodeT(`shr`(getInt(a), getInt(b)), n, g)
     else: internalError(g.config, n.info, "constant folding for shr")
   of mAshrI:
-    when defined(nimAshr):
-      case skipTypes(n.typ, abstractRange).kind
-      of tyInt8: result = newIntNodeT(ashr(int8(getInt(a)), int8(getInt(b))), n, g)
-      of tyInt16: result = newIntNodeT(ashr(int16(getInt(a)), int16(getInt(b))), n, g)
-      of tyInt32: result = newIntNodeT(ashr(int32(getInt(a)), int32(getInt(b))), n, g)
-      of tyInt64, tyInt:
-        result = newIntNodeT(ashr(getInt(a), getInt(b)), n, g)
-      else: internalError(g.config, n.info, "constant folding for ashr")
-    else:
-      internalError(g.config, n.info, "constant folding for ashr")
+    case skipTypes(n.typ, abstractRange).kind
+    of tyInt8: result = newIntNodeT(ashr(int8(getInt(a)), int8(getInt(b))), n, g)
+    of tyInt16: result = newIntNodeT(ashr(int16(getInt(a)), int16(getInt(b))), n, g)
+    of tyInt32: result = newIntNodeT(ashr(int32(getInt(a)), int32(getInt(b))), n, g)
+    of tyInt64, tyInt:
+      result = newIntNodeT(ashr(getInt(a), getInt(b)), n, g)
+    else: internalError(g.config, n.info, "constant folding for ashr")
   of mDivI: result = foldDiv(getInt(a), getInt(b), n, g)
   of mModI: result = foldMod(getInt(a), getInt(b), n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)

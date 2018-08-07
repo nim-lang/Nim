@@ -984,6 +984,9 @@ when defined(nimAshr):
     ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
     ##   0b1000_0000'i8 shr 8 == 0b1111_1111'i8
     ##   0b1000_0000'i8 shr 1 == 0b1100_0000'i8
+else:
+  # used for bootstrapping the compiler
+  proc ashr*[T](x: T, y: SomeInteger): T = discard
 
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
