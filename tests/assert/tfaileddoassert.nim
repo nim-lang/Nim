@@ -1,11 +1,19 @@
 discard """
   cmd: "nim $target -d:release $options $file"
   output: '''
-assertion occured!!!!!! false
+true
+MOCKEDFILE `a == 3` bar
 '''
 """
 
-onFailedAssert(msg):
-  echo("assertion occured!!!!!! ", msg)
+from strutils import endsWith, split
 
-doAssert(1 == 2)
+onFailedAssert(msg):
+  echo msg.endsWith("tfaileddoassert.nim(15, 9) `a == 2` foo")
+
+var a = 1
+doAssert(a == 2, "foo")
+
+onFailedAssert(msg):
+  echo msg
+doAssert(a == 3, "bar", "MOCKEDFILE")
