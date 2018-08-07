@@ -487,11 +487,12 @@ proc getOsCacheDir(): string =
     result = getHomeDir() / genSubDir
 
 proc getNimcacheDir*(conf: ConfigRef): string =
+  # XXX projectName should always be without a file extension!
   result = if conf.nimcacheDir.len > 0:
              conf.nimcacheDir
            elif conf.cmd == cmdCompileToJS:
              shortenDir(conf, conf.projectPath) / genSubDir
-           else: getOsCacheDir() / conf.projectName &
+           else: getOsCacheDir() / splitFile(conf.projectName).name &
              (if isDefined(conf, "release"): "_r" else: "_d")
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
