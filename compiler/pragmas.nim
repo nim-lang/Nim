@@ -794,10 +794,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
         if not isPowerOfTwo(size) or size <= 0 or size > 8:
-          localError(c.config, it.info, "power of two expected")
+          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
         else:
           sym.typ.size  = size
-          sym.typ.align = int16(size)
+          # TODO, this should be properly queried
+          sym.typ.align = target.alignof(int[size * 8])
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)

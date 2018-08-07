@@ -220,43 +220,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       internalError(conf, "unhandled insize: " & $conf.target.intSize)
 
   case tk
-  of tyInt, tyUInt:
-    internalError(conf, "this should already have been handled")
-
-  of tyInt8, tyUInt8, tyBool, tyChar:
-
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = 1
-    typ.align = 1
-
-  of tyInt16, tyUInt16:
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = 2
-    typ.align = 2
-
-  of tyInt32, tyUInt32, tyFloat32:
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = 4
-    typ.align = 4
-
-  of tyInt64, tyUInt64, tyFloat64:
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = 8
-    if CPU[conf.target.targetCPU].bit == 32 and conf.target.targetOS == osLinux:
-      typ.align = 4
-    else:
-      typ.align = 8
-
-  of tyFloat128:
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size  = 16
-    typ.align = 16
-
-  of tyFloat:
-    echo CPU[conf.target.targetCPU].bit, "  ", conf.target.targetOS, " ", typ.kind
-    typ.size = conf.target.floatSize
-    typ.align = int16(conf.target.floatSize)
-
   of tyProc:
     if typ.callConv == ccClosure:
       typ.size = 2 * conf.target.ptrSize

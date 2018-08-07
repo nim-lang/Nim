@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "OK"
 """
 
 # TODO test with small sized kind
@@ -32,7 +32,6 @@ macro testSizeAlignOf(args: varargs[untyped]): untyped =
         nim_size = sizeof(`arg`)
         c_align = c_alignof(type(`arg`))
         nim_align = alignof(`arg`)
-
 
       if nim_size != c_size or nim_align != c_align:
         var msg = strAlign(`arg`.type.name & ": ")
@@ -348,3 +347,6 @@ testinstance:
     testOffsetOf(RecursiveStuff, kindU.S3.d2,            d2)
 
   main()
+
+
+echo "OK"
