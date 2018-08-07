@@ -162,9 +162,6 @@ when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of `x`
-  proc log2*(x: float32): float32 {.importc: "log2f", header: "<math.h>".}
-  proc log2*(x: float64): float64 {.importc: "log2", header: "<math.h>".}
-    ## Computes the binary logarithm (base 2) of `x`
   proc exp*(x: float32): float32 {.importc: "expf", header: "<math.h>".}
   proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
     ## Computes the exponential function of `x` (pow(E, x))
@@ -268,6 +265,8 @@ proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
 proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
   ## Computes the inverse hyperbolic cosecant of `x`
 
+const windowsCC89 = defined(windows) and (defined(vcc) or defined(bcc))
+
 when not defined(JS): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
@@ -280,25 +279,27 @@ when not defined(JS): # C
     ##
     ## To compute power between integers, use `^` e.g. 2 ^ 6
 
-  proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
-  proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
-    ## The error function
-  proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
-  proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
-    ## The complementary error function
+  # TODO: add C89 version on windows
+  when not windowsCC89:
+    proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
+    proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
+      ## The error function
+    proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
+    proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
+      ## The complementary error function
 
-  proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
-  proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
-    ## The gamma function
-  proc tgamma*(x: float32): float32
-    {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
-  proc tgamma*(x: float64): float64
-    {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
-    ## The gamma function
-    ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
-  proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
-  proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
-    ## Natural log of the gamma function
+    proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
+    proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
+      ## The gamma function
+    proc tgamma*(x: float32): float32
+      {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
+    proc tgamma*(x: float64): float64
+      {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
+      ## The gamma function
+      ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
+    proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
+    proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
+      ## Natural log of the gamma function
 
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
@@ -314,7 +315,7 @@ when not defined(JS): # C
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
 
-  when defined(windows) and (defined(vcc) or defined(bcc)):
+  when windowsCC89:
     # MSVC 2010 don't have trunc/truncf
     # this implementation was inspired by Go-lang Math.Trunc
     proc truncImpl(f: float64): float64 =
@@ -452,6 +453,28 @@ when not defined(JS):
     var exp: int32
     result = c_frexp(x, exp)
     exponent = exp
+
+  when windowsCC89:
+    # taken from Go-lang Math.Log2
+    const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
+    template log2Impl[T](x: T): T =
+      var exp: int32
+      var frac = frexp(x, exp)
+      # Make sure exact powers of two give an exact answer.
+      # Don't depend on Log(0.5)*(1/Ln2)+exp being exactly exp-1.
+      if frac == 0.5: return T(exp - 1)
+      log10(frac)*(1/ln2) + T(exp)
+
+    proc log2*(x: float32): float32 = log2Impl(x)
+    proc log2*(x: float64): float64 = log2Impl(x)
+      ## Log2 returns the binary logarithm of x.
+      ## The special cases are the same as for Log.
+
+  else:
+    proc log2*(x: float32): float32 {.importc: "log2f", header: "<math.h>".}
+    proc log2*(x: float64): float64 {.importc: "log2", header: "<math.h>".}
+      ## Computes the binary logarithm (base 2) of `x`
+
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -564,7 +587,7 @@ proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   x div gcd(x, y) * y
 
-when isMainModule and not defined(JS):
+when isMainModule and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
@@ -692,3 +715,14 @@ when isMainModule:
 
   block: # log
     doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)
+    doAssert log2(8.0'f64) == 3.0'f64
+    doAssert log2(4.0'f64) == 2.0'f64
+    doAssert log2(2.0'f64) == 1.0'f64
+    doAssert log2(1.0'f64) == 0.0'f64
+    doAssert classify(log2(0.0'f64)) == fcNegInf
+
+    doAssert log2(8.0'f32) == 3.0'f32
+    doAssert log2(4.0'f32) == 2.0'f32
+    doAssert log2(2.0'f32) == 1.0'f32
+    doAssert log2(1.0'f32) == 0.0'f32
+    doAssert classify(log2(0.0'f32)) == fcNegInf

@@ -552,9 +552,9 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($4)($1) - ($4)($2))", # SubF64
       "(($4)($1) * ($4)($2))", # MulF64
       "(($4)($1) / ($4)($2))", # DivF64
-
       "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
+      "($4)((NI$3)($1) >> (NU$3)($2))", # AshrI
       "($4)($1 & $2)",      # BitandI
       "($4)($1 | $2)",      # BitorI
       "($4)($1 ^ $2)",      # BitxorI

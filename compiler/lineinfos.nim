@@ -92,7 +92,7 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
-    hintSuccess: "operation successful",
+    hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
@@ -169,8 +169,8 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
     result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
       warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
       hintSource, hintGlobalVar, hintGCStats}
-    result[0] = result[1] - {hintSuccessX, hintConf, hintProcessing,
-      hintPattern, hintExecuting, hintLinking}
+    result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+      hintProcessing, hintPattern, hintExecuting, hintLinking}
 
 const
   NotesVerbosity* = computeNotesVerbosity()

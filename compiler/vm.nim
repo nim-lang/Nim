@@ -752,6 +752,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
+    of opcAshrInt:
+      decodeBC(rkInt)
+      regs[ra].intVal = ashr(regs[rb].intVal, regs[rc].intVal)
     of opcBitandInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal and regs[rc].intVal

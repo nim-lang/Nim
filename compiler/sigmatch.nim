@@ -858,6 +858,10 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
       if lhs[2].kind == nkIntLit:
         return inferStaticParam(c, lhs[1], rhs shl lhs[2].intVal)
 
+    of mAshrI:
+      if lhs[2].kind == nkIntLit:
+        return inferStaticParam(c, lhs[1], ashr(rhs, lhs[2].intVal))
+
     of mUnaryMinusI:
       return inferStaticParam(c, lhs[1], -rhs)
 

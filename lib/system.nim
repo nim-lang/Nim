@@ -971,6 +971,23 @@ else:
   proc `shl`*(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
   proc `shl`*(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
 
+when defined(nimAshr):
+  proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+    ## Shifts right by pushing copies of the leftmost bit in from the left,
+    ## and let the rightmost bits fall off.
+    ##
+    ## .. code-block:: Nim
+    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+    ##   0b1000_0000'i8 shr 8 == 0b1111_1111'i8
+    ##   0b1000_0000'i8 shr 1 == 0b1100_0000'i8
+else:
+  # used for bootstrapping the compiler
+  proc ashr*[T](x: T, y: SomeInteger): T = discard
+
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int16): int16 {.magic: "BitandI", noSideEffect.}
@@ -1978,7 +1995,7 @@ when sizeof(int) <= 2:
 else:
   type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
 
-iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
+iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` (inclusive) with the given
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
@@ -2001,7 +2018,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       dec(res, step)
 
 when defined(nimNewRoof):
-  iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+  iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given
     ## step count. `S`, `T` may be any ordinal type, `step` may only
     ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
@@ -2018,7 +2035,7 @@ when defined(nimNewRoof):
         inc(res, step)
 
   iterator `..`*[T](a, b: T): T {.inline.} =
-    ## An alias for `countup`.
+    ## An alias for `countup(a, b, 1)`.
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
