@@ -237,19 +237,3 @@ macro distinctBase*(T: typedesc): untyped =
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
   typeSym.replaceNodes
-
-# using `auto` return pending https://github.com/nim-lang/Nim/issues/8551
-func distinctBase*[T](a: T): auto {.inline.} =
-  ## converts a distinct variable to it's original type
-  runnableExamples:
-    type T = distinct int
-    var a: T = T(1)
-    let b = a.distinctBase
-    doAssert b is int
-    doAssert b == 1
-  distinctBase(T)(a)
-
-when isMainModule:
-  # pending https://github.com/nim-lang/Nim/issues/7280
-  type T=distinct int
-  discard distinctBase(T(0))
