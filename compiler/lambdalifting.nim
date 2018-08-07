@@ -175,7 +175,7 @@ proc getHiddenParam(g: ModuleGraph; routine: PSym): PSym =
     result = hidden.sym
     assert sfFromGeneric in result.flags
   else:
-    routine.ast[bodyPos] = transformBody(g, routine.getModule, routine.ast[bodyPos], routine)
+    discard transformBody(g, routine.getModule, routine)
     result = getHiddenParam(g, routine)
     # writeStackTrace()
     #localError(g.config, routine.info, "internal error: could not find env param for " & routine.name.s)
@@ -391,9 +391,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
 
     let innerProc = isInnerProc(s)
     if innerProc:
-      if s.isIterator: c.somethingToDo = true
+      if s.isIterator: 
+        c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        detectCapturedVars(s.getBody, s, c)
+        detectCapturedVars(transformBody(c.graph, s.getModule, s), s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
       if owner.isIterator:
@@ -650,11 +651,11 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = liftCapturedVars(s.getBody, s, d, c)
+        var body = liftCapturedVars(transformBody(d.graph, s.getModule, s), s, d, c)
         if c.envvars.getOrDefault(s.id).isNil:
-          s.ast.sons[bodyPos] = body
+          s.transformedBody = body
         else:
-          s.ast.sons[bodyPos] = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
+          s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
         c.inContainer = oldInContainer
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)

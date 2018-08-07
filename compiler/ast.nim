@@ -811,7 +811,7 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      astNoTransformation*: PNode # syntax tree of proc including header before transf pass   
+      transformedBody*: PNode  # cached body after transf pass   
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -1742,3 +1742,5 @@ template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
 
 template getBody*(s: PSym): PNode = s.ast[bodyPos]
+
+

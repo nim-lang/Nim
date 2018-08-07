@@ -24,7 +24,7 @@ import
   sempass2,lowerings, destroyer, liftlocals, 
   modulegraphs, lineinfos
   
-proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode
+proc transformBody*(g: ModuleGraph; module: PSym, prc: PSym, cache = true): PNode
 
 import lambdalifting, closureiters
 
@@ -127,7 +127,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   if (s.kind == skIterator and s.ast != nil) or 
      (s.kind in skProcKinds and s.typ.callConv == ccClosure) or
      (s.kind in skProcKinds and sfAnon in s.flags):  
-    s.ast[bodyPos] = transformBody(c.graph, c.module, s.ast[bodyPos], s)
+    discard transformBody(c.graph, c.module, s)
 
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind == skIterator:
@@ -560,7 +560,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     return result
 
   let iter_sym = call[0].sym
-  iter_sym.ast[bodyPos] = transformBody(c.graph, iter_sym.getModule, iter_sym.ast[bodyPos], iter_sym)
+  discard transformBody(c.graph, iter_sym.getModule, iter_sym)
 
   #echo "transforming: ", renderTree(n)
   var stmtList = newTransNode(nkStmtList, n.info, 0)
@@ -859,8 +859,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
       else:
         result = PTransNode(n)
     else:
+      discard transformBody(c.graph, c.module, n[namePos].sym)
       result = PTransNode(n)
-      result[bodyPos] = PTransNode(transformBody(c.graph, c.module, n[bodyPos], n[namePos].sym))
   of nkMacroDef:
     # XXX no proper closure support yet:
     when false:
@@ -1035,17 +1035,25 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
-  if `??`(g.config, n.info, "tclosure"):
-    echo "Tranforming proc ", prc.name.s, " ", prc.kind
-    echo n.renderTree
-  if nfTransf in n.flags or prc.kind in {skTemplate}:
-    result = n
-    if `??`(g.config, n.info, "tclosure"):
+proc transformBody*(g: ModuleGraph; module: PSym, prc: PSym, cache = true): PNode =
+
+  if `??`(g.config, prc.ast.info, "titer10"):
+    echo "Tranforming proc ", prc.name.s, " ", prc.kind, " ", prc.transformedBody == nil
+    echo prc.getBody.renderTree
+    if prc.transformedBody != nil:
+      echo prc.transformedBody
+    echo "----------------------"
+  if nfTransf in prc.getBody.flags or prc.kind in {skTemplate}:
+    result = prc.getBody
+    if `??`(g.config, prc.ast.info, "titer10"):
       echo "Already transformed proc ", prc.name.s, " ", prc.kind
+  elif prc.transformedBody != nil and nfTransf in prc.transformedBody.flags:
+    if `??`(g.config, prc.ast.info, "titer10"):
+      echo "Already transformed proc ", prc.name.s, " ", prc.kind
+    result = prc.transformedBody
   else:
     var c = openTransf(g, module, "")
-    result = liftLambdas(g, prc, n, c.tooEarly)
+    result = liftLambdas(g, prc, prc.getBody, c.tooEarly)
     #result = n
     result = processTransf(c, result, prc)
     liftDefer(c, result)
@@ -1056,7 +1064,11 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
 
     if prc.isIterator:
       result = g.transformClosureIterator(prc, result)
-    if `??`(g.config, n.info, "tclosure"):
+
+    if cache:
+      prc.transformedBody = result
+
+    if `??`(g.config, prc.ast.info, "titer10"):
       echo "-- transformed proc ", prc.name.s, " ", prc.kind, " tooEarly ", c.tooEarly ," into ---"
       echo result.renderTree
       echo "-----------"
@@ -1065,6 +1077,14 @@ proc transformBody*(g: ModuleGraph; module: PSym, n: PNode, prc: PSym): PNode =
       #if prc.name.s == "testbody":
     #  echo renderTree(result)
 
+#[
+proc getTransformedBodyCached*(g: ModuleGraph; module: PSym; prc: PSym): PNode = 
+  if prc.transformedBody != nil:
+    prc.transformedBody
+  else:
+    prc.transformedBody = transformBody(g, module, prc)
+    prc.transformedBody
+]#
 #[
 proc transformRoutine*(g: ModuleGraph; module: PSym, prc: PSym) =
   if prc.kind in {skTemplate} or nfTransf in prc.ast[bodyPos].flags:
@@ -1078,7 +1098,7 @@ proc transformRoutine*(g: ModuleGraph; module: PSym, prc: PSym) =
   prc.ast.sons[bodyPos] = transformBody(g, module, prc.ast[bodyPos], prc)
 ]#
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
-  if `??`(g.config, n.info, "tclosure"):
+  if `??`(g.config, n.info, "titer10"):
     echo "Tranforming stmt "
     echo n.renderTree
   if nfTransf in n.flags:
@@ -1095,7 +1115,7 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     if c.needsDestroyPass:
       result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
-    if `??`(g.config, n.info, "tclosure"):
+    if `??`(g.config, n.info, "titer10"):
       echo "-- transformed into --"
       echo result.renderTree
       echo "-----------"
