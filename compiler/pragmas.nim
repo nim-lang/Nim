@@ -796,7 +796,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if not isPowerOfTwo(size) or size <= 0 or size > 8:
           localError(c.config, it.info, "power of two expected")
         else:
-          sym.typ.size = size
+          sym.typ.size  = size
+          sym.typ.align = int16(size)
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
