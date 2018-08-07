@@ -57,7 +57,8 @@ type
     opcLenStr,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
-    opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat, opcShrInt, opcShlInt,
+    opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
+    opcShrInt, opcShlInt, opcAshrInt,
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu,
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat,
     opcLeFloat, opcLtFloat, opcLeu, opcLtu,

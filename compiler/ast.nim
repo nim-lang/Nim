@@ -591,7 +591,7 @@ type
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mShrI, mShlI, mAshrI, mBitandI, mBitorI, mBitxorI,
     mMinI, mMaxI,
     mMinF64, mMaxF64,
     mAddU, mSubU, mMulU, mDivU, mModU,
