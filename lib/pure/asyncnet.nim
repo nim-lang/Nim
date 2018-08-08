@@ -493,8 +493,6 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## **Warning**: ``recvLineInto`` on unbuffered sockets assumes that the
   ## protocol uses ``\r\L`` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
-  assert(not resString.mget.isNil(),
-         "String inside resString future needs to be initialised")
   result = newFuture[void]("asyncnet.recvLineInto")
 
   # TODO: Make the async transformation check for FutureVar params and complete
