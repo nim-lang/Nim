@@ -523,5 +523,9 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
+    var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)
+      inc testsRun
+    if testsRun == 0:
+      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
