@@ -358,9 +358,6 @@ proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
 
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
   ## Checks if `s` is nil or consists entirely of whitespace characters.
-  if len(s) == 0:
-    return true
-
   result = true
   for c in s:
     if not c.isSpaceAscii():
@@ -908,7 +905,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
   ## `s` are ignored.
   let L = parseutils.parseOct(s, result, 0)
   if L != s.len or L == 0:
-    raise newException(ValueError, "invalid oct integer: " & s)  
+    raise newException(ValueError, "invalid oct integer: " & s)
 
 proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   rtl, extern: "nsuParseHexInt".} =
