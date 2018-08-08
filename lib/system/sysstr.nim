@@ -110,6 +110,7 @@ proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
   else: result = cstring(addr s.data)
 
 proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
+  if s == nil: return nil
   result = copyStrLast(s, start, s.len-1)
 
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
