@@ -95,6 +95,7 @@ proc mnewString(len: int): NimString {.compilerProc.} =
 
 proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   let start = max(start, 0)
+  if s == nil: return nil
   let len = min(last, s.len-1) - start + 1
   if len > 0:
     result = rawNewStringNoInit(len)
