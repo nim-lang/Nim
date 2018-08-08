@@ -676,8 +676,8 @@ template mapIt*(s, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  evalOnce(t, s)
-  when compiles(t.len):
+  when compiles(s.len):
+    evalOnce(t, s)
     var i = 0
     result = newSeq[outType](t.len)
     for it {.inject.} in t:
@@ -685,7 +685,7 @@ template mapIt*(s, op: untyped): untyped =
       i += 1
   else:
     result = @[]
-    for it {.inject.} in t:
+    for it {.inject.} in s:
       result.add(op)
   result
 
@@ -1070,6 +1070,11 @@ when isMainModule:
     when declared(macros.symKind):
       proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
       doAssert foo([1,2,3]) == @[2,3,4]
+
+  block: # mapIt with invalid RHS for `let` (#8566)
+    type X = enum
+      A, B
+    doAssert mapIt(X, $it) == @["A", "B"]
 
   when not defined(testing):
     echo "Finished doc tests"
