@@ -1,10 +1,9 @@
 #! /bin/sh
 
 # build development version of the compiler; can be rerun safely
-# Windows: see adjustments needed below.
 
-set -u
-set -e
+set -u # error on undefined variables
+set -e # exit on first error
 
 echo_run(){
   echo "\n$@"
@@ -15,10 +14,6 @@ echo_run(){
 (
   ## avoid changing dir in case of failure
   echo_run cd csources
-
-  # TODO: make these adjustments automatic.
-  # x86 Windows: use `build.bat`
-  # x86_64 Windows: use `build64.bat`
   echo_run sh build.sh
 )
 
