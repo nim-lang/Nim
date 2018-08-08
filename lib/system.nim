@@ -2321,9 +2321,9 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     inc(i)
 
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", deprecated.}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", deprecated.}
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
@@ -2520,7 +2520,7 @@ proc `$`*[T: tuple|object](x: T): string =
     result.add(name)
     result.add(": ")
     when compiles($value):
-      when compiles(value.isNil):
+      when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
@@ -2539,7 +2539,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when compiles(value.isNil):
+    when value isnot string and value isnot seq and compiles(value.isNil):
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"
