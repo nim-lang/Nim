@@ -1136,10 +1136,24 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
+  # Give this small function its own scope
+  addf(prc, "{$N", [])
+  add(prc, genSectionStart(cpsLocals, m.config))
+  add(prc, m.preInitProc.s(cpsLocals))
+  add(prc, genSectionEnd(cpsLocals, m.config))
+
+  add(prc, genSectionStart(cpsInit, m.config))
+  add(prc, m.preInitProc.s(cpsInit))
+  add(prc, genSectionEnd(cpsInit, m.config))
+
+  add(prc, genSectionStart(cpsStmts, m.config))
+  add(prc, m.preInitProc.s(cpsStmts))
+  add(prc, genSectionEnd(cpsStmts, m.config))
+  addf(prc, "}$N", [])
+
   add(prc, initGCFrame(m.initProc))
 
   add(prc, genSectionStart(cpsLocals, m.config))
-  add(prc, m.preInitProc.s(cpsLocals))
   add(prc, m.initProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals, m.config))
 
@@ -1154,14 +1168,13 @@ proc genInitCode(m: BModule) =
       add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit, m.config))
-  add(prc, m.preInitProc.s(cpsInit))
   add(prc, m.initProc.s(cpsInit))
   add(prc, genSectionEnd(cpsInit, m.config))
 
   add(prc, genSectionStart(cpsStmts, m.config))
-  add(prc, m.preInitProc.s(cpsStmts))
   add(prc, m.initProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts, m.config))
+
   if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
   add(prc, deinitGCFrame(m.initProc))
