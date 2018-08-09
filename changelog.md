@@ -63,6 +63,8 @@
 - ``lineInfoObj`` now returns absolute path instead of project path.
   It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
+- ``net.sendTo`` no longer returns an int and now raises an ``OSError``.
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.

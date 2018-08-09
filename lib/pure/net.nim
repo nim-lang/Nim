@@ -1398,12 +1398,13 @@ proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   result = send(socket, cstring(data), data.len) == data.len
 
 proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
-             size: int, af: Domain = AF_INET, flags = 0'i32): int {.
+             size: int, af: Domain = AF_INET, flags = 0'i32) {.
              tags: [WriteIOEffect].} =
   ## This proc sends ``data`` to the specified ``address``,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
+  ## If an error occurs an OSError exception will be raised.
   ##
   ## **Note:** You may wish to use the high-level version of this function
   ## which is defined below.
@@ -1415,6 +1416,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   # try all possibilities:
   var success = false
   var it = aiList
+  var result = 0
   while it != nil:
     result = sendto(socket.fd, data, size.cint, flags.cint, it.ai_addr,
                     it.ai_addrlen.SockLen)
@@ -1423,16 +1425,22 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
       break
     it = it.ai_next
 
+  let osError = osLastError()
   freeAddrInfo(aiList)
 
+  if not success:
+    raiseOSError(osError)
+
 proc sendTo*(socket: Socket, address: string, port: Port,
-             data: string): int {.tags: [WriteIOEffect].} =
+             data: string) {.tags: [WriteIOEffect].} =
   ## This proc sends ``data`` to the specified ``address``,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
+  ## If an error occurs an OSError exception will be raised.
+  ##
   ## This is the high-level version of the above ``sendTo`` function.
-  result = socket.sendTo(address, port, cstring(data), data.len, socket.domain )
+  socket.sendTo(address, port, cstring(data), data.len, socket.domain)
 
 
 proc isSsl*(socket: Socket): bool =
