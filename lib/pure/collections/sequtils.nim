@@ -669,18 +669,26 @@ template mapIt*(s: typed, op: untyped): untyped =
       var it{.inject.}: type(items(s));
       op))
   when compiles(s.len):
-    # using t_D20180808T211500 to avoid https://github.com/nim-lang/Nim/issues/8580
-    evalOnce(t_D20180808T211500, s, type(s) isnot openArray)
-    var i = 0
-    var result = newSeq[outType](t_D20180808T211500.len)
-    for it {.inject.} in t_D20180808T211500:
-      result[i] = op
-      i += 1
+    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+
+      # avoid double substitution of `s`.
+      # NOTE: if we used `type(s) isnot openArray` instead, the openarray
+      # literal would be substituted twice
+      # BUG: `evalOnce(t, s, false)` would lead to C compile errors
+      # (`error: use of undeclared identifier`) instead of Nim compile errors
+      evalOnce(t, s, compiles((let _ = s)))
+
+      var i = 0
+      var result = newSeq[outType](t.len)
+      for it {.inject.} in t:
+        result[i] = op
+        i += 1
+      result
   else:
     var result: seq[outType] = @[]
     for it {.inject.} in s:
       result.add(op)
-  result
+    result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
@@ -1066,6 +1074,14 @@ when isMainModule:
   block: # mapIt with direct openArray
     # see https://github.com/_render_node/MDExOlB1bGxSZXF1ZXN0MjA3MTQ3MTIw/pull_requests/timeline#issuecomment-411614711
     doAssert openArray[int]([1,2]).mapIt(it) == @[1,2]
+
+  block: # mapIt test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
+    # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is
+    doAssert newSeq[int](0).mapIt(it) == @[]
+
+  block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
+    let t = [1,2].mapIt(it)
+    doAssert t == @[1,2]
 
   block:
     var counter = 0
