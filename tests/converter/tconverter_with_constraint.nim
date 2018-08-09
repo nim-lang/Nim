@@ -1,7 +1,7 @@
 
 discard """
   file: "tconverter_with_constraint.nim"
-  line: 18
+  line: 20
   errormsg: "type mismatch: got <int>"
 """
 
@@ -14,5 +14,7 @@ converter to_mytype(m: int{lit}): MyType =
 proc myproc(m: MyType) =
   echo m.int, ".MyType"
 
+myproc(1) # call by literal is ok 
+
 var x: int = 12
-myproc(x)
+myproc(x) # should fail
