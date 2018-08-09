@@ -159,8 +159,11 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
+  var registeredPasses {.global.} = false
+  if not registeredPasses:
+    registerPass(graph, semPass)
+    registerPass(graph, evalPass)
+    registeredPasses = true
 
   conf.searchPaths.add(conf.libpath)
 
