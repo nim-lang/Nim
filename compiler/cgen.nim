@@ -1141,7 +1141,6 @@ proc genInitCode(m: BModule) =
   add(prc, genSectionStart(cpsLocals, m.config))
   add(prc, m.preInitProc.s(cpsLocals))
   add(prc, m.initProc.s(cpsLocals))
-  add(prc, m.postInitProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals, m.config))
 
   if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
@@ -1157,13 +1156,11 @@ proc genInitCode(m: BModule) =
   add(prc, genSectionStart(cpsInit, m.config))
   add(prc, m.preInitProc.s(cpsInit))
   add(prc, m.initProc.s(cpsInit))
-  add(prc, m.postInitProc.s(cpsInit))
   add(prc, genSectionEnd(cpsInit, m.config))
 
   add(prc, genSectionStart(cpsStmts, m.config))
   add(prc, m.preInitProc.s(cpsStmts))
   add(prc, m.initProc.s(cpsStmts))
-  add(prc, m.postInitProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts, m.config))
   if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
@@ -1236,7 +1233,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
-  result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1247,7 +1243,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-    excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
                 else: ""
   open(result.ndi, ndiName, g.config)
@@ -1265,7 +1260,6 @@ proc resetModule*(m: BModule) =
   m.initProc = newProc(nil, m)
   m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
-  m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]
