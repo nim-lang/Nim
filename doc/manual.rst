@@ -2336,6 +2336,8 @@ pointer type and overloading resolution is tried with ``a[]`` instead.
 Automatic self insertions
 -------------------------
 
+**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
+
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
 or C++. This feature has to be explicitly enabled via a ``{.this: self.}``

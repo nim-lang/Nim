@@ -170,6 +170,10 @@
 - Nim now supports ``except`` clause in the export statement.
 
 - Range float types, example ``range[0.0 .. Inf]``. More details in language manual.
+- The ``{.this.}`` pragma has been deprecated. It never worked within generics and
+  we found the resulting code harder to read than the more explicit ``obj.field``
+  syntax.
+
 
 ### Tool changes
 
