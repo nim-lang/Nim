@@ -122,11 +122,10 @@ proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
 
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
-
-  #echo "transform sym ", s.name.s, "  ", s.kind 
   if (s.kind == skIterator and s.ast != nil) or 
-     (s.kind in skProcKinds and s.typ.callConv == ccClosure) or
-     (s.kind in skProcKinds and sfAnon in s.flags):  
+     (s.kind in skProcKinds and s.typ != nil and s.typ.callConv == ccClosure) or
+     (s.kind in skProcKinds and sfAnon in s.flags): 
+    
     discard transformBody(c.graph, c.module, s)
 
   if s.typ != nil and s.typ.callConv == ccClosure:
@@ -559,10 +558,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
     discard c.breakSyms.pop
     return result
 
-  let iter_sym = call[0].sym
-  discard transformBody(c.graph, iter_sym.getModule, iter_sym)
+  #let iter_sym = call[0].sym
+  #discard transformBody(c.graph, iter_sym.getModule, iter_sym)
 
   #echo "transforming: ", renderTree(n)
+  let iter = call.sons[0].sym
+  var body = transformBody(c.graph, iter.getModule, iter).copyTree
+
   var stmtList = newTransNode(nkStmtList, n.info, 0)
   result[1] = stmtList
 
@@ -577,7 +579,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
-  let iter = call.sons[0].sym
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
@@ -612,7 +613,6 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  var body = iter.getBody.copyTree
   pushInfoContext(c.graph.config, n.info)
   # XXX optimize this somehow. But the check "c.inlining" is not correct:
   var symMap: TIdTable

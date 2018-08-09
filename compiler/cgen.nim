@@ -717,7 +717,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
-  let procBody = transformBody(m.g.graph, m.module, prc.ast[bodyPos], prc)
+  let procBody = transformBody(m.g.graph, m.module, prc, cache = false)
+
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
