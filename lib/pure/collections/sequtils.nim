@@ -25,6 +25,22 @@ import macros
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+
+macro evalOnce(v, exp: untyped, letAssigneable: static[bool]): untyped =
+  expectKind(v, nnkIdent)
+  var val = exp
+
+  result = newStmtList()
+  # If `exp` is not a symbol we evaluate it once here and then use the temporary
+  # symbol as alias
+  if exp.kind != nnkSym and letAssigneable:
+    val = genSym()
+    result.add(newLetStmt(val, exp))
+
+  result.add(
+    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
+      body = val, procType = nnkTemplateDef))
+
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ##
@@ -635,23 +651,6 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-proc isLetAssigneable(T: type): bool = T isnot openArray
-
-macro evalOnce(v, exp: untyped, letAssigneable: static[bool]): untyped =
-  expectKind(v, nnkIdent)
-  var val = exp
-
-  result = newStmtList()
-  # If `exp` is not a symbol we evaluate it once here and then use the temporary
-  # symbol as alias
-  if exp.kind != nnkSym and letAssigneable:
-    val = genSym()
-    result.add(newLetStmt(val, exp))
-
-  result.add(
-    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
-      body = val, procType = nnkTemplateDef))
-
 template mapIt*(s: typed, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
@@ -671,7 +670,7 @@ template mapIt*(s: typed, op: untyped): untyped =
       op))
   when compiles(s.len):
     # using t_D20180808T211500 to avoid https://github.com/nim-lang/Nim/issues/8580
-    evalOnce(t_D20180808T211500, s, type(s).isLetAssigneable)
+    evalOnce(t_D20180808T211500, s, type(s) isnot openArray)
     var i = 0
     var result = newSeq[outType](t_D20180808T211500.len)
     for it {.inject.} in t_D20180808T211500:
@@ -1066,14 +1065,14 @@ when isMainModule:
 
   block: # mapIt with direct openArray
     # see https://github.com/_render_node/MDExOlB1bGxSZXF1ZXN0MjA3MTQ3MTIw/pull_requests/timeline#issuecomment-411614711
-    doAssert openArray[int]([1,2]).mapIt(it) == [1,2]
+    doAssert openArray[int]([1,2]).mapIt(it) == @[1,2]
 
   block:
-    let counter = 0
+    var counter = 0
     proc getInput():auto =
       counter.inc
       [1, 2]
-    doAssert getInput().mapIt(it*2).mapIt(it*10) == [20, 40]
+    doAssert getInput().mapIt(it*2).mapIt(it*10) == @[20, 40]
     # make sure argument evaluated only once, analog to
     # https://github.com/nim-lang/Nim/issues/7187 test case
     doAssert counter == 1
