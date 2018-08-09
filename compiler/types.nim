@@ -133,18 +133,18 @@ proc elemType*(t: PType): PType =
   else: result = t.lastSon
   assert(result != nil)
 
-proc isOrdinalType*(t: PType): bool =
+proc enumHasHoles*(t: PType): bool =
+  var b = t.skipTypes({tyRange, tyGenericInst, tyAlias, tySink})
+  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
+
+proc isOrdinalType*(t: PType, allowEnumWithHoles = false): bool =
   assert(t != nil)
   const
     # caution: uint, uint64 are no ordinal types!
     baseKinds = {tyChar,tyInt..tyInt64,tyUInt8..tyUInt32,tyBool,tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
-  t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
-
-proc enumHasHoles*(t: PType): bool =
-  var b = t
-  while b.kind in {tyRange, tyGenericInst, tyAlias, tySink}: b = b.sons[0]
-  result = b.kind == tyEnum and tfEnumHasHoles in b.flags
+  (t.kind in baseKinds and not (t.enumHasHoles and not allowEnumWithHoles)) or
+    (t.kind in parentKinds and isOrdinalType(t.lastSon))
 
 proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
                      closure: RootRef): bool
@@ -496,9 +496,15 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
     result.add "]"
   of tyAnd:
-    result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
+    for i, son in t.sons:
+      result.add(typeToString(son))
+      if i < t.sons.high:
+        result.add(" and ")
   of tyOr:
-    result = typeToString(t.sons[0]) & " or " & typeToString(t.sons[1])
+    for i, son in t.sons:
+      result.add(typeToString(son))
+      if i < t.sons.high:
+        result.add(" or ")
   of tyNot:
     result = "not " & typeToString(t.sons[0])
   of tyExpr:

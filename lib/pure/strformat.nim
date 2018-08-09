@@ -683,8 +683,8 @@ when isMainModule:
   # works:
   import times
 
-  var nullTime: DateTime
-  check &"{nullTime:yyyy-mm-dd}", "0000-00-00"
+  var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
+  check &"{dt:yyyy-MM-dd}", "2000-01-01"
 
   var tm = fromUnix(0)
   discard &"{tm}"

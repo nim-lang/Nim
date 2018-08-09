@@ -80,11 +80,6 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
-proc useStringh(m: BModule) =
-  if includesStringh notin m.flags:
-    incl m.flags, includesStringh
-    m.includeHeader("<string.h>")
-
 proc useHeader(m: BModule, sym: PSym) =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
@@ -235,6 +230,12 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc lenField(p: BProc): Rope =
+  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
+
+proc dataField(p: BProc): Rope =
+  result = rope"->data"
+
 include ccgliterals
 include ccgtypes
 
@@ -314,10 +315,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      useStringh(p.module)
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
               addrLoc(p.config, loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
@@ -330,11 +330,10 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       getTypeDesc(p.module, typ))
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
-      # don't use memset for temporary values for performance if we can
+      # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isImportedCppType(typ):
-        useStringh(p.module)
-        linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 addrLoc(p.config, loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
@@ -495,9 +494,6 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   result.flags.incl lfSingleUse
   expr(p, e, result)
 
-proc lenField(p: BProc): Rope =
-  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
-
 include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
@@ -571,11 +567,13 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   if lib.name == nil: internalError(m.config, "loadDynamicLib")
 
 proc mangleDynLibProc(sym: PSym): Rope =
+  # we have to build this as a single rope in order not to trip the
+  # optimization in genInfixCall
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.r is the external name!
     result = rope(sym.name.s)
   else:
-    result = "Dl_$1_" % [rope(sym.id)]
+    result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
 proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
@@ -666,6 +664,7 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef linux\L")
   add(m.s[cfsHeaders], "#undef mips\L")
   add(m.s[cfsHeaders], "#undef near\L")
+  add(m.s[cfsHeaders], "#undef far\L")
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 

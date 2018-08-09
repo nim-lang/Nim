@@ -36,26 +36,26 @@
 #      platforms - where do they come from and why are they here?
 when false:
   const
-    C_IRUSR = 0c000400 ## Read by owner.
-    C_IWUSR = 0c000200 ## Write by owner.
-    C_IXUSR = 0c000100 ## Execute by owner.
-    C_IRGRP = 0c000040 ## Read by group.
-    C_IWGRP = 0c000020 ## Write by group.
-    C_IXGRP = 0c000010 ## Execute by group.
-    C_IROTH = 0c000004 ## Read by others.
-    C_IWOTH = 0c000002 ## Write by others.
-    C_IXOTH = 0c000001 ## Execute by others.
-    C_ISUID = 0c004000 ## Set user ID.
-    C_ISGID = 0c002000 ## Set group ID.
-    C_ISVTX = 0c001000 ## On directories, restricted deletion flag.
-    C_ISDIR = 0c040000 ## Directory.
-    C_ISFIFO = 0c010000 ##FIFO.
-    C_ISREG = 0c100000 ## Regular file.
-    C_ISBLK = 0c060000 ## Block special.
-    C_ISCHR = 0c020000 ## Character special.
-    C_ISCTG = 0c110000 ## Reserved.
-    C_ISLNK = 0c120000 ## Symbolic link.</p>
-    C_ISSOCK = 0c140000 ## Socket.
+    C_IRUSR = 0o000400 ## Read by owner.
+    C_IWUSR = 0o000200 ## Write by owner.
+    C_IXUSR = 0o000100 ## Execute by owner.
+    C_IRGRP = 0o000040 ## Read by group.
+    C_IWGRP = 0o000020 ## Write by group.
+    C_IXGRP = 0o000010 ## Execute by group.
+    C_IROTH = 0o000004 ## Read by others.
+    C_IWOTH = 0o000002 ## Write by others.
+    C_IXOTH = 0o000001 ## Execute by others.
+    C_ISUID = 0o004000 ## Set user ID.
+    C_ISGID = 0o002000 ## Set group ID.
+    C_ISVTX = 0o001000 ## On directories, restricted deletion flag.
+    C_ISDIR = 0o040000 ## Directory.
+    C_ISFIFO = 0o010000 ##FIFO.
+    C_ISREG = 0o100000 ## Regular file.
+    C_ISBLK = 0o060000 ## Block special.
+    C_ISCHR = 0o020000 ## Character special.
+    C_ISCTG = 0o110000 ## Reserved.
+    C_ISLNK = 0o120000 ## Symbolic link.</p>
+    C_ISSOCK = 0o140000 ## Socket.
 
 const
   MM_NULLLBL* = nil

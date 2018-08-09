@@ -807,6 +807,7 @@ type
     lastProgressReport: float
     when SocketType is AsyncSocket:
       bodyStream: FutureStream[string]
+      parseBodyFut: Future[void]
     else:
       bodyStream: Stream
     getBody: bool ## When `false`, the body is never read in requestAux.
@@ -1066,10 +1067,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if getBody:
     when client is HttpClient:
       client.bodyStream = newStringStream()
+      result.bodyStream = client.bodyStream
+      parseBody(client, result.headers, result.version)
     else:
       client.bodyStream = newFutureStream[string]("parseResponse")
-    await parseBody(client, result.headers, result.version)
-    result.bodyStream = client.bodyStream
+      result.bodyStream = client.bodyStream
+      assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
+      client.parseBodyFut = parseBody(client, result.headers, result.version)
+        # do not wait here for the body request to complete
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -1158,6 +1163,12 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
+
+  when client is AsyncHttpClient:
+    if not client.parseBodyFut.isNil:
+      # let the current operation finish before making another request
+      await client.parseBodyFut
+      client.parseBodyFut = nil
 
   await newConnection(client, requestUrl)
 

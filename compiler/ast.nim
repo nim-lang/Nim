@@ -322,7 +322,8 @@ const
   usesEffects* = 1      # read effects at position 1
   writeEffects* = 2     # write effects at position 2
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
-  effectListLen* = 4    # list of effects list
+  pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
+  effectListLen* = 5    # list of effects list
 
 type
   TTypeKind* = enum  # order is important!
@@ -590,7 +591,7 @@ type
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mShrI, mShlI, mAshrI, mBitandI, mBitorI, mBitxorI,
     mMinI, mMaxI,
     mMinF64, mMaxF64,
     mAddU, mSubU, mMulU, mDivU, mModU,

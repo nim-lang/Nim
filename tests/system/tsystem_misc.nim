@@ -15,6 +15,16 @@ discard """
 1
 2
 3
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
 '''
 """
 
@@ -86,3 +96,9 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+
+proc foo(a: openArray[byte]) =
+  for x in a: echo x
+
+let str = "0123456789"
+foo(toOpenArrayByte(str, 0, str.high))

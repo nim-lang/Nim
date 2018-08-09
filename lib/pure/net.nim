@@ -41,7 +41,7 @@
 ## immediately.
 ##
 ## .. code-block:: Nim
-##   var socket = newSocket()
+##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
 ##   socket.sendTo("192.168.0.1", Port(27960), "status\n")
 ##
 ## Creating a server

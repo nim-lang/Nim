@@ -340,13 +340,12 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
     if it.len == 2:
-      when newScopeForIf: startBlock(p)
+      startBlock(p)
       initLocExprSingleUse(p, it.sons[0], a)
       lelse = getLabel(p)
       inc(p.labels)
       lineF(p, cpsStmts, "if (!$1) goto $2;$n",
             [rdLoc(a), lelse])
-      when not newScopeForIf: startBlock(p)
       if p.module.compileToCpp:
         # avoid "jump to label crosses initialization" error:
         add(p.s(cpsStmts), "{")
@@ -1147,5 +1146,9 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc
+
+  let isPush = hintExtendedContext in p.config.notes
+  if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
+  if isPush: popInfoContext(p.config)
   internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}

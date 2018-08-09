@@ -382,16 +382,24 @@ type
 
 {.deprecated: [TBindSymRule: BindSymRule].}
 
-proc bindSym*(ident: static[string], rule: BindSymRule = brClosed): NimNode {.
+proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
+  ## if `ident` is a NimNode, it must have nkIdent kind.
   ## If ``rule == brClosed`` either an ``nkClosedSymChoice`` tree is
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brOpen`` either an ``nkOpenSymChoice`` tree is
   ## returned or ``nkSym`` if the symbol is not ambiguous.
   ## If ``rule == brForceOpen`` always an ``nkOpenSymChoice`` tree is
   ## returned even if the symbol is not ambiguous.
+  ##
+  ## experimental feature:
+  ## use {.experimental: "dynamicBindSym".} to activate it
+  ## if called from template / regular code, `ident` and `rule` must be
+  ## constant expression / literal value.
+  ## if called from macros / compile time procs / static blocks,
+  ## `ident` and `rule` can be VM computed value.
 
 proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
@@ -424,7 +432,11 @@ proc getLine(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 
+proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffect.}
+  ## copy lineinfo from info node
+
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
+  ## returns ``LineInfo`` of ``n``, using absolute path for ``filename``
   result.filename = n.getFile
   result.line = n.getLine
   result.column = n.getColumn
@@ -1284,7 +1296,9 @@ proc customPragmaNode(n: NimNode): NimNode =
   let
     typ = n.getTypeInst()
 
-  if typ.typeKind == ntyTypeDesc:
+  if typ.kind == nnkBracketExpr and typ.len > 1 and typ[1].kind == nnkProcTy:
+    return typ[1][1]
+  elif typ.typeKind == ntyTypeDesc:
     let impl = typ[1].getImpl()
     if impl[0].kind == nnkPragmaExpr:
       return impl[0][1]
@@ -1317,6 +1331,8 @@ proc customPragmaNode(n: NimNode): NimNode =
           if identDefs.kind == nnkRecCase:
             identDefsStack.add(identDefs[0])
             for i in 1..<identDefs.len:
+              # if it is and empty branch, skip
+              if identDefs[i][0].kind == nnkNilLit: continue
               if identDefs[i][1].kind == nnkIdentDefs:
                 identDefsStack.add(identDefs[i][1])
               else: # nnkRecList

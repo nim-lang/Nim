@@ -101,10 +101,7 @@ proc newOpCall(op: PSym; x: PNode): PNode =
 proc destructorCall(c: PContext; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
-  if destructor in c.features:
-    result.add genAddr(c, x)
-  else:
-    result.add x
+  result.add genAddr(c, x)
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
@@ -319,7 +316,7 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
-  if destructor notin c.features or not hasDestructor(typ): return
+  if not hasDestructor(typ): return
   when false:
     # do not produce wrong liftings while we're still instantiating generics:
     # now disabled; breaks topttree.nim!

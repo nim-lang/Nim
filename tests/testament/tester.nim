@@ -297,6 +297,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
+    if test.action == actionRun and expected.action == actionCompile:
+      expected.action = actionRun
   else:
     specDefaults expected
     expected.action = actionRunNoSpec

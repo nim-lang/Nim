@@ -891,7 +891,7 @@ important differences:
   future version of the compiler.)
 
 However, you can also use a ``closure`` iterator to get a different set of
-restrictions. See `first class iterators <manual.html#first-class-iterators>`_
+restrictions. See `first class iterators <manual.html#iterators-and-the-for-statement-first-class-iterators>`_
 for details. Iterators can have the same name and parameters as a proc, since
 essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the

@@ -268,6 +268,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     of tyInt64, tyInt, tyUInt..tyUInt64:
       result = newIntNodeT(`shr`(getInt(a), getInt(b)), n, g)
     else: internalError(g.config, n.info, "constant folding for shr")
+  of mAshrI:
+    case skipTypes(n.typ, abstractRange).kind
+    of tyInt8: result = newIntNodeT(ashr(int8(getInt(a)), int8(getInt(b))), n, g)
+    of tyInt16: result = newIntNodeT(ashr(int16(getInt(a)), int16(getInt(b))), n, g)
+    of tyInt32: result = newIntNodeT(ashr(int32(getInt(a)), int32(getInt(b))), n, g)
+    of tyInt64, tyInt:
+      result = newIntNodeT(ashr(getInt(a), getInt(b)), n, g)
+    else: internalError(g.config, n.info, "constant folding for ashr")
   of mDivI: result = foldDiv(getInt(a), getInt(b), n, g)
   of mModI: result = foldMod(getInt(a), getInt(b), n, g)
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)
@@ -609,7 +617,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         if computeSize(g.config, a.typ) < 0:
           localError(g.config, a.info, "cannot evaluate 'sizeof' because its type is not defined completely")
           result = nil
-        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
+        elif skipTypes(a.typ, typedescInst+{tyRange, tyArray}).kind in
              IntegralTypes+NilableTypes+{tySet}:
           #{tyArray,tyObject,tyTuple}:
           result = newIntNodeT(getSize(g.config, a.typ), n, g)

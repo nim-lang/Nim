@@ -111,9 +111,9 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
           not compileToCpp(p.module):
-        result = "(*$1)->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+        result = "(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
       else:
-        result = "$1->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+        result = "$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
     else:
       internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
@@ -124,15 +124,15 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
+        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
       else:
-        result = "$1->data, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p)]
+        result = "$1$3, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
     of tyArray:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
+        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:
@@ -142,7 +142,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "($1 ? $1->data : (NCSTRING)\"\")" % [a.rdLoc]
+  result = ropecg(p.module, "#nimToCStringConv($1)", [a.rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc

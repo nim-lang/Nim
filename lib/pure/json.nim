@@ -1004,6 +1004,13 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
       exprColonExpr.add(ifStmt)
 
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
+
+proc detectDistinctType(typeSym: NimNode): NimNode =
+  let
+    typeImpl = getTypeImpl(typeSym)
+    typeInst = getTypeInst(typeSym)
+  result = if typeImpl.typeKind == ntyDistinct: typeImpl else: typeInst
+
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   ## Process a field from a ``RecList``.
   ##
@@ -1022,8 +1029,8 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     # Add the field value.
     # -> jsonNode["`field`"]
     let indexedJsonNode = createJsonIndexer(jsonNode, $field)
-    exprColonExpr.add(createConstructor(getTypeInst(field), indexedJsonNode))
-
+    let typeNode = detectDistinctType(field)
+    exprColonExpr.add(createConstructor(typeNode, indexedJsonNode))
   of nnkRecCase:
     # A "case" field that introduces a variant.
     let exprColonExpr = newNimNode(nnkExprColonExpr)
@@ -1248,7 +1255,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let seqT = typeSym[1]
       let forLoopI = genSym(nskForVar, "i")
       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
-      let constructorNode = createConstructor(seqT, indexerNode)
+      let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
 
       # Create a statement expression containing a for loop.
       result = quote do:
@@ -1284,7 +1291,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
     # Handle all other types.
     let obj = getType(typeSym)
-    if obj.kind == nnkBracketExpr:
+    let typeNode = getTypeImpl(typeSym)
+    if typeNode.typeKind == ntyDistinct:
+      result = createConstructor(typeNode, jsonNode)
+    elif obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
@@ -1295,6 +1305,21 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     # TODO: The fact that `jsonNode` here works to give a good line number
     # is weird. Specifying typeSym should work but doesn't.
     error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
+  of nnkDistinctTy:
+    var baseType = typeSym
+    # solve nested distinct types
+    while baseType.typeKind == ntyDistinct:
+      let impl = getTypeImpl(baseType[0])
+      if impl.typeKind != ntyDistinct:
+        baseType = baseType[0]
+        break
+      baseType = impl
+    let ret = createConstructor(baseType, jsonNode)
+    let typeInst = getTypeInst(typeSym)
+    result = quote do:
+      (
+        `typeInst`(`ret`)
+      )
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1418,7 +1443,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  let typeNode = getTypeInst(T)
+  let typeNode = getTypeImpl(T)
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
@@ -1496,22 +1521,23 @@ when isMainModule:
   doAssert parsedAgain["abc"].num == 5
 
   # Bounds checking
-  try:
-    let a = testJson["a"][9]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    let a = testJson["a"][-1]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
-  except:
-    doAssert(false, "IndexError thrown for valid index")
+  when compileOption("boundChecks"):
+    try:
+      let a = testJson["a"][9]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      let a = testJson["a"][-1]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+    except:
+      doAssert(false, "IndexError thrown for valid index")
 
-  doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(testJson{"b"}.getStr()=="asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
@@ -1602,5 +1628,3 @@ when isMainModule:
   # bug #6438
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
-
-  echo("Tests succeeded!")

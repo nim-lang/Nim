@@ -635,6 +635,28 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
+# This is needed in order not to break the bootstrap, the fallback
+# implementation is a "dumb" let that won't work in some cases (eg. when `exp`
+# is an openArray)
+when declared(macros.symKind):
+  macro evalOnce(v, exp: untyped): untyped =
+    expectKind(v, nnkIdent)
+    var val = exp
+
+    result = newStmtList()
+
+    # Not a parameter we can pass as-is, evaluate and store in a temporary
+    # variable
+    if exp.kind != nnkSym or exp.symKind != nskParam:
+      val = genSym()
+      result.add(newLetStmt(val, exp))
+
+    result.add(
+      newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
+        body = val, procType = nnkTemplateDef))
+else:
+  macro evalOnce(v, exp: untyped): untyped =
+    result = newLetStmt(v, exp)
 
 template mapIt*(s, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
@@ -655,7 +677,7 @@ template mapIt*(s, op: untyped): untyped =
       op))
   var result: seq[outType]
   when compiles(s.len):
-    let t = s
+    evalOnce(t, s)
     var i = 0
     result = newSeq[outType](t.len)
     for it {.inject.} in t:
@@ -854,20 +876,20 @@ when isMainModule:
     doAssert numbers.distribute(6)[0] == @[1, 2]
     doAssert numbers.distribute(6)[5] == @[7]
     let a = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert a.distribute(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert a.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
-    doAssert a.distribute(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
-    doAssert a.distribute(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
-    doAssert a.distribute(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
-    doAssert a.distribute(6, false)  == @[
+    doAssert a.distribute(1, true) == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(1, false) == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(2, true) == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(2, false) == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(3, true) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert a.distribute(3, false) == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+    doAssert a.distribute(4, true) == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(4, false) == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(5, true) == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
+    doAssert a.distribute(5, false) == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
+    doAssert a.distribute(6, true) == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
+    doAssert a.distribute(6, false) == @[
       @[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
-    doAssert a.distribute(8, false)  == a.distribute(8, true)
+    doAssert a.distribute(8, false) == a.distribute(8, true)
     doAssert a.distribute(90, false) == a.distribute(90, true)
     var b = @[0]
     for f in 1 .. 25: b.add(f)
@@ -1043,6 +1065,16 @@ when isMainModule:
     doAssert x is array[4, int]
     doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+
+  block: # mapIt with openArray
+    when declared(macros.symKind):
+      proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
+      doAssert foo([1,2,3]) == @[2,3,4]
+
+  block: # mapIt with invalid RHS for `let` (#8566)
+    type X = enum
+      A, B
+    doAssert mapIt(X, $it) == @["A", "B"]
 
   when not defined(testing):
     echo "Finished doc tests"

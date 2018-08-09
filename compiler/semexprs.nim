@@ -907,8 +907,11 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
+  let isPush = hintExtendedContext in c.config.notes
+  if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
   discardCheck(c, result)
+  if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
   case n.kind
@@ -1556,12 +1559,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    if destructor notin c.features:
-      if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
-          mode != noOverloadedAsgn:
-        return overloadedAsgn(c, lhs, n.sons[1])
-    else:
-      liftTypeBoundOps(c, lhs.typ, lhs.info)
+    liftTypeBoundOps(c, lhs.typ, lhs.info)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
@@ -2033,9 +2031,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
           c.runnableExamples = newTree(nkStmtList,
             newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
         let imports = newTree(nkStmtList)
-        extractImports(n.lastSon, imports)
+        var saved_lastSon = copyTree n.lastSon
+        extractImports(saved_lastSon, imports)
         for imp in imports: c.runnableExamples.add imp
-        c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree n.lastSon)
+        c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree saved_lastSon)
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
@@ -2128,7 +2127,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil:
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    if not isOrdinalType(typ):
+    if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:

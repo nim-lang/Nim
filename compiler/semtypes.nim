@@ -11,6 +11,7 @@
 # included from sem.nim
 
 const
+  errStringOrIdentNodeExpected = "string or ident node expected"
   errStringLiteralExpected = "string literal expected"
   errIntLiteralExpected = "integer literal expected"
   errWrongNumberOfVariables = "wrong number of variables"
@@ -136,7 +137,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base)
     if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
     if base.kind != tyGenericParam:
-      if not isOrdinalType(base):
+      if not isOrdinalType(base, allowEnumWithHoles = true):
         localError(c.config, n.info, errOrdinalTypeExpected)
       elif lengthOrd(c.config, base) > MaxSetElements:
         localError(c.config, n.info, errSetTooBig)
@@ -557,7 +558,10 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         return
       elif r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1, c.config)
-        branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r, r.info))
+        var tmp = fitNode(c, t.sons[0].typ, r, r.info)
+        # the call to fitNode may introduce a call to a converter
+        if tmp.kind in {nkHiddenCallConv}: tmp = semConstExpr(c, tmp)
+        branch.sons[i] = skipConv(tmp)
         inc(covered)
       else:
         if r.kind == nkCurly:
@@ -1341,6 +1345,10 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName = param
       dummyType = candidateTypeSlot
 
+    # this can be true for 'nim check' on incomplete concepts,
+    # see bug #8230
+    if dummyName.kind == nkEmpty: continue
+
     internalAssert c.config, dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
                             dummyName.ident, owner, param.info)
@@ -1570,8 +1578,14 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
-    if s.kind == skType and s.typ != nil:
-      var t = s.typ
+    if s.kind == skType and s.typ != nil or
+      s.kind == skParam and s.typ.kind == tyTypeDesc:
+      var t =
+        if s.kind == skType:
+          s.typ
+        else:
+          internalAssert c.config, s.typ.base.kind != tyNone and prev == nil
+          s.typ.base
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias

@@ -6,3 +6,6 @@ discard """
 
 let a = 1
 doAssert åäö.a == 1
+
+proc inlined() {.inline.} = discard
+inlined()

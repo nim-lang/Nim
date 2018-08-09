@@ -533,8 +533,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let s = regs[rb].node.strVal
       if s.isNil:
         stackTrace(c, tos, pc, errNilAccess)
-      elif idx <=% s.len:
+      elif idx <% s.len:
         regs[ra].intVal = s[idx].ord
+      elif idx == s.len and optLaxStrings in c.config.options:
+        regs[ra].intVal = 0
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcWrArr:
@@ -614,19 +616,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rc = instr.regC
       case regs[ra].kind
       of rkNodeAddr:
-        # XXX: Workaround for vmgen bug:
         let n = regs[rc].regToNode
-        if (nfIsRef in regs[ra].nodeAddr[].flags or
-            regs[ra].nodeAddr[].kind == nkNilLit) and nfIsRef notin n.flags:
-          if regs[ra].nodeAddr[].kind == nkNilLit:
-            stackTrace(c, tos, pc, errNilAccess)
-          regs[ra].nodeAddr[][] = n[]
-          regs[ra].nodeAddr[].flags.incl nfIsRef
         # `var object` parameters are sent as rkNodeAddr. When they are mutated
         # vmgen generates opcWrDeref, which means that we must dereference
         # twice.
         # TODO: This should likely be handled differently in vmgen.
-        elif (nfIsRef notin regs[ra].nodeAddr[].flags and
+        if (nfIsRef notin regs[ra].nodeAddr[].flags and
             nfIsRef notin n.flags):
           regs[ra].nodeAddr[][] = n[]
         else:
@@ -757,6 +752,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
+    of opcAshrInt:
+      decodeBC(rkInt)
+      regs[ra].intVal = ashr(regs[rb].intVal, regs[rc].intVal)
     of opcBitandInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal and regs[rc].intVal
@@ -1227,8 +1225,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
           node.sons[1].kind == nkNilLit))
     of opcNBindSym:
+      # cannot use this simple check
+      # if dynamicBindSym notin c.config.features:
+
+      # bindSym with static input
       decodeBx(rkNode)
       regs[ra].node = copyTree(c.constants.sons[rbx])
+      regs[ra].node.flags.incl nfIsRef
+    of opcNDynBindSym:
+      # experimental bindSym
+      let
+        rb = instr.regB
+        rc = instr.regC
+        idx = int(regs[rb+rc-1].intVal)
+        callback = c.callbacks[idx].value
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+                currentException: c.currentExceptionB,
+                currentLineInfo: c.debug[pc])
+      callback(args)
       regs[ra].node.flags.incl nfIsRef
     of opcNChild:
       decodeBC(rkNode)
@@ -1411,24 +1425,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound & "callsite")
-    of opcNGetFile:
-      decodeB(rkNode)
+    of opcNGetLineInfo:
+      decodeBImm(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, toFilename(c.config, n.info))
+      case imm
+      of 0: # getFile
+        regs[ra].node = newStrNode(nkStrLit, toFullPath(c.config, n.info))
+      of 1: # getLine
+        regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
+      of 2: # getColumn
+        regs[ra].node = newIntNode(nkIntLit, n.info.col)
+      else:
+        internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNGetLine:
+    of opcNSetLineInfo:
       decodeB(rkNode)
-      let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
-      regs[ra].node.info = n.info
-      regs[ra].node.typ = n.typ
-    of opcNGetColumn:
-      decodeB(rkNode)
-      let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.col)
-      regs[ra].node.info = n.info
-      regs[ra].node.typ = n.typ
+      regs[ra].node.info = regs[rb].node.info
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
@@ -1778,7 +1791,7 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-proc setupGlobalCtx(module: PSym; graph: ModuleGraph) =
+proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
   if graph.vm.isNil:
     graph.vm = newCtx(module, graph.cache, graph)
     registerAdditionalOps(PCtx graph.vm)

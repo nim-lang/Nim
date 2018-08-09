@@ -18,8 +18,6 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(useFFI)
-  newScopeForIf* = true
-  useCaas* = not defined(noCaas)
   copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
@@ -118,7 +116,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    dynamicBindSym
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -355,6 +354,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
+    of "osx": result = conf.target.targetOS == osMacosx
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
@@ -408,8 +408,8 @@ proc mainCommandArg*(conf: ConfigRef): string =
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
 
-proc getConfigVar*(conf: ConfigRef; key: string): string =
-  result = conf.configVars.getOrDefault key
+proc getConfigVar*(conf: ConfigRef; key: string, default = ""): string =
+  result = conf.configVars.getOrDefault(key, default)
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
@@ -480,9 +480,20 @@ proc disableNimblePath*(conf: ConfigRef) =
 
 include packagehandling
 
+proc getOsCacheDir(): string =
+  when defined(posix):
+    result = string getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache")
+  else:
+    result = getHomeDir() / genSubDir
+
 proc getNimcacheDir*(conf: ConfigRef): string =
-  result = if conf.nimcacheDir.len > 0: conf.nimcacheDir
-           else: shortenDir(conf, conf.projectPath) / genSubDir
+  # XXX projectName should always be without a file extension!
+  result = if conf.nimcacheDir.len > 0:
+             conf.nimcacheDir
+           elif conf.cmd == cmdCompileToJS:
+             shortenDir(conf, conf.projectPath) / genSubDir
+           else: getOsCacheDir() / splitFile(conf.projectName).name &
+             (if isDefined(conf, "release"): "_r" else: "_d")
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -558,13 +569,28 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.pro
           result = rawFindFile2(conf, f.toLowerAscii)
   patchModule(conf)
 
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
   const pkgPrefix = "pkg/"
-  let m = addFileExt(modulename, NimExt)
+  const stdPrefix = "std/"
+  var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
+    if m.startsWith(stdPrefix):
+      let stripped = m.substr(stdPrefix.len)
+      for candidate in stdlibDirs:
+        let path = (conf.libpath / candidate / stripped)
+        if fileExists(path):
+          m = path
+          break
     let currentPath = currentModule.splitFile.dir
     result = currentPath / m
     if not existsFile(result):

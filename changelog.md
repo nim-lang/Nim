@@ -20,7 +20,10 @@
 - The parser now warns about inconsistent spacing around binary operators as
   these can easily be confused with unary operators. This warning will likely
   become an error in the future.
-
+- The ``'c`` and ``'C'`` suffix for octal literals is now deprecated to
+  bring the language in line with the standard library (e.g. ``parseOct``).
+- The dot style for import paths (e.g ``import path.to.module`` instead of
+  ``import path/to/module``) has been deprecated.
 
 #### Breaking changes in the standard library
 
@@ -48,14 +51,25 @@
 - For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
   require a second mandatory parameter ``skipNonAlpha``.
 
+- ``osLastError`` is now marked with ``sideEffect``
 - The procs ``parseHexInt`` and ``parseOctInt`` now fail on empty strings
     and strings containing only valid prefixes, e.g. "0x" for hex integers.
 
+- ``terminal.setCursorPos`` and ``terminal.setCursorXPos`` now work correctly
+  with 0-based coordinates on POSIX (previously, you needed to use
+  1-based coordinates on POSIX for correct behaviour; the Windows behaviour
+  was always correct).
+
+- ``lineInfoObj`` now returns absolute path instead of project path.
+  It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
 - The undocumented PHP backend was removed.
+- The default location of ``nimcache`` for the native code targets was
+  changed. Read [the compiler user guide](https://nim-lang.org/docs/nimc.html#generated-c-code-directory)
+  for more information.
 
 ### Library additions
 
@@ -80,6 +94,8 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
+- Added ``macros.copyLineInfo`` to copy lineInfo from other node.
+- Added ``system.ashr`` an arithmetic right shift for integers.
 - Added the proc ``size`` for streams.
 
 ### Library changes
@@ -150,11 +166,11 @@
 - The command syntax now supports keyword arguments after the first comma.
 
 - Thread-local variables can now be declared inside procs. This implies all
-  the effects of the `global` pragma.
+  the effects of the ``global`` pragma.
 
-- Nim now supports `except` clause in the export statement.
+- Nim now supports ``except`` clause in the export statement.
 
-- Range float types, example `range[0.0 .. Inf]`. More details in language manual.
+- Range float types, example ``range[0.0 .. Inf]``. More details in language manual.
 
 ### Tool changes
 
@@ -185,5 +201,10 @@
 
 - Nintendo Switch was added as a new platform target. See [the compiler user guide](https://nim-lang.org/docs/nimc.html)
   for more info.
+
+- macros.bindSym now capable to accepts not only literal string or string constant expression.
+  bindSym enhancement make it also can accepts computed string or ident node inside macros /
+  compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
+  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch
 
 ### Bugfixes

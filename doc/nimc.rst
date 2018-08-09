@@ -157,36 +157,26 @@ the first matching file is used.
 Generated C code directory
 --------------------------
 The generated files that Nim produces all go into a subdirectory called
-``nimcache`` in your project directory. This makes it easy to delete all
+``nimcache``. Its full path is
+
+- ``$XDG_CACHE_HOME/$projectname(_r|_d)`` or ``~/.cache/$projectname(_r|_d)``
+  on Posix
+- ``$HOME/nimcache/$projectname(_r|_d)`` on Windows.
+
+The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
+
+This makes it easy to delete all
 generated files. Files generated in this directory follow a naming logic which
 you can read about in the `Nim Backend Integration document
 <backends.html#nimcache-naming-logic>`_.
 
+The ``--nimcache``
+`compiler switch <nimc.html#command-line-switches>`_ can be used to
+to change the ``nimcache`` directory.
+
 However, the generated C code is not platform independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
-
-
-Compilation cache
-=================
-
-**Warning**: The compilation cache is still highly experimental!
-
-The ``nimcache`` directory may also contain so called `rod`:idx:
-or `symbol files`:idx:. These files are pre-compiled modules that are used by
-the compiler to perform `incremental compilation`:idx:. This means that only
-modules that have changed since the last compilation (or the modules depending
-on them etc.) are re-compiled. However, per default no symbol files are
-generated; use the ``--symbolFiles:on`` command line switch to activate them.
-
-Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
-to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even with dead code elimination. So
-the final release build should be done with ``--symbolFiles:off``.
-
-Due to the aggregation of C code it is also recommended that each project
-resides in its own directory so that the generated ``nimcache`` directory
-is not shared between different projects.
 
 
 Compiler Selection
@@ -232,12 +222,12 @@ Cross compilation for Nintendo Switch
 =====================================
 
 Simply add --os:nintendoswitch
-to your usual ``nim c`` or ``nim cpp`` command and set the ``SWITCH_LIBS``
-and ``SWITCH_INCLUDES`` environment variables to something like:
+to your usual ``nim c`` or ``nim cpp`` command and set the ``passC``
+and ``passL`` command line switches to something like:
 
 .. code-block:: console
-  export SWITCH_INCLUDES="-I$DEVKITPRO/libnx/include"
-  export SWITCH_LIBS="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+  nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
+  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
 or setup a nim.cfg file like so:
 
@@ -258,10 +248,6 @@ This will generate a file called ``switchhomebrew.elf`` which can then be turned
 an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
 `the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
 `the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
-
-Environment variables are: 
-  - ``SWITCH_LIBS`` for any extra libraries required by your application (``-lLIBNAME`` or ``-LLIBPATH``)
-  - ``SWITCH_INCLUDES`` for any extra include files (``-IINCLUDE_PATH``)
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
 They are:
