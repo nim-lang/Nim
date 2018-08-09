@@ -635,30 +635,24 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-# This is needed in order not to break the bootstrap, the fallback
-# implementation is a "dumb" let that won't work in some cases (eg. when `exp`
-# is an openArray)
-when declared(macros.symKind):
-  macro evalOnce(v, exp: untyped): untyped =
-    expectKind(v, nnkIdent)
-    var val = exp
+proc isLetAssigneable(T: type): bool = T isnot openArray
 
-    result = newStmtList()
+macro evalOnce(v, exp: untyped, letAssigneable: static[bool]): untyped =
+  expectKind(v, nnkIdent)
+  var val = exp
 
-    # Not a parameter we can pass as-is, evaluate and store in a temporary
-    # variable
-    if exp.kind != nnkSym or exp.symKind != nskParam:
-      val = genSym()
-      result.add(newLetStmt(val, exp))
+  result = newStmtList()
+  # If `exp` is not a symbol we evaluate it once here and then use the temporary
+  # symbol as alias
+  if exp.kind != nnkSym and letAssigneable:
+    val = genSym()
+    result.add(newLetStmt(val, exp))
 
-    result.add(
-      newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
-        body = val, procType = nnkTemplateDef))
-else:
-  macro evalOnce(v, exp: untyped): untyped =
-    result = newLetStmt(v, exp)
+  result.add(
+    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
+      body = val, procType = nnkTemplateDef))
 
-template mapIt*(s, op: untyped): untyped =
+template mapIt*(s: typed, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -675,16 +669,16 @@ template mapIt*(s, op: untyped): untyped =
     block:
       var it{.inject.}: type(items(s));
       op))
-  var result: seq[outType]
   when compiles(s.len):
-    evalOnce(t, s)
+    # using t_D20180808T211500 to avoid https://github.com/nim-lang/Nim/issues/8580
+    evalOnce(t_D20180808T211500, s, type(s).isLetAssigneable)
     var i = 0
-    result = newSeq[outType](t.len)
-    for it {.inject.} in t:
+    var result = newSeq[outType](t_D20180808T211500.len)
+    for it {.inject.} in t_D20180808T211500:
       result[i] = op
       i += 1
   else:
-    result = @[]
+    var result: seq[outType] = @[]
     for it {.inject.} in s:
       result.add(op)
   result
@@ -1067,9 +1061,22 @@ when isMainModule:
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
 
   block: # mapIt with openArray
-    when declared(macros.symKind):
-      proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
-      doAssert foo([1,2,3]) == @[2,3,4]
+    proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
+    doAssert foo([1,2,3]) == @[2,3,4]
+
+  block: # mapIt with direct openArray
+    # see https://github.com/_render_node/MDExOlB1bGxSZXF1ZXN0MjA3MTQ3MTIw/pull_requests/timeline#issuecomment-411614711
+    doAssert openArray[int]([1,2]).mapIt(it) == [1,2]
+
+  block:
+    let counter = 0
+    proc getInput():auto =
+      counter.inc
+      [1, 2]
+    doAssert getInput().mapIt(it*2).mapIt(it*10) == [20, 40]
+    # make sure argument evaluated only once, analog to
+    # https://github.com/nim-lang/Nim/issues/7187 test case
+    doAssert counter == 1
 
   block: # mapIt with invalid RHS for `let` (#8566)
     type X = enum
