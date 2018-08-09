@@ -1037,21 +1037,23 @@ template liftDefer(c, root) =
 
 proc transformBody*(g: ModuleGraph; module: PSym, prc: PSym, cache = true): PNode =
 
-  if `??`(g.config, prc.ast.info, "titer10"):
-    echo "Tranforming proc ", prc.name.s, " ", prc.kind, " ", prc.transformedBody == nil
-    echo prc.getBody.renderTree
-    if prc.transformedBody != nil:
-      echo prc.transformedBody
-    echo "----------------------"
+  #if `??`(g.config, prc.ast.info, "titer10"):
+  echo "Tranforming proc ", prc.name.s, " ", prc.kind, " ", prc.transformedBody == nil
   if nfTransf in prc.getBody.flags or prc.kind in {skTemplate}:
     result = prc.getBody
-    if `??`(g.config, prc.ast.info, "titer10"):
-      echo "Already transformed proc ", prc.name.s, " ", prc.kind
+    #if `??`(g.config, prc.ast.info, "titer10"):
+    echo "Already transformed proc ", prc.name.s, " ", prc.kind, " ", prc.transformedBody == nil
   elif prc.transformedBody != nil and nfTransf in prc.transformedBody.flags:
-    if `??`(g.config, prc.ast.info, "titer10"):
-      echo "Already transformed proc ", prc.name.s, " ", prc.kind
+    #if `??`(g.config, prc.ast.info, "titer10"):
+    echo "Already transformed proc ", prc.name.s, " ", prc.kind, " ", prc.transformedBody == nil
     result = prc.transformedBody
   else:
+    #if `??`(g.config, prc.ast.info, "titer10"):
+    echo prc.getBody.renderTree
+    if prc.transformedBody != nil:
+      echo prc.transformedBody.renderTree
+    echo "----------------------"
+
     var c = openTransf(g, module, "")
     result = liftLambdas(g, prc, prc.getBody, c.tooEarly)
     #result = n
@@ -1068,10 +1070,10 @@ proc transformBody*(g: ModuleGraph; module: PSym, prc: PSym, cache = true): PNod
     if cache:
       prc.transformedBody = result
 
-    if `??`(g.config, prc.ast.info, "titer10"):
-      echo "-- transformed proc ", prc.name.s, " ", prc.kind, " tooEarly ", c.tooEarly ," into ---"
-      echo result.renderTree
-      echo "-----------"
+    #if `??`(g.config, prc.ast.info, "titer10"):
+    echo "-- transformed proc ", prc.name.s, " ", prc.kind, " tooEarly ", c.tooEarly ," into ---"
+    echo result.renderTree
+    echo "-----------"
 
     incl(result.flags, nfTransf)
       #if prc.name.s == "testbody":
