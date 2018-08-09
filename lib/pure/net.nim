@@ -1328,6 +1328,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
 
+  assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
   var sockAddress: Sockaddr_in
@@ -1408,6 +1409,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   ## which is defined below.
   ##
   ## **Note:** This proc is not available for SSL sockets.
+  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
   # try all possibilities:
