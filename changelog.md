@@ -126,6 +126,8 @@
 - The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
   object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
   iterators.
+- The ``accept`` socket procedure defined in the ``net`` module can now accept
+  a nil socket.
 
 ### Language additions
 

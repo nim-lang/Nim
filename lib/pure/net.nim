@@ -58,15 +58,11 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = new Socket
+##   var client: Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
-##
-## **Note:** The ``client`` variable is initialised with ``new Socket`` **not**
-## ``newSocket()``. The difference is that the latter creates a new file
-## descriptor.
 
 {.deadCodeElim: on.}  # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options
@@ -789,16 +785,12 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
   ##
-  ## **Note**: ``client`` must be initialised (with ``new``), this function
-  ## makes no effort to initialise the ``client`` variable.
-  ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
-  assert(client != nil)
-  assert client.fd.int <= 0, "Client socket needs to be initialised with " &
-                             "`new`, not `newSocket`."
+  if client.isNil:
+    new(client)
   let ret = accept(server.fd)
   let sock = ret[0]
 
@@ -878,9 +870,6 @@ proc accept*(server: Socket, client: var Socket,
              flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
-  ##
-  ## **Note**: ``client`` must be initialised (with ``new``), this function
-  ## makes no effort to initialise the ``client`` variable.
   ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
