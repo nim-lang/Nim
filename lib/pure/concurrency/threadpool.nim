@@ -89,8 +89,6 @@ proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
 # ----------------------------------------------------------------------------
 
 type
-  foreign* = object ## a region that indicates the pointer comes from a
-                    ## foreign thread heap.
   AwaitInfo = object
     cv: Semaphore
     idx: int
@@ -231,10 +229,10 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv)
 
-proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
+proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
   ## blocks until the value is available and then returns this value.
   await(fv)
-  result = cast[foreign ptr T](fv.data)
+  result = cast[ptr T](fv.data)
 
 proc `^`*[T](fv: FlowVar[ref T]): ref T =
   ## blocks until the value is available and then returns this value.

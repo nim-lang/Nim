@@ -173,6 +173,9 @@
 - The ``{.this.}`` pragma has been deprecated. It never worked within generics and
   we found the resulting code harder to read than the more explicit ``obj.field``
   syntax.
+- "Memory regions" for pointer types have been deprecated, they were hardly used
+  anywhere. Note that this has **nothing** to do with the ``--gc:regions`` switch
+  of managing memory.
 
 
 ### Tool changes
