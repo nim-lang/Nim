@@ -200,7 +200,7 @@ macro dump*(x: typed): untyped =
   return r
 
 # TODO: consider exporting this in macros.nim
-proc replaceNodes(ast: NimNode): NimNode =
+proc freshIdentNodes(ast: NimNode): NimNode =
   # Replace NimIdent and NimSym by a fresh ident node
   # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
   proc inspect(node: NimNode): NimNode =
@@ -210,10 +210,9 @@ proc replaceNodes(ast: NimNode): NimNode =
     of nnkEmpty, nnkLiterals:
       result = node
     else:
-      var rTree = node.kind.newTree()
+      result = node.kind.newTree()
       for child in node:
-        rTree.add inspect(child)
-      result = rTree
+        result.add inspect(child)
   result = inspect(ast)
 
 macro distinctBase*(T: typedesc): untyped =
@@ -236,4 +235,4 @@ macro distinctBase*(T: typedesc): untyped =
   typeSym = typeSym[0]
   while typeSym.typeKind == ntyDistinct:
     typeSym = getTypeImpl(typeSym)[0]
-  typeSym.replaceNodes
+  typeSym.freshIdentNodes
