@@ -449,6 +449,21 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   elif defined(posix):
     result = path[0] == '/'
 
+proc splitPathComponents*(p: string): seq[string] {.noSideEffect, rtl, extern: "nos$1".} =
+  ## Splits a path into components. Trailing and leading separators are ignored.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##   splitPathComponents("foo") -> @["foo"]
+  ##   splitPathComponents("/usr/share/doc/") -> @["usr", "share", "doc"]
+  if p.isAbsolute:
+    result = p.split({DirSep, AltSep})[1..^1]
+  else:
+    result = p.split({DirSep, AltSep})
+  if result.len > 0 and result[^1] == "":
+    result = result[0..^2]
+
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.

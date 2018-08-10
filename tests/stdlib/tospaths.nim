@@ -39,3 +39,12 @@ else:
     doAssert unixToNativePath("../../abc") == "../../abc"
     doAssert unixToNativePath("/abc", "a") == "/abc"
     doAssert unixToNativePath("/abc/def", "a") == "/abc/def"
+
+doAssert splitPathComponents("").len == 0
+doAssert splitPathComponents("/").len == 0
+doAssert splitPathComponents("foo") == @["foo"]
+doAssert splitPathComponents("/foo") == @["foo"]
+doAssert splitPathComponents("foo/bar") == @["foo", "bar"]
+doAssert splitPathComponents("/foo/bar") == @["foo", "bar"]
+doAssert splitPathComponents("foo/bar/") == @["foo", "bar"]
+doAssert splitPathComponents("/foo/bar/") == @["foo", "bar"]
