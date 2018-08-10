@@ -1837,8 +1837,8 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     nkTemplateDef, quotedBlock.info, body = quotedBlock,
     params = c.graph.emptyNode,
     name = newAnonSym(c, skTemplate, n.info).newSymNode,
-              pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
-              pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode)
+    pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
+    pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode)
 
   if ids.len > 0:
     dummyTemplate.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
@@ -1847,7 +1847,14 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids.add c.graph.emptyNode # no default value
     dummyTemplate[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
+  # The quoted template skeleton must be evaluated in a vacuum, completely
+  # detached from the parent scope in order not to introduce any
+  # falsely-injected variable
+  let oldScope = c.currentScope
+  c.currentScope = PScope(parent: nil, symbols: newStrTable(), depthLevel: 0)
   var tmpl = semTemplateDef(c, dummyTemplate)
+  c.currentScope = oldScope
+
   quotes[0] = tmpl[namePos]
   result = newNode(nkCall, n.info, @[
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,

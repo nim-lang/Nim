@@ -1119,16 +1119,18 @@ proc processType(typeName: NimNode, obj: NimNode,
 
     # Object might be null. So we need to check for that.
     if isRef:
-      result = quote do:
-        verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
-        if `jsonNode`.kind == JNull:
-          nil
-        else:
-          `result`
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JObject, JNull}, toStrLit(jsonNode))),
+        quote do:
+          if `jsonNode`.kind == JNull:
+            nil
+          else:
+            `result`)
     else:
-      result = quote do:
-        verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
-        `result`
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JObject}, toStrLit(jsonNode))),
+        quote do:
+          `result`)
 
   of nnkEnumTy:
     let instType = toIdentNode(getTypeInst(typeName))
@@ -1141,36 +1143,41 @@ proc processType(typeName: NimNode, obj: NimNode,
     let name = ($typeName).normalize
     case name
     of "string":
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JString, JNull}, toStrLit(jsonNode))),
+        quote do:
         (
-          verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
           if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
-        )
+        ))
     of "biggestint":
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JInt}, toStrLit(jsonNode))),
+        quote do:
         (
-          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
           `jsonNode`.num
-        )
+        ))
     of "bool":
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JBool}, toStrLit(jsonNode))),
+        quote do:
         (
-          verifyJsonKind(`jsonNode`, {JBool}, astToStr(`jsonNode`));
           `jsonNode`.bval
-        )
+        ))
     else:
       if name.startsWith("int") or name.startsWith("uint"):
-        result = quote do:
+        result = newStmtList(
+          getAst(verifyJsonKind(jsonNode, {JInt}, toStrLit(jsonNode))),
+          quote do:
           (
-            verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
             `jsonNode`.num.`obj`
-          )
+          ))
       elif name.startsWith("float"):
-        result = quote do:
+        result = newStmtList(
+          getAst(verifyJsonKind(jsonNode, {JInt, JFloat}, toStrLit(jsonNode))),
+          quote do:
           (
-            verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
             if `jsonNode`.kind == JFloat: `jsonNode`.fnum.`obj` else: `jsonNode`.num.`obj`
-          )
+          ))
       else:
         doAssert false, "Unable to process nnkSym " & $typeName
   else:
@@ -1235,13 +1242,14 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
           bindSym("initOrderedTable")
 
       # Create a statement expression containing a for loop.
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JObject}, toStrLit(jsonNode))),
+        quote do:
         (
           var map = `tableInit`[`tableKeyType`, `tableValueType`]();
-          verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
           for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
           map
-        )
+        ))
     of "ref":
       # Ref type.
       var typeName = $typeSym[1]
@@ -1258,13 +1266,14 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
 
       # Create a statement expression containing a for loop.
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JArray}, toStrLit(jsonNode))),
+        quote do:
         (
           var list: `typeSym` = @[];
-          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
           for `forLoopI` in 0 ..< `jsonNode`.len: list.add(`constructorNode`);
           list
-        )
+        ))
     of "array":
       let arrayT = typeSym[2]
       let forLoopI = genSym(nskForVar, "i")
@@ -1272,13 +1281,14 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let constructorNode = createConstructor(arrayT, indexerNode)
 
       # Create a statement expression containing a for loop.
-      result = quote do:
+      result = newStmtList(
+        getAst(verifyJsonKind(jsonNode, {JArray}, toStrLit(jsonNode))),
+        quote do:
         (
           var list: `typeSym`;
-          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
           for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
           list
-        )
+        ))
 
     else:
       # Generic type.
