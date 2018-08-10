@@ -482,7 +482,7 @@ include packagehandling
 
 proc getOsCacheDir(): string =
   when defined(posix):
-    result = string getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache")
+    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
     result = getHomeDir() / genSubDir
 
