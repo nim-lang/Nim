@@ -600,18 +600,22 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var candidates: seq[string] = @[]
-  for k, f in os.walkDir(pkg, relative=true):
-    if k == pcFile and f != "config.nims":
-      let (_, name, ext) = splitFile(f)
-      if ext in extensions:
-        let x = changeFileExt(pkg / name, ".nim")
-        if fileExists(x):
-          candidates.add x
-  for c in candidates:
-    # nim-foo foo  or  foo  nfoo
-    if (pkg in c) or (c in pkg): return c
-  if candidates.len >= 1:
-    return candidates[0]
+  var dir = pkg
+  while true:
+    for k, f in os.walkDir(dir, relative=true):
+      if k == pcFile and f != "config.nims":
+        let (_, name, ext) = splitFile(f)
+        if ext in extensions:
+          let x = changeFileExt(dir / name, ".nim")
+          if fileExists(x):
+            candidates.add x
+    for c in candidates:
+      # nim-foo foo  or  foo  nfoo
+      if (pkg in c) or (c in pkg): return c
+    if candidates.len >= 1:
+      return candidates[0]
+    dir = parentDir(dir)
+    if dir == "": break
   return ""
 
 proc canonDynlibName(s: string): string =
