@@ -615,7 +615,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
-    const ENOENT = cint(2) # 2 on most systems including Solaris
+    when not defined(haiku):
+      const ENOENT = cint(2) # 2 on most systems including Solaris
+    else:
+      const ENOENT = cint(-2147459069)
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
