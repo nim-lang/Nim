@@ -489,18 +489,18 @@ type
     ## but that are strictly uncatchable as they can also be mapped to
     ## a ``quit`` / ``trap`` / ``exit`` operation.
 
-  Error* = object of Exception ## \
+  CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
-  IOError* = object of Error ## \
+  IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
   EOFError* = object of IOError ## \
     ## Raised if an IO "end of file" error occurred.
-  OSError* = object of Error ## \
+  OSError* = object of CatchableError ## \
     ## Raised if an operating system service failed.
     errorCode*: int32 ## OS-defined error code describing this error.
   LibraryError* = object of OSError ## \
     ## Raised if a dynamic library could not be loaded.
-  ResourceExhaustedError* = object of Error ## \
+  ResourceExhaustedError* = object of CatchableError ## \
     ## Raised if a resource request could not be fulfilled.
   ArithmeticError* = object of Defect ## \
     ## Raised if any kind of arithmetic error occurred.
