@@ -769,8 +769,8 @@ Pre-defined floating point types
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type).
+  the generic floating point type; its size used to be platform dependent,
+  but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
