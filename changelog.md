@@ -185,7 +185,7 @@
 
 ### Compiler changes
 
-- The VM's instruction count limit was raised to 1 billion instructions in
+- The VM's instruction count limit was raised to 3 million instructions in
   order to support more complex computations at compile-time.
 
 - Support for hot code reloading has been implemented for the JavaScript
