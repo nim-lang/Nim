@@ -972,6 +972,14 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError(), dir)
+  elif defined(haiku):
+    let res = mkdir(dir, 0o777)
+    if res == 0'i32:
+      result = true
+    elif errno == EEXIST or errno == EROFS:
+      result = false
+    else:
+      raiseOSError(osLastError(), dir)
   elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
