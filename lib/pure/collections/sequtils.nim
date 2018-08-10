@@ -26,8 +26,14 @@ when not defined(nimhygiene):
   {.pragma: dirty.}
 
 
-macro evalOnce(v, exp: untyped, letAssigneable: static[bool]): untyped =
-  expectKind(v, nnkIdent)
+macro evalOnceAs(expAlias, exp: untyped, letAssigneable: static[bool]): untyped =
+  ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
+  ##  substitution in macro arguments such as
+  ## https://github.com/nim-lang/Nim/issues/7187
+  ## ``evalOnceAs(myAlias, myExp)`` will behave as ``let myAlias = myExp``
+  ## except when ``letAssigneable`` is false (eg to handle openArray) where
+  ## it just forwards ``exp`` unchanged
+  expectKind(expAlias, nnkIdent)
   var val = exp
 
   result = newStmtList()
@@ -38,7 +44,7 @@ macro evalOnce(v, exp: untyped, letAssigneable: static[bool]): untyped =
     result.add(newLetStmt(val, exp))
 
   result.add(
-    newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
+    newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
       body = val, procType = nnkTemplateDef))
 
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
@@ -671,16 +677,13 @@ template mapIt*(s: typed, op: untyped): untyped =
   when compiles(s.len):
     block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
 
-      # avoid double substitution of `s`.
-      # NOTE: if we used `type(s) isnot openArray` instead, the openarray
-      # literal would be substituted twice
-      # BUG: `evalOnce(t, s, false)` would lead to C compile errors
+      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
       # (`error: use of undeclared identifier`) instead of Nim compile errors
-      evalOnce(t, s, compiles((let _ = s)))
+      evalOnceAs(s2, s, compiles((let _ = s)))
 
       var i = 0
-      var result = newSeq[outType](t.len)
-      for it {.inject.} in t:
+      var result = newSeq[outType](s2.len)
+      for it {.inject.} in s2:
         result[i] = op
         i += 1
       result
@@ -775,6 +778,14 @@ macro mapLiterals*(constructor, op: untyped;
 
 when isMainModule:
   import strutils
+
+  # helper for testing double substitution side effects which are handled
+  # by `evalOnceAs`
+  var counter = 0
+  proc identity[T](a:T):auto=
+    counter.inc
+    a
+
   block: # concat test
     let
       s1 = @[1, 2, 3]
@@ -1046,10 +1057,12 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  block: # mapIt tests
+  block: # mapIt + applyIt test
+    counter = 0
     var
       nums = @[1, 2, 3, 4]
-      strings = nums.mapIt($(4 * it))
+      strings = nums.identity.mapIt($(4 * it))
+    doAssert counter == 1
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
     assert strings[2] == "12"
@@ -1068,15 +1081,28 @@ when isMainModule:
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
 
   block: # mapIt with openArray
-    proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
-    doAssert foo([1,2,3]) == @[2,3,4]
+    counter = 0
+    proc foo(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    doAssert foo([identity(1),identity(2)]) == @[10, 20]
+    doAssert counter == 2
 
   block: # mapIt with direct openArray
-    # see https://github.com/_render_node/MDExOlB1bGxSZXF1ZXN0MjA3MTQ3MTIw/pull_requests/timeline#issuecomment-411614711
-    doAssert openArray[int]([1,2]).mapIt(it) == @[1,2]
+    proc foo1(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert counter == 2
 
-  block: # mapIt test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
-    # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is
+    template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    # TODO: this fails; not sure how to fix this case
+    # doAssert counter == 2
+
+  block: # mapIt empty test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
+    # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is (lacks type
+    # of elements)
+    doAssert: not compiles(mapIt(@[], it))
+    doAssert: not compiles(mapIt([], it))
     doAssert newSeq[int](0).mapIt(it) == @[]
 
   block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
