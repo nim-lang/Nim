@@ -129,7 +129,7 @@ proc get*[T](self: Option[T]): T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise UnpackError(msg : "Can't obtain a value from a `none`")
+    raise UnpackError(msg: "Can't obtain a value from a `none`")
   self.val
 
 proc get*[T](self: Option[T], otherwise: T): T =
@@ -139,11 +139,11 @@ proc get*[T](self: Option[T], otherwise: T): T =
   else:
     otherwise
 
-proc mget*[T](self: var Option[T]): var T =
+proc get*[T](self: var Option[T]): var T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise UnpackError(msg : "Can't obtain a value from a `none`")
+    raise UnpackError(msg: "Can't obtain a value from a `none`")
   return self.val
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
