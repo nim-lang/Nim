@@ -1138,17 +1138,21 @@ proc genInitCode(m: BModule) =
 
   # Give this small function its own scope
   addf(prc, "{$N", [])
-  add(prc, genSectionStart(cpsLocals, m.config))
-  add(prc, m.preInitProc.s(cpsLocals))
-  add(prc, genSectionEnd(cpsLocals, m.config))
+  block:
+    # Keep a bogus frame in case the code needs one
+    add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
-  add(prc, genSectionStart(cpsInit, m.config))
-  add(prc, m.preInitProc.s(cpsInit))
-  add(prc, genSectionEnd(cpsInit, m.config))
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.preInitProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
 
-  add(prc, genSectionStart(cpsStmts, m.config))
-  add(prc, m.preInitProc.s(cpsStmts))
-  add(prc, genSectionEnd(cpsStmts, m.config))
+    add(prc, genSectionStart(cpsInit, m.config))
+    add(prc, m.preInitProc.s(cpsInit))
+    add(prc, genSectionEnd(cpsInit, m.config))
+
+    add(prc, genSectionStart(cpsStmts, m.config))
+    add(prc, m.preInitProc.s(cpsStmts))
+    add(prc, genSectionEnd(cpsStmts, m.config))
   addf(prc, "}$N", [])
 
   add(prc, initGCFrame(m.initProc))
