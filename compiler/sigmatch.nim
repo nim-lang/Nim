@@ -1810,11 +1810,9 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
    
-    if c.converters[i].typ.n != nil:
-      let constraint = c.converters[i].typ.n[1].sym.constraint
-      if not constraint.isNil:
-        if not matchNodeKinds(constraint, arg):
-          continue
+    let constraint = c.converters[i].typ.n[1].sym.constraint
+    if not constraint.isNil and not matchNodeKinds(constraint, arg):
+      continue
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
