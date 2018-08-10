@@ -177,6 +177,10 @@
   anywhere. Note that this has **nothing** to do with the ``--gc:regions`` switch
   of managing memory.
 
+- The exception hierarchy was slightly reworked, ``SystemError`` was renamed to
+  ``Error`` and is the new base class for any exception that is guaranteed to
+  be catchable. This change should have minimal impact on most existing Nim code.
+
 
 ### Tool changes
 
