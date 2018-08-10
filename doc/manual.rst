@@ -3973,7 +3973,8 @@ Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
 that terminates the whole process. Exceptions that indicate any other runtime error
-that can be caught inherit from ``system.Error`` (which is a subtype of ``Exception``).
+that can be caught inherit from ``system.CatchableError``
+(which is a subtype of ``Exception``).
 
 
 Imported exceptions
