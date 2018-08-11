@@ -57,16 +57,16 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
 
-proc sameType*(t1, t2: typedesc): bool =
+proc `==`*(t1, t2: typedesc): bool =
   ## Returns wheter ``t1``, ``t2`` are the same type; this is different
   ## from expression ``a is b``
   runnableExamples:
     type T=int
-    doAssert T.sameType(int)
-    doAssert int.sameType(T)
-    doAssert: not int.sameType(float)
+    doAssert T == int
+    doAssert int == T
+    doAssert: int != float
   t1 is t2 and t2 is t1
 
 when isMainModule:
   doAssert $type(42) == "int"
-  discard sameType(int, int) ## pending https://github.com/nim-lang/Nim/issues/7280
+  discard int == int ## pending https://github.com/nim-lang/Nim/issues/7280
