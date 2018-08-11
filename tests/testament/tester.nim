@@ -22,7 +22,7 @@ const
 
 Command:
   all                         run all tests
-  c|category <category>       run all the tests of a certain category
+  c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
 Arguments:
