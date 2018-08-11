@@ -1130,8 +1130,8 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
       patchAsgnStmtListExpr(patchedTree, e, ri)
       genStmts(p, patchedTree)
       return
-
     var a: TLoc
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     if le.kind in {nkDerefExpr, nkHiddenDeref}:
       genDeref(p, le, a, enforceDeref=true)
     else:
