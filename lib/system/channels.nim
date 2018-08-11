@@ -20,6 +20,98 @@
 ##
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
+##
+## Example
+## =======
+## In this example, a program is created that uses the ``threadpool`` module
+## to launch two separate procedures. These procedures send strings through a
+## channel to the main thread, which calls ``echo`` on the strings.
+## Both blocking and non-blocking receives are demonstrated.
+## The channel is declared as a global to avoid the unsafety of
+## passing it by raw ``ptr``.
+##
+## .. code-block :: Nim
+##   # For simple and efficient multithreading.
+##   # Be sure to compile with --threads:on
+##   import os, threadpool
+##
+##   # The channels module is part of
+##   # system and should not be imported.
+##
+##   # Channels can either be declared
+##   # at the module level or passed
+##   # to procedures by ptr (raw pointer),
+##   # which is unsafe.
+##
+##   # Here, a channel is declared
+##   # at module scope.
+##   # Channels are generic, and they
+##   # include support for passing strings
+##   # between threads.
+##   # Note that the strings will be
+##   # deeply copied.
+##   var chan: Channel[string]
+##
+##   # This proc will be run in another thread
+##   # using the threadpool module.
+##   proc firstWorker() =
+##     chan.send("Hello World!")
+##
+##   # This is another proc to run in a
+##   # background thread. This proc takes
+##   # a while to send the message since
+##   # it sleeps for 2 seconds
+##   # (or 2000 milliseconds).
+##   proc secondWorker() =
+##     sleep(2000)
+##     chan.send("Another message")
+##
+##   # Initialize the channel.
+##   chan.open() 
+##
+##   # Launch the worker.
+##   spawn firstWorker()
+##
+##   # Block until the message arrives,
+##   # then print it out.
+##   echo chan.recv() # "Hello World!"
+##
+##   # Launch the other worker.
+##   spawn secondWorker()
+##   # This time, use a nonblocking
+##   # approach with tryRecv.
+##   # Since the main thread is not blocked,
+##   # it could be used to perform other
+##   # useful work while it waits for
+##   # data to arrive on the channel.
+##   while true:
+##     let tried = chan.tryRecv()
+##     if tried.dataAvailable:
+##       echo tried.msg # "Another message"
+##       break
+##
+##     echo "Pretend I'm doing useful work..."
+##     # For this example, sleep
+##     # in order not to flood
+##     # stdout with the above
+##     # message.
+##     sleep(400)
+##
+##   # Clean up the channel.
+##   chan.close()
+##
+## Sample output
+## -------------
+## The program could output something similar
+## to this, but keep in mind that exact results
+## may vary in the real world::
+##   Hello World!
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Another message
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
