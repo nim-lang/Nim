@@ -18,7 +18,9 @@ iterator myParentDirs(p: string): string =
 proc resetPackageCache*(conf: ConfigRef) =
   conf.packageCache = newPackageCache()
 
-proc getPackageName*(conf: ConfigRef; path: string): string =
+when false:
+ proc getPackageName*(conf: ConfigRef; path: string): string =
+  echo ("getPackageName",path)
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -40,10 +42,13 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     dec parents
     if parents <= 0: break
 
+proc getPackageName*(conf: ConfigRef; path: string): string =
+  let (p, file, ext) = path.splitFile
+  let sep = '@'
+  result = p.replace(DirSep, sep) & sep
+
 proc withPackageName*(conf: ConfigRef; path: string): string =
   let x = getPackageName(conf, path)
-  if x.len == 0:
-    result = path
-  else:
-    let (p, file, ext) = path.splitFile
-    result = (p / (x & '_' & file)) & ext
+  doAssert x.len > 0
+  let (p, file, ext) = path.splitFile
+  result = (p / (x & file)) & ext
