@@ -52,8 +52,10 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   strTableAdd(result.tab, result) # a module knows itself
   let existing = strTableGet(packSym.tab, result.name)
   if existing != nil and existing.info.fileIndex != result.info.fileIndex:
+    # this should never happen except in adverserial case with
+    # `/foo/bar.nim` clashing with `/foo@bar.nim`
     localError(graph.config, result.info,
-      "module names need to be unique per Nimble package; module clashes with " &
+      "fully qualified module names need to be unique per Nimble package; module clashes with " &
         toFullPath(graph.config, existing.info.fileIndex))
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
