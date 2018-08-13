@@ -2344,8 +2344,12 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
   when nimvm:
-    if x.isNil and y.isNil:
-      return true
+    when not defined(nimNoNil):
+      if x.isNil and y.isNil:
+        return true
+    else:
+      if x.len == 0 and y.len == 0:
+        return true
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
