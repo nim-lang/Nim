@@ -158,6 +158,7 @@ var
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
   disabledParamFiltering {.threadvar.}: bool
+  stderrQuitProcRegistered = false  ## internal flag to register just once.
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -556,6 +557,15 @@ template fail* =
       formatter.failureOccurred(checkpoints, stackTrace)
     else:
       formatter.failureOccurred(checkpoints, nil)
+
+  when declared(stderr):
+    if not stderrQuitProcRegistered:
+      stderrQuitProcRegistered = true
+      addQuitProc(
+        proc () {.noconv.} =
+          if programResult > 0:
+            stderr.writeLine("\Lunittest: ", programResult, " failure(s)")
+        )
 
   when not defined(ECMAScript):
     if abortOnError: quit(programResult)

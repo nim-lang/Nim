@@ -509,7 +509,7 @@ proc main() =
   backend.close()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
-    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+    system.stderr.writeLine("FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped)
     quit(QuitFailure)
 
 if paramCount() == 0:
