@@ -21,14 +21,17 @@ type
     formals: int
     c: PContext
     subMatch: bool       # subnode matches are special
+    mappingIsFull: bool
   PPatternContext = var TPatternContext
 
 proc getLazy(c: PPatternContext, sym: PSym): PNode =
-  if not isNil(c.mapping):
+  if c.mappingIsFull:
     result = c.mapping[sym.position]
 
 proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
-  if isNil(c.mapping): newSeq(c.mapping, c.formals)
+  if not c.mappingIsFull:
+    newSeq(c.mapping, c.formals)
+    c.mappingIsFull = true
   c.mapping[sym.position] = n
 
 proc matches(c: PPatternContext, p, n: PNode): bool
@@ -211,6 +214,7 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
         # we need to undo any bindings:
         when defined(nimNoNilSeqs):
           c.mapping = @[]
+          c.mappingIsFull = false
         else:
           if not isNil(c.mapping): c.mapping = nil
         return false

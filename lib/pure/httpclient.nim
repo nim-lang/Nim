@@ -378,23 +378,23 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
-proc add*(p: var MultipartData, name, content: string, filename: string = nil,
-          contentType: string = nil) =
+proc add*(p: var MultipartData, name, content: string, filename: string = "",
+          contentType: string = "") =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
   ## `name`, `filename` or `contentType` contain newline characters.
 
   if {'\c','\L'} in name:
     raise newException(ValueError, "name contains a newline character")
-  if filename != nil and {'\c','\L'} in filename:
+  if {'\c','\L'} in filename:
     raise newException(ValueError, "filename contains a newline character")
-  if contentType != nil and {'\c','\L'} in contentType:
+  if {'\c','\L'} in contentType:
     raise newException(ValueError, "contentType contains a newline character")
 
   var str = "Content-Disposition: form-data; name=\"" & name & "\""
-  if filename != nil:
+  if filename.len > 0:
     str.add("; filename=\"" & filename & "\"")
   str.add("\c\L")
-  if contentType != nil:
+  if contentType.len > 0:
     str.add("Content-Type: " & contentType & "\c\L")
   str.add("\c\L" & content & "\c\L")
 
@@ -434,7 +434,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
     var contentType: string
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
-      contentType = m.getMimetype(ext[1..ext.high], nil)
+      contentType = m.getMimetype(ext[1..ext.high], "")
     p.add(name, readFile(file), fName & ext, contentType)
   result = p
 
