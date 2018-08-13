@@ -621,12 +621,13 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ## Substrings are separated from the right by the string `sep`
   rsplitCommon(s, sep, maxsplit, sep.len)
 
-iterator splitLines*(s: string): string =
+iterator splitLines*(s: string, keepEol = false): string =
   ## Splits the string `s` into its containing lines.
   ##
   ## Every `character literal <manual.html#character-literals>`_ newline
   ## combination (CR, LF, CR-LF) is supported. The result strings contain no
-  ## trailing ``\n``.
+  ## trailing end of line characters unless parameter ``keepEol`` is set to
+  ## ``true``.
   ##
   ## Example:
   ##
@@ -646,22 +647,30 @@ iterator splitLines*(s: string): string =
   ##   ""
   var first = 0
   var last = 0
+  var eolpos = 0
   while true:
     while last < s.len and s[last] notin {'\c', '\l'}: inc(last)
-    yield substr(s, first, last-1)
-    # skip newlines:
-    if last >= s.len: break
-    if s[last] == '\l': inc(last)
-    elif s[last] == '\c':
-      inc(last)
-      if last < s.len and s[last] == '\l': inc(last)
+
+    eolpos = last
+    if last < s.len:
+      if s[last] == '\l': inc(last)
+      elif s[last] == '\c':
+        inc(last)
+        if last < s.len and s[last] == '\l': inc(last)
+
+    yield substr(s, first, if keepEol: last-1 else: eolpos-1)
+
+    # no eol characters consumed means that the string is over
+    if eolpos == last:
+      break
+
     first = last
 
-proc splitLines*(s: string): seq[string] {.noSideEffect,
+proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =
   ## The same as the `splitLines <#splitLines.i,string>`_ iterator, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(splitLines(s))
+  accumulateResult(splitLines(s, keepEol=keepEol))
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
