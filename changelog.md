@@ -155,7 +155,7 @@
   More details in language manual.
 
 - ``nil`` for strings/seqs is finally gone. Instead the default value for
-  these is ``"" / @[]``.
+  these is ``"" / @[]``. Use ``--nilseqs:on`` for a transition period.
 
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for

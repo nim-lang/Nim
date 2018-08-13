@@ -68,6 +68,8 @@ Advanced options:
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
+  --nilseqs:on|off          allow 'nil' for strings/seqs for
+                            backwards compatibility
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
