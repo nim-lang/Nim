@@ -63,6 +63,10 @@
 - ``lineInfoObj`` now returns absolute path instead of project path.
   It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
+- `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
+  to avoid confusions with `await` from the `async` macro.
+
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
