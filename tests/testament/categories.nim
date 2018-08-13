@@ -256,6 +256,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- nim in action -----------
 
 proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  let options = options & " --nilseqs:on"
+
   template test(filename: untyped, action: untyped) =
     testSpec r, makeTest(filename, options, cat, action)
 
