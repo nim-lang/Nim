@@ -613,7 +613,7 @@ when isMainModule:
     doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == nil
+    doAssert matches[0] == ""
   else: doAssert false
 
   if "abc" =~ re"().*":
