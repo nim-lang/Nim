@@ -1224,11 +1224,6 @@ proc newPreInitProc(m: BModule): BProc =
   # little hack so that unique temporaries are generated:
   result.labels = 100_000
 
-proc newPostInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 200_000
-
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
