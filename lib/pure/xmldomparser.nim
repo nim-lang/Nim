@@ -119,7 +119,7 @@ proc loadXMLStream*(stream: Stream): PDocument =
   ## a ``PDocument``
 
   var x: XmlParser
-  open(x, stream, nil, {reportComments})
+  open(x, stream, "", {reportComments})
 
   var xmlDoc: PDocument
   var dom: PDOMImplementation = getDOM()
@@ -161,7 +161,7 @@ when not defined(testing) and isMainModule:
   #echo(xml.getElementsByTagName("bla:test")[0].namespaceURI)
   #echo(xml.getElementsByTagName("test")[0].namespaceURI)
   for i in items(xml.getElementsByTagName("*")):
-    if i.namespaceURI != nil:
+    if i.namespaceURI.len > 0:
       echo(i.nodeName, "=", i.namespaceURI)
 
 

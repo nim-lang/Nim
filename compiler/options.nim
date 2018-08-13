@@ -38,7 +38,8 @@ type                          # please make sure we have under 32 options
     optPatterns,              # en/disable pattern matching
     optMemTracker,
     optHotCodeReloading,
-    optLaxStrings
+    optLaxStrings,
+    optNilSeqs
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**

@@ -37,8 +37,7 @@ block: #8399
       case line[0]
       of '+', '-': @[]
       of '$': (let x = await bar(); @[""])
-      else:
-        nil
+      else: @[]
 
     doAssert(res == @[""])
 

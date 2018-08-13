@@ -262,7 +262,7 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
     err.add "\nThis might be caused by a recursive module dependency: "
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
-    c.recursiveDep = nil
+    c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc lookUp*(c: PContext, n: PNode): PSym =

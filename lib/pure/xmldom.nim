@@ -217,9 +217,9 @@ proc createAttribute*(doc: PDocument, name: string): PAttr =
   new(attrNode)
   attrNode.fName = name
   attrNode.fNodeName = name
-  attrNode.fLocalName = nil
-  attrNode.prefix = nil
-  attrNode.fNamespaceURI = nil
+  attrNode.fLocalName = ""
+  attrNode.prefix = ""
+  attrNode.fNamespaceURI = ""
   attrNode.value = ""
   attrNode.fSpecified = false
   return attrNode
@@ -254,7 +254,7 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     attrNode.prefix = qualifiedName.split(':')[0]
     attrNode.fLocalName = qualifiedName.split(':')[1]
   else:
-    attrNode.prefix = nil
+    attrNode.prefix = ""
     attrNode.fLocalName = qualifiedName
   attrNode.value = ""
 
@@ -298,9 +298,9 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
   new(elNode)
   elNode.fTagName = tagName
   elNode.fNodeName = tagName
-  elNode.fLocalName = nil
-  elNode.prefix = nil
-  elNode.fNamespaceURI = nil
+  elNode.fLocalName = ""
+  elNode.prefix = ""
+  elNode.fNamespaceURI = ""
   elNode.childNodes = @[]
   elNode.attributes = @[]
 
@@ -332,7 +332,7 @@ proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: strin
     elNode.prefix = qualifiedName.split(':')[0]
     elNode.fLocalName = qualifiedName.split(':')[1]
   else:
-    elNode.prefix = nil
+    elNode.prefix = ""
     elNode.fLocalName = qualifiedName
   elNode.fNamespaceURI = namespaceURI
   elNode.childNodes = @[]
@@ -893,22 +893,22 @@ proc tagName*(el: PElement): string =
 proc getAttribute*(el: PNode, name: string): string =
   ## Retrieves an attribute value by ``name``
   if isNil(el.attributes):
-    return nil
+    return ""
   var attribute = el.attributes.getNamedItem(name)
   if not isNil(attribute):
     return attribute.value
   else:
-    return nil
+    return ""
 
 proc getAttributeNS*(el: PNode, namespaceURI: string, localName: string): string =
   ## Retrieves an attribute value by ``localName`` and ``namespaceURI``
   if isNil(el.attributes):
-    return nil
+    return ""
   var attribute = el.attributes.getNamedItemNS(namespaceURI, localName)
   if not isNil(attribute):
     return attribute.value
   else:
-    return nil
+    return ""
 
 proc getAttributeNode*(el: PElement, name: string): PAttr =
   ## Retrieves an attribute node by ``name``

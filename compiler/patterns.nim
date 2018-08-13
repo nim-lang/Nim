@@ -209,7 +209,10 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
     for j in 0 ..< p.len:
       if not matches(c, p.sons[j], n.sons[i+j]):
         # we need to undo any bindings:
-        if not isNil(c.mapping): c.mapping = nil
+        when defined(nimNoNilSeqs):
+          c.mapping = @[]
+        else:
+          if not isNil(c.mapping): c.mapping = nil
         return false
     result = true
 

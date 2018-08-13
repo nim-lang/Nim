@@ -1267,7 +1267,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
   if sfInfixCall in f.flags:
     let pat = n.sons[0].sym.loc.r.data
-    internalAssert p.config, pat != nil
+    internalAssert p.config, pat.len > 0
     if pat.contains({'#', '(', '@'}):
       var typ = skipTypes(n.sons[0].typ, abstractInst)
       assert(typ.kind == tyProc)
@@ -1350,7 +1350,7 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyUint8: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
-  else: nil
+  else: ""
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)

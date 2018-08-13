@@ -397,9 +397,9 @@ proc hash(x: IndexEntry): Hash =
 proc `<-`(a: var IndexEntry, b: IndexEntry) =
   shallowCopy a.keyword, b.keyword
   shallowCopy a.link, b.link
-  if b.linkTitle.isNil: a.linkTitle = nil
+  if b.linkTitle.isNil: a.linkTitle = ""
   else: shallowCopy a.linkTitle, b.linkTitle
-  if b.linkDesc.isNil: a.linkDesc = nil
+  if b.linkDesc.isNil: a.linkDesc = ""
   else: shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
@@ -607,8 +607,8 @@ proc readIndexDir(dir: string):
           fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
           fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = nil
-          fileEntries[F].linkDesc = nil
+          fileEntries[F].linkTitle = ""
+          fileEntries[F].linkDesc = ""
         inc F
       # Depending on type add this to the list of symbols or table of APIs.
       if title.keyword.isNil:
@@ -656,7 +656,6 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
-  assert(not symbols.isNil)
 
   result = ""
   # Generate a quick jump list of documents.

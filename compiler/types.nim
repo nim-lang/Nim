@@ -428,7 +428,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
     elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
-      if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
+      if t.kind == tyGenericParam and t.sonsLen > 0:
         result.add ": "
         var first = true
         for son in t.sons:
@@ -1528,10 +1528,9 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
-  if t.sons != nil:
-    for i in 0 ..< t.sonsLen:
-      if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
-        return true
+  for i in 0 ..< t.sonsLen:
+    if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
+      return true
   return false
 
 type

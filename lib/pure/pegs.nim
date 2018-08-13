@@ -765,7 +765,7 @@ template fillMatches(s, caps, c) =
     if startIdx != -1:
       caps[k] = substr(s, startIdx, endIdx)
     else:
-      caps[k] = nil
+      caps[k] = ""
 
 proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =

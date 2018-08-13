@@ -65,7 +65,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     of tyString:
       # with the new semantics for 'nil' strings, we can map "" to nil and
       # save tons of allocations:
-      if n.strVal.len == 0: result = genNilStringLiteral(p.module, n.info)
+      if n.strVal.len == 0 and optNilSeqs notin p.options:
+        result = genNilStringLiteral(p.module, n.info)
       else:
         result = genStringLiteral(p.module, n)
     else:

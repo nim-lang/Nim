@@ -3963,19 +3963,28 @@ when hasAlloc:
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
-    if x == nil: x = @[y]
-    else: x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = @[y]
+      else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
-    if x == nil: x = ""
-    x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = ""
+      x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
-    if x == nil: x = y
-    else: x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = y
+      else: x.add(y)
 
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
