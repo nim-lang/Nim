@@ -2,7 +2,7 @@
 # bug #2629
 import sequtils, os
 
-template glob_rst(basedir: string = nil): untyped =
+template glob_rst(basedir: string = ""): untyped =
   if baseDir.isNil:
     to_seq(walk_files("*.rst"))
   else:
