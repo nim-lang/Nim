@@ -484,7 +484,9 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
-    when defined(linux) or defined(windows):
+    if not defined(linux) and isTravis:
+      discard
+    else:
       jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
