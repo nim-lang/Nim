@@ -1854,7 +1854,7 @@ when isMainModule:
   assert match("prefix/start", peg"^start$", 7)
 
   if "foo" =~ peg"{'a'}?.*":
-    assert matches[0] == nil
+    assert matches[0].len == 0
   else: assert false
 
   if "foo" =~ peg"{''}.*":

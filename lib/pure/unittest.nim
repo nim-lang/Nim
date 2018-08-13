@@ -504,7 +504,7 @@ template test*(name, body) {.dirty.} =
       if testStatusIMPL == FAILED:
         programResult += 1
       let testResult = TestResult(
-        suiteName: when declared(testSuiteName): testSuiteName else: nil,
+        suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
         status: testStatusIMPL
       )
@@ -552,7 +552,7 @@ template fail* =
     when declared(stackTrace):
       formatter.failureOccurred(checkpoints, stackTrace)
     else:
-      formatter.failureOccurred(checkpoints, nil)
+      formatter.failureOccurred(checkpoints, "")
 
   when not defined(ECMAScript):
     if abortOnError: quit(programResult)
