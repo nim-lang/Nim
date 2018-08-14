@@ -12,36 +12,12 @@ iterator myParentDirs(p: string): string =
   var current = p
   while true:
     current = current.parentDir
-    if current.len == 0: break
+    # IMPROVE:parentDir is buggy, "foo.nim".parentDir should be ".", not ""
+    if current.len == 0:
+      current = "."
+      yield current
+      break
     yield current
-
-# TODO:unused?
-proc resetPackageCache*(conf: ConfigRef) =
-  conf.packageCache = newPackageCache()
-
-proc getPackageName_orig0*(conf: ConfigRef; path: string): string =
-  # echo ("getPackageName_orig:", path)
-  var parents = 0
-  block packageSearch:
-    for d in myParentDirs(path):
-      # echo ("d1:",d, path)
-      if conf.packageCache.hasKey(d):
-        #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
-        return conf.packageCache[d]
-      inc parents
-      for file in walkFiles(d / "*.nimble"):
-        result = file.splitFile.name
-        break packageSearch
-      for file in walkFiles(d / "*.babel"):
-        result = file.splitFile.name
-        break packageSearch
-  # we also store if we didn't find anything:
-  if result.isNil: result = ""
-  for d in myParentDirs(path):
-    #echo "set cache ", d, " |", result, "|", parents
-    conf.packageCache[d] = result
-    dec parents
-    if parents <= 0: break
 
 const packageSep = "@"
 
@@ -51,6 +27,7 @@ proc getPackageName_orig*(conf: ConfigRef; path: string): string =
   var path_root = ""
   block packageSearch:
     for d in myParentDirs(path):
+      # echo ("getPackageName_orig", path, d)
       path_root = d
       if conf.packageCache.hasKey(d):
         pkg = conf.packageCache[d]
@@ -110,14 +87,14 @@ else:
   let sep = '@'
   result = p.replace(DirSep, sep) & sep
 
- #TODO: is `p/` part needed?
- proc withPackageName*(conf: ConfigRef; path: string): string =
+ proc fullyQualifiedName*(conf: ConfigRef; path: string): string =
   let pkg = getPackageName(conf, path)
-  # let (x0, xrel) = getPackageName0(conf, path)
-  # let x = getPackageName2(conf, path)
   doAssert pkg.len > 0
   let (p, file, ext) = path.splitFile
-  # result = (p / (x & file)) & ext
-  result = p / (pkg & packageSep & file & ext)
-  # result = p / (pkg & ext)
-  # echo ("withPackageName",path, pkg, result)
+  result = pkg & packageSep & file
+
+ #TODO: is `p/` part needed?
+ proc withPackageName*(conf: ConfigRef; path: string): string =
+  let fqname = fullyQualifiedName(conf, path)
+  let (p, file, ext) = path.splitFile
+  result = p / (fqname & ext)

@@ -4,6 +4,9 @@
 
 # Cache
 nimcache/
+#PRTEMP
+nimcache.bak1/
+
 rnimcache/
 dnimcache/
 
