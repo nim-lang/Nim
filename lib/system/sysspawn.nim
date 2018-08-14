@@ -33,7 +33,7 @@ proc createCondVar(): CondVar =
 proc destroyCondVar(c: var CondVar) {.inline.} =
   deinitSysCond(c.c)
 
-proc await(cv: var CondVar) =
+proc waitFor(cv: var CondVar) =
   when defined(posix):
     acquireSys(cv.stupidLock)
     while cv.counter <= 0:
@@ -63,7 +63,7 @@ proc createFastCondVar(): FastCondVar =
   result.event = false
   result.slowPath = false
 
-proc await(cv: var FastCondVar) =
+proc waitFor(cv: var FastCondVar) =
   #for i in 0 .. 50:
   #  if cas(addr cv.event, true, false):
   #    # this is a HIT: Triggers > 95% in my tests.
@@ -71,7 +71,7 @@ proc await(cv: var FastCondVar) =
   #  cpuRelax()
   #cv.slowPath = true
   # XXX For some reason this crashes some test programs
-  await(cv.slow)
+  waitFor(cv.slow)
   cv.event = false
 
 proc signal(cv: var FastCondVar) =
@@ -96,7 +96,7 @@ proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
   b.cv = createCondVar()
 
 proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
-  await(b.cv)
+  waitFor(b.cv)
   destroyCondVar(b.cv)
 
 {.pop.}
@@ -128,7 +128,7 @@ proc slave(w: ptr Worker) {.thread.} =
                    # This might be implemented later, but is more tricky than
                    # it looks because 'spawn' itself can run concurrently.
     signal(gSomeReady)
-    await(w.taskArrived)
+    waitFor(w.taskArrived)
     assert(not w.ready)
     # shield against spurious wakeups:
     if w.data != nil:
@@ -176,9 +176,9 @@ proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
         w.data = data
         w.f = fn
         signal(w.taskArrived)
-        await(w.taskStarted)
+        waitFor(w.taskStarted)
         return
-    await(gSomeReady)
+    waitFor(gSomeReady)
 
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
@@ -189,6 +189,6 @@ proc sync*() =
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break
-    await(gSomeReady)
+    waitFor(gSomeReady)
 
 setup()

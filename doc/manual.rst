@@ -7881,7 +7881,7 @@ Nim has two flavors of parallelism:
 2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
-IO intensive tasks the ``async`` and ``await`` features should be
+IO intensive tasks the ``async`` and ``waitFor`` features should be
 used instead. Both parallel and spawn need the `threadpool <threadpool.html>`_
 module to work.
 
@@ -7933,7 +7933,7 @@ that ``spawn`` takes is restricted:
 
 ``spawn`` executes the passed expression on the thread pool and returns
 a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``awaitAny`` to
+with the ``^`` operator is **blocking**. However, one can use ``waitForAny`` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -7944,10 +7944,10 @@ wait on multiple flow variables at the same time:
     var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
-    var index = awaitAny(responses)
+    var index = waitForAny(responses)
     assert index >= 0
     responses.del(index)
-    discard awaitAny(responses)
+    discard waitForAny(responses)
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in
