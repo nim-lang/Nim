@@ -261,7 +261,9 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reInvalidPeg
     echo getCurrentExceptionMsg()
   except IOError:
+    # FACTOR
     given.err = reCodeNotFound
+    echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
   let exp = expectedNimout.strip.replace("\C\L", "\L")
