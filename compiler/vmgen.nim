@@ -1771,15 +1771,21 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 proc genProc*(c: PCtx; s: PSym): int
 
 proc matches(s: PSym; x: string): bool =
+  # echo "matches:"
   let y = x.split('.')
   var s = s
   var L = y.len-1
   while L >= 0:
+    # echo (L, s == nil)
+    # if s!=nil:
+      # echo ("matches", s.name.s, y[L], y[L].cmpIgnoreStyle(s.name.s))
     if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+      # echo "false"
       return false
     s = s.owner
     dec L
   result = true
+  # echo "matches:result:", result
 
 proc matches(s: PSym; y: varargs[string]): bool =
   var s = s
@@ -1795,6 +1801,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true
   var i = -2
   for key, value in items(c.callbacks):
+    # echo ("procIsCallback:", s.name.s, key, s.matches(key))
     if s.matches(key):
       doAssert s.offset == -1
       s.offset = i

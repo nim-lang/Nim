@@ -257,6 +257,7 @@ const
   DefaultGlobalOptions* = {optThreadAnalysis}
 
 template newPackageCache*(): untyped =
+  # echo "newPackageCache"
   newStringTable(when FileSystemCaseSensitive:
                    modeCaseInsensitive
                  else:

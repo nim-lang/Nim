@@ -39,6 +39,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
 
+  # echo ("newModule", pck, pck2, packSym.name.s)
   result.owner = packSym
   result.position = int fileIdx
 
