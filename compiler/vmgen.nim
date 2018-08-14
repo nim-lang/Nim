@@ -1770,12 +1770,18 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genProc*(c: PCtx; s: PSym): int
 
+proc moduleBaseName(fqname: string): string =
+  ## returns last component of a fully qualified name, eg:
+  ## stdlib.pure.times => times
+  rsplit(fqname, {'.'}, maxsplit=1)[^1]
+
 proc matches(s: PSym; x: string): bool =
   let y = x.split('.')
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+    if s == nil: return false
+    if (y[L].cmpIgnoreStyle(s.name.s.moduleBaseName) != 0 and y[L] != "*"):
       return false
     s = s.owner
     dec L
@@ -1785,7 +1791,8 @@ proc matches(s: PSym; y: varargs[string]): bool =
   var s = s
   var L = y.len-1
   while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+    if s == nil: return false
+    if (y[L].cmpIgnoreStyle(s.name.s.moduleBaseName) != 0 and y[L] != "*"):
       return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
     dec L
