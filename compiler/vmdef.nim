@@ -231,6 +231,7 @@ proc refresh*(c: PCtx, module: PSym) =
   c.loopIterations = MaxLoopIterations
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
+  # echo "registerCallback:" & name
   result = c.callbacks.len
   c.callbacks.add((name, callback))
 
