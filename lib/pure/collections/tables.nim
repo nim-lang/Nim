@@ -1329,7 +1329,7 @@ when isMainModule:
     doAssert clearTable[42] == "asd"
     clearTable.clear()
     doAssert(not clearTable.hasKey(123123))
-    doAssert clearTable.getOrDefault(42) == nil
+    doAssert clearTable.getOrDefault(42) == ""
 
   block: #5482
     var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
