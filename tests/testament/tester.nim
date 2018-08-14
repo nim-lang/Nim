@@ -229,12 +229,20 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
+import compiler/options
+var conf = newConfigRef()
+
 proc generatedFile(test: TTest, target: TTarget): string =
   let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options, target) /
-    (if target == targetJS: "" else: "compiler_") &
-    name.changeFileExt(ext)
+
+  let fqname = fullyQualifiedName(conf, test.name)
+  # echo ("generatedFile", test.name, fqname, ext)
+  result = nimcacheDir(test.name, test.options, target)
+  if target == targetJS: #TODO:why?
+    result = result / name.changeFileExt(ext)
+  else:
+    result = result / fqname & "." & ext
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -262,6 +270,7 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
   except IOError:
     given.err = reCodeNotFound
+    echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
   let exp = expectedNimout.strip.replace("\C\L", "\L")
@@ -509,7 +518,8 @@ proc main() =
   backend.close()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
-    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
+      r.skipped, " failed: ", failed
     quit(QuitFailure)
 
 if paramCount() == 0:
