@@ -229,12 +229,20 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
+import compiler/options
+var conf = newConfigRef()
+
 proc generatedFile(test: TTest, target: TTarget): string =
   let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options, target) /
-    (if target == targetJS: "" else: "compiler_") &
-    name.changeFileExt(ext)
+
+  let fqname = fullyQualifiedName(conf, test.name)
+  # echo ("generatedFile", test.name, fqname, ext)
+  result = nimcacheDir(test.name, test.options, target)
+  if target == targetJS: #TODO:why?
+    result = result / name.changeFileExt(ext)
+  else:
+    result = result / fqname & "." & ext
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
