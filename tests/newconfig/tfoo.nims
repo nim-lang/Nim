@@ -12,7 +12,7 @@ import ospaths
 warning("uninit", off)
 hint("processing", off)
 #--verbosity:2
-patchFile("stdlib", "math", "mymath")
+patchFile("stdlib@pure", "math", "mymath")
 
 task listDirs, "lists every subdirectory":
   for x in listDirs("."):
