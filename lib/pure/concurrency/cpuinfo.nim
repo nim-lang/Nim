@@ -43,6 +43,14 @@ when defined(genode):
   proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
     importcpp: "@->cpu().affinity_space().total()".}
 
+when defined(haiku):
+  {.emit: "#include <OS.h>".}
+  type
+    SystemInfo {.importc: "system_info", bycopy.} = object
+      cpuCount {.importc: "cpu_count".}: uint32
+
+  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info".}
+
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
@@ -86,6 +94,10 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     result = sysconf(SC_NPROC_ONLN)
   elif defined(genode):
     result = runtimeEnv.affinitySpaceTotal().int
+  elif defined(haiku):
+    var sysinfo: SystemInfo
+    if getSystemInfo(addr sysinfo) == 0:
+      result = sysinfo.cpuCount.int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0
