@@ -19,7 +19,7 @@ iterator myParentDirs(p: string): string =
       break
     yield current
 
-const packageSep = "@"
+const packageSep = "."
 
 proc getPackageName*(conf: ConfigRef; path: string): string =
   var dirs:seq[string] = @[]
