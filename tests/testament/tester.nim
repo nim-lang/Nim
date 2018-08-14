@@ -262,6 +262,7 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
   except IOError:
     given.err = reCodeNotFound
+    echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
   let exp = expectedNimout.strip.replace("\C\L", "\L")
@@ -509,7 +510,8 @@ proc main() =
   backend.close()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
-    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
+      r.skipped, " failed: ", failed
     quit(QuitFailure)
 
 if paramCount() == 0:
