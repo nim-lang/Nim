@@ -141,7 +141,7 @@
   the [manual](manual.html#macros-for-loop-macros) for more details.
   This feature enables a Python-like generic ``enumerate`` implementation.
 
-- Case statements can now be rewritten via macros. See the [manual]() for more information.
+- Case statements can now be rewritten via macros. See the [manual](manual.html#macros-case-statement-macros) for more information.
   This feature enables custom pattern matchers.
 
 
