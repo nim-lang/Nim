@@ -5380,6 +5380,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     :test: "nim c $1"
 
   import macros
+  {.experimental: "forLoopMacros".}
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5404,6 +5405,10 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 
   for a2, b2 in enumerate([1, 2, 3, 5]):
     echo a2, " ", b2
+
+
+Currently for loop macros must be enabled explicitly
+via ``{.experimental: "forLoopMacros".}``.
 
 
 Special Types

@@ -111,14 +111,16 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg
 
-  Feature* = enum  ## experimental features
+  Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
     dotOperators,
     callOperator,
     parallel,
     destructor,
     notnil,
-    dynamicBindSym
+    dynamicBindSym,
+    forLoopMacros
+    #caseStmtMacros
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

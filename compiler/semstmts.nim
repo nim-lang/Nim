@@ -720,8 +720,9 @@ proc handleForLoopMacro(c: PContext; n: PNode): PNode =
 proc semFor(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 3, c.config)
   var length = sonsLen(n)
-  result = handleForLoopMacro(c, n)
-  if result != nil: return result
+  if forLoopMacros in c.features:
+    result = handleForLoopMacro(c, n)
+    if result != nil: return result
   openScope(c)
   result = n
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
