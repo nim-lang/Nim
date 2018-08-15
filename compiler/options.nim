@@ -119,8 +119,8 @@ type
     destructor,
     notnil,
     dynamicBindSym,
-    forLoopMacros
-    #caseStmtMacros
+    forLoopMacros,
+    caseStmtMacros
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

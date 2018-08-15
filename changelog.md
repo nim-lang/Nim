@@ -95,7 +95,7 @@
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
 - Added the proc ``math.prod`` for product of elements in openArray.
 - Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
-- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``.
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
 - Added ``macros.copyLineInfo`` to copy lineInfo from other node.
@@ -138,7 +138,13 @@
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
-  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+  the [manual](manual.html#macros-for-loop-macros) for more details.
+  This feature enables a Python-like generic ``enumerate`` implementation.
+
+- Case statements can now be rewritten via macros. See the [manual]() for more information.
+  This feature enables custom pattern matchers.
+
+
 - the `typedesc` special type has been renamed to just `type`.
 - `static` and `type` are now also modifiers similar to `ref` and `ptr`.
   They denote the special types `static[T]` and `type[T]`.
@@ -171,7 +177,7 @@
 - Thread-local variables can now be declared inside procs. This implies all
   the effects of the ``global`` pragma.
 
-- Nim now supports ``except`` clause in the export statement.
+- Nim now supports the ``except`` clause in the export statement.
 
 - Range float types, example ``range[0.0 .. Inf]``. More details in language manual.
 - The ``{.this.}`` pragma has been deprecated. It never worked within generics and
@@ -219,6 +225,6 @@
 - macros.bindSym now capable to accepts not only literal string or string constant expression.
   bindSym enhancement make it also can accepts computed string or ident node inside macros /
   compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
-  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch
+  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch.
 
 ### Bugfixes
