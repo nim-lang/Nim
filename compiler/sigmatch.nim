@@ -1355,11 +1355,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       else:
         result = isEqual
     of tyNil: result = f.allowsNil
-    of tyString:
-      if optNilSeqs in c.c.config.options or c.magic != mEqCString:
-        result = isConvertible
-      else:
-        result = isNone
+    of tyString: result = isConvertible
     of tyPtr:
       # ptr[Tag, char] is not convertible to 'cstring' for now:
       if a.len == 1:
@@ -1819,7 +1815,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # see tests/tgenericconverter:
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
-   
+
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue
