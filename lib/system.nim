@@ -4049,8 +4049,9 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   else: result = strcmp(x, y) == 0
 
 when defined(nimNoNilSeqs2):
-  proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
-  proc `==`*(x: type(nil); y: string): bool {.error.} = discard
+  when not compileOption("nilseqs"):
+    proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
+    proc `==`*(x: type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
