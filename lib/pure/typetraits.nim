@@ -61,7 +61,7 @@ proc `==`*(t1, t2: typedesc): bool =
   ## Returns wheter ``t1``, ``t2`` are the same type; this is different
   ## from ``t1 is t2`` since the latter supports concepts & inheritance.
   runnableExamples:
-    type T=int
+    type T = int
     doAssert T == int
     doAssert int == T
     doAssert: int != float
