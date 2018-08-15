@@ -109,10 +109,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    var libpath = getEnv"LD_LIBRARY_PATH".string
+    const libpathenv = when defined(haiku):
+                         "LIBRARY_PATH"
+                       else:
+                         "LD_LIBRARY_PATH"
+    var libpath = getEnv(libpathenv).string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
-    defer: putEnv("LD_LIBRARY_PATH", libpath)
+    putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
+    defer: putEnv(libpathenv, libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 

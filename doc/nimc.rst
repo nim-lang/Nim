@@ -68,6 +68,46 @@ User                             Some user defined warning.
 ==========================       ============================================
 
 
+List of hints
+-------------
+
+Each hint can be activated individually with ``--hint[NAME]:on|off`` or in a
+``push`` pragma.
+
+==========================       ============================================
+Name                             Description
+==========================       ============================================
+CC                               Shows when the C compiler is called.
+CodeBegin
+CodeEnd
+CondTrue
+Conf                             A config file was loaded.
+ConvToBaseNotNeeded
+ConvFromXtoItselfNotNeeded
+Dependency
+Exec                             Program is executed.
+ExprAlwaysX
+ExtendedContext
+GCStats                          Dumps statistics about the Garbage Collector.
+GlobalVar                        Shows global variables declarations.
+LineTooLong                      Line exceeds the maximum length.
+Link                             Linking phase.
+Name
+Path                             Search paths modifications.
+Pattern
+Performance
+Processing                       Artifact being compiled.
+QuitCalled
+Source                           The source line that triggered a diagnostic
+                                 message.
+StackTrace
+Success, SuccessX                Successful compilation of a library or a binary.
+User
+UserRaw
+XDeclaredButNotUsed              Unused symbols in the code.
+==========================       ============================================
+
+
 Verbosity levels
 ----------------
 

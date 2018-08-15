@@ -1680,6 +1680,14 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
+proc toVar*(typ: PType): PType =
+  ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind != tyVar:
+    result = newType(tyVar, typ.owner)
+    rawAddSon(result, typ)
+
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.

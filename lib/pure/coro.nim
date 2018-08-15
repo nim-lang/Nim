@@ -43,6 +43,10 @@ when defined(windows):
     {.warning: "ucontext coroutine backend is not available on windows, defaulting to fibers.".}
   when defined(nimCoroutinesSetjmp):
     {.warning: "setjmp coroutine backend is not available on windows, defaulting to fibers.".}
+elif defined(haiku):
+  const coroBackend = CORO_BACKEND_SETJMP
+  when defined(nimCoroutinesUcontext):
+    {.warning: "ucontext coroutine backend is not available on haiku, defaulting to setjmp".}
 elif defined(nimCoroutinesSetjmp) or defined(nimCoroutinesSetjmpBundled):
   const coroBackend = CORO_BACKEND_SETJMP
 else:
@@ -55,21 +59,21 @@ when coroBackend == CORO_BACKEND_FIBERS:
 
 elif coroBackend == CORO_BACKEND_UCONTEXT:
   type
-    stack_t {.importc, header: "<sys/ucontext.h>".} = object
+    stack_t {.importc, header: "<ucontext.h>".} = object
       ss_sp: pointer
       ss_flags: int
       ss_size: int
 
-    ucontext_t {.importc, header: "<sys/ucontext.h>".} = object
+    ucontext_t {.importc, header: "<ucontext.h>".} = object
       uc_link: ptr ucontext_t
       uc_stack: stack_t
 
     Context = ucontext_t
 
-  proc getcontext(context: var ucontext_t): int32 {.importc, header: "<sys/ucontext.h>".}
-  proc setcontext(context: var ucontext_t): int32 {.importc, header: "<sys/ucontext.h>".}
-  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc, header: "<sys/ucontext.h>".}
-  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc, header: "<sys/ucontext.h>", varargs.}
+  proc getcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
+  proc setcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
+  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
+  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc, header: "<ucontext.h>", varargs.}
 
 elif coroBackend == CORO_BACKEND_SETJMP:
   proc coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn, importc: "narch_$1", fastcall.}
@@ -190,7 +194,7 @@ proc switchTo(current, to: CoroutinePtr) =
         elif to.state == CORO_CREATED:
           # Coroutine is started.
           coroExecWithStack(runCurrentTask, to.stack.bottom)
-          doAssert false
+          #doAssert false
     else:
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.

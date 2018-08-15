@@ -412,6 +412,8 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
+        if renderType and n.typ != nil:
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
         if sonsLen(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):

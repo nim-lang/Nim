@@ -369,6 +369,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
@@ -377,6 +379,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x

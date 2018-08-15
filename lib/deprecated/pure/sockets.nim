@@ -36,6 +36,8 @@ include "system/inclrtl"
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
+elif hostOS == "haiku":
+  {.passl: "-lnetwork".}
 
 import os, parseutils
 from times import epochTime

@@ -49,7 +49,7 @@ proc fac*(n: int): int =
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
-when defined(Posix) and not defined(haiku):
+when defined(Posix):
   {.passl: "-lm".}
 
 const
@@ -529,8 +529,8 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 
 proc `^`*[T](x: T, y: Natural): T =
-  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
-  ## `pow <#pow,float,float>` for negative exponents.
+  ## Computes ``x`` to the power ``y``. ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>`_ for negative exponents.
   when compiles(y >= T(0)):
     assert y >= T(0)
   else:

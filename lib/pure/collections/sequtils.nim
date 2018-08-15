@@ -25,6 +25,28 @@ import macros
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+
+macro evalOnceAs(expAlias, exp: untyped, letAssigneable: static[bool]): untyped =
+  ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
+  ##  substitution in macro arguments such as
+  ## https://github.com/nim-lang/Nim/issues/7187
+  ## ``evalOnceAs(myAlias, myExp)`` will behave as ``let myAlias = myExp``
+  ## except when ``letAssigneable`` is false (eg to handle openArray) where
+  ## it just forwards ``exp`` unchanged
+  expectKind(expAlias, nnkIdent)
+  var val = exp
+
+  result = newStmtList()
+  # If `exp` is not a symbol we evaluate it once here and then use the temporary
+  # symbol as alias
+  if exp.kind != nnkSym and letAssigneable:
+    val = genSym()
+    result.add(newLetStmt(val, exp))
+
+  result.add(
+    newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
+      body = val, procType = nnkTemplateDef))
+
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ##
@@ -635,30 +657,7 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-# This is needed in order not to break the bootstrap, the fallback
-# implementation is a "dumb" let that won't work in some cases (eg. when `exp`
-# is an openArray)
-when declared(macros.symKind):
-  macro evalOnce(v, exp: untyped): untyped =
-    expectKind(v, nnkIdent)
-    var val = exp
-
-    result = newStmtList()
-
-    # Not a parameter we can pass as-is, evaluate and store in a temporary
-    # variable
-    if exp.kind != nnkSym or exp.symKind != nskParam:
-      val = genSym()
-      result.add(newLetStmt(val, exp))
-
-    result.add(
-      newProc(name = genSym(nskTemplate, $v), params = [getType(untyped)],
-        body = val, procType = nnkTemplateDef))
-else:
-  macro evalOnce(v, exp: untyped): untyped =
-    result = newLetStmt(v, exp)
-
-template mapIt*(s, op: untyped): untyped =
+template mapIt*(s: typed, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -675,19 +674,24 @@ template mapIt*(s, op: untyped): untyped =
     block:
       var it{.inject.}: type(items(s));
       op))
-  var result: seq[outType]
   when compiles(s.len):
-    evalOnce(t, s)
-    var i = 0
-    result = newSeq[outType](t.len)
-    for it {.inject.} in t:
-      result[i] = op
-      i += 1
+    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+
+      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
+      # (`error: use of undeclared identifier`) instead of Nim compile errors
+      evalOnceAs(s2, s, compiles((let _ = s)))
+
+      var i = 0
+      var result = newSeq[outType](s2.len)
+      for it {.inject.} in s2:
+        result[i] = op
+        i += 1
+      result
   else:
-    result = @[]
+    var result: seq[outType] = @[]
     for it {.inject.} in s:
       result.add(op)
-  result
+    result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
@@ -774,6 +778,14 @@ macro mapLiterals*(constructor, op: untyped;
 
 when isMainModule:
   import strutils
+
+  # helper for testing double substitution side effects which are handled
+  # by `evalOnceAs`
+  var counter = 0
+  proc identity[T](a:T):auto=
+    counter.inc
+    a
+
   block: # concat test
     let
       s1 = @[1, 2, 3]
@@ -1045,10 +1057,12 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  block: # mapIt tests
+  block: # mapIt + applyIt test
+    counter = 0
     var
       nums = @[1, 2, 3, 4]
-      strings = nums.mapIt($(4 * it))
+      strings = nums.identity.mapIt($(4 * it))
+    doAssert counter == 1
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
     assert strings[2] == "12"
@@ -1067,9 +1081,43 @@ when isMainModule:
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
 
   block: # mapIt with openArray
-    when declared(macros.symKind):
-      proc foo(x: openArray[int]): seq[int] = x.mapIt(it + 1)
-      doAssert foo([1,2,3]) == @[2,3,4]
+    counter = 0
+    proc foo(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    doAssert foo([identity(1),identity(2)]) == @[10, 20]
+    doAssert counter == 2
+
+  block: # mapIt with direct openArray
+    proc foo1(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert counter == 2
+
+    template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    # TODO: this fails; not sure how to fix this case
+    # doAssert counter == 2
+
+  block: # mapIt empty test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
+    # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is (lacks type
+    # of elements)
+    doAssert: not compiles(mapIt(@[], it))
+    doAssert: not compiles(mapIt([], it))
+    doAssert newSeq[int](0).mapIt(it) == @[]
+
+  block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
+    let t = [1,2].mapIt(it)
+    doAssert t == @[1,2]
+
+  block:
+    var counter = 0
+    proc getInput():auto =
+      counter.inc
+      [1, 2]
+    doAssert getInput().mapIt(it*2).mapIt(it*10) == @[20, 40]
+    # make sure argument evaluated only once, analog to
+    # https://github.com/nim-lang/Nim/issues/7187 test case
+    doAssert counter == 1
 
   block: # mapIt with invalid RHS for `let` (#8566)
     type X = enum
