@@ -228,8 +228,8 @@ proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
   let p = getPrefixDir(conf)
   result = joinPath([p, "config", filename])
   when defined(unix):
-    if not existsFile(result): result = joinPath([p, "etc", filename])
-    if not existsFile(result): result = "/etc/" & filename
+    if not existsFile(result): result = joinPath([p, "etc/nim", filename])
+    if not existsFile(result): result = "/etc/nim/" & filename
 
 proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)

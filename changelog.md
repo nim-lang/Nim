@@ -227,4 +227,7 @@
   compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
   This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch.
 
+- On Posix systems the global system wide configuration is now put under ``/etc/nim/nim.cfg``,
+  it used to be ``/etc/nim.cfg``. Usually it does not exist, however.
+
 ### Bugfixes
