@@ -157,6 +157,8 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
+when not defined(windows) and not defined(nimscript):
+  import posix
 
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -518,7 +520,25 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## This proc is wrapped by the expandTilde proc for the convenience of
   ## processing paths coming from user configuration files.
   when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
-  else: return string(getEnv("HOME")) & "/"
+  else:
+    var home = string(getEnv("HOME"))
+    if len(home) != 0:
+        result = home & "/"
+    else:
+      when not defined(nimscript):
+        var amt = sysconf(SC_GETPW_R_SIZE_MAX)
+        if amt == -1:
+          amt = 512 ## Should be more than enough (See https://linux.die.net/man/3/getpwuid)
+        var buffer = newSeq[uint8](amt)
+        let uid = getuid()
+        var passwd: Passwd
+        var res: ptr Passwd
+        discard getpwuid_r(uid, addr passwd, cast[cstring](buffer), amt, addr res)
+        if res != nil:
+          result = $(passwd.pw_dir) & "/"
+        result = "/"
+      else:
+        result = "/"
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
