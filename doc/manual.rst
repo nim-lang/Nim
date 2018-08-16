@@ -6333,6 +6333,24 @@ It's also possible to use ``from module import nil`` if one wants to import
 the module but wants to enforce fully qualified access to every symbol
 in ``module``.
 
+By using the experimental feature ``typeImports`` it's possible to bring
+all the symbols directly related to a type. Any callable that has the imported
+type as one of its arguments or return type gets automatically included with the
+import.
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "typeImports".}
+
+  from colors import Color
+
+  # to string and proc imported
+  let pink = rgb(255, 192, 203)
+  echo $pink
+  # color constants are not imported though, this would fail:
+  # echo $colBlue
+
 
 Export statement
 ~~~~~~~~~~~~~~~~
