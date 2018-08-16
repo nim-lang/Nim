@@ -2474,11 +2474,11 @@ proc `<`*[T: tuple](x, y: T): bool =
 
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
-  ## of `x`. Example:
+  ## of `x`.
   ##
-  ## .. code-block:: nim
-  ##   $(23, 45) == "(23, 45)"
-  ##   $() == "()"
+  runnableExamples:
+    assert $(23, 45) == "(Field0: 23, Field1: 45)"
+    assert $() == "()"
   result = "("
   var firstElement = true
   for name, value in fieldPairs(x):
@@ -2520,20 +2520,30 @@ proc `$`*[T](x: set[T]): string =
   ## generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
-  ## .. code-block:: nim
-  ##   ${23, 45} == "{23, 45}"
+  runnableExamples:
+    assert ${23, 45} == "{23, 45}"
   collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
   ## generic ``$`` operator for seqs that is lifted from the components
-  ## of `x`. Example:
+  ## of `x`.
   ##
-  ## .. code-block:: nim
-  ##   $(@[23, 45]) == "@[23, 45]"
+  runnableExamples:
+    assert $(@[23, 45]) == "@[23, 45]"
   if x.isNil:
     "nil"
   else:
     collectionToString(x, "@[", ", ", "]")
+
+proc `$`*[T, U](x: HSlice[T, U]): string =
+  ## generic ``$`` operator for slices that is lifted from the components
+  ## of `x`.
+  ##
+  runnableExamples:
+    assert $(1..5) == "1..5"
+  result = $x.a
+  result.add("..")
+  resutl.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
