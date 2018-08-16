@@ -194,9 +194,11 @@ proc `$`*[T](self: Option[T]): string =
   ## If the option does not have a value, the result will be `None[T]` where `T` is the name of
   ## the type contained in the option.
   if self.isSome:
-    "Some(" & $self.val & ")"
+    result = "Some("
+    result.addQuoted self.val
+    result.add ")"
   else:
-    "None[" & name(T) & "]"
+    result = "None[" & name(T) & "]"
 
 when isMainModule:
   import unittest, sequtils
