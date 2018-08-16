@@ -7,11 +7,9 @@ to stderr
 """
 import osproc, os, streams
 
-const filename = when defined(Windows): "ta_out.exe" else: "ta_out"
+# const filename = when defined(Windows): "ta_out.exe" else: "ta_out"
 
-doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
-
-var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
+var p = startProcess("ta_out.exe", getCurrentDir() / "tests" / "osproc",
                      options={})
 
 let stdoutStream = p.outputStream
