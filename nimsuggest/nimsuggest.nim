@@ -581,6 +581,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         conf.projectName = a
       # if processArgument(pass, p, argsCount): break
 
+# TODO: refactor with nimconf.nim to avoid duplicating complex logic
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   condsyms.initDefines(conf.symbols)
   defineSymbol conf.symbols, "nimsuggest"
