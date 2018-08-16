@@ -854,11 +854,12 @@ proc `==`*(zone1, zone2: Timezone): bool =
   zone1.name == zone2.name
 
 proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [], benign.} =
-  ## Break down ``time`` into a ``DateTime`` using ``zone`` as the timezone.
+  ## Convert ``time`` into a ``DateTime`` using ``zone`` as the timezone.
   result = initDateTime(zone.zonedTimeFromTime(time), zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], benign.} =
-  ## Convert ``dt`` into a ``DateTime`` using ``zone`` as the timezone.
+  ## Returns a ``DateTime`` representing the same point in time as ``dt`` but
+  ## using ``zone`` as the timezone.
   dt.toTime.inZone(zone)
 
 proc toAdjTime(dt: DateTime): Time =
@@ -1373,7 +1374,7 @@ proc `<=` * (a, b: DateTime): bool =
   return a.toTime <= b.toTime
 
 proc `==`*(a, b: DateTime): bool =
-  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  ## Returns true if ``a == b``, that is if both dates represent the same point in time.
   return a.toTime == b.toTime
 
 
