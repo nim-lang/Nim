@@ -45,7 +45,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
-        errorMsg = nil
+        errorMsg = ""
         try:
           body
         except OSError:

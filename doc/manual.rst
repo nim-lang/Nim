@@ -769,8 +769,8 @@ Pre-defined floating point types
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type).
+  the generic floating point type; its size used to be platform dependent,
+  but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
@@ -1505,68 +1505,6 @@ exclude ``nil`` as a valid value with the ``not nil`` annotation:
 The compiler ensures that every code path initializes variables which contain
 non nilable pointers. The details of this analysis are still to be specified
 here.
-
-
-Memory regions
---------------
-
-The types ``ref`` and ``ptr`` can get an optional ``region`` annotation.
-A region has to be an object type.
-
-Regions are very useful to separate user space and kernel memory in the
-development of OS kernels:
-
-.. code-block:: nim
-  type
-    Kernel = object
-    Userspace = object
-
-  var a: Kernel ptr Stat
-  var b: Userspace ptr Stat
-
-  # the following does not compile as the pointer types are incompatible:
-  a = b
-
-As the example shows ``ptr`` can also be used as a binary
-operator, ``region ptr T`` is a shortcut for ``ptr[region, T]``.
-
-In order to make generic code easier to write ``ptr T`` is a subtype
-of ``ptr[R, T]`` for any ``R``.
-
-Furthermore the subtype relation of the region object types is lifted to
-the pointer types: If ``A <: B`` then ``ptr[A, T] <: ptr[B, T]``. This can be
-used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
-not compatible to ``pointer`` to prevent the following from compiling:
-
-.. code-block:: nim
-  # from system
-  proc dealloc(p: pointer)
-
-  # wrap some scripting language
-  type
-    PythonsHeap = object
-    PyObjectHeader = object
-      rc: int
-      typ: pointer
-    PyObject = ptr[PythonsHeap, PyObjectHeader]
-
-  proc createPyObject(): PyObject {.importc: "...".}
-  proc destroyPyObject(x: PyObject) {.importc: "...".}
-
-  var foo = createPyObject()
-  # type error here, how convenient:
-  dealloc(foo)
-
-
-Future directions:
-
-* Memory regions might become available for  ``string`` and ``seq`` too.
-* Builtin regions like ``private``, ``global`` and ``local`` might be
-  useful for an OpenCL target.
-* Builtin "regions" can model ``lent`` and ``unique`` pointers.
-* An assignment operator can be attached to a region so that proper write
-  barriers can be generated. This would imply that the GC can be implemented
-  completely in user-space.
 
 
 Procedural type
@@ -2336,6 +2274,8 @@ pointer type and overloading resolution is tried with ``a[]`` instead.
 
 Automatic self insertions
 -------------------------
+
+**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
 
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
@@ -4029,9 +3969,13 @@ exception.
 Exception hierarchy
 -------------------
 
-The exception tree is defined in the `system <system.html>`_ module:
-
-.. include:: exception_hierarchy_fragment.txt
+The exception tree is defined in the `system <system.html>`_ module.
+Every exception inherits from ``system.Exception``. Exceptions that indicate
+programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
+and are stricly speaking not catchable as they can also be mapped to an operation
+that terminates the whole process. Exceptions that indicate any other runtime error
+that can be caught inherit from ``system.CatchableError``
+(which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -5436,6 +5380,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     :test: "nim c $1"
 
   import macros
+  {.experimental: "forLoopMacros".}
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5460,6 +5405,62 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 
   for a2, b2 in enumerate([1, 2, 3, 5]):
     echo a2, " ", b2
+
+
+Currently for loop macros must be enabled explicitly
+via ``{.experimental: "forLoopMacros".}``.
+
+
+Case statement macros
+---------------------
+
+A macro that needs to be called `match`:idx: can be used to
+rewrite ``case`` statements in order to
+implement `pattern matching`:idx: for certain types. The following
+example implements a simplistic form of pattern matching for tuples,
+leveraging the existing equality operator for tuples (as provided in
+ ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then the complete ``case`` statement
+body is passed and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+``macro`` to call.
 
 
 Special Types
@@ -7933,7 +7934,7 @@ that ``spawn`` takes is restricted:
 
 ``spawn`` executes the passed expression on the thread pool and returns
 a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``awaitAny`` to
+with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -7944,10 +7945,10 @@ wait on multiple flow variables at the same time:
     var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
-    var index = awaitAny(responses)
+    var index = blockUntilAny(responses)
     assert index >= 0
     responses.del(index)
-    discard awaitAny(responses)
+    discard blockUntilAny(responses)
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in

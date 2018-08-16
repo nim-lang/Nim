@@ -358,9 +358,6 @@ proc isNilOrEmpty*(s: string): bool {.noSideEffect, procvar, rtl,
 
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nsuIsNilOrWhitespace".} =
   ## Checks if `s` is nil or consists entirely of whitespace characters.
-  if len(s) == 0:
-    return true
-
   result = true
   for c in s:
     if not c.isSpaceAscii():
@@ -1378,9 +1375,11 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
       if sub == s[i]: return i
   else:
     when hasCStringBuiltin:
-      let found = c_memchr(s[start].unsafeAddr, sub, last-start+1)
-      if not found.isNil:
-        return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+      let L = last-start+1
+      if L > 0:
+        let found = c_memchr(s[start].unsafeAddr, sub, L)
+        if not found.isNil:
+          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
       for i in start..last:
         if sub == s[i]: return i
@@ -1527,7 +1526,7 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   elif subLen == 1:
     # when the pattern is a single char, we use a faster
     # char-based search that doesn't need a skip table:
-    var c = sub[0]
+    let c = sub[0]
     let last = s.high
     var i = 0
     while true:

@@ -183,7 +183,7 @@ proc bundleNimbleExe() =
   bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
-  nimexec("c -d:release dist/nimble/src/nimble.nim")
+  nimexec("c -d:release --nilseqs:on dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
@@ -210,7 +210,7 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler -d:release " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =

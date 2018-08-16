@@ -119,7 +119,7 @@ proc commonType*(x, y: PType): PType =
   elif b.kind == tyStmt: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.sons == nil: result = a
+    if a.len == 0: result = a
     else:
       result = newType(tyTypeDesc, a.owner)
       rawAddSon(result, newType(tyNone, a.owner))

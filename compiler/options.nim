@@ -38,7 +38,8 @@ type                          # please make sure we have under 32 options
     optPatterns,              # en/disable pattern matching
     optMemTracker,
     optHotCodeReloading,
-    optLaxStrings
+    optLaxStrings,
+    optNilSeqs
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -110,14 +111,16 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg
 
-  Feature* = enum  ## experimental features
+  Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
     dotOperators,
     callOperator,
     parallel,
     destructor,
     notnil,
-    dynamicBindSym
+    dynamicBindSym,
+    forLoopMacros,
+    caseStmtMacros
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -482,7 +485,7 @@ include packagehandling
 
 proc getOsCacheDir(): string =
   when defined(posix):
-    result = string getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache")
+    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
     result = getHomeDir() / genSubDir
 
@@ -600,18 +603,22 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var candidates: seq[string] = @[]
-  for k, f in os.walkDir(pkg, relative=true):
-    if k == pcFile and f != "config.nims":
-      let (_, name, ext) = splitFile(f)
-      if ext in extensions:
-        let x = changeFileExt(pkg / name, ".nim")
-        if fileExists(x):
-          candidates.add x
-  for c in candidates:
-    # nim-foo foo  or  foo  nfoo
-    if (pkg in c) or (c in pkg): return c
-  if candidates.len >= 1:
-    return candidates[0]
+  var dir = pkg
+  while true:
+    for k, f in os.walkDir(dir, relative=true):
+      if k == pcFile and f != "config.nims":
+        let (_, name, ext) = splitFile(f)
+        if ext in extensions:
+          let x = changeFileExt(dir / name, ".nim")
+          if fileExists(x):
+            candidates.add x
+    for c in candidates:
+      # nim-foo foo  or  foo  nfoo
+      if (pkg in c) or (c in pkg): return c
+    if candidates.len >= 1:
+      return candidates[0]
+    dir = parentDir(dir)
+    if dir == "": break
   return ""
 
 proc canonDynlibName(s: string): string =

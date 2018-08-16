@@ -191,7 +191,7 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
-  if n.comment != nil:
+  if n.comment.len > 0:
     renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
@@ -205,7 +205,8 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
         result = genRecComment(d, n.sons[i])
         if result != nil: return
   else:
-    n.comment = nil
+    when defined(nimNoNilSeqs): n.comment = ""
+    else: n.comment = nil
 
 proc getPlainDocstring(n: PNode): string =
   ## Gets the plain text docstring of a node non destructively.
@@ -215,7 +216,7 @@ proc getPlainDocstring(n: PNode): string =
   ## the concatenated ``##`` comments of the node.
   result = ""
   if n == nil: return
-  if n.comment != nil and startsWith(n.comment, "##"):
+  if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
     for i in countup(0, safeLen(n)-1):
@@ -564,9 +565,9 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 
   result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
-  if comm != nil and comm != "":
+  if comm.len > 0:
     result["description"] = %comm
-  if r.buf != nil:
+  if r.buf.len > 0:
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
@@ -634,7 +635,7 @@ proc add(d: PDoc; j: JsonNode) =
 proc generateJson*(d: PDoc, n: PNode) =
   case n.kind
   of nkCommentStmt:
-    if n.comment != nil and startsWith(n.comment, "##"):
+    if startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
       d.add %{ "comment": %stripped, "line": %n.info.line.int,
                "col": %n.info.col }
@@ -678,7 +679,7 @@ proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
 proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   case n.kind
   of nkCommentStmt:
-    if n.comment != nil and startsWith(n.comment, "##"):
+    if startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
       r.add stripped
   of nkProcDef:

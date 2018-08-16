@@ -184,7 +184,7 @@ proc missingOrExcl*(s: var IntSet, key: int) : bool =
   ## `key` is removed from `s` and false is returned.
   var count = s.elems
   exclImpl(s, key)
-  result = count == s.elems 
+  result = count == s.elems
 
 proc containsOrIncl*(s: var IntSet, key: int): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
@@ -212,7 +212,10 @@ proc initIntSet*: IntSet =
 
   #newSeq(result.data, InitIntSetSize)
   #result.max = InitIntSetSize-1
-  result.data = nil
+  when defined(nimNoNilSeqs):
+    result.data = @[]
+  else:
+    result.data = nil
   result.max = 0
   result.counter = 0
   result.head = nil
@@ -222,7 +225,10 @@ proc clear*(result: var IntSet) =
   #setLen(result.data, InitIntSetSize)
   #for i in 0..InitIntSetSize-1: result.data[i] = nil
   #result.max = InitIntSetSize-1
-  result.data = nil
+  when defined(nimNoNilSeqs):
+    result.data = @[]
+  else:
+    result.data = nil
   result.max = 0
   result.counter = 0
   result.head = nil
@@ -234,7 +240,10 @@ proc assign*(dest: var IntSet, src: IntSet) =
   ## copies `src` to `dest`. `dest` does not need to be initialized by
   ## `initIntSet`.
   if src.elems <= src.a.len:
-    dest.data = nil
+    when defined(nimNoNilSeqs):
+      dest.data = @[]
+    else:
+      dest.data = nil
     dest.max = 0
     dest.counter = src.counter
     dest.head = nil
@@ -247,11 +256,9 @@ proc assign*(dest: var IntSet, src: IntSet) =
 
     var it = src.head
     while it != nil:
-
       var h = it.key and dest.max
       while dest.data[h] != nil: h = nextTry(h, dest.max)
       assert(dest.data[h] == nil)
-
       var n: PTrunk
       new(n)
       n.next = dest.head
@@ -259,7 +266,6 @@ proc assign*(dest: var IntSet, src: IntSet) =
       n.bits = it.bits
       dest.head = n
       dest.data[h] = n
-
       it = it.next
 
 proc union*(s1, s2: IntSet): IntSet =
@@ -315,7 +321,7 @@ proc len*(s: IntSet): int {.inline.} =
     for _ in s:
       inc(result)
 
-proc card*(s: IntSet): int {.inline.} = 
+proc card*(s: IntSet): int {.inline.} =
   ## alias for `len() <#len>` _.
   result = s.len()
 
@@ -361,7 +367,7 @@ when isMainModule:
   x.incl(1056)
 
   x.incl(1044)
-  x.excl(1044) 
+  x.excl(1044)
 
   assert x.containsOrIncl(888) == false
   assert 888 in x

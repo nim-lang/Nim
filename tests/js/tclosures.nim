@@ -48,4 +48,4 @@ for i in 1 .. 10:
 
 let results = runCallbacks()
 
-doAssert(expected == results)
+doAssert(expected == $results)

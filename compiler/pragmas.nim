@@ -1066,8 +1066,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:

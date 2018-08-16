@@ -143,7 +143,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       c.calleeScope = 1
   else:
     c.calleeScope = calleeScope
-  c.diagnostics = if diagnosticsEnabled: @[] else: nil
+  c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
   c.diagnosticsEnabled = diagnosticsEnabled
   c.magic = c.calleeSym.magic
   initIdTable(c.bindings)
@@ -535,6 +535,12 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
+proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
+  if optNilSeqs in c.c.config.options:
+    result = allowsNil(f)
+  else:
+    result = isNone
+
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and (f.kind in {tyVar, tyLent} or a.kind in {tyVar, tyLent})
 
@@ -741,7 +747,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     diagnostics = @[]
     flags = {efExplain}
     m.c.config.writelnHook = proc (s: string) =
-      if errorPrefix == nil: errorPrefix = typeClass.sym.name.s & ":"
+      if errorPrefix.len == 0: errorPrefix = typeClass.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
@@ -1253,7 +1259,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
             result = isNone
         elif tfNotNil in f.flags and tfNotNil notin a.flags:
           result = isNilConversion
-    of tyNil: result = f.allowsNil
+    of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyOrdinal:
     if isOrdinalType(a):
@@ -1338,7 +1344,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         result = isNilConversion
       else:
         result = isEqual
-    of tyNil: result = f.allowsNil
+    of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyCString:
     # conversion from string to cstring is automatic:
@@ -1612,7 +1618,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if f.sonsLen == 0:
             result = isGeneric
           else:
-            internalAssert c.c.graph.config, a.sons != nil and a.sons.len > 0
+            internalAssert c.c.graph.config, a.len > 0
             c.typedescMatched = true
             var aa = a
             while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
@@ -1809,7 +1815,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # see tests/tgenericconverter:
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
-   
+
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue

@@ -28,7 +28,7 @@ proc parentWith(x: Element; tag: cstring): Element =
 
 proc extractItems(x: Element; items: var seq[Element]) =
   if x == nil: return
-  if x.nodeName == "A":
+  if x.nodeName == cstring"A":
     items.add x
   else:
     for i in 0..<x.len:
@@ -99,19 +99,19 @@ proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
   """.}
 
 proc isWhitespace(x: Element): bool =
-  x.nodeName == "#text" and x.textContent.isWhitespace or
-    x.nodeName == "#comment"
+  x.nodeName == cstring"#text" and x.textContent.isWhitespace or
+    x.nodeName == cstring"#comment"
 
 proc toToc(x: Element; father: TocEntry) =
-  if x.nodeName == "UL":
+  if x.nodeName == cstring"UL":
     let f = TocEntry(heading: nil, kids: @[], sortId: father.kids.len)
     var i = 0
     while i < x.len:
       var nxt = i+1
       while nxt < x.len and x[nxt].isWhitespace:
         inc nxt
-      if nxt < x.len and x[i].nodeName == "LI" and x[i].len == 1 and
-          x[nxt].nodeName == "UL":
+      if nxt < x.len and x[i].nodeName == cstring"LI" and x[i].len == 1 and
+          x[nxt].nodeName == cstring"UL":
         let e = TocEntry(heading: x[i][0], kids: @[], sortId: f.kids.len)
         let it = x[nxt]
         for j in 0..<it.len:
@@ -124,11 +124,11 @@ proc toToc(x: Element; father: TocEntry) =
     father.kids.add f
   elif isWhitespace(x):
     discard
-  elif x.nodeName == "LI":
+  elif x.nodeName == cstring"LI":
     var idx: seq[int] = @[]
     for i in 0 ..< x.len:
       if not x[i].isWhitespace: idx.add i
-    if idx.len == 2 and x[idx[1]].nodeName == "UL":
+    if idx.len == 2 and x[idx[1]].nodeName == cstring"UL":
       let e = TocEntry(heading: x[idx[0]], kids: @[],
                        sortId: father.kids.len)
       let it = x[idx[1]]
@@ -147,9 +147,9 @@ proc tocul(x: Element): Element =
   result = tree("UL")
   for i in 0..<x.len:
     let it = x[i]
-    if it.nodeName == "LI":
+    if it.nodeName == cstring"LI":
       result.add it.clone
-    elif it.nodeName == "UL":
+    elif it.nodeName == cstring"UL":
       result.add tocul(it)
 
 proc getSection(toc: Element; name: cstring): Element =
@@ -223,7 +223,7 @@ proc groupBy*(value: cstring) {.exportc.} =
     let ntoc = buildToc(tt, types, procs)
     let x = toHtml(ntoc, isRoot=true)
     alternative = tree("DIV", x)
-  if value == "type":
+  if value == cstring"type":
     replaceById("tocRoot", alternative)
   else:
     replaceById("tocRoot", tree("DIV"))
@@ -236,7 +236,7 @@ var
 template normalize(x: cstring): cstring = x.toLower.replace("_", "")
 
 proc dosearch(value: cstring): Element =
-  if db.isNil:
+  if db.len == 0:
     var stuff: Element
     {.emit: """
     var request = new XMLHttpRequest();
@@ -261,7 +261,7 @@ proc dosearch(value: cstring): Element =
   var matches: seq[(Element, int)] = @[]
   for i in 0..<db.len:
     let c = contents[i]
-    if c == "Examples" or c == "PEG construction":
+    if c == cstring"Examples" or c == cstring"PEG construction":
     # Some manual exclusions.
     # Ideally these should be fixed in the index to be more
     # descriptive of what they are.
@@ -288,7 +288,7 @@ proc search*() {.exportc.} =
   proc wrapper() =
     let elem = getElementById("searchInput")
     let value = elem.value
-    if value != "":
+    if value.len != 0:
       if oldtoc.isNil:
         oldtoc = getElementById("tocRoot")
       let results = dosearch(value)

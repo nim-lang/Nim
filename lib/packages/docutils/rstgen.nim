@@ -312,7 +312,6 @@ proc setIndexTerm*(d: var RstGenerator, id, term: string,
   ## The index won't be written to disk unless you call `writeIndexFile()
   ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
   ## tools guide <docgen.html#index-switch>`_.
-  assert(not d.theIndex.isNil)
   var
     entry = term
     isTitle = false
@@ -337,7 +336,7 @@ proc hash(n: PRstNode): int =
     result = hash(n.text)
   elif n.len > 0:
     result = hash(n.sons[0])
-    for i in 1 .. <len(n):
+    for i in 1 ..< len(n):
       result = result !& hash(n.sons[i])
     result = !$result
 
@@ -398,9 +397,9 @@ proc hash(x: IndexEntry): Hash =
 proc `<-`(a: var IndexEntry, b: IndexEntry) =
   shallowCopy a.keyword, b.keyword
   shallowCopy a.link, b.link
-  if b.linkTitle.isNil: a.linkTitle = nil
+  if b.linkTitle.isNil: a.linkTitle = ""
   else: shallowCopy a.linkTitle, b.linkTitle
-  if b.linkDesc.isNil: a.linkDesc = nil
+  if b.linkDesc.isNil: a.linkDesc = ""
   else: shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
@@ -452,7 +451,7 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
           title="$3" data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text, desc])
       else:
-        result.addf("""<li><a class="reference external" 
+        result.addf("""<li><a class="reference external"
           data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text])
       inc j
@@ -524,7 +523,7 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
       titleTag = levels[L].text
     else:
       result.add(level.indentToLevel(levels[L].level))
-      result.addf("""<li><a class="reference" data-doc-search-tag="$1" href="$2"> 
+      result.addf("""<li><a class="reference" data-doc-search-tag="$1" href="$2">
         $3</a></li>
         """, [titleTag & " : " & levels[L].text, link, levels[L].text])
     inc L
@@ -608,8 +607,8 @@ proc readIndexDir(dir: string):
           fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
           fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = nil
-          fileEntries[F].linkDesc = nil
+          fileEntries[F].linkTitle = ""
+          fileEntries[F].linkDesc = ""
         inc F
       # Depending on type add this to the list of symbols or table of APIs.
       if title.keyword.isNil:
@@ -657,7 +656,6 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
-  assert(not symbols.isNil)
 
   result = ""
   # Generate a quick jump list of documents.

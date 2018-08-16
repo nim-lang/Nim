@@ -97,10 +97,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  if genericSym.procInstCache != nil:
-    for inst in genericSym.procInstCache:
-      if inst.compilesId == id and sameInstantiation(entry, inst[]):
-        return inst.sym
+  for inst in genericSym.procInstCache:
+    if inst.compilesId == id and sameInstantiation(entry, inst[]):
+      return inst.sym
 
 when false:
   proc `$`(x: PSym): string =
