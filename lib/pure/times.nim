@@ -2492,7 +2492,7 @@ proc `adjTime=`*(zt: var ZonedTime, adjTime: Time)
   ## **Deprecated since v0.19.0:** use the ``time`` field instead.
   zt.time = adjTime + initDuration(seconds = zt.utcOffset)
 
-proc zoneInfoFromUtc*(zone: TImezone, time: Time): ZonedTime
+proc zoneInfoFromUtc*(zone: Timezone, time: Time): ZonedTime
     {.deprecated: "Use zonedTimeFromTime instead".} =
   ## **Deprecated since v0.19.0:** use ``zonedTimeFromTime`` instead.
   zone.zonedTimeFromTime(time)
