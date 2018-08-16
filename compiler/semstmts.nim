@@ -409,6 +409,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
+      if typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+        localError(c.config, a.sons[length-2].info, "'typedesc' metatype is not valid here")
+        continue
     else:
       typ = nil
     var def: PNode = c.graph.emptyNode

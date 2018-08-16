@@ -1183,8 +1183,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if result.isNil and t.sons[0] != nil:
       result = typeAllowedAux(marker, t.sons[0], skResult, flags)
   of tyTypeDesc:
-    # XXX: This is still a horrible idea...
-    result = nil
+    # Could be inside a macro, so var and let are allowed here and checked later
+    if kind notin {skParam, skResult, skVar, skLet}: result = t
   of tyExpr, tyStmt, tyStatic:
     if kind notin {skParam, skResult}: result = t
   of tyVoid:
