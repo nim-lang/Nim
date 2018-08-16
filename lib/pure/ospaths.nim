@@ -570,6 +570,8 @@ proc expandTilde*(path: string): string {.
     # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
+# TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
+# belong in `strutils` instead; they are not specific to paths
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
@@ -620,6 +622,18 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       return quoteShellWindows(s)
     else:
       return quoteShellPosix(s)
+
+  proc quoteShellCommand*(args: openArray[string]): string =
+    ## Concatenates and quotes shell arguments `args`
+    runnableExamples:
+      when defined(posix):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
+      when defined(windows):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
+    # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    for i in 0..<args.len:
+      if i > 0: result.add " "
+      result.add quoteShell(args[i])
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
