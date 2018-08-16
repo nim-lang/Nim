@@ -13,7 +13,6 @@
 include "system/inclrtl"
 
 import strutils
-import sequtils
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
@@ -632,7 +631,9 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       when defined(windows):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
     # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
-    result = args.mapIt(quoteShell(it)).join(" ")
+    for i in 0..<args.len:
+      if i > 0: result.add " "
+      result.add quoteShell(args[i])
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
