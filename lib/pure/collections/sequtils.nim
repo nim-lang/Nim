@@ -518,13 +518,17 @@ template toSeq*(iter: untyped): untyped =
   ##         result = true)
   ##   assert odd_numbers == @[1, 3, 5, 7, 9]
 
+  # Note: see also `mapIt` for explanation of some of the implementation
+  # subtleties.
   when compiles(iter.len):
-    var i = 0
-    var result = newSeq[type(iter)](iter.len)
-    for x in iter:
-      result[i] = x
-      inc i
-    result
+    block:
+      evalOnceAs(iter2, iter, true)
+      var result = newSeq[type(iter)](iter2.len)
+      var i = 0
+      for x in iter2:
+        result[i] = x
+        inc i
+      result
   else:
     var result: seq[type(iter)] = @[]
     for x in iter:
@@ -1031,6 +1035,12 @@ when isMainModule:
           result = true)
     assert odd_numbers == @[1, 3, 5, 7, 9]
 
+  block:
+    # tests https://github.com/nim-lang/Nim/issues/7187
+    counter = 0
+    let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
+    doAssert ret == @[1, 2]
+    doAssert counter == 1
   block: # foldl tests
     let
       numbers = @[5, 9, 11]
