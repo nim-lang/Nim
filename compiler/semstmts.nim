@@ -542,6 +542,9 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typ == nil:
       localError(c.config, a.sons[2].info, errConstExprExpected)
       continue
+    if typ.kind == tyTypeDesc:
+      localError(c.config, a.info, "cannot have typedesc as const value, " &
+        "use 'type $1 = $2' instead", [$a.sons[0], typeToString(def.typ.skipTypes({tyTypeDesc}))])
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(c.config, a.info, "invalid type for const: " & typeToString(typ))
       continue

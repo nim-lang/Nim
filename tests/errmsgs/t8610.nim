@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid type for const: type int"
+  errormsg: "cannot have typedesc as const value, use 'type Foo = int' instead"
   line: 6
 """
 
