@@ -230,4 +230,11 @@
 - On Posix systems the global system wide configuration is now put under ``/etc/nim/nim.cfg``,
   it used to be ``/etc/nim.cfg``. Usually it does not exist, however.
 
+- On Posix systems the user configuration is now looked under ``$XDG_CONFIG_HOME/nim/nim.cfg``
+  (if ``XDG_CONFIG_HOME`` is not defined, then under ``~/.config/nim/nim.cfg``). It used to be
+  ``$XDG_CONFIG_DIR/nim.cfg`` (and ``~/.config/nim.cfg``).
+
+  Similarly, on Windows, the user configuration is now looked under ``%APPDATA%/nim/nim.cfg``.
+  This used to be ``%APPDATA%/nim.cfg``.
+
 ### Bugfixes

@@ -220,7 +220,7 @@ proc readConfigFile(
     return true
 
 proc getUserConfigPath(filename: string): string =
-  result = joinPath(getConfigDir(), filename)
+  result = joinPath([getConfigDir(), "nim", filename])
 
 proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
   # try standard configuration file (installation did not distribute files
