@@ -249,7 +249,7 @@ when isMainModule:
       check(stringNone.get("Correct") == "Correct")
 
     test "$":
-      check($(some("Correct")) == "Some(Correct)")
+      check($(some("Correct")) == "Some(\"Correct\")")
       check($(stringNone) == "None[string]")
 
     test "map with a void result":
