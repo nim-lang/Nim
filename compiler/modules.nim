@@ -14,8 +14,28 @@ import
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos
 
+from strutils import rsplit
+
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
+
+proc getPackageAux(graph: ModuleGraph, pkg: string, info: TLineInfo): PSym =
+  let pkgIdent = getIdent(graph.cache, pkg)
+  result = graph.packageSyms.strTableGet(pkgIdent)
+  if result==nil:
+    result = newSym(skPackage, pkgIdent, nil, info)
+    initStrTable(result.tab)
+    graph.packageSyms.strTableAdd(result)
+    let pkgs = rsplit(pkg, {'.'}, maxsplit=1)
+    if pkgs.len > 1:
+      let parent = getPackageAux(graph, pkgs[0], info)
+      result.owner = parent
+
+proc getPackage(graph: ModuleGraph, filename: string, info: TLineInfo): PSym =
+  let
+    pck = getPackageName(graph.config, filename)
+    pck2 = if pck.len > 0: pck else: "unknown" #CHECKME
+  result = getPackageAux(graph, pck2, info)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -24,21 +44,13 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   result.id = -1             # for better error checking
   result.kind = skModule
   let filename = toFullPath(graph.config, fileIdx)
+  # TODO: should modules kept track of their fully qualified name (fqname)?
   result.name = getIdent(graph.cache, splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  let
-    pck = getPackageName(graph.config, filename)
-    pck2 = if pck.len > 0: pck else: "unknown"
-    pack = getIdent(graph.cache, pck2)
-  var packSym = graph.packageSyms.strTableGet(pack)
-  if packSym == nil:
-    packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
-    initStrTable(packSym.tab)
-    graph.packageSyms.strTableAdd(packSym)
-
+  let packSym = getPackage(graph, filename, result.info)
   result.owner = packSym
   result.position = int fileIdx
 
@@ -52,8 +64,10 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   strTableAdd(result.tab, result) # a module knows itself
   let existing = strTableGet(packSym.tab, result.name)
   if existing != nil and existing.info.fileIndex != result.info.fileIndex:
+    # this should never happen except in adverserial case with
+    # `mypkg/foo/bar/baz.nim` clashing with `mypkg/foo.bar/baz.nim`
     localError(graph.config, result.info,
-      "module names need to be unique per Nimble package; module clashes with " &
+      "fully qualified module names need to be unique per Nimble package; module clashes with " &
         toFullPath(graph.config, existing.info.fileIndex))
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)

@@ -16,19 +16,19 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
 
 template mathop(op) {.dirty.} =
-  registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.pure.math." & astToStr(op), `op Wrapper`)
 
 template osop(op) {.dirty.} =
-  registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.pure.os." & astToStr(op), `op Wrapper`)
 
 template ospathsop(op) {.dirty.} =
-  registerCallback(c, "stdlib.ospaths." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.pure.ospaths." & astToStr(op), `op Wrapper`)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
 template macrosop(op) {.dirty.} =
-  registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
+  registerCallback(c, "stdlib.core.macros." & astToStr(op), `op Wrapper`)
 
 template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
@@ -116,6 +116,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(writeFile, systemop)
     wrap1s(readFile, systemop)
     systemop getCurrentExceptionMsg
+    #TODO: should that be: stdlib.pure.*.staticWalkDir ?
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     systemop gorgeEx
