@@ -71,14 +71,19 @@ proc rawImportSymbol(c: PContext, s: PSym) =
 proc maybeImportForType(c: PContext, s: PSym, t: PType) =
   ## Imports a symbol only if it has a strict relation with a type:
   ##
-  ##  - Proc refers to the type on any of its input or output values.
+  ##  - callable signature refers to the type
   ##
-  ## TODO: generics are not matched currently.
-  ##
+  var m: TCandidate
+  initCandidate(c, m, t)
+
   case s.kind
   of skProcKinds:
     for tt in s.typ.sons.items:
-      if t == tt:
+      #FIXME no idea why we get nulls here
+      if tt == nil:
+        continue
+
+      if typeRel(m, tt, t) >= isSubtype:
         rawImportSymbol(c, s)
         break
   else:
