@@ -70,22 +70,22 @@ proc parseCmd(c: string): seq[string] =
   result = @[]
   var i = 0
   var a = ""
-  while true:
+  while i < c.len:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
     case c[i]
     of '"': raise newException(ValueError, "double quotes not yet supported: " & c)
     of '\'':
       var delim = c[i]
       inc(i) # skip ' or "
-      while c[i] != '\0' and c[i] != delim:
+      while i < c.len and c[i] != delim:
         add a, c[i]
         inc(i)
-      if c[i] != '\0': inc(i)
-    of '\0': break
+      if i < c.len: inc(i)
     else:
-      while c[i] > ' ':
+      while i < c.len and c[i] > ' ':
         add(a, c[i])
         inc(i)
     add(result, a)

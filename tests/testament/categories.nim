@@ -109,10 +109,14 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
-    var libpath = getEnv"LD_LIBRARY_PATH".string
+    const libpathenv = when defined(haiku):
+                         "LIBRARY_PATH"
+                       else:
+                         "LD_LIBRARY_PATH"
+    var libpath = getEnv(libpathenv).string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
-    defer: putEnv("LD_LIBRARY_PATH", libpath)
+    putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
+    defer: putEnv(libpathenv, libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
@@ -256,6 +260,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- nim in action -----------
 
 proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  let options = options & " --nilseqs:on"
+
   template test(filename: untyped, action: untyped) =
     testSpec r, makeTest(filename, options, cat, action)
 
@@ -484,7 +490,9 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
-    when defined(linux) or defined(windows):
+    if not defined(linux) and isTravis:
+      discard
+    else:
       jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
@@ -523,5 +531,9 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
   else:
+    var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       testSpec r, makeTest(name, options, cat)
+      inc testsRun
+    if testsRun == 0:
+      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"

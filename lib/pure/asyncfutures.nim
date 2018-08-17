@@ -219,10 +219,10 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  if entry.procname == "processPendingCallbacks":
+  if entry.procname == cstring"processPendingCallbacks":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
-  elif entry.procname == "poll":
+  elif entry.procname == cstring"poll":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 

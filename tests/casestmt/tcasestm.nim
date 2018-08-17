@@ -41,16 +41,16 @@ let str2 = "NN"
 let a = case str1:
   of "Y": true
   of "N": false
-  else: 
+  else:
     echo "no good"
     quit("quiting")
 
-proc toBool(s: string): bool = 
+proc toBool(s: string): bool =
   case s:
-    of nil, "": raise newException(ValueError, "Invalid boolean")
-    elif s[0] == 'Y': true
-    elif s[0] == 'N': false
-    else: "error".quit(2)
+  of "": raise newException(ValueError, "Invalid boolean")
+  elif s[0] == 'Y': true
+  elif s[0] == 'N': false
+  else: "error".quit(2)
 
 
 let b = "NN".toBool()
@@ -66,7 +66,7 @@ static:
 var bb: bool
 doassert(not compiles(
   bb = case str2:
-    of nil, "": raise newException(ValueError, "Invalid boolean")
+    of "": raise newException(ValueError, "Invalid boolean")
     elif str.startsWith("Y"): true
     elif str.startsWith("N"): false
 ))
@@ -94,7 +94,7 @@ doassert(not compiles(
   bb = case str2:
     of "Y":
       raise newException(ValueError, "Invalid Y")
-      true    
+      true
     else: raise newException(ValueError, "Invalid")
 ))
 
@@ -103,6 +103,6 @@ doassert(not compiles(
   bb = case str2:
     of "Y":
       "invalid Y".quit(3)
-      true    
+      true
     else: raise newException(ValueError, "Invalid")
 ))

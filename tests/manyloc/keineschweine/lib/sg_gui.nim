@@ -92,8 +92,8 @@ proc newGuiContainer*(pos: TVector2f): PGuiContainer =
   result = newGuiContainer()
   result.setPosition pos
 proc free*(container: PGuiContainer) =
-  container.widgets = nil
-  container.buttons = nil
+  container.widgets = @[]
+  container.buttons = @[]
 proc add*(container: PGuiContainer; widget: PGuiObject) =
   container.widgets.add(widget)
 proc add*(container: PGuiContainer; button: PButton) =

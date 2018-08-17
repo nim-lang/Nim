@@ -64,6 +64,9 @@
   It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
 - ``net.sendTo`` no longer returns an int and now raises an ``OSError``.
+- `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
+  to avoid confusions with `await` from the `async` macro.
+
 
 #### Breaking changes in the compiler
 
@@ -93,7 +96,7 @@
 - Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
 - Added the proc ``math.prod`` for product of elements in openArray.
 - Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
-- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``.
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
 - Added ``macros.copyLineInfo`` to copy lineInfo from other node.
@@ -138,7 +141,13 @@
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
-  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+  the [manual](manual.html#macros-for-loop-macros) for more details.
+  This feature enables a Python-like generic ``enumerate`` implementation.
+
+- Case statements can now be rewritten via macros. See the [manual](manual.html#macros-case-statement-macros) for more information.
+  This feature enables custom pattern matchers.
+
+
 - the `typedesc` special type has been renamed to just `type`.
 - `static` and `type` are now also modifiers similar to `ref` and `ptr`.
   They denote the special types `static[T]` and `type[T]`.
@@ -159,7 +168,7 @@
   More details in language manual.
 
 - ``nil`` for strings/seqs is finally gone. Instead the default value for
-  these is ``"" / @[]``.
+  these is ``"" / @[]``. Use ``--nilseqs:on`` for a transition period.
 
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for
@@ -171,9 +180,20 @@
 - Thread-local variables can now be declared inside procs. This implies all
   the effects of the ``global`` pragma.
 
-- Nim now supports ``except`` clause in the export statement.
+- Nim now supports the ``except`` clause in the export statement.
 
 - Range float types, example ``range[0.0 .. Inf]``. More details in language manual.
+- The ``{.this.}`` pragma has been deprecated. It never worked within generics and
+  we found the resulting code harder to read than the more explicit ``obj.field``
+  syntax.
+- "Memory regions" for pointer types have been deprecated, they were hardly used
+  anywhere. Note that this has **nothing** to do with the ``--gc:regions`` switch
+  of managing memory.
+
+- The exception hierarchy was slightly reworked, ``SystemError`` was renamed to
+  ``CatchableError`` and is the new base class for any exception that is guaranteed to
+  be catchable. This change should have minimal impact on most existing Nim code.
+
 
 ### Tool changes
 
@@ -182,7 +202,7 @@
 
 ### Compiler changes
 
-- The VM's instruction count limit was raised to 1 billion instructions in
+- The VM's instruction count limit was raised to 3 million instructions in
   order to support more complex computations at compile-time.
 
 - Support for hot code reloading has been implemented for the JavaScript
@@ -208,6 +228,16 @@
 - macros.bindSym now capable to accepts not only literal string or string constant expression.
   bindSym enhancement make it also can accepts computed string or ident node inside macros /
   compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
-  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch
+  This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch.
+
+- On Posix systems the global system wide configuration is now put under ``/etc/nim/nim.cfg``,
+  it used to be ``/etc/nim.cfg``. Usually it does not exist, however.
+
+- On Posix systems the user configuration is now looked under ``$XDG_CONFIG_HOME/nim/nim.cfg``
+  (if ``XDG_CONFIG_HOME`` is not defined, then under ``~/.config/nim/nim.cfg``). It used to be
+  ``$XDG_CONFIG_DIR/nim.cfg`` (and ``~/.config/nim.cfg``).
+
+  Similarly, on Windows, the user configuration is now looked under ``%APPDATA%/nim/nim.cfg``.
+  This used to be ``%APPDATA%/nim.cfg``.
 
 ### Bugfixes

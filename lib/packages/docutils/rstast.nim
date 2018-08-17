@@ -293,9 +293,9 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
       (key: "kind", val: %($node.kind)),
       (key: "level", val: %BiggestInt(node.level))
      ]
-  if node.text != nil:
+  if node.text.len > 0:
     result.add("text", %node.text)
-  if node.sons != nil and len(node.sons) > 0:
+  if len(node.sons) > 0:
     var accm = newSeq[JsonNode](len(node.sons))
     for i, son in node.sons:
       accm[i] = renderRstToJsonNode(son)

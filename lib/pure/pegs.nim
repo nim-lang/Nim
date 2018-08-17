@@ -765,7 +765,7 @@ template fillMatches(s, caps, c) =
     if startIdx != -1:
       caps[k] = substr(s, startIdx, endIdx)
     else:
-      caps[k] = nil
+      caps[k] = ""
 
 proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
                start = 0): int {.nosideEffect, rtl, extern: "npegs$1Capture".} =
@@ -1854,7 +1854,7 @@ when isMainModule:
   assert match("prefix/start", peg"^start$", 7)
 
   if "foo" =~ peg"{'a'}?.*":
-    assert matches[0] == nil
+    assert matches[0].len == 0
   else: assert false
 
   if "foo" =~ peg"{''}.*":

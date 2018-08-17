@@ -1,5 +1,5 @@
 discard """
-  output: '''@[nil, nil, nil, nil, nil, nil, nil, "meh"]'''
+  output: '''@["", "", "", "", "", "", "", "meh"]'''
   exitcode: "0"
 """
 

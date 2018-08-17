@@ -892,7 +892,7 @@ else:
           weekday {.importc: "tm_wday".},
           yearday {.importc: "tm_yday".},
           isdst {.importc: "tm_isdst".}: cint
-        when defined(linux) and defined(amd64):
+        when defined(linux) and defined(amd64) or defined(haiku):
           gmtoff {.importc: "tm_gmtoff".}: clong
           zone {.importc: "tm_zone".}: cstring
   type

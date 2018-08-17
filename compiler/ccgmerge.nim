@@ -58,7 +58,7 @@ proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
 
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(nil)
+    result = rope("")
     add(result, "\n/*\t")
     add(result, CProcSectionNames[ps])
     add(result, ":*/\n")

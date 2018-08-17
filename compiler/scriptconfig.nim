@@ -45,7 +45,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
-        errorMsg = nil
+        errorMsg = ""
         try:
           body
         except OSError:
@@ -159,8 +159,11 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
+  var registeredPasses {.global.} = false
+  if not registeredPasses:
+    registerPass(graph, semPass)
+    registerPass(graph, evalPass)
+    registeredPasses = true
 
   conf.searchPaths.add(conf.libpath)
 

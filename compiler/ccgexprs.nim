@@ -65,9 +65,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     of tyString:
       # with the new semantics for 'nil' strings, we can map "" to nil and
       # save tons of allocations:
-      #if n.strVal.len == 0: result = genNilStringLiteral(p.module, n.info)
-      #else:
-      result = genStringLiteral(p.module, n)
+      if n.strVal.len == 0 and optNilSeqs notin p.options:
+        result = genNilStringLiteral(p.module, n.info)
+      else:
+        result = genStringLiteral(p.module, n)
     else:
       if n.strVal.isNil: result = rope("NIM_NIL")
       else: result = makeCString(n.strVal)
@@ -981,7 +982,7 @@ proc genEcho(p: BProc, n: PNode) =
   # is threadsafe.
   internalAssert p.config, n.kind == nkBracket
   if p.config.target.targetOS == osGenode:
-    # bypass libc and print directly to the Genode LOG session
+    # echo directly to the Genode LOG session
     var args: Rope = nil
     var a: TLoc
     for it in n.sons:
@@ -989,8 +990,9 @@ proc genEcho(p: BProc, n: PNode) =
         add(args, ", \"\"")
       else:
         initLocExpr(p, it, a)
-        add(args, ropecg(p.module, ", #nimToCStringConv($1)", [rdLoc(a)]))
+        add(args, ropecg(p.module, ", Genode::Cstring($1->data, $1->len)", [rdLoc(a)]))
     p.module.includeHeader("<base/log.h>")
+    p.module.includeHeader("<util/string.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
     if n.len == 0:

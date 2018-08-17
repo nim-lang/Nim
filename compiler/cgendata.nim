@@ -147,7 +147,6 @@ type
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
-    postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable

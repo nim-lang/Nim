@@ -615,7 +615,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
-    const ENOENT = cint(2) # 2 on most systems including Solaris
+    when not defined(haiku):
+      const ENOENT = cint(2) # 2 on most systems including Solaris
+    else:
+      const ENOENT = cint(-2147459069)
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
@@ -969,6 +972,14 @@ proc rawCreateDir(dir: string): bool =
     if res == 0'i32:
       result = true
     elif errno in {EEXIST, ENOSYS}:
+      result = false
+    else:
+      raiseOSError(osLastError(), dir)
+  elif defined(haiku):
+    let res = mkdir(dir, 0o777)
+    if res == 0'i32:
+      result = true
+    elif errno == EEXIST or errno == EROFS:
       result = false
     else:
       raiseOSError(osLastError(), dir)
@@ -1352,9 +1363,15 @@ elif defined(nintendoswitch):
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
+elif defined(genode):
+  proc paramStr*(i: int): TaintedString =
+    raise newException(OSError, "paramStr is not implemented on Genode")
+
+  proc paramCount*(): int =
+    raise newException(OSError, "paramCount is not implemented on Genode")
+
 elif not defined(createNimRtl) and
-  not(defined(posix) and appType == "lib") and
-  not defined(genode):
+  not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint

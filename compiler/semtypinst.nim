@@ -40,8 +40,8 @@ proc searchInstTypes*(key: PType): PType =
   if not (genericTyp.kind == tyGenericBody and
       key.sons[0] == genericTyp and genericTyp.sym != nil): return
 
-  if genericTyp.sym.typeInstCache == nil:
-    return
+  when not defined(nimNoNilSeqs):
+    if genericTyp.sym.typeInstCache == nil: return
 
   for inst in genericTyp.sym.typeInstCache:
     if inst.id == key.id: return inst

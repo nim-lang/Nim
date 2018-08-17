@@ -525,14 +525,14 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## Returns the config directory of the current user for applications.
   ##
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the XDG_CONFIG_DIR environment
+  ## spec. Thus, this proc returns the value of the XDG_CONFIG_HOME environment
   ## variable if it is set, and returns the default configuration directory,
   ## "~/.config/", otherwise.
   ##
   ## An OS-dependent trailing slash is always present at the end of the
   ## returned string; `\\` on Windows and `/` on all other OSs.
   when defined(windows): return string(getEnv("APPDATA")) & "\\"
-  elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
+  elif getEnv("XDG_CONFIG_HOME"): return string(getEnv("XDG_CONFIG_HOME")) & "/"
   else: return string(getEnv("HOME")) & "/.config/"
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
@@ -570,6 +570,8 @@ proc expandTilde*(path: string): string {.
     # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
+# TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
+# belong in `strutils` instead; they are not specific to paths
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
@@ -620,6 +622,18 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       return quoteShellWindows(s)
     else:
       return quoteShellPosix(s)
+
+  proc quoteShellCommand*(args: openArray[string]): string =
+    ## Concatenates and quotes shell arguments `args`
+    runnableExamples:
+      when defined(posix):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
+      when defined(windows):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
+    # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    for i in 0..<args.len:
+      if i > 0: result.add " "
+      result.add quoteShell(args[i])
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
