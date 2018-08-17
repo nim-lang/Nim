@@ -92,7 +92,7 @@ proc patchFile*(package, filename, replacement: string) =
   ##
   ## .. code-block:: nim
   ##
-  ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
+  ##   patchFile("stdlib.pure", "asyncdispatch", "patches/replacement")
   discard
 
 proc getCommand*(): string =
