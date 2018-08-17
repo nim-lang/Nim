@@ -40,6 +40,10 @@
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
+
+- The ``times.Timezone`` is now an immutable ref-type that must be initialized
+  with an explicit constructor (``newTimezone``).
+
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
