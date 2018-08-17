@@ -339,6 +339,25 @@ proc strip*(s: string, leading = true, trailing = true,
     while last >= 0 and s[last] in chars: dec(last)
   result = substr(s, first, last)
 
+proc countWhile*(str: string, pred : proc(a:char):bool, prefix = true): int =
+  ## returns the number of elements in ``str`` that satisfy ``pred`` predicate
+  ## without interruption, starting from beginning (when ``prefix`` is true)
+  ## or end (when ``prefix`` is false)
+  runnableExamples:
+    import sugar
+    doAssert countWhile("//abc", a=>a == '/') == 2
+    doAssert countWhile("abc//", a=>a == '/', prefix = false) == 2
+    doAssert countWhile("abcDEF", isLowerAscii) == 3
+
+  let lenS = len(str)
+  if prefix:
+    for i in 0..<lenS:
+      if not pred(str[i]): return i
+  else:
+    for i in 0..<lenS:
+      if not pred(str[lenS - i - 1]): return i
+  return lenS
+
 proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation.
   ##

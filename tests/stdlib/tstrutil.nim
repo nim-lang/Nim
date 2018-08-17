@@ -8,6 +8,7 @@ import
   strutils
 
 import macros
+import sugar
 
 template rejectParse(e) =
   try:
@@ -17,6 +18,14 @@ template rejectParse(e) =
 
 proc testStrip() =
   write(stdout, strip("  ha  "))
+
+proc testCountWhile() =
+  doAssert countWhile("abc", a=>a == '/') == 0
+  doAssert countWhile("//", a=>a == '/') == 2
+  doAssert countWhile("", a=>a == '/') == 0
+  doAssert countWhile("abc", a=>a == '/', prefix = false) == 0
+  doAssert countWhile("//", a=>a == '/', prefix = false) == 2
+  doAssert countWhile("", a=>a == '/', prefix = false) == 0
 
 proc testRemoveSuffix =
   var s = "hello\n\r"
@@ -142,6 +151,7 @@ proc testRemovePrefix =
 
 proc main() =
   testStrip()
+  testCountWhile()
   testRemoveSuffix()
   testRemovePrefix()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
@@ -301,7 +311,7 @@ assert "".toHex == ""
 assert "\x00\xFF\x80".toHex == "00FF80"
 assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
-assert(' '.repeat(8)== "        ")
+assert(' '.repeat(8) == "        ")
 assert(" ".repeat(8) == "        ")
 assert(spaces(8) == "        ")
 
