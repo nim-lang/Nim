@@ -12,6 +12,8 @@
 import
   strtabs, platform, strutils, idents
 
+from options import Feature
+
 const
   catNone = "false"
 
@@ -76,3 +78,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAshr")
   defineSymbol("nimNoNilSeqs")
   defineSymbol("nimNoNilSeqs2")
+
+  defineSymbol("nimHasNilSeqs")
+  for f in low(Feature)..high(Feature):
+    defineSymbol("nimHas" & $f)
