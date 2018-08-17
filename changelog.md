@@ -37,6 +37,11 @@
   strings anymore for its ``unit`` parameter. Instead the space is controlled
   by a new parameter ``useUnitSpace``.
 
+- The ``times.parse`` and ``times.format`` procs have been rewritten.
+  The proc signatures are the same so it should generally not break anything.
+  However, the new implementation is a bit stricter, which is a breaking change.
+  For example ``parse("2017-01-01 foo", "yyyy-MM-dd")`` will now raise an error.
+
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
