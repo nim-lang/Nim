@@ -2540,10 +2540,10 @@ proc `$`*[T, U](x: HSlice[T, U]): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: nim
-  ##  $(1..5) == "1..5"
+  ##  $(1 .. 5) == "1 .. 5"
   result = $x.a
-  result.add("..")
-  resutl.add($x.b)
+  result.add(" .. ")
+  result.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
