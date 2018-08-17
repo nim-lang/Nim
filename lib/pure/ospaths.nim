@@ -525,14 +525,14 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## Returns the config directory of the current user for applications.
   ##
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the XDG_CONFIG_DIR environment
+  ## spec. Thus, this proc returns the value of the XDG_CONFIG_HOME environment
   ## variable if it is set, and returns the default configuration directory,
   ## "~/.config/", otherwise.
   ##
   ## An OS-dependent trailing slash is always present at the end of the
   ## returned string; `\\` on Windows and `/` on all other OSs.
   when defined(windows): return string(getEnv("APPDATA")) & "\\"
-  elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
+  elif getEnv("XDG_CONFIG_HOME"): return string(getEnv("XDG_CONFIG_HOME")) & "/"
   else: return string(getEnv("HOME")) & "/.config/"
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
