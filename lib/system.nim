@@ -2530,10 +2530,7 @@ proc `$`*[T](x: seq[T]): string =
   ##
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
-  if x.isNil:
-    "nil"
-  else:
-    collectionToString(x, "@[", ", ", "]")
+  collectionToString(x, "@[", ", ", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
