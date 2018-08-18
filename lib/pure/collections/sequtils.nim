@@ -645,11 +645,11 @@ template map2*(s, lambda: untyped): untyped =
     doAssert [1,2].map2(a=>a*10) == @[10,20]
     let foo=3
     doAssert [1,2].map2(a=>a*foo) == @[3,6]
-
+  makeLambda(lambda, lambda2)
   type outType = type((
     block:
       var it: type(items(s))
-      lambdaEval(lambda, it)
+      lambda2(it)
       ))
 
   when compiles(s.len):
@@ -659,13 +659,13 @@ template map2*(s, lambda: untyped): untyped =
       var i = 0
       var result = newSeq[outType](s2.len)
       for it in s2:
-        result[i] = lambdaEval(lambda, it)
+        result[i] = lambda2(it)
         i += 1
       result
   else:
     var result: seq[outType] = @[]
     for it in s:
-      result.add lambdaEval(lambda, it)
+      result.add lambda2(it)
     result
 
 template mapIt*(s, typ, op: untyped): untyped =

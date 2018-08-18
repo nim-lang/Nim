@@ -16,7 +16,22 @@ macro lambdaEval*(lambda: untyped, arg:typed):untyped=
   ret.add lambda[2]
   result = newBlockStmt(ret)
 
+macro makeLambda*(lambdaFun: untyped, lambdaAlias:untyped): untyped =
+  ## convenience macro allowing one to use ``lambda(arg)`` instead of
+  ## ``lambdaEval(fun, arg)``
+  runnableExamples:
+    template testCallFun[T](fun: untyped, a:T): auto =
+      makeLambda(fun, lambda)
+      lambda(lambda(a))
+    doAssert testCallFun(x => x * 3, 2) == (2 * 3) * 3
+
+  expectKind(lambdaAlias, nnkIdent)
+  result = quote do:
+    template `lambdaAlias`(arg:untyped): untyped = lambdaEval(`lambdaFun`, arg)
+
 when isMainModule:
+  # PENDING https://github.com/nim-lang/Nim/issues/7280
   block lambdaEvalTest:
-    # PENDING https://github.com/nim-lang/Nim/issues/7280
     discard lambdaEval(a => a, 0)
+  block makeLambdaTest:
+    makeLambda(a => a, _)
