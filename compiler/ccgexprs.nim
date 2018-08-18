@@ -1176,7 +1176,7 @@ proc genNew(p: BProc, e: PNode) =
     rawGenNew(p, a, nil)
   gcUsage(p.config, e)
 
-proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
+proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
   let seqtype = skipTypes(dest.t, abstractVarRange)
   let args = [getTypeDesc(p.module, seqtype),
               genTypeInfo(p.module, seqtype, dest.lode.info), length]
@@ -1187,17 +1187,23 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     else:
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", dest.rdLoc)
-    call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
-    linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
+    if not lenIsZero:
+      call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
+      linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
   else:
-    call.r = ropecg(p.module, "($1) #newSeq($2, $3)", args)
+    if lenIsZero:
+      call.r = rope"NIM_NIL"
+    else:
+      call.r = ropecg(p.module, "($1) #newSeq($2, $3)", args)
     genAssignment(p, dest, call, {})
 
 proc genNewSeq(p: BProc, e: PNode) =
   var a, b: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  genNewSeqAux(p, a, b.rdLoc)
+  let lenIsZero = optNilSeqs notin p.options and
+    e[2].kind == nkIntLit and e[2].intVal == 0
+  genNewSeqAux(p, a, b.rdLoc, lenIsZero)
   gcUsage(p.config, e)
 
 proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
@@ -1297,7 +1303,8 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   elif d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  genNewSeqAux(p, dest[], intLiteral(sonsLen(n)))
+  genNewSeqAux(p, dest[], intLiteral(sonsLen(n)),
+    optNilSeqs notin p.options and n.len == 0)
   for i in countup(0, sonsLen(n) - 1):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", rdLoc(dest[]), intLiteral(i), dataField(p))
@@ -1320,7 +1327,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
   let L = int(lengthOrd(p.config, n.sons[1].typ))
-  genNewSeqAux(p, d, intLiteral(L))
+  genNewSeqAux(p, d, intLiteral(L), optNilSeqs notin p.options and L == 0)
   initLocExpr(p, n.sons[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
