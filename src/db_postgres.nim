@@ -103,10 +103,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   else:
     for c in items(string(formatstr)):
       if c == '?':
-        if args[a] == nil:
-          add(result, "NULL")
-        else:
-          add(result, dbQuote(args[a]))
+        add(result, dbQuote(args[a]))
         inc(a)
       else:
         add(result, c)
@@ -179,7 +176,7 @@ proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
     setLen(r[col], 0)
     let x = pqgetvalue(res, line, col)
     if x.isNil:
-      r[col] = nil
+      r[col] = ""
     else:
       add(r[col], x)
 
