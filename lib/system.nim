@@ -497,141 +497,103 @@ type
     raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
-  SystemError* = object of Exception ## \
-    ## Abstract class for exceptions that the runtime system raises.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  IOError* = object of SystemError ## \
+  Defect* = object of Exception ## \
+    ## Abstract base class for all exceptions that Nim's runtime raises
+    ## but that are strictly uncatchable as they can also be mapped to
+    ## a ``quit`` / ``trap`` / ``exit`` operation.
+
+  CatchableError* = object of Exception ## \
+    ## Abstract class for all exceptions that are catchable.
+  IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   EOFError* = object of IOError ## \
     ## Raised if an IO "end of file" error occurred.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  OSError* = object of SystemError ## \
+  OSError* = object of CatchableError ## \
     ## Raised if an operating system service failed.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
     errorCode*: int32 ## OS-defined error code describing this error.
   LibraryError* = object of OSError ## \
     ## Raised if a dynamic library could not be loaded.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ResourceExhaustedError* = object of SystemError ## \
+  ResourceExhaustedError* = object of CatchableError ## \
     ## Raised if a resource request could not be fulfilled.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ArithmeticError* = object of Exception ## \
+  ArithmeticError* = object of Defect ## \
     ## Raised if any kind of arithmetic error occurred.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   DivByZeroError* = object of ArithmeticError ## \
     ## Raised for runtime integer divide-by-zero errors.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
 
   OverflowError* = object of ArithmeticError ## \
     ## Raised for runtime integer overflows.
     ##
     ## This happens for calculations whose results are too large to fit in the
-    ## provided bits.  See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  AccessViolationError* = object of Exception ## \
+    ## provided bits.
+  AccessViolationError* = object of Defect ## \
     ## Raised for invalid memory access errors
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  AssertionError* = object of Exception ## \
+  AssertionError* = object of Defect ## \
     ## Raised when assertion is proved wrong.
     ##
-    ## Usually the result of using the `assert() template <#assert>`_.  See the
-    ## full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ValueError* = object of Exception ## \
+    ## Usually the result of using the `assert() template <#assert>`_.
+  ValueError* = object of Defect ## \
     ## Raised for string and object conversion errors.
   KeyError* = object of ValueError ## \
     ## Raised if a key cannot be found in a table.
     ##
     ## Mostly used by the `tables <tables.html>`_ module, it can also be raised
     ## by other collection modules like `sets <sets.html>`_ or `strtabs
-    ## <strtabs.html>`_. See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  OutOfMemError* = object of SystemError ## \
+    ## <strtabs.html>`_.
+  OutOfMemError* = object of Defect ## \
     ## Raised for unsuccessful attempts to allocate memory.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  IndexError* = object of Exception ## \
+  IndexError* = object of Defect ## \
     ## Raised if an array index is out of bounds.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
 
-  FieldError* = object of Exception ## \
+  FieldError* = object of Defect ## \
     ## Raised if a record field is not accessible because its dicriminant's
     ## value does not fit.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  RangeError* = object of Exception ## \
+  RangeError* = object of Defect ## \
     ## Raised if a range check error occurred.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  StackOverflowError* = object of SystemError ## \
+  StackOverflowError* = object of Defect ## \
     ## Raised if the hardware stack used for subroutine calls overflowed.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ReraiseError* = object of Exception ## \
+  ReraiseError* = object of Defect ## \
     ## Raised if there is no exception to reraise.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ObjectAssignmentError* = object of Exception ## \
+  ObjectAssignmentError* = object of Defect ## \
     ## Raised if an object gets assigned to its parent's object.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  ObjectConversionError* = object of Exception ## \
+  ObjectConversionError* = object of Defect ## \
     ## Raised if an object is converted to an incompatible object type.
     ## You can use ``of`` operator to check if conversion will succeed.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  FloatingPointError* = object of Exception ## \
+  FloatingPointError* = object of Defect ## \
     ## Base class for floating point exceptions.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatInvalidOpError* = object of FloatingPointError ## \
     ## Raised by invalid operations according to IEEE.
     ##
-    ## Raised by ``0.0/0.0``, for example.  See the full `exception
-    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+    ## Raised by ``0.0/0.0``, for example.
   FloatDivByZeroError* = object of FloatingPointError ## \
     ## Raised by division by zero.
     ##
-    ## Divisor is zero and dividend is a finite nonzero number.  See the full
-    ## `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+    ## Divisor is zero and dividend is a finite nonzero number.
   FloatOverflowError* = object of FloatingPointError ## \
     ## Raised for overflows.
     ##
     ## The operation produced a result that exceeds the range of the exponent.
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatUnderflowError* = object of FloatingPointError ## \
     ## Raised for underflows.
     ##
     ## The operation produced a result that is too small to be represented as a
-    ## normal number. See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+    ## normal number.
   FloatInexactError* = object of FloatingPointError ## \
     ## Raised for inexact results.
     ##
     ## The operation produced a result that cannot be represented with infinite
     ## precision -- for example: ``2.0 / 3.0, log(1.1)``
     ##
-    ## **NOTE**: Nim currently does not detect these!  See the full
-    ## `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  DeadThreadError* = object of Exception ## \
+    ## **NOTE**: Nim currently does not detect these!
+  DeadThreadError* = object of Defect ## \
     ## Raised if it is attempted to send a message to a dead thread.
-    ##
-    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-  NilAccessError* = object of SystemError ## \
+  NilAccessError* = object of Defect ## \
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
 
 when defined(nimNewRuntime):
   type
-    MoveError* = object of SystemError ## \
+    MoveError* = object of Defect ## \
       ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
 
 when defined(js) or defined(nimdoc):
@@ -984,6 +946,23 @@ else:
   proc `shl`*(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
   proc `shl`*(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
   proc `shl`*(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
+
+when defined(nimAshr):
+  proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+  proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
+    ## Shifts right by pushing copies of the leftmost bit in from the left,
+    ## and let the rightmost bits fall off.
+    ##
+    ## .. code-block:: Nim
+    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+    ##   0b1000_0000'i8 shr 8 == 0b1111_1111'i8
+    ##   0b1000_0000'i8 shr 1 == 0b1100_0000'i8
+else:
+  # used for bootstrapping the compiler
+  proc ashr*[T](x: T, y: SomeInteger): T = discard
 
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and`*(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
@@ -1362,7 +1341,7 @@ const
   hostOS* {.magic: "HostOS".}: string = ""
     ## a string that describes the host operating system. Possible values:
     ## "windows", "macosx", "linux", "netbsd", "freebsd", "openbsd", "solaris",
-    ## "aix", "standalone".
+    ## "aix", "haiku", "standalone".
 
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
@@ -1987,7 +1966,7 @@ when sizeof(int) <= 2:
 else:
   type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
 
-iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
+iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` (inclusive) with the given
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
@@ -2010,7 +1989,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       dec(res, step)
 
 when defined(nimNewRoof):
-  iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+  iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given
     ## step count. `S`, `T` may be any ordinal type, `step` may only
     ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
@@ -2027,7 +2006,7 @@ when defined(nimNewRoof):
         inc(res, step)
 
   iterator `..`*[T](a, b: T): T {.inline.} =
-    ## An alias for `countup`.
+    ## An alias for `countup(a, b, 1)`.
     when T is IntLikeForCount:
       var res = int(a)
       while res <= int(b):
@@ -2313,9 +2292,9 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     inc(i)
 
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", deprecated.}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", deprecated.}
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
@@ -2374,8 +2353,12 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
   when nimvm:
-    if x.isNil and y.isNil:
-      return true
+    when not defined(nimNoNil):
+      if x.isNil and y.isNil:
+        return true
+    else:
+      if x.len == 0 and y.len == 0:
+        return true
   else:
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
@@ -2512,7 +2495,7 @@ proc `$`*[T: tuple|object](x: T): string =
     result.add(name)
     result.add(": ")
     when compiles($value):
-      when compiles(value.isNil):
+      when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
@@ -2531,7 +2514,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when compiles(value.isNil):
+    when value isnot string and value isnot seq and compiles(value.isNil):
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"
@@ -2556,10 +2539,7 @@ proc `$`*[T](x: seq[T]): string =
   ##
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
-  if x.isNil:
-    "nil"
-  else:
-    collectionToString(x, "@[", ", ", "]")
+  collectionToString(x, "@[", ", ", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -4001,19 +3981,28 @@ when hasAlloc:
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
-    if x == nil: x = @[y]
-    else: x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = @[y]
+      else: x.add(y)
 
   proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
-    if x == nil: x = ""
-    x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = ""
+      x.add(y)
 
   proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
-    if x == nil: x = y
-    else: x.add(y)
+    when defined(nimNoNilSeqs):
+      x.add(y)
+    else:
+      if x == nil: x = y
+      else: x.add(y)
 
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
@@ -4074,6 +4063,11 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   if pointer(x) == pointer(y): result = true
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
+
+when defined(nimNoNilSeqs2):
+  when not compileOption("nilseqs"):
+    proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
+    proc `==`*(x: type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -4189,8 +4183,13 @@ when defined(cpp) and appType != "lib" and
 
     let ex = getCurrentException()
     let trace = ex.getStackTrace()
-    stderr.write trace & "Error: unhandled exception: " & ex.msg &
-                 " [" & $ex.name & "]\n"
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo trace & "Error: unhandled exception: " & ex.msg &
+                   " [" & $ex.name & "]\n"
+    else:
+      stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                   " [" & $ex.name & "]\n"
     quit 1
 
 when not defined(js):

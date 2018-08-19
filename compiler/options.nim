@@ -38,7 +38,8 @@ type                          # please make sure we have under 32 options
     optPatterns,              # en/disable pattern matching
     optMemTracker,
     optHotCodeReloading,
-    optLaxStrings
+    optLaxStrings,
+    optNilSeqs
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -110,14 +111,16 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg
 
-  Feature* = enum  ## experimental features
+  Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
     dotOperators,
     callOperator,
     parallel,
     destructor,
     notnil,
-    dynamicBindSym
+    dynamicBindSym,
+    forLoopMacros,
+    caseStmtMacros
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -354,6 +357,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
+    of "osx": result = conf.target.targetOS == osMacosx
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
@@ -479,9 +483,20 @@ proc disableNimblePath*(conf: ConfigRef) =
 
 include packagehandling
 
+proc getOsCacheDir(): string =
+  when defined(posix):
+    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
+  else:
+    result = getHomeDir() / genSubDir
+
 proc getNimcacheDir*(conf: ConfigRef): string =
-  result = if conf.nimcacheDir.len > 0: conf.nimcacheDir
-           else: shortenDir(conf, conf.projectPath) / genSubDir
+  # XXX projectName should always be without a file extension!
+  result = if conf.nimcacheDir.len > 0:
+             conf.nimcacheDir
+           elif conf.cmd == cmdCompileToJS:
+             shortenDir(conf, conf.projectPath) / genSubDir
+           else: getOsCacheDir() / splitFile(conf.projectName).name &
+             (if isDefined(conf, "release"): "_r" else: "_d")
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -588,18 +603,22 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var candidates: seq[string] = @[]
-  for k, f in os.walkDir(pkg, relative=true):
-    if k == pcFile and f != "config.nims":
-      let (_, name, ext) = splitFile(f)
-      if ext in extensions:
-        let x = changeFileExt(pkg / name, ".nim")
-        if fileExists(x):
-          candidates.add x
-  for c in candidates:
-    # nim-foo foo  or  foo  nfoo
-    if (pkg in c) or (c in pkg): return c
-  if candidates.len >= 1:
-    return candidates[0]
+  var dir = pkg
+  while true:
+    for k, f in os.walkDir(dir, relative=true):
+      if k == pcFile and f != "config.nims":
+        let (_, name, ext) = splitFile(f)
+        if ext in extensions:
+          let x = changeFileExt(dir / name, ".nim")
+          if fileExists(x):
+            candidates.add x
+    for c in candidates:
+      # nim-foo foo  or  foo  nfoo
+      if (pkg in c) or (c in pkg): return c
+    if candidates.len >= 1:
+      return candidates[0]
+    dir = parentDir(dir)
+    if dir == "": break
   return ""
 
 proc canonDynlibName(s: string): string =

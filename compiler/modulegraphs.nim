@@ -65,10 +65,8 @@ type
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
-{.this: g.}
-
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
-  result = doStopCompile != nil and doStopCompile()
+  result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
@@ -98,44 +96,44 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheTables = initTable[string, BTree[string, PNode]]()
 
 proc resetAllModules*(g: ModuleGraph) =
-  initStrTable(packageSyms)
-  deps = initIntSet()
-  modules = @[]
-  importStack = @[]
-  inclToMod = initTable[FileIndex, FileIndex]()
-  usageSym = nil
-  owners = @[]
-  methods = @[]
-  initStrTable(compilerprocs)
-  initStrTable(exposed)
+  initStrTable(g.packageSyms)
+  g.deps = initIntSet()
+  g.modules = @[]
+  g.importStack = @[]
+  g.inclToMod = initTable[FileIndex, FileIndex]()
+  g.usageSym = nil
+  g.owners = @[]
+  g.methods = @[]
+  initStrTable(g.compilerprocs)
+  initStrTable(g.exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len:
-    result = modules[fileIdx.int32]
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len:
+    result = g.modules[fileIdx.int32]
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   assert m.position == m.info.fileIndex.int32
   addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
-  if suggestMode:
-    deps.incl m.position.dependsOn(dep.int)
+  if g.suggestMode:
+    g.deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when quering the graph lazily.
     # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
   addModuleDep(g.incr, g.config, module, includeFile, isIncludeFile = true)
-  discard hasKeyOrPut(inclToMod, includeFile, module)
+  discard hasKeyOrPut(g.inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   ## returns 'fileIdx' if the file belonging to this index is
   ## directly used as a module or else the module that first
   ## references this include file.
-  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len and modules[fileIdx.int32] != nil:
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len and g.modules[fileIdx.int32] != nil:
     result = fileIdx
   else:
-    result = inclToMod.getOrDefault(fileIdx)
+    result = g.inclToMod.getOrDefault(fileIdx)
 
 proc transitiveClosure(g: var IntSet; n: int) =
   # warshall's algorithm
@@ -147,22 +145,22 @@ proc transitiveClosure(g: var IntSet; n: int) =
             g.incl i.dependsOn(j)
 
 proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
-  let m = getModule fileIdx
+  let m = g.getModule fileIdx
   if m != nil: incl m.flags, sfDirty
 
 proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # we need to mark its dependent modules D as dirty right away because after
   # nimsuggest is done with this module, the module's dirty flag will be
   # cleared but D still needs to be remembered as 'dirty'.
-  if invalidTransitiveClosure:
-    invalidTransitiveClosure = false
-    transitiveClosure(deps, modules.len)
+  if g.invalidTransitiveClosure:
+    g.invalidTransitiveClosure = false
+    transitiveClosure(g.deps, g.modules.len)
 
   # every module that *depends* on this file is also dirty:
-  for i in 0i32..<modules.len.int32:
-    let m = modules[i]
-    if m != nil and deps.contains(i.dependsOn(fileIdx.int)):
+  for i in 0i32..<g.modules.len.int32:
+    let m = g.modules[i]
+    if m != nil and g.deps.contains(i.dependsOn(fileIdx.int)):
       incl m.flags, sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
-  result = suggestMode and sfDirty in m.flags
+  result = g.suggestMode and sfDirty in m.flags

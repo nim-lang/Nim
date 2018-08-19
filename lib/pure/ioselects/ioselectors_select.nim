@@ -310,7 +310,10 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   var rset, wset, eset: FdSet
 
   if timeout != -1:
-    tv.tv_sec = timeout.int32 div 1_000
+    when defined(genode):
+      tv.tv_sec = Time(timeout div 1_000)
+    else:
+      tv.tv_sec = timeout.int32 div 1_000
     tv.tv_usec = (timeout.int32 %% 1_000) * 1_000
   else:
     ptv = nil
@@ -391,7 +394,6 @@ proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
         return true
-      inc(i)
 
 when hasThreadSupport:
   template withSelectLock[T](s: Selector[T], body: untyped) =

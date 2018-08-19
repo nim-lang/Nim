@@ -1144,7 +1144,7 @@ proc processType(typeName: NimNode, obj: NimNode,
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
+          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
         )
     of "biggestint":
       result = quote do:

@@ -6,9 +6,9 @@ discard """
 # bug #2355
 type
   Foo = object
-    foo: string not nil
-    bar: string not nil
-
+    foo: ref int
+    bar: ref int not nil
+var x: ref int = new(int)
 # Create instance without initializaing the `bar` field
-var f = Foo(foo: "foo")
+var f = Foo(foo: x)
 echo f.bar.isNil # true

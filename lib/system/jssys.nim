@@ -108,7 +108,7 @@ proc getStackTrace*(e: ref Exception): string = e.trace
 proc unhandledException(e: ref Exception) {.
     compilerproc, asmNoStackFrame.} =
   var buf = ""
-  if e.msg != nil and e.msg[0] != '\0':
+  if e.msg.len != 0:
     add(buf, "Error: unhandled exception: ")
     add(buf, e.msg)
   else:

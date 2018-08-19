@@ -391,10 +391,10 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 
   if conf.structuredErrorHook != nil:
     conf.structuredErrorHook(conf, unknownLineInfo(),
-      s & (if kind != nil: KindFormat % kind else: ""), sev)
+      s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
-    if kind != nil:
+    if kind.len > 0:
       styledMsgWriteln(color, title, resetStyle, s,
                        KindColor, `%`(KindFormat, kind))
     else:
@@ -483,9 +483,9 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
 
   if not ignoreMsg:
     if conf.structuredErrorHook != nil:
-      conf.structuredErrorHook(conf, info, s & (if kind != nil: KindFormat % kind else: ""), sev)
+      conf.structuredErrorHook(conf, info, s & (if kind.len > 0: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if kind != nil:
+      if kind.len > 0:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
                          KindColor, `%`(KindFormat, kind))
       else:

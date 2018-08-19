@@ -279,6 +279,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns": result = contains(conf.options, optPatterns)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
+  of "nilseqs": result = contains(conf.options, optNilSeqs)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -497,6 +498,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       localError(conf, info, errOnOrOffExpectedButXFound % arg)
   of "laxstrings": processOnOffSwitch(conf, {optLaxStrings}, arg, pass, info)
+  of "nilseqs": processOnOffSwitch(conf, {optNilSeqs}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(conf, ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch(conf, {optNaNCheck, optInfCheck}, arg, pass, info)

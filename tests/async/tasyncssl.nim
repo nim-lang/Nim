@@ -15,11 +15,11 @@ when defined(ssl):
   var clientCount = 0
 
   proc sendMessages(client: AsyncSocket) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await send(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
+    for i in 0 ..< swarmSize:
       var sock = newAsyncSocket()
       var clientContext = newContext(verifyMode = CVerifyNone)
       clientContext.wrapSocket(sock)

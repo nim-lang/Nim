@@ -396,7 +396,7 @@ else:
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32".}
-  proc moveFileExA*(lpExistingFileName, lpNewFileName: WideCString,
+  proc moveFileExA*(lpExistingFileName, lpNewFileName: cstring,
                     flags: DWORD): WINBOOL {.
     importc: "MoveFileExA", stdcall, dynlib: "kernel32".}
 

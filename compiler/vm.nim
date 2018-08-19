@@ -752,6 +752,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
+    of opcAshrInt:
+      decodeBC(rkInt)
+      regs[ra].intVal = ashr(regs[rb].intVal, regs[rc].intVal)
     of opcBitandInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal and regs[rc].intVal
@@ -1422,24 +1425,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound & "callsite")
-    of opcNGetFile:
-      decodeB(rkNode)
+    of opcNGetLineInfo:
+      decodeBImm(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, toFullPath(c.config, n.info))
+      case imm
+      of 0: # getFile
+        regs[ra].node = newStrNode(nkStrLit, toFullPath(c.config, n.info))
+      of 1: # getLine
+        regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
+      of 2: # getColumn
+        regs[ra].node = newIntNode(nkIntLit, n.info.col)
+      else:
+        internalAssert c.config, false
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
-    of opcNGetLine:
+    of opcNSetLineInfo:
       decodeB(rkNode)
-      let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
-      regs[ra].node.info = n.info
-      regs[ra].node.typ = n.typ
-    of opcNGetColumn:
-      decodeB(rkNode)
-      let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.col)
-      regs[ra].node.info = n.info
-      regs[ra].node.typ = n.typ
+      regs[ra].node.info = regs[rb].node.info
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below

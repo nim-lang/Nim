@@ -369,6 +369,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
@@ -377,6 +379,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -539,11 +543,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].typ.callConv == ccClosure:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
-    if not c.tooEarly:
-      n.sons[length-2] = transform(c, n.sons[length-2]).PNode
-      result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
-    else:
-      result[1] = newNode(nkEmpty).PTransNode
+    n.sons[length-2] = transform(c, n.sons[length-2]).PNode
+    result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
     discard c.breakSyms.pop
     return result
 

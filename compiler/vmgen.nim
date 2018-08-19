@@ -939,6 +939,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp2)
 
   of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
+  of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
   of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
   of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
@@ -1181,14 +1182,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
   of mNLineInfo:
     case n[0].sym.name.s
-    of "getFile":
-      genUnaryABC(c, n, dest, opcNGetFile)
-    of "getLine":
-      genUnaryABC(c, n, dest, opcNGetLine)
-    of "getColumn":
-      genUnaryABC(c, n, dest, opcNGetColumn)
-    else:
-      internalAssert c.config, false
+    of "getFile": genUnaryABI(c, n, dest, opcNGetLineInfo, 0)
+    of "getLine": genUnaryABI(c, n, dest, opcNGetLineInfo, 1)
+    of "getColumn": genUnaryABI(c, n, dest, opcNGetLineInfo, 2)
+    of "copyLineInfo":
+      internalAssert c.config, n.len == 3
+      unused(c, n, dest)
+      genBinaryStmt(c, n, opcNSetLineInfo)
+    else: internalAssert c.config, false
   of mNHint:
     unused(c, n, dest)
     genUnaryStmt(c, n, opcNHint)

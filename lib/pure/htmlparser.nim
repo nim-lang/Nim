@@ -1869,7 +1869,6 @@ proc entityToUtf8*(entity: string): string =
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
   runnableExamples:
-    doAssert entityToUtf8(nil) == ""
     doAssert entityToUtf8("") == ""
     doAssert entityToUtf8("a") == ""
     doAssert entityToUtf8("gt") == ">"

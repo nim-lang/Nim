@@ -16,12 +16,12 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
+  semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
 
 from modulegraphs import ModuleGraph
 
 when defined(nimfix):
-  import nimfix.prettybase
+  import nimfix/prettybase
 
 # implementation
 
@@ -119,7 +119,7 @@ proc commonType*(x, y: PType): PType =
   elif b.kind == tyStmt: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.sons == nil: result = a
+    if a.len == 0: result = a
     else:
       result = newType(tyTypeDesc, a.owner)
       rawAddSon(result, newType(tyNone, a.owner))
@@ -621,7 +621,8 @@ proc testExamples(c: PContext) =
   if os.execShellCmd(os.getAppFilename() & " " & backend & " --nimcache:" & nimcache & " -r " & outp) != 0:
     quit "[Examples] failed: see " & outp
   else:
-    removeFile(outp)
+    # keep generated source file `outp` to allow inspection.
+    rawMessage(c.config, hintSuccess, ["runnableExamples: " & outp])
     removeFile(outp.changeFileExt(ExeExt))
     try:
       removeDir(nimcache)

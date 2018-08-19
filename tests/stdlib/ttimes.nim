@@ -11,20 +11,17 @@ import
 proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
   let offset = hours * 3600 + minutes * 60 + seconds
 
-  proc zoneInfoFromTz(adjTime: Time): ZonedTime {.locks: 0.} =
+  proc zonedTimeFromAdjTime(adjTime: Time): ZonedTime {.locks: 0.} =
     result.isDst = false
     result.utcOffset = offset
-    result.adjTime = adjTime
+    result.time = adjTime + initDuration(seconds = offset)
 
-  proc zoneInfoFromUtc(time: Time): ZonedTime {.locks: 0.}=
+  proc zonedTimeFromTime(time: Time): ZonedTime {.locks: 0.}=
     result.isDst = false
     result.utcOffset = offset
-    result.adjTime = fromUnix(time.toUnix - offset)
+    result.time = time
 
-  result.name = ""
-  result.zoneInfoFromTz = zoneInfoFromTz
-  result.zoneInfoFromUtc = zoneInfoFromUtc
-
+  newTimezone("", zonedTimeFromTime, zonedTImeFromAdjTime)
 
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
@@ -322,22 +319,7 @@ suite "ttimes":
     parseTestExcp("-1 BC", "UUUU g")
 
   test "dynamic timezone":
-    proc staticOffset(offset: int): Timezone =
-      proc zoneInfoFromTz(adjTime: Time): ZonedTime =
-          result.isDst = false
-          result.utcOffset = offset
-          result.adjTime = adjTime
-
-      proc zoneInfoFromUtc(time: Time): ZonedTime =
-          result.isDst = false
-          result.utcOffset = offset
-          result.adjTime = fromUnix(time.toUnix - offset)
-
-      result.name = ""
-      result.zoneInfoFromTz = zoneInfoFromTz
-      result.zoneInfoFromUtc = zoneInfoFromUtc
-
-    let tz = staticOffset(-9000)
+    let tz = staticTz(seconds = -9000)
     let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
     check dt.utcOffset == -9000
     check dt.isDst == false

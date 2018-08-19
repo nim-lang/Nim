@@ -435,7 +435,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert p.config, pat != nil
+  internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
     var pl = genPatternCall(p, ri, pat, typ)
     # simpler version of 'fixupCall' that works with the pl+params combination:
@@ -484,7 +484,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert p.config, pat != nil
+  internalAssert p.config, pat.len > 0
   var start = 3
   if ' ' in pat:
     start = 1

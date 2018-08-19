@@ -591,7 +591,7 @@ type
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mShrI, mShlI, mAshrI, mBitandI, mBitorI, mBitxorI,
     mMinI, mMaxI,
     mMinF64, mMaxF64,
     mAddU, mSubU, mMulU, mDivU, mModU,
@@ -972,8 +972,8 @@ const
     tyFloat..tyFloat128, tyUInt..tyUInt64}
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
-    tyProc, tyString, tyError}
+  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+    tyProc, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
@@ -1151,7 +1151,10 @@ proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
-  father.sons = nil
+  when defined(nimNoNilSeqs):
+    father.sons = @[]
+  else:
+    father.sons = nil
 
 proc withInfo*(n: PNode, info: TLineInfo): PNode =
   n.info = info
@@ -1368,7 +1371,7 @@ proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
   result.loc = s.loc
   result.annex = s.annex
   # XXX once usedGenerics is used, ensure module aliases keep working!
-  assert s.usedGenerics == nil
+  assert s.usedGenerics.len == 0
 
 proc initStrTable*(x: var TStrTable) =
   x.counter = 0
@@ -1593,7 +1596,10 @@ proc getStr*(a: PNode): string =
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkNilLit:
     # let's hope this fixes more problems than it creates:
-    result = nil
+    when defined(nimNoNilSeqs):
+      result = ""
+    else:
+      result = nil
   else:
     doAssert false, "getStr"
     #internalError(a.info, "getStr")
@@ -1674,6 +1680,14 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
+
+proc toVar*(typ: PType): PType =
+  ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind != tyVar:
+    result = newType(tyVar, typ.owner)
+    rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and

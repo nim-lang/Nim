@@ -248,9 +248,10 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   hints.ai_socktype = toInt(sockType)
   hints.ai_protocol = toInt(protocol)
   # OpenBSD doesn't support AI_V4MAPPED and doesn't define the macro AI_V4MAPPED.
-  # FreeBSD doesn't support AI_V4MAPPED but defines the macro.
+  # FreeBSD, Haiku don't support AI_V4MAPPED but defines the macro.
   # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
-  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android):
+  # https://dev.haiku-os.org/ticket/14323
+  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android) and not defined(haiku):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
