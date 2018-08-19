@@ -58,7 +58,7 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
 
 proc `==`*(t1, t2: typedesc): bool =
-  ## Returns wheter ``t1``, ``t2`` are the same type; this is different
+  ## Returns whether ``t1`` and ``t2`` are the same type; this is different
   ## from ``t1 is t2`` since the latter supports concepts & inheritance.
   runnableExamples:
     type T = int
