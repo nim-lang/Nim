@@ -571,8 +571,8 @@ With parenthesis and semicolons ``(;)`` you can use statements where only
 an expression is allowed:
 
 .. code-block:: nim
-  # computes fac(4) at compile time:
     :test: "nim c $1"
+  # computes fac(4) at compile time:
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
 
