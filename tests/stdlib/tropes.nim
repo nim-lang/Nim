@@ -1,13 +1,15 @@
 discard """
   file: "tropes.nim"
-  output: ```0
+  output: '''0
 3
 
 123
 3
 6
 123
-123456```
+123456
+2
+3'''
 """
 import ropes
 
@@ -30,3 +32,5 @@ echo r2.len
 echo r1
 echo r2
 
+echo r1[1]
+echo r2[2]

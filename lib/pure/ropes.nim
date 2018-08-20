@@ -199,15 +199,15 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   var j = i
   if x == nil: return
   while true:
-    if x != nil:
-      if x.data.len <% j: return x.data[j]
+    if x != nil and x.data.len > 0:
+      if j < x.data.len: return x.data[j]
       return '\0'
     else:
-      if x.left.length >% j:
+      if x.left.length > j:
         x = x.left
       else:
         x = x.right
-        dec(j, x.length)
+        dec(j, x.len)
 
 iterator leaves*(r: Rope): string =
   ## iterates over any leaf string in the rope `r`.
@@ -216,7 +216,7 @@ iterator leaves*(r: Rope): string =
     while stack.len > 0:
       var it = stack.pop
       while it.left != nil:
-        assert it.right != nil
+        assert(it.right != nil)
         stack.add(it.right)
         it = it.left
         assert(it != nil)
