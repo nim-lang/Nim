@@ -399,12 +399,11 @@ proc updateDefaultParams(call: PNode) =
   # the default params with `nfDefaultParam` and `instantiateProcType`
   # computes correctly the default values for each instantiation.
   let calleeParams = call[0].sym.typ.n
-  for i in countdown(call.len - 1, 1):
-    if nfDefaultParam notin call[i].flags:
-      return
-    let def = calleeParams[i].sym.ast
-    if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
-    call[i] = def
+  for i in 1..<call.len:
+    if nfDefaultParam in call[i].flags:
+      let def = calleeParams[i].sym.ast
+      if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      call[i] = def
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =
