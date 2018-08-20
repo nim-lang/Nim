@@ -6,7 +6,7 @@
 - ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
   parameters this became unnecessary.
 - Anonymous tuples with a single element can now be written as ``(1,)`` with a
-  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  trailing comma. The underlying AST is ``nnkTupleConstr(newLit 1)`` for this
   example. ``nnkTupleConstr`` is a new node kind your macros need to be able
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
