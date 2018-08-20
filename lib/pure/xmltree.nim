@@ -377,7 +377,6 @@ proc findAll*(n: XmlNode, tag: string, result: var seq[XmlNode]) =
   ##   findAll(html, "img", tags)
   ##   for imgTag in tags:
   ##     process(imgTag)
-  assert isNil(result) == false
   assert n.k == xnElement
   for child in n.items():
     if child.k != xnElement:

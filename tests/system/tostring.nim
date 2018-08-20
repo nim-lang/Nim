@@ -24,7 +24,7 @@ doAssert "nan" == $(0.0/0.0)
 # nil tests
 # maybe a bit inconsistent in types
 var x: seq[string]
-doAssert "nil" == $(x)
+doAssert "@[]" == $(x)
 
 var y: string
 doAssert "" == $(y)
