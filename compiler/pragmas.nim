@@ -868,11 +868,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if sym != nil and sym.kind in routineKinds:
+        if sym != nil and sym.kind in routineKinds + {skType}:
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfDeprecated)
+        elif sym != nil and sym.kind != skModule:
+          # We don't support the extra annotation field
+          if it.kind in nkPragmaCallKinds:
+            localError(c.config, it.info, "annotation to deprecated not supported here")
+          incl(sym.flags, sfDeprecated)
+        # At this point we're quite sure this is a statement and applies to the
+        # whole module
         elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
-        elif sym != nil: incl(sym.flags, sfDeprecated)
         else: incl(c.module.flags, sfDeprecated)
       of wVarargs:
         noVal(c, it)

@@ -454,14 +454,23 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
+  var pragmaNode: PNode
+
   if s.kind in routineKinds:
-    let n = s.ast[pragmasPos]
-    if n.kind != nkEmpty:
-      for it in n:
-        if whichPragma(it) == wDeprecated and it.safeLen == 2 and
-            it[1].kind in {nkStrLit..nkTripleStrLit}:
-          message(conf, info, warnDeprecated, it[1].strVal & "; " & s.name.s)
-          return
+    pragmaNode = s.ast[pragmasPos]
+  elif s.kind in {skType}:
+    # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+    pragmaNode = s.ast[0][1]
+
+  doAssert pragmaNode == nil or pragmaNode.kind == nkPragma
+
+  if pragmaNode != nil:
+    for it in pragmaNode:
+      if whichPragma(it) == wDeprecated and it.safeLen == 2 and
+        it[1].kind in {nkStrLit..nkTripleStrLit}:
+        message(conf, info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+        return
+
   message(conf, info, warnDeprecated, s.name.s)
 
 proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
