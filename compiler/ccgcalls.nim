@@ -136,7 +136,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
       of tyString, tySequence:
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
-        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenExpr(p, t), dataField(p)]
+        result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:

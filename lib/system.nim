@@ -4112,6 +4112,7 @@ template once*(body: untyped): untyped =
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 proc substr*(s: string, first, last: int): string =
+  let first = max(first, 0)
   let L = max(min(last, high(s)) - first + 1, 0)
   result = newString(L)
   for i in 0 .. L-1:
