@@ -357,7 +357,7 @@ proc cmpRune(e: CaseEntry, c: Rune): int =
     return -1
   return 0
 
-include "lib/pure/includes/ucdtables"
+include "includes/ucdtables"
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
