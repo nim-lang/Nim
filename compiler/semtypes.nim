@@ -1342,7 +1342,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
-      if modifier == tyTypeDesc: dummyType.flags.incl tfExplicit
+      if modifier == tyTypeDesc: dummyType.flags.incl tfConceptMatchedTypeSym
     else:
       dummyName = param
       dummyType = candidateTypeSlot
