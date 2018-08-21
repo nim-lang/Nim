@@ -504,8 +504,8 @@ template anyIt*(s, pred: untyped): bool =
       break
   result
 
-template toSeq*(iter: untyped): untyped =
-  ## Transforms any iterator into a sequence.
+template toSeq*(s: not iterator): untyped =
+  ## Transforms any iterable into a sequence.
   ##
   ## Example:
   ##
@@ -517,21 +517,42 @@ template toSeq*(iter: untyped): untyped =
   ##         result = true)
   ##   assert odd_numbers == @[1, 3, 5, 7, 9]
 
-  # Note: see also `mapIt` for explanation of some of the implementation
-  # subtleties.
-  when compiles(iter.len):
+  type outType = type(items(s))
+  when compiles(s.len):
     block:
-      evalOnceAs(iter2, iter, true)
-      var result = newSeq[type(iter)](iter2.len)
+      evalOnceAs(s2, s, compiles((let _ = s)))
       var i = 0
-      for x in iter2:
-        result[i] = x
-        inc i
+      var result = newSeq[outType](s2.len)
+      for it in s2:
+        result[i] = it
+        i += 1
       result
   else:
-    var result: seq[type(iter)] = @[]
-    for x in iter:
-      result.add(x)
+    var result: seq[outType] = @[]
+    for it in s:
+      result.add(it)
+    result
+
+template toSeq*(iter: iterator): untyped =
+  evalOnceAs(iter2, iter(), false)
+  when compiles(iter2.len):
+    var i = 0
+    var result = newSeq[type(iter2)](iter2.len)
+    for x in iter2:
+      result[i] = x
+      inc i
+    result
+  else:
+    type outType = type(iter2())
+    var result: seq[outType] = @[]
+    when compiles(iter2()):
+      evalOnceAs(iter4, iter, false)
+      let iter3=iter4()
+      for x in iter3():
+        result.add(x)
+    else:
+      for x in iter2():
+        result.add(x)
     result
 
 template foldl*(sequence, operation: untyped): untyped =
@@ -1027,12 +1048,66 @@ when isMainModule:
     assert anyIt(anumbers, it > 9) == false
 
   block: # toSeq test
-    let
-      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-        if x mod 2 == 1:
-          result = true)
-    assert odd_numbers == @[1, 3, 5, 7, 9]
+    block:
+      let
+        numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+        odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+          if x mod 2 == 1:
+            result = true)
+      assert odd_numbers == @[1, 3, 5, 7, 9]
+
+    block:
+      doAssert [1,2].toSeq == @[1,2]
+      doAssert @[1,2].toSeq == @[1,2]
+
+      doAssert @[1,2].toSeq == @[1,2]
+      doAssert toSeq(@[1,2]) == @[1,2]
+
+    block:
+      iterator myIter():auto{.inline.}=
+        yield 1
+        yield 2
+
+      doAssert myIter.toSeq == @[1,2]
+      doAssert toSeq(myIter) == @[1,2]
+
+    block:
+      iterator myIter():int {.closure.} =
+        yield 1
+        yield 2
+
+      doAssert myIter.toSeq == @[1,2]
+      doAssert toSeq(myIter) == @[1,2]
+
+    block:
+      proc myIter():auto=
+        iterator ret():int{.closure.}=
+          yield 1
+          yield 2
+        result = ret
+
+      doAssert myIter().toSeq == @[1,2]
+      doAssert toSeq(myIter()) == @[1,2]
+
+    block:
+      proc myIter(n:int):auto=
+        var counter = 0
+        iterator ret():int{.closure.}=
+          while counter<n:
+            yield counter
+            counter.inc
+        result = ret
+
+      block:
+        let myIter3 = myIter(3)
+        doAssert myIter3.toSeq == @[0,1,2]
+      block:
+        let myIter3 = myIter(3)
+        doAssert toSeq(myIter3) == @[0,1,2]
+      block:
+        # makes sure this does not hang forever
+        doAssert myIter(3).toSeq == @[0,1,2]
+        doAssert toSeq(myIter(3)) == @[0,1,2]
 
   block:
     # tests https://github.com/nim-lang/Nim/issues/7187
