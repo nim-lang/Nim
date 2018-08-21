@@ -5,6 +5,10 @@ true
 false
 false
 true
+true
+false
+true
+true
 '''
 """
 
@@ -20,4 +24,6 @@ proc bar[T](x: T, t2: typedesc): bool =
 
 echo bar(int, Foo)
 echo bar(4, Foo)
-echo bar(any, Foo)
+echo bar(any, int)
+echo bar(int, any)
+echo bar(Foo, Foo)

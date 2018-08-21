@@ -1445,8 +1445,7 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
     if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
-  of GenericTypes + {tyFromExpr, tyBuiltInTypeClass, tyCompositeTypeClass} +
-    tyUserTypeClasses:
+  of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
   else:
     return false
