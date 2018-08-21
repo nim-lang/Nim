@@ -504,19 +504,8 @@ template anyIt*(s, pred: untyped): bool =
       break
   result
 
-template toSeq*(s: not iterator): untyped =
-  ## Transforms any iterable into a sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   let
-  ##     numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-  ##     odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-  ##       if x mod 2 == 1:
-  ##         result = true)
-  ##   assert odd_numbers == @[1, 3, 5, 7, 9]
-
+template toSeq1(s: not iterator): untyped =
+  # overload for typed but not iterator
   type outType = type(items(s))
   when compiles(s.len):
     block:
@@ -533,7 +522,8 @@ template toSeq*(s: not iterator): untyped =
       result.add(it)
     result
 
-template toSeq*(iter: iterator): untyped =
+template toSeq2(iter: iterator): untyped =
+  # overload for iterator
   evalOnceAs(iter2, iter(), false)
   when compiles(iter2.len):
     var i = 0
@@ -554,6 +544,36 @@ template toSeq*(iter: iterator): untyped =
       for x in iter2():
         result.add(x)
     result
+
+template toSeq*(iter: untyped): untyped =
+  ## Transforms any iterable into a sequence.
+  runnableExamples:
+    import sugar
+    let
+      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      odd_numbers = toSeq(filter(numeric, x => x mod 2 == 1))
+    doAssert odd_numbers == @[1, 3, 5, 7, 9]
+
+  when compiles(toSeq1(iter)):
+    toSeq1(iter)
+  elif compiles(toSeq2(iter)):
+    toSeq2(iter)
+  else:
+    # overload for untyped, eg: `toSeq(myInlineIterator(3))`
+    when compiles(iter.len):
+      block:
+        evalOnceAs(iter2, iter, true)
+        var result = newSeq[type(iter)](iter2.len)
+        var i = 0
+        for x in iter2:
+          result[i] = x
+          inc i
+        result
+    else:
+      var result: seq[type(iter)] = @[]
+      for x in iter:
+        result.add(x)
+      result
 
 template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
@@ -1062,6 +1082,12 @@ when isMainModule:
 
       doAssert @[1,2].toSeq == @[1,2]
       doAssert toSeq(@[1,2]) == @[1,2]
+
+    block:
+      iterator myIter(seed:int):auto=
+        for i in 0..<seed:
+          yield i
+      doAssert toSeq(myIter(2)) == @[0, 1]
 
     block:
       iterator myIter():auto{.inline.}=
