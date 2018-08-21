@@ -639,13 +639,11 @@ template foldr*(sequence, operation: untyped): untyped =
     result = operation
   result
 
-when false:
-  template map2*(s, lambda: untyped): untyped =
+# TODO: make public after merging with `map`
+template map2(s: typed, lambda: untyped): untyped =
     ## like ``mapIt`` but with cleaner syntax: ``[1,2].mapIt(a => a*10)``
-    runnableExamples:
-      doAssert [1,2].map2(a=>a*10) == @[10,20]
-      let foo=3
-      doAssert [1,2].map2(a=>a*foo) == @[3,6]
+    # runnableExamples:
+    #   doAssert [1,2].map2(a=>a*10) == @[10,20]
     makeLambda(lambda, lambda2)
     type outType = type((
       block:
@@ -1170,6 +1168,7 @@ when isMainModule:
     echo "Finished doc tests"
 
   block map2Test:
-    when false:
-      # PENDING https://github.com/nim-lang/Nim/issues/7280
-      discard [1].map2(a => a)
+    # PENDING https://github.com/nim-lang/Nim/issues/7280
+    discard [1].map2(a => a)
+    # once map2 is public, remove this (will be covered by runnableExamples)
+    doAssert [1,2].map2(a=>a*10) == @[10,20]

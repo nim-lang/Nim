@@ -70,7 +70,7 @@ block: # multiple lambdas
   doAssert testLambda((u1,u2) => u1*u2, (u1,u2) => u1+u2, 2, 3) == (2 * 3, 2 + 3)
 
 block:
-  template map2(s, lambda: untyped): untyped =
+  template map2(s: typed, lambda: untyped): untyped =
     ## like ``mapIt`` but with cleaner syntax: ``[1,2].mapIt(a => a*10)``
     makeLambda(lambda, lambda2)
     type outType = type((
