@@ -183,7 +183,6 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
-  assert(not s.isNil, "`s` can't be nil")
   if num < 2:
     result = @[s]
     return
