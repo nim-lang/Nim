@@ -69,9 +69,13 @@ proc foldSub*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
       checkInRange(g.config, n, res):
     result = newIntNodeT(res, n, g)
 
+proc foldUnarySub(a: BiggestInt, n: PNode, g: ModuleGraph): PNode =
+  if a != firstOrd(g.config, n.typ):
+    result = newIntNodeT(-a, n, g)
+
 proc foldAbs*(a: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   if a != firstOrd(g.config, n.typ):
-    result = newIntNodeT(a, n, g)
+    result = newIntNodeT(abs(a), n, g)
 
 proc foldMod*(a, b: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   if b != 0'i64:
@@ -216,7 +220,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   case m
   of mOrd: result = newIntNodeT(getOrdValue(a), n, g)
   of mChr: result = newIntNodeT(getInt(a), n, g)
-  of mUnaryMinusI, mUnaryMinusI64: result = newIntNodeT(- getInt(a), n, g)
+  of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt(a), n, g)
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
   of mNot: result = newIntNodeT(1 - getInt(a), n, g)
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
