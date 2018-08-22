@@ -29,7 +29,9 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
-  add result, reprPointer(cast[pointer](s)) & "\""
+  if len > 0:
+    add result, reprPointer(cast[pointer](s))
+  add result, "\""
   for i in 0 .. pred(len):
     let c = s[i]
     case c
@@ -162,9 +164,10 @@ when not defined(useNimRtl):
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
-      add result, "nil"
+      add result, "[]"
       return
-    result.add(reprPointer(p) & "[")
+    result.add(reprPointer(p))
+    result.add '['
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "

@@ -245,7 +245,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
   #     - the list of backedges (backPreds) or
   #     - the list of non-backedges (nonBackPreds)
   #
-  for w in 0 .. <size:
+  for w in 0 ..< size:
     header[w] = 0
     types[w]  = BB_NONHEADER
 
