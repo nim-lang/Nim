@@ -423,18 +423,14 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
-
   t.seconds
 
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``)
   ## to a ``Time``.
-  let hnsecsSinceEpoch = (win - epochDiff)
-  var seconds = hnsecsSinceEpoch div rateDiff
-  var nanos = ((hnsecsSinceEpoch mod rateDiff) * 100).int
-  if nanos < 0:
-    nanos += convert(Seconds, Nanoseconds, 1)
-    seconds -= 1
+  const hnsecsPerSec = convert(Seconds, Nanoseconds, 1) div 100
+  let nanos = floorMod(win, hnsecsPerSec) * 100
+  let seconds = floorDiv(win - epochDiff, hnsecsPerSec)
   result = initTime(seconds, nanos)
 
 proc toWinTime*(t: Time): int64 =
