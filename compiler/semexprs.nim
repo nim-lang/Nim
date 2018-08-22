@@ -409,8 +409,10 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     if lhsType.base.kind == tyNone:
       # this is a typedesc variable, leave for evals
+      debug lhsType
+      doAssert false
       return
-    if lhsType.base.containsGenericType:
+    if c.inGenericContext > 0 and lhsType.base.containsGenericType:
       # BUGFIX: don't evaluate this too early: ``T is void``
       return
 
