@@ -242,7 +242,8 @@ template getstr(a: untyped): untyped =
   (if a.kind == rkNode: a.node.strVal else: $chr(int(a.intVal)))
 
 proc pushSafePoint(f: PStackFrame; pc: int) =
-  if f.safePoints.isNil: f.safePoints = @[]
+  when not defined(nimNoNilSeqs):
+    if f.safePoints.isNil: f.safePoints = @[]
   f.safePoints.add(pc)
 
 proc popSafePoint(f: PStackFrame) =
@@ -255,7 +256,7 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
   let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
   var f = tos
   while true:
-    while f.safePoints.isNil or f.safePoints.len == 0:
+    while f.safePoints.len == 0:
       f = f.next
       if f.isNil: return (-1, nil)
     var pc2 = f.safePoints[f.safePoints.high]
@@ -297,7 +298,6 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
     discard f.safePoints.pop
 
 proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
-  if f.safePoints.isNil: return -1
   for s in f.safePoints:
     var pc = s
     while c.code[pc].opcode == opcExcept:
@@ -531,9 +531,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
       let s = regs[rb].node.strVal
-      if s.isNil:
-        stackTrace(c, tos, pc, errNilAccess)
-      elif idx <% s.len:
+      if idx <% s.len:
         regs[ra].intVal = s[idx].ord
       elif idx == s.len and optLaxStrings in c.config.options:
         regs[ra].intVal = 0
@@ -1220,7 +1218,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # Note that `nfIsRef` + `nkNilLit` represents an allocated
         # reference with the value `nil`, so `isNil` should be false!
         (node.kind == nkNilLit and nfIsRef notin node.flags) or
-        (node.kind in {nkStrLit..nkTripleStrLit} and node.strVal.isNil) or
         (not node.typ.isNil and node.typ.kind == tyProc and
           node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
           node.sons[1].kind == nkNilLit))
@@ -1396,9 +1393,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
-                              if error.isNil and msg <= errMax:
+                              if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
-      if not error.isNil:
+      if error.len > 0:
         c.errorFlag = error
       elif sonsLen(ast) != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
@@ -1411,9 +1408,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
-                              if error.isNil and msg <= errMax:
+                              if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
-      if not error.isNil:
+      if error.len > 0:
         c.errorFlag = error
       else:
         regs[ra].node = ast
@@ -1726,7 +1723,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let typ = c.types[c.code[pc].regBx - wordExcess]
       createStrKeepNode(regs[ra])
-      if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
+      when not defined(nimNoNilSeqs):
+        if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
     of opcToNarrowInt:
       decodeBC(rkInt)

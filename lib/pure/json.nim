@@ -256,7 +256,6 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
-  if s.isNil: return
   result.kind = JString
   result.str = s
 

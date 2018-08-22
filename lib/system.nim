@@ -2292,9 +2292,18 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     inc(i)
 
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", deprecated.}
+when defined(nimNoNilSeqs2):
+  when not compileOption("nilseqs"):
+    {.pragma: nilError, error.}
+  else:
+    {.pragma: nilError.}
+else:
+  {.pragma: nilError.}
+
+proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", deprecated.}
+proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}

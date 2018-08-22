@@ -127,7 +127,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       storeAny(s, t.lastSon, a, stored, conf)
       s.add("]")
   of tyString, tyCString:
-    if a.kind == nkNilLit or a.strVal.isNil: s.add("null")
+    if a.kind == nkNilLit: s.add("null")
     else: s.add(escapeJson(a.strVal))
   of tyInt..tyInt64, tyUInt..tyUInt64: s.add($a.intVal)
   of tyFloat..tyFloat128: s.add($a.floatVal)

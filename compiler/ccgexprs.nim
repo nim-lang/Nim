@@ -71,8 +71,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       else:
         result = genStringLiteral(p.module, n)
     else:
-      if n.strVal.isNil: result = rope("NIM_NIL")
-      else: result = makeCString(n.strVal)
+      result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
     result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
@@ -2548,7 +2547,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, n.typ)
-    elif t.kind == tyProc and t.callConv == ccClosure and not n.sons.isNil and
+    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 0 and
          n.sons[0].kind == nkNilLit and n.sons[1].kind == nkNilLit:
       # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
       # this behaviour is needed since closure_var = nil must be

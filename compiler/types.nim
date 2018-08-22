@@ -759,9 +759,10 @@ proc initSameTypeClosure: TSameTypeClosure =
   discard
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
-  result = not isNil(c.s) and c.s.contains((a.id, b.id))
+  result = c.s.len > 0 and c.s.contains((a.id, b.id))
   if not result:
-    if isNil(c.s): c.s = @[]
+    when not defined(nimNoNilSeqs):
+      if isNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool

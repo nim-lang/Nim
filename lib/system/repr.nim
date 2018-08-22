@@ -266,7 +266,7 @@ when not defined(useNimRtl):
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString:
       let sp = cast[ptr string](p)
-      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
+      reprStrAux(result, sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"

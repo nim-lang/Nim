@@ -103,14 +103,9 @@ var
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
-  const nilString = "nil"
-
   var msgLen = 0
   for arg in args:
-    if arg.isNil:
-      msgLen += nilString.len
-    else:
-      msgLen += arg.len
+    msgLen += arg.len
   result = newStringOfCap(frmt.len + msgLen + 20)
   var i = 0
   while i < frmt.len:
@@ -137,10 +132,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       of "levelname": result.add(LevelNames[level])
       else: discard
   for arg in args:
-    if arg.isNil:
-      result.add(nilString)
-    else:
-      result.add(arg)
+    result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception], gcsafe,
@@ -338,7 +330,6 @@ template fatal*(args: varargs[string, `$`]) =
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
-  if handlers.isNil: handlers = @[]
   handlers.add(handler)
 
 proc getHandlers*(): seq[Logger] =

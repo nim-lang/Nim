@@ -213,7 +213,7 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     inc(i)
     it = it.prev
   var last = i-1
-  if s.isNil:
+  if s.len == 0:
     s = newSeq[StackTraceEntry](i)
   else:
     last = s.len + i - 1
@@ -361,10 +361,10 @@ proc raiseExceptionAux(e: ref Exception) =
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
-        if isNil(e.trace): rawWriteStackTrace(buf)
+        if e.trace.len == 0: rawWriteStackTrace(buf)
         else: add(buf, $e.trace)
         add(buf, "Error: unhandled exception: ")
-        if not isNil(e.msg): add(buf, e.msg)
+        add(buf, e.msg)
         add(buf, " [")
         add(buf, $e.name)
         add(buf, "]\n")
@@ -382,7 +382,7 @@ proc raiseExceptionAux(e: ref Exception) =
         var buf: array[0..2000, char]
         var L = 0
         add(buf, "Error: unhandled exception: ")
-        if not isNil(e.msg): add(buf, e.msg)
+        add(buf, e.msg)
         add(buf, " [")
         xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
@@ -397,7 +397,7 @@ proc raiseExceptionAux(e: ref Exception) =
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
-    if e.trace.isNil:
+    if e.trace.len == 0:
       rawWriteStackTrace(e.trace)
     elif framePtr != nil:
       e.trace.add reraisedFrom(reraisedFromBegin)
@@ -427,7 +427,7 @@ proc getStackTrace(): string =
     result = "No stack traceback available\n"
 
 proc getStackTrace(e: ref Exception): string =
-  if not isNil(e) and not isNil(e.trace):
+  if not isNil(e):
     result = $e.trace
   else:
     result = ""

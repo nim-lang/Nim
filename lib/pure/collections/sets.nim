@@ -74,7 +74,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of keys in `s`.

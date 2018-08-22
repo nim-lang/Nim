@@ -271,9 +271,7 @@ proc escapeJSString(s: string): string =
   result.add("\"")
 
 proc makeJSString(s: string, escapeNonAscii = true): Rope =
-  if s.isNil:
-    result = "null".rope
-  elif escapeNonAscii:
+  if escapeNonAscii:
     result = strutils.escape(s).rope
   else:
     result = escapeJSString(s).rope
@@ -1369,7 +1367,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     let length = int(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
-    if not jsTyp.isNil:
+    if jsTyp.len > 0:
       result = "new $1($2)" % [rope(jsTyp), rope(length)]
     elif length > 32:
       useMagic(p, "arrayConstr")
