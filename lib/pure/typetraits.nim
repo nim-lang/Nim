@@ -10,8 +10,6 @@
 ## This module defines compile-time reflection procs for
 ## working with types
 
-import macros
-
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
   ##
@@ -59,7 +57,7 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
 
-macro `==`*(t1, t2: typedesc): untyped =
+proc `==`*(t1, t2: typedesc): bool =
   ## Returns whether ``t1`` and ``t2`` are the same type; this is different
   ## from ``t1 is t2`` since the latter supports concepts & inheritance.
   runnableExamples:
@@ -67,8 +65,9 @@ macro `==`*(t1, t2: typedesc): untyped =
     doAssert T == int
     doAssert int == T
     doAssert: int != float
-  # Note: t1 is t2 and t2 is t1 ran into https://github.com/nim-lang/Nim/issues/8693
-  newLit sameType(t1.getType[1], t2.getType[1])
+  # Should be same as a macro returning:
+  # `newLit sameType(t1.getType[1], t2.getType[1])`
+  t1 is t2 and t2 is t1
 
 when isMainModule:
   doAssert $type(42) == "int"
