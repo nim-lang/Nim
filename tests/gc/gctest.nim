@@ -66,8 +66,7 @@ proc caseTree(lvl: int = 0): PCaseNode =
 proc finalizeNode(n: PNode) =
   assert(n != nil)
   write(stdout, "finalizing: ")
-  if isNil(n.data): writeLine(stdout, "nil!")
-  else: writeLine(stdout, "not nil")
+  writeLine(stdout, "not nil")
 
 var
   id: int = 1

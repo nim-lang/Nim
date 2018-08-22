@@ -654,7 +654,7 @@ proc isValid*[A](s: OrderedSet[A]): bool =
   ##   proc saveTarotCards(cards: OrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of keys in `s`.
