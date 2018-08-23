@@ -163,6 +163,14 @@ proc rand*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(a.low..a.high)]
 
+proc rand*[T](r: var Rand; a: var openArray[T]): var T =
+  ## returns a random element from the openarray `a`.
+  result = a[rand(r, a.low..a.high)]
+
+proc rand*[T](a: var openArray[T]): var T =
+  ## returns a random element from the openarray `a`.
+  result = a[rand(a.low..a.high)]
+
 
 proc initRand*(seed: int64): Rand =
   ## Creates a new ``Rand`` state from ``seed``.
