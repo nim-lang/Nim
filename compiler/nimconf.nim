@@ -219,10 +219,10 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
+proc getUserConfigPath*(filename: string): string =
   result = joinPath([getConfigDir(), "nim", filename])
 
-proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
+proc getSystemConfigPath*(conf: ConfigRef; filename: string): string =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
   let p = getPrefixDir(conf)

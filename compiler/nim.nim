@@ -85,8 +85,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       if fileExists(scriptFile):
         runNimScript(cache, scriptFile, freshDefines=false, conf)
 
-    runNimScriptIfExists(getConfigDir() / "nim" / "config.nims")
-    runNimScriptIfExists(conf.projectPath / "config.nims")
+    # TODO:
+    # merge this complex logic with `loadConfigs`
+    # check whether these should be controlled via
+    # optSkipConfigFile, optSkipUserConfigFile
+    let config_nims = "config.nims"
+    runNimScriptIfExists(getSystemConfigPath(conf, config_nims))
+    runNimScriptIfExists(getUserConfigPath(config_nims))
+    runNimScriptIfExists(conf.projectPath / config_nims)
     block:
       let scriptFile = conf.projectFull.changeFileExt("nims")
       runNimScriptIfExists(scriptFile)
