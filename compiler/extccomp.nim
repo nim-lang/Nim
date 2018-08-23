@@ -123,11 +123,21 @@ compiler llvmGcc:
 
 # Clang (LLVM) C/C++ Compiler
 compiler clang:
-  result = llvmGcc() # Uses settings from llvmGcc
+  result = llvmGcc() # Uses settings from LLVM/GCC
 
   result.name = "clang"
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
+
+# Emscripten (LLVM) C/C++ Compiler
+compiler emscripten:
+  result = clang() # Uses settings from LLVM/Clang
+
+  result.name = "emscripten"
+  result.compilerExe = "emcc"
+  result.cppCompiler = "em++"
+
+  result.props.excl(hasGnuAsm)
 
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
@@ -344,6 +354,7 @@ const
     nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
+    emscripten(),
     lcc(),
     bcc(),
     dmc(),
@@ -522,9 +533,13 @@ proc getLinkOptions(conf: ConfigRef): string =
   for libDir in items(conf.cLibs):
     result.add(join([CC[conf.cCompiler].linkDirCmd, libDir.quoteShell]))
 
-proc needsExeExt(conf: ConfigRef): bool {.inline.} =
-  result = (optGenScript in conf.globalOptions and conf.target.targetOS == osWindows) or
-           (conf.target.hostOS == osWindows)
+proc addCompilerExtIfNeeded(exe: var string; conf: ConfigRef) {.inline.} =
+  if conf.target.hostOS == osWindows or
+    (optGenScript in conf.globalOptions and conf.target.targetOS == osWindows):
+    if conf.cCompiler == ccEmscripten:
+      exe = addFileExt(exe, "bat")
+    else:
+      exe = addFileExt(exe, "exe")
 
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: string): string =
   result = if conf.cmd == cmdCompileToCpp and not cfile.endsWith(".c"):
@@ -547,7 +562,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
-  if needsExeExt(conf): exe = addFileExt(exe, "exe")
+  exe.addCompilerExtIfNeeded(conf)
   if optGenDynLib in conf.globalOptions and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     add(options, ' ' & CC[c].pic)
@@ -665,7 +680,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
     if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
-    if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
+    linkerExe.addCompilerExtIfNeeded(conf)
     if noAbsolutePaths(conf): result = linkerExe
     else: result = joinPath(conf.cCompilerpath, linkerExe)
     let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:

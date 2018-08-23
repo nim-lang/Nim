@@ -181,7 +181,7 @@ type
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
     cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430, cpuSparc64,
-    cpuMips64, cpuMips64el, cpuRiscV64
+    cpuMips64, cpuMips64el, cpuRiscV64, cpuWasm32, cpuWasm64, cpuAsmjs
 
 type
   TEndian* = enum
@@ -213,7 +213,12 @@ const
     (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
-    (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
+    (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "wasm64", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    # Based on the way Emscripten works specifically (e.g. the SSE3 headers,
+    # sizeof(int*) == 4, etc.) we will view it as i386-like.
+    (name: "asmjs", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32)]
 
 type
   Target* = object
@@ -223,20 +228,6 @@ type
     floatSize*: int
     ptrSize*: int
     tnl*: string                # target newline
-
-proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
-  assert(c != cpuNone)
-  assert(o != osNone)
-  #echo "new Target: OS: ", o, " CPU: ", c
-  t.targetCPU = c
-  t.targetOS = o
-  # assume no cross-compiling
-  t.hostCPU = c
-  t.hostOS = o
-  t.intSize = CPU[c].intSize div 8
-  t.floatSize = CPU[c].floatSize div 8
-  t.ptrSize = CPU[c].bit div 8
-  t.tnl = OS[o].newLine
 
 proc nameToOS*(name: string): TSystemOS =
   for i in countup(succ(osNone), high(TSystemOS)):
@@ -249,6 +240,20 @@ proc nameToCPU*(name: string): TSystemCPU =
     if cmpIgnoreStyle(name, CPU[i].name) == 0:
       return i
   result = cpuNone
+
+proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
+  assert(c != cpuNone)
+  assert(o != osNone)
+  #echo "new Target: OS: ", o, " CPU: ", c
+  t.targetCPU = c
+  t.targetOS = o
+  # assume no cross-compiling
+  t.hostCPU = nameToCPU(system.hostCPU)
+  t.hostOS = nameToOS(system.hostOS)
+  t.intSize = CPU[c].intSize div 8
+  t.floatSize = CPU[c].floatSize div 8
+  t.ptrSize = CPU[c].bit div 8
+  t.tnl = OS[o].newLine
 
 proc setTargetFromSystem*(t: var Target) =
   t.setTarget(nameToOS(system.hostOS), nameToCPU(system.hostCPU))

@@ -126,8 +126,8 @@ type
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
-    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccClang, ccEmscripten, ccLcc,
+    ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
@@ -344,10 +344,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "x8664": result = conf.target.targetCPU == cpuAmd64
     of "posix", "unix":
       result = conf.target.targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
-                            osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
-                            osAndroid, osNintendoSwitch}
+                                        osQnx, osAtari, osAix,
+                                        osHaiku, osVxWorks, osSolaris, osNetbsd,
+                                        osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                                        osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -367,9 +367,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
     of "cpu64": result = CPU[conf.target.targetCPU].bit == 64
+    of "wasm": result = conf.target.targetCPU in {cpuWasm32, cpuWasm64}
     of "nimrawsetjmp":
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
-                            osDragonfly, osMacosx}
+                                        osDragonfly, osMacosx}
     else: discard
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
