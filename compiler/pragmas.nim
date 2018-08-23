@@ -71,6 +71,7 @@ const
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
+  forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
 
 proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =

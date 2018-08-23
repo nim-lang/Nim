@@ -567,6 +567,8 @@ proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
   styleCheckDef(c.config, result)
+  if n.kind == nkPragmaExpr:
+    pragma(c, result, n.sons[1], forVarPragmas)
 
 proc semForVars(c: PContext, n: PNode): PNode =
   result = n
