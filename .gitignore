@@ -48,7 +48,10 @@ xcuserdata/
 /compiler/nimrod.dot
 /reject.json
 /run.json
-/testresults.html
+# for `nim doc foo.nim`
+/*.html
+#/testresults.html #covered by /*.html
+
 /testresults.json
 testament.db
 /csources
@@ -62,3 +65,4 @@ dist/
 testresults/
 test.txt
 /test.ini
+
