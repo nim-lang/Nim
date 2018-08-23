@@ -126,13 +126,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   of nkInfix:
     let n0 = n[0]
     let n1 = n[1]
-    if n0.kind == nkIdent and n0.ident.s == "as":
-      # XXX hack ahead:
-      n.kind = nkImportAs
-      n.sons[0] = n.sons[1]
-      n.sons[1] = n.sons[2]
-      n.sons.setLen(2)
-      return getModuleName(conf, n.sons[0])
     when false:
       if n1.kind == nkPrefix and n1[0].kind == nkIdent and n1[0].ident.s == "$":
         if n0.kind == nkIdent and n0.ident.s == "/":
