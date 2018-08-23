@@ -961,6 +961,17 @@ else:
     result.inc tm.second
 
   proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
+    # Windows can't handle unix < 0, so we fall back to unix = 0.
+    # FIXME: This should be improved by falling back to the WinAPI instead.
+    when defined(windows):
+      if unix < 0:
+        var a = 0.CTime
+        let tmPtr = localtime(addr(a))
+        if not tmPtr.isNil:
+          let tm = tmPtr[]
+          return ((0 - tm.toAdjUnix).int, false)
+        return (0, false)
+
     var a = unix.CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:
