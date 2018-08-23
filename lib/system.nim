@@ -3745,7 +3745,7 @@ template assert*(cond: bool, msg = "") =
   # or not to output full paths.
   bind instantiationInfo
   mixin failedAssertImpl
-  {.line: instantiationInfo().}:
+  {.line: instantiationInfo(fullPaths = true).}:
     when compileOption("assertions"):
       if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
@@ -3756,7 +3756,7 @@ template doAssert*(cond: bool, msg = "") =
   # or not to output full paths.
   bind instantiationInfo
   mixin failedAssertImpl
-  {.line: instantiationInfo().}:
+  {.line: instantiationInfo(fullPaths = true).}:
     if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
