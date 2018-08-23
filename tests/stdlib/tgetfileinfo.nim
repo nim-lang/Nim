@@ -77,8 +77,8 @@ proc testGetFileInfo =
   # Case 6 and 8
   block:
     let
-      testFile: TFile = nil
-      testHandle = TFileHandle(-1)
+      testFile: File = nil
+      testHandle = FileHandle(-1)
     try:
       discard getFileInfo(testFile)
       echo("Handle : Invalid File : Failure")

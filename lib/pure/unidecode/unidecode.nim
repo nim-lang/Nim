@@ -61,7 +61,6 @@ proc unidecode*(s: string): string =
   ##
   ## Results in: "Bei Jing"
   ##
-  assert(not isNil(translationTable))
   result = ""
   for r in runes(s):
     var c = int(r)

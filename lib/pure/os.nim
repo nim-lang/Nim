@@ -233,7 +233,7 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## modification time is later than `b`'s.
   when defined(posix):
     # If we don't have access to nanosecond resolution, use '>='
-    when not StatHasNanoseconds:  
+    when not StatHasNanoseconds:
       result = getLastModificationTime(a) >= getLastModificationTime(b)
     else:
       result = getLastModificationTime(a) > getLastModificationTime(b)
@@ -296,10 +296,30 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
+  ## if `path` is absolute, return it, ignoring `root`
+  runnableExamples:
+    doAssert absolutePath("a") == getCurrentDir() / "a"
+  if isAbsolute(path): path
+  else:
+    if not root.isAbsolute:
+      raise newException(ValueError, "The specified root is not absolute: " & root)
+    joinPath(root, path)
+
+when isMainModule:
+  doAssertRaises(ValueError): discard absolutePath("a", "b")
+  doAssert absolutePath("a") == getCurrentDir() / "a"
+  doAssert absolutePath("a", "/b") == "/b" / "a"
+  when defined(Posix):
+    doAssert absolutePath("a", "/b/") == "/b" / "a"
+    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
+    doAssert absolutePath("/a", "b/") == "/a"
+
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
-  ## Returns the full (`absolute`:idx:) path of the file `filename`,
-  ## raises OSError in case of an error.
+  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
+  ## raises OSError in case of an error. Follows symlinks.
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -337,6 +357,47 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     else:
       result = $r
       c_free(cast[pointer](r))
+
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path.
+  ##
+  ## Consecutive directory separators are collapsed, including an initial double slash.
+  ##
+  ## On relative paths, double dot (..) sequences are collapsed if possible.
+  ## On absolute paths they are always collapsed.
+  ##
+  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ## Triple dot is not handled.
+  let isAbs = isAbsolute(path)
+  var stack: seq[string] = @[]
+  for p in split(path, {DirSep}):
+    case p
+    of "", ".":
+      continue
+    of "..":
+      if stack.len == 0:
+        if isAbs:
+          discard  # collapse all double dots on absoluta paths
+        else:
+          stack.add(p)
+      elif stack[^1] == "..":
+        stack.add(p)
+      else:
+        discard stack.pop()
+    else:
+      stack.add(p)
+
+  if isAbs:
+    path = DirSep & join(stack, $DirSep)
+  elif stack.len > 0:
+    path = join(stack, $DirSep)
+  else:
+    path = "."
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+  ## Returns a normalized path for the current OS. See `<#normalizePath>`_
+  result = path
+  normalizePath(result)
 
 when defined(Windows):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
@@ -554,7 +615,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
-    const ENOENT = cint(2) # 2 on most systems including Solaris
+    when not defined(haiku):
+      const ENOENT = cint(2) # 2 on most systems including Solaris
+    else:
+      const ENOENT = cint(-2147459069)
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
@@ -819,7 +883,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
+            when defined(linux) or defined(macosx) or
+                 defined(bsd) or defined(genode) or defined(nintendoswitch):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -909,7 +974,15 @@ proc rawCreateDir(dir: string): bool =
     elif errno in {EEXIST, ENOSYS}:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
+  elif defined(haiku):
+    let res = mkdir(dir, 0o777)
+    if res == 0'i32:
+      result = true
+    elif errno == EEXIST or errno == EROFS:
+      result = false
+    else:
+      raiseOSError(osLastError(), dir)
   elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
@@ -918,7 +991,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       #echo res
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
   else:
     when useWinUnicode:
       wrapUnary(res, createDirectoryW, dir)
@@ -930,7 +1003,7 @@ proc rawCreateDir(dir: string): bool =
     elif getLastError() == 183'i32:
       result = false
     else:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dir)
 
 proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect].} =
@@ -943,7 +1016,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   if result:
     # path already exists - need to check that it is indeed a directory
     if not existsDir(dir):
-      raise newException(IOError, "Failed to create the directory")
+      raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect].} =
@@ -1270,22 +1343,40 @@ elif defined(windows):
   # is always the same -- independent of the used C compiler.
   var
     ownArgv {.threadvar.}: seq[string]
+    ownParsedArgv {.threadvar.}: bool
 
   proc paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
+    if not ownParsedArgv:
+      ownArgv = parseCmdLine($getCommandLine())
+      ownParsedArgv = true
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
+    if not ownParsedArgv:
+      ownArgv = parseCmdLine($getCommandLine())
+      ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
+elif defined(nintendoswitch):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
+
+elif defined(genode):
+  proc paramStr*(i: int): TaintedString =
+    raise newException(OSError, "paramStr is not implemented on Genode")
+
+  proc paramCount*(): int =
+    raise newException(OSError, "paramCount is not implemented on Genode")
+
 elif not defined(createNimRtl) and
-  not(defined(posix) and appType == "lib") and
-  not defined(genode):
+  not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
@@ -1439,7 +1530,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(genode):
+    elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()

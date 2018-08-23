@@ -185,7 +185,7 @@ proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
   ## The response's body stream is read synchronously.
-  if response.body.isNil():
+  if response.body.len == 0:
     response.body = response.bodyStream.readAll()
   return response.body
 
@@ -198,7 +198,7 @@ proc `body=`*(response: Response, value: string) {.deprecated.} =
 proc body*(response: AsyncResponse): Future[string] {.async.} =
   ## Reads the response's body and caches it. The read is performed only
   ## once.
-  if response.body.isNil:
+  if response.body.len == 0:
     response.body = await readAll(response.bodyStream)
   return response.body
 
@@ -378,23 +378,23 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
 
-proc add*(p: var MultipartData, name, content: string, filename: string = nil,
-          contentType: string = nil) =
+proc add*(p: var MultipartData, name, content: string, filename: string = "",
+          contentType: string = "") =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
   ## `name`, `filename` or `contentType` contain newline characters.
 
   if {'\c','\L'} in name:
     raise newException(ValueError, "name contains a newline character")
-  if filename != nil and {'\c','\L'} in filename:
+  if {'\c','\L'} in filename:
     raise newException(ValueError, "filename contains a newline character")
-  if contentType != nil and {'\c','\L'} in contentType:
+  if {'\c','\L'} in contentType:
     raise newException(ValueError, "contentType contains a newline character")
 
   var str = "Content-Disposition: form-data; name=\"" & name & "\""
-  if filename != nil:
+  if filename.len > 0:
     str.add("; filename=\"" & filename & "\"")
   str.add("\c\L")
-  if contentType != nil:
+  if contentType.len > 0:
     str.add("Content-Type: " & contentType & "\c\L")
   str.add("\c\L" & content & "\c\L")
 
@@ -434,7 +434,7 @@ proc addFiles*(p: var MultipartData, xs: openarray[tuple[name, file: string]]):
     var contentType: string
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
-      contentType = m.getMimetype(ext[1..ext.high], nil)
+      contentType = m.getMimetype(ext[1..ext.high], "")
     p.add(name, readFile(file), fName & ext, contentType)
   result = p
 
@@ -457,7 +457,7 @@ proc `[]=`*(p: var MultipartData, name: string,
   p.add(name, file.content, file.name, file.contentType)
 
 proc format(p: MultipartData): tuple[contentType, body: string] =
-  if p == nil or p.content == nil or p.content.len == 0:
+  if p == nil or p.content.len == 0:
     return ("", "")
 
   # Create boundary that is not in the data to be formatted
@@ -807,6 +807,7 @@ type
     lastProgressReport: float
     when SocketType is AsyncSocket:
       bodyStream: FutureStream[string]
+      parseBodyFut: Future[void]
     else:
       bodyStream: Stream
     getBody: bool ## When `false`, the body is never read in requestAux.
@@ -1066,10 +1067,14 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if getBody:
     when client is HttpClient:
       client.bodyStream = newStringStream()
+      result.bodyStream = client.bodyStream
+      parseBody(client, result.headers, result.version)
     else:
       client.bodyStream = newFutureStream[string]("parseResponse")
-    await parseBody(client, result.headers, result.version)
-    result.bodyStream = client.bodyStream
+      result.bodyStream = client.bodyStream
+      assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
+      client.parseBodyFut = parseBody(client, result.headers, result.version)
+        # do not wait here for the body request to complete
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -1159,6 +1164,12 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
 
+  when client is AsyncHttpClient:
+    if not client.parseBodyFut.isNil:
+      # let the current operation finish before making another request
+      await client.parseBodyFut
+      client.parseBodyFut = nil
+
   await newConnection(client, requestUrl)
 
   let effectiveHeaders = client.headers.override(headers)
@@ -1184,7 +1195,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
   ##
-  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## Connection will be kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
   ## connection can be closed by using the ``close`` procedure.
   ##

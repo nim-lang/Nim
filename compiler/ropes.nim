@@ -66,29 +66,19 @@ type
   Rope* = ref RopeObj
   RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
                                           # by nil to safe space
-    left*, right*: Rope
-    length*: int
-    data*: string             # != nil if a leaf
+    left, right: Rope
+    L: int                    # <= 0 if a leaf
+    data*: string
 
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
-  else: result = a.length
+  else: result = abs a.L
 
-proc newRope(data: string = nil): Rope =
+proc newRope(data: string = ""): Rope =
   new(result)
-  if data != nil:
-    result.length = len(data)
-    result.data = data
-
-proc newMutableRope*(capacity = 30): Rope =
-  ## creates a new rope that supports direct modifications of the rope's
-  ## 'data' and 'length' fields.
-  new(result)
-  result.data = newStringOfCap(capacity)
-
-proc freezeMutableRope*(r: Rope) {.inline.} =
-  r.length = r.data.len
+  result.L = -len(data)
+  result.data = data
 
 var
   cache: array[0..2048*2 - 1, Rope] # XXX Global here!
@@ -147,7 +137,7 @@ proc `&`*(a, b: Rope): Rope =
     result = a
   else:
     result = newRope()
-    result.length = a.length + b.length
+    result.L = abs(a.L) + abs(b.L)
     result.left = a
     result.right = b
 

@@ -369,6 +369,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
@@ -377,6 +379,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -539,11 +543,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].typ.callConv == ccClosure:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
-    if not c.tooEarly:
-      n.sons[length-2] = transform(c, n.sons[length-2]).PNode
-      result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
-    else:
-      result[1] = newNode(nkEmpty).PTransNode
+    n.sons[length-2] = transform(c, n.sons[length-2]).PNode
+    result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
     discard c.breakSyms.pop
     return result
 
@@ -780,6 +781,43 @@ proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
     else:
       result = n
 
+proc hoistParamsUsedInDefault(c: PTransf, call, letSection, defExpr: PNode): PNode =
+  # This takes care of complicated signatures such as:
+  # proc foo(a: int, b = a)
+  # proc bar(a: int, b: int, c = a + b)
+  #
+  # The recursion may confuse you. It performs two duties:
+  #
+  # 1) extracting all referenced params from default expressions
+  #    into a let section preceeding the call
+  #
+  # 2) replacing the "references" within the default expression
+  #    with these extracted skLet symbols.
+  #
+  # The first duty is carried out directly in the code here, while the second
+  # duty is activated by returning a non-nil value. The caller is responsible
+  # for replacing the input to the function with the returned non-nil value.
+  # (which is the hoisted symbol)
+  if defExpr.kind == nkSym:
+    if defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
+      let paramPos = defExpr.sym.position + 1
+
+      if call[paramPos].kind == nkSym and sfHoisted in call[paramPos].sym.flags:
+        # Already hoisted, we still need to return it in order to replace the
+        # placeholder expression in the default value.
+        return call[paramPos]
+
+      let hoistedVarSym = hoistExpr(letSection,
+                                    call[paramPos],
+                                    getIdent(c.graph.cache, genPrefix),
+                                    c.transCon.owner).newSymNode
+      call[paramPos] = hoistedVarSym
+      return hoistedVarSym
+  else:
+    for i in 0..<defExpr.safeLen:
+      let hoisted = hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
+      if hoisted != nil: defExpr[i] = hoisted
+
 proc transform(c: PTransf, n: PNode): PTransNode =
   when false:
     var oldDeferAnchor: PNode
@@ -849,6 +887,15 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkBreakStmt: result = transformBreak(c, n)
   of nkCallKinds:
     result = transformCall(c, n)
+    var call = result.PNode
+    if nfDefaultRefsParam in call.flags:
+      # We've found a default value that references another param.
+      # See the notes in `hoistParamsUsedInDefault` for more details.
+      var hoistedParams = newNodeI(nkLetSection, call.info, 0)
+      for i in 1 ..< call.len:
+        let hoisted = hoistParamsUsedInDefault(c, call, hoistedParams, call[i])
+        if hoisted != nil: call[i] = hoisted
+      result = newTree(nkStmtListExpr, hoistedParams, call).PTransNode
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
   of nkDerefExpr, nkHiddenDeref:
@@ -1003,8 +1050,8 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     when useEffectSystem: trackTopLevelStmt(g, module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
-    if c.needsDestroyPass:
-      result = injectDestructorCalls(g, module, result)
+    #if c.needsDestroyPass:
+    #  result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
 
 proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
@@ -1014,6 +1061,8 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     var c = openTransf(g, module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
-    if c.needsDestroyPass:
-      result = injectDestructorCalls(g, module, result)
+    # expressions are not to be injected with destructor calls as that
+    # the list of top level statements needs to be collected before.
+    #if c.needsDestroyPass:
+    #  result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)

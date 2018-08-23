@@ -261,6 +261,9 @@ else:
       param: int
       data: T
 
+  const
+    InvalidIdent = -1
+
   proc raiseIOSelectorsError[T](message: T) =
     var msg = ""
     when T is string:
@@ -302,6 +305,12 @@ else:
         if posix.sigprocmask(SIG_UNBLOCK, newmask, oldmask) == -1:
           raiseIOSelectorsError(osLastError())
 
+  template clearKey[T](key: ptr SelectorKey[T]) =
+    var empty: T
+    key.ident = InvalidIdent
+    key.events = {}
+    key.data = empty
+
   when defined(linux):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
@@ -312,6 +321,8 @@ else:
     include ioselects/ioselectors_poll # need to replace it with event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
+  elif defined(nintendoswitch):
+    include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll
 

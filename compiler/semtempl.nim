@@ -340,9 +340,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n)-1):
       var it = n.sons[i]
       if it.len == 2:
-        when newScopeForIf: openScope(c)
+        openScope(c)
         it.sons[0] = semTemplBody(c, it.sons[0])
-        when not newScopeForIf: openScope(c)
         it.sons[1] = semTemplBody(c, it.sons[1])
         closeScope(c)
       else:

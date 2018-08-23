@@ -83,6 +83,31 @@ compiler gcc:
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
+# GNU C and C++ Compiler
+compiler nintendoSwitchGCC:
+  result = (
+    name: "switch_gcc",
+    objExt: "o",
+    optSpeed: " -O3 -ffast-math ",
+    optSize: " -Os -ffast-math ",
+    compilerExe: "aarch64-none-elf-gcc",
+    cppCompiler: "aarch64-none-elf-g++",
+    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    buildGui: " -mwindows",
+    buildDll: " -shared",
+    buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
+    linkerExe: "aarch64-none-elf-gcc",
+    linkTmpl: "$buildgui $builddll -Wl,-Map,$mapfile -o $exefile $objfiles $options",
+    includeCmd: " -I",
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
+    debug: "",
+    pic: "-fPIE",
+    asmStmtFrmt: "asm($1);$n",
+    structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
+            hasAttribute})
+
 # LLVM Frontend for GCC/G++
 compiler llvmGcc:
   result = gcc() # Uses settings from GCC
@@ -316,6 +341,7 @@ compiler ucc:
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
+    nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
     lcc(),
@@ -408,10 +434,7 @@ proc completeCFilePath*(conf: ConfigRef; cfile: string, createSubDir: bool = tru
 
 proc toObjFile*(conf: ConfigRef; filename: string): string =
   # Object file for compilation
-  #if filename.endsWith(".cpp"):
-  #  result = changeFileExt(filename, "cpp." & CC[cCompiler].objExt)
-  #else:
-  result = changeFileExt(filename, CC[conf.cCompiler].objExt)
+  result = filename & "." & CC[conf.cCompiler].objExt
 
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
@@ -556,14 +579,20 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
     else:
       cfile.obj
 
+  # D files are required by nintendo switch libs for
+  # compilation. They are basically a list of all includes.
+  let dfile = objfile.changeFileExt(".d").quoteShell()
+
   objfile = quoteShell(objfile)
   cf = quoteShell(cf)
   result = quoteShell(compilePattern % [
+    "dfile", dfile,
     "file", cf, "objfile", objfile, "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf),
     "nim", getPrefixDir(conf), "lib", conf.libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
+    "dfile", dfile,
     "file", cf, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
@@ -603,7 +632,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
 
 proc addExternalFileToCompile*(conf: ConfigRef; filename: string) =
   var c = Cfile(cname: filename,
-    obj: toObjFile(conf, completeCFilePath(conf, changeFileExt(filename, ""), false)),
+    obj: toObjFile(conf, completeCFilePath(conf, filename, false)),
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
@@ -616,7 +645,7 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, if hintCC in conf.notes: "CC: " & name else: "")
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, "\n")
@@ -630,7 +659,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
         libname = getCurrentDir() / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", libname,
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
                                        "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
@@ -639,8 +668,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
     else: result = joinPath(conf.cCompilerpath, linkerExe)
-    let buildgui = if optGenGuiApp in conf.globalOptions: CC[conf.cCompiler].buildGui
-                   else: ""
+    let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
+                     CC[conf.cCompiler].buildGui
+                   else:
+                     ""
     var exefile, builddll: string
     if optGenDynLib in conf.globalOptions:
       exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
@@ -659,16 +690,23 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
     exefile = quoteShell(exefile)
+
+    # Map files are required by Nintendo Switch compilation. They are a list
+    # of all function calls in the library and where they come from.
+    let mapfile = quoteShell(getNimcacheDir(conf) / splitFile(projectFile).name & ".map")
+
     let linkOptions = getLinkOptions(conf) & " " &
                       getConfigVar(conf, conf.cCompiler, ".options.linker")
     var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
       linkTmpl = CC[conf.cCompiler].linkTmpl
     result = quoteShell(result % ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf), "lib", conf.libpath])
     result.add ' '
     addf(result, linkTmpl, ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
@@ -735,7 +773,8 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     when declared(echo):
-      echo prettyCmds[idx]
+      let cmd = prettyCmds[idx]
+      if cmd != "": echo cmd
   compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)

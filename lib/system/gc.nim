@@ -548,7 +548,10 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   gcTrace(res, csAllocated)
   track("growObj old", ol, 0)
   track("growObj new", res, newsize)
-  when reallyDealloc:
+  when defined(nimIncrSeqV3):
+    # since we steal the old seq's contents, we set the old length to 0.
+    cast[PGenericSeq](old).len = 0
+  elif reallyDealloc:
     sysAssert(allocInv(gch.region), "growObj before dealloc")
     if ol.refcount shr rcShift <=% 1:
       # free immediately to save space:

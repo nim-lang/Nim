@@ -68,6 +68,46 @@ User                             Some user defined warning.
 ==========================       ============================================
 
 
+List of hints
+-------------
+
+Each hint can be activated individually with ``--hint[NAME]:on|off`` or in a
+``push`` pragma.
+
+==========================       ============================================
+Name                             Description
+==========================       ============================================
+CC                               Shows when the C compiler is called.
+CodeBegin
+CodeEnd
+CondTrue
+Conf                             A config file was loaded.
+ConvToBaseNotNeeded
+ConvFromXtoItselfNotNeeded
+Dependency
+Exec                             Program is executed.
+ExprAlwaysX
+ExtendedContext
+GCStats                          Dumps statistics about the Garbage Collector.
+GlobalVar                        Shows global variables declarations.
+LineTooLong                      Line exceeds the maximum length.
+Link                             Linking phase.
+Name
+Path                             Search paths modifications.
+Pattern
+Performance
+Processing                       Artifact being compiled.
+QuitCalled
+Source                           The source line that triggered a diagnostic
+                                 message.
+StackTrace
+Success, SuccessX                Successful compilation of a library or a binary.
+User
+UserRaw
+XDeclaredButNotUsed              Unused symbols in the code.
+==========================       ============================================
+
+
 Verbosity levels
 ----------------
 
@@ -114,7 +154,7 @@ passed as a command line argument to the compiler.
 The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
-1) ``$nim/config/nim.cfg``, ``/etc/nim.cfg`` (UNIX) or ``%NIMROD%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
+1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``%NIM%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
 2) ``$HOME/.config/nim.cfg`` (POSIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -157,36 +197,26 @@ the first matching file is used.
 Generated C code directory
 --------------------------
 The generated files that Nim produces all go into a subdirectory called
-``nimcache`` in your project directory. This makes it easy to delete all
+``nimcache``. Its full path is
+
+- ``$XDG_CACHE_HOME/nim/$projectname(_r|_d)`` or ``~/.cache/nim/$projectname(_r|_d)``
+  on Posix
+- ``$HOME/nimcache/$projectname(_r|_d)`` on Windows.
+
+The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
+
+This makes it easy to delete all
 generated files. Files generated in this directory follow a naming logic which
 you can read about in the `Nim Backend Integration document
 <backends.html#nimcache-naming-logic>`_.
 
+The ``--nimcache``
+`compiler switch <nimc.html#command-line-switches>`_ can be used to
+to change the ``nimcache`` directory.
+
 However, the generated C code is not platform independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
 C file lists the OS, CPU and CC the file has been compiled for.
-
-
-Compilation cache
-=================
-
-**Warning**: The compilation cache is still highly experimental!
-
-The ``nimcache`` directory may also contain so called `rod`:idx:
-or `symbol files`:idx:. These files are pre-compiled modules that are used by
-the compiler to perform `incremental compilation`:idx:. This means that only
-modules that have changed since the last compilation (or the modules depending
-on them etc.) are re-compiled. However, per default no symbol files are
-generated; use the ``--symbolFiles:on`` command line switch to activate them.
-
-Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
-to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even with dead code elimination. So
-the final release build should be done with ``--symbolFiles:off``.
-
-Due to the aggregation of C code it is also recommended that each project
-resides in its own directory so that the generated ``nimcache`` directory
-is not shared between different projects.
 
 
 Compiler Selection
@@ -228,6 +258,48 @@ configuration file should contain something like::
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
+Cross compilation for Nintendo Switch
+=====================================
+
+Simply add --os:nintendoswitch
+to your usual ``nim c`` or ``nim cpp`` command and set the ``passC``
+and ``passL`` command line switches to something like:
+
+.. code-block:: console
+  nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
+  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+
+or setup a nim.cfg file like so:
+
+.. code-block:: Nim
+  #nim.cfg
+  --passC="-I$DEVKITPRO/libnx/include"
+  --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
+
+The DevkitPro setup must be the same as the default with their new installer
+`here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
+`here for Windows <https://github.com/devkitPro/installer/releases>`_.
+
+For example, with the above mentioned config::
+
+  nim c --os:nintendoswitch switchhomebrew.nim
+
+This will generate a file called ``switchhomebrew.elf`` which can then be turned into
+an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
+`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
+`the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
+
+There are a few things that don't work because the DevkitPro libraries don't support them.
+They are:
+
+1. Waiting for a subprocess to finish. A subprocess can be started, but right
+   now it can't be waited on, which sort of makes subprocesses a bit hard to use
+2. Dynamic calls. DevkitPro libraries have no dlopen/dlclose functions.
+3. Command line parameters. It doesn't make sense to have these for a console
+   anyways, so no big deal here.
+4. mqueue. Sadly there are no mqueue headers.
+5. ucontext. No headers for these either. No coroutines for now :(
+6. nl_types. No headers for this.
 
 DLL generation
 ==============

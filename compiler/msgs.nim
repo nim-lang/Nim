@@ -155,10 +155,10 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   else: result = conf.m.msgContext[i]
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
-  (if fileIdx.int32 < 0: "???" else: conf.m.fileInfos[fileIdx.int32].projPath)
+  (if fileIdx.int32 < 0 or conf == nil: "???" else: conf.m.fileInfos[fileIdx.int32].projPath)
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0: result = "???"
+  if fileIdx.int32 < 0 or conf == nil: result = "???"
   else: result = conf.m.fileInfos[fileIdx.int32].fullPath
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: string) =
@@ -176,7 +176,7 @@ proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0:
     result = "???"
-  elif not conf.m.fileInfos[fileIdx.int32].dirtyFile.isNil:
+  elif conf.m.fileInfos[fileIdx.int32].dirtyFile.len > 0:
     result = conf.m.fileInfos[fileIdx.int32].dirtyFile
   else:
     result = conf.m.fileInfos[fileIdx.int32].fullPath
@@ -391,10 +391,10 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 
   if conf.structuredErrorHook != nil:
     conf.structuredErrorHook(conf, unknownLineInfo(),
-      s & (if kind != nil: KindFormat % kind else: ""), sev)
+      s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
-    if kind != nil:
+    if kind.len > 0:
       styledMsgWriteln(color, title, resetStyle, s,
                        KindColor, `%`(KindFormat, kind))
     else:
@@ -483,9 +483,9 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
 
   if not ignoreMsg:
     if conf.structuredErrorHook != nil:
-      conf.structuredErrorHook(conf, info, s & (if kind != nil: KindFormat % kind else: ""), sev)
+      conf.structuredErrorHook(conf, info, s & (if kind.len > 0: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if kind != nil:
+      if kind.len > 0:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
                          KindColor, `%`(KindFormat, kind))
       else:

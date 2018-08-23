@@ -71,6 +71,7 @@ const
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
+  forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
 
 proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
@@ -466,7 +467,7 @@ proc processCompile(c: PContext, n: PNode) =
       else:
         found = findFile(c.config, s)
         if found.len == 0: found = s
-    let obj = toObjFile(c.config, completeCFilePath(c.config, changeFileExt(found, ""), false))
+    let obj = toObjFile(c.config, completeCFilePath(c.config, found, false))
     docompile(c, it, found, obj)
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
@@ -868,11 +869,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if sym != nil and sym.kind in routineKinds:
+        if sym != nil and sym.kind in routineKinds + {skType}:
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfDeprecated)
+        elif sym != nil and sym.kind != skModule:
+          # We don't support the extra annotation field
+          if it.kind in nkPragmaCallKinds:
+            localError(c.config, it.info, "annotation to deprecated not supported here")
+          incl(sym.flags, sfDeprecated)
+        # At this point we're quite sure this is a statement and applies to the
+        # whole module
         elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
-        elif sym != nil: incl(sym.flags, sfDeprecated)
         else: incl(c.module.flags, sfDeprecated)
       of wVarargs:
         noVal(c, it)
@@ -1066,8 +1073,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:

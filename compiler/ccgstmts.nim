@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if p.config.selectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -256,7 +256,15 @@ proc genSingleVar(p: BProc, a: PNode) =
     # That's why we are doing the construction inside the preInitProc.
     # genObjectInit relies on the C runtime's guarantees that
     # global variables will be initialized to zero.
-    genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
+    var loc = v.loc
+
+    # When the native TLS is unavailable, a global thread-local variable needs
+    # one more layer of indirection in order to access the TLS block.
+    # Only do this for complex types that may need a call to `objectInit`
+    if sfThread in v.flags and emulatedThreadVars(p.config) and
+      isComplexValueType(v.typ):
+      initLocExprSingleUse(p.module.preInitProc, vn, loc)
+    genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
@@ -340,13 +348,12 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
     if it.len == 2:
-      when newScopeForIf: startBlock(p)
+      startBlock(p)
       initLocExprSingleUse(p, it.sons[0], a)
       lelse = getLabel(p)
       inc(p.labels)
       lineF(p, cpsStmts, "if (!$1) goto $2;$n",
             [rdLoc(a), lelse])
-      when not newScopeForIf: startBlock(p)
       if p.module.compileToCpp:
         # avoid "jump to label crosses initialization" error:
         add(p.s(cpsStmts), "{")
@@ -404,6 +411,9 @@ proc genComputedGoto(p: BProc; n: PNode) =
         localError(p.config, it.info,
             "case statement must be exhaustive for computed goto"); return
       casePos = i
+      if enumHasHoles(it.sons[0].typ):
+        localError(p.config, it.info,
+            "case statement cannot work on enums with holes for computed goto"); return
       let aSize = lengthOrd(p.config, it.sons[0].typ)
       if aSize > 10_000:
         localError(p.config, it.info,
@@ -978,16 +988,17 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
   if isAsmStmt and hasGnuAsm in CC[p.config.cCompiler].props:
     for x in splitLines(res):
       var j = 0
-      while x[j] in {' ', '\t'}: inc(j)
-      if x[j] in {'"', ':'}:
-        # don't modify the line if already in quotes or
-        # some clobber register list:
-        add(result, x); add(result, "\L")
-      elif x[j] != '\0':
-        # ignore empty lines
-        add(result, "\"")
-        add(result, x)
-        add(result, "\\n\"\n")
+      while j < x.len and x[j] in {' ', '\t'}: inc(j)
+      if j < x.len:
+        if x[j] in {'"', ':'}:
+          # don't modify the line if already in quotes or
+          # some clobber register list:
+          add(result, x); add(result, "\L")
+        else:
+          # ignore empty lines
+          add(result, "\"")
+          add(result, x)
+          add(result, "\\n\"\n")
   else:
     res.add("\L")
     result = res.rope
@@ -1127,8 +1138,8 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
       patchAsgnStmtListExpr(patchedTree, e, ri)
       genStmts(p, patchedTree)
       return
-
     var a: TLoc
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     if le.kind in {nkDerefExpr, nkHiddenDeref}:
       genDeref(p, le, a, enforceDeref=true)
     else:
@@ -1143,5 +1154,9 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc
+
+  let isPush = hintExtendedContext in p.config.notes
+  if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
+  if isPush: popInfoContext(p.config)
   internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}

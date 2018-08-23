@@ -111,9 +111,9 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
           not compileToCpp(p.module):
-        result = "(*$1)->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+        result = "(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
       else:
-        result = "$1->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+        result = "$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p)]
     else:
       internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
@@ -124,15 +124,19 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
+        var t: TLoc
+        t.r = "(*$1)" % [a.rdLoc]
+        result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       else:
-        result = "$1->data, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p)]
+        result = "$1$3, $2" % [a.rdLoc, lenExpr(p, a), dataField(p)]
     of tyArray:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
+        var t: TLoc
+        t.r = "(*$1)" % [a.rdLoc]
+        result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:
@@ -142,7 +146,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "($1 ? $1->data : (NCSTRING)\"\")" % [a.rdLoc]
+  result = ropecg(p.module, "#nimToCStringConv($1)", [a.rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc
@@ -431,7 +435,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   assert(sonsLen(typ) == sonsLen(typ.n))
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert p.config, pat != nil
+  internalAssert p.config, pat.len > 0
   if pat.contains({'#', '(', '@', '\''}):
     var pl = genPatternCall(p, ri, pat, typ)
     # simpler version of 'fixupCall' that works with the pl+params combination:
@@ -480,7 +484,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 
   # don't call '$' here for efficiency:
   let pat = ri.sons[0].sym.loc.r.data
-  internalAssert p.config, pat != nil
+  internalAssert p.config, pat.len > 0
   var start = 3
   if ' ' in pat:
     start = 1

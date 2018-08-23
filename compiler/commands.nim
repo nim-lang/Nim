@@ -215,7 +215,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "refc":         result = conf.selectedGC == gcRefc
     of "v2":           result = conf.selectedGC == gcV2
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "generational": result = conf.selectedGC == gcGenerational
+    of "generational": result = false
+    of "destructors":  result = conf.selectedGC == gcDestructors
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
@@ -278,6 +279,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns": result = contains(conf.options, optPatterns)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
+  of "nilseqs": result = contains(conf.options, optNilSeqs)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -435,9 +437,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "markandsweep":
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
-    of "generational":
-      conf.selectedGC = gcGenerational
-      defineSymbol(conf.symbols, "gcgenerational")
+    of "destructors":
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
     of "go":
       conf.selectedGC = gcGo
       defineSymbol(conf.symbols, "gogc")
@@ -496,6 +498,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       localError(conf, info, errOnOrOffExpectedButXFound % arg)
   of "laxstrings": processOnOffSwitch(conf, {optLaxStrings}, arg, pass, info)
+  of "nilseqs": processOnOffSwitch(conf, {optNilSeqs}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(conf, ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch(conf, {optNaNCheck, optInfCheck}, arg, pass, info)
@@ -606,7 +609,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     incl(conf.globalOptions, optRun)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
-    conf.verbosity = parseInt(arg)
+    let verbosity = parseInt(arg)
+    if verbosity notin {0..3}:
+      localError(conf, info, "invalid verbosity level: '$1'" % arg)
+    conf.verbosity = verbosity
     conf.notes = NotesVerbosity[conf.verbosity]
     incl(conf.notes, conf.enableNotes)
     excl(conf.notes, conf.disableNotes)

@@ -243,7 +243,7 @@ proc dispA(target: OutputTarget, dest: var string,
   else: addf(dest, tex, args)
 
 proc `or`(x, y: string): string {.inline.} =
-  result = if x.isNil: y else: x
+  result = if x.len == 0: y else: x
 
 proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
@@ -312,7 +312,6 @@ proc setIndexTerm*(d: var RstGenerator, id, term: string,
   ## The index won't be written to disk unless you call `writeIndexFile()
   ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
   ## tools guide <docgen.html#index-switch>`_.
-  assert(not d.theIndex.isNil)
   var
     entry = term
     isTitle = false
@@ -337,7 +336,7 @@ proc hash(n: PRstNode): int =
     result = hash(n.text)
   elif n.len > 0:
     result = hash(n.sons[0])
-    for i in 1 .. <len(n):
+    for i in 1 ..< len(n):
       result = result !& hash(n.sons[i])
     result = !$result
 
@@ -388,20 +387,16 @@ proc hash(x: IndexEntry): Hash =
   ## Returns the hash for the combined fields of the type.
   ##
   ## The hash is computed as the chained hash of the individual string hashes.
-  assert(not x.keyword.isNil)
-  assert(not x.link.isNil)
   result = x.keyword.hash !& x.link.hash
-  result = result !& (x.linkTitle or "").hash
-  result = result !& (x.linkDesc or "").hash
+  result = result !& x.linkTitle.hash
+  result = result !& x.linkDesc.hash
   result = !$result
 
 proc `<-`(a: var IndexEntry, b: IndexEntry) =
   shallowCopy a.keyword, b.keyword
   shallowCopy a.link, b.link
-  if b.linkTitle.isNil: a.linkTitle = nil
-  else: shallowCopy a.linkTitle, b.linkTitle
-  if b.linkDesc.isNil: a.linkDesc = nil
-  else: shallowCopy a.linkDesc, b.linkDesc
+  shallowCopy a.linkTitle, b.linkTitle
+  shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple
@@ -445,14 +440,15 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
     while j < symbols.len and keyword == symbols[j].keyword:
       let
         url = symbols[j].link.escapeLink
-        text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
-        desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
+        text = if symbols[j].linkTitle.len > 0: symbols[j].linkTitle else: url
+        desc = if symbols[j].linkDesc.len > 0: symbols[j].linkDesc else: ""
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
-          title="$3" href="$1">$2</a></li>
+          title="$3" data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text, desc])
       else:
-        result.addf("""<li><a class="reference external" href="$1">$2</a></li>
+        result.addf("""<li><a class="reference external"
+          data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text])
       inc j
     result.add("</ul></dd>\n")
@@ -493,6 +489,7 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
   # Build a list of levels and extracted titles to make processing easier.
   var
     titleRef: string
+    titleTag: string
     levels: seq[tuple[level: int, text: string]]
     L = 0
     level = 1
@@ -519,14 +516,14 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
     let link = entries[L].link
     if link.isDocumentationTitle:
       titleRef = link
+      titleTag = levels[L].text
     else:
       result.add(level.indentToLevel(levels[L].level))
-      result.add("<li><a href=\"" & link & "\">" &
-        levels[L].text & "</a></li>\n")
+      result.addf("""<li><a class="reference" data-doc-search-tag="$1" href="$2">
+        $3</a></li>
+        """, [titleTag & " : " & levels[L].text, link, levels[L].text])
     inc L
   result.add(level.indentToLevel(1) & "</ul>\n")
-  assert(not titleRef.isNil,
-    "Can't use this proc on an API index, docs always have a title entry")
 
 proc generateDocumentationIndex(docs: IndexedDocs): string =
   ## Returns all the documentation TOCs in an HTML hierarchical list.
@@ -593,7 +590,7 @@ proc readIndexDir(dir: string):
         fileEntries[F].keyword = line.substr(0, s-1)
         fileEntries[F].link = line.substr(s+1)
         # See if we detect a title, a link without a `#foobar` trailing part.
-        if title.keyword.isNil and fileEntries[F].link.isDocumentationTitle:
+        if title.keyword.len == 0 and fileEntries[F].link.isDocumentationTitle:
           title.keyword = fileEntries[F].keyword
           title.link = fileEntries[F].link
 
@@ -604,15 +601,15 @@ proc readIndexDir(dir: string):
           fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
           fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = nil
-          fileEntries[F].linkDesc = nil
+          fileEntries[F].linkTitle = ""
+          fileEntries[F].linkDesc = ""
         inc F
       # Depending on type add this to the list of symbols or table of APIs.
-      if title.keyword.isNil:
+      if title.keyword.len == 0:
         for i in 0 .. <F:
           # Don't add to symbols TOC entries (they start with a whitespace).
           let toc = fileEntries[i].linkTitle
-          if not toc.isNil and toc.len > 0 and toc[0] == ' ':
+          if toc.len > 0 and toc[0] == ' ':
             continue
           # Ok, non TOC entry, add it.
           setLen(result.symbols, L + 1)
@@ -653,7 +650,6 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
-  assert(not symbols.isNil)
 
   result = ""
   # Generate a quick jump list of documents.

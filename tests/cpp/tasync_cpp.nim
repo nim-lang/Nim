@@ -1,6 +1,7 @@
 discard """
   targets: "cpp"
   output: "hello"
+  cmd: "nim cpp --nilseqs:on $file"
 """
 
 # bug #3299

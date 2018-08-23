@@ -30,7 +30,7 @@ if [ $# -eq 1 ] ; then
       ;;
     "/usr/bin")
       bindir=/usr/bin
-      configdir=/etc
+      configdir=/etc/?proj
       libdir=/usr/lib/?proj
       docdir=/usr/share/?proj/doc
       datadir=/usr/share/?proj/data
@@ -38,7 +38,7 @@ if [ $# -eq 1 ] ; then
       ;;
     "/usr/local/bin")
       bindir=/usr/local/bin
-      configdir=/etc
+      configdir=/etc/?proj
       libdir=/usr/local/lib/?proj
       docdir=/usr/local/share/?proj/doc
       datadir=/usr/local/share/?proj/data
@@ -70,6 +70,7 @@ if [ $# -eq 1 ] ; then
 
   mkdir -p $libdir
   mkdir -p $docdir
+  mkdir -p $configdir
   mkdir -p $nimbleDir/
   echo "copying files..."
 #var createdDirs = newStringTable()

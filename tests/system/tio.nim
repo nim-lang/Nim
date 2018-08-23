@@ -1,3 +1,6 @@
+discard """
+"""
+
 import
   unittest, osproc, streams, os, strformat
 const STRING_DATA = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."
@@ -36,7 +39,7 @@ proc verifyFileSize(sz: int64) =
     discard execProcess(&"dd if=/dev/zero of={fn} bs=1000000 count={size_in_mb}")
 
   doAssert os.getFileSize(fn) == sz # Verify OS filesize by string
-  
+
   var f = open(fn)
   doAssert f.getFileSize() == sz # Verify file handle filesize
   f.close()

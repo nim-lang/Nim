@@ -43,7 +43,6 @@ type
     t: Thread[ptr Actor[In, Out]]
 
   PActor*[In, Out] = ptr Actor[In, Out] ## an actor
-{.deprecated: [TTask: Task, TActor: Actor].}
 
 proc spawn*[In, Out](action: proc(
     self: PActor[In, Out]){.thread.}): PActor[In, Out] =
@@ -168,7 +167,7 @@ proc terminate*[In, Out](a: var ActorPool[In, Out]) =
   for i in 0..<a.actors.len: join(a.actors[i])
   when Out isnot void:
     close(a.outputs)
-  a.actors = nil
+  a.actors = @[]
 
 proc join*[In, Out](a: var ActorPool[In, Out]) =
   ## short-cut for `sync` and then `terminate`.

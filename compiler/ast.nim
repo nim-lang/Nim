@@ -293,6 +293,10 @@ const
     # the compiler will avoid printing such names
     # in user messages.
 
+  sfHoisted* = sfForward
+    # an expression was hoised to an anonymous variable.
+    # the flag is applied to the var/let symbol
+
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
   sfReorder* = sfForward
@@ -318,7 +322,8 @@ const
   usesEffects* = 1      # read effects at position 1
   writeEffects* = 2     # write effects at position 2
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
-  effectListLen* = 4    # list of effects list
+  pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
+  effectListLen* = 5    # list of effects list
 
 type
   TTypeKind* = enum  # order is important!
@@ -454,6 +459,9 @@ type
     nfPreventCg # this node should be ignored by the codegen
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
     nfFromTemplate # a top-level node returned from a template
+    nfDefaultParam # an automatically inserter default parameter
+    nfDefaultRefsParam # a default param value references another parameter
+                       # the flag is applied to proc default values and to calls
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -498,6 +506,7 @@ type
     tfGenericTypeParam
     tfImplicitTypeParam
     tfInferrableStatic
+    tfConceptMatchedTypeSym
     tfExplicit        # for typedescs, marks types explicitly prefixed with the
                       # `type` operator (e.g. type int)
     tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
@@ -571,8 +580,8 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mTypeOf, mRoof, mPlugin,
-    mEcho, mShallowCopy, mSlurp, mStaticExec,
+    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mType, mTypeOf,
+    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
@@ -583,7 +592,7 @@ type
     mAddI, mSubI, mMulI, mDivI, mModI,
     mSucc, mPred,
     mAddF64, mSubF64, mMulF64, mDivF64,
-    mShrI, mShlI, mBitandI, mBitorI, mBitxorI,
+    mShrI, mShlI, mAshrI, mBitandI, mBitorI, mBitxorI,
     mMinI, mMaxI,
     mMinF64, mMaxF64,
     mAddU, mSubU, mMulU, mDivU, mModU,
@@ -619,6 +628,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
+    mMove, mWasMoved,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -963,15 +973,15 @@ const
     tyFloat..tyFloat128, tyUInt..tyUInt64}
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
-    tyProc, tyString, tyError}
+  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+    tyProc, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
-                                      nfFromTemplate}
+                                      nfFromTemplate, nfDefaultRefsParam}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1011,13 +1021,16 @@ proc isCallExpr*(n: PNode): bool =
 proc discardSons*(father: PNode)
 
 proc len*(n: PNode): int {.inline.} =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
+  when defined(nimNoNilSeqs):
+    result = len(n.sons)
+  else:
+    if isNil(n.sons): result = 0
+    else: result = len(n.sons)
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
-  else: result = len(n.sons)
+  if n.kind in {nkNone..nkNilLit}: result = 0
+  else: result = len(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
@@ -1027,7 +1040,8 @@ proc safeArrLen*(n: PNode): int {.inline.} =
 
 proc add*(father, son: PNode) =
   assert son != nil
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 type Indexable = PNode | PType
@@ -1079,9 +1093,9 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id == 93289:
+  #if result.id == 77131:
   #  writeStacktrace()
-  #  MessageOut(name.s & " has id: " & toString(result.id))
+  #  echo name.s
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1125,24 +1139,24 @@ const                         # for all kind of hash tables:
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
-  if isNil(src.data): return
   setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
-  if isNil(src.data): return
   newSeq(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
-  if isNil(src.data): return
   setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
-  father.sons = nil
+  when defined(nimNoNilSeqs):
+    father.sons = @[]
+  else:
+    father.sons = nil
 
 proc withInfo*(n: PNode, info: TLineInfo): PNode =
   n.info = info
@@ -1231,7 +1245,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 proc addSon*(father, son: PNode) =
   assert son != nil
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
@@ -1256,14 +1271,14 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
   result.kind = kind
   result.owner = owner
-  result.size = - 1
+  result.size = -1
   result.align = 2            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
   when false:
-    if result.id == 205734:
+    if result.id == 76426:
       echo "KNID ", kind
       writeStackTrace()
 
@@ -1275,16 +1290,22 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.r == nil: a.r = b.r
 
 proc newSons*(father: PNode, length: int) =
-  if isNil(father.sons):
-    newSeq(father.sons, length)
-  else:
+  when defined(nimNoNilSeqs):
     setLen(father.sons, length)
+  else:
+    if isNil(father.sons):
+      newSeq(father.sons, length)
+    else:
+      setLen(father.sons, length)
 
 proc newSons*(father: PType, length: int) =
-  if isNil(father.sons):
-    newSeq(father.sons, length)
-  else:
+  when defined(nimNoNilSeqs):
     setLen(father.sons, length)
+  else:
+    if isNil(father.sons):
+      newSeq(father.sons, length)
+    else:
+      setLen(father.sons, length)
 
 proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
@@ -1359,7 +1380,7 @@ proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
   result.loc = s.loc
   result.annex = s.annex
   # XXX once usedGenerics is used, ensure module aliases keep working!
-  assert s.usedGenerics == nil
+  assert s.usedGenerics.len == 0
 
 proc initStrTable*(x: var TStrTable) =
   x.counter = 0
@@ -1452,20 +1473,26 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
   if not son.isNil: propagateToOwner(father, son)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc addSonNilAllowed*(father, son: PNode) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc delSon*(father: PNode, idx: int) =
-  if isNil(father.sons): return
+  when defined(nimNoNilSeqs):
+    if father.len == 0: return
+  else:
+    if isNil(father.sons): return
   var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)
@@ -1584,7 +1611,10 @@ proc getStr*(a: PNode): string =
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkNilLit:
     # let's hope this fixes more problems than it creates:
-    result = nil
+    when defined(nimNoNilSeqs):
+      result = ""
+    else:
+      result = nil
   else:
     doAssert false, "getStr"
     #internalError(a.info, "getStr")
@@ -1665,6 +1695,14 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
+
+proc toVar*(typ: PType): PType =
+  ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind != tyVar:
+    result = newType(tyVar, typ.owner)
+    rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and

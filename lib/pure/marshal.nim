@@ -98,8 +98,7 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akProc, akPointer, akCString: s.write($a.getPointer.ptrToInt)
   of akString:
     var x = getString(a)
-    if isNil(x): s.write("null")
-    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    if x.validateUtf8() == -1: s.write(escapeJson(x))
     else:
       s.write("[")
       var i = 0

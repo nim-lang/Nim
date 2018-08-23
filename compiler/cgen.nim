@@ -80,11 +80,6 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
-proc useStringh(m: BModule) =
-  if includesStringh notin m.flags:
-    incl m.flags, includesStringh
-    m.includeHeader("<string.h>")
-
 proc useHeader(m: BModule, sym: PSym) =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
@@ -235,15 +230,30 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
-include ccgliterals
-include ccgtypes
-
-# ------------------------------ Manager of temporaries ------------------
-
 proc rdLoc(a: TLoc): Rope =
   # 'read' location (deref if indirect)
   result = a.r
   if lfIndirect in a.flags: result = "(*$1)" % [result]
+
+proc lenField(p: BProc): Rope =
+  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
+
+proc lenExpr(p: BProc; a: TLoc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = rdLoc(a) & ".len"
+  else:
+    result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
+
+proc dataField(p: BProc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = rope".p->data"
+  else:
+    result = rope"->data"
+
+include ccgliterals
+include ccgtypes
+
+# ------------------------------ Manager of temporaries ------------------
 
 proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r
@@ -288,7 +298,7 @@ type
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
-  let t = t.skipTypes(abstractInst)
+  let t = t.skipTypes(abstractInst + tyUserTypeClasses)
   result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
@@ -314,10 +324,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      useStringh(p.module)
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
               addrLoc(p.config, loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
@@ -325,16 +334,17 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if not isComplexValueType(typ):
+  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
+  elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
-      # don't use memset for temporary values for performance if we can
+      # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isImportedCppType(typ):
-        useStringh(p.module)
-        linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 addrLoc(p.config, loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
@@ -495,9 +505,6 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   result.flags.incl lfSingleUse
   expr(p, e, result)
 
-proc lenField(p: BProc): Rope =
-  result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
-
 include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
@@ -571,11 +578,13 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   if lib.name == nil: internalError(m.config, "loadDynamicLib")
 
 proc mangleDynLibProc(sym: PSym): Rope =
+  # we have to build this as a single rope in order not to trip the
+  # optimization in genInfixCall
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.r is the external name!
     result = rope(sym.name.s)
   else:
-    result = "Dl_$1_" % [rope(sym.id)]
+    result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
 proc symInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
@@ -666,6 +675,7 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef linux\L")
   add(m.s[cfsHeaders], "#undef mips\L")
   add(m.s[cfsHeaders], "#undef near\L")
+  add(m.s[cfsHeaders], "#undef far\L")
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 
@@ -1137,12 +1147,29 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
+  # Give this small function its own scope
+  addf(prc, "{$N", [])
+  block:
+    # Keep a bogus frame in case the code needs one
+    add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
+
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.preInitProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
+
+    add(prc, genSectionStart(cpsInit, m.config))
+    add(prc, m.preInitProc.s(cpsInit))
+    add(prc, genSectionEnd(cpsInit, m.config))
+
+    add(prc, genSectionStart(cpsStmts, m.config))
+    add(prc, m.preInitProc.s(cpsStmts))
+    add(prc, genSectionEnd(cpsStmts, m.config))
+  addf(prc, "}$N", [])
+
   add(prc, initGCFrame(m.initProc))
 
   add(prc, genSectionStart(cpsLocals, m.config))
-  add(prc, m.preInitProc.s(cpsLocals))
   add(prc, m.initProc.s(cpsLocals))
-  add(prc, m.postInitProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals, m.config))
 
   if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
@@ -1156,16 +1183,13 @@ proc genInitCode(m: BModule) =
       add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit, m.config))
-  add(prc, m.preInitProc.s(cpsInit))
   add(prc, m.initProc.s(cpsInit))
-  add(prc, m.postInitProc.s(cpsInit))
   add(prc, genSectionEnd(cpsInit, m.config))
 
   add(prc, genSectionStart(cpsStmts, m.config))
-  add(prc, m.preInitProc.s(cpsStmts))
   add(prc, m.initProc.s(cpsStmts))
-  add(prc, m.postInitProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts, m.config))
+
   if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
   add(prc, deinitGCFrame(m.initProc))
@@ -1211,11 +1235,6 @@ proc newPreInitProc(m: BModule): BProc =
   # little hack so that unique temporaries are generated:
   result.labels = 100_000
 
-proc newPostInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 200_000
-
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
@@ -1237,7 +1256,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
-  result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1248,7 +1266,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-    excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
                 else: ""
   open(result.ndi, ndiName, g.config)
@@ -1266,7 +1283,6 @@ proc resetModule*(m: BModule) =
   m.initProc = newProc(nil, m)
   m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
-  m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]

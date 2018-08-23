@@ -16,12 +16,12 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active, rod, lineinfos
+  semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
 
 from modulegraphs import ModuleGraph
 
 when defined(nimfix):
-  import nimfix.prettybase
+  import nimfix/prettybase
 
 # implementation
 
@@ -48,7 +48,10 @@ proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
-
+proc semStaticExpr(c: PContext, n: PNode): PNode
+proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
+proc semTypeOf(c: PContext; n: PNode): PNode
+proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
@@ -70,6 +73,16 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
+proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
+  result = arg
+  let x = result.skipConv
+  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyExpr:
+    changeType(c, x, formal, check=true)
+  else:
+    result = skipHiddenSubConv(result)
+    #result.typ = takeType(formal, arg.typ)
+    #echo arg.info, " picked ", result.typ.typeToString
+
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(c.config, arg.info, "expression has no type: " &
@@ -85,13 +98,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result = copyTree(arg)
       result.typ = formal
     else:
-      let x = result.skipConv
-      if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
-        changeType(c, x, formal, check=true)
-      else:
-        result = skipHiddenSubConv(result)
-        #result.typ = takeType(formal, arg.typ)
-        #echo arg.info, " picked ", result.typ.typeToString
+      result = fitNodePostMatch(c, formal, result)
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
@@ -112,7 +119,7 @@ proc commonType*(x, y: PType): PType =
   elif b.kind == tyStmt: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
-    if a.sons == nil: result = a
+    if a.len == 0: result = a
     else:
       result = newType(tyTypeDesc, a.owner)
       rawAddSon(result, newType(tyNone, a.owner))
@@ -405,7 +412,12 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
-      result.typ = makeTypeDesc(c, typ)
+      if typ == nil:
+        localError(c.config, result.info, "expression has no type: " &
+                   renderTree(result, {renderNoComments}))
+        result = newSymNode(errorSym(c, result))
+      else:
+        result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
       var retType = s.typ.sons[0]
@@ -596,16 +608,26 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
   rod.storeNode(c.graph, c.module, result)
 
 proc testExamples(c: PContext) =
+  let outputDir = c.config.getNimcacheDir / "runnableExamples"
+  createDir(outputDir)
   let inp = toFullPath(c.config, c.module.info)
-  let outp = inp.changeFileExt"" & "_examples.nim"
-  renderModule(c.runnableExamples, inp, outp)
+  let outp = outputDir / extractFilename(inp.changeFileExt"" & "_examples.nim")
+  let nimcache = outp.changeFileExt"" & "_nimcache"
+  renderModule(c.runnableExamples, inp, outp, conf = c.config)
   let backend = if isDefined(c.config, "js"): "js"
                 elif isDefined(c.config, "cpp"): "cpp"
                 elif isDefined(c.config, "objc"): "objc"
                 else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend & " -r " & outp) != 0:
-    quit "[Examples] failed"
-  removeFile(outp)
+  if os.execShellCmd(os.getAppFilename() & " " & backend & " --nimcache:" & nimcache & " -r " & outp) != 0:
+    quit "[Examples] failed: see " & outp
+  else:
+    # keep generated source file `outp` to allow inspection.
+    rawMessage(c.config, hintSuccess, ["runnableExamples: " & outp])
+    removeFile(outp.changeFileExt(ExeExt))
+    try:
+      removeDir(nimcache)
+    except OSError:
+      discard
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)

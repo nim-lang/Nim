@@ -40,8 +40,8 @@ proc searchInstTypes*(key: PType): PType =
   if not (genericTyp.kind == tyGenericBody and
       key.sons[0] == genericTyp and genericTyp.sym != nil): return
 
-  if genericTyp.sym.typeInstCache == nil:
-    return
+  when not defined(nimNoNilSeqs):
+    if genericTyp.sym.typeInstCache == nil: return
 
   for inst in genericTyp.sym.typeInstCache:
     if inst.id == key.id: return inst
@@ -144,17 +144,6 @@ proc isTypeParam(n: PNode): bool =
          (n.sym.kind == skGenericParam or
            (n.sym.kind == skType and sfFromGeneric in n.sym.flags))
 
-proc hasGenericArguments*(n: PNode): bool =
-  if n.kind == nkSym:
-    return n.sym.kind == skGenericParam or
-           tfInferrableStatic in n.sym.typ.flags or
-           (n.sym.kind == skType and
-            n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
-  else:
-    for i in 0..<n.safeLen:
-      if hasGenericArguments(n.sons[i]): return true
-    return false
-
 proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
   # This is needed for tgenericshardcases
   # It's possible that a generic param will be used in a proc call to a
@@ -231,6 +220,17 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
   # symbol is not our business:
   if cl.owner != nil and s.owner != cl.owner:
     return s
+
+  # XXX: Bound symbols in default parameter expressions may reach here.
+  # We cannot process them, becase `sym.n` may point to a proc body with
+  # cyclic references that will lead to an infinite recursion.
+  # Perhaps we should not use a black-list here, but a whitelist instead
+  # (e.g. skGenericParam and skType).
+  # Note: `s.magic` may be `mType` in an example such as:
+  # proc foo[T](a: T, b = myDefault(type(a)))
+  if s.kind == skProc or s.magic != mNone:
+    return s
+
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
   result = copySym(s, false)
@@ -278,7 +278,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # is difficult to handle:
   const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
-  if body.kind != tyGenericBody: internalError(cl.c.config, cl.info, "no generic body")
+  if body.kind != tyGenericBody:
+    internalError(cl.c.config, cl.info, "no generic body")
   var header: PType = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
@@ -368,10 +369,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    if destructor in cl.c.features:
-      cl.c.typesWithOps.add((newbody, result))
-    else:
-      typeBound(cl.c, newbody, result, assignment, cl.info)
+    cl.c.typesWithOps.add((newbody, result))
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes
@@ -545,7 +543,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       else: discard
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
-  if destructor notin c.features: return
   var i = 0
   while i < c.typesWithOps.len:
     let (newty, oldty) = c.typesWithOps[i]

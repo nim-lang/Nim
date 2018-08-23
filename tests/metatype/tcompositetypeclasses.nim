@@ -19,7 +19,7 @@ var
   vfoo: TFoo[int, string]
   vbar: TFoo[string, string]
   vbaz: TFoo[int, int]
-  vnotbaz: TFoo[TObject, TObject]
+  vnotbaz: TFoo[RootObj, RootObj]
 
 proc foo(x: TFoo) = echo "foo"
 proc bar(x: TBar) = echo "bar"

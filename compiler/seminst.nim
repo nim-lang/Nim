@@ -97,10 +97,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  if genericSym.procInstCache != nil:
-    for inst in genericSym.procInstCache:
-      if inst.compilesId == id and sameInstantiation(entry, inst[]):
-        return inst.sym
+  for inst in genericSym.procInstCache:
+    if inst.compilesId == id and sameInstantiation(entry, inst[]):
+      return inst.sym
 
 when false:
   proc `$`(x: PSym): string =
@@ -220,6 +219,14 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   result = replaceTypeVarsT(cl, header)
   closeScope(c)
 
+proc referencesAnotherParam(n: PNode, p: PSym): bool =
+  if n.kind == nkSym:
+    return n.sym.kind == skParam and n.sym.owner == p
+  else:
+    for i in 0..<n.safeLen:
+      if referencesAnotherParam(n[i], p): return true
+    return false
+
 proc instantiateProcType(c: PContext, pt: TIdTable,
                          prc: PSym, info: TLineInfo) =
   # XXX: Instantiates a generic proc signature, while at the same
@@ -247,25 +254,56 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     if i > 1:
       resetIdTable(cl.symMap)
       resetIdTable(cl.localCache)
-    result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
-    propagateToOwner(result, result.sons[i])
-    internalAssert c.config, originalParams[i].kind == nkSym
-    when true:
-      let oldParam = originalParams[i].sym
-      let param = copySym(oldParam)
-      param.owner = prc
-      param.typ = result.sons[i]
-      if oldParam.ast != nil:
-        param.ast = fitNode(c, param.typ, oldParam.ast, oldParam.ast.info)
 
-      # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
-      result.n.sons[i] = newSymNode(param)
-      addDecl(c, param)
-    else:
-      let param = replaceTypeVarsN(cl, originalParams[i])
-      result.n.sons[i] = param
-      param.sym.owner = prc
-      addDecl(c, result.n.sons[i].sym)
+    # take a note of the original type. If't a free type or static parameter
+    # we'll need to keep it unbound for the `fitNode` operation below...
+    var typeToFit = result[i]
+
+    let needsStaticSkipping = result[i].kind == tyFromExpr
+    result[i] = replaceTypeVarsT(cl, result[i])
+    if needsStaticSkipping:
+      result[i] = result[i].skipTypes({tyStatic})
+
+    # ...otherwise, we use the instantiated type in `fitNode`
+    if (typeToFit.kind != tyTypeDesc or typeToFit.base.kind != tyNone) and
+       (typeToFit.kind != tyStatic):
+      typeToFit = result[i]
+
+    internalAssert c.config, originalParams[i].kind == nkSym
+    let oldParam = originalParams[i].sym
+    let param = copySym(oldParam)
+    param.owner = prc
+    param.typ = result[i]
+
+    # The default value is instantiated and fitted against the final
+    # concrete param type. We avoid calling `replaceTypeVarsN` on the
+    # call head symbol, because this leads to infinite recursion.
+    if oldParam.ast != nil:
+      var def = oldParam.ast.copyTree
+      if def.kind == nkCall:
+        for i in 1 ..< def.len:
+          def[i] = replaceTypeVarsN(cl, def[i])
+
+      def = semExprWithType(c, def)
+      if def.referencesAnotherParam(getCurrOwner(c)):
+        def.flags.incl nfDefaultRefsParam
+
+      var converted = indexTypesMatch(c, typeToFit, def.typ, def)
+      if converted == nil:
+        # The default value doesn't match the final instantiated type.
+        # As an example of this, see:
+        # https://github.com/nim-lang/Nim/issues/1201
+        # We are replacing the default value with an error node in case
+        # the user calls an explicit instantiation of the proc (this is
+        # the only way the default value might be inserted).
+        param.ast = errorNode(c, def)
+      else:
+        param.ast = fitNodePostMatch(c, typeToFit, converted)
+      param.typ = result[i]
+
+    result.n[i] = newSymNode(param)
+    propagateToOwner(result, result[i])
+    addDecl(c, param)
 
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)

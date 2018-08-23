@@ -97,24 +97,9 @@ Partial Output::
   proc helloWorld(times: int) {.raises: [], tags: [].}
   ...
 
-The full output can be seen here: `docgen_sample2.html <docgen_sample2.html>`_.
-
-The older version of the ``doc`` command, now renamed ``doc0`` runs before
-semantic checking which means it lacks some of the things ``doc`` will output.
-
-The ``doc0`` command::
-  nim doc0 sample
-
-Partial Output::
-  ...
-  proc helloWorld*(times: int)
-  ...
-
-Output can be viewed in full here: `docgen_sample.html <docgen_sample.html>`_.
-As you can see, the tool has extracted less information than what the ``doc``
-command provides, such as pragmas attached implicitly by the compiler. This type
-of information is not available from looking at the AST (Abstract Syntax Tree)
-prior to semantic checking, which is why ``doc0`` doesn't show it.
+The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
+It runs after semantic checking, and includes pragmas attached implicitly by the
+compiler.
 
 
 JSON
@@ -303,9 +288,9 @@ symbols in the `system module <system.html>`_.
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: typedesc; message: string): expr`` **=>**
-  `#newException.t,typedesc,string
-  <system.html#newException.t,typedesc,string>`_
+* ``template newException[](exceptn: type; message: string): expr`` **=>**
+  `#newException.t,type,string
+  <system.html#newException.t,type,string>`_
 
 
 Index (idx) file format

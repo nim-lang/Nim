@@ -37,8 +37,6 @@ type
     length: int
     data: string # != nil if a leaf
 
-proc isConc(r: Rope): bool {.inline.} = return isNil(r.data)
-
 # Note that the left and right pointers are not needed for leafs.
 # Leaves have relatively high memory overhead (~30 bytes on a 32
 # bit machine) and we produce many of them. This is why we cache and
@@ -129,7 +127,7 @@ proc insertInCache(s: string, tree: Rope): Rope =
       result.left = t
       t.right = nil
 
-proc rope*(s: string = nil): Rope {.rtl, extern: "nro$1Str".} =
+proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   if s.len == 0:
     result = nil
@@ -171,16 +169,8 @@ proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
   else:
     result = newRope()
     result.length = a.length + b.length
-    when false:
-      # XXX rebalancing would be nice, but is too expensive.
-      result.left = a.left
-      var x = newRope()
-      x.left = a.right
-      x.right = b
-      result.right = x
-    else:
-      result.left = a
-      result.right = b
+    result.left = a
+    result.right = b
 
 proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
   ## the concatenation operator for ropes.
@@ -209,11 +199,11 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   var j = i
   if x == nil: return
   while true:
-    if not isConc(x):
-      if x.data.len <% j: return x.data[j]
+    if x != nil and x.data.len > 0:
+      if j < x.data.len: return x.data[j]
       return '\0'
     else:
-      if x.left.len >% j:
+      if x.left.length > j:
         x = x.left
       else:
         x = x.right
@@ -225,11 +215,11 @@ iterator leaves*(r: Rope): string =
     var stack = @[r]
     while stack.len > 0:
       var it = stack.pop
-      while isConc(it):
+      while it.left != nil:
+        assert(it.right != nil)
         stack.add(it.right)
         it = it.left
         assert(it != nil)
-      assert(it.data != nil)
       yield it.data
 
 iterator items*(r: Rope): char =
@@ -249,54 +239,6 @@ proc `$`*(r: Rope): string  {.rtl, extern: "nroToString".}=
   ## converts a rope back to a string.
   result = newStringOfCap(r.len)
   for s in leaves(r): add(result, s)
-
-when false:
-  # Format string caching seems reasonable: All leaves can be shared and format
-  # string parsing has to be done only once. A compiled format string is stored
-  # as a rope. A negative length is used for the index into the args array.
-  proc compiledArg(idx: int): Rope =
-    new(result)
-    result.length = -idx
-
-  proc compileFrmt(frmt: string): Rope =
-    var i = 0
-    var length = len(frmt)
-    result = nil
-    var num = 0
-    while i < length:
-      if frmt[i] == '$':
-        inc(i)
-        case frmt[i]
-        of '$':
-          add(result, "$")
-          inc(i)
-        of '#':
-          inc(i)
-          add(result, compiledArg(num+1))
-          inc(num)
-        of '0'..'9':
-          var j = 0
-          while true:
-            j = j * 10 + ord(frmt[i]) - ord('0')
-            inc(i)
-            if frmt[i] notin {'0'..'9'}: break
-          add(s, compiledArg(j))
-        of '{':
-          inc(i)
-          var j = 0
-          while frmt[i] in {'0'..'9'}:
-            j = j * 10 + ord(frmt[i]) - ord('0')
-            inc(i)
-          if frmt[i] == '}': inc(i)
-          else: raise newException(EInvalidValue, "invalid format string")
-          add(s, compiledArg(j))
-        else: raise newException(EInvalidValue, "invalid format string")
-      var start = i
-      while i < length:
-        if frmt[i] != '$': inc(i)
-        else: break
-      if i - 1 >= start:
-        add(result, substr(frmt, start, i-1))
 
 proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
   rtl, extern: "nroFormat".} =

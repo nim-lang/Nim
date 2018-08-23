@@ -138,3 +138,39 @@ block:
     assert hasIntSerKey
     assert strSerKey == "string"
     assert nestedItemDefVal == "Nimmers of the world, unite!"
+
+block:
+  template simpleAttr {.pragma.}
+
+  type Annotated {.simpleAttr.} = object
+
+  proc generic_proc[T]() =
+    assert Annotated.hasCustomPragma(simpleAttr)
+
+
+#--------------------------------------------------------------------------
+# Pragma on proc type
+
+let a: proc(x: int) {.defaultValue(5).} = nil
+static:
+  doAssert hasCustomPragma(a.type, defaultValue)
+
+# bug #8371
+template thingy {.pragma.}
+
+type
+  Cardinal = enum
+    north, east, south, west
+  Something = object
+    a: float32
+    case cardinal: Cardinal
+    of north:
+      b {.thingy.}: int
+    of east:
+      c: int
+    of south: discard
+    else: discard
+
+var foo: Something
+foo.cardinal = north
+doAssert foo.b.hasCustomPragma(thingy) == true

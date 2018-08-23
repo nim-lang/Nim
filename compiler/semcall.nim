@@ -89,7 +89,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       continue
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
-    if c.currentScope.symbols.counter == counterInitial or syms != nil:
+    if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
         #if sym.name.s == "==" and (n.info ?? "temp3"):
@@ -237,7 +237,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     if symx.kind in routineKinds:
       errors.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
-                                diagnostics: nil,
+                                diagnostics: @[],
                                 enabled: false))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
@@ -391,7 +391,22 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result = copyTree(arg)
     result.typ = formal
 
-proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
+proc updateDefaultParams(call: PNode) =
+  # In generic procs, the default parameter may be unique for each
+  # instantiation (see tlateboundgenericparams).
+  # After a call is resolved, we need to re-assign any default value
+  # that was used during sigmatch. sigmatch is responsible for marking
+  # the default params with `nfDefaultParam` and `instantiateProcType`
+  # computes correctly the default values for each instantiation.
+  let calleeParams = call[0].sym.typ.n
+  for i in 1..<call.len:
+    if nfDefaultParam in call[i].flags:
+      let def = calleeParams[i].sym.ast
+      if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      call[i] = def
+
+proc semResolvedCall(c: PContext, x: TCandidate,
+                     n: PNode, flags: TExprFlags): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
@@ -424,8 +439,9 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
 
   result = x.call
   instGenericConvertersSons(c, result, x)
-  result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
+  result[0] = newSymNode(finalCallee, result[0].info)
   result.typ = finalCallee.typ.sons[0]
+  updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
@@ -438,7 +454,7 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
-  var errors: CandidateErrors = if efExplain in flags: @[] else: nil
+  var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
@@ -447,7 +463,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    result = semResolvedCall(c, n, r)
+    result = semResolvedCall(c, r, n, flags)
   elif implicitDeref in c.features and canDeref(n):
     # try to deref the first argument and then try overloading resolution again:
     #
@@ -458,7 +474,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     #
     n.sons[1] = n.sons[1].tryDeref
     var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
-    if r.state == csMatch: result = semResolvedCall(c, n, r)
+    if r.state == csMatch: result = semResolvedCall(c, r, n, flags)
     else:
       # get rid of the deref again for a better error message:
       n.sons[1] = n.sons[1].sons[0]
@@ -488,7 +504,15 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
-    let arg = n[i].typ
+    var arg = n[i].typ
+    # try transforming the argument into a static one before feeding it into
+    # typeRel
+    if formal.kind == tyStatic and arg.kind != tyStatic:
+      let evaluated = c.semTryConstExpr(c, n[i])
+      if evaluated != nil:
+        arg = newTypeS(tyStatic, c)
+        arg.sons = @[evaluated.typ]
+        arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)

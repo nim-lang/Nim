@@ -253,7 +253,7 @@ the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
-it was not case-sensitive and underscores were ignored and there was no even a
+it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
 
 
@@ -413,7 +413,7 @@ Numerical constants are of a single type and have the form::
   bindigit = '0'..'1'
   HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
   DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0' ('o' | 'c' | 'C') octdigit ( ['_'] octdigit )*
+  OCT_LIT = '0' 'o' octdigit ( ['_'] octdigit )*
   BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
   INT_LIT = HEX_LIT
@@ -444,7 +444,7 @@ Numerical constants are of a single type and have the form::
 
 As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o`` or ``0c``) and hexadecimal
+prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
@@ -741,22 +741,26 @@ For further details, see `Convertible relation
 
 Subrange types
 --------------
-A subrange type is a range of values from an ordinal type (the base
+A subrange type is a range of values from an ordinal or floating point type (the base
 type). To define a subrange type, one must specify it's limiting values: the
 lowest and highest value of the type:
 
 .. code-block:: nim
   type
     Subrange = range[0..5]
+    PositiveFloat = range[0.0..Inf]
 
 
 ``Subrange`` is a subrange of an integer which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``Subrange`` is a
+to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
+NaN does not belong to any subrange of floating point types.
+Assigning any other value to a variable of type ``Subrange`` is a
 checked runtime error (or static error if it can be statically
 determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
-A subrange type has the same size as its base type (``int`` in the example).
+A subrange type has the same size as its base type (``int`` in the
+Subrange example).
 
 
 Pre-defined floating point types
@@ -765,8 +769,8 @@ Pre-defined floating point types
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type).
+  the generic floating point type; its size used to be platform dependent,
+  but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
@@ -1503,68 +1507,6 @@ non nilable pointers. The details of this analysis are still to be specified
 here.
 
 
-Memory regions
---------------
-
-The types ``ref`` and ``ptr`` can get an optional ``region`` annotation.
-A region has to be an object type.
-
-Regions are very useful to separate user space and kernel memory in the
-development of OS kernels:
-
-.. code-block:: nim
-  type
-    Kernel = object
-    Userspace = object
-
-  var a: Kernel ptr Stat
-  var b: Userspace ptr Stat
-
-  # the following does not compile as the pointer types are incompatible:
-  a = b
-
-As the example shows ``ptr`` can also be used as a binary
-operator, ``region ptr T`` is a shortcut for ``ptr[region, T]``.
-
-In order to make generic code easier to write ``ptr T`` is a subtype
-of ``ptr[R, T]`` for any ``R``.
-
-Furthermore the subtype relation of the region object types is lifted to
-the pointer types: If ``A <: B`` then ``ptr[A, T] <: ptr[B, T]``. This can be
-used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
-not compatible to ``pointer`` to prevent the following from compiling:
-
-.. code-block:: nim
-  # from system
-  proc dealloc(p: pointer)
-
-  # wrap some scripting language
-  type
-    PythonsHeap = object
-    PyObjectHeader = object
-      rc: int
-      typ: pointer
-    PyObject = ptr[PythonsHeap, PyObjectHeader]
-
-  proc createPyObject(): PyObject {.importc: "...".}
-  proc destroyPyObject(x: PyObject) {.importc: "...".}
-
-  var foo = createPyObject()
-  # type error here, how convenient:
-  dealloc(foo)
-
-
-Future directions:
-
-* Memory regions might become available for  ``string`` and ``seq`` too.
-* Builtin regions like ``private``, ``global`` and ``local`` might be
-  useful for an OpenCL target.
-* Builtin "regions" can model ``lent`` and ``unique`` pointers.
-* An assignment operator can be attached to a region so that proper write
-  barriers can be generated. This would imply that the GC can be implemented
-  completely in user-space.
-
-
 Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. ``nil`` is
@@ -1669,7 +1611,8 @@ A ``distinct`` type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
-base type and vice versa are allowed.
+base type and vice versa are allowed. See also ``distinctBase`` to get the
+reverse operation.
 
 
 Modelling currencies
@@ -1732,7 +1675,7 @@ But it seems all this boilerplate code needs to be repeated for the ``Euro``
 currency. This can be solved with templates_.
 
 .. code-block:: nim
-  template additive(typ: typedesc) =
+  template additive(typ: type) =
     proc `+` *(x, y: typ): typ {.borrow.}
     proc `-` *(x, y: typ): typ {.borrow.}
 
@@ -1740,13 +1683,13 @@ currency. This can be solved with templates_.
     proc `+` *(x: typ): typ {.borrow.}
     proc `-` *(x: typ): typ {.borrow.}
 
-  template multiplicative(typ, base: typedesc) =
+  template multiplicative(typ, base: type) =
     proc `*` *(x: typ, y: base): typ {.borrow.}
     proc `*` *(x: base, y: typ): typ {.borrow.}
     proc `div` *(x: typ, y: base): typ {.borrow.}
     proc `mod` *(x: typ, y: base): typ {.borrow.}
 
-  template comparable(typ: typedesc) =
+  template comparable(typ: type) =
     proc `<` * (x, y: typ): bool {.borrow.}
     proc `<=` * (x, y: typ): bool {.borrow.}
     proc `==` * (x, y: typ): bool {.borrow.}
@@ -2332,6 +2275,8 @@ pointer type and overloading resolution is tried with ``a[]`` instead.
 Automatic self insertions
 -------------------------
 
+**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
+
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
 or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
@@ -2396,7 +2341,7 @@ argument's resolution:
   rem unresolvedExpression(undeclaredIdentifier)
 
 ``untyped`` and ``varargs[untyped]`` are the only metatype that are lazy in this sense, the other
-metatypes ``typed`` and ``typedesc`` are not lazy.
+metatypes ``typed`` and ``type`` are not lazy.
 
 
 Varargs matching
@@ -4024,9 +3969,13 @@ exception.
 Exception hierarchy
 -------------------
 
-The exception tree is defined in the `system <system.html>`_ module:
-
-.. include:: exception_hierarchy_fragment.txt
+The exception tree is defined in the `system <system.html>`_ module.
+Every exception inherits from ``system.Exception``. Exceptions that indicate
+programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
+and are stricly speaking not catchable as they can also be mapped to an operation
+that terminates the whole process. Exceptions that indicate any other runtime error
+that can be caught inherit from ``system.CatchableError``
+(which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -4274,29 +4223,6 @@ therefore very useful for type specialization within generic code:
         deletedKeys: seq[bool]
 
 
-Type operator
--------------
-
-The ``type`` (in many other languages called `typeof`:idx:) operator can
-be used to get the type of an expression:
-
-.. code-block:: nim
-  var x = 0
-  var y: type(x) # y has type int
-
-If ``type`` is used to determine the result type of a proc/iterator/converter
-call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
-interpretation where ``c`` is an iterator is preferred over the
-other interpretations:
-
-.. code-block:: nim
-  import strutils
-
-  # strutils contains both a ``split`` proc and iterator, but since an
-  # an iterator is the preferred interpretation, `y` has the type ``string``:
-  var y: type("a b c".split)
-
-
 Type Classes
 ------------
 
@@ -4450,10 +4376,10 @@ the presence of callable symbols with specific signatures:
     OutputStream = concept var s
       s.write(string)
 
-In order to check for symbols accepting ``typedesc`` params, you must prefix
-the type with an explicit ``type`` modifier. The named instance of the type,
-following the ``concept`` keyword is also considered an explicit ``typedesc``
-value that will be matched only as a type.
+In order to check for symbols accepting ``type`` params, you must prefix
+the type with the explicit ``type`` modifier. The named instance of the
+type, following the ``concept`` keyword is also considered to have the
+explicit modifier and will be matched only as a type.
 
 .. code-block:: nim
   type
@@ -4513,7 +4439,7 @@ The concept types can be parametric just like the regular generic types:
   import typetraits
 
   type
-    AnyMatrix*[R, C: static[int]; T] = concept m, var mvar, type M
+    AnyMatrix*[R, C: static int; T] = concept m, var mvar, type M
       M.ValueType is T
       M.Rows == R
       M.Cols == C
@@ -4523,7 +4449,7 @@ The concept types can be parametric just like the regular generic types:
 
       type TransposedType = stripGenericParams(M)[C, R, T]
 
-    AnySquareMatrix*[N: static[int], T] = AnyMatrix[N, N, T]
+    AnySquareMatrix*[N: static int, T] = AnyMatrix[N, N, T]
 
     AnyTransform3D* = AnyMatrix[4, 4, float]
 
@@ -4542,7 +4468,7 @@ The concept types can be parametric just like the regular generic types:
   ### matrix.nim
 
   type
-    Matrix*[M, N: static[int]; T] = object
+    Matrix*[M, N: static int; T] = object
       data: array[M*N, T]
 
   proc `[]`*(M: Matrix; m, n: int): M.T =
@@ -4554,7 +4480,7 @@ The concept types can be parametric just like the regular generic types:
   # Adapt the Matrix type to the concept's requirements
   template Rows*(M: type Matrix): expr = M.M
   template Cols*(M: type Matrix): expr = M.N
-  template ValueType*(M: type Matrix): typedesc = M.T
+  template ValueType*(M: type Matrix): type = M.T
 
   -------------
   ### usage.nim
@@ -4582,7 +4508,7 @@ operator and also when types dependent on them are being matched:
 
 .. code-block:: nim
   type
-    MatrixReducer[M, N: static[int]; T] = concept x
+    MatrixReducer[M, N: static int; T] = concept x
       x.reduce(SquareMatrix[N, T]) is array[M, int]
 
 The Nim compiler includes a simple linear equation solver, allowing it to
@@ -4771,12 +4697,12 @@ object inheritance syntax involving the ``of`` keyword:
 
     # the varargs param will here be converted to an array of StringRefValues
     # the proc will have only two instantiations for the two character types
-    proc log(format: static[string], varargs[StringRef])
+    proc log(format: static string, varargs[StringRef])
 
     # this proc will allow char and wchar values to be mixed in
     # the same call at the cost of additional instantiations
     # the varargs param will be converted to a tuple
-    proc log(format: static[string], varargs[distinct StringRef])
+    proc log(format: static string, varargs[distinct StringRef])
 
 
 ..
@@ -4940,9 +4866,8 @@ templates:
 | ``notin`` and ``isnot`` have the obvious meanings.
 
 The "types" of templates can be the symbols ``untyped``,
-``typed`` or ``typedesc`` (stands for *type
-description*). These are "meta types", they can only be used in certain
-contexts. Real types can be used too; this implies that ``typed`` expressions
+``typed`` or ``type``. These are "meta types", they can only be used in certain
+contexts. Regular types can be used too; this implies that ``typed`` expressions
 are expected.
 
 
@@ -4986,8 +4911,8 @@ clearer names.
 Passing a code block to a template
 ----------------------------------
 
-You can pass a block of statements as a last parameter to a template via a
-special ``:`` syntax:
+You can pass a block of statements as the last argument to a template
+following the special ``:`` syntax:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -5002,11 +4927,11 @@ special ``:`` syntax:
     else:
       quit("cannot open: " & fn)
 
-  withFile(txt, "ttempl3.txt", fmWrite):
+  withFile(txt, "ttempl3.txt", fmWrite):  # special colon
     txt.writeLine("line 1")
     txt.writeLine("line 2")
 
-In the example the two ``writeLine`` statements are bound to the ``actions``
+In the example, the two ``writeLine`` statements are bound to the ``actions``
 parameter.
 
 
@@ -5109,7 +5034,7 @@ In templates identifiers can be constructed with the backticks notation:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template typedef(name: untyped, typ: typedesc) =
+  template typedef(name: untyped, typ: type) =
     type
       `T name`* {.inject.} = typ
       `P name`* {.inject.} = ref `T name`
@@ -5171,7 +5096,7 @@ template cannot be accessed in the instantiation context:
 .. code-block:: nim
     :test: "nim c $1"
 
-  template newException*(exceptn: typedesc, message: string): untyped =
+  template newException*(exceptn: type, message: string): untyped =
     var
       e: ref exceptn  # e is implicitly gensym'ed here
     new(e)
@@ -5180,7 +5105,7 @@ template cannot be accessed in the instantiation context:
 
   # so this works:
   let e = "message"
-  raise newException(EIO, e)
+  raise newException(IoError, e)
 
 
 Whether a symbol that is declared in a template is exposed to the instantiation
@@ -5455,6 +5380,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     :test: "nim c $1"
 
   import macros
+  {.experimental: "forLoopMacros".}
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5481,6 +5407,62 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     echo a2, " ", b2
 
 
+Currently for loop macros must be enabled explicitly
+via ``{.experimental: "forLoopMacros".}``.
+
+
+Case statement macros
+---------------------
+
+A macro that needs to be called `match`:idx: can be used to
+rewrite ``case`` statements in order to
+implement `pattern matching`:idx: for certain types. The following
+example implements a simplistic form of pattern matching for tuples,
+leveraging the existing equality operator for tuples (as provided in
+ ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then the complete ``case`` statement
+body is passed and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+``macro`` to call.
+
+
 Special Types
 =============
 
@@ -5493,7 +5475,7 @@ As their name suggests, static parameters must be known at compile-time:
 
 .. code-block:: nim
 
-  proc precompiledRegex(pattern: static[string]): RegEx =
+  proc precompiledRegex(pattern: static string): RegEx =
     var res {.global.} = re(pattern)
     return res
 
@@ -5513,9 +5495,9 @@ Static params can also appear in the signatures of generic types:
 .. code-block:: nim
 
   type
-    Matrix[M,N: static[int]; T: Number] = array[0..(M*N - 1), T]
+    Matrix[M,N: static int; T: Number] = array[0..(M*N - 1), T]
       # Note how `Number` is just a type constraint here, while
-      # `static[int]` requires us to supply a compile-time int value
+      # `static int` requires us to supply a compile-time int value
 
     AffineTransform2D[T] = Matrix[3, 3, T]
     AffineTransform3D[T] = Matrix[4, 4, T]
@@ -5523,53 +5505,75 @@ Static params can also appear in the signatures of generic types:
   var m1: AffineTransform3D[float]  # OK
   var m2: AffineTransform2D[string] # Error, `string` is not a `Number`
 
+Please note that ``static T`` is just a syntactic convenience for the
+underlying generic type ``static[T]``. The type param can be omitted
+to obtain the type class of all values known at compile-time. A more
+specific type class can be created by instantiating ``static`` with
+another type class.
 
-typedesc
---------
+You can force the evaluation of a certain expression at compile-time by
+coercing it to a corresponding ``static`` type:
 
-`typedesc` is a special type allowing one to treat types as compile-time values
-(i.e. if types are compile-time values and all values have a type, then
-typedesc must be their type).
+.. code-block:: nim
+  import math
 
-When used as a regular proc param, typedesc acts as a type class. The proc
-will be instantiated for each unique type parameter and one can refer to the
-instantiation type using the param name:
+  echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
+
+The complier will report any failure to evaluate the expression or a
+possible type mismatch error.
+
+type[T]
+-------
+
+In many contexts, Nim allows you to treat the names of types as regular
+values. These values exists only during the compilation phase, but since
+all values must have a type, ``type`` is considered their special type.
+
+``type`` acts like a generic type. For instance, the type of the symbol
+``int`` is ``type[int]``. Just like with regular generic types, when the
+generic param is ommited, ``type`` denotes the type class of all types.
+As a syntactic convenience, you can also use ``type`` as a modifier.
+``type int`` is considered the same as ``type[int]``.
+
+Procs featuring ``type`` params are considered implicitly generic.
+They will be instantiated for each unique combination of supplied types
+and within the body of the proc, the name of each param will refer to
+the bound concrete type:
 
 .. code-block:: nim
 
-  proc new(T: typedesc): ref T =
+  proc new(T: type): ref T =
     echo "allocating ", T.name
     new(result)
 
   var n = Node.new
   var tree = new(BinaryTree[int])
 
-When multiple typedesc params are present, they will bind freely to different
-types. To force a bind-once behavior
-one can use an explicit ``typedesc[T]`` generic param:
+When multiple type params are present, they will bind freely to different
+types. To force a bind-once behavior one can use an explicit generic param:
 
 .. code-block:: nim
-  proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
+  proc acceptOnlyTypePairs[T, U](A, B: type[T]; C, D: type[U])
 
-Once bound, typedesc params can appear in the rest of the proc signature:
+Once bound, type params can appear in the rest of the proc signature:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  template declareVariableWithType(T: typedesc, value: T) =
+  template declareVariableWithType(T: type, value: T) =
     var x: T = value
 
   declareVariableWithType int, 42
 
 
 Overload resolution can be further influenced by constraining the set of
-types that will match the typedesc param:
+types that will match the type param:
 
 .. code-block:: nim
     :test: "nim c $1"
 
-  template maxval(T: typedesc[int]): int = high(int)
-  template maxval(T: typedesc[float]): float = Inf
+  template maxval(T: type int): int = high(int)
+  template maxval(T: type float): float = Inf
 
   var i = int.maxval
   var f = float.maxval
@@ -5578,7 +5582,35 @@ types that will match the typedesc param:
 
 The constraint can be a concrete type or a type class.
 
+type operator
+-------------
 
+You can obtain the type of a given expression by constructing a ``type``
+value from it (in many other languages this is known as the `typeof`:idx:
+operator):
+
+.. code-block:: nim
+  var x = 0
+  var y: type(x) # y has type int
+
+You may add a constraint to the resulting type to trigger a compile-time error
+if the expression doesn't have the expected type:
+
+.. code-block:: nim
+  var x = 0
+  var y: type[object](x) # Error: type mismatch: got <int> but expected 'object'
+
+If ``type`` is used to determine the result type of a proc/iterator/converter
+call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
+interpretation where ``c`` is an iterator is preferred over the
+other interpretations:
+
+.. code-block:: nim
+  import strutils
+
+  # strutils contains both a ``split`` proc and iterator, but since an
+  # an iterator is the preferred interpretation, `y` has the type ``string``:
+  var y: type("a b c".split)
 
 
 Special Operators
@@ -6199,10 +6231,10 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpper
+  import strutils except `%`, toUpperAscii
 
   # doesn't work then:
-  echo "$1" % "abc".toUpper
+  echo "$1" % "abc".toUpperAscii
 
 
 It is not checked that the ``except`` list is really exported from the module.
@@ -6231,24 +6263,24 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
-can be used to refer to a module in subdirectories:
+The original module name is then not accessible. The notations
+``path/to/module`` or ``"path/to/module"`` can be used to refer to a module
+in subdirectories:
 
 .. code-block:: nim
-  import lib.pure.strutils, lib/pure/os, "lib/pure/times"
+  import lib/pure/os, "lib/pure/times"
 
-Note that the module name is still ``strutils`` and not ``lib.pure.strutils``
+Note that the module name is still ``strutils`` and not ``lib/pure/strutils``
 and so one **cannot** do:
 
 .. code-block:: nim
-  import lib.pure.strutils
-  echo lib.pure.strutils
+  import lib/pure/strutils
+  echo lib/pure/strutils.toUpperAscii("abc")
 
 Likewise the following does not make sense as the name is ``strutils`` already:
 
 .. code-block:: nim
-  import lib.pure.strutils as strutils
+  import lib/pure/strutils as strutils
 
 
 Collective imports from a directory
@@ -6267,7 +6299,8 @@ name is not a valid Nim identifier it needs to be a string literal:
 Pseudo import/include paths
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A directory can also be a so called "pseudo directory".
+A directory can also be a so called "pseudo directory". They can be used to
+avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
 
@@ -7458,7 +7491,7 @@ Custom pragmas are defined using templates annotated with pragma ``pragma``:
 .. code-block:: nim
   template dbTable(name: string, table_space: string = "") {.pragma.}
   template dbKey(name: string = "", primary_key: bool = false) {.pragma.}
-  template dbForeignKey(t: typedesc) {.pragma.}
+  template dbForeignKey(t: type) {.pragma.}
   template dbIgnore {.pragma.}
 
 
@@ -7901,7 +7934,7 @@ that ``spawn`` takes is restricted:
 
 ``spawn`` executes the passed expression on the thread pool and returns
 a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``awaitAny`` to
+with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -7912,10 +7945,10 @@ wait on multiple flow variables at the same time:
     var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
-    var index = awaitAny(responses)
+    var index = blockUntilAny(responses)
     assert index >= 0
     responses.del(index)
-    discard awaitAny(responses)
+    discard blockUntilAny(responses)
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in

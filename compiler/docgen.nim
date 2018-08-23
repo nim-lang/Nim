@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, lineinfos
+  typesrenderer, astalgo, modulepaths, lineinfos, sequtils
 
 type
   TSections = array[TSymKind, Rope]
@@ -191,7 +191,7 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
-  if n.comment != nil:
+  if n.comment.len > 0:
     renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
@@ -205,7 +205,8 @@ proc genRecComment(d: PDoc, n: PNode): Rope =
         result = genRecComment(d, n.sons[i])
         if result != nil: return
   else:
-    n.comment = nil
+    when defined(nimNoNilSeqs): n.comment = ""
+    else: n.comment = nil
 
 proc getPlainDocstring(n: PNode): string =
   ## Gets the plain text docstring of a node non destructively.
@@ -215,7 +216,7 @@ proc getPlainDocstring(n: PNode): string =
   ## the concatenated ``##`` comments of the node.
   result = ""
   if n == nil: return
-  if n.comment != nil and startsWith(n.comment, "##"):
+  if startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
     for i in countup(0, safeLen(n)-1):
@@ -259,11 +260,19 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+      dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
+        """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+</span>
+<span class="pragmawrap">
+<span class="Other">$1</span>
+<span class="pragma">""".replace("\n", ""),  # Must remove newlines because wrapped in a <pre>
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
-      dispA(d.conf, result, "</div><span class=\"Other pragmaend\">$1</span>",
+      dispA(d.conf, result, """
+</span>
+<span class="Other">$1</span>
+</span>""".replace("\n", ""),
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
@@ -280,7 +289,7 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   of nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      dispA(d.conf, dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+      dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter
@@ -509,12 +518,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
-      var commit = getConfigVar(d.conf, "git.commit")
-      if commit.len == 0: commit = "master"
+      let commit = getConfigVar(d.conf, "git.commit", "master")
+      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
-          ["path", "line", "url", "commit"], [rope path,
-          rope($n.info.line), rope gitUrl,
-          rope commit])])
+          ["path", "line", "url", "commit", "devel"], [rope path,
+          rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
 
   add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
@@ -557,9 +565,9 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 
   result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
-  if comm != nil and comm != "":
+  if comm.len > 0:
     result["description"] = %comm
-  if r.buf != nil:
+  if r.buf.len > 0:
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
@@ -582,7 +590,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-          "$1", [rope(getModuleName(d.conf, it))])
+          "$1", [rope(splitFile(getModuleName(d.conf, it)).name)])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -627,7 +635,7 @@ proc add(d: PDoc; j: JsonNode) =
 proc generateJson*(d: PDoc, n: PNode) =
   case n.kind
   of nkCommentStmt:
-    if n.comment != nil and startsWith(n.comment, "##"):
+    if startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
       d.add %{ "comment": %stripped, "line": %n.info.line.int,
                "col": %n.info.col }
@@ -671,7 +679,7 @@ proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
 proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   case n.kind
   of nkCommentStmt:
-    if n.comment != nil and startsWith(n.comment, "##"):
+    if startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
       r.add stripped
   of nkProcDef:
@@ -779,16 +787,13 @@ proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
-  var success = true
-  var filename: string
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
-    filename = "<stdout>"
   else:
-    filename = getOutFile2(d.conf, filename, outExt, "htmldocs")
-    success = writeRope(content, filename)
-  if not success:
-    rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, filename)
+    let outfile = getOutFile2(d.conf, filename, outExt, "htmldocs")
+    createDir(outfile.parentDir)
+    if not writeRope(content, outfile):
+      rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, outfile)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =

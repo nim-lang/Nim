@@ -5,7 +5,7 @@ false
 false
 true
 true
-no'''
+yes'''
 """
 
 proc IsVoid[T](): string =

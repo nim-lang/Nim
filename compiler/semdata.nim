@@ -37,6 +37,7 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
+    mappingExists*: bool
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -176,12 +177,14 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
-  if p.mapping.data == nil: initIdTable(p.mapping)
+  if not p.mappingExists:
+    initIdTable(p.mapping)
+    p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
 
 proc get*(p: PProcCon; key: PSym): PSym =
-  if p.mapping.data == nil: return nil
+  if not p.mappingExists: return nil
   result = PSym(p.mapping.idTableGet(key))
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
@@ -288,7 +291,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
     result.addSonSkipIntLit(typ)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
-  let typedesc = makeTypeDesc(c, typ)
+  let typedesc = newTypeS(tyTypeDesc, c)
+  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)

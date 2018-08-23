@@ -60,13 +60,13 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   if additionalInfo.len == 0:
     e.msg = osErrorMsg(errorCode)
   else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: " & additionalInfo
+    e.msg = osErrorMsg(errorCode) & "\nAdditional info: '" & additionalInfo & "'"
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e
 
 {.push stackTrace:off.}
-proc osLastError*(): OSErrorCode =
+proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## Retrieves the last operating system error code.
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
