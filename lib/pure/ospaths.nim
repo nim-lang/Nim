@@ -531,9 +531,11 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ##
   ## An OS-dependent trailing slash is always present at the end of the
   ## returned string; `\\` on Windows and `/` on all other OSs.
-  when defined(windows): return string(getEnv("APPDATA")) & "\\"
-  elif getEnv("XDG_CONFIG_HOME"): return string(getEnv("XDG_CONFIG_HOME")) & "/"
-  else: return string(getEnv("HOME")) & "/.config/"
+  when defined(windows):
+    result = string(getEnv("APPDATA")) & "\\"
+  else:
+    result = string(getEnv("XDG_CONFIG_HOME", "")) & "/"
+    if result == "/": result = string(getEnv("HOME")) & "/.config/"
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
