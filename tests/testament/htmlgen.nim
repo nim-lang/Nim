@@ -22,8 +22,8 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
     target = testResultRow["target"].str.htmlQuote()
     action = testResultRow["action"].str.htmlQuote()
     result = htmlQuote testResultRow["result"].str
-    expected = testResultRow["expected"].str
-    gotten = testResultRow["given"].str
+    expected = testResultRow["expected"].getStr
+    gotten = testResultRow["given"].getStr
     timestamp = "unknown"
   var
     panelCtxClass, textCtxClass, bgCtxClass: string

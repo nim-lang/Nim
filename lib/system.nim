@@ -3767,23 +3767,23 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
+  # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
+  # or not to output full paths.
   bind instantiationInfo
   mixin failedAssertImpl
-  when compileOption("assertions"):
-    {.line.}:
+  {.line: instantiationInfo(fullPaths = true).}:
+    when compileOption("assertions"):
       if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
-  bind instantiationInfo
   # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
   # or not to output full paths.
-  {.line: instantiationInfo(-1, true).}:
-    if not cond:
-      raiseAssert(astToStr(cond) & ' ' &
-                  instantiationInfo(-1, false).fileName & '(' &
-                  $instantiationInfo(-1, false).line & ") " & msg)
+  bind instantiationInfo
+  mixin failedAssertImpl
+  {.line: instantiationInfo(fullPaths = true).}:
+    if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.

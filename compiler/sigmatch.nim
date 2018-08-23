@@ -993,7 +993,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
                                      not c.isNoCall and
                                      f.kind != tyTypeDesc and
-                                     tfExplicit notin aOrig.flags
+                                     tfExplicit notin aOrig.flags and
+                                     tfConceptMatchedTypeSym notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
           aOrig.skipTypes({tyTypeDesc})

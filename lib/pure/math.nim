@@ -265,7 +265,7 @@ proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
 proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
   ## Computes the inverse hyperbolic cosecant of `x`
 
-const windowsCC89 = defined(windows) and (defined(vcc) or defined(bcc))
+const windowsCC89 = defined(windows) and defined(bcc)
 
 when not defined(JS): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
