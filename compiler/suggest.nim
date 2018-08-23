@@ -434,7 +434,7 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
     if conf.suggestVersion == 0:
-      if s.allUsages.isNil:
+      if s.allUsages.len == 0:
         s.allUsages = @[info]
       else:
         s.addNoDup(info)
