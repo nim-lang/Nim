@@ -787,14 +787,13 @@ proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
-  var success = true
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     let outfile = getOutFile2(d.conf, filename, outExt, "htmldocs")
-    success = writeRope(content, outfile)
-  if not success:
-    rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, filename)
+    createDir(outfile.parentDir)
+    if not writeRope(content, outfile):
+      rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, outfile)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
