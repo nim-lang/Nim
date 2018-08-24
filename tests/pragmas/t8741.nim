@@ -1,6 +1,6 @@
 discard """
   line: 9
-  errormsg: "attempting to call undeclared routine: 'foobar'"
+  errormsg: "cannot attach a custom pragma to 'a'"
 """
 
 for a {.gensym, inject.} in @[1,2,3]:

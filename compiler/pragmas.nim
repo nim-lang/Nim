@@ -96,7 +96,9 @@ const
   errIntLiteralExpected = "integer literal expected"
 
 proc invalidPragma*(c: PContext; n: PNode) =
-  localError(c.config, n.info, "invalid pragma: " % renderTree(n, {renderNoComments}))
+  localError(c.config, n.info, "invalid pragma: " & renderTree(n, {renderNoComments}))
+proc illegalCustomPragma*(c: PContext, n: PNode, s: PSym) =
+  localError(c.config, n.info, "cannot attach a custom pragma to '" & s.name.s & "'")
 
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
@@ -1094,9 +1096,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    else:
+    elif sym.kind in {skField,skProc,skFunc,skConverter,skMethod,skType}:
       n.sons[i] = semCustomPragma(c, it)
-
+    else:
+      illegalCustomPragma(c, it, sym)
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
