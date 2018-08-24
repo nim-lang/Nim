@@ -3766,10 +3766,9 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool], fakeLoc: static
   mixin failedAssertImpl
   when enabled:
     if not cond:
-        # `fakeLoc` is useful for for unittests, see tfailedassert.nim
-        var msg2 =  when fakeLoc.len == 0: loc else: fakeLoc
-        msg2.add " `" & astToStr(cond) & "` " & msg
-        failedAssertImpl(msg2)
+      # `fakeLoc` is useful for for unittests, see tfailedassert.nim
+      const loc2 =  when fakeLoc.len == 0: loc else: fakeLoc
+      failedAssertImpl(loc2 & " `" & astToStr(cond) & "` " & msg)
 
 template assert*(cond: bool, msg = "", fakeLoc: static[string] = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note

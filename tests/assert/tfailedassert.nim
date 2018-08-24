@@ -56,6 +56,10 @@ try:
 except AssertionError as e:
   echo e.msg
 
+proc foo2() =
+  # protect against https://github.com/nim-lang/Nim/issues/8758
+  static: doAssert(true)
+
 # module-wide policy to change the failed assert
 # exception type in order to include a lineinfo
 onFailedAssert(msg):
