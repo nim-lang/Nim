@@ -3760,17 +3760,15 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
 
 include "system/helpers" # for `lineInfoToString`
 
-template assertImpl(cond: bool, msg = "", enabled: static[bool], fakeLoc: static[string]) =
+template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
     if not cond:
-      # `fakeLoc` is useful for for unittests, see tfailedassert.nim
-      const loc2 =  when fakeLoc.len == 0: loc else: fakeLoc
-      failedAssertImpl(loc2 & " `" & astToStr(cond) & "` " & msg)
+      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
 
-template assert*(cond: bool, msg = "", fakeLoc: static[string] = "") =
+template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
@@ -3779,11 +3777,11 @@ template assert*(cond: bool, msg = "", fakeLoc: static[string] = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  assertImpl(cond, msg, compileOption("assertions"), fakeLoc)
+  assertImpl(cond, msg, compileOption("assertions"))
 
-template doAssert*(cond: bool, msg = "", fakeLoc: static[string] = "") =
+template doAssert*(cond: bool, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
-  assertImpl(cond, msg, true, fakeLoc)
+  assertImpl(cond, msg, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.

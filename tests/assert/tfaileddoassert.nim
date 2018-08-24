@@ -1,19 +1,20 @@
 discard """
   cmd: "nim $target -d:release $options $file"
   output: '''
-true
-MOCKEDFILE `a == 3` bar
+test1:ok
+test2:ok
 '''
 """
 
-from strutils import endsWith, split
+import testhelper
 
 onFailedAssert(msg):
-  echo msg.endsWith("tfaileddoassert.nim(15, 9) `a == 2` foo")
+  checkMsg(msg, "tfaileddoassert.nim(15, 9) `a == 2` foo", "test1")
 
 var a = 1
 doAssert(a == 2, "foo")
 
 onFailedAssert(msg):
-  echo msg
-doAssert(a == 3, "bar", "MOCKEDFILE")
+  checkMsg(msg, "tfaileddoassert.nim(20, 10) `a == 3` ", "test2")
+
+doAssert a == 3

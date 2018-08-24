@@ -1,64 +1,64 @@
 discard """
   output: '''
-true
-true
-true
-true
-MOCKEDFILE `a + a == 1` doAssert failed
-MOCKEDFILE `a + a == 1` assert failed
-WARNING: MOCKEDFILE `false` first assertion from bar
-ERROR: MOCKEDFILE `false` second assertion from bar
+test1:ok
+test2:ok
+test3:ok
+test4:ok
+test5:ok
+test6:ok
+test7:ok
 -1
-tfailedassert.nim MOCKEDFILE `false` assertion from foo
+tfailedassert.nim
+test7:ok
 '''
 """
 
-from strutils import endsWith, split
-from ospaths import isAbsolute
+import testhelper
 
 type
   TLineInfo = tuple[filename: string, line: int, column: int]
-
   TMyError = object of Exception
     lineinfo: TLineInfo
-
   EMyError = ref TMyError
 
 echo("")
 
-## using real files to make sure we print what we expect and prevent
-## future regressions
-try:
-  doAssert(false, "doAssert:realLoc")
-except AssertionError as e:
-  echo e.msg.endsWith("tfailedassert.nim(32, 11) `false` doAssert:realLoc")
-  echo e.msg.split(' ', maxSplit = 1)[0].isAbsolute
+
+# NOTE: when entering newlines, adjust `expectedEnd` ouptuts
 
 try:
-  assert false, "assert:realLoc"
+  doAssert(false, "msg1") # doAssert test
 except AssertionError as e:
-  echo e.msg.endsWith("tfailedassert.nim(38, 10) `false` assert:realLoc")
-  echo e.msg.split(' ', maxSplit = 1)[0].isAbsolute
+  checkMsg(e.msg, "tfailedassert.nim(30, 11) `false` msg1", "test1")
 
-## from now on, it's simpler to use `fakeLoc` for remainder of tests
-const fakeLoc = "MOCKEDFILE"
+try:
+  assert false, "msg2"  # assert test
+except AssertionError as e:
+  checkMsg(e.msg, "tfailedassert.nim(35, 10) `false` msg2", "test2")
+
+try:
+  assert false # assert test with no msg
+except AssertionError as e:
+  checkMsg(e.msg, "tfailedassert.nim(40, 10) `false` ", "test3")
+
 try:
   let a = 1
-  doAssert(a+a==1, "doAssert failed", fakeLoc)
+  doAssert(a+a==1) # assert test with Ast expression
   # BUG: const folding would make "1+1==1" appear as `false` in
   # assert message
 except AssertionError as e:
-  echo e.msg
+  checkMsg(e.msg, "`a + a == 1` ", "test4")
 
 try:
   let a = 1
-  assert(a+a==1, "assert failed", fakeLoc)
+  doAssert a+a==1 # ditto with `doAssert` and no parens
 except AssertionError as e:
-  echo e.msg
+  checkMsg(e.msg, "`a + a == 1` ", "test5")
 
-proc foo2() =
+proc fooStatic() =
   # protect against https://github.com/nim-lang/Nim/issues/8758
   static: doAssert(true)
+fooStatic()
 
 # module-wide policy to change the failed assert
 # exception type in order to include a lineinfo
@@ -69,20 +69,21 @@ onFailedAssert(msg):
   raise e
 
 proc foo =
-  assert(false, "assertion from foo", fakeLoc)
+  assert(false, "assertion from foo")
+
 
 proc bar: int =
-  # local overrides that are active only
-  # in this proc
-  onFailedAssert(msg): echo "WARNING: " & msg
+  # local overrides that are active only in this proc
+  onFailedAssert(msg):
+    checkMsg(msg, "tfailedassert.nim(80, 9) `false` first assertion from bar", "test6")
 
-  assert(false, "first assertion from bar", fakeLoc)
+  assert(false, "first assertion from bar")
 
   onFailedAssert(msg):
-    echo "ERROR: " & msg
+    checkMsg(msg, "tfailedassert.nim(86, 9) `false` second assertion from bar", "test7")
     return -1
 
-  assert(false, "second assertion from bar", fakeLoc)
+  assert(false, "second assertion from bar")
   return 10
 
 echo(bar())
@@ -91,4 +92,5 @@ try:
   foo()
 except:
   let e = EMyError(getCurrentException())
-  echo e.lineinfo.filename, " ", e.msg
+  echo e.lineinfo.filename
+  checkMsg(e.msg, "tfailedassert.nim(72, 9) `false` assertion from foo", "test7")
