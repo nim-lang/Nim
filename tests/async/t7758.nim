@@ -1,6 +1,7 @@
 discard """
   file: "t7758.nim"
   exitcode: 0
+  disabled: true
 """
 import asyncdispatch
 
