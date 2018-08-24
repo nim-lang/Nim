@@ -81,13 +81,15 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     msgWriteln(c.config, s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                msg: string, n: PNode = nil) =
+                msg: string, lineInfo: TLineInfo) =
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
   # XXX test if we want 'globalError' for every mode
-  let lineInfo = if n == nil: c.debug[pc] else: n.info
   if c.mode == emRepl: globalError(c.config, lineInfo, msg)
   else: localError(c.config, lineInfo, msg)
+
+proc stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
+  stackTrace(c, tos, pc, msg, c.debug[pc])
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, "unhandled exception: " &
@@ -1377,15 +1379,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                       c.debug[pc], c.config)[0]
       else:
         globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
-    of opcNError:
+    of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)
       let a = regs[ra].node
       let b = regs[rb].node
-      stackTrace(c, tos, pc, a.strVal, if b.kind == nkNilLit: nil else: b)
-    of opcNWarning:
-      message(c.config, c.debug[pc], warnUser, regs[ra].node.strVal)
-    of opcNHint:
-      message(c.config, c.debug[pc], hintUser, regs[ra].node.strVal)
+      let info = if b.kind == nkNilLit: c.debug[pc] else: b.info
+      if instr.opcode == opcNError:
+        stackTrace(c, tos, pc, a.strVal, info)
+      elif instr.opcode == opcNWarning:
+        message(c.config, info, warnUser, a.strVal)
+      elif instr.opcode == opcNHint:
+        message(c.config, info, hintUser, a.strVal)
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
