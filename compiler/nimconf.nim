@@ -175,9 +175,9 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
-    # BUGFIX: do not copy '['!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
+    add(val, '[')
     add(val, tokToStr(tok))
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
