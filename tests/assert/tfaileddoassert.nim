@@ -1,11 +1,20 @@
 discard """
   cmd: "nim $target -d:release $options $file"
   output: '''
-assertion occured!!!!!! false
+test1:ok
+test2:ok
 '''
 """
 
-onFailedAssert(msg):
-  echo("assertion occured!!!!!! ", msg)
+import testhelper
 
-doAssert(1 == 2)
+onFailedAssert(msg):
+  checkMsg(msg, "tfaileddoassert.nim(15, 9) `a == 2` foo", "test1")
+
+var a = 1
+doAssert(a == 2, "foo")
+
+onFailedAssert(msg):
+  checkMsg(msg, "tfaileddoassert.nim(20, 10) `a == 3` ", "test2")
+
+doAssert a == 3

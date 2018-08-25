@@ -3758,6 +3758,16 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
                                     tags: [].}
   Hide(raiseAssert)(msg)
 
+include "system/helpers" # for `lineInfoToString`
+
+template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
+  const loc = $instantiationInfo(-1, true)
+  bind instantiationInfo
+  mixin failedAssertImpl
+  when enabled:
+    if not cond:
+      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
@@ -3767,23 +3777,11 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
-  # or not to output full paths.
-  bind instantiationInfo
-  mixin failedAssertImpl
-  {.line: instantiationInfo(fullPaths = true).}:
-    when compileOption("assertions"):
-      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
+  assertImpl(cond, msg, compileOption("assertions"))
 
 template doAssert*(cond: bool, msg = "") =
-  ## same as `assert` but is always turned on and not affected by the
-  ## ``--assertions`` command line switch.
-  # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
-  # or not to output full paths.
-  bind instantiationInfo
-  mixin failedAssertImpl
-  {.line: instantiationInfo(fullPaths = true).}:
-    if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
+  ## same as ``assert`` but is always turned on regardless of ``--assertions``
+  assertImpl(cond, msg, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
