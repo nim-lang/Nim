@@ -81,7 +81,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       conf.projectPath = canonicalizePath(conf, getCurrentDir())
     loadConfigs(DefaultConfig, cache, conf) # load all config files
 
-    proc runNimScriptIfExists(scriptFile:string)=
+    proc runNimScriptIfExists(scriptFile: string)=
       if fileExists(scriptFile):
         runNimScript(cache, scriptFile, freshDefines=false, conf)
 
@@ -89,15 +89,15 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     # merge this complex logic with `loadConfigs`
     # check whether these should be controlled via
     # optSkipConfigFile, optSkipUserConfigFile
-    let config_nims = "config.nims"
-    runNimScriptIfExists(getSystemConfigPath(conf, config_nims))
-    runNimScriptIfExists(getUserConfigPath(config_nims))
-    runNimScriptIfExists(conf.projectPath / config_nims)
+    const configNims = "config.nims"
+    runNimScriptIfExists(getSystemConfigPath(conf, configNims))
+    runNimScriptIfExists(getUserConfigPath(configNims))
+    runNimScriptIfExists(conf.projectPath / configNims)
     block:
       let scriptFile = conf.projectFull.changeFileExt("nims")
       runNimScriptIfExists(scriptFile)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if fileExists(scriptFile) and scriptFile == conf.projectFull: return
+      if fileExists(scriptFile) and scriptFile.cmpPaths(conf.projectFull) == 0: return
 
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
