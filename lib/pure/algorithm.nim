@@ -227,7 +227,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   else:
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
-proc sort*[T](a: var openArray[T],
+func sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
@@ -235,9 +235,9 @@ proc sort*[T](a: var openArray[T],
   ## be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of
-  ## length ``a.len div 2``. Currently Nim does not support a
-  ## sensible default argument for ``cmp``, so you have to provide one
-  ## of your own. However, the ``system.cmp`` procs can be used:
+  ## length ``a.len div 2``. If you do not wish to provide your own
+  ## ``cmp``, you may use ``system.cmp`` or instead call the overloaded
+  ## version of ``sort``, which uses ``system.cmp``.
   ##
   ## .. code-block:: nim
   ##
@@ -267,24 +267,24 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = 
-  ## Overload of ``sort`` using ``system.cmp``
+func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
+  ## Sort an openarray in-place with a default lexicographical ordering.
   runnableExamples:
     var s = @[1,3,2,5,4]
     s.sort
     doAssert a == @[1,2,3,4,5]
   sort(a, system.cmp, order)
 
-proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
-  ## returns `a` sorted by `cmp` in the specified `order`.
+  ## Returns `a` sorted by `cmp` in the specified `order`.
   result = newSeq[T](a.len)
   for i in 0 .. a.high:
     result[i] = a[i]
   sort(result, cmp, order)
 
-proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] = 
-  ## Overload of ``sorted`` using ``system.cmp``
+func sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
+  ## Returns `a` sorted with default lexicographical ordering
   runnableExamples:
     let orig = @[2,3,1,2]
     let copy = orig.sorted()
@@ -325,7 +325,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     result = cmp(a, b))
   result
 
-proc isSorted*[T](a: openArray[T],
+func isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
   ## Checks to see whether `a` is already sorted in `order`
@@ -336,11 +336,11 @@ proc isSorted*[T](a: openArray[T],
     if cmp(a[i],a[i+1]) * order > 0:
       return false
 
-proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
-  ## Overload of ``isSorted`` using ``system.cmp``
+func isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
+  ## Checks whether `a` is sorted with a default lexicographical ordering
   runnableExamples:
     let test = @[1,1,2,3,5,8]
-    echo test.isSorted()
+    doAssert test.isSorted()
   result = isSorted(a, system.cmp, order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
