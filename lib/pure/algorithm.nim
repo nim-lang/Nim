@@ -267,6 +267,14 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
+proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = 
+  ## Overload of ``sort`` using ``system.cmp``
+  runnableExamples:
+    var s = @[1,3,2,5,4]
+    s.sort
+    doAssert a == @[1,2,3,4,5]
+  sort(a, system.cmp, order)
+
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## returns `a` sorted by `cmp` in the specified `order`.
@@ -274,6 +282,15 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   for i in 0 .. a.high:
     result[i] = a[i]
   sort(result, cmp, order)
+
+proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] = 
+  ## Overload of ``sorted`` using ``system.cmp``
+  runnableExamples:
+    let orig = @[2,3,1,2]
+    let copy = orig.sorted()
+    doAssert orig == @[2,3,1,2]
+    doAssert copy == @[1,2,2,3]
+  return sorted(a, system.cmp, order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
@@ -308,7 +325,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     result = cmp(a, b))
   result
 
-proc isSorted*[T](a: openarray[T],
+proc isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
   ## Checks to see whether `a` is already sorted in `order`
@@ -318,6 +335,13 @@ proc isSorted*[T](a: openarray[T],
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
       return false
+
+proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
+  ## Overload of ``isSorted`` using ``system.cmp``
+  runnableExamples:
+    let test = @[1,1,2,3,5,8]
+    echo test.isSorted()
+  result = isSorted(a, system.cmp, order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
