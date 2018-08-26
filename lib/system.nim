@@ -4029,8 +4029,11 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   procCall someMethod(a, b)
   discard
 
-proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
-proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
+proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect,
+                             deprecated: "use len() instead".} =
+  discard
+proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect,
+                                deprecated: "use len() instead".} =
   ## returns the length of a sequence or a string without testing for 'nil'.
   ## This is an optimization that rarely makes sense.
   discard
