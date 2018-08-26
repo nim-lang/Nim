@@ -545,10 +545,9 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJson*(s: string; result: var string) =
-  ## Converts a string `s` to its JSON representation.
+proc escapeJsonUnquoted*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to ``result``.
-  result.add("\"")
   for c in s:
     case c
     of '\L': result.add("\\n")
@@ -561,10 +560,21 @@ proc escapeJson*(s: string; result: var string) =
     of '\14'..'\31': result.add("\\u00" & $ord(c))
     of '\\': result.add("\\\\")
     else: result.add(c)
+
+proc escapeJsonUnquoted*(s: string): string =
+  ## Converts a string `s` to its JSON representation without quotes.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJsonUnquoted(s, result)
+
+proc escapeJson*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation with quotes.
+  ## Appends to ``result``.
+  result.add("\"")
+  escapeJsonUnquoted(s, result)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
-  ## Converts a string `s` to its JSON representation.
+  ## Converts a string `s` to its JSON representation with quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
