@@ -1617,6 +1617,8 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
+  doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
   doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
 
