@@ -6448,6 +6448,11 @@ The deprecated pragma is used to mark a symbol as deprecated:
   proc p() {.deprecated.}
   var x {.deprecated.}: char
 
+This pragma can also take in an optional warning string to relay to developers.
+
+.. code-block:: nim
+  proc thing(x: bool) {.deprecated: "See arguments of otherThing()".}
+
 It can also be used as a statement, in that case it takes a list of *renamings*.
 
 .. code-block:: nim
@@ -6455,7 +6460,6 @@ It can also be used as a statement, in that case it takes a list of *renamings*.
     File = object
     Stream = ref object
   {.deprecated: [TFile: File, PStream: Stream].}
-
 
 noSideEffect pragma
 -------------------
