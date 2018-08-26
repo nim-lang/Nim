@@ -449,6 +449,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
     add(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
+    # prefix mangled name with "_U" to avoid clashes with other field names,
+    # since identifiers are not allowed to start with '_'
     let uname = rope("_U" & mangle(n.sons[0].sym.name.s))
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, uname]
              else: uname
