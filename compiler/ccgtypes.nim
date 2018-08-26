@@ -449,7 +449,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
     add(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
-    let uname = rope(mangle(n.sons[0].sym.name.s) & 'U')
+    let uname = rope(mangle(n.sons[0].sym.name.s) & "_U")
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, uname]
              else: uname
     var unionBody: Rope = nil
