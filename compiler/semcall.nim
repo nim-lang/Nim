@@ -331,10 +331,16 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags:
+        let ident = considerQuotedIdent(c, f, n).s
+        var msg = ""
         if nfDotField in n.flags and nfExplicitCall notin n.flags:
-          localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
+          msg = errUndeclaredField % ident
         else:
-          localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
+          msg = errUndeclaredRoutine % ident
+        let sym = qualifiedLookUp(c, f, {})
+        if sym != nil:
+          msg &= "; found '$1' of kind '$2' used in wrong context" % [getSymRepr(c.config, sym), $sym.kind]
+        localError(c.config, n.info, msg)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
