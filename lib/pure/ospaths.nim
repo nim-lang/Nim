@@ -13,7 +13,6 @@
 include "system/inclrtl"
 
 import strutils
-import sugar
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
@@ -158,80 +157,18 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-# TODO: MOVE to strutils, sequtils, or algorithms
-proc countWhile*(str: string, pred : proc(a:char):bool, prefix = true): int =
-  ## returns the number of elements in ``str`` that satisfy ``pred`` predicate.
-  ## without interruption, starting from beginning (when ``prefix`` is true)
-  ## or end (when ``prefix`` is false)
-  runnableExamples:
-    import sugar
-    doAssert countWhile("abc", a=>a == '/') == 0
-    doAssert countWhile("//abc", a=>a == '/') == 2
-    doAssert countWhile("//", a=>a == '/') == 2
-    doAssert countWhile("", a=>a == '/') == 0
-
-    doAssert countWhile("abc", a=>a == '/', prefix = false) == 0
-    doAssert countWhile("abc//", a=>a == '/', prefix = false) == 2
-    doAssert countWhile("//", a=>a == '/', prefix = false) == 2
-    doAssert countWhile("", a=>a == '/', prefix = false) == 0
-  let lenS = len(str)
-  if prefix:
-    for i in 0..<lenS:
-      if not pred(str[i]): return i
+proc countWhile(s: string, pred: proc(a: char): bool, countdown = false): int =
+  ## returns the number of elements in ``s`` that satisfy ``pred`` predicate
+  ## without interruption, starting from beginning (when ``countdown`` is false)
+  ## or end (when ``countdown`` is true)
+  # see https://github.com/nim-lang/Nim/pull/8673
+  if countdown:
+    for i in countdown(s.len-1, 0):
+      if not pred(s[i]): return s.len - i - 1
   else:
-    for i in 0..<lenS:
-      if not pred(str[lenS - i - 1]): return i
-  return lenS
-
-proc rootPrefixLength(path: string) : int =
-  ## Returns the length of the prefix that makes ``path`` absolute, or 0
-  ## if ``path`` is relative.
-  if len(path) == 0: return 0
-
-  when doslikeFileSystem:
-    if path[0] in {DirSep, AltSep}:
-      return countWhile(path, a => a in {DirSep, AltSep})
-    if len(path) > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':':
-      # eg: C:\\bar
-      return 2 + countWhile(path[2..^1], a => a in {DirSep, AltSep})
-  elif defined(macos):
-    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
-    if path[0] == ':':
-      result = 0
-    else:
-      result = countWhile(path, a => a != ':')
-  elif defined(RISCOS):
-    result = if path[0] == '$': 1 else: 0
-  elif defined(posix):
-    result = countWhile(path, a => a == '/')
-
-proc rootPrefix*(path: string) : string =
-  ## returns the prefix that makes ``path`` absolute, or ""
-  ## if ``path`` is relative.
-  runnableExamples:
-    doAssert "foo".rootPrefix == ""
-    doAssert "//foo".rootPrefix == "//"
-    when doslikeFileSystem:
-      doAssert r"/\foo".rootPrefix == r"/\"
-      doAssert r"C:\\foo".rootPrefix == r"C:\\"
-  let n = path.rootPrefixLength
-  result = path[0..<n]
-
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
-  ## Returns whether ``path`` is absolute.
-  ##
-  ## On Windows, network paths are considered absolute too.
-  runnableExamples:
-    doAssert(not "".isAbsolute)
-    doAssert(not ".".isAbsolute)
-    doAssert(not "foo".isAbsolute)
-    when defined(posix):
-      doAssert "/".isAbsolute
-      doAssert(not "a/".isAbsolute)
-    when defined(Windows):
-      doAssert "C:\\foo".isAbsolute
-
-  return rootPrefixLength(path) > 0
+    for i in 0..<s.len:
+      if not pred(s[i]): return i
+  return s.len
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -257,6 +194,48 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
   result = path
   result.normalizePathEnd(trailingSep)
 
+proc rootPrefixLength(path: string) : int =
+  ## Returns the length of the prefix that makes ``path`` absolute, or 0
+  ## if ``path`` is relative.
+  if len(path) == 0: return 0
+
+  when doslikeFileSystem:
+    if path[0] in {DirSep, AltSep}:
+      return countWhile(path, proc(a: char): bool = a in {DirSep, AltSep})
+    if len(path) > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':':
+      # eg: C:\\bar
+      return 2 + countWhile(path[2..^1], proc(a: char): bool = a in {DirSep, AltSep})
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    if path[0] == ':':
+      result = 0
+    else:
+      result = countWhile(path, proc(a: char): bool = a != ':')
+  elif defined(RISCOS):
+    result = if path[0] == '$': 1 else: 0
+  elif defined(posix):
+    result = countWhile(path, proc(a: char): bool = a == '/')
+
+proc rootPrefix(path: string) : string =
+  ## returns the prefix that makes ``path`` absolute, or ""
+  ## if ``path`` is relative.
+  let n = path.rootPrefixLength
+  result = path[0..<n]
+
+proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
+  ## Returns whether ``path`` is absolute.
+  ##
+  ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    doAssert: not "".isAbsolute
+    doAssert: not "foo".isAbsolute
+    when defined(posix):
+      doAssert "/".isAbsolute
+    when defined(Windows):
+      doAssert "C:\\foo".isAbsolute
+
+  return rootPrefixLength(path) > 0
+
 const absOverridesDefault = false
 
 proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {.
@@ -271,7 +250,6 @@ proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {
       doAssert joinPath("usr", "lib") == "usr/lib"
       doAssert joinPath("usr", "") == "usr/"
       doAssert joinPath("", "lib") == "lib"
-      doAssert joinPath("usr/", "/lib") == "usr/lib"
       doAssert joinPath("usr/", "/lib", absOverrides = true) == "/lib"
       doAssert joinPath("usr///", "//lib") == "usr/lib" ## `//` gets compressed
       doAssert joinPath("//", "lib") == "/lib" ## ditto
@@ -294,10 +272,11 @@ proc joinPath*(head, tail: string, absOverrides = absOverridesDefault): string {
 proc joinPath*(parts: varargs[string], absOverrides: bool): string {.noSideEffect,
   rtl, extern: "nos$1varargs".} =
   if parts.len == 0:
-    return ""
-  result = parts[0]
-  for i in 1..high(parts):
-    result = joinPath(result, parts[i], absOverrides)
+    result = ""
+  else:
+    result = parts[0]
+    for i in 1..high(parts):
+      result = joinPath(result, parts[i], absOverrides)
 
 proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1varargs2".} =
@@ -307,19 +286,16 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
     doAssert joinPath() == ""
     doAssert joinPath("foo") == "foo"
     when defined(posix):
-      doAssert joinPath("foo", "bar") == "foo/bar"
-      doAssert joinPath("foo//", "bar/") == "foo/bar/"
-      doAssert joinPath("foo//", "bar/", absOverrides = true) == "foo/bar/"
       doAssert joinPath("foo", "/bar", "/baz", "tail", absOverrides = true) == "/baz/tail"
-      doAssert joinPath("foo", "/bar", "/baz", "tail", absOverrides = false) == "foo/bar/baz/tail"
+      doAssert joinPath("foo//", "/bar", "/baz", "tail/", absOverrides = false) == "foo/bar/baz/tail/"
   joinPath(parts, absOverridesDefault)
 
 proc `/` * (head, tail: string): string {.noSideEffect.} =
   ## The same as ``joinPath(head, tail)``.
   runnableExamples:
+    doAssert "" / "lib" == "lib"
     when defined(posix):
       doAssert "usr" / "" == "usr/"
-      doAssert "" / "lib" == "lib"
       doAssert "" / "/lib" == "/lib"
       doAssert "usr/" / "/lib" == "usr/lib"
   return joinPath(head, tail)
@@ -721,18 +697,6 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       result.add quoteShell(args[i])
 
 when isMainModule:
-  assert quoteShellWindows("aaa") == "aaa"
-  assert quoteShellWindows("aaa\"") == "aaa\\\""
-  assert quoteShellWindows("") == "\"\""
-
-  assert quoteShellPosix("aaa") == "aaa"
-  assert quoteShellPosix("aaa a") == "'aaa a'"
-  assert quoteShellPosix("") == "''"
-  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
-
-  when defined(posix):
-    assert quoteShell("") == "''"
-
   block normalizePathEndTest:
     # handle edge cases correctly: shouldn't affect whether path is
     # absolute/relative
@@ -765,4 +729,25 @@ when isMainModule:
       doAssert r"C:\foo".rootPrefixLength == 3
       doAssert r"//foo".rootPrefixLength == 2
       doAssert r"C:\\foo".rootPrefixLength == 4
+
+  block rootPrefixTest:
+    doAssert "foo".rootPrefix == ""
+    doAssert "//foo".rootPrefix == "//"
+    when doslikeFileSystem:
+      doAssert r"/\foo".rootPrefix == r"/\"
+      doAssert r"C:\\foo".rootPrefix == r"C:\\"
+
+  import sugar
+  block countWhileTest:
+    doAssert countWhile("abc", a=>a == '/') == 0
+    doAssert countWhile("//abc", a=>a == '/') == 2
+    doAssert countWhile("//", a=>a == '/') == 2
+    doAssert countWhile("", a=>a == '/') == 0
+
+    doAssert countWhile("abc", a=>a == '/', countdown = true) == 0
+    doAssert countWhile("abc//", a=>a == '/', countdown = true) == 2
+    doAssert countWhile("//", a=>a == '/', countdown = true) == 2
+    doAssert countWhile("", a=>a == '/', countdown = true) == 0
+
+    doAssert countWhile("abcDEF", isLowerAscii) == 3
 

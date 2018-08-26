@@ -2,11 +2,20 @@ discard """
   file: "tospaths.nim"
   output: ""
 """
-# test the ospaths module
 
-import os
+import ospaths
 
-block unixToNativePath:
+block isAbsoluteTest:
+  doAssert: not "".isAbsolute
+  doAssert: not ".".isAbsolute
+  doAssert: not "foo".isAbsolute
+  when defined(posix):
+    doAssert "/".isAbsolute
+    doAssert: not "a/".isAbsolute
+  when defined(Windows):
+    doAssert "C:\\foo".isAbsolute
+
+block unixToNativePathTest:
   doAssert unixToNativePath("") == ""
   doAssert unixToNativePath(".") == $CurDir
   doAssert unixToNativePath("..") == $ParDir
@@ -41,19 +50,39 @@ block unixToNativePath:
     doAssert unixToNativePath("/abc", "a") == "/abc"
     doAssert unixToNativePath("/abc/def", "a") == "/abc/def"
 
-block normalizePathEnd:
-  doAssert "".normalizePathEnd == ""
-  doAssert "".normalizePathEnd(trailingSep = true) == ""
+block quoteShellWindowsTest:
+  assert quoteShellWindows("aaa") == "aaa"
+  assert quoteShellWindows("aaa\"") == "aaa\\\""
+  assert quoteShellWindows("") == "\"\""
+
+block quoteShellPosixTest:
+  assert quoteShellPosix("aaa") == "aaa"
+  assert quoteShellPosix("aaa a") == "'aaa a'"
+  assert quoteShellPosix("") == "''"
+  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+
+block quoteShellTest:
   when defined(posix):
-    doAssert "/".normalizePathEnd == "/"
-    doAssert "foo.bar".normalizePathEnd == "foo.bar"
-    doAssert "foo.bar".normalizePathEnd(trailingSep = true) == "foo.bar/"
+    assert quoteShell("") == "''"
+
+block joinPathTest:
+  when defined(posix):
+    doAssert joinPath("usr", "lib") == "usr/lib"
+    doAssert joinPath("usr", "") == "usr/"
+    doAssert joinPath("", "lib") == "lib"
+    doAssert joinPath("usr/", "/lib") == "usr/lib"
+    doAssert joinPath("usr/", "/lib", absOverrides = true) == "/lib"
+    doAssert joinPath("usr///", "//lib") == "usr/lib" ## `//` gets compressed
+    doAssert joinPath("//", "lib") == "/lib" ## ditto
   when defined(Windows):
-    doAssert r"C:\\".normalizePathEnd == r"C:\"
-    doAssert r"C:\".normalizePathEnd(trailingSep = true) == r"C:\"
-    doAssert r"C:\foo\\bar\".normalizePathEnd == r"C:\foo\\bar"
+    ## Note: network paths are removed in this example:
+    doAssert joinPath(r"E:\foo", r"D:\bar") == r"E:\foo\bar"
+    doAssert joinPath("", r"D:\bar") == r"D:\bar"
+    doAssert joinPath(r"/foo", r"\bar") == r"/foo\bar"
+    doAssert joinPath(r"\foo", r"\bar", absOverrides = true) == r"\bar"
 
-block joinPath:
+block joinPathVarargsTest:
   when defined(posix):
-    doAssert joinPath("", "/lib") == "/lib"
-
+    doAssert joinPath("foo", "bar") == "foo/bar"
+    doAssert joinPath("foo//", "bar/", absOverrides = true) == "foo/bar/"
+    doAssert joinPath("foo//", "bar/") == "foo/bar/"
