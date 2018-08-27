@@ -138,7 +138,9 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
-  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
