@@ -166,18 +166,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
-  # we pretend procs are attached to the type of the first
-  # argument in order to remove plenty of candidates. This is
-  # comparable to what C# does and C# is doing fine.
-  var filterOnlyFirst = false
-  for err in errors:
-    if err.firstMismatch > 1:
-      filterOnlyFirst = true
-      break
+  when false:
+    # we pretend procs are attached to the type of the first
+    # argument in order to remove plenty of candidates. This is
+    # comparable to what C# does and C# is doing fine.
+    var filterOnlyFirst = false
+    for err in errors:
+      if err.firstMismatch > 1:
+        filterOnlyFirst = true
+        break
 
   var candidates = ""
   for err in errors:
-    if filterOnlyFirst and err.firstMismatch == 1: continue
+    when false:
+      if filterOnlyFirst and err.firstMismatch == 1: continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
