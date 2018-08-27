@@ -140,18 +140,19 @@ when isMainModule:
   doAssert v"#aaaqwe" < v"1.1" # We cannot assume that a branch is newer.
   doAssert v"#a111" < v"#head"
 
+  let conf = newConfigRef()
   var rr = newStringTable()
-  addPackage rr, "irc-#a111"
-  addPackage rr, "irc-#head"
-  addPackage rr, "irc-0.1.0"
-  addPackage rr, "irc"
-  addPackage rr, "another"
-  addPackage rr, "another-0.1"
+  addPackage conf, rr, "irc-#a111", unknownLineInfo()
+  addPackage conf, rr, "irc-#head", unknownLineInfo()
+  addPackage conf, rr, "irc-0.1.0", unknownLineInfo()
+  #addPackage conf, rr, "irc", unknownLineInfo()
+  #addPackage conf, rr, "another", unknownLineInfo()
+  addPackage conf, rr, "another-0.1", unknownLineInfo()
 
-  addPackage rr, "ab-0.1.3"
-  addPackage rr, "ab-0.1"
-  addPackage rr, "justone"
+  addPackage conf, rr, "ab-0.1.3", unknownLineInfo()
+  addPackage conf, rr, "ab-0.1", unknownLineInfo()
+  addPackage conf, rr, "justone-1.0", unknownLineInfo()
 
   doAssert toSeq(rr.chosen) ==
-    @["irc-#head", "another-0.1", "ab-0.1.3", "justone"]
+    @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]
 
