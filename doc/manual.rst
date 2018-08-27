@@ -618,6 +618,55 @@ The grammar's start symbol is ``module``.
 
 
 
+Order of evaluation
+===================
+
+Order of evaluation is strictly left-to-right, inside-out as it is typical for most others
+imperative programming languages:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var s = ""
+
+  proc p(arg: int): int =
+    s.add $arg
+    result = arg
+
+  discard p(p(1) + p(2))
+
+  doAssert s == "123"
+
+
+Assignments are not special, the left-hand-side expression is evaluated before the
+right-hand side:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var v = 0
+  proc getI(): int =
+    result = v
+    inc v
+
+  var a, b: array[0..2, int]
+
+  proc someCopy(a: var int; b: int) = a = b
+
+  a[getI()] = getI()
+
+  doAssert a == [1, 0, 0]
+
+  v = 0
+  someCopy(b[getI()], getI())
+
+  doAssert b == [1, 0, 0]
+
+
+Rationale: Consistency with overloaded assignment or assignment-like operations,
+``a = b`` can be read as ``performSomeCopy(a, b)``.
+
+
 Types
 =====
 
