@@ -343,6 +343,20 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wPatterns: {optPatterns}
   else: {}
 
+proc processExperimental(c: PContext; n: PNode) =
+  if n.kind notin nkPragmaCallKinds or n.len != 2:
+    c.features.incl oldExperimentalFeatures
+  else:
+    n[1] = c.semConstExpr(c, n[1])
+    case n[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      try:
+        c.features.incl parseEnum[Feature](n[1].strVal)
+      except ValueError:
+        localError(c.config, n[1].info, "unknown experimental feature")
+    else:
+      localError(c.config, n.info, errStringLiteralExpected)
+
 proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
   result = true
   if n.kind notin nkPragmaCallKinds or n.len != 2: result = false
@@ -350,6 +364,9 @@ proc tryProcessOption(c: PContext, n: PNode, resOptions: var TOptions): bool =
   elif n.sons[0].kind != nkIdent: result = false
   else:
     let sw = whichKeyword(n.sons[0].ident)
+    if sw == wExperimental:
+      processExperimental(c, n)
+      return true
     let opts = pragmaToOptions(sw)
     if opts != {}:
       onOff(c, n, opts, resOptions)
@@ -388,6 +405,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
   x.notes = c.config.notes
+  x.features = c.features
   c.optionStack.add(x)
   for i in countup(start, sonsLen(n) - 1):
     if not tryProcessOption(c, n.sons[i], c.config.options):
@@ -407,6 +425,7 @@ proc processPop(c: PContext, n: PNode) =
   else:
     c.config.options = c.optionStack[^1].options
     c.config.notes = c.optionStack[^1].notes
+    c.features = c.optionStack[^1].features
     c.optionStack.setLen(c.optionStack.len - 1)
 
 proc processDefine(c: PContext, n: PNode) =
@@ -716,22 +735,6 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
       result = result[0]
     elif n.kind == nkExprColonExpr:
       result.kind = n.kind # pragma(arg) -> pragma: arg
-
-proc processExperimental(c: PContext; n: PNode; s: PSym) =
-  if not isTopLevel(c):
-    localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement")
-  if n.kind notin nkPragmaCallKinds or n.len != 2:
-    c.features.incl oldExperimentalFeatures
-  else:
-    n[1] = c.semConstExpr(c, n[1])
-    case n[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      try:
-        c.features.incl parseEnum[Feature](n[1].strVal)
-      except ValueError:
-        localError(c.config, n[1].info, "unknown experimental feature")
-    else:
-      localError(c.config, n.info, errStringLiteralExpected)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords): bool =
@@ -1071,7 +1074,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           it.sons[1] = c.semExpr(c, it.sons[1])
       of wExperimental:
-        processExperimental(c, it, sym)
+        if not isTopLevel(c):
+          localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
+        processExperimental(c, it)
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])

@@ -6946,10 +6946,34 @@ Example:
 .. code-block:: nim
   {.experimental: "parallel".}
 
-  proc useUsing(bar, foo) =
+  proc useParallel() =
     parallel:
       for i in 0..4:
         echo "echo in parallel"
+
+
+As a top level statement, the experimental pragma enables a feature for the
+rest of the module it's enabled in. This is problematic for macro and generic
+instantiations that cross a module scope. Currently these usages have to be
+put into a ``.push/pop`` environment:
+
+.. code-block:: nim
+
+  # client.nim
+  proc useParallel*[T](unused: T) =
+    # use a generic T here to show the problem.
+    {.push experimental: "parallel".}
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
+
+    {.pop.}
+
+
+.. code-block:: nim
+
+  import client
+  useParallel(1)
 
 
 Implementation Specific Pragmas
