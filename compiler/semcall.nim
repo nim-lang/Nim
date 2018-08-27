@@ -339,7 +339,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           msg = errUndeclaredRoutine % ident
         let sym = qualifiedLookUp(c, f, {})
         if sym != nil:
-          msg &= "; found '$1' of kind '$2' used in wrong context" % [getSymRepr(c.config, sym), $sym.kind]
+          proc toHumanStr(kind: TSymKind): string=
+            case kind
+            of skIterator: result = "iterator"
+            else: result = $kind
+          msg &= ", found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
         localError(c.config, n.info, msg)
       return
     elif result.state != csMatch:
