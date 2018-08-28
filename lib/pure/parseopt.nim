@@ -137,7 +137,7 @@ when declared(os.paramCount):
     if cmdline.len != 0:
       result.cmds = newSeq[string](cmdline.len)
       for i in 0..<cmdline.len:
-        result.cmds[i] = cmdline[i]
+        result.cmds[i] = cmdline[i].string
         result.cmd.add quote(cmdline[i].string)
         result.cmd.add ' '
     else:
@@ -165,7 +165,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
       inc(i)
     p.inShortState = false
     while i < cmd.len and cmd[i] in {'\t', ' '}: inc(i)
-    p.val = substr(cmd, i)
+    p.val = TaintedString substr(cmd, i)
     p.pos = 0
     inc p.idx
   else:
@@ -210,12 +210,12 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
           inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
-        p.val = p.cmds[p.idx].substr(i)
+        p.val = TaintedString p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
-        p.val = p.cmds[p.idx+1]
+        p.val = TaintedString p.cmds[p.idx+1]
         inc p.idx
       else:
-        p.val = ""
+        p.val = TaintedString""
       inc p.idx
       p.pos = 0
     else:
@@ -223,7 +223,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       handleShortOption(p, p.cmds[p.idx])
   else:
     p.kind = cmdArgument
-    p.key = p.cmds[p.idx]
+    p.key = TaintedString p.cmds[p.idx]
     inc p.idx
     p.pos = 0
 
