@@ -69,10 +69,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
 
-    var s = substr(tLineInfoToStr(c.config, info))
-    # this 'substr' prevents a strange corruption. XXX This needs to be
-    # investigated eventually but first attempts to fix it broke everything
-    # see the araq-wip-fixed-writebarrier branch.
+    var s = tLineInfoToStr(c.config, info)
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
       add(s, x.prc.name.s)
