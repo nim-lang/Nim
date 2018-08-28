@@ -37,9 +37,7 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-type ProgNim=ref object of ProgBase
-
-method processCmdLine(self: ProgNim, pass: TCmdLinePass, cmd: string; config: ConfigRef) =
+proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   while true:
@@ -58,11 +56,13 @@ method processCmdLine(self: ProgNim, pass: TCmdLinePass, cmd: string; config: Co
     if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
-method mainCommand(self: ProgNim, graph: ModuleGraph)=
-  mainCommand(graph)
-
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  let self = ProgNim(name: "nim_compiler")
+  let self = NimProg(
+    name: "nim_compiler",
+    supportsStdinFile: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
   self.initDefinesProg(conf)
   if paramCount() == 0:
     writeCommandLineUsage(conf, conf.helpWritten)

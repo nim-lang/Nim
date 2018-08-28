@@ -6,23 +6,20 @@ import
   compiler/[options, idents, nimconf, scriptconfig, extccomp, commands, msgs, lineinfos, modulegraphs, condsyms],
   std/os
 
-type ProgBase* = ref object of RootObj
+type NimProg* = ref object
   name*: string
   suggestMode*: bool
+  supportsStdinFile*: bool
+  processCmdLine*: proc(pass: TCmdLinePass, cmd: string; config: ConfigRef)
+  mainCommand*: proc(graph: ModuleGraph)
 
-method processCmdLine(self: ProgBase, pass: TCmdLinePass, cmd: string; config: ConfigRef) {.base.} =
-  doAssert false
-
-method mainCommand(self: ProgBase, graph: ModuleGraph) {.base.} =
-  doAssert false
-
-proc initDefinesProg*(self: ProgBase, conf: ConfigRef) =
+proc initDefinesProg*(self: NimProg, conf: ConfigRef) =
   condsyms.initDefines(conf.symbols)
   defineSymbol conf.symbols, self.name
 
-proc processCmdLineAndProjectPath*(self: ProgBase, conf: ConfigRef) =
+proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
-  if conf.projectName == "-":
+  if self.supportsStdinFile and conf.projectName == "-":
     conf.projectName = "stdinfile"
     conf.projectFull = "stdinfile"
     conf.projectPath = canonicalizePath(conf, getCurrentDir())
@@ -39,23 +36,28 @@ proc processCmdLineAndProjectPath*(self: ProgBase, conf: ConfigRef) =
   else:
     conf.projectPath = canonicalizePath(conf, getCurrentDir())
 
-proc loadConfigsAndRunMainCommand*(self: ProgBase, cache: IdentCache; conf: ConfigRef): bool =
+proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef): bool =
   loadConfigs(DefaultConfig, cache, conf) # load all config files
   if self.suggestMode:
     conf.command = "nimsuggest"
 
-  proc runNimScriptIfExists(scriptFile: string)=
-    if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false, conf)
+  proc runNimScriptIfExists(path: string)=
+    if fileExists(path):
+      runNimScript(cache, path, freshDefines = false, conf)
 
-  # TODO:
-  # merge this complex logic with `loadConfigs`
-  # check whether these should be controlled via
-  # optSkipConfigFile, optSkipUserConfigFile
-  const configNims = "config.nims"
-  runNimScriptIfExists(getSystemConfigPath(conf, configNims))
-  runNimScriptIfExists(getUserConfigPath(configNims))
-  runNimScriptIfExists(conf.projectPath / configNims)
+  # Caution: make sure this stays in sync with `loadConfigs`
+  if optSkipSystemConfigFile notin conf.globalOptions:
+    runNimScriptIfExists(getSystemConfigPath(conf, DefaultConfigNims))
+
+  if optSkipUserConfigFile notin conf.globalOptions:
+    runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
+
+  if optSkipParentConfigFiles notin conf.globalOptions:
+    for dir in parentDirs(conf.projectPath, fromRoot = true, inclusive = false):
+      runNimScriptIfExists(dir / DefaultConfigNims)
+
+  if optSkipProjConfigFile notin conf.globalOptions:
+    runNimScriptIfExists(conf.projectPath / DefaultConfigNims)
   block:
     let scriptFile = conf.projectFull.changeFileExt("nims")
     if not self.suggestMode:

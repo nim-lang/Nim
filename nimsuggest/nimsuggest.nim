@@ -487,9 +487,7 @@ proc mainThread(graph: ModuleGraph) =
 var
   inputThread: Thread[ThreadParams]
 
-type ProgNimsuggest=ref object of ProgBase
-
-method mainCommand(self: ProgNimsuggest, graph: ModuleGraph) =
+proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   clearPasses(graph)
   registerPass graph, verbosePass
@@ -584,7 +582,12 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  let self = ProgNimsuggest(suggestMode: true, name: "nimsuggest")
+  let self = NimProg(
+    name: "nimsuggest",
+    suggestMode: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
   self.initDefinesProg(conf)
 
   if paramCount() == 0:
