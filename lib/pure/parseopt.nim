@@ -227,13 +227,14 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
-  ## retrieves the rest of the command line that has not been parsed yet.
-  var res = ""
-  for i in p.idx..<p.cmds.len:
-    if i > p.idx: res.add ' '
-    res.add quote(p.cmds[i])
-  result = res.TaintedString
+when declared(os.paramCount):
+  proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
+    ## retrieves the rest of the command line that has not been parsed yet.
+    var res = ""
+    for i in p.idx..<p.cmds.len:
+      if i > p.idx: res.add ' '
+      res.add quote(p.cmds[i])
+    result = res.TaintedString
 
 iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
   ## This is an convenience iterator for iterating over the given OptParser object.
