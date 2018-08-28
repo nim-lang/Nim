@@ -884,6 +884,42 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
+proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
+  ## Calculates the precedence of the given token.
+  template considerStrongSpaces(x): untyped =
+    x + (if strongSpaces: 100 - tok.strongSpaceA.int*10 else: 0)
+
+  case tok.tokType
+  of tkOpr:
+    let L = tok.ident.s.len
+    let relevantChar = tok.ident.s[0]
+
+    # arrow like?
+    if L > 1 and tok.ident.s[L-1] == '>' and
+      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
+
+    template considerAsgn(value: untyped) =
+      result = if tok.ident.s[L-1] == '=': 1 else: value
+
+    case relevantChar
+    of '$', '^': considerAsgn(10)
+    of '*', '%', '/', '\\': considerAsgn(9)
+    of '~': result = 8
+    of '+', '-', '|': considerAsgn(8)
+    of '&': considerAsgn(7)
+    of '=', '<', '>', '!': result = 5
+    of '.': considerAsgn(6)
+    of '?': result = 2
+    else: considerAsgn(2)
+  of tkDiv, tkMod, tkShl, tkShr: result = 9
+  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
+  of tkDotDot: result = 6
+  of tkAnd: result = 4
+  of tkOr, tkXor, tkPtr, tkRef: result = 3
+  else: return -10
+  result = considerStrongSpaces(result)
+
+
 proc newlineFollows*(L: TLexer): bool =
   var pos = L.bufpos
   var buf = L.buf
@@ -1197,7 +1233,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkSemiColon
       inc(L.bufpos)
     of '`':
-      tok.tokType = tkAccent
+      tok.tokType = tkAccent 
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
@@ -1249,3 +1285,14 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
     result = tok.indent
     if result > 0 or tok.tokType == tkEof: break
   closeLexer(lex)
+
+proc getPrecedence*(fileIdx: FileIndex, s: string, cache: IdentCache, config: ConfigRef): int =
+  var lex: TLexer
+  var tok: TToken
+  initToken(tok)
+  let istream = llStreamOpen(s)
+  openLexer(lex, fileIdx, istream, cache, config)
+  rawGetTok(lex, tok)
+  closeLexer(lex)
+  getPrecedence(tok, false)
+  

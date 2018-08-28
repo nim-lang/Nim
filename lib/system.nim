@@ -3482,7 +3482,7 @@ type
   BackwardsIndex* = distinct int ## type that is constructed by ``^`` for
                                  ## reversed array accesses.
 
-template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
+proc `^`*(x: int): BackwardsIndex {.inline.} = BackwardsIndex(x)
   ## builtin `roof`:idx: operator that can be used for convenient array access.
   ## ``a[^x]`` is a shortcut for ``a[a.len-x]``.
 
