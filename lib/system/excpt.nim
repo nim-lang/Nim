@@ -226,13 +226,11 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     it = it.prev
     dec last
 
-template addFrameEntry(s, f: untyped) =
+template addFrameEntry(s: var string, f: PFrame|StackTraceEntry) =
   var oldLen = s.len
-  add(s, f.filename)
-  if f.line > 0:
-    add(s, '(')
-    add(s, $f.line)
-    add(s, ')')
+  # TODO: factor with compiler/vm.nim
+  # TODO: add TFrame.col field
+  s.add lineInfoToString($f.filename, f.line)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   add(s, "\n")
