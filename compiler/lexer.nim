@@ -1233,7 +1233,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       tok.tokType = tkSemiColon
       inc(L.bufpos)
     of '`':
-      tok.tokType = tkAccent 
+      tok.tokType = tkAccent
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
