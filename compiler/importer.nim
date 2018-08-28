@@ -164,7 +164,16 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newStrNode(toFullPath(c.config, f), n.info)
 
+proc transformImportAs(n: PNode): PNode =
+  if n.kind == nkInfix and n.sons[0].ident.s == "as":
+    result = newNodeI(nkImportAs, n.info)
+    result.add n.sons[1]
+    result.add n.sons[2]
+  else:
+    result = n
+
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
+  let it = transformImportAs(it)
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     var emptySet: IntSet
@@ -185,27 +194,22 @@ proc evalImport(c: PContext, n: PNode): PNode =
       imp.add dir
       imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
+        # transform `a/b/[c as d]` to `/a/b/c as d`
         if x.kind == nkInfix and x.sons[0].ident.s == "as":
+          let impAs = copyTree(x)
           imp.sons[2] = x.sons[1]
-          let impAs = newNodeI(nkImportAs, it.info)
-          impAs.add imp
-          impAs.add x.sons[2]
-          imp = impAs
+          impAs.sons[1] = imp
           impMod(c, imp, result)
         else:
           imp.sons[2] = x
           impMod(c, imp, result)
-    elif it.kind == nkInfix and it.sons[0].ident.s == "as":
-      let imp = newNodeI(nkImportAs, it.info)
-      imp.add it.sons[1]
-      imp.add it.sons[2]
-      impMod(c, imp, result)
     else:
       impMod(c, it, result)
 
 proc evalFrom(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
+  n.sons[0] = transformImportAs(n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
@@ -217,6 +221,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
+  n.sons[0] = transformImportAs(n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
