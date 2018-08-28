@@ -21,7 +21,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos
+  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper
 
 when hasTinyCBackend:
   import tccgen
@@ -37,7 +37,9 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
+type ProgNim=ref object of ProgBase
+
+method processCmdLine(self: ProgNim, pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   while true:
@@ -56,81 +58,43 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
+method mainCommand(self: ProgNim, graph: ModuleGraph)=
+  mainCommand(graph)
+
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  condsyms.initDefines(conf.symbols)
+  let self = ProgNim(name: "nim_compiler")
+  self.initDefinesProg(conf)
   if paramCount() == 0:
     writeCommandLineUsage(conf, conf.helpWritten)
-  else:
-    # Process command line arguments:
-    processCmdLine(passCmd1, "", conf)
-    if conf.projectName == "-":
-      conf.projectName = "stdinfile"
-      conf.projectFull = "stdinfile"
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
-      conf.projectIsStdin = true
-    elif conf.projectName != "":
-      try:
-        conf.projectFull = canonicalizePath(conf, conf.projectName)
-      except OSError:
-        conf.projectFull = conf.projectName
-      let p = splitFile(conf.projectFull)
-      let dir = if p.dir.len > 0: p.dir else: getCurrentDir()
-      conf.projectPath = canonicalizePath(conf, dir)
-      conf.projectName = p.name
+    return
+
+  self.processCmdLineAndProjectPath(conf)
+  if not self.loadConfigsAndRunMainCommand(cache, conf): return
+  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  #echo(GC_getStatistics())
+  if conf.errorCounter != 0: return
+  when hasTinyCBackend:
+    if conf.cmd == cmdRun:
+      tccgen.run(conf.arguments)
+  if optRun in conf.globalOptions:
+    if conf.cmd == cmdCompileToJS:
+      var ex: string
+      if conf.outFile.len > 0:
+        ex = conf.outFile.prependCurDir.quoteShell
+      else:
+        ex = quoteShell(
+          completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
+      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
     else:
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
-    loadConfigs(DefaultConfig, cache, conf) # load all config files
-
-    proc runNimScriptIfExists(scriptFile: string)=
-      if fileExists(scriptFile):
-        runNimScript(cache, scriptFile, freshDefines=false, conf)
-
-    # TODO:
-    # merge this complex logic with `loadConfigs`
-    # check whether these should be controlled via
-    # optSkipConfigFile, optSkipUserConfigFile
-    const configNims = "config.nims"
-    runNimScriptIfExists(getSystemConfigPath(conf, configNims))
-    runNimScriptIfExists(getUserConfigPath(configNims))
-    runNimScriptIfExists(conf.projectPath / configNims)
-    block:
-      let scriptFile = conf.projectFull.changeFileExt("nims")
-      runNimScriptIfExists(scriptFile)
-      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if fileExists(scriptFile) and scriptFile.cmpPaths(conf.projectFull) == 0: return
-
-    # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
-    extccomp.initVars(conf)
-    processCmdLine(passCmd2, "", conf)
-    if conf.command == "":
-      rawMessage(conf, errGenerated, "command missing")
-    mainCommand(newModuleGraph(cache, conf))
-    if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
-    #echo(GC_getStatistics())
-    if conf.errorCounter == 0:
-      when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.run(conf.arguments)
-      if optRun in conf.globalOptions:
-        if conf.cmd == cmdCompileToJS:
-          var ex: string
-          if conf.outFile.len > 0:
-            ex = conf.outFile.prependCurDir.quoteShell
-          else:
-            ex = quoteShell(
-              completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
-          execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
-        else:
-          var binPath: string
-          if conf.outFile.len > 0:
-            # If the user specified an outFile path, use that directly.
-            binPath = conf.outFile.prependCurDir
-          else:
-            # Figure out ourselves a valid binary name.
-            binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
-          var ex = quoteShell(binPath)
-          execExternalProgram(conf, ex & ' ' & conf.arguments)
+      var binPath: string
+      if conf.outFile.len > 0:
+        # If the user specified an outFile path, use that directly.
+        binPath = conf.outFile.prependCurDir
+      else:
+        # Figure out ourselves a valid binary name.
+        binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
+      var ex = quoteShell(binPath)
+      execExternalProgram(conf, ex & ' ' & conf.arguments)
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
