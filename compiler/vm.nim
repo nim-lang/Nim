@@ -29,6 +29,8 @@ from modulegraphs import ModuleGraph
 when hasFFI:
   import evalffi
 
+import system/helpers # for `lineInfoToString`
+
 type
   TRegisterKind = enum
     rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
@@ -66,15 +68,11 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = substr(toFilename(c.config, info), 0)
+
+    var s = substr(tLineInfoToStr(c.config, info))
     # this 'substr' prevents a strange corruption. XXX This needs to be
     # investigated eventually but first attempts to fix it broke everything
     # see the araq-wip-fixed-writebarrier branch.
-    var line = toLinenumber(info)
-    if line > 0:
-      add(s, '(')
-      add(s, $line)
-      add(s, ')')
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
       add(s, x.prc.name.s)
