@@ -72,6 +72,7 @@
 - ``lineInfoObj`` now returns absolute path instead of project path.
   It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
+- ``net.sendTo`` no longer returns an int and now raises an ``OSError``.
 - `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
   to avoid confusions with `await` from the `async` macro.
 
@@ -140,6 +141,8 @@
 - The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
   object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
   iterators.
+- The ``accept`` socket procedure defined in the ``net`` module can now accept
+  a nil socket.
 
 ### Language additions
 
