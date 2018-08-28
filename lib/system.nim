@@ -2899,9 +2899,8 @@ type
     fspCur            ## Seek relative to current position
     fspEnd            ## Seek relative to end
 
-include "system/helpers" # for `lineInfoToString`
-
 when not defined(JS): #and not defined(nimscript):
+  include "system/helpers"
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
