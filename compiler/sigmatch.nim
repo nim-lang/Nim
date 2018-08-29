@@ -1921,6 +1921,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
             result.typ.n = arg
             return
 
+  let oldInheritancePenalty = m.inheritancePenalty
   var r = typeRel(m, f, a)
 
   # This special typing rule for macros and templates is not documented
@@ -2002,7 +2003,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
-         m.inheritancePenalty > 0:
+         m.inheritancePenalty > oldInheritancePenalty:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
