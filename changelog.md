@@ -6,7 +6,7 @@
 - ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
   parameters this became unnecessary.
 - Anonymous tuples with a single element can now be written as ``(1,)`` with a
-  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  trailing comma. The underlying AST is ``nnkTupleConstr(newLit 1)`` for this
   example. ``nnkTupleConstr`` is a new node kind your macros need to be able
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
@@ -37,9 +37,18 @@
   strings anymore for its ``unit`` parameter. Instead the space is controlled
   by a new parameter ``useUnitSpace``.
 
+- The ``times.parse`` and ``times.format`` procs have been rewritten.
+  The proc signatures are the same so it should generally not break anything.
+  However, the new implementation is a bit stricter, which is a breaking change.
+  For example ``parse("2017-01-01 foo", "yyyy-MM-dd")`` will now raise an error.
+
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
+
+- The ``times.Timezone`` is now an immutable ref-type that must be initialized
+  with an explicit constructor (``newTimezone``).
+
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 - ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
@@ -63,6 +72,7 @@
 - ``lineInfoObj`` now returns absolute path instead of project path.
   It's used by ``lineInfo``, ``check``, ``expect``, ``require``, etc.
 
+- ``net.sendTo`` no longer returns an int and now raises an ``OSError``.
 - `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
   to avoid confusions with `await` from the `async` macro.
 
@@ -98,6 +108,7 @@
 - ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``.
 - Added the proc ``flush`` for memory mapped files.
 - Added the ``MemMapFileStream``.
+- Added a simple interpreting event parser template ``eventParser`` to the ``pegs`` module.
 - Added ``macros.copyLineInfo`` to copy lineInfo from other node.
 - Added ``system.ashr`` an arithmetic right shift for integers.
 
@@ -130,6 +141,8 @@
 - The ``pegs`` module now exports getters for the fields of its ``Peg`` and ``NonTerminal``
   object types. ``Peg``s with child nodes now have the standard ``items`` and ``pairs``
   iterators.
+- The ``accept`` socket procedure defined in the ``net`` module can now accept
+  a nil socket.
 
 ### Language additions
 
@@ -226,5 +239,15 @@
   bindSym enhancement make it also can accepts computed string or ident node inside macros /
   compile time functions / static blocks. Only in templates / regular code it retains it's old behavior.
   This new feature can be accessed via {.experimental: "dynamicBindSym".} pragma/switch.
+
+- On Posix systems the global system wide configuration is now put under ``/etc/nim/nim.cfg``,
+  it used to be ``/etc/nim.cfg``. Usually it does not exist, however.
+
+- On Posix systems the user configuration is now looked under ``$XDG_CONFIG_HOME/nim/nim.cfg``
+  (if ``XDG_CONFIG_HOME`` is not defined, then under ``~/.config/nim/nim.cfg``). It used to be
+  ``$XDG_CONFIG_DIR/nim.cfg`` (and ``~/.config/nim.cfg``).
+
+  Similarly, on Windows, the user configuration is now looked under ``%APPDATA%/nim/nim.cfg``.
+  This used to be ``%APPDATA%/nim.cfg``.
 
 ### Bugfixes

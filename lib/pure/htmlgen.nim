@@ -31,10 +31,18 @@ import
   macros, strutils
 
 const
-  coreAttr* = " id class title style "
-  eventAttr* = " onclick ondblclick onmousedown onmouseup " &
-    "onmouseover onmousemove onmouseout onkeypress onkeydown onkeyup onload "
-  commonAttr* = coreAttr & eventAttr
+  coreAttr* = " accesskey class contenteditable dir hidden id lang " &
+    "spellcheck style tabindex title translate "
+  eventAttr* = "onabort onblur oncancel oncanplay oncanplaythrough onchange " &
+    "onclick oncuechange ondblclick ondurationchange onemptied onended " &
+    "onerror onfocus oninput oninvalid onkeydown onkeypress onkeyup onload " &
+    "onloadeddata onloadedmetadata onloadstart onmousedown onmouseenter " &
+    "onmouseleave onmousemove onmouseout onmouseover onmouseup onmousewheel " &
+    "onpause onplay onplaying onprogress onratechange onreset onresize " &
+    "onscroll onseeked onseeking onselect onshow onstalled onsubmit " &
+    "onsuspend ontimeupdate ontoggle onvolumechange onwaiting "
+  ariaAttr* = " role "
+  commonAttr* = coreAttr & eventAttr & ariaAttr
 
 proc getIdent(e: NimNode): string {.compileTime.} =
   case e.kind

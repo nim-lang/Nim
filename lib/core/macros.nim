@@ -8,6 +8,7 @@
 #
 
 include "system/inclrtl"
+include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -335,10 +336,10 @@ proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning", benign.}
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint", benign.}
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
 proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
@@ -422,7 +423,8 @@ type
     line*,column*: int
 
 proc `$`*(arg: Lineinfo): string =
-  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
+  # BUG: without `result = `, gives compile error
+  result = lineInfoToString(arg.filename, arg.line, arg.column)
 
 #proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file

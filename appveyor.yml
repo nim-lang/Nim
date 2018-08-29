@@ -55,6 +55,7 @@ build_script:
   - nimble install jester@#head -y
   - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
+  - nim c --taintMode:on -d:nimCoroutines --os:genode -d:posix --compileOnly tests/testament/tester
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines

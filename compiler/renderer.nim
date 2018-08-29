@@ -175,7 +175,7 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
     g.pendingWhitespace = s.len
 
 proc putComment(g: var TSrcGen, s: string) =
-  if s.isNil: return
+  if s.len == 0: return
   var i = 0
   let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
@@ -216,7 +216,7 @@ proc putComment(g: var TSrcGen, s: string) =
   optNL(g)
 
 proc maxLineLength(s: string): int =
-  if s.isNil: return 0
+  if s.len == 0: return 0
   var i = 0
   let hi = len(s) - 1
   var lineLen = 0

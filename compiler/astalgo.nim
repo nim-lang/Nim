@@ -206,7 +206,7 @@ proc makeYamlString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
+  for i in 0 ..< s.len:
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, "\n")
@@ -314,10 +314,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
              [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth)])
@@ -395,10 +392,7 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2_$3",
             [istr, rope(n.sym.name.s), rope(n.sym.id)])
@@ -759,10 +753,6 @@ proc idNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
   if index >= 0: result = t.data[index].val
   else: result = nil
 
-proc idNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
-  if not isNil(t.data):
-    result = idNodeTableGet(t, key)
-
 proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   var h: Hash
   h = key.id and high(data)
@@ -788,10 +778,6 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
       swap(t.data, n)
     idNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc idNodeTablePutLazy*(t: var TIdNodeTable, key: PIdObj, val: PNode) =
-  if isNil(t.data): initIdNodeTable(t)
-  idNodeTablePut(t, key, val)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
   for i in 0 .. high(t.data):

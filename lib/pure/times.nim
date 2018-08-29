@@ -276,20 +276,22 @@ type
   FixedTimeUnit* = range[Nanoseconds..Weeks] ## Subrange of ``TimeUnit`` that only includes units of fixed duration.
                                              ## These are the units that can be represented by a ``Duration``.
 
-  Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
-                     ## The ``times`` module only supplies implementations for the systems local time and UTC.
-                     ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
-                     ## and are only exported so that ``Timezone`` can be implemented by other modules.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.tags: [], raises: [], benign.}
-    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.tags: [], raises: [], benign.}
-    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
-                  ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  Timezone* = ref object ## \
+      ## Timezone interface for supporting ``DateTime``'s of arbritary
+      ## timezones. The ``times`` module only supplies implementations for the
+      ## systems local time and UTC.
+    zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
+        {.tags: [], raises: [], benign.}
+    zonedTimeFromAdjTimeImpl: proc (x: Time): ZonedTime
+        {.tags: [], raises: [], benign.}
+    name: string
 
-  ZonedTime* = object ## Represents a zoned instant in time that is not associated with any calendar.
-                      ## This type is only used for implementing timezones.
-    adjTime*: Time  ## Time adjusted to a timezone.
-    utcOffset*: int ## Offset from UTC in seconds.
-                    ## The point in time represented by ``ZonedTime`` is ``adjTime + utcOffset.seconds``.
+  ZonedTime* = object ## Represents a point in time with an associated
+                      ## UTC offset and DST flag. This type is only used for
+                      ## implementing timezones.
+    time*: Time     ## The point in time being represented.
+    utcOffset*: int ## The offset in seconds west of UTC,
+                    ## including any offset due to DST.
     isDst*: bool    ## Determines whether DST is in effect.
 
   DurationParts* = array[FixedTimeUnit, int64] # Array of Duration parts starts
@@ -343,10 +345,9 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
   result.nanosecond = nanosecond.int
 
 # Forward declarations
-proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc utcTzInfo(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZonedTimeFromTime(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc initTime*(unix: int64, nanosecond: NanosecondRange): Time
   {.tags: [], raises: [], benign noSideEffect.}
 
@@ -422,18 +423,14 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
-
   t.seconds
 
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``)
   ## to a ``Time``.
-  let hnsecsSinceEpoch = (win - epochDiff)
-  var seconds = hnsecsSinceEpoch div rateDiff
-  var nanos = ((hnsecsSinceEpoch mod rateDiff) * 100).int
-  if nanos < 0:
-    nanos += convert(Seconds, Nanoseconds, 1)
-    seconds -= 1
+  const hnsecsPerSec = convert(Seconds, Nanoseconds, 1) div 100
+  let nanos = floorMod(win, hnsecsPerSec) * 100
+  let seconds = floorDiv(win - epochDiff, hnsecsPerSec)
   result = initTime(seconds, nanos)
 
 proc toWinTime*(t: Time): int64 =
@@ -493,7 +490,7 @@ proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month,
 
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .} =
   ## Returns the day of the year.
-  ## Equivalent with ``initDateTime(day, month, year).yearday``.
+  ## Equivalent with ``initDateTime(monthday, month, year, 0, 0, 0).yearday``.
   assertValidDate monthday, month, year
   const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
@@ -505,11 +502,11 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
 
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
   ## Returns the day of the week enum from day, month and year.
-  ## Equivalent with ``initDateTime(day, month, year).weekday``.
+  ## Equivalent with ``initDateTime(monthday, month, year, 0, 0, 0).weekday``.
   assertValidDate monthday, month, year
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
   let days = toEpochday(monthday, month, year) - 3
-  let weeks = (if days >= 0: days else: days - 6) div 7
+  let weeks = floorDiv(days, 7)
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
@@ -759,15 +756,14 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   seconds.inc dt.hour * secondsInHour
   seconds.inc dt.minute * 60
   seconds.inc dt.second
-  # The code above ignores the UTC offset of `timeInfo`,
-  # so we need to compensate for that here.
   seconds.inc dt.utcOffset
   result = initTime(seconds, dt.nanosecond)
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   ## Create a new ``DateTime`` using ``ZonedTime`` in the specified timezone.
-  let s = zt.adjTime.seconds
-  let epochday = (if s >= 0: s else: s - (secondsInDay - 1)) div secondsInDay
+  let adjTime = zt.time - initDuration(seconds = zt.utcOffset)
+  let s = adjTime.seconds
+  let epochday = floorDiv(s, secondsInDay)
   var rem = s - epochday * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
@@ -784,7 +780,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     hour: hour,
     minute: minute,
     second: second,
-    nanosecond: zt.adjTime.nanosecond,
+    nanosecond: zt.time.nanosecond,
     weekday: getDayOfWeek(d, m, y),
     yearday: getDayOfYear(d, m, y),
     isDst: zt.isDst,
@@ -792,14 +788,55 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     utcOffset: zt.utcOffset
   )
 
-proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [], benign.} =
-  ## Break down ``time`` into a ``DateTime`` using ``zone`` as the timezone.
-  let zoneInfo = zone.zoneInfoFromUtc(time)
-  result = initDateTime(zoneInfo, zone)
+proc newTimezone*(
+      name: string,
+      zonedTimeFromTimeImpl: proc (time: Time): ZonedTime {.tags: [], raises: [], benign.},
+      zonedTimeFromAdjTimeImpl:  proc (adjTime: Time): ZonedTime {.tags: [], raises: [], benign.}
+    ): Timezone =
+  ## Create a new ``Timezone``.
+  ##
+  ## ``zonedTimeFromTimeImpl`` and ``zonedTimeFromAdjTimeImpl`` is used
+  ## as the underlying implementations for ``zonedTimeFromTime`` and
+  ## ``zonedTimeFromAdjTime``.
+  ##
+  ## If possible, the name parameter should match the name used in the
+  ## tz database. If the timezone doesn't exist in the tz database, or if the
+  ## timezone name is unknown, then any string that describes the timezone
+  ## unambiguously can be used. Note that the timezones name is used for
+  ## checking equality!
+  runnableExamples:
+    proc utcTzInfo(time: Time): ZonedTime =
+      ZonedTime(utcOffset: 0, isDst: false, time: time)
+    let utc = newTimezone("Etc/UTC", utcTzInfo, utcTzInfo)
+  Timezone(
+    name: name,
+    zonedTimeFromTimeImpl: zonedTimeFromTimeImpl,
+    zonedTimeFromAdjTimeImpl: zonedTimeFromAdjTimeImpl
+  )
 
-proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], benign.} =
-  ## Convert ``dt`` into a ``DateTime`` using ``zone`` as the timezone.
-  dt.toTime.inZone(zone)
+proc name*(zone: Timezone): string =
+  ## The name of the timezone.
+  ##
+  ## If possible, the name will be the name used in the tz database.
+  ## If the timezone doesn't exist in the tz database, or if the timezone
+  ## name is unknown, then any string that describes the timezone
+  ## unambiguously might be used. For example, the string "LOCAL" is used
+  ## for the systems local timezone.
+  ##
+  ## See also: https://en.wikipedia.org/wiki/Tz_database
+  zone.name
+
+proc zonedTimeFromTime*(zone: Timezone, time: Time): ZonedTime =
+  ## Returns the ``ZonedTime`` for some point in time.
+  zone.zonedTimeFromTimeImpl(time)
+
+proc zonedTimeFromAdjTime*(zone: TimeZone, adjTime: Time): ZonedTime =
+  ## Returns the ``ZonedTime`` for some local time.
+  ##
+  ## Note that the ``Time`` argument does not represent a point in time, it
+  ## represent a local time! E.g if ``adjTime`` is ``fromUnix(0)``, it should be
+  ## interpreted as 1970-01-01T00:00:00 in the ``zone`` timezone, not in UTC.
+  zone.zonedTimeFromAdjTimeImpl(adjTime)
 
 proc `$`*(zone: Timezone): string =
   ## Returns the name of the timezone.
@@ -807,7 +844,19 @@ proc `$`*(zone: Timezone): string =
 
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two ``Timezone``'s are considered equal if their name is equal.
+  runnableExamples:
+    doAssert local() == local()
+    doAssert local() != utc()
   zone1.name == zone2.name
+
+proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [], benign.} =
+  ## Convert ``time`` into a ``DateTime`` using ``zone`` as the timezone.
+  result = initDateTime(zone.zonedTimeFromTime(time), zone)
+
+proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], benign.} =
+  ## Returns a ``DateTime`` representing the same point in time as ``dt`` but
+  ## using ``zone`` as the timezone.
+  dt.toTime.inZone(zone)
 
 proc toAdjTime(dt: DateTime): Time =
   let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
@@ -843,14 +892,14 @@ when defined(JS):
     proc getYear(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
     proc setFullYear(js: JsDate, year: int): void {.tags: [], raises: [], benign, importcpp.}
 
-    proc localZoneInfoFromUtc(time: Time): ZonedTime =
+    proc localZonedTimeFromTime(time: Time): ZonedTime =
       let jsDate = newDate(time.seconds.float * 1000)
       let offset = jsDate.getTimezoneOffset() * secondsInMin
-      result.adjTime = time - initDuration(seconds = offset)
+      result.time = time
       result.utcOffset = offset
       result.isDst = false
 
-    proc localZoneInfoFromTz(adjTime: Time): ZonedTime =
+    proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime =
       let utcDate = newDate(adjTime.seconds.float * 1000)
       let localDate = newDate(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate(),
         utcDate.getUTCHours(), utcDate.getUTCMinutes(), utcDate.getUTCSeconds(), 0)
@@ -861,8 +910,8 @@ when defined(JS):
       if utcDate.getUTCFullYear() in 0 .. 99:
         localDate.setFullYear(utcDate.getUTCFullYear())
 
-      result.adjTime = adjTime
       result.utcOffset = localDate.getTimezoneOffset() * secondsInMin
+      result.time = adjTime + initDuration(seconds = result.utcOffset)
       result.isDst = false
 
 else:
@@ -908,6 +957,17 @@ else:
     result.inc tm.second
 
   proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
+    # Windows can't handle unix < 0, so we fall back to unix = 0.
+    # FIXME: This should be improved by falling back to the WinAPI instead.
+    when defined(windows):
+      if unix < 0:
+        var a = 0.CTime
+        let tmPtr = localtime(addr(a))
+        if not tmPtr.isNil:
+          let tm = tmPtr[]
+          return ((0 - tm.toAdjUnix).int, false)
+        return (0, false)
+
     var a = unix.CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:
@@ -915,13 +975,13 @@ else:
       return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
     return (0, false)
 
-  proc localZoneInfoFromUtc(time: Time): ZonedTime =
+  proc localZonedTimeFromTime(time: Time): ZonedTime =
     let (offset, dst) = getLocalOffsetAndDst(time.seconds)
-    result.adjTime = time - initDuration(seconds = offset)
+    result.time = time
     result.utcOffset = offset
     result.isDst = dst
 
-  proc localZoneInfoFromTz(adjTime: Time): ZonedTime  =
+  proc localZonedTimeFromAdjTime(adjTime: Time): ZonedTime  =
     var adjUnix = adjTime.seconds
     let past = adjUnix - secondsInDay
     let (pastOffset, _) = getLocalOffsetAndDst(past)
@@ -943,31 +1003,34 @@ else:
     # as a result of offset changes (normally due to dst)
     let utcUnix = adjTime.seconds + utcOffset
     let (finalOffset, dst) = getLocalOffsetAndDst(utcUnix)
-    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanosecond)
+    result.time = initTime(utcUnix, adjTime.nanosecond)
     result.utcOffset = finalOffset
     result.isDst = dst
 
-proc utcZoneInfoFromUtc(time: Time): ZonedTime =
-  result.adjTime = time
-  result.utcOffset = 0
-  result.isDst = false
+proc utcTzInfo(time: Time): ZonedTime =
+  ZonedTime(utcOffset: 0, isDst: false, time: time)
 
-proc utcZoneInfoFromTz(adjTime: Time): ZonedTime =
-  utcZoneInfoFromUtc(adjTime) # adjTime == time since we are in UTC
+var utcInstance {.threadvar.}: Timezone
+var localInstance {.threadvar.}: Timezone
 
 proc utc*(): TimeZone =
   ## Get the ``Timezone`` implementation for the UTC timezone.
   runnableExamples:
     doAssert now().utc.timezone == utc()
     doAssert utc().name == "Etc/UTC"
-  Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
+  if utcInstance.isNil:
+    utcInstance = newTimezone("Etc/UTC", utcTzInfo, utcTzInfo)
+  result = utcInstance
 
 proc local*(): TimeZone =
   ## Get the ``Timezone`` implementation for the local timezone.
   runnableExamples:
    doAssert now().timezone == local()
    doAssert local().name == "LOCAL"
-  Timezone(zoneInfoFromUtc: localZoneInfoFromUtc, zoneInfoFromTz: localZoneInfoFromTz, name: "LOCAL")
+  if localInstance.isNil:
+    localInstance = newTimezone("LOCAL", localZonedTimeFromTime,
+      localZonedTimeFromAdjTime)
+  result = localInstance
 
 proc utc*(dt: DateTime): DateTime =
   ## Shorthand for ``dt.inZone(utc())``.
@@ -1233,7 +1296,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
     second:  second,
     nanosecond: nanosecond
   )
-  result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
+  result = initDateTime(zone.zonedTimeFromAdjTime(dt.toAdjTime), zone)
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
@@ -1263,16 +1326,15 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   let (adjDur, absDur) = evaluateInterval(dt, interval)
 
   if adjDur != DurationZero:
-    var zInfo = dt.timezone.zoneInfoFromTz(dt.toAdjTime + adjDur)
+    var zt = dt.timezone.zonedTimeFromAdjTime(dt.toAdjTime + adjDur)
     if absDur != DurationZero:
-      let offsetDur = initDuration(seconds = zInfo.utcOffset)
-      zInfo = dt.timezone.zoneInfoFromUtc(zInfo.adjTime + offsetDur + absDur)
-      result = initDateTime(zInfo, dt.timezone)
+      zt = dt.timezone.zonedTimeFromTime(zt.time + absDur)
+      result = initDateTime(zt, dt.timezone)
     else:
-      result = initDateTime(zInfo, dt.timezone)
+      result = initDateTime(zt, dt.timezone)
   else:
-    var zInfo = dt.timezone.zoneInfoFromUtc(dt.toTime + absDur)
-    result = initDateTime(zInfo, dt.timezone)
+    var zt = dt.timezone.zonedTimeFromTime(dt.toTime + absDur)
+    result = initDateTime(zt, dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` from ``dt``. Components from ``interval`` are subtracted
@@ -1319,7 +1381,7 @@ proc `<=` * (a, b: DateTime): bool =
   return a.toTime <= b.toTime
 
 proc `==`*(a, b: DateTime): bool =
-  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  ## Returns true if ``a == b``, that is if both dates represent the same point in time.
   return a.toTime == b.toTime
 
 
@@ -2065,7 +2127,7 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
 
   if p.utcOffset.isNone:
     # No timezone parsed - assume timezone is `zone`
-    result = initDateTime(zone.zoneInfoFromTz(result.toAdjTime), zone)
+    result = initDateTime(zone.zonedTimeFromAdjTime(result.toAdjTime), zone)
   else:
     # Otherwise convert to `zone`
     result.utcOffset = p.utcOffset.get()
@@ -2347,7 +2409,7 @@ proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprec
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
   ## Returns the time in seconds since the unix epoch.
   ##
-  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
+  ## **Deprecated since v0.18.0:** use ``toUnix`` instead
   time.seconds.float + time.nanosecond / convert(Seconds, Nanoseconds, 1)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
@@ -2390,13 +2452,14 @@ proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
 when defined(JS):
   var start = getTime()
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
-    ## get the milliseconds from the start of the program.
-    ## **Deprecated since v0.8.10:** use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
     result = (convert(Seconds, Milliseconds, dur.seconds) +
       convert(Nanoseconds, Milliseconds, dur.nanosecond)).int
 else:
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
+    ## get the milliseconds from the start of the program.
+    ##
+    ## **Deprecated since v0.8.10:** use ``epochTime`` or ``cpuTime`` instead.
     when defined(macosx):
       result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
     else:
@@ -2417,7 +2480,7 @@ proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], beni
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
   ## Returns the day of the week enum from day, month and year,
   ## according to the Julian calendar.
-  ## **Deprecated since v0.18.0:**
+  ## **Deprecated since v0.18.0**
   # Day & month start from one.
   let
     a = (14 - month) div 12
@@ -2425,3 +2488,23 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
     m = month + (12*a) - 2
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
+
+proc adjTime*(zt: ZonedTime): Time
+    {.deprecated: "Use zt.time instead".} =
+  ## **Deprecated since v0.19.0:** use the ``time`` field instead.
+  zt.time - initDuration(seconds = zt.utcOffset)
+
+proc `adjTime=`*(zt: var ZonedTime, adjTime: Time)
+    {.deprecated: "Use zt.time instead".} =
+  ## **Deprecated since v0.19.0:** use the ``time`` field instead.
+  zt.time = adjTime + initDuration(seconds = zt.utcOffset)
+
+proc zoneInfoFromUtc*(zone: Timezone, time: Time): ZonedTime
+    {.deprecated: "Use zonedTimeFromTime instead".} =
+  ## **Deprecated since v0.19.0:** use ``zonedTimeFromTime`` instead.
+  zone.zonedTimeFromTime(time)
+
+proc zoneInfoFromTz*(zone: Timezone, adjTime: Time): ZonedTime
+    {.deprecated: "Use zonedTimeFromAdjTime instead".} =
+  ## **Deprecated since v0.19.0:** use the ``zonedTimeFromAdjTime`` instead.
+  zone.zonedTimeFromAdjTime(adjTime)

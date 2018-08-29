@@ -1209,7 +1209,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkInvalid
         lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
     of '\"':
-      # check for extended raw string literal:
+      # check for generalized raw string literal:
       var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars
       getString(L, tok, rawMode)
       if rawMode:

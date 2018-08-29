@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if p.config.selectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -256,7 +256,15 @@ proc genSingleVar(p: BProc, a: PNode) =
     # That's why we are doing the construction inside the preInitProc.
     # genObjectInit relies on the C runtime's guarantees that
     # global variables will be initialized to zero.
-    genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
+    var loc = v.loc
+
+    # When the native TLS is unavailable, a global thread-local variable needs
+    # one more layer of indirection in order to access the TLS block.
+    # Only do this for complex types that may need a call to `objectInit`
+    if sfThread in v.flags and emulatedThreadVars(p.config) and
+      isComplexValueType(v.typ):
+      initLocExprSingleUse(p.module.preInitProc, vn, loc)
+    genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:

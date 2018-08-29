@@ -506,6 +506,7 @@ type
     tfGenericTypeParam
     tfImplicitTypeParam
     tfInferrableStatic
+    tfConceptMatchedTypeSym
     tfExplicit        # for typedescs, marks types explicitly prefixed with the
                       # `type` operator (e.g. type int)
     tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
@@ -627,6 +628,7 @@ type
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
+    mMove, mWasMoved,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
@@ -1019,13 +1021,16 @@ proc isCallExpr*(n: PNode): bool =
 proc discardSons*(father: PNode)
 
 proc len*(n: PNode): int {.inline.} =
-  if isNil(n.sons): result = 0
-  else: result = len(n.sons)
+  when defined(nimNoNilSeqs):
+    result = len(n.sons)
+  else:
+    if isNil(n.sons): result = 0
+    else: result = len(n.sons)
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
-  else: result = len(n.sons)
+  if n.kind in {nkNone..nkNilLit}: result = 0
+  else: result = len(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
@@ -1035,7 +1040,8 @@ proc safeArrLen*(n: PNode): int {.inline.} =
 
 proc add*(father, son: PNode) =
   assert son != nil
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 type Indexable = PNode | PType
@@ -1087,9 +1093,9 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id == 93289:
+  #if result.id == 77131:
   #  writeStacktrace()
-  #  MessageOut(name.s & " has id: " & toString(result.id))
+  #  echo name.s
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1133,19 +1139,16 @@ const                         # for all kind of hash tables:
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
-  if isNil(src.data): return
   setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
-  if isNil(src.data): return
   newSeq(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
-  if isNil(src.data): return
   setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
@@ -1242,7 +1245,8 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
 
 proc addSon*(father, son: PNode) =
   assert son != nil
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
@@ -1267,14 +1271,14 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
   result.kind = kind
   result.owner = owner
-  result.size = - 1
+  result.size = -1
   result.align = 2            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
   when false:
-    if result.id == 205734:
+    if result.id == 76426:
       echo "KNID ", kind
       writeStackTrace()
 
@@ -1286,16 +1290,22 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.r == nil: a.r = b.r
 
 proc newSons*(father: PNode, length: int) =
-  if isNil(father.sons):
-    newSeq(father.sons, length)
-  else:
+  when defined(nimNoNilSeqs):
     setLen(father.sons, length)
+  else:
+    if isNil(father.sons):
+      newSeq(father.sons, length)
+    else:
+      setLen(father.sons, length)
 
 proc newSons*(father: PType, length: int) =
-  if isNil(father.sons):
-    newSeq(father.sons, length)
-  else:
+  when defined(nimNoNilSeqs):
     setLen(father.sons, length)
+  else:
+    if isNil(father.sons):
+      newSeq(father.sons, length)
+    else:
+      setLen(father.sons, length)
 
 proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
@@ -1463,20 +1473,26 @@ proc propagateToOwner*(owner, elem: PType) =
       owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
   if not son.isNil: propagateToOwner(father, son)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc addSonNilAllowed*(father, son: PNode) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
 proc delSon*(father: PNode, idx: int) =
-  if isNil(father.sons): return
+  when defined(nimNoNilSeqs):
+    if father.len == 0: return
+  else:
+    if isNil(father.sons): return
   var length = sonsLen(father)
   for i in countup(idx, length - 2): father.sons[i] = father.sons[i + 1]
   setLen(father.sons, length - 1)

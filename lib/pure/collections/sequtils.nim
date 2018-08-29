@@ -183,7 +183,6 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
-  assert(not s.isNil, "`s` can't be nil")
   if num < 2:
     result = @[s]
     return
@@ -518,13 +517,17 @@ template toSeq*(iter: untyped): untyped =
   ##         result = true)
   ##   assert odd_numbers == @[1, 3, 5, 7, 9]
 
+  # Note: see also `mapIt` for explanation of some of the implementation
+  # subtleties.
   when compiles(iter.len):
-    var i = 0
-    var result = newSeq[type(iter)](iter.len)
-    for x in iter:
-      result[i] = x
-      inc i
-    result
+    block:
+      evalOnceAs(iter2, iter, true)
+      var result = newSeq[type(iter)](iter2.len)
+      var i = 0
+      for x in iter2:
+        result[i] = x
+        inc i
+      result
   else:
     var result: seq[type(iter)] = @[]
     for x in iter:
@@ -1031,6 +1034,12 @@ when isMainModule:
           result = true)
     assert odd_numbers == @[1, 3, 5, 7, 9]
 
+  block:
+    # tests https://github.com/nim-lang/Nim/issues/7187
+    counter = 0
+    let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
+    doAssert ret == @[1, 2]
+    doAssert counter == 1
   block: # foldl tests
     let
       numbers = @[5, 9, 11]
@@ -1092,10 +1101,16 @@ when isMainModule:
     doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
     doAssert counter == 2
 
+    # Corner cases (openArray litterals should not be common)
     template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
     counter = 0
     doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
     # TODO: this fails; not sure how to fix this case
+    # doAssert counter == 2
+
+    counter = 0
+    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1,2]
+    # ditto
     # doAssert counter == 2
 
   block: # mapIt empty test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
@@ -1106,16 +1121,12 @@ when isMainModule:
     doAssert newSeq[int](0).mapIt(it) == @[]
 
   block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
-    let t = [1,2].mapIt(it)
-    doAssert t == @[1,2]
+    let s2 = [1,2].mapIt(it)
+    doAssert s2 == @[1,2]
 
   block:
-    var counter = 0
-    proc getInput():auto =
-      counter.inc
-      [1, 2]
-    doAssert getInput().mapIt(it*2).mapIt(it*10) == @[20, 40]
-    # make sure argument evaluated only once, analog to
+    counter = 0
+    doAssert [1,2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
     # https://github.com/nim-lang/Nim/issues/7187 test case
     doAssert counter == 1
 

@@ -131,7 +131,10 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
     else: break
     inc(i)
   if i >= len(switch): arg = ""
-  elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
+  # cmd:arg => (cmd,arg)
+  elif switch[i] in {':', '='}: arg = substr(switch, i + 1)
+  # cmd[sub]:rest => (cmd,[sub]:rest)
+  elif switch[i] == '[': arg = substr(switch, i)
   else: invalidCmdLineOption(conf, pass, switch, info)
 
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
@@ -167,14 +170,20 @@ proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info:
 
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
-  var id = ""  # arg = "X]:on|off"
+  var id = ""  # arg = key:val or [key]:val;  with val=on|off
   var i = 0
   var n = hintMin
-  while i < len(arg) and (arg[i] != ']'):
+  var isBracket = false
+  if i < len(arg) and arg[i] == '[':
+    isBracket = true
+    inc(i)
+  while i < len(arg) and (arg[i] notin {':', '=', ']'}):
     add(id, arg[i])
     inc(i)
-  if i < len(arg) and (arg[i] == ']'): inc(i)
-  else: invalidCmdLineOption(conf, pass, orig, info)
+  if isBracket:
+    if i < len(arg) and arg[i] == ']': inc(i)
+    else: invalidCmdLineOption(conf, pass, orig, info)
+
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
@@ -215,7 +224,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "refc":         result = conf.selectedGC == gcRefc
     of "v2":           result = conf.selectedGC == gcV2
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "generational": result = conf.selectedGC == gcGenerational
+    of "generational": result = false
+    of "destructors":  result = conf.selectedGC == gcDestructors
     of "go":           result = conf.selectedGC == gcGo
     of "none":         result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
@@ -436,9 +446,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "markandsweep":
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
-    of "generational":
-      conf.selectedGC = gcGenerational
-      defineSymbol(conf.symbols, "gcgenerational")
+    of "destructors":
+      conf.selectedGC = gcDestructors
+      defineSymbol(conf.symbols, "gcdestructors")
     of "go":
       conf.selectedGC = gcGo
       defineSymbol(conf.symbols, "gogc")
@@ -742,11 +752,11 @@ proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
 
 proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
   # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
-  # we fix this here
+  # we transform it to (key = hint, val = [X]:off)
   var bracketLe = strutils.find(p.key, '[')
   if bracketLe >= 0:
     var key = substr(p.key, 0, bracketLe - 1)
-    var val = substr(p.key, bracketLe + 1) & ':' & p.val
+    var val = substr(p.key, bracketLe) & ':' & p.val
     processSwitch(key, val, pass, gCmdLineInfo, config)
   else:
     processSwitch(p.key, p.val, pass, gCmdLineInfo, config)

@@ -33,7 +33,8 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
         result = file.splitFile.name
         break packageSearch
   # we also store if we didn't find anything:
-  if result.isNil: result = ""
+  when not defined(nimNoNilSeqs):
+    if result.isNil: result = ""
   for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
     conf.packageCache[d] = result

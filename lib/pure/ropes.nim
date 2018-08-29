@@ -37,8 +37,6 @@ type
     length: int
     data: string # != nil if a leaf
 
-proc isConc(r: Rope): bool {.inline.} = return r.length > 0
-
 # Note that the left and right pointers are not needed for leafs.
 # Leaves have relatively high memory overhead (~30 bytes on a 32
 # bit machine) and we produce many of them. This is why we cache and
@@ -50,12 +48,12 @@ proc isConc(r: Rope): bool {.inline.} = return r.length > 0
 proc len*(a: Rope): int {.rtl, extern: "nro$1".} =
   ## the rope's length
   if a == nil: result = 0
-  else: result = abs a.length
+  else: result = a.length
 
 proc newRope(): Rope = new(result)
 proc newRope(data: string): Rope =
   new(result)
-  result.length = -len(data)
+  result.length = len(data)
   result.data = data
 
 var
@@ -170,7 +168,9 @@ proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
     result = a
   else:
     result = newRope()
-    result.length = abs(a.length) + abs(b.length)
+    result.length = a.length + b.length
+    result.left = a
+    result.right = b
 
 proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
   ## the concatenation operator for ropes.
@@ -199,11 +199,11 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   var j = i
   if x == nil: return
   while true:
-    if not isConc(x):
-      if x.data.len <% j: return x.data[j]
+    if x != nil and x.data.len > 0:
+      if j < x.data.len: return x.data[j]
       return '\0'
     else:
-      if x.left.len >% j:
+      if x.left.length > j:
         x = x.left
       else:
         x = x.right
@@ -215,7 +215,8 @@ iterator leaves*(r: Rope): string =
     var stack = @[r]
     while stack.len > 0:
       var it = stack.pop
-      while isConc(it):
+      while it.left != nil:
+        assert(it.right != nil)
         stack.add(it.right)
         it = it.left
         assert(it != nil)

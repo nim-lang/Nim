@@ -323,13 +323,13 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)

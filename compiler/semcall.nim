@@ -138,7 +138,9 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
-  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
@@ -164,8 +166,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
+  when false:
+    # we pretend procs are attached to the type of the first
+    # argument in order to remove plenty of candidates. This is
+    # comparable to what C# does and C# is doing fine.
+    var filterOnlyFirst = false
+    for err in errors:
+      if err.firstMismatch > 1:
+        filterOnlyFirst = true
+        break
+
   var candidates = ""
   for err in errors:
+    when false:
+      if filterOnlyFirst and err.firstMismatch == 1: continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -399,12 +413,11 @@ proc updateDefaultParams(call: PNode) =
   # the default params with `nfDefaultParam` and `instantiateProcType`
   # computes correctly the default values for each instantiation.
   let calleeParams = call[0].sym.typ.n
-  for i in countdown(call.len - 1, 1):
-    if nfDefaultParam notin call[i].flags:
-      return
-    let def = calleeParams[i].sym.ast
-    if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
-    call[i] = def
+  for i in 1..<call.len:
+    if nfDefaultParam in call[i].flags:
+      let def = calleeParams[i].sym.ast
+      if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      call[i] = def
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =

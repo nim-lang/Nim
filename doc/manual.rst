@@ -433,7 +433,7 @@ Numerical constants are of a single type and have the form::
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
+  FLOAT_LIT = digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
   FLOAT32_SUFFIX = ('f' | 'F') ['32']
   FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
@@ -616,6 +616,55 @@ The grammar's start symbol is ``module``.
 .. include:: grammar.txt
    :literal:
 
+
+
+Order of evaluation
+===================
+
+Order of evaluation is strictly left-to-right, inside-out as it is typical for most others
+imperative programming languages:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var s = ""
+
+  proc p(arg: int): int =
+    s.add $arg
+    result = arg
+
+  discard p(p(1) + p(2))
+
+  doAssert s == "123"
+
+
+Assignments are not special, the left-hand-side expression is evaluated before the
+right-hand side:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var v = 0
+  proc getI(): int =
+    result = v
+    inc v
+
+  var a, b: array[0..2, int]
+
+  proc someCopy(a: var int; b: int) = a = b
+
+  a[getI()] = getI()
+
+  doAssert a == [1, 0, 0]
+
+  v = 0
+  someCopy(b[getI()], getI())
+
+  doAssert b == [1, 0, 0]
+
+
+Rationale: Consistency with overloaded assignment or assignment-like operations,
+``a = b`` can be read as ``performSomeCopy(a, b)``.
 
 
 Types
@@ -6448,6 +6497,11 @@ The deprecated pragma is used to mark a symbol as deprecated:
   proc p() {.deprecated.}
   var x {.deprecated.}: char
 
+This pragma can also take in an optional warning string to relay to developers.
+
+.. code-block:: nim
+  proc thing(x: bool) {.deprecated: "See arguments of otherThing()".}
+
 It can also be used as a statement, in that case it takes a list of *renamings*.
 
 .. code-block:: nim
@@ -6455,7 +6509,6 @@ It can also be used as a statement, in that case it takes a list of *renamings*.
     File = object
     Stream = ref object
   {.deprecated: [TFile: File, PStream: Stream].}
-
 
 noSideEffect pragma
 -------------------
@@ -6942,10 +6995,34 @@ Example:
 .. code-block:: nim
   {.experimental: "parallel".}
 
-  proc useUsing(bar, foo) =
+  proc useParallel() =
     parallel:
       for i in 0..4:
         echo "echo in parallel"
+
+
+As a top level statement, the experimental pragma enables a feature for the
+rest of the module it's enabled in. This is problematic for macro and generic
+instantiations that cross a module scope. Currently these usages have to be
+put into a ``.push/pop`` environment:
+
+.. code-block:: nim
+
+  # client.nim
+  proc useParallel*[T](unused: T) =
+    # use a generic T here to show the problem.
+    {.push experimental: "parallel".}
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
+
+    {.pop.}
+
+
+.. code-block:: nim
+
+  import client
+  useParallel(1)
 
 
 Implementation Specific Pragmas

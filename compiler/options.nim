@@ -104,8 +104,8 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
-    gcV2, gcGenerational
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcRefc, gcV2
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
@@ -373,7 +373,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     else: discard
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
-proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   conf.symbolFiles in {v2Sf, writeOnlySf}
