@@ -333,13 +333,18 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags:
         var msg = ""
-        block:
+        if c.compilesContextId > 0:
+          # we avoid running more diagnostic when inside a `compiles(expr)`, to
+          # errors while running diagnostic (see test D20180828T234921), and
+          # also avoid slowdowns in evaluating `compiles(expr)`.
+          discard
+        else:
           var o: TOverloadIter
           var sym = initOverloadIter(o, c, f)
           while sym != nil:
             proc toHumanStr(kind: TSymKind): string=
               result = $kind
-              if result.startsWith "sk": result = result[2..^1].toLower
+              if result.startsWith "sk": result = result[2..^1].toLowerAscii
             msg &= "\n  * found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
             sym = nextOverloadIter(o, c, n)
 
