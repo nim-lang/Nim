@@ -150,7 +150,8 @@ template sameOrNoInd(p): bool = p.tok.indent == p.currInd or p.tok.indent < 0
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
-      if node.comment == nil: node.comment = ""
+      when not defined(nimNoNilSeqs):
+        if node.comment == nil: node.comment = ""
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
           add node.comment, fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
@@ -1637,7 +1638,7 @@ proc parseStaticOrDefer(p: var TParser; k: TNodeKind): PNode =
   addSon(result, parseStmt(p))
 
 proc parseAsm(p: var TParser): PNode =
-  #| asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
+  #| asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
   result = newNodeP(nkAsmStmt, p)
   getTokNoInd(p)
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))

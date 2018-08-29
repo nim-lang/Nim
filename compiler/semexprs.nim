@@ -352,6 +352,11 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
       res = t.kind == tyProc and
             t.callConv == ccClosure and
             tfIterator notin t.flags
+    of "iterator":
+      let t = skipTypes(t1, abstractRange)
+      res = t.kind == tyProc and
+            t.callConv == ccClosure and
+            tfIterator in t.flags
     else:
       res = false
   else:
@@ -795,7 +800,9 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-    if result.typ != nil: liftTypeBoundOps(c, result.typ, n.info)
+    if result.typ != nil and
+        not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
+      liftTypeBoundOps(c, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -1560,6 +1567,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
     liftTypeBoundOps(c, lhs.typ, lhs.info)
+    #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
@@ -2077,7 +2085,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           typ = commonType(typ, it.sons[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
-        var e = semConstExpr(c, it.sons[0])
+        let e = forceBool(c, semConstExpr(c, it.sons[0]))
         if e.kind != nkIntLit:
           # can happen for cascading errors, assume false
           # InternalError(n.info, "semWhen")
@@ -2127,7 +2135,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil:
           typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    if not isOrdinalType(typ):
+    if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:

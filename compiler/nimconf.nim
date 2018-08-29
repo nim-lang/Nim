@@ -175,9 +175,9 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
-    # BUGFIX: do not copy '['!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
+    add(val, '[')
     add(val, tokToStr(tok))
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
@@ -220,7 +220,7 @@ proc readConfigFile(
     return true
 
 proc getUserConfigPath(filename: string): string =
-  result = joinPath(getConfigDir(), filename)
+  result = joinPath([getConfigDir(), "nim", filename])
 
 proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
   # try standard configuration file (installation did not distribute files
@@ -228,8 +228,8 @@ proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
   let p = getPrefixDir(conf)
   result = joinPath([p, "config", filename])
   when defined(unix):
-    if not existsFile(result): result = joinPath([p, "etc", filename])
-    if not existsFile(result): result = "/etc/" & filename
+    if not existsFile(result): result = joinPath([p, "etc/nim", filename])
+    if not existsFile(result): result = "/etc/nim/" & filename
 
 proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)

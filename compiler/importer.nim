@@ -174,20 +174,32 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     #importForwarded(c, m.ast, emptySet)
 
 proc evalImport(c: PContext, n: PNode): PNode =
-  #result = n
   result = newNodeI(nkImportStmt, n.info)
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
       let dir = it[1]
-      let a = newNodeI(nkInfix, it.info)
-      a.add sep
-      a.add dir
-      a.add sep # dummy entry, replaced in the loop
+      var imp = newNodeI(nkInfix, it.info)
+      imp.add sep
+      imp.add dir
+      imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
-        a.sons[2] = x
-        impMod(c, a, result)
+        if x.kind == nkInfix and x.sons[0].ident.s == "as":
+          imp.sons[2] = x.sons[1]
+          let impAs = newNodeI(nkImportAs, it.info)
+          impAs.add imp
+          impAs.add x.sons[2]
+          imp = impAs
+          impMod(c, imp, result)
+        else:
+          imp.sons[2] = x
+          impMod(c, imp, result)
+    elif it.kind == nkInfix and it.sons[0].ident.s == "as":
+      let imp = newNodeI(nkImportAs, it.info)
+      imp.add it.sons[1]
+      imp.add it.sons[2]
+      impMod(c, imp, result)
     else:
       impMod(c, it, result)
 

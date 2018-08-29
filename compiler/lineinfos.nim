@@ -37,7 +37,7 @@ type
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
-    hintSuccess, hintSuccessX,
+    hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
@@ -92,8 +92,9 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
-    hintSuccess: "operation successful",
+    hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -136,7 +137,7 @@ const
     "Spacing", "User"]
 
   HintsToStr* = [
-    "Success", "SuccessX", "LineTooLong",
+    "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
@@ -163,13 +164,13 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-    result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
-    result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
-    result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
-      warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-      hintSource, hintGlobalVar, hintGCStats}
-    result[0] = result[1] - {hintSuccessX, hintConf, hintProcessing,
-      hintPattern, hintExecuting, hintLinking}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
+  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+    warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
+    hintSource, hintGlobalVar, hintGCStats}
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+    hintProcessing, hintPattern, hintExecuting, hintLinking}
 
 const
   NotesVerbosity* = computeNotesVerbosity()

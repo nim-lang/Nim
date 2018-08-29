@@ -38,7 +38,8 @@ type                          # please make sure we have under 32 options
     optPatterns,              # en/disable pattern matching
     optMemTracker,
     optHotCodeReloading,
-    optLaxStrings
+    optLaxStrings,
+    optNilSeqs
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -103,20 +104,23 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
-    gcV2, gcGenerational
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcRefc, gcV2
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg
 
-  Feature* = enum  ## experimental features
+  Feature* = enum  ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
     dotOperators,
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    dynamicBindSym,
+    forLoopMacros,
+    caseStmtMacros
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -353,6 +357,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "msdos": result = conf.target.targetOS == osDos
     of "mswindows", "win32": result = conf.target.targetOS == osWindows
     of "macintosh": result = conf.target.targetOS in {osMacos, osMacosx}
+    of "osx": result = conf.target.targetOS == osMacosx
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
@@ -368,7 +373,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     else: discard
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
-proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   conf.symbolFiles in {v2Sf, writeOnlySf}
@@ -406,8 +411,8 @@ proc mainCommandArg*(conf: ConfigRef): string =
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
 
-proc getConfigVar*(conf: ConfigRef; key: string): string =
-  result = conf.configVars.getOrDefault key
+proc getConfigVar*(conf: ConfigRef; key: string, default = ""): string =
+  result = conf.configVars.getOrDefault(key, default)
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
@@ -478,9 +483,20 @@ proc disableNimblePath*(conf: ConfigRef) =
 
 include packagehandling
 
+proc getOsCacheDir(): string =
+  when defined(posix):
+    result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
+  else:
+    result = getHomeDir() / genSubDir
+
 proc getNimcacheDir*(conf: ConfigRef): string =
-  result = if conf.nimcacheDir.len > 0: conf.nimcacheDir
-           else: shortenDir(conf, conf.projectPath) / genSubDir
+  # XXX projectName should always be without a file extension!
+  result = if conf.nimcacheDir.len > 0:
+             conf.nimcacheDir
+           elif conf.cmd == cmdCompileToJS:
+             shortenDir(conf, conf.projectPath) / genSubDir
+           else: getOsCacheDir() / splitFile(conf.projectName).name &
+             (if isDefined(conf, "release"): "_r" else: "_d")
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -556,13 +572,28 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): string {.pro
           result = rawFindFile2(conf, f.toLowerAscii)
   patchModule(conf)
 
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
   const pkgPrefix = "pkg/"
-  let m = addFileExt(modulename, NimExt)
+  const stdPrefix = "std/"
+  var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
   else:
+    if m.startsWith(stdPrefix):
+      let stripped = m.substr(stdPrefix.len)
+      for candidate in stdlibDirs:
+        let path = (conf.libpath / candidate / stripped)
+        if fileExists(path):
+          m = path
+          break
     let currentPath = currentModule.splitFile.dir
     result = currentPath / m
     if not existsFile(result):
@@ -572,18 +603,22 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var candidates: seq[string] = @[]
-  for k, f in os.walkDir(pkg, relative=true):
-    if k == pcFile and f != "config.nims":
-      let (_, name, ext) = splitFile(f)
-      if ext in extensions:
-        let x = changeFileExt(pkg / name, ".nim")
-        if fileExists(x):
-          candidates.add x
-  for c in candidates:
-    # nim-foo foo  or  foo  nfoo
-    if (pkg in c) or (c in pkg): return c
-  if candidates.len >= 1:
-    return candidates[0]
+  var dir = pkg
+  while true:
+    for k, f in os.walkDir(dir, relative=true):
+      if k == pcFile and f != "config.nims":
+        let (_, name, ext) = splitFile(f)
+        if ext in extensions:
+          let x = changeFileExt(dir / name, ".nim")
+          if fileExists(x):
+            candidates.add x
+    for c in candidates:
+      # nim-foo foo  or  foo  nfoo
+      if (pkg in c) or (c in pkg): return c
+    if candidates.len >= 1:
+      return candidates[0]
+    dir = parentDir(dir)
+    if dir == "": break
   return ""
 
 proc canonDynlibName(s: string): string =

@@ -40,7 +40,7 @@ when isMainModule:
     test: 18827361,
     test2: "hello world",
     test3: true,
-    testNil: nil
+    testNil: "nil"
   )
 
   let node = %x
@@ -53,7 +53,7 @@ when isMainModule:
   doAssert y.test == 18827361
   doAssert y.test2 == "hello world"
   doAssert y.test3
-  doAssert y.testNil.isNil
+  doAssert y.testNil == "nil"
 
   # Test for custom object variants (without an enum) and with an else branch.
   block:

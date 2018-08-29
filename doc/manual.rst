@@ -433,7 +433,7 @@ Numerical constants are of a single type and have the form::
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
+  FLOAT_LIT = digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
   FLOAT32_SUFFIX = ('f' | 'F') ['32']
   FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
@@ -618,6 +618,55 @@ The grammar's start symbol is ``module``.
 
 
 
+Order of evaluation
+===================
+
+Order of evaluation is strictly left-to-right, inside-out as it is typical for most others
+imperative programming languages:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var s = ""
+
+  proc p(arg: int): int =
+    s.add $arg
+    result = arg
+
+  discard p(p(1) + p(2))
+
+  doAssert s == "123"
+
+
+Assignments are not special, the left-hand-side expression is evaluated before the
+right-hand side:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var v = 0
+  proc getI(): int =
+    result = v
+    inc v
+
+  var a, b: array[0..2, int]
+
+  proc someCopy(a: var int; b: int) = a = b
+
+  a[getI()] = getI()
+
+  doAssert a == [1, 0, 0]
+
+  v = 0
+  someCopy(b[getI()], getI())
+
+  doAssert b == [1, 0, 0]
+
+
+Rationale: Consistency with overloaded assignment or assignment-like operations,
+``a = b`` can be read as ``performSomeCopy(a, b)``.
+
+
 Types
 =====
 
@@ -769,8 +818,8 @@ Pre-defined floating point types
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type).
+  the generic floating point type; its size used to be platform dependent,
+  but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
@@ -1507,68 +1556,6 @@ non nilable pointers. The details of this analysis are still to be specified
 here.
 
 
-Memory regions
---------------
-
-The types ``ref`` and ``ptr`` can get an optional ``region`` annotation.
-A region has to be an object type.
-
-Regions are very useful to separate user space and kernel memory in the
-development of OS kernels:
-
-.. code-block:: nim
-  type
-    Kernel = object
-    Userspace = object
-
-  var a: Kernel ptr Stat
-  var b: Userspace ptr Stat
-
-  # the following does not compile as the pointer types are incompatible:
-  a = b
-
-As the example shows ``ptr`` can also be used as a binary
-operator, ``region ptr T`` is a shortcut for ``ptr[region, T]``.
-
-In order to make generic code easier to write ``ptr T`` is a subtype
-of ``ptr[R, T]`` for any ``R``.
-
-Furthermore the subtype relation of the region object types is lifted to
-the pointer types: If ``A <: B`` then ``ptr[A, T] <: ptr[B, T]``. This can be
-used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
-not compatible to ``pointer`` to prevent the following from compiling:
-
-.. code-block:: nim
-  # from system
-  proc dealloc(p: pointer)
-
-  # wrap some scripting language
-  type
-    PythonsHeap = object
-    PyObjectHeader = object
-      rc: int
-      typ: pointer
-    PyObject = ptr[PythonsHeap, PyObjectHeader]
-
-  proc createPyObject(): PyObject {.importc: "...".}
-  proc destroyPyObject(x: PyObject) {.importc: "...".}
-
-  var foo = createPyObject()
-  # type error here, how convenient:
-  dealloc(foo)
-
-
-Future directions:
-
-* Memory regions might become available for  ``string`` and ``seq`` too.
-* Builtin regions like ``private``, ``global`` and ``local`` might be
-  useful for an OpenCL target.
-* Builtin "regions" can model ``lent`` and ``unique`` pointers.
-* An assignment operator can be attached to a region so that proper write
-  barriers can be generated. This would imply that the GC can be implemented
-  completely in user-space.
-
-
 Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. ``nil`` is
@@ -1673,7 +1660,8 @@ A ``distinct`` type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
-base type and vice versa are allowed.
+base type and vice versa are allowed. See also ``distinctBase`` to get the
+reverse operation.
 
 
 Modelling currencies
@@ -2335,6 +2323,8 @@ pointer type and overloading resolution is tried with ``a[]`` instead.
 
 Automatic self insertions
 -------------------------
+
+**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
 
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
@@ -4028,9 +4018,13 @@ exception.
 Exception hierarchy
 -------------------
 
-The exception tree is defined in the `system <system.html>`_ module:
-
-.. include:: exception_hierarchy_fragment.txt
+The exception tree is defined in the `system <system.html>`_ module.
+Every exception inherits from ``system.Exception``. Exceptions that indicate
+programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
+and are stricly speaking not catchable as they can also be mapped to an operation
+that terminates the whole process. Exceptions that indicate any other runtime error
+that can be caught inherit from ``system.CatchableError``
+(which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -5435,6 +5429,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     :test: "nim c $1"
 
   import macros
+  {.experimental: "forLoopMacros".}
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5459,6 +5454,62 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 
   for a2, b2 in enumerate([1, 2, 3, 5]):
     echo a2, " ", b2
+
+
+Currently for loop macros must be enabled explicitly
+via ``{.experimental: "forLoopMacros".}``.
+
+
+Case statement macros
+---------------------
+
+A macro that needs to be called `match`:idx: can be used to
+rewrite ``case`` statements in order to
+implement `pattern matching`:idx: for certain types. The following
+example implements a simplistic form of pattern matching for tuples,
+leveraging the existing equality operator for tuples (as provided in
+ ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then the complete ``case`` statement
+body is passed and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+``macro`` to call.
 
 
 Special Types
@@ -6229,10 +6280,10 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpper
+  import strutils except `%`, toUpperAscii
 
   # doesn't work then:
-  echo "$1" % "abc".toUpper
+  echo "$1" % "abc".toUpperAscii
 
 
 It is not checked that the ``except`` list is really exported from the module.
@@ -6261,24 +6312,24 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
-can be used to refer to a module in subdirectories:
+The original module name is then not accessible. The notations
+``path/to/module`` or ``"path/to/module"`` can be used to refer to a module
+in subdirectories:
 
 .. code-block:: nim
-  import lib.pure.strutils, lib/pure/os, "lib/pure/times"
+  import lib/pure/os, "lib/pure/times"
 
-Note that the module name is still ``strutils`` and not ``lib.pure.strutils``
+Note that the module name is still ``strutils`` and not ``lib/pure/strutils``
 and so one **cannot** do:
 
 .. code-block:: nim
-  import lib.pure.strutils
-  echo lib.pure.strutils
+  import lib/pure/strutils
+  echo lib/pure/strutils.toUpperAscii("abc")
 
 Likewise the following does not make sense as the name is ``strutils`` already:
 
 .. code-block:: nim
-  import lib.pure.strutils as strutils
+  import lib/pure/strutils as strutils
 
 
 Collective imports from a directory
@@ -6297,7 +6348,8 @@ name is not a valid Nim identifier it needs to be a string literal:
 Pseudo import/include paths
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A directory can also be a so called "pseudo directory".
+A directory can also be a so called "pseudo directory". They can be used to
+avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
 
@@ -6445,6 +6497,11 @@ The deprecated pragma is used to mark a symbol as deprecated:
   proc p() {.deprecated.}
   var x {.deprecated.}: char
 
+This pragma can also take in an optional warning string to relay to developers.
+
+.. code-block:: nim
+  proc thing(x: bool) {.deprecated: "See arguments of otherThing()".}
+
 It can also be used as a statement, in that case it takes a list of *renamings*.
 
 .. code-block:: nim
@@ -6452,7 +6509,6 @@ It can also be used as a statement, in that case it takes a list of *renamings*.
     File = object
     Stream = ref object
   {.deprecated: [TFile: File, PStream: Stream].}
-
 
 noSideEffect pragma
 -------------------
@@ -6939,10 +6995,34 @@ Example:
 .. code-block:: nim
   {.experimental: "parallel".}
 
-  proc useUsing(bar, foo) =
+  proc useParallel() =
     parallel:
       for i in 0..4:
         echo "echo in parallel"
+
+
+As a top level statement, the experimental pragma enables a feature for the
+rest of the module it's enabled in. This is problematic for macro and generic
+instantiations that cross a module scope. Currently these usages have to be
+put into a ``.push/pop`` environment:
+
+.. code-block:: nim
+
+  # client.nim
+  proc useParallel*[T](unused: T) =
+    # use a generic T here to show the problem.
+    {.push experimental: "parallel".}
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
+
+    {.pop.}
+
+
+.. code-block:: nim
+
+  import client
+  useParallel(1)
 
 
 Implementation Specific Pragmas
@@ -7931,7 +8011,7 @@ that ``spawn`` takes is restricted:
 
 ``spawn`` executes the passed expression on the thread pool and returns
 a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``awaitAny`` to
+with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -7942,10 +8022,10 @@ wait on multiple flow variables at the same time:
     var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
-    var index = awaitAny(responses)
+    var index = blockUntilAny(responses)
     assert index >= 0
     responses.del(index)
-    discard awaitAny(responses)
+    discard blockUntilAny(responses)
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in

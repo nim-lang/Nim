@@ -37,7 +37,9 @@ when hasFFI:
   import evalffi
 
 type
-  TGenFlag = enum gfAddrOf, gfFieldAccess
+  TGenFlag = enum
+    gfNode # Affects how variables are loaded - always loads as rkNode
+    gfNodeAddr # Affects how variables are loaded - always loads as rkNodeAddr
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(c: PCtx; info: TLineInfo): string =
@@ -563,7 +565,7 @@ proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
+    let dest = c.genx(le.sons[0], {gfNode})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     c.gABC(le, opcWrArr, dest, idx, value)
     c.freeTemp(dest)
@@ -571,17 +573,17 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
+    let dest = c.genx(left.sons[0], {gfNode})
     let idx = genField(c, left.sons[1])
     c.gABC(left, opcWrObj, dest, idx, value)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfNode})
     c.gABC(le, opcWrDeref, dest, 0, value)
     c.freeTemp(dest)
   of nkSym:
     if le.sym.isGlobal:
-      let dest = c.genx(le, {gfAddrOf})
+      let dest = c.genx(le, {gfNodeAddr})
       c.gABC(le, opcWrDeref, dest, 0, value)
       c.freeTemp(dest)
   else:
@@ -815,6 +817,43 @@ proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
+proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
+  # nah, cannot use c.config.features because sempass context
+  # can have local experimental switch
+  # if dynamicBindSym notin c.config.features:
+  if n.len == 2: # hmm, reliable?
+    # bindSym with static input
+    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
+      let idx = c.genLiteral(n[1])
+      if dest < 0: dest = c.getTemp(n.typ)
+      c.gABx(n, opcNBindSym, dest, idx)
+    else:
+      localError(c.config, n.info, "invalid bindSym usage")
+  else:
+    # experimental bindSym
+    if dest < 0: dest = c.getTemp(n.typ)
+    let x = c.getTempRange(n.len, slotTempUnknown)
+
+    # callee symbol
+    var tmp0 = TDest(x)
+    c.genLit(n.sons[0], tmp0)
+
+    # original parameters
+    for i in 1..<n.len-2:
+      var r = TRegister(x+i)
+      c.gen(n.sons[i], r)
+
+    # info node
+    var tmp1 = TDest(x+n.len-2)
+    c.genLit(n.sons[^2], tmp1)
+
+    # payload idx
+    var tmp2 = TDest(x+n.len-1)
+    c.genLit(n.sons[^1], tmp2)
+
+    c.gABC(n, opcNDynBindSym, dest, x, n.len)
+    c.freeTempRange(x, n.len)
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -900,6 +939,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp2)
 
   of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
+  of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
   of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
   of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
@@ -1136,27 +1176,21 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNNewNimNode: genBinaryABC(c, n, dest, opcNNewNimNode)
   of mNCopyNimNode: genUnaryABC(c, n, dest, opcNCopyNimNode)
   of mNCopyNimTree: genUnaryABC(c, n, dest, opcNCopyNimTree)
-  of mNBindSym:
-    if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
-      let idx = c.genLiteral(n[1])
-      if dest < 0: dest = c.getTemp(n.typ)
-      c.gABx(n, opcNBindSym, dest, idx)
-    else:
-      localError(c.config, n.info, "invalid bindSym usage")
+  of mNBindSym: genBindSym(c, n, dest)
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
   of mNLineInfo:
     case n[0].sym.name.s
-    of "getFile":
-      genUnaryABC(c, n, dest, opcNGetFile)
-    of "getLine":
-      genUnaryABC(c, n, dest, opcNGetLine)
-    of "getColumn":
-      genUnaryABC(c, n, dest, opcNGetColumn)
-    else:
-      internalAssert c.config, false
+    of "getFile": genUnaryABI(c, n, dest, opcNGetLineInfo, 0)
+    of "getLine": genUnaryABI(c, n, dest, opcNGetLineInfo, 1)
+    of "getColumn": genUnaryABI(c, n, dest, opcNGetLineInfo, 2)
+    of "copyLineInfo":
+      internalAssert c.config, n.len == 3
+      unused(c, n, dest)
+      genBinaryStmt(c, n, opcNSetLineInfo)
+    else: internalAssert c.config, false
   of mNHint:
     unused(c, n, dest)
     genUnaryStmt(c, n, opcNHint)
@@ -1253,41 +1287,21 @@ proc canElimAddr(n: PNode): PNode =
       # addr ( deref ( x )) --> x
       result = n.sons[0].sons[0]
 
-proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
-                  flags: TGenFlags) =
-  # a nop for certain types
-  let isAddr = opc in {opcAddrNode, opcAddrReg}
-  if isAddr and (let m = canElimAddr(n); m != nil):
+proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
+  if (let m = canElimAddr(n); m != nil):
     gen(c, m, dest, flags)
     return
 
-  let af = if n[0].kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}: {gfAddrOf, gfFieldAccess}
-           else: {gfAddrOf}
-  let newflags = if isAddr: flags+af else: flags
-  # consider:
-  # proc foo(f: var ref int) =
-  #   f = new(int)
-  # proc blah() =
-  #   var x: ref int
-  #   foo x
-  #
-  # The type of 'f' is 'var ref int' and of 'x' is 'ref int'. Hence for
-  # nkAddr we must not use 'unneededIndirection', but for deref we use it.
-  if not isAddr and unneededIndirection(n.sons[0]):
-    gen(c, n.sons[0], dest, newflags)
-    if gfAddrOf notin flags and fitsRegister(n.typ):
-      c.gABC(n, opcNodeToReg, dest, dest)
-  elif isAddr and isGlobal(n.sons[0]):
+  let af = if n[0].kind in {nkBracketExpr, nkDotExpr, nkCheckedFieldExpr}: {gfNode}
+           else: {gfNodeAddr}
+  let newflags = flags-{gfNode, gfNodeAddr}+af
+
+  if isGlobal(n.sons[0]):
     gen(c, n.sons[0], dest, flags+af)
   else:
     let tmp = c.genx(n.sons[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
-    if not isAddr:
-      gABC(c, n, opc, dest, tmp)
-      assert n.typ != nil
-      if gfAddrOf notin flags and fitsRegister(n.typ):
-        c.gABC(n, opcNodeToReg, dest, dest)
-    elif c.prc.slots[tmp].kind >= slotTempUnknown:
+    if c.prc.slots[tmp].kind >= slotTempUnknown:
       gABC(c, n, opcAddrNode, dest, tmp)
       # hack ahead; in order to fix bug #1781 we mark the temporary as
       # permanent, so that it's not used for anything else:
@@ -1297,6 +1311,19 @@ proc genAddrDeref(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
+
+proc genDeref(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
+  if unneededIndirection(n.sons[0]):
+    gen(c, n.sons[0], dest, flags)
+    if {gfNodeAddr, gfNode} * flags == {} and fitsRegister(n.typ):
+      c.gABC(n, opcNodeToReg, dest, dest)
+  else:
+    let tmp = c.genx(n.sons[0], flags)
+    if dest < 0: dest = c.getTemp(n.typ)
+    gABC(c, n, opcLdDeref, dest, tmp)
+    assert n.typ != nil
+    if {gfNodeAddr, gfNode} * flags == {} and fitsRegister(n.typ):
+      c.gABC(n, opcNodeToReg, dest, dest)
 
 proc whichAsgnOpc(n: PNode): TOpcode =
   case n.typ.skipTypes(abstractRange-{tyTypeDesc}).kind
@@ -1383,7 +1410,7 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
 proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   case le.kind
   of nkBracketExpr:
-    let dest = c.genx(le.sons[0], {gfAddrOf, gfFieldAccess})
+    let dest = c.genx(le.sons[0], {gfNode})
     let idx = c.genIndex(le.sons[1], le.sons[0].typ)
     let tmp = c.genx(ri)
     if le.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
@@ -1395,13 +1422,13 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
   of nkDotExpr, nkCheckedFieldExpr:
     # XXX field checks here
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfAddrOf, gfFieldAccess})
+    let dest = c.genx(left.sons[0], {gfNode})
     let idx = genField(c, left.sons[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(left, opcWrObj, dest, idx, tmp)
     c.freeTemp(tmp)
   of nkDerefExpr, nkHiddenDeref:
-    let dest = c.genx(le.sons[0], {gfAddrOf})
+    let dest = c.genx(le.sons[0], {gfNode})
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrDeref, dest, 0, tmp)
     c.freeTemp(tmp)
@@ -1410,7 +1437,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     checkCanEval(c, le)
     if s.isGlobal:
       withTemp(tmp, le.typ):
-        c.gen(le, tmp, {gfAddrOf})
+        c.gen(le, tmp, {gfNodeAddr})
         let val = c.genx(ri)
         c.preventFalseAlias(le, opcWrDeref, tmp, 0, val)
         c.freeTemp(val)
@@ -1428,7 +1455,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
       else:
         gen(c, ri, dest)
   else:
-    let dest = c.genx(le, {gfAddrOf})
+    let dest = c.genx(le, {gfNodeAddr})
     genAsgn(c, dest, ri, requiresCopy)
 
 proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
@@ -1464,6 +1491,8 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
     c.freeTemp(tmp)
 
 proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
+  # gfNodeAddr and gfNode are mutually exclusive
+  assert card(flags * {gfNodeAddr, gfNode}) < 2
   let s = n.sym
   if s.isGlobal:
     if sfCompileTime in s.flags or c.mode == emRepl:
@@ -1475,13 +1504,13 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
-    if gfAddrOf notin flags and fitsRegister(s.typ):
+    if gfNodeAddr in flags:
+      c.gABx(n, opcLdGlobalAddr, dest, s.position)
+    elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
       c.gABC(n, opcNodeToReg, dest, cc)
       c.freeTemp(cc)
-    elif {gfAddrOf, gfFieldAccess} * flags == {gfAddrOf}:
-      c.gABx(n, opcLdGlobalAddr, dest, s.position)
     else:
       c.gABx(n, opcLdGlobal, dest, s.position)
   else:
@@ -1499,7 +1528,8 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       cannotEval(c, n)
 
 template needsRegLoad(): untyped =
-  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar, tyLent}))
+  {gfNode, gfNodeAddr} * flags == {} and
+    fitsRegister(n.typ.skipTypes({tyVar, tyLent}))
 
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
@@ -1635,7 +1665,7 @@ proc genVarSection(c: PCtx; n: PNode) =
             c.globals.add(sa)
             s.position = c.globals.len
         if a.sons[2].kind != nkEmpty:
-          let tmp = c.genx(a.sons[0], {gfAddrOf})
+          let tmp = c.genx(a.sons[0], {gfNodeAddr})
           let val = c.genx(a.sons[2])
           c.genAdditionalCopy(a.sons[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
@@ -1840,8 +1870,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkDotExpr: genObjAccess(c, n, dest, flags)
   of nkCheckedFieldExpr: genCheckedObjAccess(c, n, dest, flags)
   of nkBracketExpr: genArrAccess(c, n, dest, flags)
-  of nkDerefExpr, nkHiddenDeref: genAddrDeref(c, n, dest, opcLdDeref, flags)
-  of nkAddr, nkHiddenAddr: genAddrDeref(c, n, dest, opcAddrNode, flags)
+  of nkDerefExpr, nkHiddenDeref: genDeref(c, n, dest, flags)
+  of nkAddr, nkHiddenAddr: genAddr(c, n, dest, flags)
   of nkIfStmt, nkIfExpr: genIf(c, n, dest)
   of nkWhenStmt:
     # This is "when nimvm" node. Chose the first branch.

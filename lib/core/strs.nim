@@ -7,104 +7,166 @@
 #    distribution, for details about the copyright.
 #
 
-## Default string implementation used by Nim's core.
+## Default new string implementation used by Nim's core.
+
+when false:
+  # these are to be implemented or changed in the code generator.
+
+  #proc rawNewStringNoInit(space: int): NimString {.compilerProc.}
+  # seems to be unused.
+  proc copyDeepString(src: NimString): NimString {.inline.}
+  # ----------------- sequences ----------------------------------------------
+
+  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
+  proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
+      compilerRtl.}
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
+  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.}
 
 import allocators
 
 type
-  string {.core, exportc: "NimStringV2".} = object
-    len, cap: int
-    data: ptr UncheckedArray[char]
+  NimStrPayload {.core.} = object
+    cap: int
+    region: Allocator
+    data: UncheckedArray[char]
+
+  NimStringV2 {.core.} = object
+    len: int
+    p: ptr NimStrPayload ## can be nil if len == 0.
 
 const nimStrVersion {.core.} = 2
 
-template frees(s) = dealloc(s.data, s.cap + 1)
+template isLiteral(s): bool = s.p == nil or s.p.region == nil
+
+template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
+
+template frees(s) =
+  if not isLiteral(s):
+    s.p.region.dealloc(s.p.region, s.p, contentSize(s.p.cap))
 
 proc `=destroy`(s: var string) =
-  if s.data != nil:
-    frees(s)
-    s.data = nil
-    s.len = 0
-    s.cap = 0
+  var a = cast[ptr NimStringV2](addr s)
+  frees(a)
+  a.len = 0
+  a.p = nil
 
-proc `=sink`(a: var string, b: string) =
+template lose(a) =
+  frees(a)
+
+proc `=sink`(x: var string, y: string) =
+  var a = cast[ptr NimStringV2](addr x)
+  var b = cast[ptr NimStringV2](unsafeAddr y)
   # we hope this is optimized away for not yet alive objects:
-  if a.data != nil and a.data != b.data:
-    frees(a)
+  if unlikely(a.p == b.p): return
+  lose(a)
   a.len = b.len
-  a.cap = b.cap
-  a.data = b.data
+  a.p = b.p
 
-proc `=`(a: var string; b: string) =
-  if a.data != nil and a.data != b.data:
-    frees(a)
-    a.data = nil
+proc `=`(x: var string, y: string) =
+  var a = cast[ptr NimStringV2](addr x)
+  var b = cast[ptr NimStringV2](unsafeAddr y)
+  if unlikely(a.p == b.p): return
+  lose(a)
   a.len = b.len
-  a.cap = b.cap
-  if b.data != nil:
-    a.data = cast[type(a.data)](alloc(a.cap + 1))
-    copyMem(a.data, b.data, a.cap+1)
+  if isLiteral(b):
+    # we can shallow copy literals:
+    a.p = b.p
+  else:
+    let region = if a.p.region != nil: a.p.region else: getLocalAllocator()
+    # we have to allocate the 'cap' here, consider
+    # 'let y = newStringOfCap(); var x = y'
+    # on the other hand... These get turned into moves now.
+    a.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(b.len)))
+    a.p.region = region
+    a.p.cap = b.len
+    copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
-proc resize(s: var string) =
-  let old = s.cap
-  if old == 0: s.cap = 8
-  else: s.cap = (s.cap * 3) shr 1
-  s.data = cast[type(s.data)](realloc(s.data, old + 1, s.cap + 1))
+proc resize(old: int): int {.inline.} =
+  if old <= 0: result = 4
+  elif old < 65536: result = old * 2
+  else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
-proc add*(s: var string; c: char) =
-  if s.len >= s.cap: resize(s)
-  s.data[s.len] = c
-  s.data[s.len+1] = '\0'
+proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
+  if isLiteral(s):
+    let oldP = s.p
+    # can't mutate a literal, so we need a fresh copy here:
+    let region = getLocalAllocator()
+    s.p = cast[ptr NimStrPayload](region.alloc(region, contentSize(s.len + addlen)))
+    s.p.region = region
+    s.p.cap = s.len + addlen
+    if s.len > 0:
+      # we are about to append, so there is no need to copy the \0 terminator:
+      copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
+  elif s.len + addlen > s.p.cap:
+    let cap = max(s.len + addlen, resize(s.p.cap))
+    s.p = cast[ptr NimStrPayload](s.p.region.realloc(s.p.region, s.p,
+      oldSize = contentSize(s.p.cap),
+      newSize = contentSize(cap)))
+    s.p.cap = cap
+
+proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
+  prepareAdd(s, 1)
+  s.p.data[s.len] = c
+  s.p.data[s.len+1] = '\0'
   inc s.len
 
-proc ensure(s: var string; newLen: int) =
-  let old = s.cap
-  if newLen >= old:
-    s.cap = max((old * 3) shr 1, newLen)
-    if s.cap > 0:
-      s.data = cast[type(s.data)](realloc(s.data, old + 1, s.cap + 1))
+proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerProc.} =
+  if len <= 0:
+    result = NimStringV2(len: 0, p: nil)
+  else:
+    let region = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
+    p.region = region
+    p.cap = len
+    if len > 0:
+      # we are about to append, so there is no need to copy the \0 terminator:
+      copyMem(unsafeAddr p.data[0], str, len)
+    result = NimStringV2(len: 0, p: p)
 
-proc add*(s: var string; y: string) =
-  if y.len != 0:
-    let newLen = s.len + y.len
-    ensure(s, newLen)
-    copyMem(addr s.data[len], y.data, y.data.len + 1)
+proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
+  if str == nil: toNimStr(str, 0)
+  else: toNimStr(str, str.len)
+
+proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, inline.} =
+  if s.len == 0: result = cstring""
+  else: result = cstring(unsafeAddr s.p.data)
+
+proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
+  if src.len > 0:
+    # also copy the \0 terminator:
+    copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+
+proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
+  dest.p.data[dest.len] = c
+  dest.p.data[dest.len+1] = '\0'
+  inc dest.len
+
+proc rawNewString(space: int): NimStringV2 {.compilerProc.} =
+  # this is also 'system.newStringOfCap'.
+  if space <= 0:
+    result = NimStringV2(len: 0, p: nil)
+  else:
+    let region = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(space)))
+    p.region = region
+    p.cap = space
+    result = NimStringV2(len: 0, p: p)
+
+proc mnewString(len: int): NimStringV2 {.compilerProc.} =
+  if len <= 0:
+    result = NimStringV2(len: 0, p: nil)
+  else:
+    let region = getLocalAllocator()
+    var p = cast[ptr NimStrPayload](region.alloc(region, contentSize(len)))
+    p.region = region
+    p.cap = len
+    result = NimStringV2(len: len, p: p)
+
+proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
+  if newLen > s.len:
+    prepareAdd(s, newLen - s.len)
+  else:
     s.len = newLen
-
-proc len*(s: string): int {.inline.} = s.len
-
-proc newString*(len: int): string =
-  result.len = len
-  result.cap = len
-  if len > 0:
-    result.data = alloc0(len+1)
-
-converter toCString(x: string): cstring {.core, inline.} =
-  if x.len == 0: cstring"" else: cast[cstring](x.data)
-
-proc newStringOfCap*(cap: int): string =
-  result.len = 0
-  result.cap = cap
-  if cap > 0:
-    result.data = alloc(cap+1)
-
-proc `&`*(a, b: string): string =
-  let sum = a.len + b.len
-  result = newStringOfCap(sum)
-  result.len = sum
-  copyMem(addr result.data[0], a.data, a.len)
-  copyMem(addr result.data[a.len], b.data, b.len)
-  if sum > 0:
-    result.data[sum] = '\0'
-
-proc concat(x: openArray[string]): string {.core.} =
-  ## used be the code generator to optimize 'x & y & z ...'
-  var sum = 0
-  for i in 0 ..< x.len: inc(sum, x[i].len)
-  result = newStringOfCap(sum)
-  sum = 0
-  for i in 0 ..< x.len:
-    let L = x[i].len
-    copyMem(addr result.data[sum], x[i].data, L)
-    inc(sum, L)
-
+    # this also only works because the destructor
+    # looks at s.p and not s.len

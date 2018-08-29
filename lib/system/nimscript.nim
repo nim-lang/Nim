@@ -73,12 +73,12 @@ proc switch*(key: string, val="") =
 proc warning*(name: string; val: bool) =
   ## Disables or enables a specific warning.
   let v = if val: "on" else: "off"
-  warningImpl(name & "]:" & v, "warning[" & name & "]:" & v)
+  warningImpl(name & ":" & v, "warning:" & name & ":" & v)
 
 proc hint*(name: string; val: bool) =
   ## Disables or enables a specific hint.
   let v = if val: "on" else: "off"
-  hintImpl(name & "]:" & v, "hint[" & name & "]:" & v)
+  hintImpl(name & ":" & v, "hint:" & name & ":" & v)
 
 proc patchFile*(package, filename, replacement: string) =
   ## Overrides the location of a given file belonging to the

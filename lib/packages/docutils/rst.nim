@@ -1387,7 +1387,7 @@ proc parseSectionWrapper(p: var RstParser): PRstNode =
     result = result.sons[0]
 
 proc `$`(t: Token): string =
-  result = $t.kind & ' ' & (if isNil(t.symbol): "NIL" else: t.symbol)
+  result = $t.kind & ' ' & t.symbol
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)

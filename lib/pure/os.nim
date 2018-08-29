@@ -233,7 +233,7 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## modification time is later than `b`'s.
   when defined(posix):
     # If we don't have access to nanosecond resolution, use '>='
-    when not StatHasNanoseconds:  
+    when not StatHasNanoseconds:
       result = getLastModificationTime(a) >= getLastModificationTime(b)
     else:
       result = getLastModificationTime(a) > getLastModificationTime(b)
@@ -615,7 +615,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
-    const ENOENT = cint(2) # 2 on most systems including Solaris
+    when not defined(haiku):
+      const ENOENT = cint(2) # 2 on most systems including Solaris
+    else:
+      const ENOENT = cint(-2147459069)
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
@@ -969,6 +972,14 @@ proc rawCreateDir(dir: string): bool =
     if res == 0'i32:
       result = true
     elif errno in {EEXIST, ENOSYS}:
+      result = false
+    else:
+      raiseOSError(osLastError(), dir)
+  elif defined(haiku):
+    let res = mkdir(dir, 0o777)
+    if res == 0'i32:
+      result = true
+    elif errno == EEXIST or errno == EROFS:
       result = false
     else:
       raiseOSError(osLastError(), dir)
@@ -1332,16 +1343,21 @@ elif defined(windows):
   # is always the same -- independent of the used C compiler.
   var
     ownArgv {.threadvar.}: seq[string]
+    ownParsedArgv {.threadvar.}: bool
 
   proc paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
+    if not ownParsedArgv:
+      ownArgv = parseCmdLine($getCommandLine())
+      ownParsedArgv = true
     result = ownArgv.len-1
 
   proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
+    if not ownParsedArgv:
+      ownArgv = parseCmdLine($getCommandLine())
+      ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
@@ -1352,9 +1368,15 @@ elif defined(nintendoswitch):
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
+elif defined(genode):
+  proc paramStr*(i: int): TaintedString =
+    raise newException(OSError, "paramStr is not implemented on Genode")
+
+  proc paramCount*(): int =
+    raise newException(OSError, "paramCount is not implemented on Genode")
+
 elif not defined(createNimRtl) and
-  not(defined(posix) and appType == "lib") and
-  not defined(genode):
+  not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint

@@ -114,7 +114,7 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
-  for i in 0 ..< MAX_KQUEUE_EVENTS:
+  for i in 0 ..< maxFD:
     result.fds[i].ident = InvalidIdent
 
   result.sock = usock
@@ -567,8 +567,11 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         doAssert(true, "Unsupported kqueue filter in the queue!")
 
       if (kevent.flags and EV_EOF) != 0:
+        # TODO this error handling needs to be rethought.
+        # `fflags` can sometimes be `0x80000000` and thus we use 'cast'
+        # here:
         if kevent.fflags != 0:
-          rkey.errorCode = kevent.fflags.OSErrorCode
+          rkey.errorCode = cast[OSErrorCode](kevent.fflags)
         else:
           # This assumes we are dealing with sockets.
           # TODO: For future-proofing it might be a good idea to give the

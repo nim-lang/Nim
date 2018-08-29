@@ -493,8 +493,6 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## **Warning**: ``recvLineInto`` on unbuffered sockets assumes that the
   ## protocol uses ``\r\L`` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
-  assert(not resString.mget.isNil(),
-         "String inside resString future needs to be initialised")
   result = newFuture[void]("asyncnet.recvLineInto")
 
   # TODO: Make the async transformation check for FutureVar params and complete
@@ -657,7 +655,7 @@ when defineSsl:
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
                             handshake: SslHandshakeType,
-                            hostname: string = nil) =
+                            hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
     ## turns ``socket`` into an SSL socket.
     ## ``hostname`` should be specified so that the client knows which hostname
@@ -672,7 +670,7 @@ when defineSsl:
 
     case handshake
     of handshakeAsClient:
-      if not hostname.isNil and not isIpAddress(hostname):
+      if hostname.len > 0 and not isIpAddress(hostname):
         # Set the SNI address for this connection. This call can fail if
         # we're not using TLSv1+.
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)

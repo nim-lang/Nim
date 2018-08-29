@@ -13,15 +13,11 @@ proc add(result: var string; x: float)
   first type mismatch at position: 1
   required type: var string
   but expression 'k' is of type: Alias
-proc add(x: var string; y: cstring)
-  first type mismatch at position: 1
-  required type: var string
-  but expression 'k' is of type: Alias
-proc add(x: var string; y: char)
-  first type mismatch at position: 1
-  required type: var string
-  but expression 'k' is of type: Alias
 proc add(x: var string; y: string)
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
+proc add(x: var string; y: cstring)
   first type mismatch at position: 1
   required type: var string
   but expression 'k' is of type: Alias
@@ -30,6 +26,10 @@ proc add[T](x: var seq[T]; y: T)
   required type: var seq[T]
   but expression 'k' is of type: Alias
 proc add(result: var string; x: int64)
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
+proc add(x: var string; y: char)
   first type mismatch at position: 1
   required type: var string
   but expression 'k' is of type: Alias

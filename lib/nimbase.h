@@ -129,13 +129,13 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
+#elif defined(__TINYC__) || defined(__GENODE__)
+#  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
-#elif defined __TINYC__
-#  define NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif

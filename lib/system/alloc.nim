@@ -436,8 +436,9 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
         a.nextChunkSize = PageSize*4
       else:
         a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
-  var size = size
+        a.nextChunkSize = min(a.nextChunkSize, MaxBigChunkSize)
 
+  var size = size
   if size > a.nextChunkSize:
     result = cast[PBigChunk](osAllocPages(size))
   else:
@@ -453,10 +454,10 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   a.addHeapLink(result, size)
   when defined(debugHeapLinks):
     cprintf("owner: %p; result: %p; next pointer %p; size: %ld\n", addr(a),
-      result, result.heapLink, result.origSize)
+      result, result.heapLink, result.size)
 
   when defined(memtracker):
-    trackLocation(addr result.origSize, sizeof(int))
+    trackLocation(addr result.size, sizeof(int))
 
   sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
   #zeroMem(result, size)
@@ -526,7 +527,7 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
   result.size = c.size - size
-  track("result.origSize", addr result.origSize, sizeof(int))
+  track("result.size", addr result.size, sizeof(int))
   # XXX check if these two nil assignments are dead code given
   # addChunkToMatrix's implementation:
   result.next = nil
@@ -601,7 +602,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       splitChunk(a, result, size)
   # set 'used' to to true:
   result.prevSize = 1
-  track("setUsedToFalse", addr result.origSize, sizeof(int))
+  track("setUsedToFalse", addr result.size, sizeof(int))
 
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
@@ -967,7 +968,7 @@ proc deallocOsPages(a: var MemRegion) =
       let (p, size) = it.chunks[i]
       when defined(debugHeapLinks):
         cprintf("owner %p; dealloc A: %p size: %ld; next: %p\n", addr(a),
-          it, it.origSize, next)
+          it, it.size, next)
       sysAssert size >= PageSize, "origSize too small"
       osDeallocPages(p, size)
     it = next

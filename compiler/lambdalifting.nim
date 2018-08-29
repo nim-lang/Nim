@@ -226,7 +226,7 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
   # XXX optimization: Only lift the variable if it lives across
   # yield/return boundaries! This can potentially speed up
   # closure iterators quite a bit.
-  result = s.kind in {skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
+  result = s.kind in {skResult, skVar, skLet, skTemp, skForVar} and sfGlobal notin s.flags
 
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
@@ -463,6 +463,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
+  of nkReturnStmt:
+    if n[0].kind in {nkAsgn, nkFastAsgn}:
+      detectCapturedVars(n[0].sons[1], owner, c)
+    else: assert n[0].kind == nkEmpty
   else:
     for i in 0..<n.len:
       detectCapturedVars(n[i], owner, c)
@@ -692,6 +696,13 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     if n.len == 2:
       n.sons[1] = liftCapturedVars(n[1], owner, d, c)
       if n[1].kind == nkClosure: result = n[1]
+  of nkReturnStmt:
+    if n[0].kind in {nkAsgn, nkFastAsgn}:
+      # we have a `result = result` expression produced by the closure
+      # transform, let's not touch the LHS in order to make the lifting pass
+      # correct when `result` is lifted
+      n[0].sons[1] = liftCapturedVars(n[0].sons[1], owner, d, c)
+    else: assert n[0].kind == nkEmpty
   else:
     if owner.isIterator:
       if nfLL in n.flags:
@@ -762,6 +773,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
     if d.somethingToDo:
       var c = initLiftingPass(fn)
       result = liftCapturedVars(body, fn, d, c)
+      # echo renderTree(result, {renderIds})
       if c.envvars.getOrDefault(fn.id) != nil:
         result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
     else:

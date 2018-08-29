@@ -232,10 +232,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   of tyString:
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
-    if cast[string](fp).isNil:
-      add(result, "nil")
-    else:
-      add( result, reprStr(cast[string](p)) )
+    add( result, reprStr(cast[string](p)) )
   of tyCString:
     var fp: cstring
     {. emit: "`fp` = `p`;\n" .}

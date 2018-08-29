@@ -75,7 +75,7 @@ else:
       of cmdArgument:
         task = key
       else: discard
-    if printTaskList or task.isNil or not(tasks.hasKey(task)):
+    if printTaskList or task.len == 0 or not(tasks.hasKey(task)):
       echo "Available tasks:"
       for name, task in pairs(tasks):
         echo name, " - ", task.desc

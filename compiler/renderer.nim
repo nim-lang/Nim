@@ -175,7 +175,7 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
     g.pendingWhitespace = s.len
 
 proc putComment(g: var TSrcGen, s: string) =
-  if s.isNil: return
+  if s.len == 0: return
   var i = 0
   let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
@@ -216,7 +216,7 @@ proc putComment(g: var TSrcGen, s: string) =
   optNL(g)
 
 proc maxLineLength(s: string): int =
-  if s.isNil: return 0
+  if s.len == 0: return 0
   var i = 0
   let hi = len(s) - 1
   var lineLen = 0
@@ -281,7 +281,7 @@ const
 
 proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
   result = false
-  if n.comment != nil:
+  if n.comment.len > 0:
     result = (renderNoComments notin g.flags) or
         (renderDocComments in g.flags)
 
@@ -402,7 +402,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.comment != nil: return MaxLineLen + 1
+  if n.comment.len > 0: return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -500,7 +500,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkBreakStmt: result = lsub(g, n.sons[0]) + len("break_")
   of nkContinueStmt: result = lsub(g, n.sons[0]) + len("continue_")
   of nkPragma: result = lcomma(g, n) + 4
-  of nkCommentStmt: result = if n.comment.isNil: 0 else: len(n.comment)
+  of nkCommentStmt: result = len(n.comment)
   of nkOfBranch: result = lcomma(g, n, 0, - 2) + lsub(g, lastSon(n)) + len("of_:_")
   of nkImportAs: result = lsub(g, n.sons[0]) + len("_as_") + lsub(g, n.sons[1])
   of nkElifBranch: result = lsons(g, n) + len("elif_:_")
@@ -539,7 +539,7 @@ proc gsub(g: var TSrcGen, n: PNode) =
 proc hasCom(n: PNode): bool =
   result = false
   if n.isNil: return false
-  if n.comment != nil: return true
+  if n.comment.len > 0: return true
   case n.kind
   of nkEmpty..nkNilLit: discard
   else:
@@ -602,7 +602,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.comment != nil
+  result = n.comment.len > 0
   if not result:
     # check further
     for i in countup(start, sonsLen(n) + theEnd):
@@ -637,7 +637,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
 proc gcond(g: var TSrcGen, n: PNode) =
   if n.kind == nkStmtListExpr:
     put(g, tkParLe, "(")
-  gsub(g, n)  
+  gsub(g, n)
   if n.kind == nkStmtListExpr:
     put(g, tkParRi, ")")
 
@@ -876,7 +876,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
     a: TContext
-  if n.comment != nil: pushCom(g, n)
+  if n.comment.len > 0: pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
@@ -1090,7 +1090,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      let n_next = skipHiddenNodes(n[1])
+      var n_next = n[1]
+      while n_next.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref,
+                  nkStringToCString, nkCStringToString} and n_next.len > 0:
+        n_next = n_next[0]
       if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
       if n_next.kind == nkInfix:

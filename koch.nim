@@ -50,13 +50,15 @@ Boot options:
 
 Commands for core developers:
   web [options]            generates the website and the full documentation
+                           (see `nimweb.nim` for cmd line options)
   website [options]        generates only the website
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
   testinstall              test tar.xz package; Unix only!
-  tests [options]          run the testsuite
+  tests [options]          run the testsuite (run a subset of tests by
+                           specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
   winrelease               creates a Windows release
   pushcsource              push generated C sources to its repo
@@ -181,7 +183,7 @@ proc bundleNimbleExe() =
   bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
-  nimexec("c -d:release dist/nimble/src/nimble.nim")
+  nimexec("c -d:release --nilseqs:on dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
@@ -208,7 +210,7 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler -d:release " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -241,7 +243,15 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
+proc ensureCleanGit() =
+   let (outp, status) = osproc.execCmdEx("git diff")
+   if outp.len != 0:
+     quit "Not a clean git repository; 'git diff' not empty!"
+   if status != 0:
+     quit "Not a clean git repository; 'git diff' returned non-zero!"
+
 proc xz(args: string) =
+  ensureCleanGit()
   bundleNimbleSrc()
   bundleNimsuggest(false)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %

@@ -271,9 +271,7 @@ proc escapeJSString(s: string): string =
   result.add("\"")
 
 proc makeJSString(s: string, escapeNonAscii = true): Rope =
-  if s.isNil:
-    result = "null".rope
-  elif escapeNonAscii:
+  if escapeNonAscii:
     result = strutils.escape(s).rope
   else:
     result = escapeJSString(s).rope
@@ -379,6 +377,7 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "($1 / $2)", "($1 / $2)"], # DivF64
     ["", "", "", ""], # ShrI
     ["", "", "($1 << $2)", "($1 << $2)"], # ShlI
+    ["", "", "($1 >> $2)", "($1 >> $2)"], # AshrI
     ["", "", "($1 & $2)", "($1 & $2)"], # BitandI
     ["", "", "($1 | $2)", "($1 | $2)"], # BitorI
     ["", "", "($1 ^ $2)", "($1 ^ $2)"], # BitxorI
@@ -1266,7 +1265,7 @@ proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
   if sfInfixCall in f.flags:
     let pat = n.sons[0].sym.loc.r.data
-    internalAssert p.config, pat != nil
+    internalAssert p.config, pat.len > 0
     if pat.contains({'#', '(', '@'}):
       var typ = skipTypes(n.sons[0].typ, abstractInst)
       assert(typ.kind == tyProc)
@@ -1349,7 +1348,7 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyUint8: "Uint8Array"
   of tyFloat32: "Float32Array"
   of tyFloat64, tyFloat: "Float64Array"
-  else: nil
+  else: ""
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
@@ -1368,7 +1367,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     let length = int(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
-    if not jsTyp.isNil:
+    if jsTyp.len > 0:
       result = "new $1($2)" % [rope(jsTyp), rope(length)]
     elif length > 32:
       useMagic(p, "arrayConstr")
