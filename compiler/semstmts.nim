@@ -409,6 +409,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var typ: PType
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
+      if typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+        localError(c.config, a.sons[length-2].info, "'typedesc' metatype is not valid here")
+        continue
     else:
       typ = nil
     var def: PNode = c.graph.emptyNode
@@ -539,6 +542,9 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typ == nil:
       localError(c.config, a.sons[2].info, errConstExprExpected)
       continue
+    if typ.kind == tyTypeDesc:
+      localError(c.config, a.info, "cannot have typedesc as const value, " &
+        "use 'type $1 = $2' instead", [$a.sons[0], typeToString(def.typ.skipTypes({tyTypeDesc}))])
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(c.config, a.info, "invalid type for const: " & typeToString(typ))
       continue
