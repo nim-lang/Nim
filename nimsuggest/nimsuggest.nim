@@ -583,12 +583,11 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
-    name: "nimsuggest",
     suggestMode: true,
     processCmdLine: processCmdLine,
     mainCommand: mainCommand
   )
-  self.initDefinesProg(conf)
+  self.initDefinesProg(conf, "nimsuggest")
 
   if paramCount() == 0:
     stdout.writeline(Usage)

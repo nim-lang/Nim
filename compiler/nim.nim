@@ -58,12 +58,11 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
-    name: "nim_compiler",
     supportsStdinFile: true,
     processCmdLine: processCmdLine,
     mainCommand: mainCommand
   )
-  self.initDefinesProg(conf)
+  self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
     writeCommandLineUsage(conf, conf.helpWritten)
     return

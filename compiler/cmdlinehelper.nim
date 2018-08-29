@@ -6,16 +6,16 @@ import
   compiler/[options, idents, nimconf, scriptconfig, extccomp, commands, msgs, lineinfos, modulegraphs, condsyms],
   std/os
 
-type NimProg* = ref object
-  name*: string
-  suggestMode*: bool
-  supportsStdinFile*: bool
-  processCmdLine*: proc(pass: TCmdLinePass, cmd: string; config: ConfigRef)
-  mainCommand*: proc(graph: ModuleGraph)
+type
+  NimProg* = ref object
+    suggestMode*: bool
+    supportsStdinFile*: bool
+    processCmdLine*: proc(pass: TCmdLinePass, cmd: string; config: ConfigRef)
+    mainCommand*: proc(graph: ModuleGraph)
 
-proc initDefinesProg*(self: NimProg, conf: ConfigRef) =
+proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
   condsyms.initDefines(conf.symbols)
-  defineSymbol conf.symbols, self.name
+  defineSymbol conf.symbols, name
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
