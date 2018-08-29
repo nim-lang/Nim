@@ -1,6 +1,6 @@
 discard """
   line: 7
-  errormsg: "attempting to call undeclared routine: 'items'"
+  errormsg: "attempting to call routine: 'items'"
 """
 
 type a = enum b,c,d

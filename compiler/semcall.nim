@@ -338,10 +338,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           var sym = initOverloadIter(o, c, f)
           while sym != nil:
             proc toHumanStr(kind: TSymKind): string=
-              case kind
-              of skIterator: result = "iterator"
-              of skProc: result = "proc"
-              else: result = $kind
+              result = $kind
+              if result.startsWith "sk": result = result[2..^1].toLower
             msg &= "\n  * found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
             sym = nextOverloadIter(o, c, n)
 
@@ -351,7 +349,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         else:
           if msg.len == 0: msg = errUndeclaredRoutine % ident
           else: msg = errBadRoutine % [ident, msg]
-
         localError(c.config, n.info, msg)
       return
     elif result.state != csMatch:
