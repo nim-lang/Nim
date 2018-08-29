@@ -819,8 +819,6 @@ proc gasm(g: var TSrcGen, n: PNode) =
   if n.sons.len > 1:
     gsub(g, n.sons[1])
 
-import astalgo
-
 proc gident(g: var TSrcGen, n: PNode) =
   if g.inGenericParams and n.kind == nkSym:
     if sfAnon in n.sym.flags or
@@ -900,9 +898,11 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   var needs_parenthesis = false
   let n_next = n[i].skipHiddenNodes
   if n_next.kind == nkInfix:
-    if n_next[0].kind == nkSym and n[0].kind == nkSym:
-      if getPrecedence(g.fid, n_next[0].sym.name.s, g.cache, g.config) < 
-               getPrecedence(g.fid, n[0].sym.name.s, g.cache, g.config):
+    if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
+      let next_id = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+      let nn_id = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident     
+      if getPrecedence(g.fid, next_id.s, g.cache, g.config) < 
+               getPrecedence(g.fid, nn_id.s, g.cache, g.config):
         needs_parenthesis = true
   if needs_parenthesis:
     put(g, tkParLe, "(")
