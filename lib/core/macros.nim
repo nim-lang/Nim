@@ -237,9 +237,9 @@ else: # bootstrapping substitute
     else:
       n.strValOld
 
-when defined(nimSymImplNoTransform):
-  #proc getImplNoTransform*(symbol: NimNode): NimNode {.magic: "GetImplNoTransf", noSideEffect.}
-    ## for a typed proc returns the AST before transformation pass
+when defined(nimSymImplTransform):
+  proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
+    ## for a typed proc returns the AST after transformation pass
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is

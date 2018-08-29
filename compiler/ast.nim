@@ -657,7 +657,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType, mGetImplNoTransf
+    mException, mBuiltinType, mGetImplTransf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -1772,5 +1772,3 @@ template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
 
 template getBody*(s: PSym): PNode = s.ast[bodyPos]
-
-

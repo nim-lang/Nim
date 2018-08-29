@@ -324,13 +324,13 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  if tracked.exc.sons.len > 0:
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
-  if tracked.exc.sons.len > 0:
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
@@ -563,37 +563,15 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
 
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
-  #if `??`(tracked.config, n.info, "bizdate"):
-  #  echo "trackOperand"
-  #  debug n
-  #  echo tracked.exc
-
-  #let nc = getConstExpr(tracked.owner.getModule, n, tracked.graph)
-  #let n = if nc == nil: n else: nc
-
-  if `??`(tracked.config, n.info, "bizdate"):
-    echo "trackOperand ", tracked.exc
-    echo n
-
-
   let a = skipConvAndClosure(n)
   let op = a.typ
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv
-
-    if `??`(tracked.config, n.info, "bizdate"):
-      echo "trackOperand if 1 ", s
-      debug effectList
-
     if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
-        if `??`(tracked.config, n.info, "sempass2_test"):
-          echo "trackOperand if 2"
-        propagateEffects(tracked, n, s.sym)
+      propagateEffects(tracked, n, s.sym)
     elif isNoEffectList(effectList):
-      if `??`(tracked.config, n.info, "sempass2_test"):
-        echo "trackOperand if 3"
       if isForwardedProc(n):
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
@@ -609,8 +587,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markSideEffect(tracked, a)
 
     else:
-      if `??`(tracked.config, n.info, "sempass2_test"):
-        echo "trackOperand if 4"
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       if notGcSafe(op):
@@ -619,8 +595,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
 
-    if `??`(tracked.config, n.info, "sempass2_test"):
-      echo "Tracked exceptions after ", tracked.exc
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -980,9 +954,6 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   t.config = g.config
 
 proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
-
-  if `??`(g.config, body.info, "bizdate"):
-    echo "trackProc ", s.name.s
 
   var effects = s.typ.n.sons[0]
   if effects.kind != nkEffectList: return

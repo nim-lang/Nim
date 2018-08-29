@@ -859,18 +859,6 @@ proc isBracket*(n: PNode): bool =
     if n.len > 0: result = isBracket(n[0])
   of nkSym: result = n.sym.name.s == "[]"
   else: result = false
-
-proc skipHiddenNodes(n: PNode): PNode = 
-  result = n
-  while true:
-    case result.kind 
-      of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
-        if result.len >= 1:
-          result = result[0]
-      of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
-        if result.len >= 2:
-          result = result[1]
-      else: break
       
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
