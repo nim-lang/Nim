@@ -224,6 +224,7 @@ const
   errButExpected = "but expected one of: "
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
+  errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -331,19 +332,26 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags:
-        let ident = considerQuotedIdent(c, f, n).s
         var msg = ""
+        block:
+          var o: TOverloadIter
+          var sym = initOverloadIter(o, c, f)
+          while sym != nil:
+            proc toHumanStr(kind: TSymKind): string=
+              case kind
+              of skIterator: result = "iterator"
+              of skProc: result = "proc"
+              else: result = $kind
+            msg &= "\n  * found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+            sym = nextOverloadIter(o, c, n)
+
+        let ident = considerQuotedIdent(c, f, n).s
         if nfDotField in n.flags and nfExplicitCall notin n.flags:
-          msg = errUndeclaredField % ident
+          msg = errUndeclaredField % ident & msg
         else:
-          msg = errUndeclaredRoutine % ident
-        let sym = qualifiedLookUp(c, f, {})
-        if sym != nil:
-          proc toHumanStr(kind: TSymKind): string=
-            case kind
-            of skIterator: result = "iterator"
-            else: result = $kind
-          msg &= ", found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+          if msg.len == 0: msg = errUndeclaredRoutine % ident
+          else: msg = errBadRoutine % [ident, msg]
+
         localError(c.config, n.info, msg)
       return
     elif result.state != csMatch:
