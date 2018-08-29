@@ -1,4 +1,5 @@
 discard """
+disabled:true
 $nimsuggest --tester --maxresults:2 $file
 >sug $1
 sug;;skProc;;tdot4.main;;proc (inp: string): string;;$file;;10;;5;;"";;100;;None
