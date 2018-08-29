@@ -837,7 +837,6 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  
   put(g, t, s)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
     when defined(debugMagics):
