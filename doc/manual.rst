@@ -6823,54 +6823,91 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
+reorder pragma
+--------------
+**Note**: Code reordering is experimental. By default it is turned off.
+
+The ``reorder`` pragma can be used to turn on and off a special compilation mode
+that aims to be able to implicitly rearrange procedure, template, and macro
+definitions along with variable declarations and initializations at the top
+level scope so that, to a large extent, a programmer should not have to worry
+about ordering definitions correctly or be forced to use forward declarations to
+preface definitions inside a module.
 
 ..
-  NoForward pragma
-  ----------------
-  The ``noforward`` pragma can be used to turn on and off a special compilation
-  mode that to large extent eliminates the need for forward declarations. In this
-  mode, the proc definitions may appear out of order and the compiler will postpone
-  their semantic analysis and compilation until it actually needs to generate code
-  using the definitions. In this regard, this mode is similar to the modus operandi
-  of dynamic scripting languages, where the function calls are not resolved until
-  the code is executed. Here is the detailed algorithm taken by the compiler:
+   NOTE: The following was documentation for the precursor to {.reorder.},
+   which was {.noForward.}.
+   
+   In this mode, procedure definitions may appear out of order and the compiler
+   will postpone their semantic analysis and compilation until it actually needs
+   to generate code using the definitions. In this regard, this mode is similar
+   to the modus operandi of dynamic scripting languages, where the function
+   calls are not resolved until the code is executed. Here is the detailed
+   algorithm taken by the compiler:
 
-  1. When a callable symbol is first encountered, the compiler will only note the
-  symbol callable name and it will add it to the appropriate overload set in the
-  current scope. At this step, it won't try to resolve any of the type expressions
-  used in the signature of the symbol (so they can refer to other not yet defined
-  symbols).
+   1. When a callable symbol is first encountered, the compiler will only note
+   the symbol callable name and it will add it to the appropriate overload set
+   in the current scope. At this step, it won't try to resolve any of the type
+   expressions used in the signature of the symbol (so they can refer to other
+   not yet defined symbols).
 
-  2. When a top level call is encountered (usually at the very end of the module),
-  the compiler will try to determine the actual types of all of the symbols in the
-  matching overload set. This is a potentially recursive process as the signatures
-  of the symbols may include other call expressions, whose types will be resolved
-  at this point too.
+   2. When a top level call is encountered (usually at the very end of the
+   module), the compiler will try to determine the actual types of all of the
+   symbols in the matching overload set. This is a potentially recursive process
+   as the signatures of the symbols may include other call expressions, whose
+   types will be resolved at this point too.
 
-  3. Finally, after the best overload is picked, the compiler will start
-  compiling the body of the respective symbol. This in turn will lead the
-  compiler to discover more call expressions that need to be resolved and steps
-  2 and 3 will be repeated as necessary.
+   3. Finally, after the best overload is picked, the compiler will start
+   compiling the body of the respective symbol. This in turn will lead the
+   compiler to discover more call expressions that need to be resolved and steps
+   2 and 3 will be repeated as necessary.
 
-  Please note that if a callable symbol is never used in this scenario, its body
-  will never be compiled. This is the default behavior leading to best compilation
-  times, but if exhaustive compilation of all definitions is required, using
-  ``nim check`` provides this option as well.
+   Please note that if a callable symbol is never used in this scenario, its
+   body will never be compiled. This is the default behavior leading to best
+   compilation times, but if exhaustive compilation of all definitions is
+   required, using ``nim check`` provides this option as well.
 
-  Example:
+Example:
 
-  .. code-block:: nim
+.. code-block:: nim
 
-    {.noforward: on.}
+  {.reorder: on.}
 
-    proc foo(x: int) =
-      bar x
+  proc foo(x: int) =
+    bar(x)
 
-    proc bar(x: int) =
-      echo x
+  proc bar(x: int) =
+    echo(x)
 
-    foo(10)
+  foo(10)
 
+Variables can also be reordered as well. Keep in mind, when we initialize (i.e.
+combined declaration and assignment in one statement) variables, that entire
+statement itself may be reordered. Be wary of what code you execute at the top
+level:
+
+.. code-block:: nim
+  {.reorder: on.}
+
+  proc a() =
+    echo(foo)
+
+  var foo = 5
+
+  a() # outputs: "5"
+
+It is important to note that reordering *only* works for symbols at top level
+scope. Therefore, the following will *fail to compile:*
+
+.. code-block:: nim
+  {.reorder: on.}
+
+  proc a() =
+    b()
+    proc b() =
+      echo("Hello!")
+
+  a()
 
 pragma pragma
 -------------
