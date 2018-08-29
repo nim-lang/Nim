@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, lineinfos,
+  wordrecg, strutils, options, guards, writetracking, lineinfos, semfold,
   modulegraphs
 
 when defined(useDfa):
@@ -48,6 +48,7 @@ type
     tags: PNode # list of tags
     bottom, inTryStmt: int
     owner: PSym
+    owner_module: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -323,13 +324,13 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  if tracked.exc.len > 0:
+  if tracked.exc.sons.len > 0:
     setLen(tracked.exc.sons, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
-  if tracked.exc.len > 0:
+  if tracked.exc.sons.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
@@ -379,12 +380,16 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   for id, count in items(inter):
     if count == branches: tracked.init.add id
 
-proc isIndirectCall(n: PNode, owner: PSym): bool =
+proc isIndirectCall(tracked: PEffects, n: PNode, owner: PSym): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
   if n.kind != nkSym:
-    result = true
+    let n_const = getConstExpr(tracked.owner_module, n, tracked.graph)
+    if n_const != nil:
+      result = isIndirectCall(tracked, n_const, owner)
+    else:
+      result = true
   elif n.sym.kind == skParam:
     result = owner != n.sym.owner or owner == nil
   elif n.sym.kind notin routineKinds:
@@ -556,16 +561,39 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
+  #if `??`(tracked.config, n.info, "bizdate"):
+  #  echo "trackOperand"
+  #  debug n
+  #  echo tracked.exc
+
+  #let nc = getConstExpr(tracked.owner.getModule, n, tracked.graph)
+  #let n = if nc == nil: n else: nc
+
+  if `??`(tracked.config, n.info, "bizdate"):
+    echo "trackOperand ", tracked.exc
+    echo n
+
+
   let a = skipConvAndClosure(n)
   let op = a.typ
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     let s = n.skipConv
-    if s.kind == nkSym and s.sym.kind in routineKinds:
-      propagateEffects(tracked, n, s.sym)
+
+    if `??`(tracked.config, n.info, "bizdate"):
+      echo "trackOperand if 1 ", s
+      debug effectList
+
+    if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
+        if `??`(tracked.config, n.info, "sempass2_test"):
+          echo "trackOperand if 2"
+        propagateEffects(tracked, n, s.sym)
     elif isNoEffectList(effectList):
+      if `??`(tracked.config, n.info, "sempass2_test"):
+        echo "trackOperand if 3"
       if isForwardedProc(n):
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
@@ -579,7 +607,10 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
         markSideEffect(tracked, a)
+
     else:
+      if `??`(tracked.config, n.info, "sempass2_test"):
+        echo "trackOperand if 4"
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
       if notGcSafe(op):
@@ -587,6 +618,9 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
+
+    if `??`(tracked.config, n.info, "sempass2_test"):
+      echo "Tracked exceptions after ", tracked.exc
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -699,6 +733,9 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
 proc track(tracked: PEffects, n: PNode) =
+
+  if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+    return 
   case n.kind
   of nkSym:
     useVar(tracked, n)
@@ -730,7 +767,7 @@ proc track(tracked: PEffects, n: PNode) =
       elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
-        elif isIndirectCall(a, tracked.owner):
+        elif isIndirectCall(tracked, a, tracked.owner):
           assumeTheWorst(tracked, n, op)
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
@@ -934,6 +971,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
+  t.owner_module = s.getModule
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)
@@ -942,6 +980,10 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   t.config = g.config
 
 proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
+
+  if `??`(g.config, body.info, "bizdate"):
+    echo "trackProc ", s.name.s
+
   var effects = s.typ.n.sons[0]
   if effects.kind != nkEffectList: return
   # effects already computed?

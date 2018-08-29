@@ -441,14 +441,15 @@ proc getAppType(n: PNode; g: ModuleGraph): PNode =
     result = newStrNodeT("console", n, g)
 
 proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
-  var err = false
-  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
-    err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
-  else:
-    err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
-  if err:
-    localError(g.config, n.info, "cannot convert " & $value &
-                                     " to " & typeToString(n.typ))
+  if tfUncheckedArray notin n.typ.flags:
+    var err = false
+    if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+      err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
+    else:
+      err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
+    if err:
+      localError(g.config, n.info, "cannot convert " & $value &
+                                      " to " & typeToString(n.typ))
 
 proc foldConv*(n, a: PNode; g: ModuleGraph; check = false): PNode =
   # XXX range checks?

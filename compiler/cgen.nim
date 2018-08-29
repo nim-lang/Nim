@@ -828,7 +828,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
-  let procBody = transformBody(m.g.graph, m.module, prc, cache = false)
+  let procBody = transformBody(m.g.graph, prc, cache = false)
 
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:

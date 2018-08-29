@@ -1952,7 +1952,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  let transformed_body = transformBody(oldProc.module.graph, oldProc.module.module, prc, cache = false)
+  let transformed_body = transformBody(oldProc.module.graph, prc, cache = false)
   p.nested: genStmt(p, transformed_body)
 
   var def: Rope
