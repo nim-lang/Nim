@@ -25,6 +25,8 @@
 ## $appdir       directory name of $app
 ## $levelid      first letter of log level
 ## $levelname    log level name
+## $file         source file
+## $line         line number
 ## ============  =======================
 ##
 ##
@@ -64,6 +66,8 @@ type
     lvlFatal,     ## fatal level (and any above) active
     lvlNone       ## no levels active
 
+  SourceLocation = tuple[filename: string, line: int]
+
 const
   LevelNames*: array[Level, string] = [
     "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
@@ -71,6 +75,7 @@ const
 
   defaultFmtStr* = "$levelname " ## default format string
   verboseFmtStr* = "$levelid, [$datetime] -- $appname: "
+  debugFmtStr* = "$file($line) $levelname: [$datetime] -- $appname: "
 
 type
   Logger* = ref object of RootObj ## abstract logger; the base type of all loggers
@@ -104,7 +109,7 @@ var
   level {.threadvar.}: Level   ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
-proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
+proc substituteLog*(frmt: string, level: Level, location: SourceLocation, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
   const nilString = "nil"
@@ -139,6 +144,8 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
         when not defined(js): result.add(app.splitFile.name)
       of "levelid": result.add(LevelNames[level][0])
       of "levelname": result.add(LevelNames[level])
+      of "file": result.add(location.filename)
+      of "line": result.add(location.line)
       else: discard
   for arg in args:
     if arg.isNil:
@@ -146,17 +153,17 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
     else:
       result.add(arg)
 
-method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
+method log*(logger: Logger, level: Level, location: SourceLocation, args: varargs[string, `$`]) {.
             raises: [Exception], gcsafe,
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect], base.} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.
   discard
 
-method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
+method log*(logger: ConsoleLogger, level: Level, location: SourceLocation, args: varargs[string, `$`]) =
   ## Logs to the console using ``logger`` only.
   if level >= logging.level and level >= logger.levelThreshold:
-    let ln = substituteLog(logger.fmtStr, level, args)
+    let ln = substituteLog(logger.fmtStr, level, location, args)
     when defined(js):
       let cln: cstring = ln
       {.emit: "console.log(`cln`);".}
@@ -174,10 +181,10 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): Console
   result.levelThreshold = levelThreshold
 
 when not defined(js):
-  method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
+  method log*(logger: FileLogger, level: Level, location: SourceLocation, args: varargs[string, `$`]) =
     ## Logs to a file using ``logger`` only.
     if level >= logging.level and level >= logger.levelThreshold:
-      writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
+      writeLine(logger.file, substituteLog(logger.fmtStr, level, location, args))
       if level in {lvlError, lvlFatal}: flushFile(logger.file)
 
   proc defaultFilename*(): string =
@@ -265,7 +272,7 @@ when not defined(js):
       moveFile(dir / (name & ext & srcSuff),
               dir / (name & ext & ExtSep & $(i+1)))
 
-  method log*(logger: RollingFileLogger, level: Level, args: varargs[string, `$`]) =
+  method log*(logger: RollingFileLogger, level: Level, location: SourceLocation, args: varargs[string, `$`]) =
     ## Logs to a file using rolling ``logger`` only.
     if level >= logging.level and level >= logger.levelThreshold:
       if logger.curLine >= logger.maxLines:
@@ -275,16 +282,16 @@ when not defined(js):
         logger.curLine = 0
         logger.file = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
 
-      writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
+      writeLine(logger.file, substituteLog(logger.fmtStr, level, location, args))
       if level in {lvlError, lvlFatal}: flushFile(logger.file)
       logger.curLine.inc
 
 # --------
 
-proc logLoop(level: Level, args: varargs[string, `$`]) =
+proc logLoop(level: Level, location: SourceLocation, args: varargs[string, `$`]) =
   for logger in items(handlers):
     if level >= logger.levelThreshold:
-      log(logger, level, args)
+      log(logger, level, location, args)
 
 template log*(level: Level, args: varargs[string, `$`]) =
   ## Logs a message to all registered handlers at the given level.
@@ -293,7 +300,7 @@ template log*(level: Level, args: varargs[string, `$`]) =
   bind logging.level
 
   if level >= logging.level:
-    logLoop(level, args)
+    logLoop(level, instantiationInfo(-2, true), args)
 
 template debug*(args: varargs[string, `$`]) =
   ## Logs a debug message to all registered handlers.
