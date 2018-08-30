@@ -608,7 +608,6 @@ proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
 
 proc humanizeParts(parts: seq[string]): string =
   ## Make date string parts human-readable
-
   result = ""
   if parts.len == 0:
     result.add "0 nanoseconds"
@@ -617,8 +616,8 @@ proc humanizeParts(parts: seq[string]): string =
   elif parts.len == 2:
     result = parts[0] & " and " & parts[1]
   else:
-    for part in parts[0..high(parts)-1]:
-      result.add part & ", "
+    for i in 0..high(parts)-1:
+      result.add parts[i] & ", "
     result.add "and " & parts[high(parts)]
 
 proc `$`*(dur: Duration): string =
