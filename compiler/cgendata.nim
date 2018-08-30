@@ -36,6 +36,7 @@ type
     cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
     cfsDebugInit,             # section for init of debug information
+    cfsDynLibInitDlopen,      # section for dlopen of dynamic library binding
     cfsDynLibInit,            # section for init of dynamic library binding
     cfsDynLibDeinit           # section for deinitialization of dynamic
                               # libraries

@@ -35,6 +35,7 @@ const
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
     cfsDebugInit: "NIM_merge_DEBUG_INIT",
+    cfsDynLibInitDlopen: "NIM_merge_DYNLIB_INIT_DLOPEN",
     cfsDynLibInit: "NIM_merge_DYNLIB_INIT",
     cfsDynLibDeinit: "NIM_merge_DYNLIB_DEINIT",
   ]
