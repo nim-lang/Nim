@@ -5448,12 +5448,17 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     newFor.add x[^2][1]
     newFor.add body
     result.add newFor
+    # now wrap the whole macro in a block to create a new scope
+    result = quote do:
+      block: `result`
 
   for a, b in enumerate(items([1, 2, 3])):
     echo a, " ", b
 
-  for a2, b2 in enumerate([1, 2, 3, 5]):
-    echo a2, " ", b2
+  # without wrapping the macro in a block, we'd need to choose different
+  # names for `a` and `b` here to avoid redefinition errors
+  for a, b in enumerate([1, 2, 3, 5]):
+    echo a, " ", b
 
 
 Currently for loop macros must be enabled explicitly
