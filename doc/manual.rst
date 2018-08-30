@@ -5463,12 +5463,11 @@ via ``{.experimental: "forLoopMacros".}``.
 Case statement macros
 ---------------------
 
-A macro that needs to be called `match`:idx: can be used to
-rewrite ``case`` statements in order to
-implement `pattern matching`:idx: for certain types. The following
-example implements a simplistic form of pattern matching for tuples,
-leveraging the existing equality operator for tuples (as provided in
- ``system.==``):
+A macro that needs to be called `match`:idx: can be used to rewrite
+``case`` statements in order to implement `pattern matching`:idx: for
+certain types. The following example implements a simplistic form of
+pattern matching for tuples, leveraging the existing equality operator
+for tuples (as provided in ``system.==``):
 
 .. code-block:: nim
     :test: "nim c $1"
