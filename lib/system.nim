@@ -3428,6 +3428,7 @@ when not defined(JS): #and not defined(nimscript):
       """.}
 
 elif defined(JS):
+  include "system/helpers"
   # Stubs:
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
