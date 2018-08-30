@@ -313,6 +313,12 @@ when defined(nimArrIdx):
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+
+  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
+    noSideEffect, magic: "ArrGet".}
+  proc arrPut[I: Ordinal;T,S](a: T; i: I;
+    x: S) {.noSideEffect, magic: "ArrPut".}
+
   when defined(nimNewRuntime):
     proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
@@ -3525,6 +3531,9 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
+
+template `[]`*(s: string; i: int): char = arrGet(s, i)
+template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
 when hasAlloc or defined(nimscript):
   proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
