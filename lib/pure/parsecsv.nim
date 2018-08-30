@@ -51,6 +51,8 @@
 import
   lexbase, streams
 
+import system/helpers
+
 type
   CsvRow* = seq[string] ## a row in a CSV file
   CsvParser* = object of BaseLexer ## the parser object.
@@ -73,7 +75,7 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
   if filename.len == 0:
     e.msg = "Error: " & msg
   else:
-    e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
+    e.msg = lineInfoToString(filename, line, col) & " Error: " & msg
   raise e
 
 proc error(my: CsvParser, pos: int, msg: string) =

@@ -8,7 +8,7 @@
 #
 
 include "system/inclrtl"
-include "system/helpers"
+import system/helpers
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.

@@ -11,6 +11,8 @@ import
   options, strutils, os, tables, ropes, platform, terminal, macros,
   lineinfos
 
+import system/helpers
+
 proc toCChar*(c: char; result: var string) =
   case c
   of '\0'..'\x1F', '\x7F'..'\xFF':
@@ -126,10 +128,7 @@ proc msgQuit*(x: string) = quit x
 proc suggestQuit*() =
   raise newException(ESuggestDone, "suggest done")
 
-# this format is understood by many text editors: it is the same that
-# Borland and Freepascal use
 const
-  PosFormat    = "$1($2, $3) "
   KindFormat   = " [$1]"
   KindColor    = fgCyan
   ErrorTitle   = "Error: "
@@ -201,11 +200,8 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & ":" & $info.line
-
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
+  lineInfoToString(toFilename(conf, info), info.line.int, info.col+colOffset)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -292,6 +288,13 @@ proc coordToStr(coord: int): string =
   if coord == -1: result = "???"
   else: result = $coord
 
+proc tLineInfoToStr*(conf: ConfigRef; info: TLineInfo): string =
+  lineInfoToString(
+    toMsgFilename(conf, info), info.line.int, info.col+colOffset)
+    # toMsgFilename(conf, info),
+    # coordToStr(info.line.int),
+    # coordToStr(info.col+columnOffset))
+
 proc msgKindToString*(kind: TMsgKind): string =
   # later versions may provide translated error messages
   result = MsgKindToStr[kind]
@@ -347,10 +350,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         conf.structuredErrorHook(conf, conf.m.msgContext[i], instantiationFrom,
                                   Severity.Error)
       else:
-        styledMsgWriteln(styleBright,
-                         PosFormat % [toMsgFilename(conf, conf.m.msgContext[i]),
-                                      coordToStr(conf.m.msgContext[i].line.int),
-                                      coordToStr(conf.m.msgContext[i].col+1)],
+        styledMsgWriteln(styleBright, conf.tLineInfoToStr(conf.m.msgContext[i]),
                          resetStyle,
                          instantiationFrom)
     info = conf.m.msgContext[i]
@@ -436,10 +436,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of warnMin..warnMax: WarningTitle
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
-  result = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                        coordToStr(info.col+1)] &
-           title &
-           getMessageStr(msg, arg)
+  result = conf.tLineInfoToStr(info) & title & getMessageStr(msg, arg)
 
 proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
@@ -474,11 +471,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  # NOTE: currently line info line numbers start with 1,
-  # but column numbers start with 0, however most editors expect
-  # first column to be 1, so we need to +1 here
-  let x = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                       coordToStr(info.col+1)]
+  let x = conf.tLineInfoToStr(info)
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:

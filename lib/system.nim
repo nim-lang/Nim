@@ -2718,6 +2718,7 @@ type
   PFrame* = ptr TFrame  ## represents a runtime frame of the call stack;
                         ## part of the debugger API.
   TFrame* {.importc, nodecl, final.} = object ## the frame itself
+    # TODO: should embed `StackTraceEntry` instead of duplicating its fields
     prev*: PFrame       ## previous frame; used for chaining the call stack
     procname*: cstring  ## name of the proc that is currently executing
     line*: int          ## line number of the proc that is currently executing
@@ -2899,6 +2900,7 @@ type
     fspEnd            ## Seek relative to end
 
 when not defined(JS): #and not defined(nimscript):
+  include "system/helpers"
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
@@ -3426,6 +3428,7 @@ when not defined(JS): #and not defined(nimscript):
       """.}
 
 elif defined(JS):
+  include "system/helpers"
   # Stubs:
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
@@ -3758,15 +3761,13 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
                                     tags: [].}
   Hide(raiseAssert)(msg)
 
-include "system/helpers" # for `lineInfoToString`
-
 template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
     if not cond:
-      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+      failedAssertImpl(loc & "`" & astToStr(cond) & "` " & msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
@@ -4239,3 +4240,8 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+const systemWasImported* = true
+  ## Use case: `when declared(systemWasImported): export foo` where foo is in a
+  ## `bar.nim`, where system.nim has "include bar" and another module has
+  ## `import bar` ; see example in system/helpers.nim
