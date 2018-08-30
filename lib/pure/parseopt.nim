@@ -207,9 +207,12 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       i = parseWord(p.cmds[p.idx], i, p.key.string, {' ', '\t', ':', '='})
       while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
       if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
-        if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
-          inc(i)
+        inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
+        # if we're at the end, use the next command line option:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len:
+          inc p.idx
+          i = 0
         p.val = TaintedString p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = TaintedString p.cmds[p.idx+1]
