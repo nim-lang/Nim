@@ -20,7 +20,7 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, vm, prefixmatches, lineinfos]
+  idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper]
 
 when defined(windows):
   import winlean
@@ -582,55 +582,32 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  condsyms.initDefines(conf.symbols)
-  defineSymbol conf.symbols, "nimsuggest"
+  let self = NimProg(
+    suggestMode: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
+  self.initDefinesProg(conf, "nimsuggest")
 
   if paramCount() == 0:
     stdout.writeline(Usage)
-  else:
-    processCmdLine(passCmd1, "", conf)
-    if gMode != mstdin:
-      conf.writelnHook = proc (msg: string) = discard
-    if conf.projectName != "":
-      try:
-        conf.projectFull = canonicalizePath(conf, conf.projectName)
-      except OSError:
-        conf.projectFull = conf.projectName
-      var p = splitFile(conf.projectFull)
-      conf.projectPath = canonicalizePath(conf, p.dir)
-      conf.projectName = p.name
-    else:
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    return
 
-    # Find Nim's prefix dir.
-    let binaryPath = findExe("nim")
-    if binaryPath == "":
-      raise newException(IOError,
-          "Cannot find Nim standard library: Nim compiler not in PATH")
-    conf.prefixDir = binaryPath.splitPath().head.parentDir()
-    if not dirExists(conf.prefixDir / "lib"): conf.prefixDir = ""
+  self.processCmdLineAndProjectPath(conf)
 
-    #msgs.writelnHook = proc (line: string) = log(line)
-    myLog("START " & conf.projectFull)
+  if gMode != mstdin:
+    conf.writelnHook = proc (msg: string) = discard
+  # Find Nim's prefix dir.
+  let binaryPath = findExe("nim")
+  if binaryPath == "":
+    raise newException(IOError,
+        "Cannot find Nim standard library: Nim compiler not in PATH")
+  conf.prefixDir = binaryPath.splitPath().head.parentDir()
+  if not dirExists(conf.prefixDir / "lib"): conf.prefixDir = ""
 
-    loadConfigs(DefaultConfig, cache, conf) # load all config files
-    # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
-    conf.command = "nimsuggest"
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if fileExists(scriptFile):
-      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file:
-      if scriptFile != conf.projectFull:
-        runNimScript(cache, scriptFile, freshDefines=false, conf)
-    elif fileExists(conf.projectPath / "config.nims"):
-      # directory wide NimScript file
-      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
+  #msgs.writelnHook = proc (line: string) = log(line)
+  myLog("START " & conf.projectFull)
 
-    extccomp.initVars(conf)
-    processCmdLine(passCmd2, "", conf)
-
-    let graph = newModuleGraph(cache, conf)
-    graph.suggestMode = true
-    mainCommand(graph)
+  discard self.loadConfigsAndRunMainCommand(cache, conf)
 
 handleCmdline(newIdentCache(), newConfigRef())

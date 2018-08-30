@@ -171,7 +171,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName, graph)
 
-  graph.compileSystemModule()
+  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # ensure we load 'system.nim' again for the real non-config stuff!

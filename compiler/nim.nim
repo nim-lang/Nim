@@ -21,7 +21,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos
+  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper
 
 when hasTinyCBackend:
   import tccgen
@@ -57,69 +57,43 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  condsyms.initDefines(conf.symbols)
+  let self = NimProg(
+    supportsStdinFile: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
+  self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
     writeCommandLineUsage(conf, conf.helpWritten)
-  else:
-    # Process command line arguments:
-    processCmdLine(passCmd1, "", conf)
-    if conf.projectName == "-":
-      conf.projectName = "stdinfile"
-      conf.projectFull = "stdinfile"
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
-      conf.projectIsStdin = true
-    elif conf.projectName != "":
-      try:
-        conf.projectFull = canonicalizePath(conf, conf.projectName)
-      except OSError:
-        conf.projectFull = conf.projectName
-      let p = splitFile(conf.projectFull)
-      let dir = if p.dir.len > 0: p.dir else: getCurrentDir()
-      conf.projectPath = canonicalizePath(conf, dir)
-      conf.projectName = p.name
+    return
+
+  self.processCmdLineAndProjectPath(conf)
+  if not self.loadConfigsAndRunMainCommand(cache, conf): return
+  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  #echo(GC_getStatistics())
+  if conf.errorCounter != 0: return
+  when hasTinyCBackend:
+    if conf.cmd == cmdRun:
+      tccgen.run(conf.arguments)
+  if optRun in conf.globalOptions:
+    if conf.cmd == cmdCompileToJS:
+      var ex: string
+      if conf.outFile.len > 0:
+        ex = conf.outFile.prependCurDir.quoteShell
+      else:
+        ex = quoteShell(
+          completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
+      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
     else:
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
-    loadConfigs(DefaultConfig, cache, conf) # load all config files
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false, conf)
-      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if scriptFile == conf.projectFull: return
-    elif fileExists(conf.projectPath / "config.nims"):
-      # directory wide NimScript file
-      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
-    # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
-    extccomp.initVars(conf)
-    processCmdLine(passCmd2, "", conf)
-    if conf.command == "":
-      rawMessage(conf, errGenerated, "command missing")
-    mainCommand(newModuleGraph(cache, conf))
-    if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
-    #echo(GC_getStatistics())
-    if conf.errorCounter == 0:
-      when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.run(conf.arguments)
-      if optRun in conf.globalOptions:
-        if conf.cmd == cmdCompileToJS:
-          var ex: string
-          if conf.outFile.len > 0:
-            ex = conf.outFile.prependCurDir.quoteShell
-          else:
-            ex = quoteShell(
-              completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
-          execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
-        else:
-          var binPath: string
-          if conf.outFile.len > 0:
-            # If the user specified an outFile path, use that directly.
-            binPath = conf.outFile.prependCurDir
-          else:
-            # Figure out ourselves a valid binary name.
-            binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
-          var ex = quoteShell(binPath)
-          execExternalProgram(conf, ex & ' ' & conf.arguments)
+      var binPath: string
+      if conf.outFile.len > 0:
+        # If the user specified an outFile path, use that directly.
+        binPath = conf.outFile.prependCurDir
+      else:
+        # Figure out ourselves a valid binary name.
+        binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
+      var ex = quoteShell(binPath)
+      execExternalProgram(conf, ex & ' ' & conf.arguments)
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
