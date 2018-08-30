@@ -244,7 +244,7 @@ else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var err = "ambiguous identifier: '" & s.name.s & "'"
   var ti: TIdentIter
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0

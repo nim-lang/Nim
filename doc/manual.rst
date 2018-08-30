@@ -937,8 +937,12 @@ Now the following holds::
   ord(south) == 2
   ord(west) == 3
 
+  # Also allowed:
+  ord(Direction.west) == 3
+
 Thus, north < east < south < west. The comparison operators can be used
-with enumeration types.
+with enumeration types. Instead of ``north`` etc, the enum value can also
+be qualified with the enum type that it resides in, ``Direction.north``.
 
 For better interfacing to other programming languages, the fields of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
@@ -974,18 +978,25 @@ As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
-An enum can be marked with the ``pure`` pragma so that it's fields are not
-added to the current scope, so they always need to be accessed
-via ``MyEnum.value``:
+An enum can be marked with the ``pure`` pragma so that it's fields are
+added to a special module specific hidden scope that is only queried
+as the last attempt. Only non-ambiguous symbols are added to this scope.
+But one can always access these via type qualification written
+as ``MyEnum.value``:
 
 .. code-block:: nim
 
   type
     MyEnum {.pure.} = enum
-      valueA, valueB, valueC, valueD
+      valueA, valueB, valueC, valueD, amb
 
-  echo valueA # error: Unknown identifier
-  echo MyEnum.valueA # works
+    OtherEnum {.pure.} = enum
+      valueX, valueY, valueZ, amb
+
+
+  echo valueA # MyEnum.valueA
+  echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
+  echo MyEnum.amb # OK.
 
 
 String type
