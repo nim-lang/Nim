@@ -115,7 +115,12 @@ elif coroBackend == CORO_BACKEND_SETJMP:
 when defined(unix):
   # GLibc fails with "*** longjmp causes uninitialized stack frame ***" because
   # our custom stacks are not initialized to a magic value.
-  {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"}
+  when defined(osx):
+    # workaround: error: The deprecated ucontext routines require _XOPEN_SOURCE to be defined
+    const extra = " -D_XOPEN_SOURCE"
+  else:
+    const extra = ""
+  {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" & extra.}
 
 const
   CORO_CREATED = 0
