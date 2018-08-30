@@ -68,6 +68,6 @@ proc unidecode*(s: string): string =
     elif c <% translationTable.len: add(result, translationTable[c-128])
 
 when isMainModule:
-  loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
-  doAassert unidecode("Äußerst") == "Ausserst"
-  doAssert unidecode("北京") == "Bei Jing"
+  #loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
+  doAssert unidecode("Äußerst") == "Ausserst"
+  doAssert unidecode("北京") == "Bei Jing "
