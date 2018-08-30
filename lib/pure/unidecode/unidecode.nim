@@ -69,5 +69,5 @@ proc unidecode*(s: string): string =
 
 when isMainModule:
   loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
-  assert unidecode("Äußerst") == "Ausserst"
-
+  doAassert unidecode("Äußerst") == "Ausserst"
+  doAssert unidecode("北京") == "Bei Jing"
