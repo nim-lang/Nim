@@ -30,10 +30,10 @@ else:
 type
   Handle* = int
   LONG* = int32
-  ULONG* = int32
+  ULONG* = uint32
   PULONG* = ptr int
   WINBOOL* = int32
-  DWORD* = int32
+  DWORD* = uint32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
   ULONG_PTR* = uint
@@ -409,10 +409,10 @@ else:
     importc: "GetCommandLineA", stdcall, dynlib: "kernel32".}
 
 proc rdFileTime*(f: FILETIME): int64 =
-  result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
+  result = f.dwLowDateTime.int64 or (f.dwHighDateTime.int64 shl 32)
 
 proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
-  result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
+  result = f.nFileSizeLow.int64 or (f.nFileSizeHigh.int64 shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
   importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall.}
@@ -949,7 +949,7 @@ proc inet_ntop*(family: cint, paddr: pointer, pStringBuffer: cstring,
   let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
   if res == 0:
     result = nil
-  elif ver.dwMajorVersion >= 6:
+  elif ver.dwMajorVersion >= 6.DWORD:
     if inet_ntop_real == nil:
       quit("Can't load inet_ntop proc from " & ws2dll)
     result = inet_ntop_real(family, paddr, pStringBuffer, stringBufSize)
