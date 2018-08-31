@@ -2231,12 +2231,20 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
-      if container.isNil:
-        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
-        setSon(m.call, formal.position + 1, container)
+
+      if n.sons[a].kind == nkHiddenStdConv:
+        doAssert n.sons[a].sons[0].kind == nkEmpty and
+                 n.sons[a].sons[1].kind == nkArgList and
+                 n.sons[a].sons[1].len == 0
+        # Steal the container and pass it along
+        setSon(m.call, formal.position + 1, n.sons[a].sons[1])
       else:
-        incrIndexType(container.typ)
-      addSon(container, n.sons[a])
+        if container.isNil:
+          container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
+          setSon(m.call, formal.position + 1, container)
+        else:
+          incrIndexType(container.typ)
+        addSon(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
@@ -2400,7 +2408,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
-          var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
+          # For consistency with what happens in `matchesAux` select the
+          # container node kind accordingly
+          let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
+          var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:
