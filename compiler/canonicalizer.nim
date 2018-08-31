@@ -102,7 +102,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0.. <n.len: hashTree(c, n.sons[i])
+    for i in 0..<n.len: hashTree(c, n.sons[i])
 
 proc hashType(c: var MD5Context, t: PType) =
   # modelled after 'typeToString'
@@ -151,13 +151,13 @@ proc hashType(c: var MD5Context, t: PType) =
     c.hashType(t.sons[0])
   of tyProc:
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
-    for i in 0.. <t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t.sons[i])
     md5Update(c, cast[cstring](addr(t.callConv)), 1)
 
     if tfNoSideEffect in t.flags: c &= ".noSideEffect"
     if tfThread in t.flags: c &= ".thread"
   else:
-    for i in 0.. <t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t.sons[i])
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =

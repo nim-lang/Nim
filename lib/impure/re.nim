@@ -7,18 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. This module still has some
-## obscure bugs and limitations,
-## consider using the ``nre`` or ``pegs`` modules instead.
-## We had to de-deprecate this module since too much code relies on it
-## and many people prefer its API over ``nre``'s.
+## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
-## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
-## C library. This means that your application will depend on the PRCE
+## `PCRE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
+## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
-## PRCE's licence follows:
+## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
 ##
@@ -48,9 +44,6 @@ type
 
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
-
-{.deprecated: [TRegexFlag: RegexFlag, TRegexDesc: RegexDesc, TRegex: Regex,
-    EInvalidRegEx: RegexError].}
 
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
@@ -120,7 +113,7 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32:
       matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -140,7 +133,7 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
@@ -294,7 +287,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
@@ -463,15 +456,13 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   while true:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
-    assert result != nil
-    assert s != nil
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
     prev = match.last + 1
   add(result, substr(s, prev))
 
-proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: Regex, repl: string]]): string =
+proc multiReplace*(s: string, subs: openArray[
+                   tuple[pattern: Regex, repl: string]]): string =
   ## Returns a modified copy of ``s`` with the substitutions in ``subs``
   ## applied in parallel.
   result = ""
@@ -490,15 +481,22 @@ proc parallelReplace*(s: string, subs: openArray[
   # copy the rest:
   add(result, substr(s, i))
 
+proc parallelReplace*(s: string, subs: openArray[
+                      tuple[pattern: Regex, repl: string]]): string {.deprecated.} =
+  ## Returns a modified copy of ``s`` with the substitutions in ``subs``
+  ## applied in parallel.
+  ## **Deprecated since version 0.18.0**: Use ``multiReplace`` instead.
+  result = multiReplace(s, subs)
+
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file ``infile``, performs a parallel replacement (calls
   ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
-  writeFile(outfile, x.parallelReplace(subs))
+  writeFile(outfile, x.multiReplace(subs))
 
-iterator split*(s: string, sep: Regex): string =
+iterator split*(s: string, sep: Regex; maxsplit = -1): string =
   ## Splits the string ``s`` into substrings.
   ##
   ## Substrings are separated by the regular expression ``sep``
@@ -520,22 +518,28 @@ iterator split*(s: string, sep: Regex): string =
   ##   "example"
   ##   ""
   ##
-  var
-    first = -1
-    last = -1
-  while last < len(s):
-    var x = matchLen(s, sep, last)
-    if x > 0: inc(last, x)
-    first = last
-    if x == 0: inc(last)
+  var last = 0
+  var splits = maxsplit
+  var x: int
+  while last <= len(s):
+    var first = last
+    var sepLen = 1
     while last < len(s):
       x = matchLen(s, sep, last)
-      if x >= 0: break
+      if x >= 0:
+        sepLen = x
+        break
       inc(last)
-    if first <= last:
-      yield substr(s, first, last-1)
+    if x == 0:
+      if last >= len(s): break
+      inc last
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
 
-proc split*(s: string, sep: Regex): seq[string] {.inline.} =
+proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
   ## Splits the string ``s`` into a seq of substrings.
   ##
   ## The portion matched by ``sep`` is not returned.
@@ -579,12 +583,12 @@ const ## common regular expressions
     ## describes an URL
 
 when isMainModule:
-  doAssert match("(a b c)", re"\( .* \)")
+  doAssert match("(a b c)", rex"\( .* \)")
   doAssert match("WHiLe", re("while", {reIgnoreCase}))
 
   doAssert "0158787".match(re"\d+")
   doAssert "ABC 0232".match(re"\w+\s+\d+")
-  doAssert "ABC".match(re"\d+ | \w+")
+  doAssert "ABC".match(rex"\d+ | \w+")
 
   {.push warnings:off.}
   doAssert matchLen("key", re(reIdentifier)) == 3
@@ -609,7 +613,7 @@ when isMainModule:
     doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == nil
+    doAssert matches[0] == ""
   else: doAssert false
 
   if "abc" =~ re"().*":
@@ -631,6 +635,14 @@ when isMainModule:
   for word in split("AAA :   : BBB", re"\s*:\s*"):
     accum.add(word)
   doAssert(accum == @["AAA", "", "BBB"])
+
+  doAssert(split("abc", re"") == @["a", "b", "c"])
+  doAssert(split("", re"") == @[])
+
+  doAssert(split("a;b;c", re";") == @["a", "b", "c"])
+  doAssert(split(";a;b;c", re";") == @["", "a", "b", "c"])
+  doAssert(split(";a;b;c;", re";") == @["", "a", "b", "c", ""])
+  doAssert(split("a;b;c;", re";") == @["a", "b", "c", ""])
 
   for x in findAll("abcdef", re"^{.}", 3):
     doAssert x == "d"

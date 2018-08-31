@@ -21,7 +21,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##
   ##   proc `$`*(T: typedesc): string = name(T)
   ##
-  ##   template test(x): stmt =
+  ##   template test(x): typed =
   ##     echo "type: ", type(x), ", value: ", x
   ##
   ##   test 42
@@ -30,6 +30,10 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##   # --> type: string, value: Foo
   ##   test(@['A','B'])
   ##   # --> type: seq[char], value: @[A, B]
+
+proc `$`*(t: typedesc): string =
+  ## An alias for `name`.
+  name(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
   ## Returns the arity of the given type
@@ -52,3 +56,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
+
+
+when isMainModule:
+  doAssert $type(42) == "int"

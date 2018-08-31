@@ -1,6 +1,6 @@
 discard """
   line: 11
-  errormsg: "identifier expected, but found 'keyword of'"
+  errormsg: "identifier expected, but got 'keyword of'"
 """
 
 type

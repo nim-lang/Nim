@@ -1,8 +1,7 @@
 discard """
-  errormsg: "invalid context for '^' as len!=high+1 for 'a'"
-  line: "8"
+  output: '''c'''
 """
 
-var a: array[1..3, string]
+var a: array['a'..'c', string] = ["a", "b", "c"]
 
 echo a[^1]

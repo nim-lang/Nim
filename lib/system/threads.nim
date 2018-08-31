@@ -116,6 +116,7 @@ when defined(windows):
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
 
 elif defined(genode):
+  import genode/env
   const
     GenodeHeader = "genode_cpp/threads.h"
   type
@@ -125,11 +126,12 @@ elif defined(genode):
     ThreadVarSlot = int
 
   proc initThread(s: var SysThread,
+                  env: GenodeEnv,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
                   arg: pointer,
                   affinity: cuint) {.
-    importcpp: "#.initThread(genodeEnv, @)".}
+    importcpp: "#.initThread(@)".}
 
   proc threadVarAlloc(): ThreadVarSlot = 0
 
@@ -160,10 +162,12 @@ elif defined(genode):
       mainTls
 
 else:
-  when not defined(macosx):
+  when not (defined(macosx) or defined(haiku)):
     {.passL: "-pthread".}
 
-  {.passC: "-pthread".}
+  when not defined(haiku):
+    {.passC: "-pthread".}
+
   const
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
@@ -174,7 +178,7 @@ else:
     else:
       type Time = int
 
-  when defined(linux) and defined(amd64):
+  when (defined(linux) or defined(nintendoswitch)) and defined(amd64):
     type
       SysThread* {.importc: "pthread_t",
                   header: "<sys/types.h>" .} = distinct culong
@@ -255,9 +259,9 @@ when emulatedThreadVars:
   proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
 # we preallocate a fixed size for thread local storage, so that no heap
-# allocations are needed. Currently less than 7K are used on a 64bit machine.
+# allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
-const nimTlsSize {.intdefine.} = 8000
+const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
@@ -389,8 +393,9 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  if threadDestructionHandlers.isNil:
-    threadDestructionHandlers = @[]
+  when not defined(nimNoNilSeqs):
+    if threadDestructionHandlers.isNil:
+      threadDestructionHandlers = @[]
   threadDestructionHandlers.add handler
 
 template afterThreadRuns() =
@@ -440,7 +445,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
       # init the GC for refc/markandsweep
-      setStackBottom(addr(p))
+      nimGC_setStackBottom(addr(p))
       initGC()
       when declared(threadType):
         threadType = ThreadType.NimThread
@@ -569,7 +574,7 @@ when hostOS == "windows":
 
 elif defined(genode):
   var affinityOffset: cuint = 1
-  # CPU affinity offset for next thread, safe to roll-over
+    ## CPU affinity offset for next thread, safe to roll-over
 
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -580,6 +585,7 @@ elif defined(genode):
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
+      runtimeEnv,
       ThreadStackSize.culonglong,
       threadProcWrapper[TArg], addr(t), affinityOffset)
     inc affinityOffset
@@ -642,7 +648,10 @@ when defined(windows):
 
 elif defined(linux):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: int
+  when defined(amd64):
+    const NR_gettid = clong(186)
+  else:
+    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.
@@ -707,4 +716,14 @@ elif defined(solaris):
     ## get the ID of the currently running thread.
     if threadId == 0:
       threadId = int(thr_self())
+    result = threadId
+
+elif defined(haiku):
+  type thr_id {.importc: "thread_id", header: "<OS.h>".} = distinct int32
+  proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
+
+  proc getThreadId*(): int =
+    ## get the ID of the currently running thread.
+    if threadId == 0:
+      threadId = int(find_thread(nil))
     result = threadId

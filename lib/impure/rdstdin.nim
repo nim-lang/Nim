@@ -13,7 +13,7 @@
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
@@ -73,32 +73,6 @@ when defined(Windows):
          discard readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead)
          return result
 
-  from unicode import toUTF8, Rune, runeLenAt
-
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
-                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    ## Reads a `password` from stdin without printing it. `password` must not
-    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
-    ## ``true`` otherwise.
-    password.setLen(0)
-    stdout.write(prompt)
-    while true:
-      let c = getch()
-      case c.char
-      of '\r', chr(0xA):
-        break
-      of '\b':
-        # ensure we delete the whole UTF-8 character:
-        var i = 0
-        var x = 1
-        while i < password.len:
-          x = runeLenAt(password, i)
-          inc i, x
-        password.setLen(max(password.len - x, 0))
-      else:
-        password.add(toUTF8(c.Rune))
-    stdout.write "\n"
-
 else:
   import linenoise, termios
 
@@ -124,21 +98,3 @@ else:
     linenoise.free(buffer)
     result = true
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
-                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    password.setLen(0)
-    let fd = stdin.getFileHandle()
-    var cur, old: Termios
-    discard fd.tcgetattr(cur.addr)
-    old = cur
-    cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
-    discard fd.tcsetattr(TCSADRAIN, cur.addr)
-    stdout.write prompt
-    result = stdin.readLine(password)
-    stdout.write "\n"
-    discard fd.tcsetattr(TCSADRAIN, old.addr)
-
-proc readPasswordFromStdin*(prompt: string): TaintedString =
-  ## Reads a password from stdin without printing it.
-  result = TaintedString("")
-  discard readPasswordFromStdin(prompt, result)

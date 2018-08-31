@@ -23,11 +23,9 @@ type
     fuzz: int32  ##
     count: int32 ##
 
-{.deprecated: [Toid: Oid].}
-
 proc `==`*(oid1: Oid, oid2: Oid): bool =
-    ## Compare two Mongo Object IDs for equality
-    return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
+  ## Compare two Mongo Object IDs for equality
+  return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and (oid1.count == oid2.count)
 
 proc hexbyte*(hex: char): int =
   case hex
@@ -71,7 +69,7 @@ proc genOid*(): Oid =
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
 
-  var t = getTime().int32
+  var t = getTime().toUnix.int32
 
   var i = int32(atomicInc(incr))
 
@@ -88,7 +86,7 @@ proc generatedTime*(oid: Oid): Time =
   var tmp: int32
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
-  result = Time(tmp)
+  result = fromUnix(tmp)
 
 when not defined(testing) and isMainModule:
   let xo = genOid()

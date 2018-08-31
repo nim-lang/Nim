@@ -34,10 +34,10 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
       of nkOfBranch, nkElse:
         result = isPartOfAux(lastSon(n.sons[i]), b, marker)
         if result == arYes: return
-      else: internalError("isPartOfAux(record case branch)")
+      else: discard "isPartOfAux(record case branch)"
   of nkSym:
     result = isPartOfAux(n.sym.typ, b, marker)
-  else: internalError(n.info, "isPartOfAux()")
+  else: discard
 
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo
@@ -49,7 +49,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
     if a.sons[0] != nil:
       result = isPartOfAux(a.sons[0].skipTypes(skipPtrs), b, marker)
     if result == arNo: result = isPartOfAux(a.n, b, marker)
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = isPartOfAux(lastSon(a), b, marker)
   of tyArray, tySet, tyTuple:
     for i in countup(0, sonsLen(a) - 1):
@@ -179,5 +179,11 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           result = isPartOf(a[0], b)
           if result == arNo: result = arMaybe
       else: discard
+    of nkObjConstr:
+      result = arNo
+      for i in 1..<b.len:
+        let res = isPartOf(a, b[i][1])
+        if res != arNo:
+          result = res
+          if res == arYes: break
     else: discard
-

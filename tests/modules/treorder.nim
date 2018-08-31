@@ -9,7 +9,6 @@ defined
 {.reorder: on.}
 {.experimental.}
 
-{.push callconv: stdcall.}
 proc bar(x: T)
 
 proc foo() =
@@ -22,15 +21,16 @@ proc bar(x: T) =
   echo "works ", x
   foo(x)
 
+when defined(testdef):
+  proc whendep() = echo "defined"
+else:
+  proc whendep() = echo "undefined"
+
 foo()
 
 type
   T = int
 
-when defined(testdef):
-  proc whendep() = echo "defined"
-else:
-  proc whendep() = echo "undefined"
 
 when not declared(goo):
   proc goo(my, omy) = echo my
@@ -42,5 +42,3 @@ using
   my, omy: int
 
 goo(3, 4)
-
-{.pop.}

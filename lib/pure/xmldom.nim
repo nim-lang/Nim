@@ -172,34 +172,30 @@ proc documentElement*(doc: PDocument): PElement =
 proc findNodes(nl: PNode, name: string): seq[PNode] =
   # Made for getElementsByTagName
   var r: seq[PNode] = @[]
-  if isNil(nl.childNodes): return @[]
-  if nl.childNodes.len() == 0: return @[]
+  if nl.childNodes.len == 0: return @[]
 
   for i in items(nl.childNodes):
     if i.fNodeType == ElementNode:
       if i.fNodeName == name or name == "*":
         r.add(i)
 
-      if not isNil(i.childNodes):
-        if i.childNodes.len() != 0:
-          r.add(findNodes(i, name))
+      if i.childNodes.len() != 0:
+        r.add(findNodes(i, name))
 
   return r
 
 proc findNodesNS(nl: PNode, namespaceURI: string, localName: string): seq[PNode] =
   # Made for getElementsByTagNameNS
   var r: seq[PNode] = @[]
-  if isNil(nl.childNodes): return @[]
-  if nl.childNodes.len() == 0: return @[]
+  if nl.childNodes.len == 0: return @[]
 
   for i in items(nl.childNodes):
     if i.fNodeType == ElementNode:
       if (i.fNamespaceURI == namespaceURI or namespaceURI == "*") and (i.fLocalName == localName or localName == "*"):
         r.add(i)
 
-      if not isNil(i.childNodes):
-        if i.childNodes.len() != 0:
-          r.add(findNodesNS(i, namespaceURI, localName))
+      if i.childNodes.len != 0:
+        r.add(findNodesNS(i, namespaceURI, localName))
 
   return r
 
@@ -217,9 +213,9 @@ proc createAttribute*(doc: PDocument, name: string): PAttr =
   new(attrNode)
   attrNode.fName = name
   attrNode.fNodeName = name
-  attrNode.fLocalName = nil
-  attrNode.prefix = nil
-  attrNode.fNamespaceURI = nil
+  attrNode.fLocalName = ""
+  attrNode.prefix = ""
+  attrNode.fNamespaceURI = ""
   attrNode.value = ""
   attrNode.fSpecified = false
   return attrNode
@@ -232,10 +228,10 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     raise newException(EInvalidCharacterErr, "Invalid character")
   # Exceptions
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
-    if isNil(namespaceURI):
-      raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
+    if namespaceURI.len == 0:
+      raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be empty")
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -254,7 +250,7 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     attrNode.prefix = qualifiedName.split(':')[0]
     attrNode.fLocalName = qualifiedName.split(':')[1]
   else:
-    attrNode.prefix = nil
+    attrNode.prefix = ""
     attrNode.fLocalName = qualifiedName
   attrNode.value = ""
 
@@ -298,9 +294,9 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
   new(elNode)
   elNode.fTagName = tagName
   elNode.fNodeName = tagName
-  elNode.fLocalName = nil
-  elNode.prefix = nil
-  elNode.fNamespaceURI = nil
+  elNode.fLocalName = ""
+  elNode.prefix = ""
+  elNode.fNamespaceURI = ""
   elNode.childNodes = @[]
   elNode.attributes = @[]
 
@@ -311,10 +307,10 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
   ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
-    if isNil(namespaceURI):
-      raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
+    if namespaceURI.len == 0:
+      raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be empty")
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -332,7 +328,7 @@ proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: strin
     elNode.prefix = qualifiedName.split(':')[0]
     elNode.fLocalName = qualifiedName.split(':')[1]
   else:
-    elNode.prefix = nil
+    elNode.prefix = ""
     elNode.fLocalName = qualifiedName
   elNode.fNamespaceURI = namespaceURI
   elNode.childNodes = @[]
@@ -453,7 +449,7 @@ proc importNode*(doc: PDocument, importedNode: PNode, deep: bool): PNode =
 proc firstChild*(n: PNode): PNode =
   ## Returns this node's first child
 
-  if not isNil(n.childNodes) and n.childNodes.len() > 0:
+  if n.childNodes.len > 0:
     return n.childNodes[0]
   else:
     return nil
@@ -461,8 +457,8 @@ proc firstChild*(n: PNode): PNode =
 proc lastChild*(n: PNode): PNode =
   ## Returns this node's last child
 
-  if not isNil(n.childNodes) and n.childNodes.len() > 0:
-    return n.childNodes[n.childNodes.len() - 1]
+  if n.childNodes.len > 0:
+    return n.childNodes[n.childNodes.len - 1]
   else:
     return nil
 
@@ -482,7 +478,7 @@ proc `namespaceURI=`*(n: PNode, value: string) =
 proc nextSibling*(n: PNode): PNode =
   ## Returns the next sibling of this node
 
-  if isNil(n.fParentNode) or isNil(n.fParentNode.childNodes):
+  if isNil(n.fParentNode):
     return nil
   var nLow: int = low(n.fParentNode.childNodes)
   var nHigh: int = high(n.fParentNode.childNodes)
@@ -514,7 +510,7 @@ proc parentNode*(n: PNode): PNode =
 proc previousSibling*(n: PNode): PNode =
   ## Returns the previous sibling of this node
 
-  if isNil(n.fParentNode) or isNil(n.fParentNode.childNodes):
+  if isNil(n.fParentNode):
     return nil
   var nLow: int = low(n.fParentNode.childNodes)
   var nHigh: int = high(n.fParentNode.childNodes)
@@ -531,15 +527,15 @@ proc `prefix=`*(n: PNode, value: string) =
   if illegalChars in value:
     raise newException(EInvalidCharacterErr, "Invalid character")
 
-  if isNil(n.fNamespaceURI):
-    raise newException(ENamespaceErr, "namespaceURI cannot be nil")
-  elif value.toLower() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
+  if n.fNamespaceURI.len == 0:
+    raise newException(ENamespaceErr, "namespaceURI cannot be empty")
+  elif value.toLowerAscii() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
-  elif value.toLower() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
+  elif value.toLowerAscii() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xmlns\" namespaceURI has to be \"http://www.w3.org/2000/xmlns/\"")
-  elif value.toLower() == "xmlns" and n.fNodeType == AttributeNode:
+  elif value.toLowerAscii() == "xmlns" and n.fNodeType == AttributeNode:
     raise newException(ENamespaceErr, "An AttributeNode cannot have a prefix of \"xmlns\"")
 
   n.fNodeName = value & ":" & n.fLocalName
@@ -557,10 +553,9 @@ proc appendChild*(n: PNode, newChild: PNode) =
   ## If the newChild is already in the tree, it is first removed.
 
   # Check if n contains newChild
-  if not isNil(n.childNodes):
-    for i in low(n.childNodes)..high(n.childNodes):
-      if n.childNodes[i] == newChild:
-        raise newException(EHierarchyRequestErr, "The node to append is already in this nodes children.")
+  for i in low(n.childNodes)..high(n.childNodes):
+    if n.childNodes[i] == newChild:
+      raise newException(EHierarchyRequestErr, "The node to append is already in this nodes children.")
 
   # Check if newChild is from this nodes document
   if n.fOwnerDocument != newChild.fOwnerDocument:
@@ -572,7 +567,8 @@ proc appendChild*(n: PNode, newChild: PNode) =
   if n.nodeType in childlessObjects:
     raise newException(ENoModificationAllowedErr, "Cannot append children to a childless node")
 
-  if isNil(n.childNodes): n.childNodes = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(n.childNodes): n.childNodes = @[]
 
   newChild.fParentNode = n
   for i in low(n.childNodes)..high(n.childNodes):
@@ -597,10 +593,10 @@ proc cloneNode*(n: PNode, deep: bool): PNode =
     newNode = PElement(n)
     # Import the childNodes
     var tmp: seq[PNode] = n.childNodes
-    n.childNodes = @[]
-    if deep and not isNil(tmp):
-      for i in low(tmp.len())..high(tmp.len()):
-        n.childNodes.add(cloneNode(tmp[i], deep))
+    newNode.childNodes = @[]
+    if deep:
+      for i in low(n.childNodes)..high(n.childNodes):
+        newNode.childNodes.add(cloneNode(n.childNodes[i], deep))
     return newNode
   else:
     var newNode: PNode
@@ -610,11 +606,11 @@ proc cloneNode*(n: PNode, deep: bool): PNode =
 
 proc hasAttributes*(n: PNode): bool =
   ## Returns whether this node (if it is an element) has any attributes.
-  return not isNil(n.attributes) and n.attributes.len() > 0
+  return n.attributes.len > 0
 
 proc hasChildNodes*(n: PNode): bool =
   ## Returns whether this node has any children.
-  return not isNil(n.childNodes) and n.childNodes.len() > 0
+  return n.childNodes.len > 0
 
 proc insertBefore*(n: PNode, newChild: PNode, refChild: PNode): PNode =
   ## Inserts the node ``newChild`` before the existing child node ``refChild``.
@@ -623,9 +619,6 @@ proc insertBefore*(n: PNode, newChild: PNode, refChild: PNode): PNode =
   # Check if newChild is from this nodes document
   if n.fOwnerDocument != newChild.fOwnerDocument:
     raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
-
-  if isNil(n.childNodes):
-    n.childNodes = @[]
 
   for i in low(n.childNodes)..high(n.childNodes):
     if n.childNodes[i] == refChild:
@@ -641,7 +634,7 @@ proc isSupported*(n: PNode, feature: string, version: string): bool =
 
 proc isEmpty(s: string): bool =
 
-  if isNil(s) or s == "":
+  if s == "":
     return true
   for i in items(s):
     if i != ' ':
@@ -655,7 +648,7 @@ proc normalize*(n: PNode) =
 
   var newChildNodes: seq[PNode] = @[]
   while true:
-    if isNil(n.childNodes) or i >= n.childNodes.len:
+    if i >= n.childNodes.len:
       break
     if n.childNodes[i].nodeType == TextNode:
 
@@ -679,12 +672,11 @@ proc normalize*(n: PNode) =
 
 proc removeChild*(n: PNode, oldChild: PNode): PNode =
   ## Removes the child node indicated by ``oldChild`` from the list of children, and returns it.
-  if not isNil(n.childNodes):
-    for i in low(n.childNodes)..high(n.childNodes):
-      if n.childNodes[i] == oldChild:
-        result = n.childNodes[i]
-        n.childNodes.delete(i)
-        return
+  for i in low(n.childNodes)..high(n.childNodes):
+    if n.childNodes[i] == oldChild:
+      result = n.childNodes[i]
+      n.childNodes.delete(i)
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -695,12 +687,11 @@ proc replaceChild*(n: PNode, newChild: PNode, oldChild: PNode): PNode =
   if n.fOwnerDocument != newChild.fOwnerDocument:
     raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
 
-  if not isNil(n.childNodes):
-    for i in low(n.childNodes)..high(n.childNodes):
-      if n.childNodes[i] == oldChild:
-        result = n.childNodes[i]
-        n.childNodes[i] = newChild
-        return
+  for i in low(n.childNodes)..high(n.childNodes):
+    if n.childNodes[i] == oldChild:
+      result = n.childNodes[i]
+      n.childNodes[i] = newChild
+      return
 
   raise newException(ENotFoundErr, "Node not found")
 
@@ -764,11 +755,10 @@ proc removeNamedItemNS*(nList: var seq[PNode], namespaceURI: string, localName: 
 proc setNamedItem*(nList: var seq[PNode], arg: PNode): PNode =
   ## Adds ``arg`` as a ``Node`` to the ``NList``
   ## If a node with the same name is already present in this map, it is replaced by the new one.
-  if not isNil(nList):
-    if nList.len() > 0:
-      #Check if newChild is from this nodes document
-      if nList[0].fOwnerDocument != arg.fOwnerDocument:
-        raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
+  if nList.len > 0:
+    #Check if newChild is from this nodes document
+    if nList[0].fOwnerDocument != arg.fOwnerDocument:
+      raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
   #Exceptions End
 
   var item: PNode = nList.getNamedItem(arg.nodeName())
@@ -788,11 +778,10 @@ proc setNamedItem*(nList: var seq[PNode], arg: PNode): PNode =
 proc setNamedItem*(nList: var seq[PAttr], arg: PAttr): PAttr =
   ## Adds ``arg`` as a ``Node`` to the ``NList``
   ## If a node with the same name is already present in this map, it is replaced by the new one.
-  if not isNil(nList):
-    if nList.len() > 0:
-      # Check if newChild is from this nodes document
-      if nList[0].fOwnerDocument != arg.fOwnerDocument:
-        raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
+  if nList.len > 0:
+    # Check if newChild is from this nodes document
+    if nList[0].fOwnerDocument != arg.fOwnerDocument:
+      raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
 
   if not isNil(arg.fOwnerElement):
     raise newException(EInuseAttributeErr, "This attribute is in use by another element, use cloneNode")
@@ -814,11 +803,10 @@ proc setNamedItem*(nList: var seq[PAttr], arg: PAttr): PAttr =
 
 proc setNamedItemNS*(nList: var seq[PNode], arg: PNode): PNode =
   ## Adds a node using its ``namespaceURI`` and ``localName``
-  if not isNil(nList):
-    if nList.len() > 0:
-      # Check if newChild is from this nodes document
-      if nList[0].fOwnerDocument != arg.fOwnerDocument:
-        raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
+  if nList.len > 0:
+    # Check if newChild is from this nodes document
+    if nList[0].fOwnerDocument != arg.fOwnerDocument:
+      raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
   #Exceptions end
 
   var item: PNode = nList.getNamedItemNS(arg.namespaceURI(), arg.localName())
@@ -837,11 +825,10 @@ proc setNamedItemNS*(nList: var seq[PNode], arg: PNode): PNode =
 
 proc setNamedItemNS*(nList: var seq[PAttr], arg: PAttr): PAttr =
   ## Adds a node using its ``namespaceURI`` and ``localName``
-  if not isNil(nList):
-    if nList.len() > 0:
-      # Check if newChild is from this nodes document
-      if nList[0].fOwnerDocument != arg.fOwnerDocument:
-        raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
+  if nList.len > 0:
+    # Check if newChild is from this nodes document
+    if nList[0].fOwnerDocument != arg.fOwnerDocument:
+      raise newException(EWrongDocumentErr, "This node belongs to a different document, use importNode.")
 
   if not isNil(arg.fOwnerElement):
     raise newException(EInuseAttributeErr, "This attribute is in use by another element, use cloneNode")
@@ -868,17 +855,14 @@ proc setNamedItemNS*(nList: var seq[PAttr], arg: PAttr): PAttr =
 # Attributes
 proc name*(a: PAttr): string =
   ## Returns the name of the Attribute
-
   return a.fName
 
 proc specified*(a: PAttr): bool =
   ## Specifies whether this attribute was specified in the original document
-
   return a.fSpecified
 
 proc ownerElement*(a: PAttr): PElement =
   ## Returns this Attributes owner element
-
   return a.fOwnerElement
 
 # Element
@@ -886,41 +870,32 @@ proc ownerElement*(a: PAttr): PElement =
 
 proc tagName*(el: PElement): string =
   ## Returns the Element Tag Name
-
   return el.fTagName
 
 # Procedures
 proc getAttribute*(el: PNode, name: string): string =
   ## Retrieves an attribute value by ``name``
-  if isNil(el.attributes):
-    return nil
   var attribute = el.attributes.getNamedItem(name)
   if not isNil(attribute):
     return attribute.value
   else:
-    return nil
+    return ""
 
 proc getAttributeNS*(el: PNode, namespaceURI: string, localName: string): string =
   ## Retrieves an attribute value by ``localName`` and ``namespaceURI``
-  if isNil(el.attributes):
-    return nil
   var attribute = el.attributes.getNamedItemNS(namespaceURI, localName)
   if not isNil(attribute):
     return attribute.value
   else:
-    return nil
+    return ""
 
 proc getAttributeNode*(el: PElement, name: string): PAttr =
   ## Retrieves an attribute node by ``name``
   ## To retrieve an attribute node by qualified name and namespace URI, use the `getAttributeNodeNS` method
-  if isNil(el.attributes):
-    return nil
   return el.attributes.getNamedItem(name)
 
 proc getAttributeNodeNS*(el: PElement, namespaceURI: string, localName: string): PAttr =
   ## Retrieves an `Attr` node by ``localName`` and ``namespaceURI``
-  if isNil(el.attributes):
-    return nil
   return el.attributes.getNamedItemNS(namespaceURI, localName)
 
 proc getElementsByTagName*(el: PElement, name: string): seq[PNode] =
@@ -938,41 +913,34 @@ proc getElementsByTagNameNS*(el: PElement, namespaceURI: string, localName: stri
 proc hasAttribute*(el: PElement, name: string): bool =
   ## Returns ``true`` when an attribute with a given ``name`` is specified
   ## on this element , ``false`` otherwise.
-  if isNil(el.attributes):
-    return false
   return not isNil(el.attributes.getNamedItem(name))
 
 proc hasAttributeNS*(el: PElement, namespaceURI: string, localName: string): bool =
   ## Returns ``true`` when an attribute with a given ``localName`` and
   ## ``namespaceURI`` is specified on this element , ``false`` otherwise
-  if isNil(el.attributes):
-    return false
   return not isNil(el.attributes.getNamedItemNS(namespaceURI, localName))
 
 proc removeAttribute*(el: PElement, name: string) =
   ## Removes an attribute by ``name``
-  if not isNil(el.attributes):
-    for i in low(el.attributes)..high(el.attributes):
-      if el.attributes[i].fName == name:
-        el.attributes.delete(i)
+  for i in low(el.attributes)..high(el.attributes):
+    if el.attributes[i].fName == name:
+      el.attributes.delete(i)
 
 proc removeAttributeNS*(el: PElement, namespaceURI: string, localName: string) =
   ## Removes an attribute by ``localName`` and ``namespaceURI``
-  if not isNil(el.attributes):
-    for i in low(el.attributes)..high(el.attributes):
-      if el.attributes[i].fNamespaceURI == namespaceURI and
-          el.attributes[i].fLocalName == localName:
-        el.attributes.delete(i)
+  for i in low(el.attributes)..high(el.attributes):
+    if el.attributes[i].fNamespaceURI == namespaceURI and
+        el.attributes[i].fLocalName == localName:
+      el.attributes.delete(i)
 
 proc removeAttributeNode*(el: PElement, oldAttr: PAttr): PAttr =
   ## Removes the specified attribute node
   ## If the attribute node cannot be found raises ``ENotFoundErr``
-  if not isNil(el.attributes):
-    for i in low(el.attributes)..high(el.attributes):
-      if el.attributes[i] == oldAttr:
-        result = el.attributes[i]
-        el.attributes.delete(i)
-        return
+  for i in low(el.attributes)..high(el.attributes):
+    if el.attributes[i] == oldAttr:
+      result = el.attributes[i]
+      el.attributes.delete(i)
+      return
 
   raise newException(ENotFoundErr, "oldAttr is not a member of el's Attributes")
 
@@ -991,7 +959,6 @@ proc setAttributeNode*(el: PElement, newAttr: PAttr): PAttr =
       "This attribute is in use by another element, use cloneNode")
   # Exceptions end
 
-  if isNil(el.attributes): el.attributes = @[]
   return el.attributes.setNamedItem(newAttr)
 
 proc setAttributeNodeNS*(el: PElement, newAttr: PAttr): PAttr =
@@ -1009,7 +976,6 @@ proc setAttributeNodeNS*(el: PElement, newAttr: PAttr): PAttr =
       "This attribute is in use by another element, use cloneNode")
   # Exceptions end
 
-  if isNil(el.attributes): el.attributes = @[]
   return el.attributes.setNamedItemNS(newAttr)
 
 proc setAttribute*(el: PElement, name: string, value: string) =
@@ -1057,9 +1023,9 @@ proc splitData*(textNode: PText, offset: int): PText =
 
   var left: string = textNode.data.substr(0, offset)
   textNode.data = left
-  var right: string = textNode.data.substr(offset, textNode.data.len())
+  var right: string = textNode.data.substr(offset, textNode.data.len)
 
-  if not isNil(textNode.fParentNode) and not isNil(textNode.fParentNode.childNodes):
+  if not isNil(textNode.fParentNode) and textNode.fParentNode.childNodes.len > 0:
     for i in low(textNode.fParentNode.childNodes)..high(textNode.fParentNode.childNodes):
       if textNode.fParentNode.childNodes[i] == textNode:
         var newNode: PText = textNode.fOwnerDocument.createTextNode(right)
@@ -1069,17 +1035,15 @@ proc splitData*(textNode: PText, offset: int): PText =
     var newNode: PText = textNode.fOwnerDocument.createTextNode(right)
     return newNode
 
-
 # ProcessingInstruction
 proc target*(pi: PProcessingInstruction): string =
   ## Returns the Processing Instructions target
 
   return pi.fTarget
 
-
-# --Other stuff--
-# Writer
-proc addEscaped(s: string): string =
+proc escapeXml*(s: string; result: var string) =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
   result = ""
   for c in items(s):
     case c
@@ -1089,13 +1053,21 @@ proc addEscaped(s: string): string =
     of '"': result.add("&quot;")
     else: result.add(c)
 
+proc escapeXml*(s: string): string =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
+  result = newStringOfCap(s.len + s.len shr 4)
+  escapeXml(s, result)
+
+# --Other stuff--
+# Writer
+
 proc nodeToXml(n: PNode, indent: int = 0): string =
   result = spaces(indent) & "<" & n.nodeName
-  if not isNil(n.attributes):
-    for i in items(n.attributes):
-      result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
+  for i in items(n.attributes):
+    result.add(" " & i.name & "=\"" & escapeXml(i.value) & "\"")
 
-  if isNil(n.childNodes) or n.childNodes.len() == 0:
+  if n.childNodes.len == 0:
     result.add("/>") # No idea why this doesn't need a \n :O
   else:
     # End the beginning of this tag
@@ -1106,7 +1078,7 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
         result.add(spaces(indent * 2))
-        result.add(addEscaped(i.nodeValue))
+        result.add(escapeXml(i.nodeValue))
       of CDataSectionNode:
         result.add(spaces(indent * 2))
         result.add("<![CDATA[" & i.nodeValue & "]]>")
@@ -1127,3 +1099,4 @@ proc `$`*(doc: PDocument): string =
   ## Converts a PDocument object into a string representation of it's XML
   result = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
   result.add(nodeToXml(doc.documentElement))
+  

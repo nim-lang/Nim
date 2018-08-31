@@ -95,11 +95,9 @@ type
     kind: XmlEventKind
     err: XmlErrorKind
     state: ParserState
+    cIsEmpty: bool
     filename: string
     options: set[XmlParseOption]
-
-{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOption,
-    TXmlError: XmlErrorKind, TXmlEventKind: XmlEventKind].}
 
 const
   errorMessages: array[XmlErrorKind, string] = [
@@ -128,7 +126,8 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
-  my.c = nil
+  my.c = ""
+  my.cIsEmpty = true
   my.options = options
 
 proc close*(my: var XmlParser) {.inline.} =
@@ -485,6 +484,7 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlElementOpen
     my.state = stateAttr
     my.c = my.a # save for later
+    my.cIsEmpty = false
   else:
     my.kind = xmlElementStart
     let slash = my.buf[my.bufpos] == '/'
@@ -493,7 +493,8 @@ proc parseTag(my: var XmlParser) =
     if slash and my.buf[my.bufpos] == '>':
       inc(my.bufpos)
       my.state = stateEmptyElementTag
-      my.c = nil
+      my.c = ""
+      my.cIsEmpty = true
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)
     else:
@@ -681,7 +682,7 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if not my.c.isNil:
+    if not my.cIsEmpty:
       my.a = my.c
   of stateError:
     my.kind = xmlError

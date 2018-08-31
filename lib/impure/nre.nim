@@ -10,7 +10,7 @@
 from pcre import nil
 import nre.private.util
 import tables
-from strutils import toLower, `%`
+from strutils import `%`
 from math import ceil
 import options
 from unicode import runeLenAt
@@ -155,7 +155,7 @@ type
     ##     -  ``"abc".match(re"(?<letter>\w)").captures["letter"] == "a"``
     ##     -  ``"abc".match(re"(\w)\w").captures[-1] == "ab"``
     ##
-    ## ``captureBounds[]: Option[Slice[int]]``
+    ## ``captureBounds[]: Option[HSlice[int, int]]``
     ##     gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then ``None`` is returned.
     ##     The bounds are both inclusive.
@@ -167,7 +167,7 @@ type
     ## ``match: string``
     ##     the full text of the match.
     ##
-    ## ``matchBounds: Slice[int]``
+    ## ``matchBounds: HSlice[int, int]``
     ##     the bounds of the match, as in ``captureBounds[]``
     ##
     ## ``(captureBounds|captures).toTable``
@@ -182,9 +182,9 @@ type
                      ## Not nil.
     str*: string  ## The string that was matched against.
                   ## Not nil.
-    pcreMatchBounds: seq[Slice[cint]] ## First item is the bounds of the match
-                                      ## Other items are the captures
-                                      ## `a` is inclusive start, `b` is exclusive end
+    pcreMatchBounds: seq[HSlice[cint, cint]] ## First item is the bounds of the match
+                                            ## Other items are the captures
+                                            ## `a` is inclusive start, `b` is exclusive end
 
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
@@ -251,13 +251,13 @@ proc captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(p
 
 proc captures*(pattern: RegexMatch): Captures = return Captures(pattern)
 
-proc `[]`*(pattern: CaptureBounds, i: int): Option[Slice[int]] =
+proc `[]`*(pattern: CaptureBounds, i: int): Option[HSlice[int, int]] =
   let pattern = RegexMatch(pattern)
   if pattern.pcreMatchBounds[i + 1].a != -1:
     let bounds = pattern.pcreMatchBounds[i + 1]
     return some(int(bounds.a) .. int(bounds.b-1))
   else:
-    return none(Slice[int])
+    return none(HSlice[int, int])
 
 proc `[]`*(pattern: Captures, i: int): string =
   let pattern = RegexMatch(pattern)
@@ -267,15 +267,15 @@ proc `[]`*(pattern: Captures, i: int): string =
     let bounds = bounds.get
     return pattern.str.substr(bounds.a, bounds.b)
   else:
-    return nil
+    return ""
 
 proc match*(pattern: RegexMatch): string =
   return pattern.captures[-1]
 
-proc matchBounds*(pattern: RegexMatch): Slice[int] =
+proc matchBounds*(pattern: RegexMatch): HSlice[int, int] =
   return pattern.captureBounds[-1].get
 
-proc `[]`*(pattern: CaptureBounds, name: string): Option[Slice[int]] =
+proc `[]`*(pattern: CaptureBounds, name: string): Option[HSlice[int, int]] =
   let pattern = RegexMatch(pattern)
   return pattern.captureBounds[pattern.pattern.captureNameToId.fget(name)]
 
@@ -291,17 +291,17 @@ template toTableImpl(cond: untyped) {.dirty.} =
     else:
       result[key] = nextVal
 
-proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
+proc toTable*(pattern: Captures, default: string = ""): Table[string, string] =
   result = initTable[string, string]()
-  toTableImpl(nextVal == nil)
+  toTableImpl(nextVal.len == 0)
 
-proc toTable*(pattern: CaptureBounds, default = none(Slice[int])):
-    Table[string, Option[Slice[int]]] =
-  result = initTable[string, Option[Slice[int]]]()
+proc toTable*(pattern: CaptureBounds, default = none(HSlice[int, int])):
+    Table[string, Option[HSlice[int, int]]] =
+  result = initTable[string, Option[HSlice[int, int]]]()
   toTableImpl(nextVal.isNone)
 
 template itemsImpl(cond: untyped) {.dirty.} =
-  for i in 0 .. <RegexMatch(pattern).pattern.captureCount:
+  for i in 0 ..< RegexMatch(pattern).pattern.captureCount:
     let nextVal = pattern[i]
     # done in this roundabout way to avoid multiple yields (potential code
     # bloat)
@@ -309,16 +309,16 @@ template itemsImpl(cond: untyped) {.dirty.} =
     yield nextYieldVal
 
 
-iterator items*(pattern: CaptureBounds, default = none(Slice[int])): Option[Slice[int]] =
+iterator items*(pattern: CaptureBounds, default = none(HSlice[int, int])): Option[HSlice[int, int]] =
   itemsImpl(nextVal.isNone)
 
-iterator items*(pattern: Captures, default: string = nil): string =
-  itemsImpl(nextVal == nil)
+iterator items*(pattern: Captures, default: string = ""): string =
+  itemsImpl(nextVal.len == 0)
 
-proc toSeq*(pattern: CaptureBounds, default = none(Slice[int])): seq[Option[Slice[int]]] =
+proc toSeq*(pattern: CaptureBounds, default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
   accumulateResult(pattern.items(default))
 
-proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
+proc toSeq*(pattern: Captures, default: string = ""): seq[string] =
   accumulateResult(pattern.items(default))
 
 proc `$`*(pattern: RegexMatch): string =
@@ -326,15 +326,15 @@ proc `$`*(pattern: RegexMatch): string =
 
 proc `==`*(a, b: Regex): bool =
   if not a.isNil and not b.isNil:
-    return a.pattern   == b.pattern and
-           a.pcreObj   == b.pcreObj and
+    return a.pattern == b.pattern and
+           a.pcreObj == b.pcreObj and
            a.pcreExtra == b.pcreExtra
   else:
     return system.`==`(a, b)
 
 proc `==`*(a, b: RegexMatch): bool =
   return a.pattern == b.pattern and
-         a.str     == b.str
+         a.str == b.str
 # }}}
 
 # Creation & Destruction {{{
@@ -396,8 +396,6 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 
 # }}}
 
-type UncheckedArray {.unchecked.}[T] = array[0 .. 0, T]
-
 proc destroyRegex(pattern: Regex) =
   pcre.free_substring(cast[cstring](pattern.pcreObj))
   pattern.pcreObj = nil
@@ -412,7 +410,7 @@ proc getNameToNumberTable(pattern: Regex): Table[string, int] =
 
   result = initTable[string, int]()
 
-  for i in 0 .. <entryCount:
+  for i in 0 ..< entryCount:
     let pos = i * entrySize
     let num = (int(table[pos]) shl 8) or int(table[pos + 1]) - 1
     var name = ""
@@ -464,7 +462,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  myResult.pcreMatchBounds = newSeq[Slice[cint]](ceil(vecsize / 2).int)
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]](ceil(vecsize / 2).int)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1
@@ -647,7 +645,6 @@ template replaceImpl(str: string, pattern: Regex,
     let bounds = match.matchBounds
     result.add(str.substr(lastIdx, bounds.a - 1))
     let nextVal = replacement
-    assert(nextVal != nil)
     result.add(nextVal)
 
     lastIdx = bounds.b + 1
@@ -657,17 +654,17 @@ template replaceImpl(str: string, pattern: Regex,
 
 proc replace*(str: string, pattern: Regex,
               subproc: proc (match: RegexMatch): string): string =
-  ## Replaces each match of Regex in the string with ``sub``, which should
+  ## Replaces each match of Regex in the string with ``subproc``, which should
   ## never be or return ``nil``.
   ##
-  ## If ``sub`` is a ``proc (RegexMatch): string``, then it is executed with
+  ## If ``subproc`` is a ``proc (RegexMatch): string``, then it is executed with
   ## each match and the return value is the replacement value.
   ##
-  ## If ``sub`` is a ``proc (string): string``, then it is executed with the
+  ## If ``subproc`` is a ``proc (string): string``, then it is executed with the
   ## full text of the match and and the return value is the replacement
   ## value.
   ##
-  ## If ``sub`` is a string, the syntax is as follows:
+  ## If ``subproc`` is a string, the syntax is as follows:
   ##
   ## -  ``$$`` - literal ``$``
   ## -  ``$123`` - capture number ``123``

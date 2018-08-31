@@ -39,8 +39,8 @@ do
   esac
 done
 
-CC="gcc"
-LINKER="gcc"
+CC="${CC:-gcc}"
+LINKER="${LD:-gcc}"
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""
@@ -144,6 +144,8 @@ case $ucpu in
       mycpu="sparc64"
     fi
     ;;
+  *ppc64le* )
+    mycpu="powerpc64el" ;;
   *ppc64* )
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"

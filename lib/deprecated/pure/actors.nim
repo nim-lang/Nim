@@ -18,7 +18,7 @@
 ##      var
 ##        a: ActorPool[int, void]
 ##      createActorPool(a)
-##      for i in 0 .. < 300:
+##      for i in 0 ..< 300:
 ##        a.spawn(i, proc (x: int) {.thread.} = echo x)
 ##      a.join()
 ##
@@ -43,7 +43,6 @@ type
     t: Thread[ptr Actor[In, Out]]
 
   PActor*[In, Out] = ptr Actor[In, Out] ## an actor
-{.deprecated: [TTask: Task, TActor: Actor].}
 
 proc spawn*[In, Out](action: proc(
     self: PActor[In, Out]){.thread.}): PActor[In, Out] =
@@ -133,7 +132,7 @@ proc createActorPool*[In, Out](a: var ActorPool[In, Out], poolSize = 4) =
   newSeq(a.actors, poolSize)
   when Out isnot void:
     open(a.outputs)
-  for i in 0 .. < a.actors.len:
+  for i in 0 ..< a.actors.len:
     a.actors[i] = spawn(poolWorker[In, Out])
 
 proc sync*[In, Out](a: var ActorPool[In, Out], polling=50) =
@@ -164,11 +163,11 @@ proc terminate*[In, Out](a: var ActorPool[In, Out]) =
   ## resources attached to `a`.
   var t: Task[In, Out]
   t.shutdown = true
-  for i in 0.. <a.actors.len: send(a.actors[i].i, t)
-  for i in 0.. <a.actors.len: join(a.actors[i])
+  for i in 0..<a.actors.len: send(a.actors[i].i, t)
+  for i in 0..<a.actors.len: join(a.actors[i])
   when Out isnot void:
     close(a.outputs)
-  a.actors = nil
+  a.actors = @[]
 
 proc join*[In, Out](a: var ActorPool[In, Out]) =
   ## short-cut for `sync` and then `terminate`.
@@ -227,7 +226,7 @@ when not defined(testing) and isMainModule:
   var
     a: ActorPool[int, void]
   createActorPool(a)
-  for i in 0 .. < 300:
+  for i in 0 ..< 300:
     a.spawn(i, proc (x: int) {.thread.} = echo x)
 
   when false:

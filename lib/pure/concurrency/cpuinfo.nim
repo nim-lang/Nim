@@ -38,15 +38,42 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  proc affinitySpaceTotal(): cuint {.
-    importcpp: "genodeEnv->cpu().affinity_space().total()".}
+  include genode/env
+
+  proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
+    importcpp: "@->cpu().affinity_space().total()".}
+
+when defined(haiku):
+  {.emit: "#include <OS.h>".}
+  type
+    SystemInfo {.importc: "system_info", bycopy.} = object
+      cpuCount {.importc: "cpu_count".}: uint32
+
+  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
-    var x = getEnv("NUMBER_OF_PROCESSORS")
-    if x.len > 0: result = parseInt(x.string)
+    type
+      SYSTEM_INFO {.final, pure.} = object
+        u1: int32
+        dwPageSize: int32
+        lpMinimumApplicationAddress: pointer
+        lpMaximumApplicationAddress: pointer
+        dwActiveProcessorMask: ptr int32
+        dwNumberOfProcessors: int32
+        dwProcessorType: int32
+        dwAllocationGranularity: int32
+        wProcessorLevel: int16
+        wProcessorRevision: int16
+
+    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+
+    var
+      si: SYSTEM_INFO
+    GetSystemInfo(si)
+    result = si.dwNumberOfProcessors
   elif defined(macosx) or defined(bsd):
     var
       mib: array[0..3, cint]
@@ -66,7 +93,11 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
     result = sysconf(SC_NPROC_ONLN)
   elif defined(genode):
-    result = affinitySpaceTotal().int
+    result = runtimeEnv.affinitySpaceTotal().int
+  elif defined(haiku):
+    var sysinfo: SystemInfo
+    if getSystemInfo(addr sysinfo) == 0:
+      result = sysinfo.cpuCount.int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0

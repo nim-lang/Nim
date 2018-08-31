@@ -3,7 +3,7 @@ discard """
 """
 
 block ints:
-  let 
+  let
     na: int8 = -120'i8
     nb: int16 = -32700'i16
     nc: int32 = -2147483000'i32
@@ -12,9 +12,9 @@ block ints:
     pa: int8 = 120'i8
     pb: int16 = 32700'i16
     pc: int32 = 2147483000'i32
-    pd: int64 = 9223372036854775000'i64 
+    pd: int64 = 9223372036854775000'i64
     pe: int = 1234567
-  
+
   doAssert(repr(na) == "-120")
   doAssert(repr(nb) == "-32700")
   doAssert(repr(nc) == "-2147483000")
@@ -27,13 +27,13 @@ block ints:
   doAssert(repr(pe) == "1234567")
 
 block uints:
-  let 
+  let
     a: uint8 = 254'u8
     b: uint16 = 65300'u16
     c: uint32 = 4294967290'u32
     # d: uint64 = 18446744073709551610'u64  -> unknown node type
     e: uint = 1234567
-  
+
   doAssert(repr(a) == "254")
   doAssert(repr(b) == "65300")
   doAssert(repr(c) == "4294967290")
@@ -41,26 +41,26 @@ block uints:
   doAssert(repr(e) == "1234567")
 
 block floats:
-  let 
+  let
     a: float32 = 3.4e38'f32
     b: float64 = 1.7976931348623157e308'f64
     c: float = 1234.567e89
-  
-  when defined js: 
+
+  when defined js:
     doAssert(repr(a) == "3.4e+38") # in C: 3.399999952144364e+038
     doAssert(repr(b) == "1.7976931348623157e+308") # in C: 1.797693134862316e+308
     doAssert(repr(c) == "1.234567e+92") # in C: 1.234567e+092
 
 block bools:
-  let 
+  let
     a: bool = true
     b: bool = false
-  
-  doAssert(repr(a) == "true") 
+
+  doAssert(repr(a) == "true")
   doAssert(repr(b) == "false")
 
 block enums:
-  type 
+  type
     AnEnum = enum
       aeA
       aeB
@@ -69,13 +69,19 @@ block enums:
       heA = -12
       heB = 15
       heC = 123
-  
-  doAssert(repr(aeA) == "aeA") 
+
+  doAssert(repr(aeA) == "aeA")
   doAssert(repr(aeB) == "aeB")
-  doAssert(repr(aeC) == "aeC") 
+  doAssert(repr(aeC) == "aeC")
   doAssert(repr(heA) == "heA")
-  doAssert(repr(heB) == "heB") 
+  doAssert(repr(heB) == "heB")
   doAssert(repr(heC) == "heC")
+
+block emums_and_unicode: #6741
+  type K = enum Kanji = "漢字"
+  let kanji = Kanji
+  doAssert(kanji == Kanji, "Enum values are not equal")
+  doAssert($kanji == $Kanji, "Enum string values are not equal")
 
 block chars:
   let
@@ -83,39 +89,39 @@ block chars:
     b = 'z'
     one = '1'
     nl = '\x0A'
-  
+
   doAssert(repr(a) == "'a'")
   doAssert(repr(b) == "'z'")
   doAssert(repr(one) == "'1'")
   doAssert(repr(nl) == "'\\10'")
 
 block strings:
-  let 
+  let
     a: string = "12345"
     b: string = "hello,repr"
     c: string = "hi\nthere"
   when defined js: # C prepends the pointer, JS does not.
     doAssert(repr(a) == "\"12345\"")
     doAssert(repr(b) == "\"hello,repr\"")
-    doAssert(repr(c) == "\"hi\nthere\"")
+    doAssert(repr(c) == "\"hi\\10there\"")
 
 block sets:
   let
     a: set[int16] = {1'i16, 2'i16, 3'i16}
     b: set[char] = {'A', 'k'}
-    
+
   doAssert(repr(a) == "{1, 2, 3}")
   doAssert(repr(b) == "{'A', 'k'}")
 
 block ranges:
-  let 
+  let
     a: range[0..12] = 6
     b: range[-12..0] = -6
   doAssert(repr(a) == "6")
   doAssert(repr(b) == "-6")
 
 block tuples:
-  type 
+  type
     ATuple = tuple
       a: int
       b: float
@@ -124,7 +130,7 @@ block tuples:
     OtherTuple = tuple
       a: bool
       b: int8
-  
+
   let
     ot: OtherTuple = (a: true, b: 120'i8)
     t: ATuple = (a: 42, b: 12.34, c: "tuple", d: ot)
@@ -176,7 +182,7 @@ block arrays:
     o = AObj(x: 42, y: a)
     c = [o, o, o]
     d = ["hi", "array", "!"]
-    
+
   doAssert(repr(a) == "[0.0, 1.0, 2.0]\n")
   doAssert(repr(b) == "[[0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [0.0, 1.0, 2.0]]\n")
   doAssert(repr(c) == """
@@ -198,7 +204,7 @@ block seqs:
     o = AObj(x: 42, y: a)
     c = @[o, o, o]
     d = @["hi", "array", "!"]
-    
+
   doAssert(repr(a) == "@[0.0, 1.0, 2.0]\n")
   doAssert(repr(b) == "@[@[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0]]\n")
   doAssert(repr(c) == """
@@ -210,16 +216,16 @@ y = @[0.0, 1.0, 2.0]]]
   doAssert(repr(d) == "@[\"hi\", \"array\", \"!\"]\n")
 
 block ptrs:
-  type 
+  type
     AObj = object
       x: ptr array[2, AObj]
       y: int
-  var 
+  var
     a = [12.0, 13.0, 14.0]
     b = addr a[0]
     c = addr a[2]
     d = AObj()
-  
+
   doAssert(repr(a) == "[12.0, 13.0, 14.0]\n")
   doAssert(repr(b) == "ref 0 --> 12.0\n")
   doAssert(repr(c) == "ref 2 --> 14.0\n")
@@ -229,13 +235,13 @@ y = 0]
 """)
 
 block ptrs:
-  type 
+  type
     AObj = object
       x: ref array[2, AObj]
       y: int
-  var 
+  var
     a = AObj()
-  
+
   new(a.x)
 
   doAssert(repr(a) == """
@@ -248,10 +254,10 @@ y = 0]
 block procs:
   proc test(): int =
     echo "hello"
-  var 
+  var
     ptest = test
     nilproc: proc(): int
-  
+
   doAssert(repr(test) == "0\n")
   doAssert(repr(ptest) == "0\n")
   doAssert(repr(nilproc) == "nil\n")
@@ -262,7 +268,7 @@ block bunch:
       eA, eB, eC
     B = object
       a: string
-      b: seq[char] 
+      b: seq[char]
     A = object
       a: uint32
       b: int
@@ -281,17 +287,17 @@ block bunch:
       o: tuple[x: B, y: string]
       p: proc(b: B): ref B
       q: cstring
-      
+
   proc refB(b:B):ref B =
     new result
     result[] = b
-  
+
   var
     aa: A
     bb: B = B(a: "inner", b: @['o', 'b', 'j'])
     cc: A = A(a: 12, b: 1, c: 1.2, d: '\0', e: eC,
                 f: "hello", g: {'A'}, h: {2'i16},
-                i: ["hello", "world", "array"], 
+                i: ["hello", "world", "array"],
                 j: @["hello", "world", "seq"], k: -1,
                 l: bb, m: refB(bb), n: addr bb,
                 o: (bb, "tuple!"), p: refB, q: "cstringtest" )
@@ -344,12 +350,12 @@ q = "cstringtest"]
 """)
 
 block another:
-  type 
-    Size1 = enum 
+  type
+    Size1 = enum
       s1a, s1b
-    Size2 = enum 
+    Size2 = enum
       s2c=0, s2d=20000
-    Size3 = enum 
+    Size3 = enum
       s3e=0, s3f=2000000000
 
   doAssert(repr([s1a, s1b]) == "[s1a, s1b]\n")
@@ -357,7 +363,7 @@ block another:
   doAssert(repr([s3e, s3f]) == "[s3e, s3f]\n")
 
 block another2:
-  
+
   type
     AnEnum = enum
       en1, en2, en3, en4, en5, en6

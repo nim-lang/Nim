@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define NB_ITS 1000000
 //#define NB_ITS 1
@@ -49,12 +50,15 @@ int test4(void)
     int i, sum = 0;
     int *tab4;
 
+    fprintf(stderr, "%s start\n", __FUNCTION__);
+
     tab4 = malloc(20 * sizeof(int));
     for(i=0;i<20;i++) {
         sum += tab4[i];
     }
     free(tab4);
 
+    fprintf(stderr, "%s end\n", __FUNCTION__);
     return sum;
 }
 
@@ -64,12 +68,15 @@ int test5(void)
     int i, sum = 0;
     int *tab4;
 
+    fprintf(stderr, "%s start\n", __FUNCTION__);
+
     tab4 = malloc(20 * sizeof(int));
     for(i=0;i<21;i++) {
         sum += tab4[i];
     }
     free(tab4);
 
+    fprintf(stderr, "%s end\n", __FUNCTION__);
     return sum;
 }
 
@@ -169,8 +176,60 @@ int test13(void)
     return strlen(tab);
 }
 
+int test14(void)
+{
+    char *p = alloca(TAB_SIZE);
+    memset(p, 'a', TAB_SIZE);
+    p[TAB_SIZE-1] = 0;
+    return strlen(p);
+}
+
+/* error */
+int test15(void)
+{
+    char *p = alloca(TAB_SIZE-1);
+    memset(p, 'a', TAB_SIZE);
+    p[TAB_SIZE-1] = 0;
+    return strlen(p);
+}
+
+/* ok */
+int test16()
+{
+    char *demo = "This is only a test.";
+    char *p;
+
+    fprintf(stderr, "%s start\n", __FUNCTION__);
+
+    p = alloca(16);
+    strcpy(p,"12345678901234");
+    printf("alloca: p is %s\n", p);
+
+    /* Test alloca embedded in a larger expression */
+    printf("alloca: %s\n", strcpy(alloca(strlen(demo)+1),demo) );
+
+    fprintf(stderr, "%s end\n", __FUNCTION__);
+}
+
+/* error */
+int test17()
+{
+    char *demo = "This is only a test.";
+    char *p;
+
+    fprintf(stderr, "%s start\n", __FUNCTION__);
+
+    p = alloca(16);
+    strcpy(p,"12345678901234");
+    printf("alloca: p is %s\n", p);
+
+    /* Test alloca embedded in a larger expression */
+    printf("alloca: %s\n", strcpy(alloca(strlen(demo)),demo) );
+
+    fprintf(stderr, "%s end\n", __FUNCTION__);
+}
+
 int (*table_test[])(void) = {
-    test1,
     test1,
     test2,
     test3,
@@ -184,23 +243,35 @@ int (*table_test[])(void) = {
     test11,
     test12,
     test13,
+    test14,
+    test15,
+    test16,
+    test17,
 };
 
 int main(int argc, char **argv)
 {
     int index;
     int (*ftest)(void);
+    int index_max = sizeof(table_test)/sizeof(table_test[0]);
 
     if (argc < 2) {
-        printf("usage: boundtest n\n"
-               "test TCC bound checking system\n"
-               );
+        printf(
+    	    "test TCC bound checking system\n"
+	    "usage: boundtest N\n"
+            "  1 <= N <= %d\n", index_max);
         exit(1);
     }
 
     index = 0;
     if (argc >= 2)
-        index = atoi(argv[1]);
+        index = atoi(argv[1]) - 1;
+
+    if ((index < 0) || (index >= index_max)) {
+        printf("N is outside of the valid range (%d)\n", index);
+        exit(2);
+    }
+
     /* well, we also use bounds on this ! */
     ftest = table_test[index];
     ftest();

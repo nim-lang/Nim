@@ -158,6 +158,12 @@ template getOrDefaultImpl(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
+template getOrDefaultImpl(t, key, default: untyped): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = if index >= 0: t.data[index].val else: default
+
 proc `[]`*[A, B](t: Table[A, B], key: A): B {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
@@ -175,10 +181,18 @@ proc mget*[A, B](t: var Table[A, B], key: A): var B {.deprecated.} =
   ## instead.
   get(t, key)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A): B = getOrDefaultImpl(t, key)
+proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## default initialization value for type `B` is returned (e.g. 0 for any
+  ## integer type).
+  getOrDefaultImpl(t, key)
 
-template withValue*[A, B](t: var Table[A, B], key: A,
-                          value, body: untyped) =
+proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, `default`
+  ## is returned.
+  getOrDefaultImpl(t, key, default)
+
+template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
   ## retrieves the value at ``t[key]``.
   ## `value` can be modified in the scope of the ``withValue`` call.
   ##
@@ -266,7 +280,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
     if isFilled(t.data[h].hcode): yield t.data[h].val
 
 proc del*[A, B](t: var Table[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## deletes `key` from hash table `t`. Does nothing if the key does not exist.
   delImpl()
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
@@ -308,6 +322,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -324,8 +339,7 @@ proc initTable*[A, B](initialSize=64): Table[A, B] =
   result.counter = 0
   newSeq(result.data, initialSize)
 
-proc toTable*[A, B](pairs: openArray[(A,
-                    B)]): Table[A, B] =
+proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## creates a new hash table that contains the given `pairs`.
   result = initTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -337,9 +351,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -409,7 +423,16 @@ proc mget*[A, B](t: TableRef[A, B], key: A): var B {.deprecated.} =
   ## Use ```[]``` instead.
   t[][key]
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B = getOrDefault(t[], key)
+proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## default initialization value for type `B` is returned (e.g. 0 for any
+  ## integer type).
+  getOrDefault(t[], key)
+
+proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, `default`
+  ## is returned.
+  getOrDefault(t[], key, default)
 
 proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -430,10 +453,11 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc del*[A, B](t: TableRef[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## deletes `key` from hash table `t`. Does nothing if the key does not exist.
   t[].del(key)
 
 proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
@@ -560,8 +584,15 @@ proc mget*[A, B](t: var OrderedTable[A, B], key: A): var B {.deprecated.} =
   get(t, key)
 
 proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## default initialization value for type `B` is returned (e.g. 0 for any
+  ## integer type).
   getOrDefaultImpl(t, key)
 
+proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, `default`
+  ## is returned.
+  getOrDefaultImpl(t, key, default)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -604,6 +635,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -627,8 +659,7 @@ proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
   result.last = -1
   newSeq(result.data, initialSize)
 
-proc toOrderedTable*[A, B](pairs: openArray[(A,
-                           B)]): OrderedTable[A, B] =
+proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = initOrderedTable[A, B](rightSize(pairs.len))
   for key, val in items(pairs): result[key] = val
@@ -654,8 +685,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
     hs = nxts
   return true
 
-proc sort*[A, B](t: var OrderedTable[A, B],
-                 cmp: proc (x,y: (A, B)): int) =
+proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
@@ -745,7 +775,15 @@ proc mget*[A, B](t: OrderedTableRef[A, B], key: A): var B {.deprecated.} =
   result = t[][key]
 
 proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## default initialization value for type `B` is returned (e.g. 0 for any
+  ## integer type).
   getOrDefault(t[], key)
+
+proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, `default`
+  ## is returned.
+  getOrDefault(t[], key, default)
 
 proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
@@ -770,6 +808,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
@@ -798,8 +837,7 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
   elif isNil(t): result = false
   else: result = s[] == t[]
 
-proc sort*[A, B](t: OrderedTableRef[A, B],
-                 cmp: proc (x,y: (A, B)): int) =
+proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int) =
   ## sorts `t` according to `cmp`. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
@@ -807,7 +845,8 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) complexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity. Does nothing
+  ## if the key does not exist.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -826,7 +865,8 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) complexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.  Does nothing
+  ## if the key does not exist.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------
@@ -912,8 +952,16 @@ proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
   ctget(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A): int =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, 0 (the
+  ## default initialization value of `int`), is returned.
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
+
+proc getOrDefault*[A](t: CountTable[A], key: A, default: int): int =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## integer value of `default` is returned.
+  var index = rawGet(t, key)
+  result = if index >= 0: t.data[index].val else: default
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -951,30 +999,6 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     #t.data[h].key = key
     #t.data[h].val = val
 
-proc initCountTable*[A](initialSize=64): CountTable[A] =
-  ## creates a new count table that is empty.
-  ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
-
-proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
-  result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
-
-proc `$`*[A](t: CountTable[A]): string =
-  ## The `$` operator for count tables.
-  dollarImpl()
-
-proc `==`*[A](s, t: CountTable[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff both tables
-  ## contain the same keys with the same count. Insert order does not matter.
-  equalsImpl(s, t)
-
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = rawGet(t, key)
@@ -986,12 +1010,38 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
+proc initCountTable*[A](initialSize=64): CountTable[A] =
+  ## creates a new count table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  newSeq(result.data, initialSize)
+
+proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
+  result = initCountTable[A](rightSize(keys.len))
+  for key in items(keys): result.inc(key)
+
+proc `$`*[A](t: CountTable[A]): string =
+  ## The `$` operator for count tables.
+  dollarImpl()
+
+proc `==`*[A](s, t: CountTable[A]): bool =
+  ## The `==` operator for count tables. Returns ``true`` iff both tables
+  ## contain the same keys with the same count. Insert order does not matter.
+  equalsImpl(s, t)
+
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
-  var minIdx = 0
-  for h in 1..high(t.data):
-    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+  var minIdx = -1
+  for h in 0..high(t.data):
+    if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
+      minIdx = h
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
@@ -1067,7 +1117,14 @@ proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated.} =
   result = t[][key]
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A): int =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, 0 (the
+  ## default initialization value of `int`), is returned.
   result = t[].getOrDefault(key)
+
+proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
+  ## retrieves the value at ``t[key]`` iff `key` is in `t`. Otherwise, the
+  ## integer value of `default` is returned.
+  result = t[].getOrDefault(key, default)
 
 proc hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## returns true iff `key` is in the table `t`.
@@ -1082,6 +1139,10 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   assert val > 0
   t[][key] = val
 
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+  ## increments `t[key]` by `val`.
+  t[].inc(key, val)
+
 proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ## creates a new count table that is empty.
   ##
@@ -1092,9 +1153,10 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
   result = newCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc(key)
 
 proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
@@ -1107,10 +1169,6 @@ proc `==`*[A](s, t: CountTableRef[A]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: result = s[] == t[]
-
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
-  ## increments `t[key]` by `val`.
-  t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
@@ -1260,7 +1318,7 @@ when isMainModule:
     #lib/pure/collections/tables.nim(117, 21) template/generic instantiation from here
     #lib/pure/collections/tableimpl.nim(32, 27) Error: undeclared field: 'hcode
     doAssert 0 == t.getOrDefault(testKey)
-    t.inc(testKey,3)
+    t.inc(testKey, 3)
     doAssert 3 == t.getOrDefault(testKey)
 
   block:
@@ -1271,7 +1329,7 @@ when isMainModule:
     doAssert clearTable[42] == "asd"
     clearTable.clear()
     doAssert(not clearTable.hasKey(123123))
-    doAssert clearTable.getOrDefault(42) == nil
+    doAssert clearTable.getOrDefault(42) == ""
 
   block: #5482
     var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
@@ -1310,7 +1368,6 @@ when isMainModule:
     assert a == b
     assert a == c
 
-
   block: #6250
     let
       a = {3: 1}.toOrderedTable
@@ -1325,3 +1382,24 @@ when isMainModule:
     assert((a == b) == true)
     assert((b == a) == true)
 
+  block: # CountTable.smallest
+    let t = toCountTable([0, 0, 5, 5, 5])
+    doAssert t.smallest == (0, 2)
+
+  block:
+    var tp: Table[string, string] = initTable[string, string]()
+    doAssert "test1" == tp.getOrDefault("test1", "test1")
+    tp["test2"] = "test2"
+    doAssert "test2" == tp.getOrDefault("test2", "test1")
+    var tr: TableRef[string, string] = newTable[string, string]()
+    doAssert "test1" == tr.getOrDefault("test1", "test1")
+    tr["test2"] = "test2"
+    doAssert "test2" == tr.getOrDefault("test2", "test1")
+    var op: OrderedTable[string, string] = initOrderedTable[string, string]()
+    doAssert "test1" == op.getOrDefault("test1", "test1")
+    op["test2"] = "test2"
+    doAssert "test2" == op.getOrDefault("test2", "test1")
+    var orf: OrderedTableRef[string, string] = newOrderedTable[string, string]()
+    doAssert "test1" == orf.getOrDefault("test1", "test1")
+    orf["test2"] = "test2"
+    doAssert "test2" == orf.getOrDefault("test2", "test1")

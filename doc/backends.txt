@@ -20,10 +20,12 @@ to compile to C++, Objective-C or JavaScript. This document tries to
 concentrate in a single place all the backend and interfacing options.
 
 The Nim compiler supports mainly two backend families: the C, C++ and
-Objective-C targets and the JavaScript target. `The C like targets`_ creates
-source files which can be compiled into a library or a final executable. `The
-JavaScript target`_ can generate a ``.js`` file which you reference from an
-HTML file or create a `standalone nodejs program <http://nodejs.org>`_.
+Objective-C targets and the JavaScript target. `The C like targets
+<#backends-the-c-like-targets>`_ creates source files which can be compiled
+into a library or a final executable. `The JavaScript target
+<#backends-the-javascript-target>`_ can generate a ``.js`` file which you
+reference from an HTML file or create a `standalone nodejs program
+<http://nodejs.org>`_.
 
 On top of generating libraries or standalone applications, Nim offers
 bidirectional interfacing with the backend targets through generic and
@@ -63,7 +65,6 @@ The JavaScript target
 ---------------------
 
 Nim can also generate `JavaScript`:idx: code through the ``js`` command.
-However, the JavaScript code generator is experimental!
 
 Nim targets JavaScript 1.5 which is supported by any widely used browser.
 Since JavaScript does not have a portable means to include another module,
@@ -75,7 +76,7 @@ available. This includes:
 * manual memory management (``alloc``, etc.)
 * casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
 * file management
-* most modules of the Standard library
+* most modules of the standard library
 * proper 64 bit integer arithmetic
 * unsigned integer arithmetic
 
@@ -85,9 +86,8 @@ However, the modules `strutils <strutils.html>`_, `math <math.html>`_, and
 
 To compile a Nim module into a ``.js`` file use the ``js`` command; the
 default is a ``.js`` file that is supposed to be referenced in an ``.html``
-file. However, you can also run the code with `nodejs`:idx:, a `software
-platform for easily building fast, scalable network applications
-<http://nodejs.org>`_::
+file. However, you can also run the code with `nodejs`:idx:
+(`<http://nodejs.org>`_)::
 
   nim js -d:nodejs -r examples/hallo.nim
 
@@ -205,9 +205,10 @@ from the previous section):
 
 Compile the Nim code to JavaScript with ``nim js -o:calculator.js
 calculator.nim`` and open ``host.html`` in a browser. If the browser supports
-javascript, you should see the value ``10``. In JavaScript the `echo proc
-<system.html#echo>`_ will modify the HTML DOM and append the string. Use the
-`dom module <dom.html>`_ for specific DOM querying and modification procs.
+javascript, you should see the value ``10`` in the browser's console. Use the
+`dom module <dom.html>`_ for specific DOM querying and modification procs
+or take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
+develop browser based applications.
 
 
 Backend code calling Nim
@@ -327,8 +328,9 @@ Nimcache naming logic
 
 The `nimcache`:idx: directory is generated during compilation and will hold
 either temporary or final files depending on your backend target. The default
-name for the directory is ``nimcache`` but you can use the ``--nimcache``
-`compiler switch <nimc.html#command-line-switches>`_ to change it.
+name for the directory depends on the used backend and on your OS but you can
+use the ``--nimcache`` `compiler switch <nimc.html#command-line-switches>`_ to
+change it.
 
 Nimcache and C like targets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -25,30 +25,14 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
     discard c_sprintf(buf, "%p", x)
     return $buf
 
-proc `$`(x: uint64): string =
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. < half: swap(result[t], result[i-t-1])
-
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
-  add result, reprPointer(cast[pointer](s)) & "\""
-  for i in 0.. <len:
+  if len > 0:
+    add result, reprPointer(cast[pointer](s))
+  add result, "\""
+  for i in 0 .. pred(len):
     let c = s[i]
     case c
     of '"': add result, "\\\""
@@ -180,9 +164,10 @@ when not defined(useNimRtl):
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
-      add result, "nil"
+      add result, "[]"
       return
-    result.add(reprPointer(p) & "[")
+    result.add(reprPointer(p))
+    result.add '['
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
@@ -284,7 +269,7 @@ when not defined(useNimRtl):
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString:
       let sp = cast[ptr string](p)
-      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
+      reprStrAux(result, sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"

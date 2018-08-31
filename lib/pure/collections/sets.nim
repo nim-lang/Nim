@@ -11,7 +11,7 @@
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
-## <manual.html#set-type>`_. Sets allow you to store any value that can be
+## <manual.html#types-set-type>`_. Sets allow you to store any value that can be
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
@@ -46,7 +46,7 @@ template default[T](t: typedesc[T]): T =
   var v: T
   v
 
-proc clear*[A](s: var HashSet[A]) = 
+proc clear*[A](s: var HashSet[A]) =
   ## Clears the HashSet back to an empty state, without shrinking
   ## any of the existing storage. O(n) where n is the size of the hash bucket.
   s.counter = 0
@@ -74,7 +74,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of keys in `s`.
@@ -119,6 +119,13 @@ iterator items*[A](s: HashSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
+
+proc hash*[A](s: HashSet[A]): Hash =
+  ## hashing of HashSet
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    result = result xor s.data[h].hcode
+  result = !$result
 
 const
   growthFactor = 2
@@ -340,6 +347,18 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: discard exclImpl(s, item)
 
+proc pop*[A](s: var HashSet[A]): A =
+  ## Remove and return an arbitrary element from the set `s`.
+  ##
+  ## Raises KeyError if the set `s` is empty.
+  ##
+  for h in 0..high(s.data):
+    if isFilled(s.data[h].hcode):
+      result = s.data[h].key
+      excl(s, result)
+      return result
+  raise newException(KeyError, "set is empty")
+
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
   ##
@@ -406,7 +425,7 @@ template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
-    result.add($key)
+    result.addQuoted(key)
   result.add("}")
 
 proc `$`*[A](s: HashSet[A]): string =
@@ -610,7 +629,7 @@ type
 
 {.deprecated: [TOrderedSet: OrderedSet].}
 
-proc clear*[A](s: var OrderedSet[A]) = 
+proc clear*[A](s: var OrderedSet[A]) =
   ## Clears the OrderedSet back to an empty state, without shrinking
   ## any of the existing storage. O(n) where n is the size of the hash bucket.
   s.counter = 0
@@ -635,7 +654,7 @@ proc isValid*[A](s: OrderedSet[A]): bool =
   ##   proc saveTarotCards(cards: OrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of keys in `s`.
@@ -689,6 +708,13 @@ iterator items*[A](s: OrderedSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
+
+proc hash*[A](s: OrderedSet[A]): Hash =
+  ## hashing of OrderedSet
+  assert s.isValid, "The set needs to be initialized."
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
+  result = !$result
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   assert s.isValid, "The set needs to be initialized"
@@ -911,13 +937,13 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
   ## Equality for ordered sets.
   if s.counter != t.counter: return false
   var h = s.first
-  var g = s.first
+  var g = t.first
   var compared = 0
   while h >= 0 and g >= 0:
     var nxh = s.data[h].next
     var nxg = t.data[g].next
-    if isFilled(s.data[h].hcode) and isFilled(s.data[g].hcode):
-      if s.data[h].key == s.data[g].key:
+    if isFilled(s.data[h].hcode) and isFilled(t.data[g].hcode):
+      if s.data[h].key == t.data[g].key:
         inc compared
       else:
         return false
@@ -1119,6 +1145,22 @@ when isMainModule and not defined(release):
       var s = toOrderedSet([2, 3, 6, 7])
       assert s.missingOrExcl(4) == true
       assert s.missingOrExcl(6) == false
+
+    block orderedSetEquality:
+      type pair = tuple[a, b: int]
+
+      var aa = initOrderedSet[pair]()
+      var bb = initOrderedSet[pair]()
+
+      var x = (a:1,b:2)
+      var y = (a:3,b:4)
+
+      aa.incl(x)
+      aa.incl(y)
+
+      bb.incl(x)
+      bb.incl(y)
+      assert aa == bb
 
     when not defined(testing):
       echo "Micro tests run successfully."

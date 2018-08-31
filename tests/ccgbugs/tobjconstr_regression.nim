@@ -1,5 +1,5 @@
 discard """
-  output: "@[(username: user, role: admin, description: desc, email_addr: email), (username: user, role: admin, description: desc, email_addr: email)]"
+  output: '''@[(username: "user", role: "admin", description: "desc", email_addr: "email"), (username: "user", role: "admin", description: "desc", email_addr: "email")]'''
 """
 
 type

@@ -1,5 +1,5 @@
 type
-  Matrix*[M, N: static[int], T: SomeReal] = object
+  Matrix*[M, N: static[int], T: SomeFloat] = object
     data: ref array[N * M, T]
 
   Matrix64*[M, N: static[int]] = Matrix[M, N, float64]

@@ -1,100 +1,91 @@
-/* 
- * locale.h
- *
- * Functions and types for localization (ie. changing the appearance of
- * output based on the standards of a certain country).
- *
- * This file is part of the Mingw32 package.
- *
- * Contributors:
- *  Created by Colin Peters <colin@bird.fu.is.saga-u.ac.jp>
- *
- *  THIS SOFTWARE IS NOT COPYRIGHTED
- *
- *  This source code is offered for use in the public domain. You may
- *  use, modify or distribute it freely.
- *
- *  This code is distributed in the hope that it will be useful but
- *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
- *  DISCLAIMED. This includes but is not limited to warranties of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- * $Revision: 1.2 $
- * $Author: bellard $
- * $Date: 2005/04/17 13:14:29 $
- *
+/**
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is part of the w64 mingw-runtime package.
+ * No warranty is given; refer to the file DISCLAIMER within this package.
  */
+#ifndef _INC_LOCALE
+#define _INC_LOCALE
 
-#ifndef	_LOCALE_H_
-#define	_LOCALE_H_
-
-/* All the headers include this file. */
 #include <_mingw.h>
 
-/*
- * NOTE: I have tried to test this, but I am limited by my knowledge of
- *       locale issues. The structure does not bomb if you look at the
- *       values, and 'decimal_point' even seems to be correct. But the
- *       rest of the values are, by default, not particularly useful
- *       (read meaningless and not related to the international settings
- *       of the system).
- */
+#pragma pack(push,_CRT_PACKING)
 
-#define	LC_ALL		0
-#define LC_COLLATE	1
-#define LC_CTYPE	2
-#define	LC_MONETARY	3
-#define	LC_NUMERIC	4
-#define	LC_TIME		5
-#define	LC_MIN		LC_ALL
-#define	LC_MAX		LC_TIME
-
-#ifndef RC_INVOKED
-
-/*
- * The structure returned by 'localeconv'.
- */
-struct lconv
-{
-	char*	decimal_point;
-	char*	thousands_sep;
-	char*	grouping;
-	char*	int_curr_symbol;
-	char*	currency_symbol;
-	char*	mon_decimal_point;
-	char*	mon_thousands_sep;
-	char*	mon_grouping;
-	char*	positive_sign;
-	char*	negative_sign;
-	char	int_frac_digits;
-	char	frac_digits;
-	char	p_cs_precedes;
-	char	p_sep_by_space;
-	char	n_cs_precedes;
-	char	n_sep_by_space;
-	char	p_sign_posn;
-	char	n_sign_posn;
-};
-
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-char*		setlocale (int, const char*);
-struct lconv*	localeconv (void);
+#ifndef NULL
+#ifdef __cplusplus
+#define NULL 0
+#else
+#define NULL ((void *)0)
+#endif
+#endif
 
-#ifndef _WLOCALE_DEFINED  /* also declared in wchar.h */
-# define __need_wchar_t
-# include <stddef.h>
-  wchar_t* 	_wsetlocale(int, const wchar_t*);
-# define _WLOCALE_DEFINED
-#endif /* ndef _WLOCALE_DEFINED */
+#define LC_ALL 0
+#define LC_COLLATE 1
+#define LC_CTYPE 2
+#define LC_MONETARY 3
+#define LC_NUMERIC 4
+#define LC_TIME 5
 
-#ifdef	__cplusplus
+#define LC_MIN LC_ALL
+#define LC_MAX LC_TIME
+
+#ifndef _LCONV_DEFINED
+#define _LCONV_DEFINED
+  struct lconv {
+    char *decimal_point;
+    char *thousands_sep;
+    char *grouping;
+    char *int_curr_symbol;
+    char *currency_symbol;
+    char *mon_decimal_point;
+    char *mon_thousands_sep;
+    char *mon_grouping;
+    char *positive_sign;
+    char *negative_sign;
+    char int_frac_digits;
+    char frac_digits;
+    char p_cs_precedes;
+    char p_sep_by_space;
+    char n_cs_precedes;
+    char n_sep_by_space;
+    char p_sign_posn;
+    char n_sign_posn;
+  };
+#endif
+
+#ifndef _CONFIG_LOCALE_SWT
+#define _CONFIG_LOCALE_SWT
+
+#define _ENABLE_PER_THREAD_LOCALE 0x1
+#define _DISABLE_PER_THREAD_LOCALE 0x2
+#define _ENABLE_PER_THREAD_LOCALE_GLOBAL 0x10
+#define _DISABLE_PER_THREAD_LOCALE_GLOBAL 0x20
+#define _ENABLE_PER_THREAD_LOCALE_NEW 0x100
+#define _DISABLE_PER_THREAD_LOCALE_NEW 0x200
+
+#endif
+
+  int __cdecl _configthreadlocale(int _Flag);
+  char *__cdecl setlocale(int _Category,const char *_Locale);
+  _CRTIMP struct lconv *__cdecl localeconv(void);
+  _locale_t __cdecl _get_current_locale(void);
+  _locale_t __cdecl _create_locale(int _Category,const char *_Locale);
+  void __cdecl _free_locale(_locale_t _Locale);
+  _locale_t __cdecl __get_current_locale(void);
+  _locale_t __cdecl __create_locale(int _Category,const char *_Locale);
+  void __cdecl __free_locale(_locale_t _Locale);
+
+#ifndef _WLOCALE_DEFINED
+#define _WLOCALE_DEFINED
+  _CRTIMP wchar_t *__cdecl _wsetlocale(int _Category,const wchar_t *_Locale);
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* Not RC_INVOKED */
-
-#endif	/* Not _LOCALE_H_ */
-
+#pragma pack(pop)
+#endif

@@ -47,10 +47,22 @@ when not declared(c_fwrite):
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc c_fseek(f: File, offset: clong, whence: cint): cint {.
-  importc: "fseek", header: "<stdio.h>", tags: [].}
-proc c_ftell(f: File): clong {.
-  importc: "ftell", header: "<stdio.h>", tags: [].}
+when defined(windows):
+  when not defined(amd64):
+    proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+      importc: "fseek", header: "<stdio.h>", tags: [].}
+    proc c_ftell(f: File): int64 {.
+      importc: "ftell", header: "<stdio.h>", tags: [].}
+  else:
+    proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+      importc: "_fseeki64", header: "<stdio.h>", tags: [].}
+    proc c_ftell(f: File): int64 {.
+      importc: "_ftelli64", header: "<stdio.h>", tags: [].}
+else:
+  proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+    importc: "fseeko", header: "<stdio.h>", tags: [].}
+  proc c_ftell(f: File): int64 {.
+    importc: "ftello", header: "<stdio.h>", tags: [].}
 proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
@@ -131,19 +143,17 @@ proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
-  var sp: cint = 80
+
   # Use the currently reserved space for a first try
-  if line.string.isNil:
-    line = TaintedString(newStringOfCap(80))
-  else:
-    when not defined(nimscript):
-      sp = cint(cast[PGenericSeq](line.string).space)
+  var sp = line.string.len
+  if sp == 0:
+    sp = 80
     line.string.setLen(sp)
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    c_memset(addr line.string[pos], '\L'.ord, sp)
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
+    nimSetMem(addr line.string[pos], '\L'.ord, sp)
+    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
     if m != nil:
@@ -188,11 +198,11 @@ proc write(f: File, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
 proc write(f: File, r: float32) =
-  if c_fprintf(f, "%g", r) < 0: checkErr(f)
+  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
 proc write(f: File, r: BiggestFloat) =
-  if c_fprintf(f, "%g", r) < 0: checkErr(f)
+  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
 
-proc write(f: File, c: char) = discard c_putc(ord(c), f)
+proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
@@ -210,12 +220,12 @@ proc readAllBuffer(file: File): string =
       result.add(buffer)
       break
 
-proc rawFileSize(file: File): int =
+proc rawFileSize(file: File): int64 =
   # this does not raise an error opposed to `getFileSize`
   var oldPos = c_ftell(file)
   discard c_fseek(file, 0, 2) # seek the end of the file
   result = c_ftell(file)
-  discard c_fseek(file, clong(oldPos), 0)
+  discard c_fseek(file, oldPos, 0)
 
 proc endOfFile(f: File): bool =
   var c = c_fgetc(f)
@@ -223,7 +233,7 @@ proc endOfFile(f: File): bool =
   return c < 0'i32
   #result = c_feof(f) != 0
 
-proc readAllFile(file: File, len: int): string =
+proc readAllFile(file: File, len: int64): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(len)
@@ -363,7 +373,7 @@ proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
   result = f != nil
 
 proc setFilePos(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) =
-  if c_fseek(f, clong(pos), cint(relativeTo)) != 0:
+  if c_fseek(f, pos, cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
 proc getFilePos(f: File): int64 =
@@ -405,17 +415,26 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stdin, nil, IONBF, 0)
 
 when declared(stdout):
+  when defined(windows) and compileOption("threads"):
+    var echoLock: SysLock
+    initSysLock echoLock
+
   proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
-    when not defined(windows):
+    # flockfile deadlocks some versions of Android 5.x.x
+    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       proc flockfile(f: File) {.importc, noDecl.}
       proc funlockfile(f: File) {.importc, noDecl.}
       flockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      acquireSys echoLock
     for s in args:
       discard c_fwrite(s.cstring, s.len, 1, stdout)
     const linefeed = "\n" # can be 1 or more chars
     discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
     discard c_fflush(stdout)
-    when not defined(windows):
+    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       funlockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      releaseSys echoLock
 
 {.pop.}

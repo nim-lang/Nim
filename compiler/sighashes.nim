@@ -9,10 +9,10 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, md5
+import ast, md5, tables, ropes
 from hashes import Hash
 from astalgo import debug
-from types import typeToString, preferDesc
+import types
 from strutils import startsWith, contains
 
 when false:
@@ -87,6 +87,7 @@ type
     CoProc
     CoType
     CoOwnerSig
+    CoIgnoreRange
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -136,7 +137,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0.. <n.len: hashTree(c, n.sons[i])
+    for i in 0..<n.len: hashTree(c, n.sons[i])
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
@@ -147,30 +148,36 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
-    return
   of tyDistinct:
     if CoType in flags:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
-    return
-  of tyAlias, tyGenericInst, tyUserTypeClasses:
+  of tyGenericInst:
+    if sfInfixCall in t.base.sym.flags:
+      # This is an imported C++ generic type.
+      # We cannot trust the `lastSon` to hold a properly populated and unique
+      # value for each instantiation, so we hash the generic parameters here:
+      let normalizedType = t.skipGenericAlias
+      for i in 0 .. normalizedType.len - 2:
+        c.hashType t.sons[i], flags
+    else:
+      c.hashType t.lastSon, flags
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.lastSon, flags
-    return
-  else:
-    discard
-  c &= char(t.kind)
-  case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
+    c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
       assert t.typeInst.kind == tyGenericInst
-      for i in countup(1, sonsLen(t.typeInst) - 2):
+      for i in countup(0, sonsLen(t.typeInst) - 2):
         c.hashType t.typeInst.sons[i], flags
+      return
+    c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
@@ -182,43 +189,53 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if sfAnon in t.sym.flags:
+      if {sfAnon, sfGenSym} * t.sym.flags != {}:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
         # mild hack to prevent endless recursions (makes nimforum compile again):
-        excl t.sym.flags, sfAnon
+        let oldFlags = t.sym.flags
+        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
         let n = t.n
         for i in 0 ..< n.len:
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
-        incl t.sym.flags, sfAnon
+        t.sym.flags = oldFlags
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
       hashType c, t.sons[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
+    c &= char(t.kind)
     c.hashType t.lastSon, flags
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
+    c &= char(t.kind)
     c.hashTree(t.n)
   of tyTuple:
+    c &= char(t.kind)
     if t.n != nil and CoType notin flags:
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
         c &= t.n.sons[i].sym.name.s
         c &= ':'
-        c.hashType(t.sons[i], flags)
+        c.hashType(t.sons[i], flags+{CoIgnoreRange})
         c &= ','
     else:
-      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags
-  of tyRange, tyStatic:
-    #if CoType notin flags:
+      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags+{CoIgnoreRange}
+  of tyRange:
+    if CoIgnoreRange notin flags:
+      c &= char(t.kind)
+      c.hashTree(t.n)
+    c.hashType(t.sons[0], flags)
+  of tyStatic:
+    c &= char(t.kind)
     c.hashTree(t.n)
     c.hashType(t.sons[0], flags)
   of tyProc:
+    c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
     if CoProc in flags and t.n != nil:
       let params = t.n
@@ -230,14 +247,18 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c &= ','
       c.hashType(t.sons[0], flags)
     else:
-      for i in 0.. <t.len: c.hashType(t.sons[i], flags)
+      for i in 0..<t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
     if CoType notin flags:
       if tfNoSideEffect in t.flags: c &= ".noSideEffect"
       if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
+  of tyArray:
+    c &= char(t.kind)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags-{CoIgnoreRange})
   else:
-    for i in 0.. <t.len: c.hashType(t.sons[i], flags)
+    c &= char(t.kind)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
 when defined(debugSigHashes):
@@ -311,3 +332,32 @@ proc hashOwner*(s: PSym): SigHash =
   c &= m.name.s
 
   md5Final c, result.Md5Digest
+
+proc idOrSig*(s: PSym, currentModule: string,
+              sigCollisions: var CountTable[SigHash]): Rope =
+  if s.kind in routineKinds and s.typ != nil:
+    # signatures for exported routines are reliable enough to
+    # produce a unique name and this means produced C++ is more stable wrt
+    # Nim changes:
+    let sig = hashProc(s)
+    result = rope($sig)
+    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
+    let counter = sigCollisions.getOrDefault(sig)
+    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
+    #  echo "counter ", counter, " ", s.id
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    # this minor hack is necessary to make tests/collections/thashes compile.
+    # The inlined hash function's original module is ambiguous so we end up
+    # generating duplicate names otherwise:
+    if s.typ.callConv == ccInline:
+      result.add rope(currentModule)
+    sigCollisions.inc(sig)
+  else:
+    let sig = hashNonProc(s)
+    result = rope($sig)
+    let counter = sigCollisions.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    sigCollisions.inc(sig)
+

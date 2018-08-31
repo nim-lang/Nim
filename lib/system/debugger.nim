@@ -127,7 +127,7 @@ proc fileMatches(c, bp: cstring): bool =
 
 proc canonFilename*(filename: cstring): cstring =
   ## returns 'nil' if the filename cannot be found.
-  for i in 0 .. <dbgFilenameLen:
+  for i in 0 .. dbgFilenameLen-1:
     result = dbgFilenames[i]
     if fileMatches(result, filename): return result
   result = nil
@@ -261,7 +261,7 @@ proc genericHash(dest: pointer, mt: PNimType): int =
 proc dbgRegisterWatchpoint(address: pointer, name: cstring,
                            typ: PNimType) {.compilerproc.} =
   let L = watchPointsLen
-  for i in 0.. <L:
+  for i in 0 .. pred(L):
     if watchPoints[i].name == name:
       # address may have changed:
       watchPoints[i].address = address
@@ -288,7 +288,7 @@ var
 
 proc checkWatchpoints =
   let L = watchPointsLen
-  for i in 0.. <L:
+  for i in 0 .. pred(L):
     let newHash = genericHash(watchPoints[i].address, watchPoints[i].typ)
     if newHash != watchPoints[i].oldValue:
       dbgWatchpointHook(watchPoints[i].name)

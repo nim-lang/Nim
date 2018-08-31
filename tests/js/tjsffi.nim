@@ -64,7 +64,7 @@ block:
   proc test(): bool =
     let obj = newJsObject()
     obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == "Result is: 6"
+    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
   echo test()
 
 # Test JsObject []()

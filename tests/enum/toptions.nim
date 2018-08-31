@@ -4,7 +4,7 @@ type
   TOption = enum
     optNone, optForceFullMake, optBoehmGC, optRefcGC, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
-    optWarns, optHints, optDeadCodeElim, optListCmd, optCompileOnly,
+    optWarns, optHints, optListCmd, optCompileOnly,
     optSafeCode,             # only allow safe code
     optStyleCheck, optOptimizeSpeed, optOptimizeSize, optGenDynLib,
     optGenGuiApp, optStackTrace

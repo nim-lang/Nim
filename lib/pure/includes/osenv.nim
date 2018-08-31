@@ -94,7 +94,7 @@ proc findEnvVar(key: string): int =
     if startsWith(environment[i], temp): return i
   return -1
 
-proc getEnv*(key: string): TaintedString {.tags: [ReadEnvEffect].} =
+proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
   ## If the variable does not exist, "" is returned. To distinguish
@@ -108,7 +108,7 @@ proc getEnv*(key: string): TaintedString {.tags: [ReadEnvEffect].} =
       return TaintedString(substr(environment[i], find(environment[i], '=')+1))
     else:
       var env = c_getenv(key)
-      if env == nil: return TaintedString("")
+      if env == nil: return TaintedString(default)
       result = TaintedString($env)
 
 proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =

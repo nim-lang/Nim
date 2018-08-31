@@ -21,5 +21,6 @@ import subexes
 import tables
 import unicode
 import uri
+import macros
 
 echo "Nimscript imports are successful."

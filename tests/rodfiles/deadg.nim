@@ -1,6 +1,3 @@
-
-{.deadCodeElim: on.}
-
 proc p1*(x, y: int): int =
   result = x + y
 

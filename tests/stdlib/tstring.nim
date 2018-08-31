@@ -50,6 +50,30 @@ proc test_string_slice() =
   s[2..0] = numbers
   doAssert s == "ab1234567890cdefghijklmnopqrstuvwxyz"
 
+  # bug #6223
+  doAssertRaises(IndexError):
+    discard s[0..999]
+
   echo("OK")
 
+proc test_string_cmp() =
+  let world = "hello\0world"
+  let earth = "hello\0earth"
+  let short = "hello\0"
+  let hello = "hello"
+  let goodbye = "goodbye"
+
+  doAssert world == world
+  doAssert world != earth
+  doAssert world != short
+  doAssert world != hello
+  doAssert world != goodbye
+
+  doAssert cmp(world, world) == 0
+  doAssert cmp(world, earth) > 0
+  doAssert cmp(world, short) > 0
+  doAssert cmp(world, hello) > 0
+  doAssert cmp(world, goodbye) > 0
+
 test_string_slice()
+test_string_cmp()

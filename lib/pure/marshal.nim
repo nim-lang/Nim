@@ -98,8 +98,7 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akProc, akPointer, akCString: s.write($a.getPointer.ptrToInt)
   of akString:
     var x = getString(a)
-    if isNil(x): s.write("null")
-    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    if x.validateUtf8() == -1: s.write(escapeJson(x))
     else:
       s.write("[")
       var i = 0
@@ -270,6 +269,8 @@ proc store*[T](s: Stream, data: T) =
 
 proc `$$`*[T](x: T): string =
   ## returns a string representation of `x`.
+  ##
+  ## Note: to serialize `x` to JSON use $(%x) from the ``json`` module
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -283,7 +284,7 @@ proc to*[T](data: string): T =
   loadAny(newStringStream(data), toAny(result), tab)
 
 when not defined(testing) and isMainModule:
-  template testit(x: expr) = echo($$to[type(x)]($$x))
+  template testit(x: untyped) = echo($$to[type(x)]($$x))
 
   var x: array[0..4, array[0..4, string]] = [
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
@@ -309,7 +310,6 @@ when not defined(testing) and isMainModule:
     Node = object
       next, prev: PNode
       data: string
-  {.deprecated: [TNode: Node].}
 
   proc buildList(): PNode =
     new(result)
