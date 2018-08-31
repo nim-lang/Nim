@@ -201,7 +201,7 @@ type
     vspace*: int
     width*: int
 
-  Style = ref StyleObj
+  Style* = ref StyleObj
   StyleObj {.importc.} = object of RootObj
     background*: cstring
     backgroundAttachment*: cstring
