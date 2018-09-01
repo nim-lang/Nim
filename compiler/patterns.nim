@@ -43,6 +43,7 @@ proc canonKind(n: PNode): TNodeKind =
   of nkCallKinds: result = nkCall
   of nkStrLit..nkTripleStrLit: result = nkStrLit
   of nkFastAsgn: result = nkAsgn
+  of nkArgList: result = nkBracket
   else: discard
 
 proc sameKinds(a, b: PNode): bool {.inline.} =
@@ -116,8 +117,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       for i in 1..sonsLen(n)-1:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
       if rpn: arglist.add(n.sons[0])
-    elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
-      let n = n.sons[1]
+    elif n.kind == nkArgList:
       for i in 0..<n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
     elif checkTypes(c, p.sons[2].sym, n):
@@ -184,12 +184,8 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
         if plen <= sonsLen(n):
           for i in countup(0, plen - 2):
             if not matches(c, p.sons[i], n.sons[i]): return
-          if plen == sonsLen(n) and lastSon(n).kind == nkHiddenStdConv and
-              lastSon(n).sons[1].kind == nkBracket:
-            # unpack varargs:
-            let n = lastSon(n).sons[1]
-            arglist = newNodeI(nkArgList, n.info, n.len)
-            for i in 0..<n.len: arglist.sons[i] = n.sons[i]
+          if plen == sonsLen(n) and lastSon(n).kind == nkArgList:
+            arglist = lastSon(n)
           else:
             arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
             # f(1, 2, 3)

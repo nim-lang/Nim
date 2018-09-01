@@ -1294,7 +1294,7 @@ proc genCall(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   let n = n[1].skipConv
-  internalAssert p.config, n.kind == nkBracket
+  internalAssert p.config, n.kind == nkArgList
   useMagic(p, "toJSStr") # Used in rawEcho
   useMagic(p, "rawEcho")
   add(r.res, "rawEcho(")
@@ -2095,7 +2095,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genCall(p, n, r)
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
-  of nkBracket: genArrayConstr(p, n, r)
+  of nkBracket, nkArgList: genArrayConstr(p, n, r)
   of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
   of nkObjConstr: genObjConstr(p, n, r)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, r)

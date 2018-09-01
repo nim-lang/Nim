@@ -127,22 +127,22 @@ inspectUntyped bindSym("overloadedTemplate"), """bindSym("overloadedTemplate")""
 
 inspectSymbol normalProc, """
 proc normalProc(x: int) =
-  echo [x]
+  echo x
 
 """
 
 inspectSymbol bindSym("normalProc"), """
 proc normalProc(x: int) =
-  echo [x]
+  echo x
 
 """
 
 inspectSymbol overloadedProc, """
 proc overloadedProc(x: int) =
-  echo [x]
+  echo x
 
 proc overloadedProc(x: string) =
-  echo [x]
+  echo x
 
 proc overloadedProc[T](x: T) =
   echo x
@@ -153,7 +153,7 @@ proc overloadedProc[T](x: T) =
 
 inspectSymbol overloadedProc[float], """
 proc overloadedProc(x: T) =
-  echo [x]
+  echo x
 
 """
   # As expected, when we select a specific generic, the
@@ -161,10 +161,10 @@ proc overloadedProc(x: T) =
 
 inspectSymbol bindSym("overloadedProc"), """
 proc overloadedProc(x: int) =
-  echo [x]
+  echo x
 
 proc overloadedProc(x: string) =
-  echo [x]
+  echo x
 
 proc overloadedProc[T](x: T) =
   echo x

@@ -995,7 +995,7 @@ proc genAndOr(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
-  internalAssert p.config, n.kind == nkBracket
+  internalAssert p.config, n.kind == nkArgList
   if p.config.target.targetOS == osGenode:
     # echo directly to the Genode LOG session
     var args: Rope = nil
@@ -2305,6 +2305,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       putIntoDest(p, d, n, genSetNode(p, n))
     else:
       genSetConstr(p, n, d)
+  of nkArgList:
+    if n.len == 0:
+      putIntoDest(p, d, n, rope"NIM_NIL")
+    else:
+      genArrayConstr(p, n, d)
   of nkBracket:
     if isDeepConstExpr(n) and n.len != 0:
       exprComplexConst(p, n, d)

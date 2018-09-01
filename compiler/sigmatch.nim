@@ -2188,6 +2188,12 @@ proc arrayConstr(c: PContext, info: TLineInfo): PType =
   rawAddSon(result, makeRangeType(c, 0, -1, info))
   rawAddSon(result, newTypeS(tyEmpty, c)) # needs an empty basetype!
 
+proc arrayConstr(c: PContext, typ: PType, info: TLineInfo): PType =
+  result = newTypeS(tyArray, c)
+  rawAddSon(result, makeRangeType(c, 0, -1, info))
+  addSonSkipIntLit(result, skipTypes(typ,
+      {tyGenericInst, tyVar, tyLent, tyOrdinal}))
+
 proc incrIndexType(t: PType) =
   assert t.kind == tyArray
   inc t.sons[0].n.sons[1].intVal
@@ -2232,19 +2238,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
 
-      if n.sons[a].kind == nkHiddenStdConv:
-        doAssert n.sons[a].sons[0].kind == nkEmpty and
-                 n.sons[a].sons[1].kind == nkArgList and
-                 n.sons[a].sons[1].len == 0
-        # Steal the container and pass it along
-        setSon(m.call, formal.position + 1, n.sons[a].sons[1])
+      if container.isNil:
+        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
+        setSon(m.call, formal.position + 1, container)
       else:
-        if container.isNil:
-          container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1, container)
-        else:
-          incrIndexType(container.typ)
-        addSon(container, n.sons[a])
+        incrIndexType(container.typ)
+      addSon(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
@@ -2278,7 +2277,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch:
         #assert(container == nil)
-        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, arg))
         addSon(container, arg)
         setSon(m.call, formal.position + 1, container)
         if f != formalLen - 1: container = nil
@@ -2350,13 +2349,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             assert formal.typ.kind == tyVarargs
             #assert(container == nil)
             if container.isNil:
-              container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+              container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, arg))
               container.typ.flags.incl tfVarargs
             else:
               incrIndexType(container.typ)
             addSon(container, arg)
-            setSon(m.call, formal.position + 1,
-                   implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+            setSon(m.call, formal.position + 1, container)
             #if f != formalLen - 1: container = nil
 
             # pick the formal from the end, so that 'x, y, varargs, z' works:
@@ -2410,10 +2408,8 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         if formal.typ.kind == tyVarargs:
           # For consistency with what happens in `matchesAux` select the
           # container node kind accordingly
-          let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
-          var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
-          setSon(m.call, formal.position + 1,
-                 implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
+          var container = newNodeIT(nkArgList, n.info, arrayConstr(c, formal.typ, n.info))
+          setSon(m.call, formal.position + 1, container)
         else:
           # no default value
           m.state = csNoMatch

@@ -1,6 +1,5 @@
 discard """
-  output: '''3030
-true
+  output: '''true
 3'''
 """
 
@@ -8,7 +7,13 @@ template arithOps: untyped = (`+` | `-` | `*`)
 template testOr{ (arithOps{f})(a, b) }(a, b, f: untyped): untyped = f(a+1, b)
 
 let xx = 10
-echo 10*xx
+let yy = 10*xx
+
+# If you came here wondering why this assertion is failing keep in mind that the
+# number of expansions done here is capped by the hlo pass and, at the time of
+# writing, this limit is 300. The exact value may change as the AST changes so
+# don't worry, you didn't fuck up this test :)
+doAssert yy > 3000
 
 template t{x = (~x){y} and (~x){z}}(x, y, z: bool): typed =
   x = y

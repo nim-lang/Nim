@@ -1089,7 +1089,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     unused(c, n, dest)
     let n = n[1].skipConv
     let x = c.getTempRange(n.len, slotTempUnknown)
-    internalAssert c.config, n.kind == nkBracket
+    internalAssert c.config, n.kind == nkArgList
     for i in 0..<n.len:
       var r: TRegister = x+i
       c.gen(n.sons[i], r)
@@ -1933,7 +1933,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n.sons[0], dest)
-  of nkBracket: genArrayConstr(c, n, dest)
+  of nkBracket, nkArgList: genArrayConstr(c, n, dest)
   of nkCurly: genSetConstr(c, n, dest)
   of nkObjConstr: genObjConstr(c, n, dest)
   of nkPar, nkClosure, nkTupleConstr: genTupleConstr(c, n, dest)
