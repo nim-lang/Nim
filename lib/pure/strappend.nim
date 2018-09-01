@@ -20,12 +20,13 @@ macro varArgsLen*(args: varargs[untyped]): untyped = newIntLitNode(args.len)
 
 template strAdd*(args: varargs[untyped]): untyped =
   ## like ``echo`` but returns a string
+  # should use `varargs[typed]` pending https://github.com/nim-lang/Nim/issues/8834
   runnableExamples:
     doAssert strAdd() == ""
     doAssert strAdd(1+2, "foo") == "3foo"
   block:
     var ret=""
-    when varArgsLen(args)>0:
+    when varArgsLen(args)>0: # PENDING https://github.com/nim-lang/Nim/issues/8833
       strAddFrom(ret, args)
     ret
 
