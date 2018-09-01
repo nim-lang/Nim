@@ -297,16 +297,16 @@ proc install(args: string) =
 
 proc web(args: string) =
   nimexec("js tools/dochack/dochack.nim")
-  nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-       [args, VersionAsString])
+  nimexec("cc -r tools/nimweb.nim --nimCompiler=\"$#\" $# web/website.ini --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
 
 proc website(args: string) =
-  nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-       [args, VersionAsString])
+  nimexec("cc -r tools/nimweb.nim --nimCompiler=\"$#\" $# --website web/website.ini --putenv:nimversion=$#" %
+       [findNim(), args, VersionAsString])
 
 proc pdf(args="") =
-  exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-       [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
+  exec("$# cc -r tools/nimweb.nim --nimCompiler=\"$#\" $# --pdf web/website.ini --putenv:nimversion=$#" %
+       [findNim(), findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
