@@ -740,6 +740,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       conf.cppCustomNamespace = "Nim"
     defineSymbol(conf.symbols, "cppCompileToNamespace", conf.cppCustomNamespace)
+  of "language":
+    # used by doc/doc2 commands to translate docstrings
+    expectArg(conf, switch, arg, pass, info)
+    conf.translationLanguage = normalize(arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

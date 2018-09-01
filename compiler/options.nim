@@ -178,6 +178,7 @@ type
     evalExpr*: string          # expression for idetools --eval
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    translationLanguage*: string
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string

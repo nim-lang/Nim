@@ -21,6 +21,7 @@ type
     authors, projectName, projectTitle, logo, infile, ticker: string
     vars: StringTableRef
     nimCompiler: string
+    language: string
     nimArgs: string
     gitURL: string
     docHTMLOutput: string
@@ -89,6 +90,7 @@ Options:
                       web/upload and doc/html
   --nimCompiler       overrides nim compiler; default = bin/nim
   --var:name=value    set the value of a variable
+  --language          set the translation language (default: no translation)
   --website           only build the website, not the full documentation
   --pdf               build the PDF version of the documentation
   --json2             build JSON of the documentation
@@ -159,6 +161,9 @@ proc parseCmdLine(c: var TConfigData) =
         c.docHTMLOutput = val / "docs"
       of "nimcompiler":
         c.nimCompiler = val
+      of "language":
+        c.language = val
+        c.nimArgs.add("--language:" & val & " ")
       of "parallelbuild":
         try:
           let num = parseInt(val)

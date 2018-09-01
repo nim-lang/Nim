@@ -65,6 +65,30 @@ proc commandDoc2(graph: ModuleGraph; json: bool) =
   compileProject(graph)
   finishDoc2Pass(graph.config.projectName)
 
+proc parsePotFile(fn: string): Table[string, string] =
+  result = initTable[string, string]()
+  if not existsFile(fn):
+    return
+  var location = ""
+  var msgid = ""
+  for line in fn.lines:
+    if line.startsWith("#: "):
+      if location != "":
+        result[location & msgid] = ""
+        echo repr location & msgid
+      location = line[3..^1]
+      msgid = ""
+    elif line.startsWith("msgid "):
+      msgid = line[7..^2]
+
+proc genTranslation(graph: ModuleGraph, out_fn: string) =
+  ## Generate/overwrite .dot file used for translations
+  #var t = parsePotFile(out_fn)
+  graph.config.errorMax = 0 #high(int)  # do not stop after first error
+  #semanticPasses(graph)
+  registerPass(graph, docgen2PotPass)
+  compileProject(graph)
+
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   extccomp.initVars(conf)

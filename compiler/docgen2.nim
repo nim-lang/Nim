@@ -45,6 +45,10 @@ proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutputJson(g.doc, useWarning)
 
+proc closePot(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
+  closeImpl:
+    writeOutputPot(g.doc, toFilename(graph.config, FileIndex g.module.position), ".pot", useWarning)
+
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
@@ -57,6 +61,11 @@ proc processNodeJson(c: PPassContext, n: PNode): PNode =
   if shouldProcess(g):
     generateJson(g.doc, n)
 
+proc processNodeExtractPot(c: PPassContext, n: PNode): PNode =
+  result = n
+  var g = PGen(c)
+  generatePotEntry(g.doc, n)
+
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
@@ -65,11 +74,17 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
       graph.cache, graph.config)
   d.hasToc = true
   g.doc = d
+  d.translations = loadTranslationData(graph.config)
   result = g
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
 const docgen2JsonPass* = makePass(open = myOpen, process = processNodeJson,
                                   close = closeJson)
+const docgen2PotPass* = makePass(
+  open = myOpen,
+  process = processNodeExtractPot,
+  close = closePot
+)
 
 proc finishDoc2Pass*(project: string) =
   discard

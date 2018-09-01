@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
-  pathutils
+  pathutils, tables
 
 const
   exportSection = skTemp
@@ -40,6 +40,7 @@ type
                     # already. See bug #3655
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
+    translations*: Table[string, string]
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -571,6 +572,67 @@ proc docstringSummary(rstText: string): string =
     result.delete(pos, last)
     result.add("…")
 
+proc loadTranslationData*(conf: ConfigRef): Table[string, string] =
+  ## Load translation data from po/nimdoc.<language>.po
+  # Empty strings are not stored
+  result = initTable[string, string]()
+  if conf.translationLanguage == "":
+    return
+  let po_fn = "po/nimdoc.$#.po" % conf.translationLanguage
+  rawMessage(conf, hintProcessing, "Loading translation file " & po_fn)
+  var msgid = ""
+  var msgstr = ""
+  for l in lines(po_fn):
+    if l.startsWith("#"):
+      continue
+    elif l.startsWith("msgid \""):
+      if l.endsWith('"'):
+        # msgid is on one line only
+        msgid = l[7..^2]
+      else:
+        msgid = l[7..^1]
+    elif l.startsWith("msgstr \""):
+      if not l.endsWith('"'):
+        msgstr = l[8..^1]
+      else:
+        # msgstr is on one line only
+        msgstr = l[8..^2]
+        if msgid != "" and msgstr != "":
+          result[msgid] = msgstr
+        msgid = ""
+        msgstr = ""
+
+    elif msgid.len > 0:
+      if msgstr.len == 0:
+        # another line that belongs to msgid
+        if not l.endsWith('"'):
+          msgstr.add l
+        else:
+          msgstr.add l[0..^2]  # last line in msgid
+
+      else:
+        # another line that belongs to msgstr
+        if not l.endsWith('"'):
+          msgstr.add l
+        else:
+          # last line in msgstr - store msgid and msgstr
+          msgstr.add l[0..^2]
+          if msgstr != "":
+            result[msgid] = msgstr
+          msgid = ""
+          msgstr = ""
+
+  rawMessage(conf, hintProcessing, "Loaded $# translations" % $len(result))
+
+proc translate(d: PDoc, comm: var Rope) =
+  ## Translate/localize comments
+  if comm.isNil or d.conf.translationLanguage == "" or d.translations.len == 0:
+    return
+  if comm.data != "":
+    let t = d.translations.getOrDefault(comm.data)
+    if t != "":
+      comm.data = t
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(d, nameNode): return
   let
@@ -582,6 +644,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   getAllRunnableExamples(d, n, comm)
+  translate(d, comm)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
@@ -592,6 +655,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
+  # Render the HTML hyperlink.
+  # e.g. <span class="Keyword">proc</span> <span class="Identifier">helloWorld</span>
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms})
 
@@ -607,6 +672,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrIdRope = symbolOrId.rope
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
 
+  # add link to source repository
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
@@ -770,6 +836,20 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
 
 proc add(d: PDoc; j: JsonNode) =
   if j != nil: d.jArray.add j
+
+proc generatePotEntry*(d: PDoc, n: PNode) =
+  ## Extracts comments from `PNode` into `PDoc` jArray
+  ## Used to generate .pot files for translation
+  case n.kind
+  of nkCommentStmt:
+    if n.comment.len > 0:
+      d.add %{ "orig": %d.filename, "comment": %n.comment.strip, "line": %n.info.line.int }
+  of nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef:
+    let comm = $genRecComment(d, n)
+    if comm.len > 0:
+      d.add %{ "orig": %d.filename, "comment": %comm, "line": %n.info.line.int}
+  else:
+    discard
 
 proc generateJson*(d: PDoc, n: PNode) =
   case n.kind
@@ -948,10 +1028,33 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     else:
       discard "fixme: error report"
 
+proc writeOutputPot*(d: PDoc, filename, outExt: string,
+                      useWarning = false) =
+  ## Write .pot file using contents from `PDoc.jArray`
+  var content = ""
+  for i in d.jArray:
+    # a comment describing the location of the string
+    content.add "#: " & i["orig"].getStr() & ":" & $i["line"].getInt()  & "\n"
+    # the string to be translated
+    content.add "msgid \"" & i["comment"].getStr() & "\"\n"
+    # empty translation
+    content.add "msgstr \"\"\n\n"
+
+  # TODO: allow configuring path
+  #let fn = "po" / getOutFile2(d.conf, splitFile(filename).name, outExt, "po")
+  createDir("po")
+  const fn = "po/nimdoc.pot"
+  rawMessage(d.conf, hintProcessing, "Appending to translation file " & fn)
+  var f = open(fn, fmAppend)
+  f.write(content)
+  f.close()
+
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+  ## used by nim doc0
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
+  d.translations = loadTranslationData(conf)
   d.hasToc = true
   generateDoc(d, ast, ast)
   writeOutput(d)
