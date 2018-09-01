@@ -1,7 +1,7 @@
 import std/macros
 
 macro strAddFrom*(src: var string, args: varargs[typed]): untyped =
-  ## like ``echo`` but returns a string
+  ## appends stringified ``args`` to ``src``
   runnableExamples:
     var s = ""
     s.strAddFrom()
@@ -15,25 +15,19 @@ macro strAddFrom*(src: var string, args: varargs[typed]): untyped =
       `src`.add $`ai`
   result.add newBlockStmt(myBlock)
 
-macro strAdd*(args: varargs[typed]): untyped =
+# TODO: consider moving to `macros.nim`
+macro varArgsLen*(args: varargs[untyped]): untyped = newIntLitNode(args.len)
+
+template strAdd*(args: varargs[untyped]): untyped =
   ## like ``echo`` but returns a string
   runnableExamples:
     doAssert strAdd() == ""
     doAssert strAdd(1+2, "foo") == "3foo"
-
-  var myBlock = newStmtList()
-  var ret = genSym(nskVar, "ret")
-  myBlock.add newVarStmt(ret, newStrLitNode(""))
-
-  let call = newCall(bindSym"strAddFrom")
-  call.add ret
-  for i in 0 ..< args.len:
-    call.add args[i]
-  myBlock.add call
-  myBlock.add ret
-
-  result = newStmtList()
-  result.add newBlockStmt(myBlock)
+  block:
+    var ret=""
+    when varArgsLen(args)>0:
+      strAddFrom(ret, args)
+    ret
 
 when isMainModule:
   ## PENDING https://github.com/nim-lang/Nim/issues/7280
