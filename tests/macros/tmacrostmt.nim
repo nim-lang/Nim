@@ -70,8 +70,14 @@ proc test_cond_stmtlist(x, y: int): int =
     result = x
 
 
+#------------------------------------
+# bugs #8397
+proc test_forloop(x: int): int =
+  for j in 0..<x:
+    result.inc j
+
 repr_and_parse(one_if_proc)
 repr_and_parse(test_block)
 repr_and_parse(test_cond_stmtlist)
-
+repr_and_parse(test_forloop)
 
