@@ -31,7 +31,7 @@ type
     isPureRst: bool
     conf*: ConfigRef
     cache*: IdentCache
-    runnableExamples*: PNode
+    exampleCounter: int
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -285,29 +285,26 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 
-proc testExamples*(d: PDoc) =
-  if d.runnableExamples == nil or d.conf.errorCounter > 0: return
+proc testExample(d: PDoc; ex: PNode) =
+  if d.conf.errorCounter > 0: return
   let outputDir = d.conf.getNimcacheDir / "runnableExamples"
   createDir(outputDir)
-  let inp = toFullPath(d.conf, d.runnableExamples.info)
-  let outp = outputDir / extractFilename(inp.changeFileExt"" & "_examples.nim")
-  let nimcache = outp.changeFileExt"" & "_nimcache"
-  renderModule(d.runnableExamples, inp, outp, conf = d.conf)
+  inc d.exampleCounter
+  let outp = outputDir / extractFilename(d.filename.changeFileExt"" &
+      "_examples" & $d.exampleCounter & ".nim")
+  #let nimcache = outp.changeFileExt"" & "_nimcache"
+  renderModule(ex, d.filename, outp, conf = d.conf)
   let backend = if isDefined(d.conf, "js"): "js"
                 elif isDefined(d.conf, "cpp"): "cpp"
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
-                     " --nimcache:" & nimcache & " -r " & outp) != 0:
+                    " --nimcache:" & outputDir & " -r " & outp) != 0:
     quit "[Examples] failed: see " & outp
   else:
     # keep generated source file `outp` to allow inspection.
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp])
     removeFile(outp.changeFileExt(ExeExt))
-    try:
-      removeDir(nimcache)
-    except OSError:
-      discard
 
 proc extractImports(n: PNode; result: PNode) =
   if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -317,16 +314,15 @@ proc extractImports(n: PNode; result: PNode) =
   for i in 0..<n.safeLen: extractImports(n[i], result)
 
 proc prepareExamples(d: PDoc; n: PNode) =
-  let inp = toFullPath(d.conf, n.info)
-  if d.runnableExamples == nil:
-    d.runnableExamples = newTree(nkStmtList,
-      newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
-    d.runnableExamples.info = n.info
+  var runnableExamples = newTree(nkStmtList,
+      newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
+  runnableExamples.info = n.info
   let imports = newTree(nkStmtList)
   var savedLastSon = copyTree n.lastSon
   extractImports(savedLastSon, imports)
-  for imp in imports: d.runnableExamples.add imp
-  d.runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
+  for imp in imports: runnableExamples.add imp
+  runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
+  testExample(d, runnableExamples)
 
 proc isRunnableExample(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
@@ -873,7 +869,6 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   generateDoc(d, ast)
   writeOutput(d, conf.projectFull, HtmlExt)
   generateIndex(d)
-  testExamples(d)
 
 proc commandRstAux(cache: IdentCache, conf: ConfigRef; filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
@@ -908,7 +903,6 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef; filename, outExt: string)
   d.modDesc = rope(modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
-  testExamples(d)
 
 proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
   commandRstAux(cache, conf, conf.projectFull, HtmlExt)
@@ -932,7 +926,6 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
     let filename = getOutFile(conf, conf.projectFull, JsonExt)
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename)
-  testExamples(d)
 
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
