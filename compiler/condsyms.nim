@@ -75,9 +75,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoZeroTerminator")
   defineSymbol("nimNotNil")
   defineSymbol("nimVmExportFixed")
-<<<<<<< HEAD
   defineSymbol("nimHasSymOwnerInMacro")
-=======
   defineSymbol("nimNewRuntime")
   defineSymbol("nimIncrSeqV3")
   defineSymbol("nimAshr")
@@ -92,4 +90,3 @@ proc initDefines*(symbols: StringTableRef) =
     defineSymbol("nimHasWarning" & s)
   for s in HintsToStr:
     defineSymbol("nimHasHint" & s)
->>>>>>> devel
