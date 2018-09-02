@@ -804,7 +804,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
     if not isImportedException(typ, c.config):
       if typ.kind != tyRef or typ.lastSon.kind != tyObject:
         localError(c.config, n.info, errExprCannotBeRaised)
-      if not isException(typ.lastSon):
+      if typ.len > 0 and not isException(typ.lastSon):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception",
                           [typeToString(typ)])
 
