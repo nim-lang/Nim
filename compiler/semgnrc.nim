@@ -215,7 +215,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkMinSonsLen(n, 1, c.config)
     let fn = n.sons[0]
     var s = qualifiedLookUp(c, fn, {})
-    if  s == nil and
+    if s == nil and
         {withinMixin, withinConcept}*flags == {} and
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(c, fn).id notin ctx.toMixin:
@@ -225,7 +225,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles}
+      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles, mRunnableExamples}
       let sc = symChoice(c, fn, s, if s.isMixedIn: scForceOpen else: scOpen)
       case s.kind
       of skMacro:
