@@ -80,11 +80,6 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
-proc useStringh(m: BModule) =
-  if includesStringh notin m.flags:
-    incl m.flags, includesStringh
-    m.includeHeader("<string.h>")
-
 proc useHeader(m: BModule, sym: PSym) =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
@@ -235,21 +230,30 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc rdLoc(a: TLoc): Rope =
+  # 'read' location (deref if indirect)
+  result = a.r
+  if lfIndirect in a.flags: result = "(*$1)" % [result]
+
 proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
+proc lenExpr(p: BProc; a: TLoc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = rdLoc(a) & ".len"
+  else:
+    result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
+
 proc dataField(p: BProc): Rope =
-  result = rope"->data"
+  if p.config.selectedGc == gcDestructors:
+    result = rope".p->data"
+  else:
+    result = rope"->data"
 
 include ccgliterals
 include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
-
-proc rdLoc(a: TLoc): Rope =
-  # 'read' location (deref if indirect)
-  result = a.r
-  if lfIndirect in a.flags: result = "(*$1)" % [result]
 
 proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r
@@ -320,10 +324,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
-      useStringh(p.module)
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
               addrLoc(p.config, loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
@@ -331,16 +334,17 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if not isComplexValueType(typ):
+  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
+  elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
-      # don't use memset for temporary values for performance if we can
+      # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isImportedCppType(typ):
-        useStringh(p.module)
-        linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 addrLoc(p.config, loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
@@ -671,6 +675,7 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef linux\L")
   add(m.s[cfsHeaders], "#undef mips\L")
   add(m.s[cfsHeaders], "#undef near\L")
+  add(m.s[cfsHeaders], "#undef far\L")
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 
@@ -700,9 +705,10 @@ proc containsResult(n: PNode): bool =
     for i in 0..<n.safeLen:
       if containsResult(n[i]): return true
 
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
+                  declarativeDefs
+
 proc easyResultAsgn(n: PNode): PNode =
-  const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
-                    declarativeDefs
   case n.kind
   of nkStmtList, nkStmtListExpr:
     var i = 0
@@ -717,6 +723,105 @@ proc easyResultAsgn(n: PNode): PNode =
       result = easyResultAsgn(n[0])
       if result != nil: incl n.flags, nfPreventCg
   else: discard
+
+type
+  InitResultEnum = enum Unknown, InitSkippable, InitRequired
+
+proc allPathsAsgnResult(n: PNode): InitResultEnum =
+  # Exceptions coming from calls don't have not be considered here:
+  #
+  # proc bar(): string = raise newException(...)
+  #
+  # proc foo(): string =
+  #   # optimized out: 'reset(result)'
+  #   result = bar()
+  #
+  # try:
+  #   a = foo()
+  # except:
+  #   echo "a was not written to"
+  #
+  template allPathsInBranch(it) =
+    let a = allPathsAsgnResult(it)
+    case a
+    of InitRequired: return InitRequired
+    of InitSkippable: discard
+    of Unknown:
+      # sticky, but can be overwritten by InitRequired:
+      result = Unknown
+
+  result = Unknown
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    for it in n:
+      result = allPathsAsgnResult(it)
+      if result != Unknown: return result
+  of nkAsgn, nkFastAsgn:
+    if n[0].kind == nkSym and n[0].sym.kind == skResult:
+      if not containsResult(n[1]): result = InitSkippable
+      else: result = InitRequired
+    elif containsResult(n):
+      result = InitRequired
+  of nkReturnStmt:
+    if n.len > 0:
+      result = allPathsAsgnResult(n[0])
+  of nkIfStmt, nkIfExpr:
+    var exhaustive = false
+    result = InitSkippable
+    for it in n:
+      # Every condition must not use 'result':
+      if it.len == 2 and containsResult(it[0]):
+        return InitRequired
+      if it.len == 1: exhaustive = true
+      allPathsInBranch(it.lastSon)
+    # if the 'if' statement is not exhaustive and yet it touched 'result'
+    # in some way, say Unknown.
+    if not exhaustive: result = Unknown
+  of nkCaseStmt:
+    if containsResult(n[0]): return InitRequired
+    result = InitSkippable
+    var exhaustive = skipTypes(n[0].typ,
+        abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
+    for i in 1..<n.len:
+      let it = n[i]
+      allPathsInBranch(it.lastSon)
+      if it.kind == nkElse: exhaustive = true
+    if not exhaustive: result = Unknown
+  of nkWhileStmt:
+    # some dubious code can assign the result in the 'while'
+    # condition and that would be fine. Everything else isn't:
+    result = allPathsAsgnResult(n[0])
+    if result == Unknown:
+      result = allPathsAsgnResult(n[1])
+      # we cannot assume that the 'while' loop is really executed at least once:
+      if result == InitSkippable: result = Unknown
+  of harmless:
+    result = Unknown
+  of nkGotoState, nkBreakState:
+    # give up for now.
+    result = InitRequired
+  of nkSym:
+    # some path reads from 'result' before it was written to!
+    if n.sym.kind == skResult: result = InitRequired
+  of nkTryStmt:
+    # We need to watch out for the following problem:
+    # try:
+    #   result = stuffThatRaises()
+    # except:
+    #   discard "result was not set"
+    #
+    # So ... even if the assignment to 'result' is the very first
+    # assignment this is not good enough! The only pattern we allow for
+    # is 'finally: result = x'
+    result = InitSkippable
+    for it in n:
+      if it.kind == nkFinally:
+        result = allPathsAsgnResult(it.lastSon)
+      else:
+        allPathsInBranch(it.lastSon)
+  else:
+    for i in 0..<safeLen(n):
+      allPathsInBranch(n[i])
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
@@ -744,7 +849,16 @@ proc genProcAux(m: BModule, prc: PSym) =
     else:
       fillResult(p.config, resNode)
       assignParam(p, res)
-      if sfNoInit notin prc.flags: resetLoc(p, res.loc)
+      # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
+      # to 'unsureAsgn(result, x)'
+      # Sketch why this is correct: If 'result' points to a stack location
+      # the 'unsureAsgn' is a nop. If it points to a global variable the
+      # global is either 'nil' or points to valid memory and so the RC operation
+      # succeeds without touching not-initialized memory.
+      if sfNoInit in prc.flags: discard
+      elif allPathsAsgnResult(prc.getBody) == InitSkippable: discard
+      else:
+        resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
@@ -1142,12 +1256,29 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
+  # Give this small function its own scope
+  addf(prc, "{$N", [])
+  block:
+    # Keep a bogus frame in case the code needs one
+    add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
+
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.preInitProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
+
+    add(prc, genSectionStart(cpsInit, m.config))
+    add(prc, m.preInitProc.s(cpsInit))
+    add(prc, genSectionEnd(cpsInit, m.config))
+
+    add(prc, genSectionStart(cpsStmts, m.config))
+    add(prc, m.preInitProc.s(cpsStmts))
+    add(prc, genSectionEnd(cpsStmts, m.config))
+  addf(prc, "}$N", [])
+
   add(prc, initGCFrame(m.initProc))
 
   add(prc, genSectionStart(cpsLocals, m.config))
-  add(prc, m.preInitProc.s(cpsLocals))
   add(prc, m.initProc.s(cpsLocals))
-  add(prc, m.postInitProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals, m.config))
 
   if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
@@ -1161,16 +1292,13 @@ proc genInitCode(m: BModule) =
       add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit, m.config))
-  add(prc, m.preInitProc.s(cpsInit))
   add(prc, m.initProc.s(cpsInit))
-  add(prc, m.postInitProc.s(cpsInit))
   add(prc, genSectionEnd(cpsInit, m.config))
 
   add(prc, genSectionStart(cpsStmts, m.config))
-  add(prc, m.preInitProc.s(cpsStmts))
   add(prc, m.initProc.s(cpsStmts))
-  add(prc, m.postInitProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts, m.config))
+
   if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
   add(prc, deinitGCFrame(m.initProc))
@@ -1216,11 +1344,6 @@ proc newPreInitProc(m: BModule): BProc =
   # little hack so that unique temporaries are generated:
   result.labels = 100_000
 
-proc newPostInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 200_000
-
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
@@ -1242,7 +1365,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
-  result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1253,7 +1375,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-    excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
                 else: ""
   open(result.ndi, ndiName, g.config)
@@ -1271,7 +1392,6 @@ proc resetModule*(m: BModule) =
   m.initProc = newProc(nil, m)
   m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
-  m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]

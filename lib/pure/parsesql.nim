@@ -593,7 +593,6 @@ proc len*(n: SqlNode): int =
 proc `[]`*(n: SqlNode; i: int): SqlNode = n.sons[i]
 
 proc add*(father, n: SqlNode) =
-  if isNil(father.sons): father.sons = @[]
   add(father.sons, n)
 
 proc getTok(p: var SqlParser) =

@@ -129,7 +129,7 @@ proc get*[T](self: Option[T]): T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise UnpackError(msg : "Can't obtain a value from a `none`")
+    raise UnpackError(msg: "Can't obtain a value from a `none`")
   self.val
 
 proc get*[T](self: Option[T], otherwise: T): T =
@@ -138,6 +138,13 @@ proc get*[T](self: Option[T], otherwise: T): T =
     self.val
   else:
     otherwise
+
+proc get*[T](self: var Option[T]): var T =
+  ## Returns contents of the Option. If it is none, then an exception is
+  ## thrown.
+  if self.isNone:
+    raise UnpackError(msg: "Can't obtain a value from a `none`")
+  return self.val
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
@@ -187,9 +194,11 @@ proc `$`*[T](self: Option[T]): string =
   ## If the option does not have a value, the result will be `None[T]` where `T` is the name of
   ## the type contained in the option.
   if self.isSome:
-    "Some(" & $self.val & ")"
+    result = "Some("
+    result.addQuoted self.val
+    result.add ")"
   else:
-    "None[" & T.name & "]"
+    result = "None[" & name(T) & "]"
 
 when isMainModule:
   import unittest, sequtils
@@ -240,7 +249,7 @@ when isMainModule:
       check(stringNone.get("Correct") == "Correct")
 
     test "$":
-      check($(some("Correct")) == "Some(Correct)")
+      check($(some("Correct")) == "Some(\"Correct\")")
       check($(stringNone) == "None[string]")
 
     test "map with a void result":
@@ -298,3 +307,17 @@ when isMainModule:
     test "none[T]":
       check(none[int]().isNone)
       check(none(int) == none[int]())
+
+    test "$ on typed with .name":
+      type Named = object
+        name: string
+
+      let nobody = none(Named)
+      check($nobody == "None[Named]")
+
+    test "$ on type with name()":
+      type Person = object
+        myname: string
+
+      let noperson = none(Person)
+      check($noperson == "None[Person]")

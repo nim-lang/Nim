@@ -1,12 +1,12 @@
 discard """
-  output:""
+  output: ""
 """
 
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
-doAssert """["", "foo", "bar"]""" ==  $(["", "foo", "bar"])
-doAssert """["", "foo", "bar"]""" ==  $(@["", "foo", "bar"].toOpenArray(0, 2))
+doAssert """["", "foo", "bar"]""" == $(["", "foo", "bar"])
+doAssert """["", "foo", "bar"]""" == $(@["", "foo", "bar"].toOpenArray(0, 2))
 
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}
@@ -24,10 +24,10 @@ doAssert "nan" == $(0.0/0.0)
 # nil tests
 # maybe a bit inconsistent in types
 var x: seq[string]
-doAssert "nil" == $(x)
+doAssert "@[]" == $(x)
 
-var y: string = nil
-doAssert nil == $(y)
+var y: string
+doAssert "" == $(y)
 
 type
   Foo = object
@@ -54,7 +54,7 @@ doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '
 doAssert $cstring(unsafeAddr arr) == "Hello World!"
 
 proc takes(c: cstring) =
-  doAssert c == ""
+  doAssert c == cstring""
 
 proc testm() =
   var x: string
@@ -69,13 +69,13 @@ var yy: string
 doAssert xx == @[]
 doAssert yy == ""
 
-proc bar(arg: cstring): void =
+proc bar(arg: cstring) =
   doAssert arg[0] == '\0'
 
-proc baz(arg: openarray[char]): void =
+proc baz(arg: openarray[char]) =
   doAssert arg.len == 0
 
-proc stringCompare(): void =
+proc stringCompare() =
   var a,b,c,d,e,f,g: string
   a.add 'a'
   doAssert a == "a"
@@ -90,21 +90,20 @@ proc stringCompare(): void =
 
   doAssert e == ""
   doAssert "" == e
-  doAssert nil == e
-  doAssert e == nil
   doAssert f == g
   doAssert "" == ""
-  doAssert "" == nil
-  doAssert nil == ""
 
   g.setLen(10)
   doAssert g == "\0\0\0\0\0\0\0\0\0\0"
   doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
 
   var nilstring: string
-  bar(nilstring)
+  #bar(nilstring)
   baz(nilstring)
 
 stringCompare()
+var nilstring: string
+bar(nilstring)
+
 static:
   stringCompare()

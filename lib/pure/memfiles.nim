@@ -322,8 +322,7 @@ type MemSlice* = object  ## represent slice of a MemFile for iteration over deli
 
 proc `==`*(x, y: MemSlice): bool =
   ## Compare a pair of MemSlice for strict equality.
-  proc memcmp(a, b: pointer, n:int):int {.importc: "memcmp",header: "string.h".}
-  result = (x.size == y.size and memcmp(x.data, y.data, x.size) == 0)
+  result = (x.size == y.size and equalMem(x.data, y.data, x.size))
 
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.

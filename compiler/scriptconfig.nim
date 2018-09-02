@@ -45,7 +45,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
-        errorMsg = nil
+        errorMsg = ""
         try:
           body
         except OSError:
@@ -159,8 +159,11 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  registerPass(graph, semPass)
-  registerPass(graph, evalPass)
+  var registeredPasses {.global.} = false
+  if not registeredPasses:
+    registerPass(graph, semPass)
+    registerPass(graph, evalPass)
+    registeredPasses = true
 
   conf.searchPaths.add(conf.libpath)
 
@@ -168,7 +171,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName, graph)
 
-  graph.compileSystemModule()
+  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # ensure we load 'system.nim' again for the real non-config stuff!

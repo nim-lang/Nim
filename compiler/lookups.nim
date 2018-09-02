@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, wordrecg, idgen, nimfix.prettybase, lineinfos, strutils
+  renderer, wordrecg, idgen, nimfix/prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -161,7 +161,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
-    if sfForward in s.flags and s.kind != skType:
+    if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
@@ -244,7 +244,7 @@ else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var err = "ambiguous identifier: '" & s.name.s & "'"
   var ti: TIdentIter
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
@@ -259,10 +259,10 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
   var err = "undeclared identifier: '" & name & "'"
   if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency: "
+    err.add "\nThis might be caused by a recursive module dependency:\n"
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
-    c.recursiveDep = nil
+    c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
 proc lookUp*(c: PContext, n: PNode): PSym =

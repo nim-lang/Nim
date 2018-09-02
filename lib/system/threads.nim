@@ -162,10 +162,12 @@ elif defined(genode):
       mainTls
 
 else:
-  when not defined(macosx):
+  when not (defined(macosx) or defined(haiku)):
     {.passL: "-pthread".}
 
-  {.passC: "-pthread".}
+  when not defined(haiku):
+    {.passC: "-pthread".}
+
   const
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
@@ -391,8 +393,9 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  if threadDestructionHandlers.isNil:
-    threadDestructionHandlers = @[]
+  when not defined(nimNoNilSeqs):
+    if threadDestructionHandlers.isNil:
+      threadDestructionHandlers = @[]
   threadDestructionHandlers.add handler
 
 template afterThreadRuns() =
@@ -713,4 +716,14 @@ elif defined(solaris):
     ## get the ID of the currently running thread.
     if threadId == 0:
       threadId = int(thr_self())
+    result = threadId
+
+elif defined(haiku):
+  type thr_id {.importc: "thread_id", header: "<OS.h>".} = distinct int32
+  proc find_thread(name: cstring): thr_id {.importc, header: "<OS.h>".}
+
+  proc getThreadId*(): int =
+    ## get the ID of the currently running thread.
+    if threadId == 0:
+      threadId = int(find_thread(nil))
     result = threadId

@@ -22,14 +22,14 @@ template test(typename, default: untyped) =
     result = newSeq[typename]()
     result.add(default)
     result.setLen(3)
-    for i in 0 .. <2:
+    for i in 0 ..< 2:
       result[i] = default
 
   const constval = `abc typename`()
   doAssert(constval == `abc typename`())
 
   proc `arr typename`(): array[4, typename] =
-    for i in 0 .. <2:
+    for i in 0 ..< 2:
       result[i] = default
   const constarr = `arr typename`()
   doAssert(constarr == `arr typename`())

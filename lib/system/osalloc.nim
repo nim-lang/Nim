@@ -207,6 +207,9 @@ elif defined(posix):
     # some arches like mips and alpha use different values
     const MAP_ANONYMOUS = 0x20
     const MAP_PRIVATE = 0x02        # Changes are private
+  elif defined(haiku):
+    const MAP_ANONYMOUS = 0x08
+    const MAP_PRIVATE = 0x02
   else:
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint

@@ -143,7 +143,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       c.calleeScope = 1
   else:
     c.calleeScope = calleeScope
-  c.diagnostics = if diagnosticsEnabled: @[] else: nil
+  c.diagnostics = @[] # if diagnosticsEnabled: @[] else: nil
   c.diagnosticsEnabled = diagnosticsEnabled
   c.magic = c.calleeSym.magic
   initIdTable(c.bindings)
@@ -535,6 +535,12 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
+proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
+  if optNilSeqs in c.c.config.options:
+    result = allowsNil(f)
+  else:
+    result = isNone
+
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and (f.kind in {tyVar, tyLent} or a.kind in {tyVar, tyLent})
 
@@ -569,7 +575,10 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       # signature. There is a change that the target
       # type is already fully-determined, so we are
       # going to try resolve it
-      f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+      if c.call != nil:
+        f = generateTypeInstance(c.c, c.bindings, c.call.info, f)
+      else:
+        f = nil
       if f == nil or f.isMetaType:
         # no luck resolving the type, so the inference fails
         return isBothMetaConvertible
@@ -637,7 +646,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation = 
+  template checkRange[T](a0, a1, f0, f1: T): TTypeRelation =
     if a0 == f0 and a1 == f1:
       isEqual
     elif a0 >= f0 and a1 <= f1:
@@ -647,12 +656,12 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
       isConvertible
     else:
       isNone
-  
-  if f.isOrdinalType: 
+
+  if f.isOrdinalType:
     checkRange(firstOrd(nil, a), lastOrd(nil, a), firstOrd(nil, f), lastOrd(nil, f))
-  else: 
+  else:
     checkRange(firstFloat(a), lastFloat(a), firstFloat(f), lastFloat(f))
-    
+
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var
@@ -738,7 +747,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     diagnostics = @[]
     flags = {efExplain}
     m.c.config.writelnHook = proc (s: string) =
-      if errorPrefix == nil: errorPrefix = typeClass.sym.name.s & ":"
+      if errorPrefix.len == 0: errorPrefix = typeClass.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
@@ -854,6 +863,10 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     of mShrI:
       if lhs[2].kind == nkIntLit:
         return inferStaticParam(c, lhs[1], rhs shl lhs[2].intVal)
+
+    of mAshrI:
+      if lhs[2].kind == nkIntLit:
+        return inferStaticParam(c, lhs[1], ashr(rhs, lhs[2].intVal))
 
     of mUnaryMinusI:
       return inferStaticParam(c, lhs[1], -rhs)
@@ -980,7 +993,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
                                      not c.isNoCall and
                                      f.kind != tyTypeDesc and
-                                     tfExplicit notin aOrig.flags
+                                     tfExplicit notin aOrig.flags and
+                                     tfConceptMatchedTypeSym notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
           aOrig.skipTypes({tyTypeDesc})
@@ -1246,7 +1260,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
             result = isNone
         elif tfNotNil in f.flags and tfNotNil notin a.flags:
           result = isNilConversion
-    of tyNil: result = f.allowsNil
+    of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyOrdinal:
     if isOrdinalType(a):
@@ -1331,7 +1345,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         result = isNilConversion
       else:
         result = isEqual
-    of tyNil: result = f.allowsNil
+    of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyCString:
     # conversion from string to cstring is automatic:
@@ -1605,7 +1619,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if f.sonsLen == 0:
             result = isGeneric
           else:
-            internalAssert c.c.graph.config, a.sons != nil and a.sons.len > 0
+            internalAssert c.c.graph.config, a.len > 0
             c.typedescMatched = true
             var aa = a
             while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
@@ -1803,6 +1817,10 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
+    let constraint = c.converters[i].typ.n[1].sym.constraint
+    if not constraint.isNil and not matchNodeKinds(constraint, arg):
+      continue
+
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
       dest = generateTypeInstance(c, m.bindings, arg, dest)
@@ -1903,6 +1921,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
             result.typ.n = arg
             return
 
+  let oldInheritancePenalty = m.inheritancePenalty
   var r = typeRel(m, f, a)
 
   # This special typing rule for macros and templates is not documented
@@ -1984,7 +2003,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     if arg.typ == nil:
       result = arg
     elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
-         m.inheritancePenalty > 0:
+         m.inheritancePenalty > oldInheritancePenalty:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
@@ -2113,6 +2132,10 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
+  when false:
+    if m.calleeSym != nil and m.calleeSym.name.s == "[]":
+      echo m.c.config $ arg.info, " for ", m.calleeSym.name.s, " ", m.c.config $ m.calleeSym.info
+      writeMatches(m)
 
 proc setSon(father: PNode, at: int, son: PNode) =
   let oldLen = father.len
@@ -2208,12 +2231,20 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
-      if container.isNil:
-        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
-        setSon(m.call, formal.position + 1, container)
+
+      if n.sons[a].kind == nkHiddenStdConv:
+        doAssert n.sons[a].sons[0].kind == nkEmpty and
+                 n.sons[a].sons[1].kind == nkArgList and
+                 n.sons[a].sons[1].len == 0
+        # Steal the container and pass it along
+        setSon(m.call, formal.position + 1, n.sons[a].sons[1])
       else:
-        incrIndexType(container.typ)
-      addSon(container, n.sons[a])
+        if container.isNil:
+          container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
+          setSon(m.call, formal.position + 1, container)
+        else:
+          incrIndexType(container.typ)
+        addSon(container, n.sons[a])
     elif n.sons[a].kind == nkExprEqExpr:
       # named param
       # check if m.callee has such a param:
@@ -2361,6 +2392,11 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.magic in {mArrGet, mArrPut}:
     m.state = csMatch
     m.call = n
+    # Note the following doesn't work as it would produce ambiguities.
+    # Instead we patch system.nim, see bug #8049.
+    when false:
+      inc m.genericMatches
+      inc m.exactMatches
     return
   var marker = initIntSet()
   matchesAux(c, n, nOrig, m, marker)
@@ -2372,7 +2408,10 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
-          var container = newNodeIT(nkBracket, n.info, arrayConstr(c, n.info))
+          # For consistency with what happens in `matchesAux` select the
+          # container node kind accordingly
+          let cnKind = if formal.typ.isVarargsUntyped: nkArgList else: nkBracket
+          var container = newNodeIT(cnKind, n.info, arrayConstr(c, n.info))
           setSon(m.call, formal.position + 1,
                  implicitConv(nkHiddenStdConv, formal.typ, container, m, c))
         else:

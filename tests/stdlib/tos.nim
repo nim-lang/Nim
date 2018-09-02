@@ -145,7 +145,7 @@ else:
   echo getLastModificationTime("a") == tm
 removeFile("a")
 
-when defined(Linux) or defined(osx):
+when defined(posix):
 
   block normalizedPath:
     block relative:

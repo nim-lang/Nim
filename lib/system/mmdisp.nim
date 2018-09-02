@@ -175,8 +175,7 @@ when defined(boehmgc):
     dest[] = src
 
   type
-    MemRegion = object {.final, pure.}
-  {.deprecated: [TMemRegion: MemRegion].}
+    MemRegion = object
 
   proc alloc(r: var MemRegion, size: int): pointer =
     result = boehmAlloc(size)
@@ -215,60 +214,58 @@ elif defined(gogc):
     goNumSizeClasses = 67
 
   type
-    cbool {.importc: "_Bool", nodecl.} = bool
-
     goMStats_inner_struct = object
-        size: uint32
-        nmalloc: uint64
-        nfree: uint64
+      size: uint32
+      nmalloc: uint64
+      nfree: uint64
 
     goMStats = object
-        # General statistics.
-        alloc: uint64            # bytes allocated and still in use
-        total_alloc: uint64      # bytes allocated (even if freed)
-        sys: uint64              # bytes obtained from system (should be sum of xxx_sys below, no locking, approximate)
-        nlookup: uint64          # number of pointer lookups
-        nmalloc: uint64          # number of mallocs
-        nfree: uint64            # number of frees
-        # Statistics about malloc heap.
-        # protected by mheap.Lock
-        heap_alloc: uint64       # bytes allocated and still in use
-        heap_sys: uint64         # bytes obtained from system
-        heap_idle: uint64        # bytes in idle spans
-        heap_inuse: uint64       # bytes in non-idle spans
-        heap_released: uint64    # bytes released to the OS
-        heap_objects: uint64 # total number of allocated objects
-        # Statistics about allocation of low-level fixed-size structures.
-        # Protected by FixAlloc locks.
-        stacks_inuse: uint64     # bootstrap stacks
-        stacks_sys: uint64
-        mspan_inuse: uint64      # MSpan structures
-        mspan_sys: uint64
-        mcache_inuse: uint64     # MCache structures
-        mcache_sys: uint64
-        buckhash_sys: uint64     # profiling bucket hash table
-        gc_sys: uint64
-        other_sys: uint64
-        # Statistics about garbage collector.
-        # Protected by mheap or stopping the world during GC.
-        next_gc: uint64          # next GC (in heap_alloc time)
-        last_gc: uint64          # last GC (in absolute time)
-        pause_total_ns: uint64
-        pause_ns: array[256, uint64] # circular buffer of recent gc pause lengths
-        pause_end: array[256, uint64] # circular buffer of recent gc end times (nanoseconds since 1970)
-        numgc: uint32
-        numforcedgc: uint32      # number of user-forced GCs
-        gc_cpu_fraction: float64 # fraction of CPU time used by GC
-        enablegc: cbool
-        debuggc: cbool
-        # Statistics about allocation size classes.
-        by_size: array[goNumSizeClasses, goMStats_inner_struct]
-        # Statistics below here are not exported to MemStats directly.
-        tinyallocs: uint64       # number of tiny allocations that didn't cause actual allocation; not exported to go directly
-        gc_trigger: uint64
-        heap_live: uint64
-        heap_scan: uint64
-        heap_marked: uint64
+      # General statistics.
+      alloc: uint64            # bytes allocated and still in use
+      total_alloc: uint64      # bytes allocated (even if freed)
+      sys: uint64              # bytes obtained from system (should be sum of xxx_sys below, no locking, approximate)
+      nlookup: uint64          # number of pointer lookups
+      nmalloc: uint64          # number of mallocs
+      nfree: uint64            # number of frees
+      # Statistics about malloc heap.
+      # protected by mheap.Lock
+      heap_alloc: uint64       # bytes allocated and still in use
+      heap_sys: uint64         # bytes obtained from system
+      heap_idle: uint64        # bytes in idle spans
+      heap_inuse: uint64       # bytes in non-idle spans
+      heap_released: uint64    # bytes released to the OS
+      heap_objects: uint64 # total number of allocated objects
+      # Statistics about allocation of low-level fixed-size structures.
+      # Protected by FixAlloc locks.
+      stacks_inuse: uint64     # bootstrap stacks
+      stacks_sys: uint64
+      mspan_inuse: uint64      # MSpan structures
+      mspan_sys: uint64
+      mcache_inuse: uint64     # MCache structures
+      mcache_sys: uint64
+      buckhash_sys: uint64     # profiling bucket hash table
+      gc_sys: uint64
+      other_sys: uint64
+      # Statistics about garbage collector.
+      # Protected by mheap or stopping the world during GC.
+      next_gc: uint64          # next GC (in heap_alloc time)
+      last_gc: uint64          # last GC (in absolute time)
+      pause_total_ns: uint64
+      pause_ns: array[256, uint64] # circular buffer of recent gc pause lengths
+      pause_end: array[256, uint64] # circular buffer of recent gc end times (nanoseconds since 1970)
+      numgc: uint32
+      numforcedgc: uint32      # number of user-forced GCs
+      gc_cpu_fraction: float64 # fraction of CPU time used by GC
+      enablegc: bool
+      debuggc: bool
+      # Statistics about allocation size classes.
+      by_size: array[goNumSizeClasses, goMStats_inner_struct]
+      # Statistics below here are not exported to MemStats directly.
+      tinyallocs: uint64       # number of tiny allocations that didn't cause actual allocation; not exported to go directly
+      gc_trigger: uint64
+      heap_live: uint64
+      heap_scan: uint64
+      heap_marked: uint64
 
   proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl,
     importc: "runtime_ReadMemStats",
@@ -341,9 +338,12 @@ elif defined(gogc):
     proc getOccupiedSharedMem(): int = discard
 
   const goFlagNoZero: uint32 = 1 shl 3
-  proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.importc: "runtime_mallocgc", dynlib: goLib.}
+  proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.
+    importc: "runtime_mallocgc", dynlib: goLib.}
 
-  proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
+  proc goSetFinalizer(obj: pointer, f: pointer) {.
+    importc: "set_finalizer", codegenDecl: "$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3",
+    dynlib: goLib.}
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     result = goRuntimeMallocGC(roundup(size, sizeof(pointer)).uint, 0.uint, 0.uint32)
@@ -369,8 +369,7 @@ elif defined(gogc):
 
   proc growObj(old: pointer, newsize: int): pointer =
     # the Go GC doesn't have a realloc
-    var
-      oldsize = cast[PGenericSeq](old).len * cast[PGenericSeq](old).elemSize + GenericSeqSize
+    let oldsize = cast[PGenericSeq](old).len * cast[PGenericSeq](old).elemSize + GenericSeqSize
     result = goRuntimeMallocGC(roundup(newsize, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
     copyMem(result, old, oldsize)
     zeroMem(cast[pointer](cast[ByteAddress](result) +% oldsize), newsize - oldsize)
@@ -386,8 +385,7 @@ elif defined(gogc):
     dest[] = src
 
   type
-    MemRegion = object {.final, pure.}
-  {.deprecated: [TMemRegion: MemRegion].}
+    MemRegion = object
 
   proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
@@ -477,8 +475,7 @@ elif defined(nogc) and defined(useMalloc):
     dest[] = src
 
   type
-    MemRegion = object {.final, pure.}
-  {.deprecated: [TMemRegion: MemRegion].}
+    MemRegion = object
 
   proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
@@ -551,15 +548,13 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(gcMarkAndSweep):
+  elif defined(gcMarkAndSweep) or defined(gcDestructors):
     # XXX use 'compileOption' here
     include "system/gc_ms"
-  elif defined(gcGenerational):
-    include "system/gc"
   else:
     include "system/gc"
 
-when not declared(nimNewSeqOfCap):
+when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize

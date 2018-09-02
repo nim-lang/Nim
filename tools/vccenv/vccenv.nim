@@ -19,7 +19,7 @@ proc getVsComnToolsPath*(): TaintedString =
       return vsComnToolsEnvVal
 
 proc getVccEnv*(platform: string, windowsStoreSdk: bool = false,
-                sdkVersion: string = nil): StringTableRef =
+                sdkVersion: string = ""): StringTableRef =
   var comSpecCommandString = getEnv comSpecEnvKey
   if comSpecCommandString.len == 0:
     comSpecCommandString = "cmd"

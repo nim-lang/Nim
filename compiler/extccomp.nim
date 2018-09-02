@@ -92,7 +92,7 @@ compiler nintendoSwitchGCC:
     optSize: " -Os -ffast-math ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
-    compileTmpl: "-MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
@@ -434,10 +434,7 @@ proc completeCFilePath*(conf: ConfigRef; cfile: string, createSubDir: bool = tru
 
 proc toObjFile*(conf: ConfigRef; filename: string): string =
   # Object file for compilation
-  #if filename.endsWith(".cpp"):
-  #  result = changeFileExt(filename, "cpp." & CC[cCompiler].objExt)
-  #else:
-  result = changeFileExt(filename, CC[conf.cCompiler].objExt)
+  result = filename & "." & CC[conf.cCompiler].objExt
 
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
@@ -648,7 +645,7 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, "CC: " & name)
+      add(prettyCmds, if hintCC in conf.notes: "CC: " & name else: "")
     if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, "\n")
@@ -662,7 +659,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
         libname = getCurrentDir() / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", libname,
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
                                        "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
@@ -671,8 +668,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
     else: result = joinPath(conf.cCompilerpath, linkerExe)
-    let buildgui = if optGenGuiApp in conf.globalOptions: CC[conf.cCompiler].buildGui
-                   else: ""
+    let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
+                     CC[conf.cCompiler].buildGui
+                   else:
+                     ""
     var exefile, builddll: string
     if optGenDynLib in conf.globalOptions:
       exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
@@ -774,7 +773,8 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     when declared(echo):
-      echo prettyCmds[idx]
+      let cmd = prettyCmds[idx]
+      if cmd != "": echo cmd
   compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)

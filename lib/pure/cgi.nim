@@ -135,10 +135,9 @@ iterator decodeData*(allowedMethods: set[RequestMethod] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
-  var data = getEncodedData(allowedMethods)
-  if not isNil(data):
-    for key, value in decodeData(data):
-      yield (key, value)
+  let data = getEncodedData(allowedMethods)
+  for key, value in decodeData(data):
+    yield (key, value)
 
 proc readData*(allowedMethods: set[RequestMethod] =
                {methodNone, methodPost, methodGet}): StringTableRef =

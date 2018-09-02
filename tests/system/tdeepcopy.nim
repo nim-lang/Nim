@@ -65,7 +65,7 @@ proc main() =
     for val in table.values():
       if myObj2.isNil:
         myObj2 = val
-    assert(myObj == myObj2) # passes
+    doAssert(myObj == myObj2) # passes
 
     var tableCopy: ListTableRef[int, SomeObj]
     deepCopy(tableCopy, table)
@@ -80,7 +80,7 @@ proc main() =
     #echo cast[int](myObjCopy)
     #echo cast[int](myObjCopy2)
 
-    assert(myObjCopy == myObjCopy2) # fails
+    doAssert(myObjCopy == myObjCopy2) # fails
 
 
 type
@@ -88,7 +88,7 @@ type
     counter, max: int
     data: array[0..99, (pointer, pointer)]
 
-assert(sizeof(PtrTable) == 2*sizeof(int)+sizeof(pointer)*2*100)
+doAssert(sizeof(PtrTable) == 2*sizeof(int)+sizeof(pointer)*2*100)
 
 main()
 echo "ok"

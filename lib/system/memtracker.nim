@@ -73,12 +73,12 @@ proc addEntry(entry: LogEntry) =
       let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0.}](writeStackTrace)
       x()
       quit 1
-      if gLog.count > high(gLog.data):
-        gLogger(gLog)
-        gLog.count = 0
-      gLog.data[gLog.count] = entry
-      inc gLog.count
-      gLog.disabled = false
+      #if gLog.count > high(gLog.data):
+      #  gLogger(gLog)
+      #  gLog.count = 0
+      #gLog.data[gLog.count] = entry
+      #inc gLog.count
+      #gLog.disabled = false
 
 proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
   addEntry LogEntry(op: "write", address: address,

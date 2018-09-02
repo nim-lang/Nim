@@ -97,10 +97,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
 
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  if genericSym.procInstCache != nil:
-    for inst in genericSym.procInstCache:
-      if inst.compilesId == id and sameInstantiation(entry, inst[]):
-        return inst.sym
+  for inst in genericSym.procInstCache:
+    if inst.compilesId == id and sameInstantiation(entry, inst[]):
+      return inst.sym
 
 when false:
   proc `$`(x: PSym): string =
@@ -327,7 +326,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # no need to instantiate generic templates/macros:
   internalAssert c.config, fn.kind notin {skMacro, skTemplate}
   # generates an instantiated proc
-  if c.instCounter > 1000: internalError(c.config, fn.ast.info, "nesting too deep")
+  if c.instCounter > 50:
+    globalError(c.config, info, "generic instantiation too nested")
   inc(c.instCounter)
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)

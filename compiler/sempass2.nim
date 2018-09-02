@@ -323,13 +323,13 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
@@ -785,6 +785,15 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child.sons[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child.sons[i], last)
           notNilCheck(tracked, last, child.sons[i].typ)
+      elif child.kind == nkVarTuple and last.kind != nkEmpty:
+        for i in 0 .. child.len-2:
+          if child[i].kind == nkEmpty or
+            child[i].kind == nkSym and child[i].sym.name.s == "_":
+            continue
+          initVar(tracked, child[i], volatileCheck=false)
+          if last.kind in {nkPar, nkTupleConstr}:
+            addAsgnFact(tracked.guards, child[i], last[i])
+            notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkConstSection:

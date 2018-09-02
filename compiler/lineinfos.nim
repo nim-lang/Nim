@@ -37,7 +37,7 @@ type
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
-    hintSuccess, hintSuccessX,
+    hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
@@ -45,7 +45,8 @@ type
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintGlobalVar,
-    hintUser, hintUserRaw
+    hintUser, hintUserRaw,
+    hintExtendedContext
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -91,8 +92,9 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
-    hintSuccess: "operation successful",
+    hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -116,7 +118,9 @@ const
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
     hintUser: "$1",
-    hintUserRaw: "$1"]
+    hintUserRaw: "$1",
+    hintExtendedContext: "$1",
+  ]
 
 const
   WarningsToStr* = ["CannotOpenFile", "OctalEscape",
@@ -132,12 +136,14 @@ const
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "User"]
 
-  HintsToStr* = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr* = [
+    "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
-    "User", "UserRaw"]
+    "User", "UserRaw", "ExtendedContext",
+  ]
 
 const
   fatalMin* = errUnknown
@@ -157,30 +163,17 @@ type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
 
-const
-  NotesVerbosity*: array[0..3, TNoteKinds] = [
-    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
-                                         warnProveField, warnProveIndex,
-                                         warnGcUnsafe,
-                                         hintSuccessX, hintPath, hintConf,
-                                         hintProcessing, hintPattern,
-                                         hintDependency,
-                                         hintExecuting, hintLinking,
-                                         hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
-                                         hintGlobalVar, hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
-                                         warnProveField, warnProveIndex,
-                                         warnGcUnsafe,
-                                         hintPath,
-                                         hintDependency,
-                                         hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
-                                         hintGlobalVar, hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
-    {low(TNoteKind)..high(TNoteKind)}]
+proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
+  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+    warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
+    hintSource, hintGlobalVar, hintGCStats}
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+    hintProcessing, hintPattern, hintExecuting, hintLinking}
 
 const
+  NotesVerbosity* = computeNotesVerbosity()
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
   errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
 

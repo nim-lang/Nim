@@ -112,7 +112,8 @@ proc tree*(tag: string; attrs: openarray[(string, string)];
 proc text*(s: string): Element = cast[Element](document.createTextNode(s))
 proc text*(s: cstring): Element = cast[Element](document.createTextNode(s))
 proc add*(parent, kid: Element) =
-  if parent.nodeName == "TR" and (kid.nodeName == "TD" or kid.nodeName == "TH"):
+  if parent.nodeName == cstring"TR" and (
+      kid.nodeName == cstring"TD" or kid.nodeName == cstring"TH"):
     let k = document.createElement("TD")
     appendChild(k, kid)
     appendChild(parent, k)
@@ -260,7 +261,7 @@ proc table*(class="", kids: varargs[Element]): Element =
 proc tr*(kids: varargs[Element]): Element =
   result = tag("tr")
   for k in kids:
-    if k.nodeName == "TD" or k.nodeName == "TH":
+    if k.nodeName == cstring"TD" or k.nodeName == cstring"TH":
       result.add k
     else:
       result.add td(k)

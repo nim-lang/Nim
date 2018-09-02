@@ -89,7 +89,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       continue
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
-    if c.currentScope.symbols.counter == counterInitial or syms != nil:
+    if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
         #if sym.name.s == "==" and (n.info ?? "temp3"):
@@ -138,7 +138,9 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
-  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
@@ -164,8 +166,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
+  when false:
+    # we pretend procs are attached to the type of the first
+    # argument in order to remove plenty of candidates. This is
+    # comparable to what C# does and C# is doing fine.
+    var filterOnlyFirst = false
+    for err in errors:
+      if err.firstMismatch > 1:
+        filterOnlyFirst = true
+        break
+
   var candidates = ""
   for err in errors:
+    when false:
+      if filterOnlyFirst and err.firstMismatch == 1: continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -237,7 +251,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     if symx.kind in routineKinds:
       errors.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
-                                diagnostics: nil,
+                                diagnostics: @[],
                                 enabled: false))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
@@ -399,12 +413,11 @@ proc updateDefaultParams(call: PNode) =
   # the default params with `nfDefaultParam` and `instantiateProcType`
   # computes correctly the default values for each instantiation.
   let calleeParams = call[0].sym.typ.n
-  for i in countdown(call.len - 1, 1):
-    if nfDefaultParam notin call[i].flags:
-      return
-    let def = calleeParams[i].sym.ast
-    if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
-    call[i] = def
+  for i in 1..<call.len:
+    if nfDefaultParam in call[i].flags:
+      let def = calleeParams[i].sym.ast
+      if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      call[i] = def
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =
@@ -455,7 +468,7 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
-  var errors: CandidateErrors = if efExplain in flags: @[] else: nil
+  var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
@@ -505,7 +518,15 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
-    let arg = n[i].typ
+    var arg = n[i].typ
+    # try transforming the argument into a static one before feeding it into
+    # typeRel
+    if formal.kind == tyStatic and arg.kind != tyStatic:
+      let evaluated = c.semTryConstExpr(c, n[i])
+      if evaluated != nil:
+        arg = newTypeS(tyStatic, c)
+        arg.sons = @[evaluated.typ]
+        arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)

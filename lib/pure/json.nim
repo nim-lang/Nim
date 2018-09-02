@@ -256,7 +256,6 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
-  if s.isNil: return
   result.kind = JString
   result.str = s
 
@@ -546,10 +545,9 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJson*(s: string; result: var string) =
-  ## Converts a string `s` to its JSON representation.
+proc escapeJsonUnquoted*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to ``result``.
-  result.add("\"")
   for c in s:
     case c
     of '\L': result.add("\\n")
@@ -562,10 +560,21 @@ proc escapeJson*(s: string; result: var string) =
     of '\14'..'\31': result.add("\\u00" & $ord(c))
     of '\\': result.add("\\\\")
     else: result.add(c)
+
+proc escapeJsonUnquoted*(s: string): string =
+  ## Converts a string `s` to its JSON representation without quotes.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJsonUnquoted(s, result)
+
+proc escapeJson*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation with quotes.
+  ## Appends to ``result``.
+  result.add("\"")
+  escapeJsonUnquoted(s, result)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
-  ## Converts a string `s` to its JSON representation.
+  ## Converts a string `s` to its JSON representation with quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
@@ -1004,6 +1013,13 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
       exprColonExpr.add(ifStmt)
 
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
+
+proc detectDistinctType(typeSym: NimNode): NimNode =
+  let
+    typeImpl = getTypeImpl(typeSym)
+    typeInst = getTypeInst(typeSym)
+  result = if typeImpl.typeKind == ntyDistinct: typeImpl else: typeInst
+
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   ## Process a field from a ``RecList``.
   ##
@@ -1022,8 +1038,8 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     # Add the field value.
     # -> jsonNode["`field`"]
     let indexedJsonNode = createJsonIndexer(jsonNode, $field)
-    exprColonExpr.add(createConstructor(getTypeInst(field), indexedJsonNode))
-
+    let typeNode = detectDistinctType(field)
+    exprColonExpr.add(createConstructor(typeNode, indexedJsonNode))
   of nnkRecCase:
     # A "case" field that introduces a variant.
     let exprColonExpr = newNimNode(nnkExprColonExpr)
@@ -1137,7 +1153,7 @@ proc processType(typeName: NimNode, obj: NimNode,
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
+          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
         )
     of "biggestint":
       result = quote do:
@@ -1248,7 +1264,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let seqT = typeSym[1]
       let forLoopI = genSym(nskForVar, "i")
       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
-      let constructorNode = createConstructor(seqT, indexerNode)
+      let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
 
       # Create a statement expression containing a for loop.
       result = quote do:
@@ -1284,7 +1300,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
     # Handle all other types.
     let obj = getType(typeSym)
-    if obj.kind == nnkBracketExpr:
+    let typeNode = getTypeImpl(typeSym)
+    if typeNode.typeKind == ntyDistinct:
+      result = createConstructor(typeNode, jsonNode)
+    elif obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
@@ -1295,6 +1314,21 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     # TODO: The fact that `jsonNode` here works to give a good line number
     # is weird. Specifying typeSym should work but doesn't.
     error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
+  of nnkDistinctTy:
+    var baseType = typeSym
+    # solve nested distinct types
+    while baseType.typeKind == ntyDistinct:
+      let impl = getTypeImpl(baseType[0])
+      if impl.typeKind != ntyDistinct:
+        baseType = baseType[0]
+        break
+      baseType = impl
+    let ret = createConstructor(baseType, jsonNode)
+    let typeInst = getTypeInst(typeSym)
+    result = quote do:
+      (
+        `typeInst`(`ret`)
+      )
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1418,7 +1452,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  let typeNode = getTypeInst(T)
+  let typeNode = getTypeImpl(T)
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
@@ -1583,6 +1617,8 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
+  doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
   doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
 

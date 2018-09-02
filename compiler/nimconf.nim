@@ -175,9 +175,9 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
-    # BUGFIX: do not copy '['!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
+    add(val, '[')
     add(val, tokToStr(tok))
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
@@ -219,17 +219,17 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
-  result = joinPath(getConfigDir(), filename)
+proc getUserConfigPath*(filename: string): string =
+  result = joinPath([getConfigDir(), "nim", filename])
 
-proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
+proc getSystemConfigPath*(conf: ConfigRef; filename: string): string =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
   let p = getPrefixDir(conf)
   result = joinPath([p, "config", filename])
   when defined(unix):
-    if not existsFile(result): result = joinPath([p, "etc", filename])
-    if not existsFile(result): result = "/etc/" & filename
+    if not existsFile(result): result = joinPath([p, "etc/nim", filename])
+    if not existsFile(result): result = "/etc/nim/" & filename
 
 proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
@@ -241,7 +241,7 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
     if readConfigFile(configPath, cache, conf):
       add(configFiles, configPath)
 
-  if optSkipConfigFile notin conf.globalOptions:
+  if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
 
   if optSkipUserConfigFile notin conf.globalOptions:
@@ -263,4 +263,5 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
       readConfigFile(projectConfig)
 
   for filename in configFiles:
+    # delayed to here so that `hintConf` is honored
     rawMessage(conf, hintConf, filename)

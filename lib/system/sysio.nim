@@ -143,19 +143,17 @@ proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
-  var sp: cint = 80
+
   # Use the currently reserved space for a first try
-  if line.string.isNil:
-    line = TaintedString(newStringOfCap(80))
-  else:
-    when not defined(nimscript):
-      sp = cint(cast[PGenericSeq](line.string).space)
+  var sp = line.string.len
+  if sp == 0:
+    sp = 80
     line.string.setLen(sp)
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    c_memset(addr line.string[pos], '\L'.ord, sp)
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
+    nimSetMem(addr line.string[pos], '\L'.ord, sp)
+    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
     if m != nil:
@@ -417,12 +415,18 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stdin, nil, IONBF, 0)
 
 when declared(stdout):
+  when defined(windows) and compileOption("threads"):
+    var echoLock: SysLock
+    initSysLock echoLock
+
   proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
     # flockfile deadlocks some versions of Android 5.x.x
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       proc flockfile(f: File) {.importc, noDecl.}
       proc funlockfile(f: File) {.importc, noDecl.}
       flockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      acquireSys echoLock
     for s in args:
       discard c_fwrite(s.cstring, s.len, 1, stdout)
     const linefeed = "\n" # can be 1 or more chars
@@ -430,5 +434,7 @@ when declared(stdout):
     discard c_fflush(stdout)
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       funlockfile(stdout)
+    when defined(windows) and compileOption("threads"):
+      releaseSys echoLock
 
 {.pop.}
