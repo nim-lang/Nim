@@ -791,7 +791,7 @@ when defined(windows) or defined(nimdoc):
     GC_ref(ol)
 
     ol.data = CompletionData(fd: fd, cb:
-      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      proc(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) {.gcsafe.} =
         # we excluding our `fd` because cb(fd) can register own handler
         # for this `fd`
         p.handles.excl(fd)

@@ -390,11 +390,6 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
     cp.typ = t
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
-    echo "addClosureParam "
-    debug fn
-    echo cp.typ.typeToString[^1]
-    echo t.typeToString[^1]
-    echo "--------------"
     localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
@@ -779,7 +774,6 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
   case n.kind
   of nkSym:
     let s = n.sym
-    debug s
     if isInnerProc(s):
       if not c.processed.containsOrIncl(s.id):
 
