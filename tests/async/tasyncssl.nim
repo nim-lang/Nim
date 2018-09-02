@@ -15,8 +15,10 @@ when defined(ssl):
   var clientCount = 0
 
   proc sendMessages(client: AsyncSocket) {.async.} =
+    var sendFutures: seq[Future[void]] = @[]
     for i in 0 ..< messagesToSend:
-      await send(client, "Message " & $i & "\c\L")
+      add(sendFutures, send(client, "Message " & $i & "\r\L"))
+    await all(sendFutures)
 
   proc launchSwarm(port: Port) {.async.} =
     for i in 0 ..< swarmSize:
