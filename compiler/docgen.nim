@@ -286,7 +286,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             [rope(esc(d.target, literal))])
 
 proc testExamples*(d: PDoc) =
-  if d.runnableExamples == nil: return
+  if d.runnableExamples == nil or d.conf.errorCounter > 0: return
   let outputDir = d.conf.getNimcacheDir / "runnableExamples"
   createDir(outputDir)
   let inp = toFullPath(d.conf, d.runnableExamples.info)
