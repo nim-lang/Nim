@@ -141,7 +141,6 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

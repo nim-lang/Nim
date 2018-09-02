@@ -30,6 +30,7 @@ template closeImpl(body: untyped) {.dirty.} =
     body
     try:
       generateIndex(g.doc)
+      testExamples(g.doc)
     except IOError:
       discard
 
