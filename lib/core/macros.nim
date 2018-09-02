@@ -239,7 +239,7 @@ else: # bootstrapping substitute
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
     ## accepts node of kind nnkSym and returns its owner's symbol.
-    ## result is also mode of kind nnkSym if owner exists otherwise 
+    ## result is also mnde of kind nnkSym if owner exists otherwise 
     ## nnkNilLit is returned
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
