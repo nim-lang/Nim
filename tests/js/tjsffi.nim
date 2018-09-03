@@ -267,8 +267,8 @@ block:
   type TestObject = object
     a: int
     onWhatever: proc(e: int): int
-  proc handleWhatever(that: TestObject, e: int): int =
-    e + that.a
+  proc handleWhatever(this: TestObject, e: int): int =
+    e + this.a
   proc test(): bool =
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
     obj.onWhatever(1) == 10
