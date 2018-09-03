@@ -233,31 +233,31 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
   result = conf.cmd == cmdCompileToJS and not isCompileTime
 
-  proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
-    # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
-    if liftingHarmful(g.config, owner): return n
-    let iter = n.sym
-    assert iter.isIterator
-  
-    result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  
-    let hp = getHiddenParam(g, iter)
-    var env: PNode
-    if owner.isIterator:
-      let it = getHiddenParam(g, owner)
-      addUniqueField(it.typ.sons[0], hp, g.cache)
-      env = indirectAccess(newSymNode(it), hp, hp.info)
-    else:
-      let e = newSym(skLet, iter.name, owner, n.info)
-      e.typ = hp.typ
-      e.flags = hp.flags
-      env = newSymNode(e)
-      var v = newNodeI(nkVarSection, n.info)
-      addVar(v, env)
-      result.add(v)
-    # add 'new' statement:
-    result.add newCall(getSysSym(g, n.info, "internalNew"), env)
-    result.add makeClosure(g, iter, env, n.info)
+proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
+  # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
+  if liftingHarmful(g.config, owner): return n
+  let iter = n.sym
+  assert iter.isIterator
+
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+  let hp = getHiddenParam(g, iter)
+  var env: PNode
+  if owner.isIterator:
+    let it = getHiddenParam(g, owner)
+    addUniqueField(it.typ.sons[0], hp, g.cache)
+    env = indirectAccess(newSymNode(it), hp, hp.info)
+  else:
+    let e = newSym(skLet, iter.name, owner, n.info)
+    e.typ = hp.typ
+    e.flags = hp.flags
+    env = newSymNode(e)
+    var v = newNodeI(nkVarSection, n.info)
+    addVar(v, env)
+    result.add(v)
+  # add 'new' statement:
+  result.add newCall(getSysSym(g, n.info, "internalNew"), env)
+  result.add makeClosure(g, iter, env, n.info)
   
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
@@ -750,140 +750,140 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-  proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
-    # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
-    # the transformation even when compiling to JS ...
-  
-    # However we can do lifting for the stuff which is *only* compiletime.
-    let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
-  
-    if body.kind == nkEmpty or (
-        g.config.cmd == cmdCompileToJS and not isCompileTime) or
-        fn.skipGenericOwner.kind != skModule:
-  
-      # ignore forward declaration:
-      result = body
-      tooEarly = true
-    else:
-      var d = initDetectionPass(g, fn)
-      detectCapturedVars(body, fn, d)
-      if not d.somethingToDo and fn.isIterator:
-        addClosureParam(d, fn, body.info)
-        d.somethingToDo = true
-      if d.somethingToDo:
-        var c = initLiftingPass(fn)
-        result = liftCapturedVars(body, fn, d, c)
-        # echo renderTree(result, {renderIds})
-        if c.envvars.getOrDefault(fn.id) != nil:
-          result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
-      else:
-        result = body
-      #if fn.name.s == "get2":
-      #  echo "had something to do ", d.somethingToDo
-      #  echo renderTree(result, {renderIds})
-  
-  proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
-    # XXX implement it properly
+proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
+  # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
+  # the transformation even when compiling to JS ...
+
+  # However we can do lifting for the stuff which is *only* compiletime.
+  let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
+
+  if body.kind == nkEmpty or (
+      g.config.cmd == cmdCompileToJS and not isCompileTime) or
+      fn.skipGenericOwner.kind != skModule:
+
+    # ignore forward declaration:
     result = body
-  
-  # ------------------- iterator transformation --------------------------------
-  
-  proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
-    # problem ahead: the iterator could be invoked indirectly, but then
-    # we don't know what environment to create here:
-    #
-    # iterator count(): int =
-    #   yield 0
-    #
-    # iterator count2(): int =
-    #   var x = 3
-    #   yield x
-    #   inc x
-    #   yield x
-    #
-    # proc invoke(iter: iterator(): int) =
-    #   for x in iter(): echo x
-    #
-    # --> When to create the closure? --> for the (count) occurrence!
-    discard """
-        for i in foo(): ...
-  
-      Is transformed to:
-  
-        cl = createClosure()
-        while true:
-          let i = foo(cl)
-          if (nkBreakState(cl.state)):
-            break
-          ...
-      """
-    if liftingHarmful(g.config, owner): return body
-    var L = body.len
-    if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
-      localError(g.config, body.info, "ignored invalid for loop")
-      return body
-    var call = body[L-2]
-  
-    result = newNodeI(nkStmtList, body.info)
-  
-    # static binding?
-    var env: PSym
-    let op = call[0]
-    if op.kind == nkSym and op.sym.isIterator:
-      # createClosure()
-      let iter = op.sym
-  
-      let hp = getHiddenParam(g, iter)
-      env = newSym(skLet, iter.name, owner, body.info)
-      env.typ = hp.typ
-      env.flags = hp.flags
-  
-      var v = newNodeI(nkVarSection, body.info)
-      addVar(v, newSymNode(env))
-      result.add(v)
-      # add 'new' statement:
-      result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
-    elif op.kind == nkStmtListExpr:
-      let closure = op.lastSon
-      if closure.kind == nkClosure:
-        call.sons[0] = closure
-        for i in 0 .. op.len-2:
-          result.add op[i]
-  
-    var loopBody = newNodeI(nkStmtList, body.info, 3)
-    var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
-    whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(g, body.info, tyBool))
-    whileLoop.sons[1] = loopBody
-    result.add whileLoop
-  
-    # setup loopBody:
-    # gather vars in a tuple:
-    var v2 = newNodeI(nkLetSection, body.info)
-    var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
-    for i in 0 .. L-3:
-      if body[i].kind == nkSym:
-        body[i].sym.kind = skLet
-      addSon(vpart, body[i])
-  
-    addSon(vpart, newNodeI(nkEmpty, body.info)) # no explicit type
-    if not env.isNil:
-      call.sons[0] = makeClosure(g, call.sons[0].sym, env.newSymNode, body.info)
-    addSon(vpart, call)
-    addSon(v2, vpart)
-  
-    loopBody.sons[0] = v2
-    var bs = newNodeI(nkBreakState, body.info)
-    bs.addSon(call.sons[0])
-  
-    let ibs = newNodeI(nkIfStmt, body.info)
-    let elifBranch = newNodeI(nkElifBranch, body.info)
-    elifBranch.add(bs)
-  
-    let br = newNodeI(nkBreakStmt, body.info)
-    br.add(g.emptyNode)
-  
-    elifBranch.add(br)
-    ibs.add(elifBranch)
-  
-    loopBody.sons[1] = ibs
-    loopBody.sons[2] = body[L-1]
+    tooEarly = true
+  else:
+    var d = initDetectionPass(g, fn)
+    detectCapturedVars(body, fn, d)
+    if not d.somethingToDo and fn.isIterator:
+      addClosureParam(d, fn, body.info)
+      d.somethingToDo = true
+    if d.somethingToDo:
+      var c = initLiftingPass(fn)
+      result = liftCapturedVars(body, fn, d, c)
+      # echo renderTree(result, {renderIds})
+      if c.envvars.getOrDefault(fn.id) != nil:
+        result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
+    else:
+      result = body
+    #if fn.name.s == "get2":
+    #  echo "had something to do ", d.somethingToDo
+    #  echo renderTree(result, {renderIds})
+
+proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
+  # XXX implement it properly
+  result = body
+
+# ------------------- iterator transformation --------------------------------
+
+proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
+  # problem ahead: the iterator could be invoked indirectly, but then
+  # we don't know what environment to create here:
+  #
+  # iterator count(): int =
+  #   yield 0
+  #
+  # iterator count2(): int =
+  #   var x = 3
+  #   yield x
+  #   inc x
+  #   yield x
+  #
+  # proc invoke(iter: iterator(): int) =
+  #   for x in iter(): echo x
+  #
+  # --> When to create the closure? --> for the (count) occurrence!
+  discard """
+      for i in foo(): ...
+
+    Is transformed to:
+
+      cl = createClosure()
+      while true:
+        let i = foo(cl)
+        if (nkBreakState(cl.state)):
+          break
+        ...
+    """
+  if liftingHarmful(g.config, owner): return body
+  var L = body.len
+  if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
+    localError(g.config, body.info, "ignored invalid for loop")
+    return body
+  var call = body[L-2]
+
+  result = newNodeI(nkStmtList, body.info)
+
+  # static binding?
+  var env: PSym
+  let op = call[0]
+  if op.kind == nkSym and op.sym.isIterator:
+    # createClosure()
+    let iter = op.sym
+
+    let hp = getHiddenParam(g, iter)
+    env = newSym(skLet, iter.name, owner, body.info)
+    env.typ = hp.typ
+    env.flags = hp.flags
+
+    var v = newNodeI(nkVarSection, body.info)
+    addVar(v, newSymNode(env))
+    result.add(v)
+    # add 'new' statement:
+    result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
+  elif op.kind == nkStmtListExpr:
+    let closure = op.lastSon
+    if closure.kind == nkClosure:
+      call.sons[0] = closure
+      for i in 0 .. op.len-2:
+        result.add op[i]
+
+  var loopBody = newNodeI(nkStmtList, body.info, 3)
+  var whileLoop = newNodeI(nkWhileStmt, body.info, 2)
+  whileLoop.sons[0] = newIntTypeNode(nkIntLit, 1, getSysType(g, body.info, tyBool))
+  whileLoop.sons[1] = loopBody
+  result.add whileLoop
+
+  # setup loopBody:
+  # gather vars in a tuple:
+  var v2 = newNodeI(nkLetSection, body.info)
+  var vpart = newNodeI(if L == 3: nkIdentDefs else: nkVarTuple, body.info)
+  for i in 0 .. L-3:
+    if body[i].kind == nkSym:
+      body[i].sym.kind = skLet
+    addSon(vpart, body[i])
+
+  addSon(vpart, newNodeI(nkEmpty, body.info)) # no explicit type
+  if not env.isNil:
+    call.sons[0] = makeClosure(g, call.sons[0].sym, env.newSymNode, body.info)
+  addSon(vpart, call)
+  addSon(v2, vpart)
+
+  loopBody.sons[0] = v2
+  var bs = newNodeI(nkBreakState, body.info)
+  bs.addSon(call.sons[0])
+
+  let ibs = newNodeI(nkIfStmt, body.info)
+  let elifBranch = newNodeI(nkElifBranch, body.info)
+  elifBranch.add(bs)
+
+  let br = newNodeI(nkBreakStmt, body.info)
+  br.add(g.emptyNode)
+
+  elifBranch.add(br)
+  ibs.add(elifBranch)
+
+  loopBody.sons[1] = ibs
+  loopBody.sons[2] = body[L-1]
