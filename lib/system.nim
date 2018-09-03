@@ -2195,10 +2195,17 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## iterates over each item of `a`.
-  var i = 0
-  while a[i] != '\0':
-    yield a[i]
-    inc(i)
+  when defined(js):
+    var i = 0
+    var L = len(a)
+    while i < L:
+      yield a[i]
+      inc(i)
+  else:
+    var i = 0
+    while a[i] != '\0':
+      yield a[i]
+      inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## iterates over each item of `a` so that you can modify the yielded value.
