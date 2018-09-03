@@ -1594,15 +1594,17 @@ proc getInt*(a: PNode): BiggestInt =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
+    raiseRecoverableError("cannot extract number from invalid AST node")
     #internalError(a.info, "getInt")
-    doAssert false, "getInt"
+    #doAssert false, "getInt"
     #result = 0
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
   else:
-    doAssert false, "getFloat"
+    raiseRecoverableError("cannot extract number from invalid AST node")
+    #doAssert false, "getFloat"
     #internalError(a.info, "getFloat")
     #result = 0.0
 
@@ -1616,7 +1618,8 @@ proc getStr*(a: PNode): string =
     else:
       result = nil
   else:
-    doAssert false, "getStr"
+    raiseRecoverableError("cannot extract string from invalid AST node")
+    #doAssert false, "getStr"
     #internalError(a.info, "getStr")
     #result = ""
 
@@ -1625,7 +1628,8 @@ proc getStrOrChar*(a: PNode): string =
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
   else:
-    doAssert false, "getStrOrChar"
+    raiseRecoverableError("cannot extract string from invalid AST node")
+    #doAssert false, "getStrOrChar"
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
