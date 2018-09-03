@@ -3105,6 +3105,19 @@ the address of variables, but one can't use it on variables declared through
   # Error: expression has no address
 
 
+The unsafeAddr operator
+-----------------------
+
+For easier interoperability with other compiled languages such as C, retrieving
+the address of a ``let`` variable, a parameter or a ``for`` loop variable, the
+``unsafeAddr`` operation can be used:
+
+.. code-block:: nim
+
+  let myArray = [1, 2, 3]
+  foreignProcThatTakesAnAddr(unsafeAddr myArray)
+
+
 Procedures
 ==========
 
