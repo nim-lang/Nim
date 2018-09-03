@@ -3386,12 +3386,15 @@ when not defined(JS): #and not defined(nimscript):
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
 
-    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) =
+    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) {.deprecated.} =
       ## can be used in a ``try`` statement to setup a Lisp-like
       ## `condition system`:idx:\: This prevents the 'raise' statement to
       ## raise an exception but instead calls ``action``.
       ## If ``action`` returns false, the exception has been handled and
       ## does not propagate further through the call stack.
+      ##
+      ## *Deprecated since version 0.18.1*: No good usages of this
+      ## feature are known.
       if not isNil(excHandler):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
