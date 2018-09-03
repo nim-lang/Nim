@@ -1004,6 +1004,11 @@ All string literals are of the type ``string``. A string in Nim is very
 similar to a sequence of characters. However, strings in Nim are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
+
+The terminating zero cannot be accessed unless the string is converted
+to the ``cstring`` type first. The terminating zero assures that this
+conversion can be done in O(1) and without any allocations.
+
 The assignment operator for strings always copies the string.
 The ``&`` operator concatenates strings.
 
