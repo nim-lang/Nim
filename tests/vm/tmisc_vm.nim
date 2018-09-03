@@ -2,6 +2,8 @@ discard """
   output: '''[127, 127, 0, 255]
 [127, 127, 0, 255]
 '''
+
+  nimout: '''caught Exception'''
 """
 
 #bug #1009
@@ -34,3 +36,16 @@ proc ABGR*(val: int| int64): TAggRgba8 =
 const
   c1 = ABGR(0xFF007F7F)
 echo ABGR(0xFF007F7F).repr, c1.repr
+
+
+# bug 8740
+
+static:
+  try:
+    raise newException(ValueError, "foo")
+  except Exception:
+    echo "caught Exception"
+  except Defect:
+    echo "caught Defect"
+  except ValueError:
+    echo "caught ValueError"

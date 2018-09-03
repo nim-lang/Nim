@@ -273,7 +273,7 @@ proc cleanUpOnException(c: PCtx; tos: PStackFrame):
                           abstractPtrs)
                        else: nil
       #echo typeToString(exceptType), " ", typeToString(raisedType)
-      if exceptType.isNil or inheritanceDiff(exceptType, raisedType) <= 0:
+      if exceptType.isNil or inheritanceDiff(raisedType, exceptType) <= 0:
         # mark exception as handled but keep it in B for
         # the getCurrentException() builtin:
         c.currentExceptionB = c.currentExceptionA
