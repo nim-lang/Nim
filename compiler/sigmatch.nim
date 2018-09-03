@@ -2252,11 +2252,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       if n.sons[a].sons[0].kind != nkIdent:
         localError(c.config, n.sons[a].info, "named parameter has to be an identifier")
         m.state = csNoMatch
+        m.firstMismatch = -a
         return
       formal = getSymFromList(m.callee.n, n.sons[a].sons[0].ident, 1)
       if formal == nil:
         # no error message!
         m.state = csNoMatch
+        m.firstMismatch = -a
         return
       if containsOrIncl(marker, formal.position):
         # already in namedParams, so no match
@@ -2274,6 +2276,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                 n.sons[a].sons[1], n.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
+        m.firstMismatch = a
         return
       checkConstraint(n.sons[a].sons[1])
       if m.baseTypeMatch:
