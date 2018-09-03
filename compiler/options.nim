@@ -12,6 +12,7 @@ import
   prefixmatches
 
 from terminal import isatty
+from times import utc, fromUnix, local, getTime, format, DateTime
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -258,6 +259,24 @@ const
     optHints, optStackTrace, optLineTrace,
     optPatterns, optNilCheck, optMoveCheck}
   DefaultGlobalOptions* = {optThreadAnalysis}
+
+proc getSrcTimestamp(): DateTime =
+  try:
+    result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
+                                          "not a number"))))
+  except ValueError:
+    # Environment variable malformed.
+    # https://reproducible-builds.org/specs/source-date-epoch/: "If the
+    # value is malformed, the build process SHOULD exit with a non-zero
+    # error code", which this doesn't do. This uses local time, because
+    # that maintains compatibility with existing usage.
+    result = utc getTime()
+
+proc getDateStr*(): string =
+  result = format(getSrcTimestamp(), "yyyy-MM-dd")
+
+proc getClockStr*(): string =
+  result = format(getSrcTimestamp(), "HH:mm:ss")
 
 template newPackageCache*(): untyped =
   newStringTable(when FileSystemCaseSensitive:

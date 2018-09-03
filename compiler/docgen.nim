@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
-  packages/docutils/rst, packages/docutils/rstgen, times,
+  packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils
 

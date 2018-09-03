@@ -11,7 +11,7 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, astalgo, trees, treetab, nimsets, times,
+  strutils, options, ast, astalgo, trees, treetab, nimsets,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
@@ -566,19 +566,6 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
 
 proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-
-  proc getSrcTimestamp(): DateTime =
-    try:
-      result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
-                                            "not a number"))))
-    except ValueError:
-      # Environment variable malformed.
-      # https://reproducible-builds.org/specs/source-date-epoch/: "If the
-      # value is malformed, the build process SHOULD exit with a non-zero
-      # error code", which this doesn't do. This uses local time, because
-      # that maintains compatibility with existing usage.
-      result = local(getTime())
-
   case n.kind
   of nkSym:
     var s = n.sym
@@ -588,10 +575,8 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n, g)
-      of mCompileDate: result = newStrNodeT(format(getSrcTimestamp(),
-                                                   "yyyy-MM-dd"), n, g)
-      of mCompileTime: result = newStrNodeT(format(getSrcTimestamp(),
-                                                   "HH:mm:ss"), n, g)
+      of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
+      of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
       of mCpuEndian: result = newIntNodeT(ord(CPU[g.config.target.targetCPU].endian), n, g)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.targetOS].name), n, g)
       of mHostCPU: result = newStrNodeT(platform.CPU[g.config.target.targetCPU].name.toLowerAscii, n, g)
