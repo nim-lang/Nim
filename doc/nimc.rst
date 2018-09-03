@@ -143,6 +143,9 @@ which may be used in conjunction with the `compile time define
 pragmas<manual.html#implementation-specific-pragmas-compile-time-define-pragmas>`_
 to override symbols during build time.
 
+Compile time symbols are completely **case insensitive** and underscores are
+ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
+
 
 Configuration files
 -------------------
