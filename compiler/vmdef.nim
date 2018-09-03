@@ -62,7 +62,7 @@ type
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu,
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat,
     opcLeFloat, opcLtFloat, opcLeu, opcLtu,
-    opcEqRef, opcEqNimrodNode, opcSameNodeType,
+    opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,

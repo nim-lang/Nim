@@ -1178,7 +1178,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNBindSym: genBindSym(c, n, dest)
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
-  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
+  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
   of mNLineInfo:
     case n[0].sym.name.s
