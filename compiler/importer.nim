@@ -170,8 +170,8 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newStrNode(toFullPath(c.config, f), n.info)
 
-proc transformImportAs(n: PNode): PNode =
-  if n.kind == nkInfix and n.sons[0].ident.s == "as":
+proc transformImportAs(c: PContext; n: PNode): PNode =
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     result = newNodeI(nkImportAs, n.info)
     result.add n.sons[1]
     result.add n.sons[2]
@@ -179,7 +179,7 @@ proc transformImportAs(n: PNode): PNode =
     result = n
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
-  let it = transformImportAs(it)
+  let it = transformImportAs(c, it)
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     var emptySet: IntSet
@@ -215,7 +215,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
 proc evalFrom(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n.sons[0] = transformImportAs(n.sons[0])
+  n.sons[0] = transformImportAs(c, n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
@@ -227,7 +227,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n.sons[0] = transformImportAs(n.sons[0])
+  n.sons[0] = transformImportAs(c, n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
