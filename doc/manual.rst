@@ -504,7 +504,7 @@ following characters::
 These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
-`=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
+`.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
 
 ``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
@@ -4633,7 +4633,7 @@ type is an instance of it:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import future, typetraits
+  import sugar, typetraits
 
   type
     Functor[A] = concept f
