@@ -17,8 +17,7 @@ About this document
 ===================
 
 **Note**: This document is a draft! Several of Nim's features may need more
-precise wording. This manual is constantly evolving until the 1.0 release and is
-not to be considered as the final proper specification.
+precise wording. This manual is constantly evolving into a proper specification.
 
 This document describes the lexis, the syntax, and the semantics of Nim.
 
@@ -2985,12 +2984,19 @@ name ``c`` should default to type ``Context``, ``n`` should default to
   proc bar(c, n, counter) = ...
   proc baz(c, n) = ...
 
+  proc mixedMode(c, n; x, y: int) =
+    # 'c' is inferred to be of the type 'Context'
+    # 'n' is inferred to be of the type 'Node'
+    # But 'x' and 'y' are of type 'int'.
 
 The ``using`` section uses the same indentation based grouping syntax as
 a ``var`` or ``let`` section.
 
 Note that ``using`` is not applied for ``template`` since untyped template
 parameters default to the type ``system.untyped``.
+
+Mixing parameters that should use the ``using`` declaration with parameters
+that are explicitly typed is possible and requires a semicolon between them.
 
 
 If expression
