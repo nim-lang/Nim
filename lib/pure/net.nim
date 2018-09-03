@@ -58,15 +58,11 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = new Socket
+##   var client: Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
-##
-## **Note:** The ``client`` variable is initialised with ``new Socket`` **not**
-## ``newSocket()``. The difference is that the latter creates a new file
-## descriptor.
 
 {.deadCodeElim: on.}  # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options
@@ -789,16 +785,12 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
   ##
-  ## **Note**: ``client`` must be initialised (with ``new``), this function
-  ## makes no effort to initialise the ``client`` variable.
-  ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
-  assert(client != nil)
-  assert client.fd.int <= 0, "Client socket needs to be initialised with " &
-                             "`new`, not `newSocket`."
+  if client.isNil:
+    new(client)
   let ret = accept(server.fd)
   let sock = ret[0]
 
@@ -878,9 +870,6 @@ proc accept*(server: Socket, client: var Socket,
              flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
-  ##
-  ## **Note**: ``client`` must be initialised (with ``new``), this function
-  ## makes no effort to initialise the ``client`` variable.
   ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
@@ -1339,6 +1328,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
 
+  assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
   var sockAddress: Sockaddr_in
@@ -1408,22 +1398,25 @@ proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
   result = send(socket, cstring(data), data.len) == data.len
 
 proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
-             size: int, af: Domain = AF_INET, flags = 0'i32): int {.
+             size: int, af: Domain = AF_INET, flags = 0'i32) {.
              tags: [WriteIOEffect].} =
   ## This proc sends ``data`` to the specified ``address``,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
+  ## If an error occurs an OSError exception will be raised.
   ##
   ## **Note:** You may wish to use the high-level version of this function
   ## which is defined below.
   ##
   ## **Note:** This proc is not available for SSL sockets.
+  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
   # try all possibilities:
   var success = false
   var it = aiList
+  var result = 0
   while it != nil:
     result = sendto(socket.fd, data, size.cint, flags.cint, it.ai_addr,
                     it.ai_addrlen.SockLen)
@@ -1432,16 +1425,22 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
       break
     it = it.ai_next
 
+  let osError = osLastError()
   freeAddrInfo(aiList)
 
+  if not success:
+    raiseOSError(osError)
+
 proc sendTo*(socket: Socket, address: string, port: Port,
-             data: string): int {.tags: [WriteIOEffect].} =
+             data: string) {.tags: [WriteIOEffect].} =
   ## This proc sends ``data`` to the specified ``address``,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
+  ## If an error occurs an OSError exception will be raised.
+  ##
   ## This is the high-level version of the above ``sendTo`` function.
-  result = socket.sendTo(address, port, cstring(data), data.len, socket.domain )
+  socket.sendTo(address, port, cstring(data), data.len, socket.domain)
 
 
 proc isSsl*(socket: Socket): bool =

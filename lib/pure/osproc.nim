@@ -884,9 +884,11 @@ elif not defined(useNimRtl):
         chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
-        if (poStdErrToStdOut in data.options):
-          chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
+        chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
+        if poStdErrToStdOut in data.options:
           chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
+        else:
+          chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
 
       var res: cint
       if data.workingDir.len > 0:

@@ -17,8 +17,7 @@ About this document
 ===================
 
 **Note**: This document is a draft! Several of Nim's features may need more
-precise wording. This manual is constantly evolving until the 1.0 release and is
-not to be considered as the final proper specification.
+precise wording. This manual is constantly evolving into a proper specification.
 
 This document describes the lexis, the syntax, and the semantics of Nim.
 
@@ -504,7 +503,7 @@ following characters::
 These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
-`=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
+`.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
 
 ``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
@@ -937,8 +936,12 @@ Now the following holds::
   ord(south) == 2
   ord(west) == 3
 
+  # Also allowed:
+  ord(Direction.west) == 3
+
 Thus, north < east < south < west. The comparison operators can be used
-with enumeration types.
+with enumeration types. Instead of ``north`` etc, the enum value can also
+be qualified with the enum type that it resides in, ``Direction.north``.
 
 For better interfacing to other programming languages, the fields of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
@@ -974,18 +977,25 @@ As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
-An enum can be marked with the ``pure`` pragma so that it's fields are not
-added to the current scope, so they always need to be accessed
-via ``MyEnum.value``:
+An enum can be marked with the ``pure`` pragma so that it's fields are
+added to a special module specific hidden scope that is only queried
+as the last attempt. Only non-ambiguous symbols are added to this scope.
+But one can always access these via type qualification written
+as ``MyEnum.value``:
 
 .. code-block:: nim
 
   type
     MyEnum {.pure.} = enum
-      valueA, valueB, valueC, valueD
+      valueA, valueB, valueC, valueD, amb
 
-  echo valueA # error: Unknown identifier
-  echo MyEnum.valueA # works
+    OtherEnum {.pure.} = enum
+      valueX, valueY, valueZ, amb
+
+
+  echo valueA # MyEnum.valueA
+  echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
+  echo MyEnum.amb # OK.
 
 
 String type
@@ -994,6 +1004,11 @@ All string literals are of the type ``string``. A string in Nim is very
 similar to a sequence of characters. However, strings in Nim are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
+
+The terminating zero cannot be accessed unless the string is converted
+to the ``cstring`` type first. The terminating zero assures that this
+conversion can be done in O(1) and without any allocations.
+
 The assignment operator for strings always copies the string.
 The ``&`` operator concatenates strings.
 
@@ -2974,12 +2989,19 @@ name ``c`` should default to type ``Context``, ``n`` should default to
   proc bar(c, n, counter) = ...
   proc baz(c, n) = ...
 
+  proc mixedMode(c, n; x, y: int) =
+    # 'c' is inferred to be of the type 'Context'
+    # 'n' is inferred to be of the type 'Node'
+    # But 'x' and 'y' are of type 'int'.
 
 The ``using`` section uses the same indentation based grouping syntax as
 a ``var`` or ``let`` section.
 
 Note that ``using`` is not applied for ``template`` since untyped template
 parameters default to the type ``system.untyped``.
+
+Mixing parameters that should use the ``using`` declaration with parameters
+that are explicitly typed is possible and requires a semicolon between them.
 
 
 If expression
@@ -3092,6 +3114,19 @@ the address of variables, but one can't use it on variables declared through
   # The following line doesn't compile:
   echo repr(addr(t1))
   # Error: expression has no address
+
+
+The unsafeAddr operator
+-----------------------
+
+For easier interoperability with other compiled languages such as C, retrieving
+the address of a ``let`` variable, a parameter or a ``for`` loop variable, the
+``unsafeAddr`` operation can be used:
+
+.. code-block:: nim
+
+  let myArray = [1, 2, 3]
+  foreignProcThatTakesAnAddr(unsafeAddr myArray)
 
 
 Procedures
@@ -4376,6 +4411,34 @@ be inferred to have the equivalent of the `any` type class and thus they will
 match anything without discrimination.
 
 
+Generic inference restrictions
+------------------------------
+
+The types ``var T`` and ``typedesc[T]`` cannot be inferred in a generic
+instantiation. The following is not allowed:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  proc g[T](f: proc(x: T); x: T) =
+    f(x)
+
+  proc c(y: int) = echo y
+  proc v(y: var int) =
+    y += 100
+  var i: int
+
+  # allowed: infers 'T' to be of type 'int'
+  g(c, 42)
+
+  # not valid: 'T' is not inferred to be of type 'var int'
+  g(v, i)
+
+  # also not allowed: explict instantiation via 'var int'
+  g[var int](v, i)
+
+
 Concepts
 --------
 
@@ -4622,7 +4685,7 @@ type is an instance of it:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import future, typetraits
+  import sugar, typetraits
 
   type
     Functor[A] = concept f
@@ -5448,12 +5511,17 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     newFor.add x[^2][1]
     newFor.add body
     result.add newFor
+    # now wrap the whole macro in a block to create a new scope
+    result = quote do:
+      block: `result`
 
   for a, b in enumerate(items([1, 2, 3])):
     echo a, " ", b
 
-  for a2, b2 in enumerate([1, 2, 3, 5]):
-    echo a2, " ", b2
+  # without wrapping the macro in a block, we'd need to choose different
+  # names for `a` and `b` here to avoid redefinition errors
+  for a, b in enumerate([1, 2, 3, 5]):
+    echo a, " ", b
 
 
 Currently for loop macros must be enabled explicitly
@@ -5463,12 +5531,11 @@ via ``{.experimental: "forLoopMacros".}``.
 Case statement macros
 ---------------------
 
-A macro that needs to be called `match`:idx: can be used to
-rewrite ``case`` statements in order to
-implement `pattern matching`:idx: for certain types. The following
-example implements a simplistic form of pattern matching for tuples,
-leveraging the existing equality operator for tuples (as provided in
- ``system.==``):
+A macro that needs to be called `match`:idx: can be used to rewrite
+``case`` statements in order to implement `pattern matching`:idx: for
+certain types. The following example implements a simplistic form of
+pattern matching for tuples, leveraging the existing equality operator
+for tuples (as provided in ``system.==``):
 
 .. code-block:: nim
     :test: "nim c $1"

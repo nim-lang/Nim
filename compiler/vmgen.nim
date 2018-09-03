@@ -1119,6 +1119,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
   of mGetImplTransf: genUnaryABC(c, n, dest, opcGetImplTransf)
+  of mSymOwner: genUnaryABC(c, n, dest, opcSymOwner)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
   of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
   of mNDel: genVoidABC(c, n, dest, opcNDel)
@@ -1179,7 +1180,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNBindSym: genBindSym(c, n, dest)
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
-  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
+  of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
   of mNLineInfo:
     case n[0].sym.name.s
@@ -1193,10 +1194,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else: internalAssert c.config, false
   of mNHint:
     unused(c, n, dest)
-    genUnaryStmt(c, n, opcNHint)
+    genBinaryStmt(c, n, opcNHint)
   of mNWarning:
     unused(c, n, dest)
-    genUnaryStmt(c, n, opcNWarning)
+    genBinaryStmt(c, n, opcNWarning)
   of mNError:
     if n.len <= 1:
       # query error condition:

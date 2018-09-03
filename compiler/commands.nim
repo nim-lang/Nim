@@ -651,7 +651,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: localError(conf, info, "invalid option for --symbolFiles: " & arg)
   of "skipcfg":
     expectNoArg(conf, switch, arg, pass, info)
-    incl(conf.globalOptions, optSkipConfigFile)
+    incl(conf.globalOptions, optSkipSystemConfigFile)
   of "skipprojcfg":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optSkipProjConfigFile)

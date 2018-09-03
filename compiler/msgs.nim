@@ -102,9 +102,6 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 proc newLineInfo*(conf: ConfigRef; filename: string, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
-proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
-  raise newException(ERecoverableError, msg)
-
 
 proc concat(strings: openarray[string]): string =
   var totalLen = 0

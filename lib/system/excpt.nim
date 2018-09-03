@@ -307,7 +307,7 @@ when hasSomeStackTrace:
     when NimStackTrace:
       auxWriteStackTrace(framePtr, s)
     else:
-      s = nil
+      s = @[]
 
   proc stackTraceAvailable(): bool =
     when NimStackTrace:

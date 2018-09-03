@@ -241,6 +241,12 @@ when defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
     ## for a typed proc returns the AST after transformation pass
 
+when defined(nimHasSymOwnerInMacro):
+  proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+    ## accepts node of kind nnkSym and returns its owner's symbol.
+    ## result is also mnde of kind nnkSym if owner exists otherwise 
+    ## nnkNilLit is returned
+
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
   ## mapped to a Nim AST too, so it's slightly confusing but it means the same
@@ -340,10 +346,10 @@ proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning", benign.}
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint", benign.}
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
 proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =

@@ -1,6 +1,8 @@
 discard """
   output: '''0
-0'''
+0
+bc
+bcdefg'''
 """
 
 # test another strange bug ... (I hate this compiler; it is much too buggy!)
@@ -29,3 +31,13 @@ var
 
 echo obj.s1[0]
 echo obj.s1[0u]
+
+
+# bug #8049
+
+when true:
+  type ustring* = distinct string
+  converter toUString*(s: string): ustring = ustring(s)
+  proc `[]`*(s: ustring, i: int): ustring = s
+  echo "abcdefgh"[1..2]
+  echo "abcdefgh"[1..^2]

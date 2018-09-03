@@ -1536,7 +1536,11 @@ proc withTimeout*[T](fut: Future[T], timeout: int): Future[bool] =
   var timeoutFuture = sleepAsync(timeout)
   fut.callback =
     proc () =
-      if not retFuture.finished: retFuture.complete(true)
+      if not retFuture.finished:
+        if fut.failed:
+          retFuture.fail(fut.error)
+        else:
+          retFuture.complete(true)
   timeoutFuture.callback =
     proc () =
       if not retFuture.finished: retFuture.complete(false)

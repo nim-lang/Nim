@@ -243,7 +243,8 @@ proc mangleName(m: BModule, s: PSym): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
-    if s.name.s != "this" and s.kind != skField:
+    # From ES5 on reserved words can be used as object field names
+    if s.kind != skField:
       if optHotCodeReloading in m.config.options:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:

@@ -280,6 +280,17 @@ proc `$$`*[T](x: T): string =
 
 proc to*[T](data: string): T =
   ## reads data and transforms it to a ``T``.
+  runnableExamples:
+    type
+      Foo = object
+        id: int
+        bar: string
+
+    let x = Foo(id: 1, bar: "baz")
+    # serialize
+    let y = ($$x)
+    # deserialize back to type 'Foo':
+    let z = y.to[:Foo]
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
 

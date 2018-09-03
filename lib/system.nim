@@ -313,6 +313,12 @@ when defined(nimArrIdx):
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+
+  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
+    noSideEffect, magic: "ArrGet".}
+  proc arrPut[I: Ordinal;T,S](a: T; i: I;
+    x: S) {.noSideEffect, magic: "ArrPut".}
+
   when defined(nimNewRuntime):
     proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
@@ -2189,10 +2195,17 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## iterates over each item of `a`.
-  var i = 0
-  while a[i] != '\0':
-    yield a[i]
-    inc(i)
+  when defined(js):
+    var i = 0
+    var L = len(a)
+    while i < L:
+      yield a[i]
+      inc(i)
+  else:
+    var i = 0
+    while a[i] != '\0':
+      yield a[i]
+      inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## iterates over each item of `a` so that you can modify the yielded value.
@@ -3380,12 +3393,15 @@ when not defined(JS): #and not defined(nimscript):
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
 
-    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) =
+    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) {.deprecated.} =
       ## can be used in a ``try`` statement to setup a Lisp-like
       ## `condition system`:idx:\: This prevents the 'raise' statement to
       ## raise an exception but instead calls ``action``.
       ## If ``action`` returns false, the exception has been handled and
       ## does not propagate further through the call stack.
+      ##
+      ## *Deprecated since version 0.18.1*: No good usages of this
+      ## feature are known.
       if not isNil(excHandler):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
@@ -3525,6 +3541,9 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
+
+template `[]`*(s: string; i: int): char = arrGet(s, i)
+template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
 when hasAlloc or defined(nimscript):
   proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
@@ -3963,7 +3982,7 @@ proc addQuoted*[T](s: var string, x: T) =
   ##   tmp.add(", ")
   ##   tmp.addQuoted('c')
   ##   assert(tmp == """1, "string", 'c'""")
-  when T is string:
+  when T is string or T is cstring:
     s.add("\"")
     for c in x:
       # Only ASCII chars are escaped to avoid butchering

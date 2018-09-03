@@ -189,15 +189,18 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     if err.firstMismatch != 0 and n.len > 1:
       let cond = n.len > 2
       if cond:
-        candidates.add("  first type mismatch at position: " & $err.firstMismatch &
-          "\n  required type: ")
+        candidates.add("  first type mismatch at position: " & $abs(err.firstMismatch))
+        if err.firstMismatch >= 0: candidates.add("\n  required type: ")
+        else: candidates.add("\n  unknown named parameter: " & $n[-err.firstMismatch][0])
       var wanted, got: PType = nil
-      if err.firstMismatch < err.sym.typ.len:
+      if err.firstMismatch < 0:
+        discard
+      elif err.firstMismatch < err.sym.typ.len:
         wanted = err.sym.typ.sons[err.firstMismatch]
         if cond: candidates.add typeToString(wanted)
       else:
         if cond: candidates.add "none"
-      if err.firstMismatch < n.len:
+      if err.firstMismatch > 0 and err.firstMismatch < n.len:
         if cond:
           candidates.add "\n  but expression '"
           candidates.add renderTree(n[err.firstMismatch])

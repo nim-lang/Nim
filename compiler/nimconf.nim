@@ -219,10 +219,10 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
+proc getUserConfigPath*(filename: string): string =
   result = joinPath([getConfigDir(), "nim", filename])
 
-proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
+proc getSystemConfigPath*(conf: ConfigRef; filename: string): string =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
   let p = getPrefixDir(conf)
@@ -241,7 +241,7 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
     if readConfigFile(configPath, cache, conf):
       add(configFiles, configPath)
 
-  if optSkipConfigFile notin conf.globalOptions:
+  if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
 
   if optSkipUserConfigFile notin conf.globalOptions:
@@ -263,4 +263,5 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
       readConfigFile(projectConfig)
 
   for filename in configFiles:
+    # delayed to here so that `hintConf` is honored
     rawMessage(conf, hintConf, filename)

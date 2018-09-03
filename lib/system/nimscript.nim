@@ -305,7 +305,6 @@ template withDir*(dir: string; body: untyped): untyped =
   finally:
     cd(curDir)
 
-template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:
@@ -313,29 +312,30 @@ proc writeTask(name, desc: string) =
     for i in 0 ..< 20 - name.len: spaces.add ' '
     echo name, spaces, desc
 
-template task*(name: untyped; description: string; body: untyped): untyped =
-  ## Defines a task. Hidden tasks are supported via an empty description.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##  task build, "default build is via the C backend":
-  ##    setCommand "c"
-  proc `name Task`*() = body
-
-  let cmd = getCommand()
-  if cmd.len == 0 or cmd ==? "help":
-    setCommand "help"
-    writeTask(astToStr(name), description)
-  elif cmd ==? astToStr(name):
-    setCommand "nop"
-    `name Task`()
-
 proc cppDefine*(define: string) =
   ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
   ## needs to be mangled.
   builtin
 
 when not defined(nimble):
+  template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+  template task*(name: untyped; description: string; body: untyped): untyped =
+    ## Defines a task. Hidden tasks are supported via an empty description.
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task build, "default build is via the C backend":
+    ##    setCommand "c"
+    proc `name Task`*() = body
+
+    let cmd = getCommand()
+    if cmd.len == 0 or cmd ==? "help":
+      setCommand "help"
+      writeTask(astToStr(name), description)
+    elif cmd ==? astToStr(name):
+      setCommand "nop"
+      `name Task`()
+
   # nimble has its own implementation for these things.
   var
     packageName* = ""    ## Nimble support: Set this to the package name. It

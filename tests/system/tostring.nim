@@ -107,3 +107,11 @@ bar(nilstring)
 
 static:
   stringCompare()
+
+# bug 8847
+var a2: cstring = "fo\"o2"
+
+block:
+  var s: string
+  s.addQuoted a2
+  doAssert s == "\"fo\\\"o2\""

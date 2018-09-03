@@ -143,6 +143,9 @@ which may be used in conjunction with the `compile time define
 pragmas<manual.html#implementation-specific-pragmas-compile-time-define-pragmas>`_
 to override symbols during build time.
 
+Compile time symbols are completely **case insensitive** and underscores are
+ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
+
 
 Configuration files
 -------------------
@@ -326,40 +329,41 @@ The standard library supports a growing number of ``useX`` conditional defines
 affecting how some features are implemented. This section tries to give a
 complete list.
 
-==================   =========================================================
-Define               Effect
-==================   =========================================================
-``release``          Turns off runtime checks and turns on the optimizer.
-``useWinAnsi``       Modules like ``os`` and ``osproc`` use the Ansi versions
-                     of the Windows API. The default build uses the Unicode
-                     version.
-``useFork``          Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
-``useNimRtl``        Compile and link against ``nimrtl.dll``.
-``useMalloc``        Makes Nim use C's `malloc`:idx: instead of Nim's
-                     own memory manager, ableit prefixing each allocation with
-                     its size to support clearing memory on reallocation.
-                     This only works with ``gc:none``.
-``useRealtimeGC``    Enables support of Nim's GC for *soft* realtime
-                     systems. See the documentation of the `gc <gc.html>`_
-                     for further information.
-``nodejs``           The JS target is actually ``node.js``.
-``ssl``              Enables OpenSSL support for the sockets module.
-``memProfiler``      Enables memory profiling for the native GC.
-``uClibc``           Use uClibc instead of libc. (Relevant for Unix-like OSes)
-``checkAbi``         When using types from C headers, add checks that compare
-                     what's in the Nim file with what's in the C header
-                     (requires a C compiler with _Static_assert support, like
-                     any C11 compiler)
-``tempDir``          This symbol takes a string as its value, like
-                     ``--define:tempDir:/some/temp/path`` to override the
-                     temporary directory returned by ``os.getTempDir()``.
-                     The value **should** end with a directory separator
-                     character. (Relevant for the Android platform)
-``useShPath``        This symbol takes a string as its value, like
-                     ``--define:useShPath:/opt/sh/bin/sh`` to override the
-                     path for the ``sh`` binary, in cases where it is not
-                     located in the default location ``/bin/sh``
-==================   =========================================================
+======================   =========================================================
+Define                   Effect
+======================   =========================================================
+``release``              Turns off runtime checks and turns on the optimizer.
+``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
+                         of the Windows API. The default build uses the Unicode
+                         version.
+``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
+``useNimRtl``            Compile and link against ``nimrtl.dll``.
+``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
+                         own memory manager, ableit prefixing each allocation with
+                         its size to support clearing memory on reallocation.
+                         This only works with ``gc:none``.
+``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
+                         systems. See the documentation of the `gc <gc.html>`_
+                         for further information.
+``nodejs``               The JS target is actually ``node.js``.
+``ssl``                  Enables OpenSSL support for the sockets module.
+``memProfiler``          Enables memory profiling for the native GC.
+``uClibc``               Use uClibc instead of libc. (Relevant for Unix-like OSes)
+``checkAbi``             When using types from C headers, add checks that compare
+                         what's in the Nim file with what's in the C header
+                         (requires a C compiler with _Static_assert support, like
+                         any C11 compiler)
+``tempDir``              This symbol takes a string as its value, like
+                         ``--define:tempDir:/some/temp/path`` to override the
+                         temporary directory returned by ``os.getTempDir()``.
+                         The value **should** end with a directory separator
+                         character. (Relevant for the Android platform)
+``useShPath``            This symbol takes a string as its value, like
+                         ``--define:useShPath:/opt/sh/bin/sh`` to override the
+                         path for the ``sh`` binary, in cases where it is not
+                         located in the default location ``/bin/sh``.
+``noSignalHandler``      Disable the crash handler from ``system.nim``.
+======================   =========================================================
 
 
 
@@ -527,6 +531,16 @@ Nim for realtime systems
 
 See the documentation of Nim's soft realtime `GC <gc.html>`_ for further
 information.
+
+
+Signal handling in Nim
+======================
+
+The Nim programming language has no concept of Posix's signal handling
+mechanisms. However, the standard library offers some rudimentary support
+for signal handling, in particular, segmentation faults are turned into
+fatal errors that produce a stack trace. This can be disabled with the
+``-d:noSignalHandler`` switch.
 
 
 Debugging with Nim

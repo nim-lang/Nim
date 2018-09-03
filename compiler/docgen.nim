@@ -14,7 +14,7 @@
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
-  packages/docutils/rst, packages/docutils/rstgen, times,
+  packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils
 
@@ -31,6 +31,7 @@ type
     isPureRst: bool
     conf*: ConfigRef
     cache*: IdentCache
+    exampleCounter: int
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -284,11 +285,56 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 
+proc testExample(d: PDoc; ex: PNode) =
+  if d.conf.errorCounter > 0: return
+  let outputDir = d.conf.getNimcacheDir / "runnableExamples"
+  createDir(outputDir)
+  inc d.exampleCounter
+  let outp = outputDir / extractFilename(d.filename.changeFileExt"" &
+      "_examples" & $d.exampleCounter & ".nim")
+  #let nimcache = outp.changeFileExt"" & "_nimcache"
+  renderModule(ex, d.filename, outp, conf = d.conf)
+  let backend = if isDefined(d.conf, "js"): "js"
+                elif isDefined(d.conf, "cpp"): "cpp"
+                elif isDefined(d.conf, "objc"): "objc"
+                else: "c"
+  if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --nimcache:" & outputDir & " -r " & outp) != 0:
+    quit "[Examples] failed: see " & outp
+  else:
+    # keep generated source file `outp` to allow inspection.
+    rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp])
+    removeFile(outp.changeFileExt(ExeExt))
+
+proc extractImports(n: PNode; result: PNode) =
+  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+    result.add copyTree(n)
+    n.kind = nkEmpty
+    return
+  for i in 0..<n.safeLen: extractImports(n[i], result)
+
+proc prepareExamples(d: PDoc; n: PNode) =
+  var runnableExamples = newTree(nkStmtList,
+      newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
+  runnableExamples.info = n.info
+  let imports = newTree(nkStmtList)
+  var savedLastSon = copyTree n.lastSon
+  extractImports(savedLastSon, imports)
+  for imp in imports: runnableExamples.add imp
+  runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
+  testExample(d, runnableExamples)
+
+proc isRunnableExample(n: PNode): bool =
+  # Templates and generics don't perform symbol lookups.
+  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
+    n.kind == nkIdent and n.ident.s == "runnableExamples"
+
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   case n.kind
   of nkCallKinds:
-    if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
+    if isRunnableExample(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
+      prepareExamples(d, n)
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
@@ -627,6 +673,10 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
+  of nkCallKinds:
+    var comm: Rope = nil
+    getAllRunnableExamples(d, n, comm)
+    if comm > nil: add(d.modDesc, comm)
   else: discard
 
 proc add(d: PDoc; j: JsonNode) =

@@ -752,7 +752,8 @@ proc gproc(g: var TSrcGen, n: PNode) =
     gsub(g, n.sons[genericParamsPos])
   g.inGenericParams = oldInGenericParams
   gsub(g, n.sons[paramsPos])
-  gsub(g, n.sons[pragmasPos])
+  if renderNoPragmas notin g.flags:
+    gsub(g, n.sons[pragmasPos])
   if renderNoBody notin g.flags:
     if n.sons[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
@@ -1297,17 +1298,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkContinue, "continue")
     gsub(g, n, 0)
   of nkPragma:
-    if renderNoPragmas notin g.flags:
-      if g.inPragma <= 0:
-        inc g.inPragma
-        #if not previousNL(g):
-        put(g, tkSpaces, Space)
-        put(g, tkCurlyDotLe, "{.")
-        gcomma(g, n, emptyContext)
-        put(g, tkCurlyDotRi, ".}")
-        dec g.inPragma
-      else:
-        gcomma(g, n, emptyContext)
+    if g.inPragma <= 0:
+      inc g.inPragma
+      #if not previousNL(g):
+      put(g, tkSpaces, Space)
+      put(g, tkCurlyDotLe, "{.")
+      gcomma(g, n, emptyContext)
+      put(g, tkCurlyDotRi, ".}")
+      dec g.inPragma
+    else:
+      gcomma(g, n, emptyContext)
   of nkImportStmt, nkExportStmt:
     if n.kind == nkImportStmt:
       putWithSpace(g, tkImport, "import")

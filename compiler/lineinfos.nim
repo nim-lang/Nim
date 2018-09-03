@@ -223,6 +223,9 @@ type
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+  raise newException(ERecoverableError, msg)
+
 const
   InvalidFileIDX* = FileIndex(-1)
 
