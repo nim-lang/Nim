@@ -237,6 +237,12 @@ else: # bootstrapping substitute
     else:
       n.strValOld
 
+when defined(nimHasSymOwnerInMacro):
+  proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+    ## accepts node of kind nnkSym and returns its owner's symbol.
+    ## result is also mnde of kind nnkSym if owner exists otherwise 
+    ## nnkNilLit is returned
+
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
   ## mapped to a Nim AST too, so it's slightly confusing but it means the same

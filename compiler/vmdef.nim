@@ -141,7 +141,8 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt
+    opcToNarrowInt,
+    opcSymOwner
 
   TBlock* = object
     label*: PSym
