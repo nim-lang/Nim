@@ -47,7 +47,7 @@ template origModuleName(m: PSym): string = m.name.s
 
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
-  if not isNil(n.comment): return n
+  if n.comment.len > 0: return n
   if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
     result = findDocComment(n.sons[0])
     if result != nil: return
@@ -434,7 +434,7 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
     if conf.suggestVersion == 0:
-      if s.allUsages.isNil:
+      if s.allUsages.len == 0:
         s.allUsages = @[info]
       else:
         s.addNoDup(info)

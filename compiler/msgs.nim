@@ -102,9 +102,6 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 proc newLineInfo*(conf: ConfigRef; filename: string, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
-proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
-  raise newException(ERecoverableError, msg)
-
 
 proc concat(strings: openarray[string]): string =
   var totalLen = 0
@@ -176,7 +173,7 @@ proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0:
     result = "???"
-  elif not conf.m.fileInfos[fileIdx.int32].dirtyFile.isNil:
+  elif conf.m.fileInfos[fileIdx.int32].dirtyFile.len > 0:
     result = conf.m.fileInfos[fileIdx.int32].dirtyFile
   else:
     result = conf.m.fileInfos[fileIdx.int32].fullPath

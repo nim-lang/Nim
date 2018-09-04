@@ -244,7 +244,7 @@ else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var err = "ambiguous identifier: '" & s.name.s & "'"
   var ti: TIdentIter
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
@@ -259,7 +259,7 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
   var err = "undeclared identifier: '" & name & "'"
   if c.recursiveDep.len > 0:
-    err.add "\nThis might be caused by a recursive module dependency: "
+    err.add "\nThis might be caused by a recursive module dependency:\n"
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""

@@ -138,7 +138,9 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
-  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
@@ -164,8 +166,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
+  when false:
+    # we pretend procs are attached to the type of the first
+    # argument in order to remove plenty of candidates. This is
+    # comparable to what C# does and C# is doing fine.
+    var filterOnlyFirst = false
+    for err in errors:
+      if err.firstMismatch > 1:
+        filterOnlyFirst = true
+        break
+
   var candidates = ""
   for err in errors:
+    when false:
+      if filterOnlyFirst and err.firstMismatch == 1: continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -175,15 +189,18 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     if err.firstMismatch != 0 and n.len > 1:
       let cond = n.len > 2
       if cond:
-        candidates.add("  first type mismatch at position: " & $err.firstMismatch &
-          "\n  required type: ")
+        candidates.add("  first type mismatch at position: " & $abs(err.firstMismatch))
+        if err.firstMismatch >= 0: candidates.add("\n  required type: ")
+        else: candidates.add("\n  unknown named parameter: " & $n[-err.firstMismatch][0])
       var wanted, got: PType = nil
-      if err.firstMismatch < err.sym.typ.len:
+      if err.firstMismatch < 0:
+        discard
+      elif err.firstMismatch < err.sym.typ.len:
         wanted = err.sym.typ.sons[err.firstMismatch]
         if cond: candidates.add typeToString(wanted)
       else:
         if cond: candidates.add "none"
-      if err.firstMismatch < n.len:
+      if err.firstMismatch > 0 and err.firstMismatch < n.len:
         if cond:
           candidates.add "\n  but expression '"
           candidates.add renderTree(n[err.firstMismatch])

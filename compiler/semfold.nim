@@ -11,7 +11,7 @@
 # and evaluation phase
 
 import
-  strutils, options, ast, astalgo, trees, treetab, nimsets, times,
+  strutils, options, ast, astalgo, trees, treetab, nimsets,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
@@ -450,21 +450,38 @@ proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
     localError(g.config, n.info, "cannot convert " & $value &
                                      " to " & typeToString(n.typ))
 
-proc foldConv*(n, a: PNode; g: ModuleGraph; check = false): PNode =
+proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
+  let dstTyp = skipTypes(n.typ, abstractRange)
+  let srcTyp = skipTypes(a.typ, abstractRange)
+
   # XXX range checks?
-  case skipTypes(n.typ, abstractRange).kind
-  of tyInt..tyInt64, tyUInt..tyUInt64:
-    case skipTypes(a.typ, abstractRange).kind
+  case dstTyp.kind
+  of tyInt..tyInt64, tyUint..tyUInt64:
+    case srcTyp.kind
     of tyFloat..tyFloat64:
       result = newIntNodeT(int(getFloat(a)), n, g)
-    of tyChar: result = newIntNodeT(getOrdValue(a), n, g)
+    of tyChar:
+      result = newIntNodeT(getOrdValue(a), n, g)
+    of tyUInt8..tyUInt32, tyInt8..tyInt32:
+      let fromSigned = srcTyp.kind in tyInt..tyInt64
+      let toSigned = dstTyp.kind in tyInt..tyInt64
+
+      let mask = lastOrd(g.config, dstTyp, fixedUnsigned=true)
+
+      var val =
+        if toSigned:
+          a.getOrdValue mod mask
+        else:
+          a.getOrdValue and mask
+
+      result = newIntNodeT(val, n, g)
     else:
       result = a
       result.typ = n.typ
     if check and result.kind in {nkCharLit..nkUInt64Lit}:
       rangeCheck(n, result.intVal, g)
   of tyFloat..tyFloat64:
-    case skipTypes(a.typ, abstractRange).kind
+    case srcTyp.kind
     of tyInt..tyInt64, tyEnum, tyBool, tyChar:
       result = newFloatNodeT(toBiggestFloat(getOrdValue(a)), n, g)
     else:
@@ -549,19 +566,6 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
 
 proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
-
-  proc getSrcTimestamp(): DateTime =
-    try:
-      result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
-                                            "not a number"))))
-    except ValueError:
-      # Environment variable malformed.
-      # https://reproducible-builds.org/specs/source-date-epoch/: "If the
-      # value is malformed, the build process SHOULD exit with a non-zero
-      # error code", which this doesn't do. This uses local time, because
-      # that maintains compatibility with existing usage.
-      result = local(getTime())
-
   case n.kind
   of nkSym:
     var s = n.sym
@@ -571,10 +575,8 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n, g)
-      of mCompileDate: result = newStrNodeT(format(getSrcTimestamp(),
-                                                   "yyyy-MM-dd"), n, g)
-      of mCompileTime: result = newStrNodeT(format(getSrcTimestamp(),
-                                                   "HH:mm:ss"), n, g)
+      of mCompileDate: result = newStrNodeT(getDateStr(), n, g)
+      of mCompileTime: result = newStrNodeT(getClockStr(), n, g)
       of mCpuEndian: result = newIntNodeT(ord(CPU[g.config.target.targetCPU].endian), n, g)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.targetOS].name), n, g)
       of mHostCPU: result = newStrNodeT(platform.CPU[g.config.target.targetCPU].name.toLowerAscii, n, g)
@@ -742,7 +744,8 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var a = getConstExpr(m, n.sons[1], g)
     if a == nil: return
-    result = foldConv(n, a, g, check=n.kind == nkHiddenStdConv)
+    # XXX: we should enable `check` for other conversion types too
+    result = foldConv(n, a, g, check=n.kind == nkHiddenSubConv)
   of nkCast:
     var a = getConstExpr(m, n.sons[1], g)
     if a == nil: return

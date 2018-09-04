@@ -12,6 +12,7 @@ import
   prefixmatches
 
 from terminal import isatty
+from times import utc, fromUnix, local, getTime, format, DateTime
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -54,10 +55,10 @@ type                          # please make sure we have under 32 options
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
     optCheckNep1,             # check that the names adhere to NEP-1
-    optSkipConfigFile,        # skip the general config file
-    optSkipProjConfigFile,    # skip the project's config file
-    optSkipUserConfigFile,    # skip the users's config file
-    optSkipParentConfigFiles, # skip parent dir's config files
+    optSkipSystemConfigFile,  # skip the system's cfg/nims config file
+    optSkipProjConfigFile,    # skip the project's cfg/nims config file
+    optSkipUserConfigFile,    # skip the users's cfg/nims config file
+    optSkipParentConfigFiles, # skip parent dir's cfg/nims config files
     optNoMain,                # do not generate a "main" proc
     optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
@@ -104,8 +105,8 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
-    gcV2, gcGenerational
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcRefc, gcV2
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
@@ -260,6 +261,24 @@ const
     optPatterns, optNilCheck, optMoveCheck}
   DefaultGlobalOptions* = {optThreadAnalysis}
 
+proc getSrcTimestamp(): DateTime =
+  try:
+    result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
+                                          "not a number"))))
+  except ValueError:
+    # Environment variable malformed.
+    # https://reproducible-builds.org/specs/source-date-epoch/: "If the
+    # value is malformed, the build process SHOULD exit with a non-zero
+    # error code", which this doesn't do. This uses local time, because
+    # that maintains compatibility with existing usage.
+    result = utc getTime()
+
+proc getDateStr*(): string =
+  result = format(getSrcTimestamp(), "yyyy-MM-dd")
+
+proc getClockStr*(): string =
+  result = format(getSrcTimestamp(), "HH:mm:ss")
+
 template newPackageCache*(): untyped =
   newStringTable(when FileSystemCaseSensitive:
                    modeCaseInsensitive
@@ -374,7 +393,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     else: discard
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
-proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
+proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
   conf.symbolFiles in {v2Sf, writeOnlySf}
@@ -392,6 +411,7 @@ const
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nim.cfg"
+  DefaultConfigNims* = "config.nims"
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
 

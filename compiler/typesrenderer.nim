@@ -29,7 +29,6 @@ proc renderPlainSymbolName*(n: PNode): string =
   else:
     result = ""
     #internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
-  assert(not result.isNil)
 
 proc renderType(n: PNode): string =
   ## Returns a string with the node type or the empty string.
@@ -80,7 +79,6 @@ proc renderType(n: PNode): string =
     for i in 1 ..< len(n): result.add(renderType(n[i]) & ',')
     result[len(result)-1] = ']'
   else: result = ""
-  assert(not result.isNil)
 
 
 proc renderParamTypes(found: var seq[string], n: PNode) =

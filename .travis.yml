@@ -50,4 +50,4 @@ script:
   - ./koch web
   - ./koch csource
   - ./koch nimsuggest
-#  - nim c -r nimsuggest/tester
+  - nim c -r nimsuggest/tester

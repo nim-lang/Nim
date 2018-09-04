@@ -608,7 +608,6 @@ proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
 
 proc humanizeParts(parts: seq[string]): string =
   ## Make date string parts human-readable
-
   result = ""
   if parts.len == 0:
     result.add "0 nanoseconds"
@@ -617,8 +616,8 @@ proc humanizeParts(parts: seq[string]): string =
   elif parts.len == 2:
     result = parts[0] & " and " & parts[1]
   else:
-    for part in parts[0..high(parts)-1]:
-      result.add part & ", "
+    for i in 0..high(parts)-1:
+      result.add parts[i] & ", "
     result.add "and " & parts[high(parts)]
 
 proc `$`*(dur: Duration): string =
@@ -957,6 +956,17 @@ else:
     result.inc tm.second
 
   proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
+    # Windows can't handle unix < 0, so we fall back to unix = 0.
+    # FIXME: This should be improved by falling back to the WinAPI instead.
+    when defined(windows):
+      if unix < 0:
+        var a = 0.CTime
+        let tmPtr = localtime(addr(a))
+        if not tmPtr.isNil:
+          let tm = tmPtr[]
+          return ((0 - tm.toAdjUnix).int, false)
+        return (0, false)
+
     var a = unix.CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:

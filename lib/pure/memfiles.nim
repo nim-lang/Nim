@@ -328,7 +328,6 @@ proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   var buf = newString(ms.size)
   copyMem(addr(buf[0]), ms.data, ms.size)
-  buf[ms.size] = '\0'
   result = buf
 
 iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =

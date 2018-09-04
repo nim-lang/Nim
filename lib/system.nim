@@ -211,6 +211,7 @@ proc new*(T: typedesc): auto =
   new(r)
   return r
 
+const ThisIsSystem = true
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## leaked implementation detail. Do not use.
@@ -228,6 +229,17 @@ proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
 proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
+
+when defined(nimNewRuntime):
+  proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+    ## resets an object `obj` to its initial (binary zero) value to signify
+    ## it was "moved" and to signify its destructor should do nothing and
+    ## ideally be optimized away.
+    discard
+
+  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+    result = x
+    wasMoved(x)
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
@@ -301,6 +313,12 @@ when defined(nimArrIdx):
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+
+  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
+    noSideEffect, magic: "ArrGet".}
+  proc arrPut[I: Ordinal;T,S](a: T; i: I;
+    x: S) {.noSideEffect, magic: "ArrPut".}
+
   when defined(nimNewRuntime):
     proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
@@ -413,7 +431,7 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
-when not defined(JS):
+when not defined(JS) and not defined(gcDestructors):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -426,8 +444,9 @@ when not defined(JS):
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
-  template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not (seqShallowFlag or strlitFlag)
+  when not defined(gcDestructors):
+    template space(s: PGenericSeq): int {.dirty.} =
+      s.reserved and not (seqShallowFlag or strlitFlag)
   include "system/hti"
 
 type
@@ -692,7 +711,8 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ## ``cap``.
   discard
 
-when not defined(JS):
+when not defined(JS) and not defined(gcDestructors):
+  # XXX enable this for --gc:destructors
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
@@ -1481,11 +1501,17 @@ const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(n
 
 when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc:
+when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(gcDestructors):
   proc addChar(s: NimString, c: char): NimString {.compilerProc, benign.}
 
-proc add *[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
-proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+when defined(gcDestructors):
+  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+    let xl = x.len
+    setLen(x, xl + 1)
+    x[xl] = y
+else:
+  proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ## For containers that have an order, `add` means *append*. New generic
   ## containers should also call their adding proc `add` for consistency.
@@ -1680,17 +1706,6 @@ proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
 # Support for addQuitProc() is done by Ansi C's facilities here.
 # In case of an unhandled exeption the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
-
-proc substr*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect.}
-proc substr*(s: string, first, last: int): string {.
-  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect.}
-  ## copies a slice of `s` into a new string and returns this new
-  ## string. The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
-  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
-  ## or `limit`:idx: a string's length.
 
 when not defined(nimscript) and not defined(JS):
   proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
@@ -2180,10 +2195,17 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## iterates over each item of `a`.
-  var i = 0
-  while a[i] != '\0':
-    yield a[i]
-    inc(i)
+  when defined(js):
+    var i = 0
+    var L = len(a)
+    while i < L:
+      yield a[i]
+      inc(i)
+  else:
+    var i = 0
+    while a[i] != '\0':
+      yield a[i]
+      inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## iterates over each item of `a` so that you can modify the yielded value.
@@ -2283,9 +2305,18 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
     inc(i)
 
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", deprecated.}
+when defined(nimNoNilSeqs2):
+  when not compileOption("nilseqs"):
+    {.pragma: nilError, error.}
+  else:
+    {.pragma: nilError.}
+else:
+  {.pragma: nilError.}
+
+proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", deprecated.}
+proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
@@ -2820,6 +2851,58 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+when not defined(JS):
+  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+
+template likely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be true.
+  ##
+  ## You can use this template to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if likely(value <= 100):
+  ##       process(value)
+  ##     else:
+  ##       echo "Value too big!"
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      likely_proc(val)
+
+template unlikely*(val: bool): bool =
+  ## Hints the optimizer that `val` is likely going to be false.
+  ##
+  ## You can use this proc to decorate a branch condition. On certain
+  ## platforms this can help the processor predict better which branch is
+  ## going to be run. Example:
+  ##
+  ## .. code-block:: nim
+  ##   for value in inputValues:
+  ##     if unlikely(value > 100):
+  ##       echo "Value too big!"
+  ##     else:
+  ##       process(value)
+  ##
+  ## On backends without branch prediction (JS and the nimscript VM), this
+  ## template will not affect code execution.
+  when nimvm:
+    val
+  else:
+    when defined(JS):
+      val
+    else:
+      unlikely_proc(val)
+
 type
   FileSeekPos* = enum ## Position relative to which seek should happen
                       # The values are ordered so that they match with stdio
@@ -2853,10 +2936,11 @@ when not defined(JS): #and not defined(nimscript):
       when declared(nimGC_setStackBottom):
         nimGC_setStackBottom(locals)
 
-    {.push profiler: off.}
-    var
-      strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
-    {.pop.}
+    when not defined(gcDestructors):
+      {.push profiler: off.}
+      var
+        strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+      {.pop.}
 
 
   # ----------------- IO Part ------------------------------------------------
@@ -3242,8 +3326,14 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/mmdisp"
     {.pop.}
     {.push stack_trace: off, profiler:off.}
-    when hasAlloc: include "system/sysstr"
+    when hasAlloc:
+      when defined(gcDestructors):
+        include "core/strs"
+        include "core/seqs"
+      else:
+        include "system/sysstr"
     {.pop.}
+    when hasAlloc: include "system/strmantle"
 
     when hostOS != "standalone": include "system/sysio"
     when hasThreadSupport:
@@ -3288,8 +3378,9 @@ when not defined(JS): #and not defined(nimscript):
       while f.readLine(res): yield res
 
   when not defined(nimscript) and hasAlloc:
-    include "system/assign"
-    include "system/repr"
+    when not defined(gcDestructors):
+      include "system/assign"
+      include "system/repr"
 
   when hostOS != "standalone" and not defined(nimscript):
     proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
@@ -3302,12 +3393,15 @@ when not defined(JS): #and not defined(nimscript):
       var e = getCurrentException()
       return if e == nil: "" else: e.msg
 
-    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) =
+    proc onRaise*(action: proc(e: ref Exception): bool{.closure.}) {.deprecated.} =
       ## can be used in a ``try`` statement to setup a Lisp-like
       ## `condition system`:idx:\: This prevents the 'raise' statement to
       ## raise an exception but instead calls ``action``.
       ## If ``action`` returns false, the exception has been handled and
       ## does not propagate further through the call stack.
+      ##
+      ## *Deprecated since version 0.18.1*: No good usages of this
+      ## feature are known.
       if not isNil(excHandler):
         excHandler.hasRaiseAction = true
         excHandler.raiseAction = action
@@ -3396,58 +3490,6 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
 {.pop.} # checks
 {.pop.} # hints
 
-when not defined(JS):
-  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
-
-template likely*(val: bool): bool =
-  ## Hints the optimizer that `val` is likely going to be true.
-  ##
-  ## You can use this template to decorate a branch condition. On certain
-  ## platforms this can help the processor predict better which branch is
-  ## going to be run. Example:
-  ##
-  ## .. code-block:: nim
-  ##   for value in inputValues:
-  ##     if likely(value <= 100):
-  ##       process(value)
-  ##     else:
-  ##       echo "Value too big!"
-  ##
-  ## On backends without branch prediction (JS and the nimscript VM), this
-  ## template will not affect code execution.
-  when nimvm:
-    val
-  else:
-    when defined(JS):
-      val
-    else:
-      likely_proc(val)
-
-template unlikely*(val: bool): bool =
-  ## Hints the optimizer that `val` is likely going to be false.
-  ##
-  ## You can use this proc to decorate a branch condition. On certain
-  ## platforms this can help the processor predict better which branch is
-  ## going to be run. Example:
-  ##
-  ## .. code-block:: nim
-  ##   for value in inputValues:
-  ##     if unlikely(value > 100):
-  ##       echo "Value too big!"
-  ##     else:
-  ##       process(value)
-  ##
-  ## On backends without branch prediction (JS and the nimscript VM), this
-  ## template will not affect code execution.
-  when nimvm:
-    val
-  else:
-    when defined(JS):
-      val
-    else:
-      unlikely_proc(val)
-
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
@@ -3499,6 +3541,9 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 
 template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
+
+template `[]`*(s: string; i: int): char = arrGet(s, i)
+template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
 when hasAlloc or defined(nimscript):
   proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
@@ -3732,6 +3777,16 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
                                     tags: [].}
   Hide(raiseAssert)(msg)
 
+include "system/helpers" # for `lineInfoToString`
+
+template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
+  const loc = $instantiationInfo(-1, true)
+  bind instantiationInfo
+  mixin failedAssertImpl
+  when enabled:
+    if not cond:
+      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
@@ -3741,23 +3796,11 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  bind instantiationInfo
-  mixin failedAssertImpl
-  when compileOption("assertions"):
-    {.line.}:
-      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
+  assertImpl(cond, msg, compileOption("assertions"))
 
 template doAssert*(cond: bool, msg = "") =
-  ## same as `assert` but is always turned on and not affected by the
-  ## ``--assertions`` command line switch.
-  bind instantiationInfo
-  # NOTE: `true` is correct here; --excessiveStackTrace:on will control whether
-  # or not to output full paths.
-  {.line: instantiationInfo(-1, true).}:
-    if not cond:
-      raiseAssert(astToStr(cond) & ' ' &
-                  instantiationInfo(-1, false).fileName & '(' &
-                  $instantiationInfo(-1, false).line & ") " & msg)
+  ## same as ``assert`` but is always turned on regardless of ``--assertions``
+  assertImpl(cond, msg, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -3827,7 +3870,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`. This is only useful for optimization
   ## purposes.
-  when not defined(JS) and not defined(nimscript):
+  when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
     var s = cast[PGenericSeq](s)
     # string literals cannot become 'shallow':
     if (s.reserved and strlitFlag) == 0:
@@ -3939,7 +3982,7 @@ proc addQuoted*[T](s: var string, x: T) =
   ##   tmp.add(", ")
   ##   tmp.addQuoted('c')
   ##   assert(tmp == """1, "string", 'c'""")
-  when T is string:
+  when T is string or T is cstring:
     s.add("\"")
     for c in x:
       # Only ASCII chars are escaped to avoid butchering
@@ -4011,7 +4054,9 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hasAlloc and not defined(nimscript) and not defined(JS):
+when hasAlloc and not defined(nimscript) and not defined(JS) and
+    not defined(gcDestructors):
+  # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## performs a deep copy of `y` and copies it into `x`.
     ## This is also used by the code generator
@@ -4029,10 +4074,15 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   procCall someMethod(a, b)
   discard
 
-proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
-proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
+proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect,
+                             deprecated: "use len() instead".} =
+  ## **Deprecated since version 0.18.1**. Use len() instead.
+  discard
+proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect,
+                                deprecated: "use len() instead".} =
   ## returns the length of a sequence or a string without testing for 'nil'.
   ## This is an optimization that rarely makes sense.
+  ## **Deprecated since version 0.18.1**. Use len() instead.
   discard
 
 
@@ -4091,6 +4141,22 @@ template once*(body: untyped): untyped =
     body
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
+
+proc substr*(s: string, first, last: int): string =
+  let first = max(first, 0)
+  let L = max(min(last, high(s)) - first + 1, 0)
+  result = newString(L)
+  for i in 0 .. L-1:
+    result[i] = s[i+first]
+
+proc substr*(s: string, first = 0): string =
+  ## copies a slice of `s` into a new string and returns this new
+  ## string. The bounds `first` and `last` denote the indices of
+  ## the first and last characters that shall be copied. If ``last``
+  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
+  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
+  ## or `limit`:idx: a string's length.
+  result = substr(s, first, high(s))
 
 when defined(nimconfig):
   include "system/nimscript"

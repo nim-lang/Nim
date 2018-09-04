@@ -1112,21 +1112,12 @@ proc can convert it to its underlying integer value.
 
 For better interfacing to other programming languages, the symbols of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
-must be in ascending order. A symbol whose ordinal value is not
-explicitly given is assigned the value of the previous symbol + 1.
-
-An explicit ordered enum can have *holes*:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  type
-    MyEnum = enum
-      a = 2, b = 4, c = 89
+must be in ascending order.
 
 
 Ordinal types
 -------------
-Enumerations without holes, integer types, ``char`` and ``bool`` (and
+Enumerations, integer types, ``char`` and ``bool`` (and
 subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 

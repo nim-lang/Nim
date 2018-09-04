@@ -393,8 +393,9 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  if threadDestructionHandlers.isNil:
-    threadDestructionHandlers = @[]
+  when not defined(nimNoNilSeqs):
+    if threadDestructionHandlers.isNil:
+      threadDestructionHandlers = @[]
   threadDestructionHandlers.add handler
 
 template afterThreadRuns() =

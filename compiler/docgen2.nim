@@ -21,12 +21,15 @@ type
     module: PSym
   PGen = ref TGen
 
+template shouldProcess(g): bool =
+  (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+      sfMainModule in g.module.flags
+
 template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
   #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
-  if (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
-      sfMainModule in g.module.flags:
+  if shouldProcess(g):
     body
     try:
       generateIndex(g.doc)
@@ -35,27 +38,29 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, toFilename(graph.config, FileIndex g.module.position), HtmlExt, useWarning)
+    writeOutput(g.doc, toFullPath(graph.config, FileIndex g.module.position), HtmlExt, useWarning)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutputJson(g.doc, toFilename(graph.config, FileIndex g.module.position), ".json", useWarning)
+    writeOutputJson(g.doc, toFullPath(graph.config, FileIndex g.module.position), ".json", useWarning)
 
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
-  generateDoc(g.doc, n)
+  if shouldProcess(g):
+    generateDoc(g.doc, n)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
-  generateJson(g.doc, n)
+  if shouldProcess(g):
+    generateJson(g.doc, n)
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(toFilename(graph.config, FileIndex module.position), graph.cache, graph.config)
+  var d = newDocumentor(toFullPath(graph.config, FileIndex module.position), graph.cache, graph.config)
   d.hasToc = true
   g.doc = d
   result = g

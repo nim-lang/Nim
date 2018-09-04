@@ -175,7 +175,7 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
     g.pendingWhitespace = s.len
 
 proc putComment(g: var TSrcGen, s: string) =
-  if s.isNil: return
+  if s.len == 0: return
   var i = 0
   let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
@@ -216,7 +216,7 @@ proc putComment(g: var TSrcGen, s: string) =
   optNL(g)
 
 proc maxLineLength(s: string): int =
-  if s.isNil: return 0
+  if s.len == 0: return 0
   var i = 0
   let hi = len(s) - 1
   var lineLen = 0
@@ -752,7 +752,8 @@ proc gproc(g: var TSrcGen, n: PNode) =
     gsub(g, n.sons[genericParamsPos])
   g.inGenericParams = oldInGenericParams
   gsub(g, n.sons[paramsPos])
-  gsub(g, n.sons[pragmasPos])
+  if renderNoPragmas notin g.flags:
+    gsub(g, n.sons[pragmasPos])
   if renderNoBody notin g.flags:
     if n.sons[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
@@ -1297,17 +1298,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkContinue, "continue")
     gsub(g, n, 0)
   of nkPragma:
-    if renderNoPragmas notin g.flags:
-      if g.inPragma <= 0:
-        inc g.inPragma
-        #if not previousNL(g):
-        put(g, tkSpaces, Space)
-        put(g, tkCurlyDotLe, "{.")
-        gcomma(g, n, emptyContext)
-        put(g, tkCurlyDotRi, ".}")
-        dec g.inPragma
-      else:
-        gcomma(g, n, emptyContext)
+    if g.inPragma <= 0:
+      inc g.inPragma
+      #if not previousNL(g):
+      put(g, tkSpaces, Space)
+      put(g, tkCurlyDotLe, "{.")
+      gcomma(g, n, emptyContext)
+      put(g, tkCurlyDotRi, ".}")
+      dec g.inPragma
+    else:
+      gcomma(g, n, emptyContext)
   of nkImportStmt, nkExportStmt:
     if n.kind == nkImportStmt:
       putWithSpace(g, tkImport, "import")
