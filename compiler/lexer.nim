@@ -1286,13 +1286,13 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
     if result > 0 or tok.tokType == tkEof: break
   closeLexer(lex)
 
-proc getPrecedence*(fileIdx: FileIndex, s: string, cache: IdentCache, config: ConfigRef): int =
-  var lex: TLexer
+proc getPrecedence*(ident: PIdent): int =
+  ## assumes ident is binary operator already
   var tok: TToken
   initToken(tok)
-  let istream = llStreamOpen(s)
-  openLexer(lex, fileIdx, istream, cache, config)
-  rawGetTok(lex, tok)
-  closeLexer(lex)
+  tok.ident = ident
+  tok.tokType =
+    if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol) .. ord(tokKeywordHigh) - ord(tkSymbol):
+      TTokType(tok.ident.id + ord(tkSymbol))
+    else: tkOpr
   getPrecedence(tok, false)
-  

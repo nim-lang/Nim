@@ -41,7 +41,6 @@ type
       pendingNewlineCount: int
     fid*: FileIndex
     config*: ConfigRef
-    cache: IdentCache
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -105,7 +104,6 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.pendingWhitespace = -1
   g.inGenericParams = false
   g.config = config  
-  g.cache = newIdentCache()
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
   var length = len(g.tokens)
@@ -894,19 +892,18 @@ proc accentedName(g: var TSrcGen, n: PNode) =
 proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if i >= n.len: return
 
-  var needs_parenthesis = false
+  var needsParenthesis = false
   let n_next = n[i].skipHiddenNodes
   if n_next.kind == nkInfix:
     if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
-      let next_id = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
-      let nn_id = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident     
-      if getPrecedence(g.fid, next_id.s, g.cache, g.config) < 
-               getPrecedence(g.fid, nn_id.s, g.cache, g.config):
-        needs_parenthesis = true
-  if needs_parenthesis:
+      let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+      let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident     
+      if getPrecedence(nextId) < getPrecedence(nnId):
+        needsParenthesis = true
+  if needsParenthesis:
     put(g, tkParLe, "(")
   gsub(g, n, i)
-  if needs_parenthesis:
+  if needsParenthesis:
     put(g, tkParRi, ")")
   
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
