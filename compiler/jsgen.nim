@@ -2201,6 +2201,7 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
+  let n_transformed = transformStmt(p.module.graph, p.module.module, n)
   genStmt(p, n)
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
