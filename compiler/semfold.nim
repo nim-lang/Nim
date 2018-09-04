@@ -214,22 +214,33 @@ proc evalIs(n: PNode, lhs: PSym, g: ModuleGraph): PNode =
   result = newIntNode(nkIntLit, ord(res))
   result.typ = n.typ
 
+proc fitLiteral(c: ConfigRef, n: PNode): PNode =
+  # `n` may be nil if the overflow check kicks in
+  if n == nil: return
+  # Trim the literal value in order to make it fit in the destination type
+  doAssert n.kind in {nkIntLit, nkCharLit}
+
+  result = n
+
+  let typ = n.typ.skipTypes(abstractRange)
+  if typ.kind in {tyUInt..tyUint32}:
+    result.intVal = result.intVal and lastOrd(c, typ, fixedUnsigned=true)
+  elif typ.kind in {tyInt..tyInt32}:
+    result.intVal = result.intVal mod lastOrd(c, typ, fixedUnsigned=true)
+
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
+  template doAndFit(op: untyped): untyped =
+    fitLiteral(g.config, op)
   # b and c may be nil
   result = nil
   case m
   of mOrd: result = newIntNodeT(getOrdValue(a), n, g)
   of mChr: result = newIntNodeT(getInt(a), n, g)
-  of mUnaryMinusI, mUnaryMinusI64: result = foldUnarySub(getInt(a), n, g)
+  of mUnaryMinusI, mUnaryMinusI64: result = doAndFit(foldUnarySub(getInt(a), n, g))
   of mUnaryMinusF64: result = newFloatNodeT(- getFloat(a), n, g)
-  of mNot: result = newIntNodeT(1 - getInt(a), n, g)
+  of mNot: result = doAndFit(newIntNodeT(1 - getInt(a), n, g))
   of mCard: result = newIntNodeT(nimsets.cardSet(g.config, a), n, g)
-  of mBitnotI:
-    case skipTypes(n.typ, abstractRange).kind
-    of tyUInt..tyUInt64:
-      result = newIntNodeT((not getInt(a)) and lastOrd(g.config, a.typ, fixedUnsigned=true), n, g)
-    else:
-      result = newIntNodeT(not getInt(a), n, g)
+  of mBitnotI: result = doAndFit(newIntNodeT(not getInt(a), n, g))
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
   of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
     if a.kind == nkNilLit:
@@ -244,19 +255,19 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   # XXX: Hides overflow/underflow
   of mToInt, mToBiggestInt: result = newIntNodeT(system.toInt(getFloat(a)), n, g)
   of mAbsF64: result = newFloatNodeT(abs(getFloat(a)), n, g)
-  of mAbsI: result = foldAbs(getInt(a), n, g)
+  of mAbsI: result = doAndFit(foldAbs(getInt(a), n, g))
   of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
     # byte(-128) = 1...1..1000_0000'64 --> 0...0..1000_0000'64
     result = newIntNodeT(getInt(a) and (`shl`(1, getSize(g.config, a.typ) * 8) - 1), n, g)
   of mToU8: result = newIntNodeT(getInt(a) and 0x000000FF, n, g)
   of mToU16: result = newIntNodeT(getInt(a) and 0x0000FFFF, n, g)
   of mToU32: result = newIntNodeT(getInt(a) and 0x00000000FFFFFFFF'i64, n, g)
-  of mUnaryLt: result = foldSub(getOrdValue(a), 1, n, g)
-  of mSucc: result = foldAdd(getOrdValue(a), getInt(b), n, g)
-  of mPred: result = foldSub(getOrdValue(a), getInt(b), n, g)
-  of mAddI: result = foldAdd(getInt(a), getInt(b), n, g)
-  of mSubI: result = foldSub(getInt(a), getInt(b), n, g)
-  of mMulI: result = foldMul(getInt(a), getInt(b), n, g)
+  of mUnaryLt: result = doAndFit(foldSub(getOrdValue(a), 1, n, g))
+  of mSucc: result = doAndFit(foldAdd(getOrdValue(a), getInt(b), n, g))
+  of mPred: result = doAndFit(foldSub(getOrdValue(a), getInt(b), n, g))
+  of mAddI: result = doAndFit(foldAdd(getInt(a), getInt(b), n, g))
+  of mSubI: result = doAndFit(foldSub(getInt(a), getInt(b), n, g))
+  of mMulI: result = doAndFit(foldMul(getInt(a), getInt(b), n, g))
   of mMinI:
     if getInt(a) > getInt(b): result = newIntNodeT(getInt(b), n, g)
     else: result = newIntNodeT(getInt(a), n, g)
@@ -289,8 +300,8 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     of tyInt64, tyInt:
       result = newIntNodeT(ashr(getInt(a), getInt(b)), n, g)
     else: internalError(g.config, n.info, "constant folding for ashr")
-  of mDivI: result = foldDiv(getInt(a), getInt(b), n, g)
-  of mModI: result = foldMod(getInt(a), getInt(b), n, g)
+  of mDivI: result = doAndFit(foldDiv(getInt(a), getInt(b), n, g))
+  of mModI: result = doAndFit(foldMod(getInt(a), getInt(b), n, g))
   of mAddF64: result = newFloatNodeT(getFloat(a) + getFloat(b), n, g)
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
@@ -324,14 +335,14 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     result = newIntNodeT(ord(`<%`(getOrdValue(a), getOrdValue(b))), n, g)
   of mLeU, mLeU64:
     result = newIntNodeT(ord(`<=%`(getOrdValue(a), getOrdValue(b))), n, g)
-  of mBitandI, mAnd: result = newIntNodeT(a.getInt and b.getInt, n, g)
-  of mBitorI, mOr: result = newIntNodeT(getInt(a) or getInt(b), n, g)
-  of mBitxorI, mXor: result = newIntNodeT(a.getInt xor b.getInt, n, g)
-  of mAddU: result = newIntNodeT(`+%`(getInt(a), getInt(b)), n, g)
-  of mSubU: result = newIntNodeT(`-%`(getInt(a), getInt(b)), n, g)
-  of mMulU: result = newIntNodeT(`*%`(getInt(a), getInt(b)), n, g)
-  of mModU: result = foldModU(getInt(a), getInt(b), n, g)
-  of mDivU: result = foldDivU(getInt(a), getInt(b), n, g)
+  of mBitandI, mAnd: result = doAndFit(newIntNodeT(a.getInt and b.getInt, n, g))
+  of mBitorI, mOr: result = doAndFit(newIntNodeT(getInt(a) or getInt(b), n, g))
+  of mBitxorI, mXor: result = doAndFit(newIntNodeT(a.getInt xor b.getInt, n, g))
+  of mAddU: result = doAndFit(newIntNodeT(`+%`(getInt(a), getInt(b)), n, g))
+  of mSubU: result = doAndFit(newIntNodeT(`-%`(getInt(a), getInt(b)), n, g))
+  of mMulU: result = doAndFit(newIntNodeT(`*%`(getInt(a), getInt(b)), n, g))
+  of mModU: result = doAndFit(foldModU(getInt(a), getInt(b), n, g))
+  of mDivU: result = doAndFit(foldDivU(getInt(a), getInt(b), n, g))
   of mLeSet: result = newIntNodeT(ord(containsSets(g.config, a, b)), n, g)
   of mEqSet: result = newIntNodeT(ord(equalSets(g.config, a, b)), n, g)
   of mLtSet:
@@ -463,18 +474,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     of tyChar:
       result = newIntNodeT(getOrdValue(a), n, g)
     of tyUInt8..tyUInt32, tyInt8..tyInt32:
-      let fromSigned = srcTyp.kind in tyInt..tyInt64
-      let toSigned = dstTyp.kind in tyInt..tyInt64
-
-      let mask = lastOrd(g.config, dstTyp, fixedUnsigned=true)
-
-      var val =
-        if toSigned:
-          a.getOrdValue mod mask
-        else:
-          a.getOrdValue and mask
-
-      result = newIntNodeT(val, n, g)
+      result = fitLiteral(g.config, newIntNodeT(a.getOrdValue, n, g))
     else:
       result = a
       result.typ = n.typ
