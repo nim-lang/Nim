@@ -48,7 +48,7 @@ const
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
+    wLinearScanEnd, wPatterns, wEffects, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
@@ -226,10 +226,6 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
 proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions = resOptions + op
   else: resOptions = resOptions - op
-
-proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
-  if isTurnedOn(c, n): incl(c.module.flags, flag)
-  else: excl(c.module.flags, flag)
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
@@ -724,7 +720,10 @@ proc processExperimental(c: PContext; n: PNode; s: PSym) =
     case n[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
       try:
-        c.features.incl parseEnum[Feature](n[1].strVal)
+        let feature = parseEnum[Feature](n[1].strVal)
+        c.features.incl feature
+        if feature == codeReordering:
+          c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -815,8 +814,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
-      of wNoForward: pragmaNoForward(c, it)
-      of wReorder: pragmaNoForward(c, it, sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
