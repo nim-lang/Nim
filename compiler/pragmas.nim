@@ -743,7 +743,11 @@ proc processExperimental(c: PContext; n: PNode) =
         let feature = parseEnum[Feature](n[1].strVal)
         c.features.incl feature
         if feature == codeReordering:
-          c.module.flags.incl sfReorder
+          if not isTopLevel(c):
+              localError(c.config, n.info,
+                         "Code reordering experimental pragma only valid at toplevel")
+          else:
+            c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
