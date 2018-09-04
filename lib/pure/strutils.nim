@@ -37,7 +37,7 @@ else:
   {.pragma: deprecatedSplit.}
 
 const
-  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
+  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f', '\n'}
     ## All the characters that count as whitespace.
 
   Letters* = {'A'..'Z', 'a'..'z'}
