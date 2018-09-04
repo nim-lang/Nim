@@ -347,7 +347,13 @@ proc processExperimental(c: PContext; n: PNode) =
     case n[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
       try:
-        c.features.incl parseEnum[Feature](n[1].strVal)
+        let feature = parseEnum[Feature](n[1].strVal)
+        c.features.incl feature
+        if feature == codeReordering:
+          if not isTopLevel(c):
+              localError(c.config, n.info,
+                         "Code reordering experimental pragma only valid at toplevel")
+          c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -731,27 +737,6 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
       result = result[0]
     elif n.kind == nkExprColonExpr:
       result.kind = n.kind # pragma(arg) -> pragma: arg
-
-proc processExperimental(c: PContext; n: PNode) =
-  if n.kind notin nkPragmaCallKinds or n.len != 2:
-    c.features.incl oldExperimentalFeatures
-  else:
-    n[1] = c.semConstExpr(c, n[1])
-    case n[1].kind
-    of nkStrLit, nkRStrLit, nkTripleStrLit:
-      try:
-        let feature = parseEnum[Feature](n[1].strVal)
-        c.features.incl feature
-        if feature == codeReordering:
-          if not isTopLevel(c):
-              localError(c.config, n.info,
-                         "Code reordering experimental pragma only valid at toplevel")
-          else:
-            c.module.flags.incl sfReorder
-      except ValueError:
-        localError(c.config, n[1].info, "unknown experimental feature")
-    else:
-      localError(c.config, n.info, errStringLiteralExpected)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords): bool =
