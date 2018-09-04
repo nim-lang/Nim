@@ -678,7 +678,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -687,9 +687,9 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       needsSplit = true
       result = newNodeI(nkStmtListExpr, n.info)
       result.typ = n.typ
-      let (st, ex) = exprToStmtList(n[1])
+      let (st, ex) = exprToStmtList(n[^1])
       result.add(st)
-      n[1] = ex
+      n[^1] = ex
       result.add(n)
 
   of nkAsgn, nkFastAsgn:
