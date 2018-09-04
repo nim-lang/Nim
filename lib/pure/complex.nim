@@ -372,7 +372,7 @@ proc rect*(r: float, phi: float): Complex =
   result.im = r * sin(phi)
 
 
-proc `$`*(z: Complex): string {.inline.} =
+proc `$`*(z: Complex): string =
   ## Returns `z`'s string representation as ``"(re, im)"``.
   result = "(" & $z.re & ", " & $z.im & ")"
 
