@@ -27,16 +27,16 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
     a[x] = value
     inc(x)
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) {.inline.} =
   ## fills the array ``a[first..last]`` with `value`.
   fillImpl(a, first, last, value)
 
-proc fill*[T](a: var openArray[T], value: T) =
+proc fill*[T](a: var openArray[T], value: T) {.inline.} =
   ## fills the array `a` with `value`.
   fillImpl(a, 0, a.high, value)
 
 
-proc reverse*[T](a: var openArray[T], first, last: Natural) =
+proc reverse*[T](a: var openArray[T], first, last: Natural) {.inline.} =
   ## reverses the array ``a[first..last]``.
   var x = first
   var y = last
@@ -45,7 +45,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     dec(y)
     inc(x)
 
-proc reverse*[T](a: var openArray[T]) =
+proc reverse*[T](a: var openArray[T]) {.inline.} =
   ## reverses the array `a`.
   reverse(a, 0, max(0, a.high))
 
@@ -352,7 +352,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     index = 0
     indexes[index] -= 1
 
-proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc nextPermutation*[T](x: var openarray[T]): bool {.discardable,inline.} =
   ## Calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
@@ -381,7 +381,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
 
   result = true
 
-proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc prevPermutation*[T](x: var openarray[T]): bool {.discardable,inline.} =
   ## Calculates the previous lexicographic permutation, directly modifying
   ## ``x``.  The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
