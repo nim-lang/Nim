@@ -6896,6 +6896,20 @@ level:
 
   a() # outputs: "5"
 
+The values of expressions involving `declared` are decided *before* the code
+reordering process, and not after. As an example, the output of this code is
+the same as it would be with code reordering disabled.
+
+.. code-block:: nim
+  {.reorder: on.}
+
+  proc x() =
+    echo(declared(foo))
+
+  var foo = 4
+
+  x() # "false"
+
 It is important to note that reordering *only* works for symbols at top level
 scope. Therefore, the following will *fail to compile:*
 
