@@ -103,7 +103,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.pendingNL = -1
   g.pendingWhitespace = -1
   g.inGenericParams = false
-  g.config = config  
+  g.config = config
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
   var length = len(g.tokens)
