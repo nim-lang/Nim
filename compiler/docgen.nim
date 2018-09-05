@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, lineinfos, sequtils
+  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets
 
 type
   TSections = array[TSymKind, Rope]
@@ -32,6 +32,8 @@ type
     conf*: ConfigRef
     cache*: IdentCache
     exampleCounter: int
+    emitted: IntSet # we need to track which symbols have been emitted
+                    # already. See bug #3655
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -119,6 +121,7 @@ proc newDocumentor*(filename: string; cache: IdentCache; conf: ConfigRef): PDoc 
   initStrTable result.types
   result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
     localError(conf, newLineInfo(conf, d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
+  result.emitted = initIntSet()
 
 proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if conf.cmd != cmdRst2tex: addf(dest, xml, args)
@@ -377,7 +380,7 @@ when false:
       else:
         result = n.comment.substr(2).replace("\n##", "\n").strip
 
-proc isVisible(n: PNode): bool =
+proc isVisible(d: PDoc; n: PNode): bool =
   result = false
   if n.kind == nkPostfix:
     if n.len == 2 and n.sons[0].kind == nkIdent:
@@ -388,8 +391,10 @@ proc isVisible(n: PNode): bool =
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
     result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    if result and containsOrIncl(d.emitted, n.sym.id):
+      result = false
   elif n.kind == nkPragmaExpr:
-    result = isVisible(n.sons[0])
+    result = isVisible(d, n.sons[0])
 
 proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   case n.kind
@@ -520,7 +525,7 @@ proc docstringSummary(rstText: string): string =
 
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
-  if not isVisible(nameNode): return
+  if not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
     nameRope = name.rope
@@ -601,7 +606,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     d.types.strTableAdd nameNode.sym
 
 proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
-  if not isVisible(nameNode): return
+  if not isVisible(d, nameNode): return
   var
     name = getName(d, nameNode)
     comm = $genRecComment(d, n)
