@@ -1591,13 +1591,6 @@ proc skipConvTakeType*(n: PNode): PNode =
   result = n.skipConv
   result.typ = n.typ
 
-proc isConstExpr*(n: PNode): bool =
-  const atomKinds = {nkCharLit..nkNilLit} # Char, Int, UInt, Str, Float and Nil literals
-  result = n.kind in atomKinds or nfAllConst in n.flags
-  if not result:
-    let ns = n.skipConv
-    result = ns.kind in atomKinds or nfAllConst in ns.flags
-
 proc isEmptyContainer*(t: PType): bool =
   case t.kind
   of tyExpr, tyNil: result = true
