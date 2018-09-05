@@ -764,11 +764,22 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
     of nkSym:
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
-      if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
-        p.body.add mangleName(p.module, v)
+      if false:
+        discard
       else:
         var r: TCompRes
         gen(p, it, r)
+
+        if it.typ.kind == tyPointer:
+          # A fat pointer is disguised as an array
+          r.res = r.address
+          r.address = nil
+        elif r.typ == etyBaseIndex:
+          # Deference first
+          r.res = "$1[$2]" % [r.address, r.res]
+          r.address = nil
+          r.typ = etyNone
+
         p.body.add(r.rdLoc)
     else:
       var r: TCompRes
