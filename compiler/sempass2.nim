@@ -568,7 +568,9 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
-    let s = n.skipConv
+    var s = n.skipConv
+    if s.kind == nkCast and s[1].typ.kind == tyProc:
+      s = s[1]
     if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
       propagateEffects(tracked, n, s.sym)
     elif isNoEffectList(effectList):
