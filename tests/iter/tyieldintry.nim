@@ -403,5 +403,18 @@ block: # yield in blockexpr
 
   test(it, 1, 2, 3)
 
+block: #8851 
+  type
+    Foo = ref object of RootObj
+  template someFoo(): Foo =
+    var f: Foo
+    yield 1
+    f
+  iterator it(): int {.closure.} =
+    var o: RootRef
+    o = someFoo()
+
+  test(it, 1)
+
 
 echo "ok"
