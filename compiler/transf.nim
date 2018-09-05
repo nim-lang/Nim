@@ -299,14 +299,15 @@ proc transformWhile(c: PTransf; n: PNode): PTransNode =
     discard c.breakSyms.pop
 
 proc transformBreak(c: PTransf, n: PNode): PTransNode =
-  if n.sons[0].kind != nkEmpty or c.inlining > 0:
+  if c.inlining > 0:
     result = n.PTransNode
-    let lablCopy = idNodeTableGet(c.transCon.mapping, n.sons[0].sym)
-    if lablCopy.isNil:
-      result = n.PTransNode
-    else:
+    if n.sons[0].kind != nkEmpty:
+      let lablCopy = idNodeTableGet(c.transCon.mapping, n.sons[0].sym)
       result = newTransNode(n.kind, n.info, 1)
       result[0] = lablCopy.PTransNode
+    else:
+      result = n.PTransNode
+
   elif c.breakSyms.len > 0:
     # this check can fail for 'nim check'
     let labl = c.breakSyms[c.breakSyms.high]
