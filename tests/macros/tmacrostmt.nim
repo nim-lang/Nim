@@ -101,16 +101,6 @@ static:
   doAssert fn3.repr_to_string == fn3s
 
 #------------------------------------
-# bug #8764
-
-proc t3(x: seq[int]): int =
-  x[^1]
-
-static:
-  let s = "proc t3(x: seq[int]): int =\n  result = x[^1]\n"
-  doAssert t3.repr_to_string == s
-
-#------------------------------------
 # bug #8763
 
 type
