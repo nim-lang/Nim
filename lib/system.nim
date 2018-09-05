@@ -4127,13 +4127,13 @@ template once*(body: untyped): untyped =
   ## re-executed on each module reload.
   ##
   ## .. code-block:: nim
-  ## proc draw(t: Triangle) =
-  ##   once:
-  ##     graphicsInit()
   ##
-  ##   line(t.p1, t.p2)
-  ##   line(t.p2, t.p3)
-  ##   line(t.p3, t.p1)
+  ##  proc draw(t: Triangle) =
+  ##    once:
+  ##      graphicsInit()
+  ##    line(t.p1, t.p2)
+  ##    line(t.p2, t.p3)
+  ##    line(t.p3, t.p1)
   ##
   var alreadyExecuted {.global.} = false
   if not alreadyExecuted:
