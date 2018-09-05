@@ -710,8 +710,6 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
 
 proc track(tracked: PEffects, n: PNode) =
 
-  if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
-    return 
   case n.kind
   of nkSym:
     useVar(tracked, n)
@@ -722,6 +720,9 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:
+      
+    if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+      return 
     # p's effects are ours too:
     let a = n.sons[0]
     let op = a.typ
