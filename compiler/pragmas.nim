@@ -230,6 +230,19 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions = resOptions + op
   else: resOptions = resOptions - op
 
+proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
+  if isTurnedOn(c, n):
+    incl(c.module.flags, flag)
+    c.features.incl codeReordering
+  else:
+    excl(c.module.flags, flag)
+    # c.features.excl codeReordering
+
+  # deprecated as of 0.18.1
+  message(c.config, n.info, warnDeprecated,
+          "use {.experimental: \"codeReordering.\".} instead; " &
+          (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}"))
+
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
     let sw = whichKeyword(n.sons[1].ident)
@@ -823,6 +836,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
+      of wNoForward: pragmaNoForward(c, it)
+      of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
