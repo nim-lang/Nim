@@ -10,7 +10,7 @@
 ##[
 This module contains a `scanf`:idx: macro that can be used for extracting
 substrings from an input string. This is often easier than regular expressions.
-Some examples as an apetizer:
+Some examples as an appetizer:
 
 .. code-block:: nim
   # check if input string matches a triple of integers:
@@ -308,7 +308,7 @@ proc buildUserCall(x: string; args: varargs[NimNode]): NimNode =
     for i in 1..<y.len: result.add y[i]
 
 macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): bool =
-  ## See top level documentation of his module of how ``scanf`` works.
+  ## See top level documentation of this module about how ``scanf`` works.
   template matchBind(parser) {.dirty.} =
     var resLen = genSym(nskLet, "resLen")
     conds.add newLetStmt(resLen, newCall(bindSym(parser), inp, results[i], idx))
@@ -469,7 +469,7 @@ template success*(x: int): bool = x != 0
 template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
 
 macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
-  ## See top level documentation of his module of how ``scanf`` works.
+  ## See top level documentation of this module about how ``scanp`` works.
   type StmtTriple = tuple[init, cond, action: NimNode]
 
   template interf(x): untyped = bindSym(x, brForceOpen)
