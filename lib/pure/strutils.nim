@@ -820,7 +820,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     # handle negative overflow
     if n == 0 and x < 0: n = -1
 
-proc toHex*[T](x: T): string =
+proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   toHex(BiggestInt(x), T.sizeOf * 2)
 
