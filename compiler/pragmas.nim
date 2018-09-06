@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos
+  types, lookups, lineinfos, pathutils
 
 const
   FirstCallConv* = wNimcall
@@ -442,26 +442,22 @@ proc processUndef(c: PContext, n: PNode) =
   else:
     invalidPragma(c, n)
 
-type
-  TLinkFeature = enum
-    linkNormal, linkSys
-
-proc relativeFile(c: PContext; n: PNode; ext=""): string =
+proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
   var s = expectStrLit(c, n)
   if ext.len > 0 and splitFile(s).ext == "":
     s = addFileExt(s, ext)
-  result = parentDir(toFullPath(c.config, n.info)) / s
+  result = AbsoluteFile parentDir(toFullPath(c.config, n.info)) / s
   if not fileExists(result):
-    if isAbsolute(s): result = s
+    if isAbsolute(s): result = AbsoluteFile s
     else:
       result = findFile(c.config, s)
-      if result.len == 0: result = s
+      if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
-  proc docompile(c: PContext; it: PNode; src, dest: string) =
+  proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile) =
     var cf = Cfile(cname: src, obj: dest, flags: {CfileFlag.External})
     extccomp.addExternalFileToCompile(c.config, cf)
-    recordPragma(c, it, "compile", src, dest)
+    recordPragma(c, it, "compile", src.string, dest.string)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n.sons[i] = c.semConstExpr(c, n[i])
@@ -478,30 +474,23 @@ proc processCompile(c: PContext, n: PNode) =
     let dest = getStrLit(c, it, 1)
     var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
-      let obj = completeCFilePath(c.config, dest % extractFilename(f))
-      docompile(c, it, f, obj)
+      let obj = completeCFilePath(c.config, AbsoluteFile(dest % extractFilename(f)))
+      docompile(c, it, AbsoluteFile f, obj)
   else:
     let s = expectStrLit(c, n)
-    var found = parentDir(toFullPath(c.config, n.info)) / s
+    var found = AbsoluteFile(parentDir(toFullPath(c.config, n.info)) / s)
     if not fileExists(found):
-      if isAbsolute(s): found = s
+      if isAbsolute(s): found = AbsoluteFile s
       else:
         found = findFile(c.config, s)
-        if found.len == 0: found = s
+        if found.isEmpty: found = AbsoluteFile s
     let obj = toObjFile(c.config, completeCFilePath(c.config, found, false))
     docompile(c, it, found, obj)
 
-proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
+proc processLink(c: PContext, n: PNode) =
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
-  case feature
-  of linkNormal:
-    extccomp.addExternalFileToLink(c.config, found)
-    recordPragma(c, n, "link", found)
-  of linkSys:
-    let dest = c.config.libpath / completeCFilePath(c.config, found, false)
-    extccomp.addExternalFileToLink(c.config, dest)
-    recordPragma(c, n, "link", dest)
-  else: internalError(c.config, n.info, "processCommonLink")
+  extccomp.addExternalFileToLink(c.config, found)
+  recordPragma(c, n, "link", found.string)
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =
   discard getOptionalStr(c, n, "")
@@ -594,8 +583,9 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        # XXX this produces weird paths which are not properly resolved:
-        n.info.fileIndex = msgs.fileInfoIdx(c.config, x.strVal)
+        # XXX check if paths are properly resolved this way:
+        let dir = toFullPath(c.config, n.info).splitFile.dir
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / RelativeFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
@@ -959,8 +949,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wDefine: processDefine(c, it)
       of wUndef: processUndef(c, it)
       of wCompile: processCompile(c, it)
-      of wLink: processCommonLink(c, it, linkNormal)
-      of wLinksys: processCommonLink(c, it, linkSys)
+      of wLink: processLink(c, it)
       of wPassl:
         let s = expectStrLit(c, it)
         extccomp.addLinkOption(c.config, s)

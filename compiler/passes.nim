@@ -14,7 +14,7 @@ import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
   nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
-  lineinfos
+  lineinfos, pathutils
 
 
 type
@@ -106,7 +106,7 @@ proc processTopLevelStmt(n: PNode, a: var TPassContextArray): bool =
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
-  if fullPath.len == 0:
+  if fullPath.isEmpty:
     result = InvalidFileIDX
   else:
     result = fileInfoIdx(conf, fullPath)
@@ -160,7 +160,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
       let filename = toFullPathConsiderDirty(graph.config, fileIdx)
       s = llStreamOpen(filename, fmRead)
       if s == nil:
-        rawMessage(graph.config, errCannotOpenFile, filename)
+        rawMessage(graph.config, errCannotOpenFile, filename.string)
         return false
     else:
       s = stream

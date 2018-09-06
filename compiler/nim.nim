@@ -21,7 +21,8 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
   extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper
+  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  pathutils
 
 when hasTinyCBackend:
   import tccgen
@@ -30,12 +31,12 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
-proc prependCurDir(f: string): string =
+proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
-    if os.isAbsolute(f): result = f
-    else: result = "./" & f
+    if os.isAbsolute(f.string): result = f
+    else: result = AbsoluteFile("./" & f.string)
   else:
-    result = f
+    result = AbsoluteFile f
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
@@ -78,15 +79,15 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if optRun in conf.globalOptions:
     if conf.cmd == cmdCompileToJS:
       var ex: string
-      if conf.outFile.len > 0:
+      if not conf.outFile.isEmpty:
         ex = conf.outFile.prependCurDir.quoteShell
       else:
         ex = quoteShell(
           completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
       execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
     else:
-      var binPath: string
-      if conf.outFile.len > 0:
+      var binPath: AbsoluteFile
+      if not conf.outFile.isEmpty:
         # If the user specified an outFile path, use that directly.
         binPath = conf.outFile.prependCurDir
       else:
