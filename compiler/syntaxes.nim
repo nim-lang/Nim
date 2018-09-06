@@ -11,7 +11,7 @@
 
 import
   strutils, llstream, ast, astalgo, idents, lexer, options, msgs, parser,
-  filters, filter_tmpl, renderer, lineinfos
+  filters, filter_tmpl, renderer, lineinfos, pathutils
 
 type
   TFilterKind* = enum
@@ -58,7 +58,7 @@ proc containsShebang(s: string, i: int): bool =
     while j < s.len and s[j] in Whitespace: inc(j)
     result = s[j] == '/'
 
-proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache;
+proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
   result = newNode(nkEmpty)
   var s = llStreamOpen(filename, fmRead)
@@ -100,7 +100,7 @@ proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   else:
     localError(conf, n.info, "invalid filter: " & renderTree(n))
 
-proc applyFilter(p: var TParsers, n: PNode, filename: string,
+proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
                  stdin: PLLStream): PLLStream =
   var ident = getCallee(p.config, n)
   var f = getFilter(ident)
@@ -121,7 +121,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
       msgWriteln(p.config, result.s)
       rawMessage(p.config, hintCodeEnd, [])
 
-proc evalPipe(p: var TParsers, n: PNode, filename: string,
+proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
               start: PLLStream): PLLStream =
   assert p.config != nil
   result = start
@@ -161,8 +161,8 @@ proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode
     p: TParsers
     f: File
   let filename = toFullPathConsiderDirty(config, fileIdx)
-  if not open(f, filename):
-    rawMessage(config, errGenerated, "cannot open file: " & filename)
+  if not open(f, filename.string):
+    rawMessage(config, errGenerated, "cannot open file: " & filename.string)
     return
   openParsers(p, fileIdx, llStreamOpen(f), cache, config)
   result = parseAll(p)

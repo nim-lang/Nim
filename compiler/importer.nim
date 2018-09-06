@@ -7,14 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements the symbol importing mechanism.
+## This module implements the symbol importing mechanism.
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
   semdata, passes, renderer, modulepaths, sigmatch, lineinfos
-
-proc evalImport*(c: PContext, n: PNode): PNode
-proc evalFrom*(c: PContext, n: PNode): PNode
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -140,7 +137,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
-  var f = checkModuleName(c.config, n)
+  let f = checkModuleName(c.config, n)
   if f != InvalidFileIDX:
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
@@ -168,7 +165,8 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
       else:
         message(c.config, n.info, warnDeprecated, result.name.s)
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
-    importStmtResult.add newStrNode(toFullPath(c.config, f), n.info)
+    importStmtResult.add newSymNode(result, n.info)
+    #newStrNode(toFullPath(c.config, f), n.info)
 
 proc transformImportAs(c: PContext; n: PNode): PNode =
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
@@ -188,7 +186,7 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     importAllSymbolsExcept(c, m, emptySet)
     #importForwarded(c, m.ast, emptySet)
 
-proc evalImport(c: PContext, n: PNode): PNode =
+proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
@@ -212,7 +210,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
     else:
       impMod(c, it, result)
 
-proc evalFrom(c: PContext, n: PNode): PNode =
+proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
   n.sons[0] = transformImportAs(c, n.sons[0])

@@ -10,7 +10,8 @@
 # This module implements a dependency file generator.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths
+  os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths,
+  pathutils
 
 from modulegraphs import ModuleGraph
 
@@ -45,10 +46,10 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   else:
     discard
 
-proc generateDot*(graph: ModuleGraph; project: string) =
+proc generateDot*(graph: ModuleGraph; project: AbsoluteFile) =
   let b = Backend(graph.backend)
   discard writeRope("digraph $1 {$n$2}$n" % [
-      rope(changeFileExt(extractFilename(project), "")), b.dotGraph],
+      rope(project.splitFile.name), b.dotGraph],
             changeFileExt(project, "dot"))
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =

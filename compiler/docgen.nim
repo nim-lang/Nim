@@ -16,7 +16,8 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets
+  typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
+  pathutils
 
 type
   TSections = array[TSymKind, Rope]
@@ -34,6 +35,8 @@ type
     exampleCounter: int
     emitted: IntSet # we need to track which symbols have been emitted
                     # already. See bug #3655
+    destFile*: AbsoluteFile
+    thisDir*: AbsoluteDir
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -48,12 +51,12 @@ proc whichType(d: PDoc; n: PNode): PSym =
 
 proc attachToType(d: PDoc; p: PSym): PSym =
   let params = p.ast.sons[paramsPos]
-  # first check the first parameter, then the return type,
-  # then the other parameter:
   template check(i) =
     result = whichType(d, params[i])
     if result != nil: return result
 
+  # first check the first parameter, then the return type,
+  # then the other parameter:
   if params.len > 1: check(1)
   if params.len > 0: check(0)
   for i in 2..<params.len: check(i)
@@ -74,10 +77,10 @@ template declareClosures =
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
     of mwUnsupportedLanguage: k = warnLanguageXNotSupported
     of mwUnsupportedField: k = warnFieldXNotSupported
-    globalError(conf, newLineInfo(conf, filename, line, col), k, arg)
+    globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.procvar.} =
-    result = options.findFile(conf, s)
+    result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
       if not existsFile(result): result = ""
@@ -90,13 +93,24 @@ proc parseRst(text, filename: string,
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
-proc newDocumentor*(filename: string; cache: IdentCache; conf: ConfigRef): PDoc =
+proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
+                 ext: string, dir: RelativeDir): AbsoluteFile =
+  if optWholeProject in conf.globalOptions:
+    # This is correct, for 'nim doc --project' we interpret the '--out' option as an
+    # absolute directory, not as a filename!
+    let d = if conf.outFile.isEmpty: conf.projectPath / dir else: AbsoluteDir(conf.outFile)
+    createDir(d)
+    result = d / changeFileExt(filename, ext)
+  else:
+    result = getOutFile(conf, filename, ext)
+
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef): PDoc =
   declareClosures()
   new(result)
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
-                   conf.configVars, filename, {roSupportRawDirective},
+                   conf.configVars, filename.string, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -120,8 +134,12 @@ proc newDocumentor*(filename: string; cache: IdentCache; conf: ConfigRef): PDoc 
   result.jArray = newJArray()
   initStrTable result.types
   result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    localError(conf, newLineInfo(conf, d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
+    localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
+               warnUser, "only 'rst2html' supports the ':test:' attribute")
   result.emitted = initIntSet()
+  result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
+                                HtmlExt, RelativeDir"htmldocs")
+  result.thisDir = result.destFile.splitFile.dir
 
 proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if conf.cmd != cmdRst2tex: addf(dest, xml, args)
@@ -227,6 +245,10 @@ proc getPlainDocstring(n: PNode): string =
       result = getPlainDocstring(n.sons[i])
       if result.len > 0: return
 
+proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
+  result = module.kind == skModule and module.owner != nil and
+      module.owner.id == conf.mainPackageId
+
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
   var r: TSrcGen
   var literal = ""
@@ -259,8 +281,22 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>",
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
-      dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
-            "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
+      let s = getTokSym(r)
+      if s != nil and s.kind == skType and sfExported in s.flags and
+          s.owner != nil and belongsToPackage(d.conf, s.owner) and
+          d.target == outHtml:
+
+        let full = AbsoluteFile toFullPath(d.conf, FileIndex s.owner.position)
+        let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath),
+            HtmlExt, RelativeDir"htmldocs")
+
+        let external = tmp.relativeTo(d.thisDir, '/')
+        result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
+          [rope changeFileExt(external, "html").string, rope literal,
+           rope(esc(d.target, literal))]
+      else:
+        dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
+              "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
@@ -290,23 +326,24 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 
 proc testExample(d: PDoc; ex: PNode) =
   if d.conf.errorCounter > 0: return
-  let outputDir = d.conf.getNimcacheDir / "runnableExamples"
+  let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   createDir(outputDir)
   inc d.exampleCounter
-  let outp = outputDir / extractFilename(d.filename.changeFileExt"" &
-      "_examples" & $d.exampleCounter & ".nim")
+  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
+      "_examples" & $d.exampleCounter & ".nim"))
   #let nimcache = outp.changeFileExt"" & "_nimcache"
-  renderModule(ex, d.filename, outp, conf = d.conf)
+  renderModule(ex, d.filename, outp.string, conf = d.conf)
   let backend = if isDefined(d.conf, "js"): "js"
                 elif isDefined(d.conf, "cpp"): "cpp"
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
-                    " --nimcache:" & outputDir & " -r " & outp) != 0:
-    quit "[Examples] failed: see " & outp
+                    " --nimcache:" & quoteShell(outputDir) &
+                    " -r " & quoteShell(outp)) != 0:
+    quit "[Examples] failed: see " & outp.string
   else:
     # keep generated source file `outp` to allow inspection.
-    rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp])
+    rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
     removeFile(outp.changeFileExt(ExeExt))
 
 proc extractImports(n: PNode; result: PNode) =
@@ -449,17 +486,14 @@ proc newUniquePlainSymbol(d: PDoc, original: string): string =
     result = original
     d.seenSymbols[original] = ""
     return
-
   # Iterate over possible numeric variants of the original name.
   var count = 2
-
   while true:
     result = original & "_" & $count
     if not d.seenSymbols.hasKey(result):
       d.seenSymbols[result] = ""
       break
     count += 1
-
 
 proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## Builds a complex unique href name for the node.
@@ -482,10 +516,8 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t" & defaultParamSeparator)
   of skConverter: result.add(".c" & defaultParamSeparator)
   else: discard
-
   if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
     result.add(renderParamTypes(n[paramsPos]))
-
 
 proc isCallable(n: PNode): bool =
   ## Returns true if `n` contains a callable node.
@@ -494,7 +526,6 @@ proc isCallable(n: PNode): bool =
     nkConverterDef, nkFuncDef: result = true
   else:
     result = false
-
 
 proc docstringSummary(rstText: string): string =
   ## Returns just the first line or a brief chunk of text from a rst string.
@@ -523,7 +554,6 @@ proc docstringSummary(rstText: string): string =
     result.delete(pos, last)
     result.add("…")
 
-
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   if not isVisible(d, nameNode): return
   let
@@ -545,8 +575,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
-  # Render the HTML hyperlink.
-  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments, renderDocComments})
+  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
+    renderDocComments, renderSyms})
 
   inc(d.id)
   let
@@ -563,16 +593,18 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
-    let cwd = canonicalizePath(d.conf, getCurrentDir())
-    var path = toFullPath(d.conf, n.info)
-    if path.startsWith(cwd):
-      path = path[cwd.len+1 .. ^1].replace('\\', '/')
+    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), d.conf.projectPath, '/')
+    when false:
+      let cwd = canonicalizePath(d.conf, getCurrentDir())
+      var path = toFullPath(d.conf, n.info)
+      if path.startsWith(cwd):
+        path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")
     if gitUrl.len > 0:
       let commit = getConfigVar(d.conf, "git.commit", "master")
       let develBranch = getConfigVar(d.conf, "git.devel", "devel")
       dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
-          ["path", "line", "url", "commit", "devel"], [rope path,
+          ["path", "line", "url", "commit", "devel"], [rope path.string,
           rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
 
   add(d.section[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
@@ -611,9 +643,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     name = getName(d, nameNode)
     comm = $genRecComment(d, n)
     r: TSrcGen
-
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
-
   result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
   if comm.len > 0:
@@ -626,7 +656,6 @@ proc checkForFalse(n: PNode): bool =
 
 proc traceDeps(d: PDoc, it: PNode) =
   const k = skModule
-
   if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
     let sep = it[0]
     let dir = it[1]
@@ -637,11 +666,16 @@ proc traceDeps(d: PDoc, it: PNode) =
     for x in it[2]:
       a.sons[2] = x
       traceDeps(d, a)
-  else:
+  elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
+    let full = AbsoluteFile toFullPath(d.conf, FileIndex it.sym.position)
+    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
+        RelativeDir"htmldocs")
+    let external = relativeTo(tmp, d.thisDir, '/')
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],
-          "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-          "$1", [rope(splitFile(getModuleName(d.conf, it)).name)])
+          "<a class=\"reference external\" href=\"$2\">$1</a>",
+          "$1", [rope esc(d.target, it.sym.name.s),
+          rope changeFileExt(external, "html").string])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -829,29 +863,23 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    writeIndexFile(d[], splitFile(d.conf.outFile).dir /
-                        splitFile(d.filename).name & IndexExt)
+    let dest = getOutFile2(d.conf, relativeTo(AbsoluteFile d.filename, d.conf.projectPath),
+        IndexExt, RelativeDir"index")
+    writeIndexFile(d[], dest.string)
 
-proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
-  if optWholeProject in conf.globalOptions:
-    let d = if conf.outFile != "": conf.outFile else: dir
-    createDir(d)
-    result = d / changeFileExt(filename, ext)
-  else:
-    result = getOutFile(conf, filename, ext)
-
-proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
+proc writeOutput*(d: PDoc, useWarning = false) =
   var content = genOutFile(d)
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    let outfile = getOutFile2(d.conf, filename, outExt, "htmldocs")
-    createDir(outfile.parentDir)
+    template outfile: untyped = d.destFile
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
+    createDir(outfile.splitFile.dir)
     if not writeRope(content, outfile):
-      rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, outfile)
+      rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
+        outfile.string)
 
-proc writeOutputJson*(d: PDoc, filename, outExt: string,
-                      useWarning = false) =
+proc writeOutputJson*(d: PDoc, useWarning = false) =
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
     "entries": d.jArray}
@@ -859,8 +887,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
     write(stdout, $content)
   else:
     var f: File
-    if open(f, getOutFile2(d.conf, splitFile(filename).name,
-            outExt, "jsondocs"), fmWrite):
+    if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
     else:
@@ -872,26 +899,27 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
   generateDoc(d, ast)
-  writeOutput(d, conf.projectFull, HtmlExt)
+  writeOutput(d)
   generateIndex(d)
 
-proc commandRstAux(cache: IdentCache, conf: ConfigRef; filename, outExt: string) =
+proc commandRstAux(cache: IdentCache, conf: ConfigRef;
+                   filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, cache, conf)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
-    var outp: string
+    var outp: AbsoluteFile
     if filename.len == 0:
       inc(d.id)
       let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir(conf) / nameOnly
+      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
       createDir(subdir)
-      outp = subdir / (nameOnly & "_snippet_" & $d.id & ".nim")
+      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
     elif isAbsolute(filename):
-      outp = filename
+      outp = AbsoluteFile filename
     else:
       # Nim's convention: every path is relative to the file it was written in:
-      outp = splitFile(d.filename).dir / filename
+      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
     writeFile(outp, content)
     let cmd = cmd % quoteShell(outp)
     rawMessage(conf, hintExecuting, cmd)
@@ -899,14 +927,12 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef; filename, outExt: string)
       rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
 
   d.isPureRst = true
-  var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
+  var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
                      {roSupportRawDirective}, conf)
   var modDesc = newStringOfCap(30_000)
-  #d.modDesc = newMutableRope(30_000)
   renderRstToOut(d[], rst, modDesc)
-  #freezeMutableRope(d.modDesc)
   d.modDesc = rope(modDesc)
-  writeOutput(d, filename, outExt)
+  writeOutput(d)
   generateIndex(d)
 
 proc commandRst2Html*(cache: IdentCache, conf: ConfigRef) =
@@ -928,9 +954,9 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, JsonExt)
-    let filename = getOutFile(conf, conf.projectFull, JsonExt)
+    let filename = getOutFile(conf, RelativeFile conf.projectName, JsonExt)
     if not writeRope(content, filename):
-      rawMessage(conf, errCannotOpenFile, filename)
+      rawMessage(conf, errCannotOpenFile, filename.string)
 
 proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
@@ -945,12 +971,12 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, TagsExt)
-    let filename = getOutFile(conf, conf.projectFull, TagsExt)
+    let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
     if not writeRope(content, filename):
-      rawMessage(conf, errCannotOpenFile, filename)
+      rawMessage(conf, errCannotOpenFile, filename.string)
 
 proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
-  var content = mergeIndexes(conf.projectFull).rope
+  var content = mergeIndexes(conf.projectFull.string).rope
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",
       "tableofcontents", "moduledesc", "date", "time",
@@ -958,6 +984,6 @@ proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
       ["Index".rope, nil, nil, rope(getDateStr()),
                    rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
-  let filename = getOutFile(conf, "theindex", HtmlExt)
+  let filename = getOutFile(conf, RelativeFile"theindex", HtmlExt)
   if not writeRope(code, filename):
-    rawMessage(conf, errCannotOpenFile, filename)
+    rawMessage(conf, errCannotOpenFile, filename.string)

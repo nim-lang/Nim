@@ -27,7 +27,8 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos
+  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos,
+  pathutils
 
 when defined(nimpretty2):
   import layouter
@@ -114,7 +115,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   p.strongSpaces = strongSpaces
   p.emptyNode = newNode(nkEmpty)
 
-proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
+proc openParser*(p: var TParser, filename: AbsoluteFile, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef;
                  strongSpaces=false) =
   openParser(p, fileInfoIdx(config, filename), inputStream, cache, config, strongSpaces)
@@ -2235,7 +2236,7 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
   # spaces...
   parser.lex.errorHandler = errorHandler
-  openParser(parser, filename, stream, cache, config, false)
+  openParser(parser, AbsoluteFile filename, stream, cache, config, false)
 
   result = parser.parseAll
   closeParser(parser)

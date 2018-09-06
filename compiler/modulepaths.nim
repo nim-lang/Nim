@@ -7,9 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os, lineinfos
-
-import nimblecmd
+import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
+  pathutils, nimblecmd
 
 when false:
   const
@@ -160,7 +159,7 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
   let modulename = getModuleName(conf, n)
   let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
-  if fullPath.len == 0:
+  if fullPath.isEmpty:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
       localError(conf, n.info, "cannot open file: " & m)
