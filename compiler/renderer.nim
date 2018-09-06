@@ -307,14 +307,19 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
                           tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
-  if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
-    let enumfields = n.typ.skip.n
+  let typ = n.typ.skip
+  if typ != nil and typ.kind in {tyBool, tyEnum}:
+    if sfPure in typ.sym.flags:
+      result = typ.sym.name.s & '.'
+    let enumfields = typ.n
     # we need a slow linear search because of enums with holes:
     for e in items(enumfields):
-      if e.sym.position == x: return e.sym.name.s
+      if e.sym.position == x: 
+        result &= e.sym.name.s
+        return
 
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags: result = "0o" & toOct(x, size * 3)
@@ -861,6 +866,47 @@ proc isBracket*(n: PNode): bool =
   of nkSym: result = n.sym.name.s == "[]"
   else: result = false
 
+proc skipHiddenNodes(n: PNode): PNode = 
+  result = n
+  while result != nil:
+    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and result.len > 1: 
+      result = result[1]
+    elif result.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString} and
+        result.len > 0: 
+      result = result[0]
+    else: break
+
+proc accentedName(g: var TSrcGen, n: PNode) =
+  if n == nil: return
+  let isOperator = 
+    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in OpChars: true
+    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in OpChars: true
+    else: false
+
+  if isOperator:
+    put(g, tkAccent, "`")
+    gident(g, n)
+    put(g, tkAccent, "`")
+  else:
+    gsub(g, n)
+
+proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
+  if i >= n.len: return
+
+  var needsParenthesis = false
+  let n_next = n[i].skipHiddenNodes
+  if n_next.kind == nkInfix:
+    if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
+      let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
+      let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident     
+      if getPrecedence(nextId) < getPrecedence(nnId):
+        needsParenthesis = true
+  if needsParenthesis:
+    put(g, tkParLe, "(")
+  gsub(g, n, i)
+  if needsParenthesis:
+    put(g, tkParRi, ")")
+  
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
@@ -896,7 +942,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gcomma(g, n, 2)
       put(g, tkBracketRi, "]")
     elif n.len > 1 and n.lastSon.kind == nkStmtList:
-      gsub(g, n[0])
+      accentedName(g, n[0])
       if n.len > 2:
         put(g, tkParLe, "(")
         gcomma(g, n, 1, -2)
@@ -904,16 +950,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
     else:
-      if sonsLen(n) >= 1: gsub(g, n.sons[0])
+      if sonsLen(n) >= 1: accentedName(g, n[0])
       put(g, tkParLe, "(")
       gcomma(g, n, 1)
       put(g, tkParRi, ")")
   of nkCallStrLit:
-    gsub(g, n, 0)
+    if n.len > 0: accentedName(g, n[0])
     if n.len > 1 and n.sons[1].kind == nkRStrLit:
       put(g, tkRStrLit, '\"' & replace(n[1].strVal, "\"", "\"\"") & '\"')
     else:
-      gsub(g, n.sons[1])
+      gsub(g, n, 1)
   of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
     if n.len >= 2:
       gsub(g, n.sons[1])
@@ -951,7 +997,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gsub(g, n, 0)
     gcomma(g, n, 1)
   of nkCommand:
-    gsub(g, n, 0)
+    accentedName(g, n[0])
     put(g, tkSpaces, Space)
     gcomma(g, n, 1)
   of nkExprEqExpr, nkAsgn, nkFastAsgn:
@@ -1064,14 +1110,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkInfix:
-    gsub(g, n, 1)
+    infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
     if not fits(g, lsub(g, n.sons[2]) + lsub(g, n.sons[0]) + 1):
       optNL(g, g.indent + longIndentWid)
     else:
       put(g, tkSpaces, Space)
-    gsub(g, n, 2)
+    infixArgument(g, n, 2)
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
@@ -1079,10 +1125,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
                 elif n[0].kind == nkSym: n[0].sym.name
                 elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
-      var n_next = n[1]
-      while n_next.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref,
-                  nkStringToCString, nkCStringToString} and n_next.len > 0:
-        n_next = n_next[0]
+      let n_next = skipHiddenNodes(n[1])
       if n_next.kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
       if n_next.kind == nkInfix:
