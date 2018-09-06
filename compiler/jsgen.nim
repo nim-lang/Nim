@@ -658,15 +658,16 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   line(p, "}\L")
 
 proc genRaiseStmt(p: PProc, n: PNode) =
-  genLineDir(p, n)
   if n.sons[0].kind != nkEmpty:
     var a: TCompRes
     gen(p, n.sons[0], a)
     let typ = skipTypes(n.sons[0].typ, abstractPtrs)
+    genLineDir(p, n)
     useMagic(p, "raiseException")
     lineF(p, "raiseException($1, $2);$n",
              [a.rdLoc, makeJSString(typ.sym.name.s)])
   else:
+    genLineDir(p, n)
     useMagic(p, "reraiseException")
     line(p, "reraiseException();\L")
 
@@ -856,6 +857,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   else:
     gen(p, x, a)
 
+  genLineDir(p, y)
   gen(p, y, b)
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
@@ -892,11 +894,9 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     lineF(p, "$1 = $2;$n", [a.res, b.res])
 
 proc genAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=false)
 
 proc genFastAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   # 'shallowCopy' always produced 'noCopyNeeded = true' here but this is wrong
   # for code like
   #  while j >= pos:
