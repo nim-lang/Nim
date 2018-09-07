@@ -624,7 +624,11 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     case it.kind
     of nkElifBranch:
       if ifs.PNode == nil:
-        ifs = newTransNode(nkIfStmt, it.info, 0)
+        # Generate the right node depending on whether `n` is used as a stmt or
+        # as an expr
+        let kind = if n.typ != nil: nkIfExpr else: nkIfStmt
+        ifs = newTransNode(kind, it.info, 0)
+        ifs.PNode.typ = n.typ
       ifs.add(e)
     of nkElse:
       if ifs.PNode == nil: result.add(e)
