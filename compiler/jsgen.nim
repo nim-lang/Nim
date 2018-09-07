@@ -2254,7 +2254,7 @@ proc genClass(conf: ConfigRef; obj: PType; content: Rope; ext: string) =
             "class $#$# {$n$#$n}$n") %
            [rope(VersionAsString), cls, extends, content]
 
-  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile $cls), ext)
+  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile($cls)), ext)
   discard writeRopeIfNotEqual(result, outfile)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =

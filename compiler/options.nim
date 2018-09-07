@@ -514,7 +514,7 @@ proc getOsCacheDir(): string =
   when defined(posix):
     result = getEnv("XDG_CACHE_HOME", getHomeDir() / ".cache") / "nim"
   else:
-    result = getHomeDir() / genSubDir
+    result = getHomeDir() / genSubDir.string
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   # XXX projectName should always be without a file extension!
