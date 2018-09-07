@@ -113,6 +113,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     if castDest.kind notin IntegralTypes+{tyRange}:
       result = convNotNeedeed
     return
+  # Save for later
   var d = skipTypes(castDest, abstractVar)
   var s = src
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
@@ -135,7 +136,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
-      if not compareTypes(castDest, src, dcEqIgnoreDistinct):
+      if not compareTypes(castDest.skipTypes(abstractVar), src, dcEqIgnoreDistinct):
         result = convNotLegal
     else:
       discard
