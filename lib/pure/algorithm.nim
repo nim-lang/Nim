@@ -352,7 +352,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     index = 0
     indexes[index] -= 1
 
-proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc nextPermutation*[T](x: var openarray[T]): bool {.discardable,inline.} =
   ## Calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
@@ -381,7 +381,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
 
   result = true
 
-proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc prevPermutation*[T](x: var openarray[T]): bool {.discardable,inline.} =
   ## Calculates the previous lexicographic permutation, directly modifying
   ## ``x``.  The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
