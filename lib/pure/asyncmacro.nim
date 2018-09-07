@@ -327,8 +327,8 @@ macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
   if prc.kind == nnkStmtList:
+    result = newStmtList()
     for oneProc in prc:
-      result = newStmtList()
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)

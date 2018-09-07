@@ -141,8 +141,8 @@ macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into
   ## javascript-compatible async procedures
   if arg.kind == nnkStmtList:
+    result = newStmtList()
     for oneProc in arg:
-      result = newStmtList()
       result.add generateJsasync(oneProc)
   else:
     result = generateJsasync(arg)
