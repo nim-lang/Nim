@@ -670,12 +670,12 @@ proc traceDeps(d: PDoc, it: PNode) =
     let full = AbsoluteFile toFullPath(d.conf, FileIndex it.sym.position)
     let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
         RelativeDir"htmldocs")
-    let external = relativeTo(tmp, d.thisDir, '/')
+    let external = relativeTo(tmp, d.thisDir, '/').string
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
-          "$1", [rope esc(d.target, it.sym.name.s),
-          rope changeFileExt(external, "html").string])
+          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          rope changeFileExt(external, "html")])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind

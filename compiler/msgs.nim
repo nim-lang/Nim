@@ -63,7 +63,7 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
     canon: AbsoluteFile
   try:
     canon = canonicalizePath(conf, filename)
-  except:
+  except OSError:
     canon = filename
   result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
@@ -75,7 +75,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   try:
     canon = canonicalizePath(conf, filename)
     shallow(canon.string)
-  except:
+  except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
     # This flag indicates that we are working with such a path here

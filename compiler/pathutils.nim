@@ -180,7 +180,7 @@ proc relativeTo(full, base: string; sep = DirSep): string =
 when true:
   proc eqImpl(x, y: string): bool =
     when FileSystemCaseSensitive:
-      result = toLowerAscii(canon x) == toLowerAscii(canon y)
+      result = cmpIgnoreCase(canon x, canon y) == 0
     else:
       result = canon(x) == canon(y)
 
@@ -251,4 +251,5 @@ when isMainModule and defined(posix):
   doAssert relativeTo("", "/users/moo") == ""
   doAssert relativeTo("foo", "") == "foo"
 
-  echo string(AbsoluteDir"/Users/me///" / RelativeFile"z.nim")
+  doAssert AbsoluteDir"/Users/me///" / RelativeFile"z.nim" == AbsoluteFile"/Users/me/z.nim"
+  doAssert relativeTo("/foo/bar.nim", "/foo/") == "bar.nim"
