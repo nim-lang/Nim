@@ -252,11 +252,7 @@ proc transformBlock(c: PTransf, n: PNode): PTransNode =
   var labl: PSym
   if n.sons[0].kind != nkEmpty:
     # already named block? -> Push symbol on the stack:
-    if c.inlining > 0:
-      labl = newLabel(c, n)
-      idNodeTablePut(c.transCon.mapping, n.sons[0].sym, newSymNode(labl))
-    else:
-      labl = n.sons[0].sym
+    labl = n.sons[0].sym
   else:
     labl = newLabel(c, n)
   c.breakSyms.add(labl)
@@ -299,15 +295,15 @@ proc transformWhile(c: PTransf; n: PNode): PTransNode =
     discard c.breakSyms.pop
 
 proc transformBreak(c: PTransf, n: PNode): PTransNode =
-  if c.inlining > 0:
+  if n.sons[0].kind != nkEmpty or c.inlining > 0:
     result = n.PTransNode
-    if n.sons[0].kind != nkEmpty:
+    when false:
       let lablCopy = idNodeTableGet(c.transCon.mapping, n.sons[0].sym)
-      result = newTransNode(n.kind, n.info, 1)
-      result[0] = lablCopy.PTransNode
-    else:
-      result = n.PTransNode
-
+      if lablCopy.isNil:
+        result = n.PTransNode
+      else:
+        result = newTransNode(n.kind, n.info, 1)
+        result[0] = lablCopy.PTransNode
   elif c.breakSyms.len > 0:
     # this check can fail for 'nim check'
     let labl = c.breakSyms[c.breakSyms.high]
@@ -616,7 +612,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, iter)
+  let body = transformBody(c.graph, iter).copyTree
   pushInfoContext(c.graph.config, n.info)
   # XXX optimize this somehow. But the check "c.inlining" is not correct:
   var symMap: TIdTable
