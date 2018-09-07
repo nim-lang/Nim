@@ -243,6 +243,10 @@ when defined(nimHasSymOwnerInMacro):
     ## result is also mnde of kind nnkSym if owner exists otherwise 
     ## nnkNilLit is returned
 
+when defined(nimHasComment):
+  proc comment*(n: NimNode): string {.magic: "Comment", noSideEffect.}
+    ## returns ``n``'s comment (or empty string)
+
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
   ## mapped to a Nim AST too, so it's slightly confusing but it means the same

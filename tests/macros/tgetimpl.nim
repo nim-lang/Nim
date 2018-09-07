@@ -47,3 +47,23 @@ static:
   doAssert isSameOwner(foo, poo)
   doAssert isSameOwner(foo, echo) == false
   doAssert isSameOwner(poo, len) == false
+
+block commmentTest:
+  type Foo = object ## Foo obj comment 1
+    ## Foo obj comment 2
+    a1:int ## a1 field comment 2
+
+  proc getCommentImpl(n: NimNode): string =
+    case n.kind
+    of nnkSym: result = n.getImpl.getCommentImpl
+    of nnkTypeDef: result = n[2].getCommentImpl
+    else: result = n.comment
+
+  macro getComment(n: typed): untyped = n.getCommentImpl
+
+  proc fun()=discard
+    ## fun comment
+
+  doAssert getComment(Foo) == "Foo obj comment 1\nFoo obj comment 2"
+  doAssert getComment(fun) == "fun comment"
+  # Note: Foo's fields's comments could be accessed by traversal
