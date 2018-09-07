@@ -925,7 +925,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let a = regs[rb].node
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else: copyTree(transformBody(c.graph, a.sym))
+                        else: 
+                          let ast = a.sym.ast.shallowCopy
+                          for i in 0..<a.sym.ast.len:
+                            ast[i] = a.sym.ast[i]                        
+                          ast[bodyPos] = transformBody(c.graph, a.sym)
+                          ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node
