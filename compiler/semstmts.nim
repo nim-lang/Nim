@@ -1192,13 +1192,6 @@ proc copyExcept(n: PNode, i: int): PNode =
   for j in 0..<n.len:
     if j != i: result.add(n.sons[j])
 
-proc lookupMacro(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
-    result = n.sym
-    if result.kind notin {skMacro, skTemplate}: result = nil
-  else:
-    result = searchInScopes(c, considerQuotedIdent(c, n), {skMacro, skTemplate})
-
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
@@ -1206,39 +1199,53 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   for i in countup(0, n.len-1):
     var it = n.sons[i]
     var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it.sons[0] else: it
-    let m = lookupMacro(c, key)
-    if m == nil:
-      if key.kind == nkIdent and key.ident.id == ord(wDelegator):
-        if considerQuotedIdent(c, prc.sons[namePos]).s == "()":
-          prc.sons[namePos] = newIdentNode(c.cache.idDelegator, prc.info)
-          prc.sons[pragmasPos] = copyExcept(n, i)
-        else:
-          localError(c.config, prc.info, "only a call operator can be a delegator")
+
+    if whichPragma(it) != wInvalid:
+      # Not a custom pragma
       continue
-    elif sfCustomPragma in m.flags:
-      continue # semantic check for custom pragma happens later in semProcAux
+    elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
+      # User-defined pragma
+      continue
 
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
-    var x = newNodeI(nkCall, n.info)
-    x.add(newSymNode(m))
-    prc.sons[pragmasPos] = copyExcept(n, i)
-    if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
-      prc.sons[pragmasPos] = c.graph.emptyNode
+    var x = newNodeI(nkCall, key.info)
+    x.add(key)
 
     if it.kind in nkPragmaCallKinds and it.len > 1:
       # pass pragma arguments to the macro too:
       for i in 1..<it.len:
         x.add(it.sons[i])
+
+    # Drop the pragma from the list, this prevents getting caught in endless
+    # recursion when the nkCall is semanticized
+    prc.sons[pragmasPos] = copyExcept(n, i)
+    if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
+      prc.sons[pragmasPos] = c.graph.emptyNode
+
     x.add(prc)
 
     # recursion assures that this works for multiple macro annotations too:
-    result = semExpr(c, x)
+    var r = semOverloadedCall(c, x, x, {skMacro}, {efNoUndeclared})
+    if r == nil:
+      # Restore the old list of pragmas since we couldn't process this
+      prc.sons[pragmasPos] = n
+      # No matching macro was found but there's always the possibility this may
+      # be a .pragma. template instead
+      continue
+
+    doAssert r.sons[0].kind == nkSym
+    # Expand the macro here
+    result = semMacroExpr(c, r, r, r.sons[0].sym, {})
+
+    doAssert result != nil
+
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
         result[pragmasPos].kind != nkEmpty:
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
+
     return
 
 proc setGenericParamsMisc(c: PContext; n: PNode): PNode =

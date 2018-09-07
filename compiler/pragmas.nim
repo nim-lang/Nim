@@ -720,13 +720,13 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     result = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds + {nkIdent}:
+  elif n.kind in nkPragmaCallKinds:
     result = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
   else:
