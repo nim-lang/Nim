@@ -48,7 +48,7 @@ const
     wDeadCodeElimUnused,  # deprecated, always on
     wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wComputedGoto,
+    wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
