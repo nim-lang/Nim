@@ -59,6 +59,7 @@ build_script:
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines
+  - nim c -r nimdoc\tester
 #  - koch csource
 #  - koch zip
 

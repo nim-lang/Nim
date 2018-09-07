@@ -9,7 +9,8 @@
 
 ## Layouter for nimpretty.
 
-import idents, lexer, lineinfos, llstream, options, msgs, strutils
+import idents, lexer, lineinfos, llstream, options, msgs, strutils,
+  pathutils
 from os import changeFileExt
 
 const
@@ -39,7 +40,7 @@ type
 
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
-  let fullPath = config.toFullPath(fileIdx)
+  let fullPath = Absolutefile config.toFullPath(fileIdx)
   em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                cache, config)
   if em.indWidth == 0: em.indWidth = 2
@@ -55,7 +56,7 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
 proc closeEmitter*(em: var Emitter) =
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
-    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile)
+    rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)
   f.llStreamWrite em.content
   llStreamClose(f)
 

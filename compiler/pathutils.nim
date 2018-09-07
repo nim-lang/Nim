@@ -111,11 +111,12 @@ proc canon(x: string; result: var string; state: var int) =
       # f/..
       while d > (state and 1) and result[d-1] != DirSep:
         dec d
-      setLen(result, d)
+      setLen(result, d-1)
     elif isDot(x, b):
       discard "discard the dot"
-    else:
-      if result.len > (state and 1): result.add DirSep
+    elif b[1] > b[0]:
+      if result.len > 0 and result[^1] != DirSep:
+        result.add DirSep
       result.add substr(x, b[0], b[1])
     inc state, 2
 
@@ -253,3 +254,7 @@ when isMainModule and defined(posix):
 
   doAssert AbsoluteDir"/Users/me///" / RelativeFile"z.nim" == AbsoluteFile"/Users/me/z.nim"
   doAssert relativeTo("/foo/bar.nim", "/foo/") == "bar.nim"
+
+when isMainModule and defined(windows):
+  let nasty = string(AbsoluteDir(r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\linkedPkgs\pkgB-#head\../../simplePkgs/pkgB-#head/") / RelativeFile"pkgA/module.nim")
+  doAssert nasty == r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\simplePkgs\pkgB-#head\pkgA\module.nim"
