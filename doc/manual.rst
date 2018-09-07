@@ -6495,7 +6495,7 @@ level:
 ..
    TODO: Let's table this for now. This is an *experimental feature* and so the
    specific manner in which ``declared`` operates with it can be decided in
-   eventuality.
+   eventuality, because right now it works a bit weirdly.
 
    The values of expressions involving ``declared`` are decided *before* the
    code reordering process, and not after. As an example, the output of this
@@ -6927,9 +6927,6 @@ created for each instantiation of the proc. The order of initialization of
 the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
-
-reorder pragma
---------------
 
 pragma pragma
 -------------
