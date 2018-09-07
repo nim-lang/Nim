@@ -36,7 +36,7 @@ proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
     if os.isAbsolute(f.string): result = f
     else: result = AbsoluteFile("./" & f.string)
   else:
-    result = AbsoluteFile f
+    result = f
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
