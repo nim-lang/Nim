@@ -1035,44 +1035,21 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-const debugLineInfo = "iterXXXX_nomuch"
-
 proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
   assert prc.kind in routineKinds
 
-  if `??`(g.config, prc.ast.info, debugLineInfo):
-    echo "transforming prc ", prc.name.s, " kind ", prc.kind
-    debug prc
-
   if prc.transformedBody != nil:
     result = prc.transformedBody
-    if `??`(g.config, prc.ast.info, debugLineInfo):
-      echo "already transf prc ", prc.name.s
-      echo prc.transformedBody
   elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
     result = prc.ast[bodyPos]
-    if `??`(g.config, prc.ast.info, debugLineInfo):
-      echo "already transf  prc ", prc.name.s
   else:
-    if `??`(g.config, prc.ast.info, debugLineInfo):
-      echo prc.ast[bodyPos]
 
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "")
     result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly)
-    #result = n
     result = processTransf(c, result, prc)
     liftDefer(c, result)
  
-    if `??`(g.config, prc.ast.info, debugLineInfo):
-      echo "liftLambdas for prc ", prc.name.s, " is finished output"
-      echo result
-
-    #if `??`(g.config, prc.ast.info, debugLineInfo):
-    #  echo "liftLambdas for prc ", prc.name.s, " is finished output"
-    #  echo result
-    #  debug result
-
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
@@ -1082,27 +1059,16 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
   
     incl(result.flags, nfTransf)
 
-    let cache = cache or prc.typ.callConv == ccInline
+    let cache = (cache or prc.typ.callConv == ccInline) and
+        not isCompileTimeProc(prc)  
     if cache:
       # genProc for inline procs will be called multiple times from diffrent modules,
-      # it is important to transform exactly once to get sym id and locations right
+      # it is important to transform exactly once to get sym ids and locations right
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
 
-    if `??`(g.config, prc.ast.info, debugLineInfo):
-
-      echo "tranformed ", prc.name.s, " kind ", prc.kind, " tooEarly ", c.tooEarly, " into "
-      echo prc.ast[paramsPos]
-      echo result
-      echo "-----------------------------------------------------------------------------"
-      #if prc.name.s == "testbody":
-    #  echo renderTree(result)
-
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
-
-  if `??`(g.config, n.info, debugLineInfo):
-    echo "transforming stmt: ", n
 
   if nfTransf in n.flags:
     result = n
@@ -1111,20 +1077,11 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    if `??`(g.config, n.info, debugLineInfo):
-      echo "-------------------------------------------"
-      echo "transformed stmt into: "
-      echo result
-      echo "-------------------------------------------"
-
     #if c.needsDestroyPass:
     #  result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
 
 proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
-
-  #echo "transforming expression: ", n
-
   if nfTransf in n.flags:
     result = n
   else:
