@@ -4,6 +4,7 @@ B0
 B1
 B2
 B3
+B4
 '''
 """
 
@@ -38,6 +39,20 @@ block:
     crossCheck(int16, 0'u16 - 5'u16)
     crossCheck(int32, 0'u32 - 5'u32)
     crossCheck(int64, 0'u64 - 5'u64)
+
+    echo "B4"
+    crossCheck(int32, high(int32))
+    crossCheck(int32, high(int32).int32)
+    crossCheck(int32, low(int32))
+    crossCheck(int32, low(int32).int32)
+    crossCheck(int64, high(int8).int16.int32.int64)
+    crossCheck(int64, low(int8).int16.int32.int64)
+
+    echo "B5"
+    crossCheck(int64, 0xFFFFFFFFFFFFFFFF'u64)
+    crossCheck(int32, 0xFFFFFFFFFFFFFFFF'u64)
+    crossCheck(int16, 0xFFFFFFFFFFFFFFFF'u64)
+    crossCheck(int8 , 0xFFFFFFFFFFFFFFFF'u64)
 
   # crossCheck(int8, 0'u16 - 129'u16)
   # crossCheck(uint8, 0'i16 + 257'i16)
