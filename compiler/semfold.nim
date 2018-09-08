@@ -463,16 +463,15 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     of tyChar:
       result = newIntNodeT(getOrdValue(a), n, g)
     of tyUInt8..tyUInt32, tyInt8..tyInt32:
-      let fromSigned = srcTyp.kind in tyInt..tyInt64
-      let toSigned = dstTyp.kind in tyInt..tyInt64
+      var val = a.getOrdValue
 
-      let mask = lastOrd(g.config, dstTyp, fixedUnsigned=true)
+      if dstTyp.kind notin {tyInt, tyInt64, tyUint, tyUInt64}:
+        let toSigned = dstTyp.kind in tyInt..tyInt32
+        let mask = (`shl`(1, getSize(g.config, dstTyp) * 8) - 1)
+        let valSign = toSigned and val < 0
 
-      var val =
-        if toSigned:
-          a.getOrdValue mod mask
-        else:
-          a.getOrdValue and mask
+        val = abs(val) and mask
+        if valSign: val = -val
 
       result = newIntNodeT(val, n, g)
     else:
