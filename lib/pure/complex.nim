@@ -29,55 +29,55 @@ const
   im*: Complex = (re: 0.0, im: 1.0)
     ## The imaginary unit. √-1.
 
-proc toComplex*(x: SomeInteger): Complex =
+proc toComplex*(x: SomeInteger): Complex {.inline.} =
   ## Convert some integer ``x`` to a complex number.
   result.re = x
   result.im = 0
 
-proc `==` *(x, y: Complex): bool =
+proc `==` *(x, y: Complex): bool {.inline.} =
   ## Compare two complex numbers `x` and `y` for equality.
   result = x.re == y.re and x.im == y.im
 
-proc `=~` *(x, y: Complex): bool =
+proc `=~` *(x, y: Complex): bool {.inline.} =
   ## Compare two complex numbers `x` and `y` approximately.
   result = abs(x.re-y.re)<EPS and abs(x.im-y.im)<EPS
 
-proc `+` *(x, y: Complex): Complex =
+proc `+` *(x, y: Complex): Complex {.inline.} =
   ## Add two complex numbers.
   result.re = x.re + y.re
   result.im = x.im + y.im
 
-proc `+` *(x: Complex, y: float): Complex =
+proc `+` *(x: Complex, y: float): Complex {.inline.} =
   ## Add complex `x` to float `y`.
   result.re = x.re + y
   result.im = x.im
 
-proc `+` *(x: float, y: Complex): Complex =
+proc `+` *(x: float, y: Complex): Complex {.inline.} =
   ## Add float `x` to complex `y`.
   result.re = x + y.re
   result.im = y.im
 
 
-proc `-` *(z: Complex): Complex =
+proc `-` *(z: Complex): Complex {.inline.} =
   ## Unary minus for complex numbers.
   result.re = -z.re
   result.im = -z.im
 
-proc `-` *(x, y: Complex): Complex =
+proc `-` *(x, y: Complex): Complex {.inline.} =
   ## Subtract two complex numbers.
   result.re = x.re - y.re
   result.im = x.im - y.im
 
-proc `-` *(x: Complex, y: float): Complex =
+proc `-` *(x: Complex, y: float): Complex {.inline.} =
   ## Subtracts float `y` from complex `x`.
   result = x + (-y)
 
-proc `-` *(x: float, y: Complex): Complex =
+proc `-` *(x: float, y: Complex): Complex {.inline.} =
   ## Subtracts complex `y` from float `x`.
   result = x + (-y)
 
 
-proc `/` *(x, y: Complex): Complex =
+proc `/` *(x, y: Complex): Complex {.inline.} =
   ## Divide `x` by `y`.
   var
     r, den: float
@@ -92,73 +92,73 @@ proc `/` *(x, y: Complex): Complex =
     result.re = (x.re + r * x.im) / den
     result.im = (x.im - r * x.re) / den
 
-proc `/` *(x : Complex, y: float ): Complex =
+proc `/` *(x : Complex, y: float ): Complex {.inline.} =
   ## Divide complex `x` by float `y`.
   result.re = x.re/y
   result.im = x.im/y
 
-proc `/` *(x : float, y: Complex ): Complex =
+proc `/` *(x : float, y: Complex ): Complex {.inline.} =
   ## Divide float `x` by complex `y`.
   var num : Complex = (x, 0.0)
   result = num/y
 
 
-proc `*` *(x, y: Complex): Complex =
+proc `*` *(x, y: Complex): Complex {.inline.} =
   ## Multiply `x` with `y`.
   result.re = x.re * y.re - x.im * y.im
   result.im = x.im * y.re + x.re * y.im
 
-proc `*` *(x: float, y: Complex): Complex =
+proc `*` *(x: float, y: Complex): Complex {.inline.} =
   ## Multiply float `x` with complex `y`.
   result.re = x * y.re
   result.im = x * y.im
 
-proc `*` *(x: Complex, y: float): Complex =
+proc `*` *(x: Complex, y: float): Complex {.inline.} =
   ## Multiply complex `x` with float `y`.
   result.re = x.re * y
   result.im = x.im * y
 
 
-proc `+=` *(x: var Complex, y: Complex) =
+proc `+=` *(x: var Complex, y: Complex) {.inline.} =
   ## Add `y` to `x`.
   x.re += y.re
   x.im += y.im
 
-proc `+=` *(x: var Complex, y: float) =
+proc `+=` *(x: var Complex, y: float) {.inline.} =
   ## Add `y` to the complex number `x`.
   x.re += y
 
-proc `-=` *(x: var Complex, y: Complex) =
+proc `-=` *(x: var Complex, y: Complex) {.inline.} =
   ## Subtract `y` from `x`.
   x.re -= y.re
   x.im -= y.im
 
-proc `-=` *(x: var Complex, y: float) =
+proc `-=` *(x: var Complex, y: float) {.inline.} =
   ## Subtract `y` from the complex number `x`.
   x.re -= y
 
-proc `*=` *(x: var Complex, y: Complex) =
+proc `*=` *(x: var Complex, y: Complex) {.inline.} =
   ## Multiply `y` to `x`.
   let im = x.im * y.re + x.re * y.im
   x.re = x.re * y.re - x.im * y.im
   x.im = im
 
-proc `*=` *(x: var Complex, y: float) =
+proc `*=` *(x: var Complex, y: float) {.inline.} =
   ## Multiply `y` to the complex number `x`.
   x.re *= y
   x.im *= y
 
-proc `/=` *(x: var Complex, y: Complex) =
+proc `/=` *(x: var Complex, y: Complex) {.inline.} =
   ## Divide `x` by `y` in place.
   x = x / y
 
-proc `/=` *(x : var Complex, y: float) =
+proc `/=` *(x : var Complex, y: float) {.inline.} =
   ## Divide complex `x` by float `y` in place.
   x.re /= y
   x.im /= y
 
 
-proc abs*(z: Complex): float =
+proc abs*(z: Complex): float {.inline.} =
   ## Return the distance from (0,0) to `z`.
 
   # optimized by checking special cases (sqrt is expensive)
@@ -178,7 +178,7 @@ proc abs*(z: Complex): float =
     result = y * sqrt(1.0 + temp * temp)
 
 
-proc conjugate*(z: Complex): Complex =
+proc conjugate*(z: Complex): Complex {.inline.} =
   ## Conjugate of complex number `z`.
   result.re = z.re
   result.im = -z.im
