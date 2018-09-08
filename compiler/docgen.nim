@@ -369,7 +369,8 @@ proc isRunnableExample(n: PNode): bool =
   result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
     n.kind == nkIdent and n.ident.s == "runnableExamples"
 
-proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
+proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
+  if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
   of nkCallKinds:
     if isRunnableExample(n[0]) and
@@ -394,7 +395,10 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
   for i in 0 ..< n.safeLen:
-    getAllRunnableExamples(d, n[i], dest)
+    getAllRunnableExamplesRec(d, n[i], orig, dest)
+
+proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
+  getAllRunnableExamplesRec(d, n, n, dest)
 
 when false:
   proc findDocComment(n: PNode): PNode =
@@ -677,7 +681,8 @@ proc traceDeps(d: PDoc, it: PNode) =
           "$1", [rope esc(d.target, changeFileExt(external, "")),
           rope changeFileExt(external, "html")])
 
-proc generateDoc*(d: PDoc, n: PNode) =
+proc generateDoc*(d: PDoc, n, orig: PNode) =
+  if orig.info.fileIndex != n.info.fileIndex: return
   case n.kind
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
@@ -704,11 +709,11 @@ proc generateDoc*(d: PDoc, n: PNode) =
         genItem(d, n.sons[i], n.sons[i].sons[0],
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i])
+    for i in countup(0, sonsLen(n) - 1): generateDoc(d, n.sons[i], orig)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateDoc(d, lastSon(n.sons[0]))
+      generateDoc(d, lastSon(n.sons[0]), orig)
   of nkImportStmt:
     for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
@@ -902,7 +907,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
-  generateDoc(d, ast)
+  generateDoc(d, ast, ast)
   writeOutput(d)
   generateIndex(d)
 
