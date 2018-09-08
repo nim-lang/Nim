@@ -863,8 +863,12 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dest = getOutFile2(d.conf, relativeTo(AbsoluteFile d.filename, d.conf.projectPath),
-        IndexExt, RelativeDir"index")
+    let dir = if d.conf.outFile.isEmpty: d.conf.projectPath / RelativeDir"htmldocs"
+              elif optWholeProject in d.conf.globalOptions: AbsoluteDir(d.conf.outFile)
+              else: AbsoluteDir(d.conf.outFile.string.splitFile.dir)
+    createDir(dir)
+    let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
+                                              d.conf.projectPath), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc writeOutput*(d: PDoc, useWarning = false) =

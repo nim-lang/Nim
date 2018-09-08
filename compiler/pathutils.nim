@@ -191,7 +191,7 @@ when true:
   proc `==`*(x, y: RelativeDir): bool = eqImpl(x.string, y.string)
 
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
-    assert isAbsolute(base.string)
+    #assert isAbsolute(base.string)
     assert(not isAbsolute(f.string))
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
@@ -199,7 +199,7 @@ when true:
     canon(f.string, result.string, state)
 
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
-    assert isAbsolute(base.string)
+    #assert isAbsolute(base.string)
     assert(not isAbsolute(f.string))
     result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
     var state = 0
