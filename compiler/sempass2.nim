@@ -385,10 +385,6 @@ proc isIndirectCall(tracked: PEffects, n: PNode, owner: PSym): bool =
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
   if n.kind != nkSym:
-    let n_const = getConstExpr(tracked.owner_module, n, tracked.graph)
-    if n_const != nil:
-      result = isIndirectCall(tracked, n_const, owner)
-    else:
       result = true
   elif n.sym.kind == skParam:
     result = owner != n.sym.owner or owner == nil
@@ -587,7 +583,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
         markSideEffect(tracked, a)
-
     else:
       mergeEffects(tracked, effectList.sons[exceptionEffects], n)
       mergeTags(tracked, effectList.sons[tagEffects], n)
@@ -596,7 +591,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
-
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -709,7 +703,6 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
 proc track(tracked: PEffects, n: PNode) =
-
   case n.kind
   of nkSym:
     useVar(tracked, n)
@@ -720,12 +713,13 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:
-      
     if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
       return 
     # p's effects are ours too:
-    let a = n.sons[0]
+    var a = n.sons[0]
     let op = a.typ
+    if a.kind == nkCast and a[1].typ.kind == tyProc:
+      a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
     # calling getAst(templateOrMacro()). Currently, templates and macros
     # are indistinguishable from normal procs (both have tyProc type) and
@@ -957,7 +951,6 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   t.config = g.config
 
 proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
-
   var effects = s.typ.n.sons[0]
   if effects.kind != nkEffectList: return
   # effects already computed?
