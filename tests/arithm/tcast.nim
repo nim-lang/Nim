@@ -4,6 +4,7 @@ B0
 B1
 B2
 B3
+B4
 '''
 """
 
@@ -13,6 +14,14 @@ template crossCheck(ty: untyped, exp: untyped) =
   if $rt != $ct:
     echo "Got ", ct
     echo "Expected ", rt
+
+template add1(x: uint8): untyped = x + 1
+template add1(x: uint16): untyped = x + 1
+template add1(x: uint32): untyped = x + 1
+
+template sub1(x: uint8): untyped = x - 1
+template sub1(x: uint16): untyped = x - 1
+template sub1(x: uint32): untyped = x - 1
 
 block:
   when true:
@@ -34,10 +43,20 @@ block:
     crossCheck(uint64, (-1).uint64 + 5'u64)
 
     echo "B3"
-    crossCheck(int8, 0'u8 - 5'u8)
-    crossCheck(int16, 0'u16 - 5'u16)
-    crossCheck(int32, 0'u32 - 5'u32)
-    crossCheck(int64, 0'u64 - 5'u64)
+    doAssert $sub1(0'u8) == "255"
+    doAssert $sub1(0'u16) == "65535"
+    doAssert $sub1(0'u32) == "4294967295"
+
+    echo "B4"
+    doAssert $add1(255'u8) == "0"
+    doAssert $add1(65535'u16) == "0"
+    doAssert $add1(4294967295'u32) == "0"
+
+    # Out of range conversion, caught for `let`s only
+    # crossCheck(int8, 0'u8 - 5'u8)
+    # crossCheck(int16, 0'u16 - 5'u16)
+    # crossCheck(int32, 0'u32 - 5'u32)
+    # crossCheck(int64, 0'u64 - 5'u64)
 
   # crossCheck(int8, 0'u16 - 129'u16)
   # crossCheck(uint8, 0'i16 + 257'i16)
