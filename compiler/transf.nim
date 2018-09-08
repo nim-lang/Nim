@@ -1049,7 +1049,6 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
     result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
- 
     result = liftLocalsIfRequested(prc, result, g.cache, g.config)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(g, prc, result)
@@ -1060,7 +1059,7 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
     incl(result.flags, nfTransf)
 
     let cache = (cache or prc.typ.callConv == ccInline) and
-        not isCompileTimeProc(prc)  
+                not isCompileTimeProc(prc) # vm already caching bytecode 
     if cache:
       # genProc for inline procs will be called multiple times from diffrent modules,
       # it is important to transform exactly once to get sym ids and locations right
@@ -1069,7 +1068,6 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache = true): PNode =
       prc.transformedBody = nil
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
-
   if nfTransf in n.flags:
     result = n
   else:
