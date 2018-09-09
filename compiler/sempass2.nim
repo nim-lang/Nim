@@ -380,12 +380,12 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   for id, count in items(inter):
     if count == branches: tracked.init.add id
 
-proc isIndirectCall(tracked: PEffects, n: PNode, owner: PSym): bool =
+proc isIndirectCall(n: PNode, owner: PSym): bool =
   # we don't count f(...) as an indirect call if 'f' is an parameter.
   # Instead we track expressions of type tyProc too. See the manual for
   # details:
   if n.kind != nkSym:
-      result = true
+    result = true
   elif n.sym.kind == skParam:
     result = owner != n.sym.owner or owner == nil
   elif n.sym.kind notin routineKinds:
@@ -556,7 +556,6 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
 proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
-
 
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
@@ -738,7 +737,7 @@ proc track(tracked: PEffects, n: PNode) =
       elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
-        elif isIndirectCall(tracked, a, tracked.owner):
+        elif isIndirectCall(a, tracked.owner):
           assumeTheWorst(tracked, n, op)
       else:
         mergeEffects(tracked, effectList.sons[exceptionEffects], n)
