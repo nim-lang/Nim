@@ -463,24 +463,6 @@ proc parseExpr*(s: string): NimNode {.noSideEffect, compileTime.} =
   let x = internalErrorFlag()
   if x.len > 0: raise newException(ValueError, x)
 
-macro strJoin*(args: varargs[typed]): untyped =
-  ## same as `$args[0] & ... & $args[^1]` but in lots of cases more
-  ## convenient, to avoid visual noise from lots of operators & and $.
-  ## Also, makes it easier to switch bewtween `echo` and `strJoin`.
-  runnableExamples:
-    doAssert strJoin() == ""
-    ## easier to read than: `$(1+2) & " " & $(3-4)`
-    doAssert strJoin(1+2, " ", 4-3) == "3 1"
-  if args.len > 0:
-    var cmd = ""
-    for i in 0..<args.len:
-      if i>0: cmd &= " & "
-      cmd &= "$(" & args[i].repr & ") "
-    result = parseExpr(cmd)
-  else:
-    result = newNimNode(nnkStrLit)
-    result.strVal = ""
-
 proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
@@ -1438,3 +1420,21 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
 
 proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project
+
+
+macro strJoin*(args: varargs[typed]): untyped =
+  ## same as `$args[0] & ... & $args[^1]` but in lots of cases more
+  ## convenient, to avoid visual noise from lots of operators & and $.
+  ## Also, makes it easier to switch bewtween `echo` and `strJoin`.
+  runnableExamples:
+    doAssert strJoin() == ""
+    ## easier to read than: `$(1+2) & " " & $(3-4)`
+    doAssert strJoin(1+2, " ", 4-3) == "3 1"
+  if args.len > 0:
+    result = newCall(ident"$", args[0])
+    for i in 1..<args.len:
+      # Note: if `bindSym` were used instead of `ident`, it wouldn't be
+      # extensible to user defined `$`
+      result = newTree(nnkInfix, bindSym"&", result, newCall(ident"$", args[i]))
+  else:
+    result = newLit ""
