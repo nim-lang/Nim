@@ -1552,7 +1552,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     defaultImpl()
   else:
     when defined(js):
-      {.emit: "`x`[`x`_Idx].splice(`i`, 1);".}
+      {.emit: "`x`.splice(`i`, 1);".}
     else:
       defaultImpl()
 
@@ -1574,7 +1574,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   else:
     when defined(js):
       var it : T
-      {.emit: "`x`[`x`_Idx].splice(`i`, 0, `it`);".}
+      {.emit: "`x`.splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
