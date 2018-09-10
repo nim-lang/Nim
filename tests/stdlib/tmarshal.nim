@@ -105,3 +105,16 @@ r = to[Something](data2)
 
 echo r.x, " ", r.y
 
+
+block:
+  type Foo = object
+    a1: string
+    a2: string
+    a3: seq[string]
+    a4: seq[int]
+    a5: seq[int]
+    a6: seq[int]
+  var foo = Foo(a2:"", a4: @[], a6: @[1])
+  foo.a6.setLen 0
+  # Note the difference between a5: null and a6: []
+  doAssert $$foo == """{"a1": "", "a2": "", "a3": null, "a4": null, "a5": null, "a6": []}"""
