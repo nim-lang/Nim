@@ -1165,6 +1165,28 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           else: 0
       else:
         stackTrace(c, tos, pc, "node is not a proc symbol")
+    of opcModuleSymbols:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind != nkSym:
+        stackTrace(c, tos, pc, "node.symKind is not a skModule")
+      else:
+        let sym = a.sym
+        if sym.kind != skModule:
+          stackTrace(c, tos, pc, "node.symKind is not a skModule")
+        else:
+          let node = newNode(nkBracket)
+          let data = sym.tab.data
+          for i in 0..<data.len:
+            let ai = data[i]
+            if ai == nil:
+              continue
+            let ai2 = newNode(nkSym)
+            ai2.sym = ai # TODO: copyTree?
+            node.sons.add ai2
+
+          regs[ra].node = node
+          # TODO: do we need regs[ra].node.flags.incl nfIsRef or recSetFlagIsRef?
     of opcEcho:
       let rb = instr.regB
       template fn(s) = msgWriteln(c.config, s, {msgStdout, msgNoUnitSep})

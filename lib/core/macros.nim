@@ -283,6 +283,10 @@ proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "Sy
   ## Useful to check proc symbols against generic symbols
   ## returned by `bindSym`.
 
+when defined(nimHasModuleSymbols):
+  proc moduleSymbols*(module: NimNode): NimNode {.magic: "ModuleSymbols", noSideEffect.}
+    ## returns ``module``'s public symbols as a (const) seq
+
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## With 'getType' you can access the node's `type`:idx:. A Nim type is
   ## mapped to a Nim AST too, so it's slightly confusing but it means the same
