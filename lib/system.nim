@@ -3783,8 +3783,11 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    if not cond:
-      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
+    # here, regardless of --excessiveStackTrace
+    {.line: instantiationInfo(fullPaths = true).}:
+      if not cond:
+        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
