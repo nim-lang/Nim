@@ -94,11 +94,16 @@ proc parseRst(text, filename: string,
                     docgenFindFile, compilerMsgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
-                 ext: string, dir: RelativeDir): AbsoluteFile =
+                 ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
   if optWholeProject in conf.globalOptions:
     # This is correct, for 'nim doc --project' we interpret the '--out' option as an
     # absolute directory, not as a filename!
     let d = if conf.outFile.isEmpty: conf.projectPath / dir else: AbsoluteDir(conf.outFile)
+    createDir(d)
+    result = d / changeFileExt(filename, ext)
+  elif guessTarget:
+    let d = if not conf.outFile.isEmpty: splitFile(conf.outFile).dir
+    else: conf.projectPath
     createDir(d)
     result = d / changeFileExt(filename, ext)
   else:
@@ -138,7 +143,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef):
                warnUser, "only 'rst2html' supports the ':test:' attribute")
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
-                                HtmlExt, RelativeDir"htmldocs")
+                                HtmlExt, RelativeDir"htmldocs", false)
   result.thisDir = result.destFile.splitFile.dir
 
 proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -288,7 +293,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 
         let full = AbsoluteFile toFullPath(d.conf, FileIndex s.owner.position)
         let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath),
-            HtmlExt, RelativeDir"htmldocs")
+            HtmlExt, RelativeDir"htmldocs", sfMainModule notin s.owner.flags)
 
         let external = tmp.relativeTo(d.thisDir, '/')
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
@@ -673,7 +678,7 @@ proc traceDeps(d: PDoc, it: PNode) =
   elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
     let full = AbsoluteFile toFullPath(d.conf, FileIndex it.sym.position)
     let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        RelativeDir"htmldocs")
+        RelativeDir"htmldocs", sfMainModule notin it.sym.flags)
     let external = relativeTo(tmp, d.thisDir, '/').string
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],

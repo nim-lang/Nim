@@ -111,7 +111,7 @@ proc canon(x: string; result: var string; state: var int) =
       # f/..
       while d > (state and 1) and result[d-1] != DirSep:
         dec d
-      setLen(result, d-1)
+      if d > 0: setLen(result, d-1)
     elif isDot(x, b):
       discard "discard the dot"
     elif b[1] > b[0]:
