@@ -858,7 +858,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(prc.getBody) == InitSkippable: discard
+      elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
