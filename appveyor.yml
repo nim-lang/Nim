@@ -50,10 +50,9 @@ build_script:
   - nim c -o:bin/nimpretty.exe nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
   - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
+  - nimble install opengl -y
+  - nimble install sdl1 -y
   - nimble install jester@#head -y
-  - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - nim c --taintMode:on -d:nimCoroutines --os:genode -d:posix --compileOnly tests/testament/tester
 
