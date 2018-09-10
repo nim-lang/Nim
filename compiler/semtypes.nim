@@ -1655,12 +1655,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   else:
     localError(c.config, n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
-
-  if result != nil:
-    let t = result.skipTypes({tyGenericInst})
-    if t.kind == tyArray and tfUncheckedArray in t.flags:
-      t[0].flags.incl tfUncheckedArray
-
   n.typ = result
   dec c.inTypeContext
   if c.inTypeContext == 0: instAllTypeBoundOp(c, n.info)
