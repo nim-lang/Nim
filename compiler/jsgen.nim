@@ -1660,12 +1660,18 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     binaryExpr(p, n, r, "addChar",
         "if ($1 != null) { addChar($1, $2); } else { $1 = [$2]; }")
   of mAppendStrStr:
+    var lhs, rhs: TCompRes
+    gen(p, n[1], lhs)
+    gen(p, n[2], rhs)
+
+    let rhsIsLit = n[2].kind in nkStrKinds
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
-        binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
+      r.res = "if ($1 != null) { $1 += $2; } else { $1 = $2$3; }" % [
+        lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
     else:
-      binaryExpr(p, n, r, "",
-        "if ($1 != null) { $1 = ($1).concat($2); } else { $1 = $2;}")
-    # XXX: make a copy of $2, because of Javascript's sucking semantics
+      r.res = "if ($1 != null) { $1 = ($1).concat($2); } else { $1 = $2$3; }" % [
+          lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
+    r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1693,13 +1699,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
-  of mLengthStr:
+  of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-  of mXLenStr:
-    unaryExpr(p, n, r, "", "$1.length")
-  of mLengthSeq, mLengthOpenArray, mLengthArray:
-    unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-  of mXLenSeq:
+  of mXLenStr, mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
