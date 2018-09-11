@@ -1161,7 +1161,7 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1, c.config)
   var length = sonsLen(n)
   for i in countup(0, length - 2):
-    n.sons[i] = semStmt(c, n.sons[i])
+    n.sons[i] = semStmt(c, n.sons[i], {})
   if length > 0:
     result = semTypeNode(c, n.sons[length - 1], prev)
     n.typ = result
@@ -1406,6 +1406,13 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.rawAddSon(base)
   result.flags.incl tfHasStatic
 
+proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
+  openScope(c)
+  let t = semExprWithType(c, n, {efInTypeof})
+  closeScope(c)
+  fixupTypeOf(c, prev, t)
+  result = t.typ
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   inc c.inTypeContext
@@ -1416,9 +1423,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
-    let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
-    fixupTypeOf(c, prev, typExpr)
-    result = typExpr.typ
+    result = semTypeof(c, n.sons[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
@@ -1487,9 +1492,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
-        let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
-        fixupTypeOf(c, prev, typExpr)
-        result = typExpr.typ
+        result = semTypeof(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)
