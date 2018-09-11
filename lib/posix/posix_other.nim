@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
+  hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
@@ -43,6 +43,9 @@ type
 
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+    when defined(haiku):
+      d_dev*: Dev ## Device (not POSIX)
+      d_pdev*: Dev ## Parent device (only for queries) (not POSIX)
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
@@ -54,6 +57,9 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+    elif defined(haiku):
+      d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
+      d_reclen*: cushort ## Length of this record. (not POSIX)
 
     d_name*: array[0..255, char] ## Name of entry.
 
@@ -215,14 +221,14 @@ type
                           ## For a typed memory object, the length in bytes.
                           ## For other file types, the use of this field is
                           ## unspecified.
-    when defined(macosx) or defined(android):
-      st_atime*: Time     ## Time of last access.
-      st_mtime*: Time     ## Time of last data modification.
-      st_ctime*: Time     ## Time of last status change.
-    else:
+    when StatHasNanoseconds:
       st_atim*: Timespec  ## Time of last access.
       st_mtim*: Timespec  ## Time of last data modification.
       st_ctim*: Timespec  ## Time of last status change.
+    else:
+      st_atime*: Time     ## Time of last access.
+      st_mtime*: Time     ## Time of last data modification.
+      st_ctime*: Time     ## Time of last status change.
     st_blksize*: Blksize  ## A file system-specific preferred I/O block size
                           ## for this object. In some file system types, this
                           ## may vary from file to file.
@@ -335,8 +341,8 @@ type
 
   Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
              final, pure.} = object ## struct timeval
-    tv_sec*: int       ## Seconds.
-    tv_usec*: int ## Microseconds.
+    tv_sec*: Time ## Seconds.
+    tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
@@ -598,6 +604,10 @@ else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
       ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(haiku):
+  const
+    SIGKILLTHR* = 21 ## BeOS specific: Kill just the thread, not team
 
 when hasSpawnH:
   when defined(linux):

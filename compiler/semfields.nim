@@ -16,16 +16,17 @@ type
     tupleIndex: int
     field: PSym
     replaceByFieldName: bool
+    c: PContext
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
   of nkIdent, nkSym:
     result = n
-    let ident = considerQuotedIdent(n)
+    let ident = considerQuotedIdent(c.c, n)
     var L = sonsLen(forLoop)
     if c.replaceByFieldName:
-      if ident.id == considerQuotedIdent(forLoop[0]).id:
+      if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n.sons[c.tupleIndex].sym.name.s
@@ -33,7 +34,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         return
     # other fields:
     for i in ord(c.replaceByFieldName)..L-3:
-      if ident.id == considerQuotedIdent(forLoop[i]).id:
+      if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
         var call = forLoop.sons[L-2]
         var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
@@ -47,7 +48,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         break
   else:
     if n.kind == nkContinueStmt:
-      localError(n.info, errGenerated,
+      localError(c.c.config, n.info,
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
@@ -63,6 +64,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   case typ.kind
   of nkSym:
     var fc: TFieldInstCtx  # either 'tup[i]' or 'field' is valid
+    fc.c = c.c
     fc.field = typ.sym
     fc.replaceByFieldName = c.m == mFieldPairs
     openScope(c.c)
@@ -76,7 +78,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     let L = forLoop.len
     let call = forLoop.sons[L-2]
     if call.len > 2:
-      localError(forLoop.info, errGenerated,
+      localError(c.c.config, forLoop.info,
                  "parallel 'fields' iterator does not work for 'case' objects")
       return
     # iterate over the selector:
@@ -99,17 +101,17 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   of nkRecList:
     for t in items(typ): semForObjectFields(c, t, forLoop, father)
   else:
-    illFormedAstLocal(typ)
+    illFormedAstLocal(typ, c.c.config)
 
 proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
-  var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
+  var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "true"))
   if trueSymbol == nil:
-    localError(n.info, errSystemNeeds, "true")
-    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(c), n.info)
-    trueSymbol.typ = getSysType(tyBool)
+    localError(c.config, n.info, "system needs: 'true'")
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), getCurrOwner(c), n.info)
+    trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result.sons[0] = newSymNode(trueSymbol, n.info)
   var stmts = newNodeI(nkStmtList, n.info)
@@ -118,18 +120,18 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var length = sonsLen(n)
   var call = n.sons[length-2]
   if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
-    localError(n.info, errWrongNumberOfVariables)
+    localError(c.config, n.info, errWrongNumberOfVariables)
     return result
 
   const skippedTypesForFields = abstractVar - {tyTypeDesc} + tyUserTypeClasses
   var tupleTypeA = skipTypes(call.sons[1].typ, skippedTypesForFields)
   if tupleTypeA.kind notin {tyTuple, tyObject}:
-    localError(n.info, errGenerated, "no object or tuple type")
+    localError(c.config, n.info, errGenerated, "no object or tuple type")
     return result
   for i in 1..call.len-1:
     var tupleTypeB = skipTypes(call.sons[i].typ, skippedTypesForFields)
     if not sameType(tupleTypeA, tupleTypeB):
-      typeMismatch(call.sons[i].info, tupleTypeA, tupleTypeB)
+      typeMismatch(c.config, call.sons[i].info, tupleTypeA, tupleTypeB)
 
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:
@@ -139,6 +141,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA
       fc.tupleIndex = i
+      fc.c = c
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
@@ -159,7 +162,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # we avoid it now if we can:
   if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
-    b.add(ast.emptyNode)
+    b.add(newNodeI(nkEmpty, n.info))
     stmts.add(b)
   else:
     result = stmts

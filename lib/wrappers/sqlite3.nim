@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 when defined(windows):
   when defined(nimOldDlls):
     const Lib = "sqlite3.dll"

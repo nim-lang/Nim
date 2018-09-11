@@ -11,7 +11,7 @@
 
 import strutils, os, parseopt
 import compiler/[options, commands, modules, sem,
-  passes, passaux, nimfix/pretty,
+  passes, passaux, linter,
   msgs, nimconf,
   extccomp, condsyms,
   modulegraphs, idents]
@@ -38,7 +38,7 @@ In addition, all command line options of Nim are supported.
 proc mainCommand =
   registerPass verbosePass
   registerPass semPass
-  gCmd = cmdPretty
+  conf.cmd = cmdPretty
   searchPaths.add options.libpath
   if gProjectFull.len != 0:
     # current path is always looked first for modules
@@ -47,7 +47,7 @@ proc mainCommand =
   compileProject(newModuleGraph(), newIdentCache())
   pretty.overwriteFiles()
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
+proc processCmdLine*(pass: TCmdLinePass, cmd: string, config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   gOnlyMainfile = true
@@ -76,16 +76,16 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       of "wholeproject": gOnlyMainfile = false
       of "besteffort": msgs.gErrorMax = high(int) # don't stop after first error
       else:
-        processSwitch(pass, p)
+        processSwitch(pass, p, config)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)
       # if processArgument(pass, p, argsCount): break
 
-proc handleCmdLine() =
+proc handleCmdLine(config: ConfigRef) =
   if paramCount() == 0:
     stdout.writeLine(Usage)
   else:
-    processCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "", config)
     if gProjectName != "":
       try:
         gProjectFull = canonicalizePath(gProjectName)
@@ -96,11 +96,11 @@ proc handleCmdLine() =
       gProjectName = p.name
     else:
       gProjectPath = getCurrentDir()
-    loadConfigs(DefaultConfig) # load all config files
+    loadConfigs(DefaultConfig, config) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    processCmdLine(passCmd2, "")
+    processCmdLine(passCmd2, "", config)
     mainCommand()
 
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
@@ -108,4 +108,4 @@ when compileOption("gc", "v2") or compileOption("gc", "refc"):
 
 condsyms.initDefines()
 defineSymbol "nimfix"
-handleCmdline()
+handleCmdline newConfigRef()

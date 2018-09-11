@@ -1,14 +1,12 @@
 discard """
-  output: '''tbObj of TC false
-false
+  output: '''tbObj of TC true
 true
-5
-false'''
+5'''
 """
 
 # bug #1053
 type
-  TA = object of TObject
+  TA = object of RootObj
     a: int
 
   TB = object of TA
@@ -20,10 +18,10 @@ type
 proc test(p: TA) =
   #echo "p of TB ", p of TB
   if p of TB:
-    var tbObj = TB(p)
+    #var tbObj = TB(p)
 
     # tbObj is actually no longer compatible with TC:
-    echo "tbObj of TC ", tbObj of TC
+    echo "tbObj of TC ", p of TC
 
 var v = TC()
 v.a = 1
@@ -34,13 +32,13 @@ test(v)
 
 # bug #924
 type
-  MyObject = object of TObject
+  MyObject = object of RootObj
     x: int
 
 var
   asd: MyObject
 
-proc isMyObject(obj: TObject) =
+proc isMyObject(obj: RootObj) =
     echo obj of MyObject
     if obj of MyObject:
         let a = MyObject(obj)
@@ -48,8 +46,8 @@ proc isMyObject(obj: TObject) =
 
 asd.x = 5
 
-var asdCopy = TObject(asd)
-echo asdCopy of MyObject
+#var asdCopy = RootObj(asd)
+#echo asdCopy of MyObject
 
 isMyObject(asd)
-isMyObject(asdCopy)
+#isMyObject(asdCopy)

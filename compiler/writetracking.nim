@@ -15,7 +15,8 @@
 ##   * Computing an aliasing relation based on the assignments. This relation
 ##     is then used to compute the 'writes' and 'escapes' effects.
 
-import intsets, idents, ast, astalgo, trees, renderer, msgs, types
+import intsets, idents, ast, astalgo, trees, renderer, msgs, types, options,
+  lineinfos
 
 const
   debug = false
@@ -120,7 +121,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     result = returnsNewExpr(n.lastSon)
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure,
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
     result = newLit
     for i in ord(n.kind == nkObjConstr) ..< n.len:
@@ -179,8 +180,8 @@ proc deps(w: var W; n: PNode) =
     for child in n:
       let last = lastSon(child)
       if last.kind == nkEmpty: continue
-      if child.kind == nkVarTuple and last.kind == nkPar:
-        internalAssert child.len-2 == last.len
+      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
+        if child.len-2 != last.len: return
         for i in 0 .. child.len-3:
           deps(w, child.sons[i], last.sons[i], {})
       else:
@@ -220,7 +221,7 @@ proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
         # x = f(..., y, ....)
         for i in 0 ..< a.srcNoTc: addNoDup a.src[i]
 
-proc markWriteOrEscape(w: var W) =
+proc markWriteOrEscape(w: var W; conf: ConfigRef) =
   ## Both 'writes' and 'escapes' effects ultimately only care
   ## about *parameters*.
   ## However, due to aliasing, even locals that might not look as parameters
@@ -249,7 +250,7 @@ proc markWriteOrEscape(w: var W) =
         if p.kind == skParam and p.owner == w.owner:
           incl(p.flags, sfWrittenTo)
           if w.owner.kind == skFunc and p.typ.kind != tyVar:
-            localError(a.info, "write access to non-var parameter: " & p.name.s)
+            localError(conf, a.info, "write access to non-var parameter: " & p.name.s)
 
     if {rootIsResultOrParam, rootIsHeapAccess, markAsEscaping}*a.destInfo != {}:
       var destIsParam = false
@@ -263,14 +264,14 @@ proc markWriteOrEscape(w: var W) =
           if p.kind == skParam and p.owner == w.owner:
             incl(p.flags, sfEscapes)
 
-proc trackWrites*(owner: PSym; body: PNode) =
+proc trackWrites*(owner: PSym; body: PNode; conf: ConfigRef) =
   var w: W
   w.owner = owner
   w.assignments = @[]
   # Phase 1: Collect and preprocess any assignments in the proc body:
   deps(w, body)
   # Phase 2: Compute the 'writes' and 'escapes' effects:
-  markWriteOrEscape(w)
+  markWriteOrEscape(w, conf)
   if w.returnsNew != asgnOther and not isEmptyType(owner.typ.sons[0]) and
       containsGarbageCollectedRef(owner.typ.sons[0]):
     incl(owner.typ.flags, tfReturnsNew)

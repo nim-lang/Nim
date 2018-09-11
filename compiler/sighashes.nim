@@ -9,10 +9,10 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, md5
+import ast, md5, tables, ropes
 from hashes import Hash
 from astalgo import debug
-from types import typeToString, preferDesc
+import types
 from strutils import startsWith, contains
 
 when false:
@@ -148,19 +148,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
-    return
   of tyDistinct:
     if CoType in flags:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
-    return
-  of tyAlias, tyGenericInst, tyUserTypeClasses:
+  of tyGenericInst:
+    if sfInfixCall in t.base.sym.flags:
+      # This is an imported C++ generic type.
+      # We cannot trust the `lastSon` to hold a properly populated and unique
+      # value for each instantiation, so we hash the generic parameters here:
+      let normalizedType = t.skipGenericAlias
+      for i in 0 .. normalizedType.len - 2:
+        c.hashType t.sons[i], flags
+    else:
+      c.hashType t.lastSon, flags
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.lastSon, flags
-    return
-  else:
-    discard
-  case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -168,11 +172,12 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    c &= char(t.kind)
     if t.typeInst != nil:
       assert t.typeInst.kind == tyGenericInst
-      for i in countup(1, sonsLen(t.typeInst) - 2):
+      for i in countup(0, sonsLen(t.typeInst) - 2):
         c.hashType t.typeInst.sons[i], flags
+      return
+    c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
@@ -184,18 +189,19 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if sfAnon in t.sym.flags:
+      if {sfAnon, sfGenSym} * t.sym.flags != {}:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
         # mild hack to prevent endless recursions (makes nimforum compile again):
-        excl t.sym.flags, sfAnon
+        let oldFlags = t.sym.flags
+        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
         let n = t.n
         for i in 0 ..< n.len:
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
-        incl t.sym.flags, sfAnon
+        t.sym.flags = oldFlags
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
@@ -326,3 +332,32 @@ proc hashOwner*(s: PSym): SigHash =
   c &= m.name.s
 
   md5Final c, result.Md5Digest
+
+proc idOrSig*(s: PSym, currentModule: string,
+              sigCollisions: var CountTable[SigHash]): Rope =
+  if s.kind in routineKinds and s.typ != nil:
+    # signatures for exported routines are reliable enough to
+    # produce a unique name and this means produced C++ is more stable wrt
+    # Nim changes:
+    let sig = hashProc(s)
+    result = rope($sig)
+    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
+    let counter = sigCollisions.getOrDefault(sig)
+    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
+    #  echo "counter ", counter, " ", s.id
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    # this minor hack is necessary to make tests/collections/thashes compile.
+    # The inlined hash function's original module is ambiguous so we end up
+    # generating duplicate names otherwise:
+    if s.typ.callConv == ccInline:
+      result.add rope(currentModule)
+    sigCollisions.inc(sig)
+  else:
+    let sig = hashNonProc(s)
+    result = rope($sig)
+    let counter = sigCollisions.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    sigCollisions.inc(sig)
+

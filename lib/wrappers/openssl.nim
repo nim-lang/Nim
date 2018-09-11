@@ -22,7 +22,7 @@
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passL:-lcrypto --passL:-lssl -r tests/untestable/tssl.nim
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
@@ -38,12 +38,16 @@ when useWinVersion:
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.1|.38|.39|.41|.43|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
 
   when defined(macosx):
     const
       DLLSSLName* = "libssl" & versions & ".dylib"
       DLLUtilName* = "libcrypto" & versions & ".dylib"
+  elif defined(genode):
+    const
+      DLLSSLName* = "libssl.lib.so"
+      DLLUtilName* = "libcrypto.lib.so"
   else:
     const
       DLLSSLName* = "libssl.so" & versions
@@ -323,6 +327,7 @@ proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
@@ -390,7 +395,7 @@ proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not useWinVersion and not defined(macosx) and not defined(android):
+when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -404,7 +409,7 @@ when not useWinVersion and not defined(macosx) and not defined(android):
     if p != nil: dealloc(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx) and not defined(android):
+  when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.

@@ -300,7 +300,7 @@ const IPPROTO_TCP* = cint(6)
 const IPPROTO_UDP* = cint(17)
 const INADDR_ANY* = InAddrScalar(0)
 const INADDR_LOOPBACK* = InAddrScalar(2130706433)
-const INADDR_BROADCAST* = InAddrScalar(-1)
+const INADDR_BROADCAST* = InAddrScalar(4294967295)
 const INET_ADDRSTRLEN* = cint(16)
 const INET6_ADDRSTRLEN* = cint(46)
 const IPV6_JOIN_GROUP* = cint(20)
@@ -432,6 +432,9 @@ const POSIX_MADV_RANDOM* = cint(1)
 const POSIX_MADV_WILLNEED* = cint(3)
 const POSIX_MADV_DONTNEED* = cint(4)
 const MAP_POPULATE* = cint(32768)
+
+# <sys/resource.h>
+const RLIMIT_NOFILE* = cint(7)
 
 # <sys/select.h>
 const FD_SETSIZE* = cint(1024)

@@ -241,7 +241,7 @@ when defined(vcc):
     else:
       {.error: "invalid CAS instruction".}
 
-elif defined(tcc) and not defined(windows):
+elif defined(tcc):
   when defined(amd64):
     {.emit:"""
 static int __tcc_cas(int *ptr, int oldVal, int newVal)
@@ -262,7 +262,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
 }
 """.}
   else:
-    assert sizeof(int) == 4
+    #assert sizeof(int) == 4
     {.emit:"""
 static int __tcc_cas(int *ptr, int oldVal, int newVal)
 {
@@ -295,7 +295,7 @@ else:
 
 when (defined(x86) or defined(amd64)) and defined(vcc):
   proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
-elif (defined(x86) or defined(amd64)) and someGcc:
+elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
   proc cpuRelax* {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif someGcc or defined(tcc):

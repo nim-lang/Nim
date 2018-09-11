@@ -3,6 +3,7 @@ discard """
 """
 
 # bug #6682
+{.experimental: "notnil".}
 
 type
     Fields = enum
@@ -43,16 +44,16 @@ import json
 type
 
   foo = object
-    thing: string not nil
+    thing: ptr int not nil
 
   CTS = ref object
     subs_by_sid: Table[int, foo]
 
 
 proc parse(cts: CTS, jn: JsonNode) =
-
+  var y = jn.getInt(4523)
   let ces = foo(
-    thing: jn.getStr("thing")
+    thing: addr y
   )
 
   cts.subs_by_sid[0] = ces
@@ -62,17 +63,3 @@ proc parse(cts: CTS, jn: JsonNode) =
 
 proc p(x: proc(){.closure.} not nil) = discard
 p(proc(){.closure.} = discard)
-
-# bug #3993
-
-type
-  List[T] = seq[T] not nil
-
-proc `^^`[T](v: T, lst: List[T]): List[T] =
-  result = @[v]
-  result.add(lst)
-
-proc Nil[T](): List[T] = @[]
-
-when isMainModule:
-  let lst = 1 ^^ 2 ^^ Nil[int]()

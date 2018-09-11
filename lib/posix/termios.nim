@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 import posix
 
 type
@@ -122,6 +122,21 @@ var
   B9600* {.importc, header: "<termios.h>".}: Speed
   B19200* {.importc, header: "<termios.h>".}: Speed
   B38400* {.importc, header: "<termios.h>".}: Speed
+  B57600* {.importc, header: "<termios.h>".}: Speed
+  B115200* {.importc, header: "<termios.h>".}: Speed
+  B230400* {.importc, header: "<termios.h>".}: Speed
+  B460800* {.importc, header: "<termios.h>".}: Speed
+  B500000* {.importc, header: "<termios.h>".}: Speed
+  B576000* {.importc, header: "<termios.h>".}: Speed
+  B921600* {.importc, header: "<termios.h>".}: Speed
+  B1000000* {.importc, header: "<termios.h>".}: Speed
+  B1152000* {.importc, header: "<termios.h>".}: Speed
+  B1500000* {.importc, header: "<termios.h>".}: Speed
+  B2000000* {.importc, header: "<termios.h>".}: Speed
+  B2500000* {.importc, header: "<termios.h>".}: Speed
+  B3000000* {.importc, header: "<termios.h>".}: Speed
+  B3500000* {.importc, header: "<termios.h>".}: Speed
+  B4000000* {.importc, header: "<termios.h>".}: Speed
   EXTA* {.importc, header: "<termios.h>".}: Speed
   EXTB* {.importc, header: "<termios.h>".}: Speed
   CSIZE* {.importc, header: "<termios.h>".}: Cflag

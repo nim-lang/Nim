@@ -1,3 +1,6 @@
+discard """
+  output: "Hello, world"
+"""
 
 # bug #3584
 

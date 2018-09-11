@@ -11,29 +11,78 @@
 String `interpolation`:idx: / `format`:idx: inspired by
 Python's ``f``-strings.
 
-Examples:
+``fmt`` vs. ``&``
+=================
+
+You can use either ``fmt`` or the unary ``&`` operator for formatting. The
+difference between them is subtle but important.
+
+The ``fmt"{expr}"`` syntax is more aesthetically pleasing, but it hides a small
+gotcha. The string is a
+`generalized raw string literal <manual.html#lexical-analysis-generalized-raw-string-literals>`_.
+This has some surprising effects:
 
 .. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+    doAssert fmt"{msg}\n" == "hello\\n"
+
+Because the literal is a raw string literal, the ``\n`` is not interpreted as
+an escape sequence.
+
+There are multiple ways to get around this, including the use of the ``&``
+operator:
+
+.. code-block:: nim
+
+    import strformat
+    let msg = "hello"
+
+    doAssert &"{msg}\n" == "hello\n"
+
+    doAssert fmt"{msg}{'\n'}" == "hello\n"
+    doAssert fmt("{msg}\n") == "hello\n"
+    doAssert "{msg}\n".fmt == "hello\n"
+
+The choice of style is up to you.
+
+Formatting strings
+==================
+
+.. code-block:: nim
+
+    import strformat
 
     doAssert &"""{"abc":>4}""" == " abc"
     doAssert &"""{"abc":<4}""" == "abc "
 
-    doAssert &"{-12345:08}" == "-0012345"
-    doAssert &"{-1:3}" == " -1"
-    doAssert &"{-1:03}" == "-01"
-    doAssert &"{16:#X}" == "0x10"
+Formatting floats
+=================
 
-    doAssert &"{123.456}" == "123.456"
-    doAssert &"{123.456:>9.3f}" == "  123.456"
-    doAssert &"{123.456:9.3f}" == "  123.456"
-    doAssert &"{123.456:9.4f}" == " 123.4560"
-    doAssert &"{123.456:>9.0f}" == "     123."
-    doAssert &"{123.456:<9.4f}" == "123.4560 "
+.. code-block:: nim
 
-    doAssert &"{123.456:e}" == "1.234560e+02"
-    doAssert &"{123.456:>13e}" == " 1.234560e+02"
-    doAssert &"{123.456:13e}" == " 1.234560e+02"
+    import strformat
 
+    doAssert fmt"{-12345:08}" == "-0012345"
+    doAssert fmt"{-1:3}" == " -1"
+    doAssert fmt"{-1:03}" == "-01"
+    doAssert fmt"{16:#X}" == "0x10"
+
+    doAssert fmt"{123.456}" == "123.456"
+    doAssert fmt"{123.456:>9.3f}" == "  123.456"
+    doAssert fmt"{123.456:9.3f}" == "  123.456"
+    doAssert fmt"{123.456:9.4f}" == " 123.4560"
+    doAssert fmt"{123.456:>9.0f}" == "     123."
+    doAssert fmt"{123.456:<9.4f}" == "123.4560 "
+
+    doAssert fmt"{123.456:e}" == "1.234560e+02"
+    doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
+    doAssert fmt"{123.456:13e}" == " 1.234560e+02"
+
+
+Implementation details
+======================
 
 An expression like ``&"{key} is {value:arg} {{z}}"`` is transformed into:
 
@@ -86,8 +135,8 @@ For strings and numeric types the optional argument is a so-called
 "standard format specifier".
 
 
-Standard format specifier
-=========================
+Standard format specifier for strings, integers and floats
+==========================================================
 
 
 The general form of a standard format specifier is::
@@ -209,7 +258,9 @@ template callFormat(res, arg) {.dirty.} =
     # workaround in order to circumvent 'strutils.format' which matches
     # too but doesn't adhere to our protocol.
     res.add arg
-  elif compiles(format(arg, res)):
+  elif compiles(format(arg, res)) and
+      # Check if format returns void
+      not (compiles do: discard format(arg, res)):
     format(arg, res)
   elif compiles(format(arg)):
     res.add format(arg)
@@ -228,133 +279,8 @@ template callFormatOption(res, arg, option) {.dirty.} =
 
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
-  runnableExamples:
-    template check(actual, expected: string) =
-      doAssert actual == expected
-
-    from strutils import toUpperAscii, repeat
-
-    # Basic tests
-    let s = "string"
-    check &"{0} {s}", "0 string"
-    check &"{s[0..2].toUpperAscii}", "STR"
-    check &"{-10:04}", "-010"
-    check &"{-10:<04}", "-010"
-    check &"{-10:>04}", "-010"
-    check &"0x{10:02X}", "0x0A"
-
-    check &"{10:#04X}", "0x0A"
-
-    check &"""{"test":#>5}""", "#test"
-    check &"""{"test":>5}""", " test"
-
-    check &"""{"test":#^7}""", "#test##"
-
-    check &"""{"test": <5}""", "test "
-    check &"""{"test":<5}""", "test "
-    check &"{1f:.3f}", "1.000"
-    check &"Hello, {s}!", "Hello, string!"
-
-    # Tests for identifers without parenthesis
-    check &"{s} works{s}", "string worksstring"
-    check &"{s:>7}", " string"
-    doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`
-
-    # Misc general tests
-    check &"{{}}", "{}"
-    check &"{0}%", "0%"
-    check &"{0}%asdf", "0%asdf"
-    check &("\n{\"\\n\"}\n"), "\n\n\n"
-    check &"""{"abc"}s""", "abcs"
-
-    # String tests
-    check &"""{"abc"}""", "abc"
-    check &"""{"abc":>4}""", " abc"
-    check &"""{"abc":<4}""", "abc "
-    check &"""{"":>4}""", "    "
-    check &"""{"":<4}""", "    "
-
-    # Int tests
-    check &"{12345}", "12345"
-    check &"{ - 12345}", "-12345"
-    check &"{12345:6}", " 12345"
-    check &"{12345:>6}", " 12345"
-    check &"{12345:4}", "12345"
-    check &"{12345:08}", "00012345"
-    check &"{-12345:08}", "-0012345"
-    check &"{0:0}", "0"
-    check &"{0:02}", "00"
-    check &"{-1:3}", " -1"
-    check &"{-1:03}", "-01"
-    check &"{10}", "10"
-    check &"{16:#X}", "0x10"
-    check &"{16:^#7X}", " 0x10  "
-    check &"{16:^+#7X}", " +0x10 "
-
-    # Hex tests
-    check &"{0:x}", "0"
-    check &"{-0:x}", "0"
-    check &"{255:x}", "ff"
-    check &"{255:X}", "FF"
-    check &"{-255:x}", "-ff"
-    check &"{-255:X}", "-FF"
-    check &"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
-    check &"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
-    check &"{255:4x}", "  ff"
-    check &"{255:04x}", "00ff"
-    check &"{-255:4x}", " -ff"
-    check &"{-255:04x}", "-0ff"
-
-    # Float tests
-    check &"{123.456}", "123.456"
-    check &"{-123.456}", "-123.456"
-    check &"{123.456:.3f}", "123.456"
-    check &"{123.456:+.3f}", "+123.456"
-    check &"{-123.456:+.3f}", "-123.456"
-    check &"{-123.456:.3f}", "-123.456"
-    check &"{123.456:1g}", "123.456"
-    check &"{123.456:.1f}", "123.5"
-    check &"{123.456:.0f}", "123."
-    #check &"{123.456:.0f}", "123."
-    check &"{123.456:>9.3f}", "  123.456"
-    check &"{123.456:9.3f}", "  123.456"
-    check &"{123.456:>9.4f}", " 123.4560"
-    check &"{123.456:>9.0f}", "     123."
-    check &"{123.456:<9.4f}", "123.4560 "
-
-    # Float (scientific) tests
-    check &"{123.456:e}", "1.234560e+02"
-    check &"{123.456:>13e}", " 1.234560e+02"
-    check &"{123.456:<13e}", "1.234560e+02 "
-    check &"{123.456:.1e}", "1.2e+02"
-    check &"{123.456:.2e}", "1.23e+02"
-    check &"{123.456:.3e}", "1.235e+02"
-
-    # Note: times.format adheres to the format protocol. Test that this
-    # works:
-    import times
-
-    var nullTime: DateTime
-    check &"{nullTime:yyyy-mm-dd}", "0000-00-00"
-
-    # Unicode string tests
-    check &"""{"αβγ"}""", "αβγ"
-    check &"""{"αβγ":>5}""", "  αβγ"
-    check &"""{"αβγ":<5}""", "αβγ  "
-    check &"""a{"a"}α{"α"}€{"€"}𐍈{"𐍈"}""", "aaαα€€𐍈𐍈"
-    check &"""a{"a":2}α{"α":2}€{"€":2}𐍈{"𐍈":2}""", "aa αα €€ 𐍈𐍈 "
-    # Invalid unicode sequences should be handled as plain strings.
-    # Invalid examples taken from: https://stackoverflow.com/a/3886015/1804173
-    let invalidUtf8 = [
-      "\xc3\x28", "\xa0\xa1",
-      "\xe2\x28\xa1", "\xe2\x82\x28",
-      "\xf0\x28\x8c\xbc", "\xf0\x90\x28\xbc", "\xf0\x28\x8c\x28"
-    ]
-    for s in invalidUtf8:
-      check &"{s:>5}", repeat(" ", 5-s.len) & s
-
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "& only works with string literals", pattern
+    error "string formatting (fmt(), &) only works with string literals", pattern
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
@@ -409,14 +335,6 @@ macro `&`*(pattern: string): untyped =
 
 template fmt*(pattern: string): untyped =
   ## An alias for ``&``.
-  ## **Examples:**
-  ##
-  ## .. code-block:: nim
-  ##  import json
-  ##  import strformat except `&`
-  ##
-  ##  let example = "oh, look no conflicts anymore"
-  ##  echo fmt"{example}"
   bind `&`
   &pattern
 
@@ -459,7 +377,7 @@ type
                       ## ``parseStandardFormatSpecifier`` returned.
 
 proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
-  ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
+  ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
   ## with ``fill`` char.
@@ -587,8 +505,8 @@ proc format*(value: SomeInteger; specifier: string; res: var string) =
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   res.add formatInt(value, radix, spec)
 
-proc format*(value: SomeReal; specifier: string; res: var string) =
-  ## Standard format implementation for ``SomeReal``. It makes little
+proc format*(value: SomeFloat; specifier: string; res: var string) =
+  ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
@@ -608,8 +526,31 @@ proc format*(value: SomeReal; specifier: string; res: var string) =
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
-  if value >= 0.0 and spec.sign != '-':
-    f = spec.sign & f
+  var sign = false
+  if value >= 0.0:
+    if spec.sign != '-':
+      sign = true
+      if  value == 0.0:
+        if 1.0 / value == Inf:
+          # only insert the sign if value != negZero
+          f.insert($spec.sign, 0)
+      else:
+        f.insert($spec.sign, 0)
+  else:
+    sign = true
+
+  if spec.padWithZero:
+    var sign_str = ""
+    if sign:
+      sign_str = $f[0]
+      f = f[1..^1]
+
+    let toFill = spec.minimumWidth - f.len - ord(sign)
+    if toFill > 0:
+      f = repeat('0', toFill) & f
+    if sign:
+      f = sign_str & f
+
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
   let result = alignString(f, spec.minimumWidth,
@@ -624,15 +565,149 @@ proc format*(value: string; specifier: string; res: var string) =
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
+  var value = value
   case spec.typ
   of 's', '\0': discard
   else:
     raise newException(ValueError,
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
+  if spec.precision != -1:
+    if spec.precision < runelen(value):
+      setLen(value, runeOffset(value, spec.precision))
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
 when isMainModule:
+  template check(actual, expected: string) =
+    doAssert actual == expected
+
+  from strutils import toUpperAscii, repeat
+
+  # Basic tests
+  let s = "string"
+  check &"{0} {s}", "0 string"
+  check &"{s[0..2].toUpperAscii}", "STR"
+  check &"{-10:04}", "-010"
+  check &"{-10:<04}", "-010"
+  check &"{-10:>04}", "-010"
+  check &"0x{10:02X}", "0x0A"
+
+  check &"{10:#04X}", "0x0A"
+
+  check &"""{"test":#>5}""", "#test"
+  check &"""{"test":>5}""", " test"
+
+  check &"""{"test":#^7}""", "#test##"
+
+  check &"""{"test": <5}""", "test "
+  check &"""{"test":<5}""", "test "
+  check &"{1f:.3f}", "1.000"
+  check &"Hello, {s}!", "Hello, string!"
+
+  # Tests for identifers without parenthesis
+  check &"{s} works{s}", "string worksstring"
+  check &"{s:>7}", " string"
+  doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`
+
+  # Misc general tests
+  check &"{{}}", "{}"
+  check &"{0}%", "0%"
+  check &"{0}%asdf", "0%asdf"
+  check &("\n{\"\\n\"}\n"), "\n\n\n"
+  check &"""{"abc"}s""", "abcs"
+
+  # String tests
+  check &"""{"abc"}""", "abc"
+  check &"""{"abc":>4}""", " abc"
+  check &"""{"abc":<4}""", "abc "
+  check &"""{"":>4}""", "    "
+  check &"""{"":<4}""", "    "
+
+  # Int tests
+  check &"{12345}", "12345"
+  check &"{ - 12345}", "-12345"
+  check &"{12345:6}", " 12345"
+  check &"{12345:>6}", " 12345"
+  check &"{12345:4}", "12345"
+  check &"{12345:08}", "00012345"
+  check &"{-12345:08}", "-0012345"
+  check &"{0:0}", "0"
+  check &"{0:02}", "00"
+  check &"{-1:3}", " -1"
+  check &"{-1:03}", "-01"
+  check &"{10}", "10"
+  check &"{16:#X}", "0x10"
+  check &"{16:^#7X}", " 0x10  "
+  check &"{16:^+#7X}", " +0x10 "
+
+  # Hex tests
+  check &"{0:x}", "0"
+  check &"{-0:x}", "0"
+  check &"{255:x}", "ff"
+  check &"{255:X}", "FF"
+  check &"{-255:x}", "-ff"
+  check &"{-255:X}", "-FF"
+  check &"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
+  check &"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
+  check &"{255:4x}", "  ff"
+  check &"{255:04x}", "00ff"
+  check &"{-255:4x}", " -ff"
+  check &"{-255:04x}", "-0ff"
+
+  # Float tests
+  check &"{123.456}", "123.456"
+  check &"{-123.456}", "-123.456"
+  check &"{123.456:.3f}", "123.456"
+  check &"{123.456:+.3f}", "+123.456"
+  check &"{-123.456:+.3f}", "-123.456"
+  check &"{-123.456:.3f}", "-123.456"
+  check &"{123.456:1g}", "123.456"
+  check &"{123.456:.1f}", "123.5"
+  check &"{123.456:.0f}", "123."
+  #check &"{123.456:.0f}", "123."
+  check &"{123.456:>9.3f}", "  123.456"
+  check &"{123.456:9.3f}", "  123.456"
+  check &"{123.456:>9.4f}", " 123.4560"
+  check &"{123.456:>9.0f}", "     123."
+  check &"{123.456:<9.4f}", "123.4560 "
+
+  # Float (scientific) tests
+  check &"{123.456:e}", "1.234560e+02"
+  check &"{123.456:>13e}", " 1.234560e+02"
+  check &"{123.456:<13e}", "1.234560e+02 "
+  check &"{123.456:.1e}", "1.2e+02"
+  check &"{123.456:.2e}", "1.23e+02"
+  check &"{123.456:.3e}", "1.235e+02"
+
+  # Note: times.format adheres to the format protocol. Test that this
+  # works:
+  import times
+
+  var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
+  check &"{dt:yyyy-MM-dd}", "2000-01-01"
+
+  var tm = fromUnix(0)
+  discard &"{tm}"
+
+  # Unicode string tests
+  check &"""{"αβγ"}""", "αβγ"
+  check &"""{"αβγ":>5}""", "  αβγ"
+  check &"""{"αβγ":<5}""", "αβγ  "
+  check &"""a{"a"}α{"α"}€{"€"}𐍈{"𐍈"}""", "aaαα€€𐍈𐍈"
+  check &"""a{"a":2}α{"α":2}€{"€":2}𐍈{"𐍈":2}""", "aa αα €€ 𐍈𐍈 "
+  # Invalid unicode sequences should be handled as plain strings.
+  # Invalid examples taken from: https://stackoverflow.com/a/3886015/1804173
+  let invalidUtf8 = [
+    "\xc3\x28", "\xa0\xa1",
+    "\xe2\x28\xa1", "\xe2\x82\x28",
+    "\xf0\x28\x8c\xbc", "\xf0\x90\x28\xbc", "\xf0\x28\x8c\x28"
+  ]
+  for s in invalidUtf8:
+    check &"{s:>5}", repeat(" ", 5-s.len) & s
+
+
   import json
 
   doAssert fmt"{'a'} {'b'}" == "a b"
+
+  echo("All tests ok")

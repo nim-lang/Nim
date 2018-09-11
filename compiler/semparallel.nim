@@ -23,7 +23,8 @@
 
 import
   ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
-  renderer, types
+  renderer, types, modulegraphs, options
+
 from trees import getMagic
 from strutils import `%`
 
@@ -73,12 +74,15 @@ type
                         # the 'parallel' section
     currentSpawnId: int
     inLoop: int
+    graph: ModuleGraph
 
-proc initAnalysisCtx(): AnalysisCtx =
+proc initAnalysisCtx(g: ModuleGraph): AnalysisCtx =
   result.locals = @[]
   result.slices = @[]
   result.args = @[]
-  result.guards = @[]
+  result.guards.s = @[]
+  result.guards.o = initOperators(g)
+  result.graph = g
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
   for i in 0..<c.locals.len:
@@ -117,7 +121,7 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
   if isLocal(n):
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
-      localError(n.info, "invalid usage of counter after increment")
+      localError(c.graph.config, n.info, "invalid usage of counter after increment")
   else:
     for i in 0 ..< n.safeLen: checkLocal(c, n.sons[i])
 
@@ -126,14 +130,14 @@ template `?`(x): untyped = x.renderTree
 proc checkLe(c: AnalysisCtx; a, b: PNode) =
   case proveLe(c.guards, a, b)
   of impUnknown:
-    localError(a.info, "cannot prove: " & ?a & " <= " & ?b & " (bounds check)")
+    localError(c.graph.config, a.info, "cannot prove: " & ?a & " <= " & ?b & " (bounds check)")
   of impYes: discard
   of impNo:
-    localError(a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
+    localError(c.graph.config, a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
-  checkLe(c, arr.lowBound, idx)
-  checkLe(c, idx, arr.highBound)
+  checkLe(c, lowBound(c.graph.config, arr), idx)
+  checkLe(c, idx, highBound(c.graph.config, arr, c.guards.o))
 
 proc addLowerBoundAsFacts(c: var AnalysisCtx) =
   for v in c.locals:
@@ -142,34 +146,34 @@ proc addLowerBoundAsFacts(c: var AnalysisCtx) =
 
 proc addSlice(c: var AnalysisCtx; n: PNode; x, le, ri: PNode) =
   checkLocal(c, n)
-  let le = le.canon
-  let ri = ri.canon
+  let le = le.canon(c.guards.o)
+  let ri = ri.canon(c.guards.o)
   # perform static bounds checking here; and not later!
-  let oldState = c.guards.len
+  let oldState = c.guards.s.len
   addLowerBoundAsFacts(c)
   c.checkBounds(x, le)
   c.checkBounds(x, ri)
-  c.guards.setLen(oldState)
+  c.guards.s.setLen(oldState)
   c.slices.add((x, le, ri, c.currentSpawnId, c.inLoop > 0))
 
-proc overlap(m: TModel; x,y,c,d: PNode) =
+proc overlap(m: TModel; conf: ConfigRef; x,y,c,d: PNode) =
   #  X..Y and C..D overlap iff (X <= D and C <= Y)
   case proveLe(m, c, y)
   of impUnknown:
     case proveLe(m, x, d)
     of impNo: discard
     of impUnknown, impYes:
-      localError(x.info,
+      localError(conf, x.info,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
             [?c, ?y, ?x, ?y, ?c, ?d])
   of impYes:
     case proveLe(m, x, d)
     of impUnknown:
-      localError(x.info,
+      localError(conf, x.info,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
           [?x, ?d, ?x, ?y, ?c, ?d])
     of impYes:
-      localError(x.info, "($#)..($#) not disjoint from ($#)..($#)" %
+      localError(conf, x.info, "($#)..($#) not disjoint from ($#)..($#)" %
                 [?c, ?y, ?x, ?y, ?c, ?d])
     of impNo: discard
   of impNo: discard
@@ -187,7 +191,7 @@ proc subStride(c: AnalysisCtx; n: PNode): PNode =
   if isLocal(n):
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
-      result = n +@ c.locals[s].stride.intVal
+      result = buildAdd(n, c.locals[s].stride.intVal, c.guards.o)
     else:
       result = n
   elif n.safeLen > 0:
@@ -203,7 +207,7 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   addLowerBoundAsFacts(c)
   # Every slice used in a loop needs to be disjoint with itself:
   for x,a,b,id,inLoop in items(c.slices):
-    if inLoop: overlap(c.guards, a,b, c.subStride(a), c.subStride(b))
+    if inLoop: overlap(c.guards, c.graph.config, a,b, c.subStride(a), c.subStride(b))
   # Another tricky example is:
   #   while true:
   #     spawn f(a[i])
@@ -231,21 +235,21 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
           # XXX strictly speaking, 'or' is not correct here and it needs to
           # be 'and'. However this prevents too many obviously correct programs
           # like f(a[0..x]); for i in x+1 .. a.high: f(a[i])
-          overlap(c.guards, x.a, x.b, y.a, y.b)
+          overlap(c.guards, c.graph.config, x.a, x.b, y.a, y.b)
         elif (let k = simpleSlice(x.a, x.b); let m = simpleSlice(y.a, y.b);
               k >= 0 and m >= 0):
           # ah I cannot resist the temptation and add another sweet heuristic:
           # if both slices have the form (i+k)..(i+k)  and (i+m)..(i+m) we
           # check they are disjoint and k < stride and m < stride:
-          overlap(c.guards, x.a, x.b, y.a, y.b)
+          overlap(c.guards, c.graph.config, x.a, x.b, y.a, y.b)
           let stride = min(c.stride(x.a), c.stride(y.a))
           if k < stride and m < stride:
             discard
           else:
-            localError(x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
+            localError(c.graph.config, x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
               [?x.a, ?x.b, ?y.a, ?y.b])
         else:
-          localError(x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
+          localError(c.graph.config, x.x.info, "cannot prove ($#)..($#) disjoint from ($#)..($#)" %
             [?x.a, ?x.b, ?y.a, ?y.b])
 
 proc analyse(c: var AnalysisCtx; n: PNode)
@@ -292,31 +296,31 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
 
 proc analyseCase(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0])
-  let oldFacts = c.guards.len
+  let oldFacts = c.guards.s.len
   for i in 1..<n.len:
     let branch = n.sons[i]
-    setLen(c.guards, oldFacts)
+    setLen(c.guards.s, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
     for i in 0 ..< branch.len:
       analyse(c, branch.sons[i])
-  setLen(c.guards, oldFacts)
+  setLen(c.guards.s, oldFacts)
 
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0].sons[0])
-  let oldFacts = c.guards.len
-  addFact(c.guards, canon(n.sons[0].sons[0]))
+  let oldFacts = c.guards.s.len
+  addFact(c.guards, canon(n.sons[0].sons[0], c.guards.o))
 
   analyse(c, n.sons[0].sons[1])
   for i in 1..<n.len:
     let branch = n.sons[i]
-    setLen(c.guards, oldFacts)
+    setLen(c.guards.s, oldFacts)
     for j in 0..i-1:
-      addFactNeg(c.guards, canon(n.sons[j].sons[0]))
+      addFactNeg(c.guards, canon(n.sons[j].sons[0], c.guards.o))
     if branch.len > 1:
-      addFact(c.guards, canon(branch.sons[0]))
+      addFact(c.guards, canon(branch.sons[0], c.guards.o))
     for i in 0 ..< branch.len:
       analyse(c, branch.sons[i])
-  setLen(c.guards, oldFacts)
+  setLen(c.guards.s, oldFacts)
 
 proc analyse(c: var AnalysisCtx; n: PNode) =
   case n.kind
@@ -345,10 +349,11 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     if n[0].kind == nkSym: analyseCall(c, n, n[0].sym)
     else: analyseSons(c, n)
   of nkBracketExpr:
-    c.addSlice(n, n[0], n[1], n[1])
+    if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
+      c.addSlice(n, n[0], n[1], n[1])
     analyseSons(c, n)
   of nkReturnStmt, nkRaiseStmt, nkTryStmt:
-    localError(n.info, "invalid control flow for 'parallel'")
+    localError(c.graph.config, n.info, "invalid control flow for 'parallel'")
     # 'break' that leaves the 'parallel' section is not valid either
     # or maybe we should generate a 'try' XXX
   of nkVarSection, nkLetSection:
@@ -364,7 +369,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
           if it[j].isLocal:
             let slot = c.getSlot(it[j].sym)
             if slot.lower.isNil: slot.lower = value
-            else: internalError(it.info, "slot already has a lower bound")
+            else: internalError(c.graph.config, it.info, "slot already has a lower bound")
         if not isSpawned: analyse(c, value)
   of nkCaseStmt: analyseCase(c, n)
   of nkWhen, nkIfStmt, nkIfExpr: analyseIf(c, n)
@@ -377,14 +382,14 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     else:
       # loop may never execute:
       let oldState = c.locals.len
-      let oldFacts = c.guards.len
-      addFact(c.guards, canon(n.sons[0]))
+      let oldFacts = c.guards.s.len
+      addFact(c.guards, canon(n.sons[0], c.guards.o))
       analyse(c, n.sons[1])
       setLen(c.locals, oldState)
-      setLen(c.guards, oldFacts)
+      setLen(c.guards.s, oldFacts)
       # we know after the loop the negation holds:
       if not hasSubnodeWith(n.sons[1], nkBreakStmt):
-        addFactNeg(c.guards, canon(n.sons[0]))
+        addFactNeg(c.guards, canon(n.sons[0], c.guards.o))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef:
@@ -392,13 +397,13 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
   else:
     analyseSons(c, n)
 
-proc transformSlices(n: PNode): PNode =
+proc transformSlices(g: ModuleGraph; n: PNode): PNode =
   if n.kind in nkCallKinds and n[0].kind == nkSym:
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      let opSlice = newSymNode(createMagic("slice", mSlice))
-      opSlice.typ = getSysType(tyInt)
+      let opSlice = newSymNode(createMagic(g, "slice", mSlice))
+      opSlice.typ = getSysType(g, n.info, tyInt)
       result.add opSlice
       result.add n[1]
       let slice = n[2].skipStmtList
@@ -408,49 +413,49 @@ proc transformSlices(n: PNode): PNode =
   if n.safeLen > 0:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
-      result.sons[i] = transformSlices(n.sons[i])
+      result.sons[i] = transformSlices(g, n.sons[i])
   else:
     result = n
 
-proc transformSpawn(owner: PSym; n, barrier: PNode): PNode
-proc transformSpawnSons(owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode
+proc transformSpawnSons(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
   for i in 0 ..< n.len:
-    result.sons[i] = transformSpawn(owner, n.sons[i], barrier)
+    result.sons[i] = transformSpawn(g, owner, n.sons[i], barrier)
 
-proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     result = nil
     for it in n:
       let b = it.lastSon
       if getMagic(b) == mSpawn:
-        if it.len != 3: localError(it.info, "invalid context for 'spawn'")
-        let m = transformSlices(b)
+        if it.len != 3: localError(g.config, it.info, "invalid context for 'spawn'")
+        let m = transformSlices(g, b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
-          result.add wrapProcForSpawn(owner, m, b.typ, barrier, it[0])
-          it.sons[it.len-1] = emptyNode
+          result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
+          it.sons[it.len-1] = newNodeI(nkEmpty, it.info)
         else:
-          it.sons[it.len-1] = wrapProcForSpawn(owner, m, b.typ, barrier, nil)
+          it.sons[it.len-1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
     if getMagic(b) == mSpawn and (let t = b[1][0].typ.sons[0];
         spawnResult(t, true) == srByVar):
-      let m = transformSlices(b)
-      return wrapProcForSpawn(owner, m, b.typ, barrier, n[0])
-    result = transformSpawnSons(owner, n, barrier)
+      let m = transformSlices(g, b)
+      return wrapProcForSpawn(g, owner, m, b.typ, barrier, n[0])
+    result = transformSpawnSons(g, owner, n, barrier)
   of nkCallKinds:
     if getMagic(n) == mSpawn:
-      result = transformSlices(n)
-      return wrapProcForSpawn(owner, result, n.typ, barrier, nil)
-    result = transformSpawnSons(owner, n, barrier)
+      result = transformSlices(g, n)
+      return wrapProcForSpawn(g, owner, result, n.typ, barrier, nil)
+    result = transformSpawnSons(g, owner, n, barrier)
   elif n.safeLen > 0:
-    result = transformSpawnSons(owner, n, barrier)
+    result = transformSpawnSons(g, owner, n, barrier)
   else:
     result = n
 
@@ -460,7 +465,7 @@ proc checkArgs(a: var AnalysisCtx; n: PNode) =
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
   discard "too implement"
 
-proc liftParallel*(owner: PSym; n: PNode): PNode =
+proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination
 
   # first pass:
@@ -469,17 +474,17 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   # - detect used arguments
   #echo "PAR ", renderTree(n)
 
-  var a = initAnalysisCtx()
+  var a = initAnalysisCtx(g)
   let body = n.lastSon
   analyse(a, body)
   if a.spawns == 0:
-    localError(n.info, "'parallel' section without 'spawn'")
+    localError(g.config, n.info, "'parallel' section without 'spawn'")
   checkSlicesAreDisjoint(a)
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent"barrier", owner, n.info)
-  temp.typ = magicsys.getCompilerProc("Barrier").typ
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), owner, n.info)
+  temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)
   varSection.addVar tempNode
@@ -488,6 +493,6 @@ proc liftParallel*(owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodegenProc("openBarrier", barrier)
-  result.add transformSpawn(owner, body, barrier)
-  result.add callCodegenProc("closeBarrier", barrier)
+  result.add callCodegenProc(g, "openBarrier", barrier)
+  result.add transformSpawn(g, owner, body, barrier)
+  result.add callCodegenProc(g, "closeBarrier", barrier)

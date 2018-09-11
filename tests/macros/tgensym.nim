@@ -28,6 +28,7 @@ macro async2(prc: untyped): untyped =
   # -> iterator nameIter(): FutureBase {.closure.} = <proc_body>
   # Changing this line to: newIdentNode($prc[0].ident & "Iter") # will make it work.
   var iteratorNameSym = genSym(nskIterator, $prc[0].ident & "Iter")
+  assert iteratorNameSym.symKind == nskIterator
   #var iteratorNameSym = newIdentNode($prc[0].ident & "Iter")
   var procBody = prc[6].convertReturns(retFutureSym)
 
@@ -42,6 +43,7 @@ macro async2(prc: untyped): untyped =
   var varNameIter = newVarStmt(varNameIterSym, iteratorNameSym)
   outerProcBody.add varNameIter
   var varFirstSym = genSym(nskVar, "first")
+  assert varFirstSym.symKind ==  nskVar
   var varFirst = newVarStmt(varFirstSym, newCall(varNameIterSym))
   outerProcBody.add varFirst
 

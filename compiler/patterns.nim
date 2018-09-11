@@ -21,14 +21,17 @@ type
     formals: int
     c: PContext
     subMatch: bool       # subnode matches are special
+    mappingIsFull: bool
   PPatternContext = var TPatternContext
 
 proc getLazy(c: PPatternContext, sym: PSym): PNode =
-  if not isNil(c.mapping):
+  if c.mappingIsFull:
     result = c.mapping[sym.position]
 
 proc putLazy(c: PPatternContext, sym: PSym, n: PNode) =
-  if isNil(c.mapping): newSeq(c.mapping, c.formals)
+  if not c.mappingIsFull:
+    newSeq(c.mapping, c.formals)
+    c.mappingIsFull = true
   c.mapping[sym.position] = n
 
 proc matches(c: PPatternContext, p, n: PNode): bool
@@ -77,7 +80,7 @@ proc checkTypes(c: PPatternContext, p: PSym, n: PNode): bool =
   if isNil(n.typ):
     result = p.typ.kind in {tyVoid, tyStmt}
   else:
-    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ)
+    result = sigmatch.argtypeMatches(c.c, p.typ, n.typ, fromHlo = true)
 
 proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
   result = p.kind == nkSym and p.sym.kind == skParam and p.sym.owner == c.owner
@@ -150,7 +153,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of "*": result = matchNested(c, p, n, rpn=false)
     of "**": result = matchNested(c, p, n, rpn=true)
     of "~": result = not matches(c, p.sons[1], n)
-    else: internalError(p.info, "invalid pattern")
+    else: doAssert(false, "invalid pattern")
     # template {add(a, `&` * b)}(a: string{noalias}, b: varargs[string]) =
     #   add(a, b)
   elif p.kind == nkCurlyExpr:
@@ -209,7 +212,11 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
     for j in 0 ..< p.len:
       if not matches(c, p.sons[j], n.sons[i+j]):
         # we need to undo any bindings:
-        if not isNil(c.mapping): c.mapping = nil
+        when defined(nimNoNilSeqs):
+          c.mapping = @[]
+          c.mappingIsFull = false
+        else:
+          if not isNil(c.mapping): c.mapping = nil
         return false
     result = true
 
@@ -289,7 +296,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
         # constraint not fulfilled:
         if not ok: return nil
 
-  markUsed(n.info, s, c.graph.usageSym)
+  markUsed(c.config, n.info, s, c.graph.usageSym)
   if ctx.subMatch:
     assert m.len == 3
     m.sons[1] = result

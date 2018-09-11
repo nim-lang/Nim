@@ -22,8 +22,8 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
     target = testResultRow["target"].str.htmlQuote()
     action = testResultRow["action"].str.htmlQuote()
     result = htmlQuote testResultRow["result"].str
-    expected = testResultRow["expected"].str
-    gotten = testResultRow["given"].str
+    expected = testResultRow["expected"].getStr
+    gotten = testResultRow["given"].getStr
     timestamp = "unknown"
   var
     panelCtxClass, textCtxClass, bgCtxClass: string
@@ -121,7 +121,7 @@ proc generateAllTestsContent(outfile: File, allResults: AllTests,
 
 proc generateHtml*(filename: string, onlyFailing: bool) =
   let
-    currentTime = getTime().getLocalTime()
+    currentTime = getTime().local()
     timestring = htmlQuote format(currentTime, "yyyy-MM-dd HH:mm:ss 'UTC'zzz")
   var outfile = open(filename, fmWrite)
 

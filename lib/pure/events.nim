@@ -43,9 +43,6 @@ type
     s: seq[EventHandler]
   EventError* = object of ValueError
 
-{.deprecated: [TEventArgs: EventArgs, TEventHandler: EventHandler,
-  TEventEmitter: EventEmitter, EInvalidEvent: EventError].}
-
 proc initEventHandler*(name: string): EventHandler =
   ## Initializes an EventHandler with the specified name and returns it.
   result.handlers = @[]

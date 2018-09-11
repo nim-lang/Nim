@@ -96,10 +96,6 @@ when not defined(js):
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
-  {.deprecated: [PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
-
-{.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger].}
-
 var
   level {.threadvar.}: Level   ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
@@ -107,14 +103,9 @@ var
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
-  const nilString = "nil"
-
   var msgLen = 0
   for arg in args:
-    if arg.isNil:
-      msgLen += nilString.len
-    else:
-      msgLen += arg.len
+    msgLen += arg.len
   result = newStringOfCap(frmt.len + msgLen + 20)
   var i = 0
   while i < frmt.len:
@@ -126,7 +117,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
       while frmt[i] in IdentChars:
-        v.add(toLower(frmt[i]))
+        v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v
       of "date": result.add(getDateStr())
@@ -141,10 +132,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       of "levelname": result.add(LevelNames[level])
       else: discard
   for arg in args:
-    if arg.isNil:
-      result.add(nilString)
-    else:
-      result.add(arg)
+    result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception], gcsafe,
@@ -342,7 +330,6 @@ template fatal*(args: varargs[string, `$`]) =
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
-  if handlers.isNil: handlers = @[]
   handlers.add(handler)
 
 proc getHandlers*(): seq[Logger] =

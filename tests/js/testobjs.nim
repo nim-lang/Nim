@@ -34,7 +34,7 @@ var
   recurse1 = Recurse[int](data: 1, next: recurse2)
 
 
-doAssert test.name == "Jorden"
+doAssert test.name == cstring"Jorden"
 doAssert knight.age == 19
 doAssert knight.item.price == 50
 doAssert recurse1.next.next.data == 3

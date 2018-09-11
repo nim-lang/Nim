@@ -13,14 +13,8 @@ cat
 cat
 dog
 dog
-dog value
-cat value
-dog value
-cat value
 dog
 dog
-dog value
-cat value
 dog 1
 dog 2
 '''
@@ -243,11 +237,12 @@ reject modifiesCovariantArray(dogRefsArray.addr)
 
 var dogValues = @[vdog, vdog]
 var dogValuesArray = [vdog, vdog]
-var animalValues = @[Animal(vdog), Animal(vcat)]
-var animalValuesArray = [Animal(vdog), Animal(vcat)]
+when false:
+  var animalValues = @[Animal(vdog), Animal(vcat)]
+  var animalValuesArray = [Animal(vdog), Animal(vcat)]
 
-wantsNonCovariantSeq animalValues
-wantsNonCovariantArray animalValuesArray
+  wantsNonCovariantSeq animalValues
+  wantsNonCovariantArray animalValuesArray
 
 reject wantsNonCovariantSeq(dogRefs)
 reject modifiesCovariantOperArray(dogRefs)
@@ -260,7 +255,6 @@ modifiesDerivedOperArray dogRefs
 reject modifiesDerivedOperArray(dogValues)
 reject modifiesDerivedOperArray(animalRefs)
 
-wantsNonCovariantOperArray animalValues
 reject wantsNonCovariantOperArray(animalRefs)
 reject wantsNonCovariantOperArray(dogRefs)
 reject wantsNonCovariantOperArray(dogValues)
@@ -300,7 +294,7 @@ reject wantsVarPointer2(pcat)
 
 # covariance may be allowed for certain extern types
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 template <class T> struct FN { typedef void (*type)(T); };
 template <class T> struct ARR { typedef T DataType[2]; DataType data; };
 """.}

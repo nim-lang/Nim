@@ -151,7 +151,7 @@ proc getField(n: PNode; position: int): PSym =
   else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
-  internalAssert x.kind in {nkObjConstr, nkPar}
+  internalAssert x.kind in {nkObjConstr, nkPar, nkTupleConstr}
   # compute the field's offsets:
   discard typ.getSize
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
@@ -260,14 +260,14 @@ proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # iterate over any actual field of 'n' ... if n is nil we need to create
   # the nkPar node:
   if n.isNil:
-    result = newNode(nkPar)
+    result = newNode(nkTupleConstr)
     result.typ = typ
     if typ.n.isNil:
       internalError("cannot unpack unnamed tuple")
     unpackObjectAdd(x, typ.n, result)
   else:
     result = n
-    if result.kind notin {nkObjConstr, nkPar}:
+    if result.kind notin {nkObjConstr, nkPar, nkTupleConstr}:
       globalError(n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(n.info, "cannot unpack unnamed tuple")
@@ -442,7 +442,7 @@ proc callForeignFunction*(call: PNode): PNode =
   libffi.call(cif, fn, retVal, args)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, typ.sons[0], nil)
     result.info = call.info
@@ -484,7 +484,7 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
   libffi.call(cif, fn, retVal, cargs)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, fntyp.sons[0], nil)
     result.info = info

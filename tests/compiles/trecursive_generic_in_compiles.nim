@@ -1,6 +1,6 @@
 # bug #3313
-import unittest, future
-
+import unittest, sugar
+{.experimental: "notnil".}
 type
   ListNodeKind = enum
     lnkNil, lnkCons

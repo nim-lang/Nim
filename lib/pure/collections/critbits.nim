@@ -74,18 +74,19 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var newByte = 0
     block blockX:
       while newbyte < key.len:
-        if it.key[newbyte] != key[newbyte]:
-          newotherbits = it.key[newbyte].ord xor key[newbyte].ord
+        let ch = if newbyte < it.key.len: it.key[newbyte] else: '\0'
+        if ch != key[newbyte]:
+          newotherbits = ch.ord xor key[newbyte].ord
           break blockX
         inc newbyte
-      if it.key[newbyte] != '\0':
+      if newbyte < it.key.len:
         newotherbits = it.key[newbyte].ord
       else:
         return it
     while (newOtherBits and (newOtherBits-1)) != 0:
       newOtherBits = newOtherBits and (newOtherBits-1)
     newOtherBits = newOtherBits xor 255
-    let ch = it.key[newByte]
+    let ch = if newByte < it.key.len: it.key[newByte] else: '\0'
     let dir = (1 + (ord(ch) or newOtherBits)) shr 8
 
     var inner: Node[T]
@@ -162,17 +163,19 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   var n = rawInsert(c, key)
   result = c.count == oldCount
 
-proc inc*(c: var CritBitTree[int]; key: string) =
-  ## counts the 'key'.
-  let oldCount = c.count
+proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
+  ## increments `c[key]` by `val`.
   var n = rawInsert(c, key)
-  if c.count == oldCount:
-    # not a new key:
-    inc n.val
+  inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
+
+proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+  ## inserts `key` with value `val` into `c`.
+  var n = rawInsert(c, key)
+  n.val = val
 
 proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## puts a (key, value)-pair into `t`.
@@ -321,10 +324,14 @@ proc `$`*[T](c: CritBitTree[T]): string =
       const avgItemLen = 16
     result = newStringOfCap(c.count * avgItemLen)
     result.add("{")
-    for key, val in pairs(c):
-      if result.len > 1: result.add(", ")
-      result.add($key)
-      when T isnot void:
+    when T is void:
+      for key in keys(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
+    else:
+      for key, val in pairs(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
         result.add(": ")
         result.addQuoted(val)
     result.add("}")
@@ -351,3 +358,37 @@ when isMainModule:
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
   assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
+  var c = CritBitTree[int]()
+
+  c.inc("a")
+  assert c["a"] == 1
+
+  c.inc("a", 4)
+  assert c["a"] == 5
+
+  c.inc("a", -5)
+  assert c["a"] == 0
+
+  c.inc("b", 2)
+  assert c["b"] == 2
+
+  c.inc("c", 3)
+  assert c["c"] == 3
+
+  c.inc("a", 1)
+  assert c["a"] == 1
+
+  var cf = CritBitTree[float]()
+
+  cf.incl("a", 1.0)
+  assert cf["a"] == 1.0
+
+  cf.incl("b", 2.0)
+  assert cf["b"] == 2.0
+
+  cf.incl("c", 3.0)
+  assert cf["c"] == 3.0
+
+  assert cf.len == 3
+  cf.excl("c")
+  assert cf.len == 2

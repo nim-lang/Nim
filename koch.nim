@@ -47,17 +47,18 @@ Boot options:
   -d:release               produce a release version of the compiler
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
-  -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
 
 Commands for core developers:
   web [options]            generates the website and the full documentation
+                           (see `nimweb.nim` for cmd line options)
   website [options]        generates only the website
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
   testinstall              test tar.xz package; Unix only!
-  tests [options]          run the testsuite
+  tests [options]          run the testsuite (run a subset of tests by
+                           specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
   winrelease               creates a Windows release
   pushcsource              push generated C sources to its repo
@@ -182,7 +183,7 @@ proc bundleNimbleExe() =
   bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
-  nimexec("c -d:release dist/nimble/src/nimble.nim")
+  nimexec("c -d:release --nilseqs:on dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
@@ -209,7 +210,7 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler -d:release " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -242,7 +243,15 @@ proc zip(args: string) =
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
        ["tools/niminst/niminst".exe, VersionAsString])
 
+proc ensureCleanGit() =
+   let (outp, status) = osproc.execCmdEx("git diff")
+   if outp.len != 0:
+     quit "Not a clean git repository; 'git diff' not empty!"
+   if status != 0:
+     quit "Not a clean git repository; 'git diff' returned non-zero!"
+
 proc xz(args: string) =
+  ensureCleanGit()
   bundleNimbleSrc()
   bundleNimsuggest(false)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
@@ -252,18 +261,16 @@ proc xz(args: string) =
 
 proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
-  copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
+  copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(latest: bool) =
-  let nimsugExe = "bin/nimsuggest".exe
-  nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
+  nimexec "c --noNimblePath -p:compiler -d:release -o:" & ("bin/nimsuggest".exe) &
       " nimsuggest/nimsuggest.nim"
 
-  let nimgrepExe = "bin/nimgrep".exe
-  nimexec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
+  nimexec "c -d:release -o:" & ("bin/nimgrep".exe) & " tools/nimgrep.nim"
   when defined(windows): buildVccTool()
 
-  #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
+  nimexec "c -o:" & ("bin/nimpretty".exe) & " nimpretty/nimpretty.nim"
 
   buildNimble(latest)
 
@@ -473,7 +480,7 @@ proc temp(args: string) =
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
+  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 

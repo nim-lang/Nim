@@ -16,7 +16,7 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(n.info, errExprHasNoAddress)
+    localError(c.config, n.info, errExprHasNoAddress)
   result.add x
   result.typ = makePtrType(c, x.typ)
 
@@ -41,9 +41,9 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = semSubscript(c, result, flags)
   if result.isNil:
     let x = copyTree(n)
-    x.sons[0] = newIdentNode(getIdent"[]", n.info)
+    x.sons[0] = newIdentNode(getIdent(c.cache, "[]"), n.info)
     bracketNotFoundError(c, x)
-    #localError(n.info, "could not resolve: " & $n)
+    #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
@@ -64,25 +64,28 @@ proc semAsgnOpr(c: PContext; n: PNode): PNode =
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
-  result = newIntNodeT(ord(r), n)
+  result = newIntNodeT(ord(r), n, c.graph)
 
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: localError(n.info, errIntLiteralExpected)
+  else: localError(c.config, n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeIT(nkTupleConstr, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
-  let info = getInfoContext(idx)
-  var filename = newNodeIT(nkStrLit, n.info, getSysType(tyString))
-  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
-  var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
+  let info = getInfoContext(c.config, idx)
+  var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
+  filename.strVal = if useFullPaths != 0: toFullPath(c.config, info) else: toFilename(c.config, info)
+  var line = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   line.intVal = toLinenumber(info)
+  var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
+  column.intVal = toColumn(info)
   result.add(filename)
   result.add(line)
+  result.add(column)
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
@@ -107,10 +110,10 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t.sons[1]
     else: t
 
-proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
+proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
   const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
-  internalAssert trait.kind == nkSym
+  internalAssert c.config, trait.kind == nkSym
   var operand = operand.skipTypes(skippedTypes)
 
   template operand2: PType =
@@ -137,7 +140,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "genericHead":
     var res = uninstantiate(operand)
     if res == operand and res.kind notin tyMagicGenerics:
-      localError(traitCall.info,
+      localError(c.config, traitCall.info,
         "genericHead expects a generic type. The given type was " &
         typeToString(operand))
       return newType(tyError, context).toNode(traitCall.info)
@@ -148,19 +151,19 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
-    result = newIntNodeT(ord(not complexObj), traitCall)
+    result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(traitCall.info, "unknown trait")
-    result = emptyNode
+    localError(c.config, traitCall.info, "unknown trait")
+    result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
-  checkMinSonsLen(n, 2)
+  checkMinSonsLen(n, 2, c.config)
   let t = n.sons[1].typ
-  internalAssert t != nil and t.kind == tyTypeDesc
+  internalAssert c.config, t != nil and t.kind == tyTypeDesc
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n, t, getCurrOwner(c))
+    result = evalTypeTrait(c, n, t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
@@ -168,12 +171,12 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
   let parType = n.sons[1].typ
-  if isOrdinalType(parType):
+  if isOrdinalType(parType, allowEnumWithHoles=true):
     discard
   elif parType.kind == tySet:
-    result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
+    result.typ = makeRangeType(c, firstOrd(c.config, parType), lastOrd(c.config, parType), n.info)
   else:
-    localError(n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
@@ -182,29 +185,90 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    localError(n.sons[1].info, errStringLiteralExpected)
+    localError(c.config, n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
 
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    localError(n.sons[2].info, errConstExprExpected)
+    localError(c.config, n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
 
-  let id = newIdentNode(getIdent(sl.strVal), n.info)
+  let id = newIdentNode(getIdent(c.cache, sl.strVal), n.info)
   let s = qualifiedLookUp(c, id, {checkUndeclared})
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+    if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+      # inside regular code, bindSym resolves to the sym-choice
+      # nodes (see tinspectsymbol)
+      return sc
     result.add(sc)
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
 
-proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
+proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode): PNode =
+  if n.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit, nkIdent}:
+    localError(c.config, info.info, errStringOrIdentNodeExpected)
+    return errorNode(c, n)
 
-proc isStrangeArray(t: PType): bool =
-  let t = t.skipTypes(abstractInst)
-  result = t.kind == tyArray and t.firstOrd != 0
+  if isMixin < 0 or isMixin > high(TSymChoiceRule).int:
+    localError(c.config, info.info, errConstExprExpected)
+    return errorNode(c, n)
+
+  let id = if n.kind == nkIdent: n
+    else: newIdentNode(getIdent(c.cache, n.strVal), info.info)
+
+  let tmpScope = c.currentScope
+  c.currentScope = scope
+  let s = qualifiedLookUp(c, id, {checkUndeclared})
+  if s != nil:
+    # we need to mark all symbols:
+    result = symChoice(c, id, s, TSymChoiceRule(isMixin))
+  else:
+    errorUndeclaredIdentifier(c, info.info, if n.kind == nkIdent: n.ident.s
+      else: n.strVal)
+  c.currentScope = tmpScope
+
+proc semDynamicBindSym(c: PContext, n: PNode): PNode =
+  # inside regular code, bindSym resolves to the sym-choice
+  # nodes (see tinspectsymbol)
+  if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+    return semBindSym(c, n)
+
+  if c.graph.vm.isNil:
+    setupGlobalCtx(c.module, c.graph)
+
+  let
+    vm = PCtx c.graph.vm
+    # cache the current scope to
+    # prevent it lost into oblivion
+    scope = c.currentScope
+
+  # cannot use this
+  # vm.config.features.incl dynamicBindSym
+
+  proc bindSymWrapper(a: VmArgs) =
+    # capture PContext and currentScope
+    # param description:
+    #   0. ident, a string literal / computed string / or ident node
+    #   1. bindSym rule
+    #   2. info node
+    a.setResult opBindSym(c, scope, a.getNode(0), a.getInt(1).int, a.getNode(2))
+
+  let
+    # altough we use VM callback here, it is not
+    # executed like 'normal' VM callback
+    idx = vm.registerCallback("bindSymImpl", bindSymWrapper)
+    # dummy node to carry idx information to VM
+    idxNode = newIntTypeNode(nkIntLit, idx, c.graph.getSysType(TLineInfo(), tyInt))
+
+  result = copyNode(n)
+  for x in n: result.add x
+  result.add n # info node
+  result.add idxNode
+
+proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode
 
 proc semOf(c: PContext, n: PNode): PNode =
   if sonsLen(n) == 3:
@@ -218,9 +282,9 @@ proc semOf(c: PContext, n: PNode): PNode =
     let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
 
     if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, "'of' takes object types")
     elif b.kind != tyObject or a.kind != tyObject:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, "'of' takes object types")
     else:
       let diff = inheritanceDiff(a, b)
       # | returns: 0 iff `a` == `b`
@@ -229,26 +293,26 @@ proc semOf(c: PContext, n: PNode): PNode =
       # | returns: `maxint` iff `a` and `b` are not compatible at all
       if diff <= 0:
         # optimize to true:
-        message(n.info, hintConditionAlwaysTrue, renderTree(n))
+        message(c.config, n.info, hintConditionAlwaysTrue, renderTree(n))
         result = newIntNode(nkIntLit, 1)
         result.info = n.info
-        result.typ = getSysType(tyBool)
+        result.typ = getSysType(c.graph, n.info, tyBool)
         return result
       elif diff == high(int):
-        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+        localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
   else:
-    localError(n.info, errXExpectsTwoArguments, "of")
-  n.typ = getSysType(tyBool)
+    localError(c.config, n.info, "'of' takes 2 arguments")
+  n.typ = getSysType(c.graph, n.info, tyBool)
   result = n
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
   of mAddr:
-    checkSonsLen(n, 2)
+    checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2)
+    checkSonsLen(n, 2, c.config)
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
@@ -260,25 +324,29 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
-    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
-    result.typ = getSysType(tyString)
+    result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, c.graph)
+    result.typ = getSysType(c.graph, n.info, tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
   of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
-  of mNBindSym: result = semBindSym(c, n)
+  of mNBindSym:
+    if dynamicBindSym notin c.features:
+      result = semBindSym(c, n)
+    else:
+      result = semDynamicBindSym(c, n)
   of mProcCall:
     result = n
     result.typ = n[1].typ
   of mDotDot:
     result = n
   of mRoof:
-    localError(n.info, "builtin roof operator is not supported anymore")
+    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
-    let plugin = getPlugin(n[0].sym)
+    let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
-      localError(n.info, "cannot find plugin " & n[0].sym.name.s)
+      localError(c.config, n.info, "cannot find plugin " & n[0].sym.name.s)
       result = n
     else:
       result = plugin(c, n)

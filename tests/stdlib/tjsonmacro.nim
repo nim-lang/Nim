@@ -40,7 +40,7 @@ when isMainModule:
     test: 18827361,
     test2: "hello world",
     test3: true,
-    testNil: nil
+    testNil: "nil"
   )
 
   let node = %x
@@ -53,7 +53,7 @@ when isMainModule:
   doAssert y.test == 18827361
   doAssert y.test2 == "hello world"
   doAssert y.test3
-  doAssert y.testNil.isNil
+  doAssert y.testNil == "nil"
 
   # Test for custom object variants (without an enum) and with an else branch.
   block:
@@ -315,6 +315,36 @@ when isMainModule:
     doAssert noYearDeser.year.isNone
     doAssert noYearDeser.engine.name == "V8"
 
+    # Issue #7433
+    type
+      Obj2 = object
+        n1: int
+        n2: Option[string]
+        n3: bool
+
+    var j = %*[ { "n1": 4, "n2": "ABC", "n3": true },
+                { "n1": 1, "n3": false },
+                { "n1": 1, "n2": "XYZ", "n3": false } ]
+
+    let jDeser = j.to(seq[Obj2])
+    doAssert jDeser[0].n2.get() == "ABC"
+    doAssert jDeser[1].n2.isNone()
+
+    # Issue #6902
+    type
+      Obj = object
+        n1: int
+        n2: Option[int]
+        n3: Option[string]
+        n4: Option[bool]
+
+    var j0 = parseJson("""{"n1": 1, "n2": null, "n3": null, "n4": null}""")
+    let j0Deser = j0.to(Obj)
+    doAssert j0Deser.n1 == 1
+    doAssert j0Deser.n2.isNone()
+    doAssert j0Deser.n3.isNone()
+    doAssert j0Deser.n4.isNone()
+
   # Table[T, Y] support.
   block:
     type
@@ -381,10 +411,109 @@ when isMainModule:
     doAssert dataDeser.a == 1
     doAssert dataDeser.f == 6
     doAssert dataDeser.i == 9.9'f32
-  
+
   # deserialize directly into a table
   block:
     let s = """{"a": 1, "b": 2}"""
     let t = parseJson(s).to(Table[string, int])
     doAssert t["a"] == 1
     doAssert t["b"] == 2
+
+  block:
+    # bug #8037
+    type
+      Apple = distinct string
+      String = distinct Apple
+      Email = distinct string
+      MyList = distinct seq[int]
+      MyYear = distinct Option[int]
+      MyTable = distinct Table[string, int]
+      MyArr = distinct array[3, float]
+      MyRef = ref object
+        name: string
+      MyObj = object
+        color: int
+      MyDistRef = distinct MyRef
+      MyDistObj = distinct MyObj
+      Toot = object
+        name*: String
+        email*: Email
+        list: MyList
+        year: MyYear
+        dict: MyTable
+        arr: MyArr
+        person: MyDistRef
+        distfruit: MyDistObj
+        dog: MyRef
+        fruit: MyObj
+        emails: seq[String]
+
+    var tJson = parseJson("""
+      {
+        "name":"Bongo",
+        "email":"bongo@bingo.com",
+        "list": [11,7,15],
+        "year": 1975,
+        "dict": {"a": 1, "b": 2},
+        "arr": [1.0, 2.0, 7.0],
+        "person": {"name": "boney"},
+        "dog": {"name": "honey"},
+        "fruit": {"color": 10},
+        "distfruit": {"color": 11},
+        "emails": ["abc", "123"]
+      }
+    """)
+
+    var t = to(tJson, Toot)
+    doAssert string(t.name) == "Bongo"
+    doAssert string(t.email) == "bongo@bingo.com"
+    doAssert seq[int](t.list) == @[11,7,15]
+    doAssert Option[int](t.year).get() == 1975
+    doAssert Table[string,int](t.dict)["a"] == 1
+    doAssert Table[string,int](t.dict)["b"] == 2
+    doAssert array[3, float](t.arr) == [1.0,2.0,7.0]
+    doAssert MyRef(t.person).name == "boney"
+    doAssert MyObj(t.distFruit).color == 11
+    doAssert t.dog.name == "honey"
+    doAssert t.fruit.color == 10
+    doAssert seq[string](t.emails) == @["abc", "123"]
+
+    block test_table:
+      var y = parseJson("""{"a": 1, "b": 2, "c": 3}""")
+      var u = y.to(MyTable)
+      var v = y.to(Table[string, int])
+      doAssert Table[string, int](u)["a"] == 1
+      doAssert Table[string, int](u)["b"] == 2
+      doAssert Table[string, int](u)["c"] == 3
+      doAssert v["a"] == 1
+
+    block primitive_string:
+      const kApple = "apple"
+      var u = newJString(kApple)
+      var v = u.to(Email)
+      var w = u.to(Apple)
+      var x = u.to(String)
+      doAssert string(v) == kApple
+      doAssert string(w) == kApple
+      doAssert string(x) == kApple
+
+    block test_option:
+      var u = newJInt(1137)
+      var v = u.to(MyYear)
+      var w = u.to(Option[int])
+      doAssert Option[int](v).get() == 1137
+      doAssert w.get() == 1137
+
+    block test_object:
+      var u = parseJson("""{"color": 987}""")
+      var v = u.to(MyObj)
+      var w = u.to(MyDistObj)
+      doAssert v.color == 987
+      doAssert MyObj(w).color == 987
+
+    block test_ref_object:
+      var u = parseJson("""{"name": "smith"}""")
+      var v = u.to(MyRef)
+      var w = u.to(MyDistRef)
+      doAssert v.name == "smith"
+      doAssert MyRef(w).name == "smith"

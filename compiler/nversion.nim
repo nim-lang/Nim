@@ -15,3 +15,6 @@ const
   VersionAsString* = system.NimVersion
   RodFileVersion* = "1223"       # modify this if the rod-format changes!
 
+  NimCompilerApiVersion* = 2 ## Check for the existance of this before accessing it
+                             ## as older versions of the compiler API do not
+                             ## declare this.

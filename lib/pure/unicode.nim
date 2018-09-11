@@ -9,7 +9,7 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 include "system/inclrtl"
 
@@ -1392,7 +1392,7 @@ proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     (c >= 0xfe20 and c <= 0xfe2f))
 
 template runeCheck(s, runeProc) =
-  ## Common code for rune.isLower, rune.isUpper, etc
+  ## Common code for isAlpha and isSpace.
   result = if len(s) == 0: false else: true
 
   var
@@ -1403,16 +1403,6 @@ template runeCheck(s, runeProc) =
     fastRuneAt(s, i, rune, doInc=true)
     result = runeProc(rune) and result
 
-proc isUpper*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all upper case unicode characters.
-  runeCheck(s, isUpper)
-
-proc isLower*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all lower case unicode characters.
-  runeCheck(s, isLower)
-
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true iff `s` contains all alphabetic unicode characters.
@@ -1422,6 +1412,56 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true iff `s` contains all whitespace unicode characters.
   runeCheck(s, isWhiteSpace)
+
+template runeCaseCheck(s, runeProc, skipNonAlpha) =
+  ## Common code for rune.isLower and rune.isUpper.
+  if len(s) == 0: return false
+
+  var
+    i = 0
+    rune: Rune
+    hasAtleastOneAlphaRune = false
+
+  while i < len(s):
+    fastRuneAt(s, i, rune, doInc=true)
+    if skipNonAlpha:
+      var runeIsAlpha = isAlpha(rune)
+      if not hasAtleastOneAlphaRune:
+        hasAtleastOneAlphaRune = runeIsAlpha
+      if runeIsAlpha and (not runeProc(rune)):
+        return false
+    else:
+      if not runeProc(rune):
+        return false
+  return if skipNonAlpha: hasAtleastOneAlphaRune else: true
+
+proc isLower*(s: string, skipNonAlpha: bool): bool =
+  ## Checks whether ``s`` is lower case.
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## runes in ``s`` are lower case.  Returns false if none of the
+  ## runes in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all runes in
+  ## ``s`` are alphabetical and lower case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  runeCaseCheck(s, isLower, skipNonAlpha)
+
+proc isUpper*(s: string, skipNonAlpha: bool): bool =
+  ## Checks whether ``s`` is upper case.
+  ##
+  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
+  ## runes in ``s`` are upper case.  Returns false if none of the
+  ## runes in ``s`` are alphabetical.
+  ##
+  ## If ``skipNonAlpha`` is false, returns true only if all runes in
+  ## ``s`` are alphabetical and upper case.
+  ##
+  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
+  ## an empty string.
+  runeCaseCheck(s, isUpper, skipNonAlpha)
 
 template convertRune(s, runeProc) =
   ## Convert runes in `s` using `runeProc` as the converter.
@@ -1755,25 +1795,39 @@ when isMainModule:
   doAssert(not isSpace(""))
   doAssert(not isSpace("ΑΓc   \td"))
 
-  doAssert isLower("a")
-  doAssert isLower("γ")
-  doAssert(not isLower("Γ"))
-  doAssert(not isLower("4"))
-  doAssert(not isLower(""))
+  doAssert(not isLower(' '.Rune))
 
-  doAssert isLower("abcdγ")
-  doAssert(not isLower("abCDΓ"))
-  doAssert(not isLower("33aaΓ"))
+  doAssert isLower("a", false)
+  doAssert isLower("γ", true)
+  doAssert(not isLower("Γ", false))
+  doAssert(not isLower("4", true))
+  doAssert(not isLower("", false))
+  doAssert isLower("abcdγ", false)
+  doAssert(not isLower("33aaΓ", false))
+  doAssert(not isLower("a b", false))
 
-  doAssert isUpper("Γ")
-  doAssert(not isUpper("b"))
-  doAssert(not isUpper("α"))
-  doAssert(not isUpper("✓"))
-  doAssert(not isUpper(""))
+  doAssert(not isLower("abCDΓ", true))
+  doAssert isLower("a b", true)
+  doAssert isLower("1, 2, 3 go!", true)
+  doAssert(not isLower(" ", true))
+  doAssert(not isLower("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
 
-  doAssert isUpper("ΑΒΓ")
-  doAssert(not isUpper("AAccβ"))
-  doAssert(not isUpper("A#$β"))
+  doAssert(not isUpper(' '.Rune))
+
+  doAssert isUpper("Γ", false)
+  doAssert(not isUpper("α", false))
+  doAssert(not isUpper("", false))
+  doAssert isUpper("ΑΒΓ", false)
+  doAssert(not isUpper("A#$β", false))
+  doAssert(not isUpper("A B", false))
+
+  doAssert(not isUpper("b", true))
+  doAssert(not isUpper("✓", true))
+  doAssert(not isUpper("AAccβ", true))
+  doAssert isUpper("A B", true)
+  doAssert isUpper("1, 2, 3 GO!", true)
+  doAssert(not isUpper(" ", true))
+  doAssert(not isUpper("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
 
   doAssert toUpper("Γ") == "Γ"
   doAssert toUpper("b") == "B"
@@ -1826,8 +1880,8 @@ when isMainModule:
   doAssert(runeSubStr(s, 17, 1) == "€")
   # echo runeStrAtPos(s, 18) # index error
 
-  doAssert(runeSubStr(s, 0) ==  "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -18) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 0) == "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -18) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 10) == ": 10,00€")
   doAssert(runeSubStr(s, 18) == "")
   doAssert(runeSubStr(s, 0, 10) == "Hänsel  ««")
@@ -1840,7 +1894,7 @@ when isMainModule:
   doAssert(runeSubStr(s, -6, 5) == "10,00")
   doAssert(runeSubStr(s, -6, -1) == "10,00")
 
-  doAssert(runeSubStr(s, 0, 100) ==  "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, 0, 100) == "Hänsel  ««: 10,00€")
+  doAssert(runeSubStr(s, -100, 100) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")

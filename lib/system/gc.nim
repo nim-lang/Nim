@@ -535,7 +535,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
 
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(Cell))
-  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
+  zeroMem(cast[pointer](cast[ByteAddress](res) +% oldsize +% sizeof(Cell)),
           newsize-oldsize)
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
   # This can be wrong for intermediate temps that are nevertheless on the
@@ -548,7 +548,10 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   gcTrace(res, csAllocated)
   track("growObj old", ol, 0)
   track("growObj new", res, newsize)
-  when reallyDealloc:
+  when defined(nimIncrSeqV3):
+    # since we steal the old seq's contents, we set the old length to 0.
+    cast[PGenericSeq](old).len = 0
+  elif reallyDealloc:
     sysAssert(allocInv(gch.region), "growObj before dealloc")
     if ol.refcount shr rcShift <=% 1:
       # free immediately to save space:

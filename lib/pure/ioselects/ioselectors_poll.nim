@@ -40,16 +40,6 @@ type
     wfd: cint
   SelectEvent* = ptr SelectEventImpl
 
-var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
-                    header: "<sys/resource.h>".}: cint
-type
-  rlimit {.importc: "struct rlimit",
-           header: "<sys/resource.h>", pure, final.} = object
-    rlim_cur: int
-    rlim_max: int
-proc getrlimit(resource: cint, rlp: var rlimit): cint
-     {.importc: "getrlimit",header: "<sys/resource.h>".}
-
 when hasThreadSupport:
   template withPollLock[T](s: Selector[T], body: untyped) =
     acquire(s.lock)
@@ -63,8 +53,8 @@ else:
     body
 
 proc newSelector*[T](): Selector[T] =
-  var a = rlimit()
-  if getrlimit(RLIMIT_NOFILE, a) != 0:
+  var a = RLimit()
+  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
     raiseIOSelectorsError(osLastError())
   var maxFD = int(a.rlim_max)
 
@@ -80,18 +70,15 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.pollfds = newSeq[TPollFd](maxFD)
 
+  for i in 0 ..< maxFD:
+    result.fds[i].ident = InvalidIdent
+
 proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deinitLock(s.lock)
     deallocSharedArray(s.fds)
     deallocSharedArray(s.pollfds)
     deallocShared(cast[pointer](s))
-
-template clearKey[T](key: ptr SelectorKey[T]) =
-  var empty: T
-  key.ident = 0
-  key.events = {}
-  key.data = empty
 
 template pollAdd[T](s: Selector[T], sock: cint, events: set[Event]) =
   withPollLock(s):
@@ -145,7 +132,7 @@ proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   var fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
   setKey(s, fdi, events, 0, data)
   if events != {}: s.pollAdd(fdi.cint, events)
 
@@ -156,7 +143,7 @@ proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor [" & $fdi & "] is not registered in the queue!")
   doAssert(pkey.events * maskEvents == {})
 
@@ -172,7 +159,7 @@ proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   var fdi = int(ev.rfd)
-  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
+  doAssert(s.fds[fdi].ident == InvalidIdent, "Event is already registered in the queue!")
   var events = {Event.User}
   setKey(s, fdi, events, 0, data)
   events.incl(Event.Read)
@@ -182,9 +169,9 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor [" & $fdi & "] is not registered in the queue!")
-  pkey.ident = 0
+  pkey.ident = InvalidIdent
   pkey.events = {}
   s.pollRemove(fdi.cint)
 
@@ -192,9 +179,9 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
+  doAssert(pkey.ident != InvalidIdent, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
-  pkey.ident = 0
+  pkey.ident = InvalidIdent
   pkey.events = {}
   s.pollRemove(fdi.cint)
 
@@ -280,7 +267,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd.int].ident != 0
+  return s.fds[fd.int].ident != InvalidIdent
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)

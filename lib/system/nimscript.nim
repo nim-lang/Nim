@@ -38,13 +38,19 @@ proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc moveFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc moveDir(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc copyFile(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
-proc getCurrentDir(): string = builtin
+proc getCurrentDir*(): string =
+  ## Retrieves the current working directory.
+  builtin
 proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
   builtin
 
@@ -67,12 +73,12 @@ proc switch*(key: string, val="") =
 proc warning*(name: string; val: bool) =
   ## Disables or enables a specific warning.
   let v = if val: "on" else: "off"
-  warningImpl(name & "]:" & v, "warning[" & name & "]:" & v)
+  warningImpl(name & ":" & v, "warning:" & name & ":" & v)
 
 proc hint*(name: string; val: bool) =
   ## Disables or enables a specific hint.
   let v = if val: "on" else: "off"
-  hintImpl(name & "]:" & v, "hint[" & name & "]:" & v)
+  hintImpl(name & ":" & v, "hint:" & name & ":" & v)
 
 proc patchFile*(package, filename, replacement: string) =
   ## Overrides the location of a given file belonging to the
@@ -112,6 +118,10 @@ proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   ## Checks for the existence of an environment variable named `key`.
+  builtin
+
+proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
+  ## Sets the value of the environment variable named key to val.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -172,7 +182,7 @@ template checkOsError =
   if err.len > 0: raise newException(OSError, err)
 
 template log(msg: string, body: untyped) =
-  if mode == ScriptMode.Verbose or mode == ScriptMode.Whatif:
+  if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
     echo "[NimScript] ", msg
   if mode != ScriptMode.WhatIf:
     body
@@ -202,10 +212,22 @@ proc mvFile*(`from`, to: string) {.raises: [OSError].} =
     moveFile `from`, to
     checkOsError()
 
+proc mvDir*(`from`, to: string) {.raises: [OSError].} =
+  ## Moves the dir `from` to `to`.
+  log "mvDir: " & `from` & ", " & to:
+    moveDir `from`, to
+    checkOsError()
+
 proc cpFile*(`from`, to: string) {.raises: [OSError].} =
   ## Copies the file `from` to `to`.
   log "cpFile: " & `from` & ", " & to:
     copyFile `from`, to
+    checkOsError()
+
+proc cpDir*(`from`, to: string) {.raises: [OSError].} =
+  ## Copies the dir `from` to `to`.
+  log "cpDir: " & `from` & ", " & to:
+    copyDir `from`, to
     checkOsError()
 
 proc exec*(command: string) =
@@ -261,6 +283,12 @@ proc cd*(dir: string) {.raises: [OSError].} =
   setCurrentDir(dir)
   checkOsError()
 
+proc findExe*(bin: string): string =
+  ## Searches for bin in the current working directory and then in directories
+  ## listed in the PATH environment variable. Returns "" if the exe cannot be
+  ## found.
+  builtin
+
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##
@@ -277,7 +305,6 @@ template withDir*(dir: string; body: untyped): untyped =
   finally:
     cd(curDir)
 
-template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:
@@ -285,29 +312,30 @@ proc writeTask(name, desc: string) =
     for i in 0 ..< 20 - name.len: spaces.add ' '
     echo name, spaces, desc
 
-template task*(name: untyped; description: string; body: untyped): untyped =
-  ## Defines a task. Hidden tasks are supported via an empty description.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##  task build, "default build is via the C backend":
-  ##    setCommand "c"
-  proc `name Task`*() = body
-
-  let cmd = getCommand()
-  if cmd.len == 0 or cmd ==? "help":
-    setCommand "help"
-    writeTask(astToStr(name), description)
-  elif cmd ==? astToStr(name):
-    setCommand "nop"
-    `name Task`()
-
 proc cppDefine*(define: string) =
   ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
   ## needs to be mangled.
   builtin
 
 when not defined(nimble):
+  template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+  template task*(name: untyped; description: string; body: untyped): untyped =
+    ## Defines a task. Hidden tasks are supported via an empty description.
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task build, "default build is via the C backend":
+    ##    setCommand "c"
+    proc `name Task`*() = body
+
+    let cmd = getCommand()
+    if cmd.len == 0 or cmd ==? "help":
+      setCommand "help"
+      writeTask(astToStr(name), description)
+    elif cmd ==? astToStr(name):
+      setCommand "nop"
+      `name Task`()
+
   # nimble has its own implementation for these things.
   var
     packageName* = ""    ## Nimble support: Set this to the package name. It

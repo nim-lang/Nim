@@ -188,12 +188,15 @@ proc addTexChar(dest: var string, c: char) =
   of '`': add(dest, "\\symbol{96}")
   else: add(dest, c)
 
-var splitter*: string = "<wbr />"
-
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
+
+proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
+  case target
+  of outHtml: add(dest, "<wbr />")
+  of outLatex: add(dest, "\\-")
 
 proc nextSplitPoint*(s: string, start: int): int =
   result = start
@@ -208,15 +211,16 @@ proc nextSplitPoint*(s: string, start: int): int =
   dec(result)                 # last valid index
 
 proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
+  ## Escapes the HTML.
   result = ""
   if splitAfter >= 0:
     var partLen = 0
     var j = 0
     while j < len(s):
       var k = nextSplitPoint(s, j)
-      if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
-        partLen = 0
-        add(result, splitter)
+      #if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
+      partLen = 0
+      addSplitter(target, result)
       for i in countup(j, k): escChar(target, result, s[i])
       inc(partLen, k - j + 1)
       j = k + 1
@@ -239,7 +243,7 @@ proc dispA(target: OutputTarget, dest: var string,
   else: addf(dest, tex, args)
 
 proc `or`(x, y: string): string {.inline.} =
-  result = if x.isNil: y else: x
+  result = if x.len == 0: y else: x
 
 proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
@@ -308,7 +312,6 @@ proc setIndexTerm*(d: var RstGenerator, id, term: string,
   ## The index won't be written to disk unless you call `writeIndexFile()
   ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
   ## tools guide <docgen.html#index-switch>`_.
-  assert(not d.theIndex.isNil)
   var
     entry = term
     isTitle = false
@@ -333,7 +336,7 @@ proc hash(n: PRstNode): int =
     result = hash(n.text)
   elif n.len > 0:
     result = hash(n.sons[0])
-    for i in 1 .. <len(n):
+    for i in 1 ..< len(n):
       result = result !& hash(n.sons[i])
     result = !$result
 
@@ -384,20 +387,16 @@ proc hash(x: IndexEntry): Hash =
   ## Returns the hash for the combined fields of the type.
   ##
   ## The hash is computed as the chained hash of the individual string hashes.
-  assert(not x.keyword.isNil)
-  assert(not x.link.isNil)
   result = x.keyword.hash !& x.link.hash
-  result = result !& (x.linkTitle or "").hash
-  result = result !& (x.linkDesc or "").hash
+  result = result !& x.linkTitle.hash
+  result = result !& x.linkDesc.hash
   result = !$result
 
 proc `<-`(a: var IndexEntry, b: IndexEntry) =
   shallowCopy a.keyword, b.keyword
   shallowCopy a.link, b.link
-  if b.linkTitle.isNil: a.linkTitle = nil
-  else: shallowCopy a.linkTitle, b.linkTitle
-  if b.linkDesc.isNil: a.linkDesc = nil
-  else: shallowCopy a.linkDesc, b.linkDesc
+  shallowCopy a.linkTitle, b.linkTitle
+  shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple
@@ -441,14 +440,15 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
     while j < symbols.len and keyword == symbols[j].keyword:
       let
         url = symbols[j].link.escapeLink
-        text = if not symbols[j].linkTitle.isNil: symbols[j].linkTitle else: url
-        desc = if not symbols[j].linkDesc.isNil: symbols[j].linkDesc else: ""
+        text = if symbols[j].linkTitle.len > 0: symbols[j].linkTitle else: url
+        desc = if symbols[j].linkDesc.len > 0: symbols[j].linkDesc else: ""
       if desc.len > 0:
         result.addf("""<li><a class="reference external"
-          title="$3" href="$1">$2</a></li>
+          title="$3" data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text, desc])
       else:
-        result.addf("""<li><a class="reference external" href="$1">$2</a></li>
+        result.addf("""<li><a class="reference external"
+          data-doc-search-tag="$2" href="$1">$2</a></li>
           """, [url, text])
       inc j
     result.add("</ul></dd>\n")
@@ -489,6 +489,7 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
   # Build a list of levels and extracted titles to make processing easier.
   var
     titleRef: string
+    titleTag: string
     levels: seq[tuple[level: int, text: string]]
     L = 0
     level = 1
@@ -515,14 +516,14 @@ proc generateDocumentationTOC(entries: seq[IndexEntry]): string =
     let link = entries[L].link
     if link.isDocumentationTitle:
       titleRef = link
+      titleTag = levels[L].text
     else:
       result.add(level.indentToLevel(levels[L].level))
-      result.add("<li><a href=\"" & link & "\">" &
-        levels[L].text & "</a></li>\n")
+      result.addf("""<li><a class="reference" data-doc-search-tag="$1" href="$2">
+        $3</a></li>
+        """, [titleTag & " : " & levels[L].text, link, levels[L].text])
     inc L
   result.add(level.indentToLevel(1) & "</ul>\n")
-  assert(not titleRef.isNil,
-    "Can't use this proc on an API index, docs always have a title entry")
 
 proc generateDocumentationIndex(docs: IndexedDocs): string =
   ## Returns all the documentation TOCs in an HTML hierarchical list.
@@ -589,7 +590,7 @@ proc readIndexDir(dir: string):
         fileEntries[F].keyword = line.substr(0, s-1)
         fileEntries[F].link = line.substr(s+1)
         # See if we detect a title, a link without a `#foobar` trailing part.
-        if title.keyword.isNil and fileEntries[F].link.isDocumentationTitle:
+        if title.keyword.len == 0 and fileEntries[F].link.isDocumentationTitle:
           title.keyword = fileEntries[F].keyword
           title.link = fileEntries[F].link
 
@@ -600,15 +601,15 @@ proc readIndexDir(dir: string):
           fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
           fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = nil
-          fileEntries[F].linkDesc = nil
+          fileEntries[F].linkTitle = ""
+          fileEntries[F].linkDesc = ""
         inc F
       # Depending on type add this to the list of symbols or table of APIs.
-      if title.keyword.isNil:
+      if title.keyword.len == 0:
         for i in 0 .. <F:
           # Don't add to symbols TOC entries (they start with a whitespace).
           let toc = fileEntries[i].linkTitle
-          if not toc.isNil and toc.len > 0 and toc[0] == ' ':
+          if toc.len > 0 and toc[0] == ' ':
             continue
           # Ok, non TOC entry, add it.
           setLen(result.symbols, L + 1)
@@ -649,7 +650,6 @@ proc mergeIndexes*(dir: string): string =
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
   var (modules, symbols, docs) = readIndexDir(dir)
-  assert(not symbols.isNil)
 
   result = ""
   # Generate a quick jump list of documents.
@@ -769,43 +769,45 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
     result.add(tmp)
 
 proc renderImage(d: PDoc, n: PRstNode, result: var string) =
-  template valid(s): bool =
-    s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
-                                   Digits + Letters + WhiteSpace)
   let
     arg = getArgument(n)
-    isObject = arg.toLower().endsWith(".svg")
   var
     options = ""
-    content = ""
-  var s = getFieldValue(n, "scale")
-  if s.valid: dispA(d.target, options, if isObject: "" else: " scale=\"$1\"",
-                    " scale=$1", [strip(s)])
 
-  s = getFieldValue(n, "height")
-  if s.valid: dispA(d.target, options, " height=\"$1\"", " height=$1", [strip(s)])
+  var s = esc(d.target, getFieldValue(n, "scale").strip())
+  if s.len > 0:
+    dispA(d.target, options, " scale=\"$1\"", " scale=$1", [s])
 
-  s = getFieldValue(n, "width")
-  if s.valid: dispA(d.target, options, " width=\"$1\"", " width=$1", [strip(s)])
+  s = esc(d.target, getFieldValue(n, "height").strip())
+  if s.len > 0:
+    dispA(d.target, options, " height=\"$1\"", " height=$1", [s])
 
-  s = getFieldValue(n, "alt")
-  if s.valid:
-    # <object> displays its content if it cannot render the image
-    if isObject: dispA(d.target, content, "$1", "", [strip(s)])
-    else: dispA(d.target, options, " alt=\"$1\"", "", [strip(s)])
+  s = esc(d.target, getFieldValue(n, "width").strip())
+  if s.len > 0:
+    dispA(d.target, options, " width=\"$1\"", " width=$1", [s])
 
-  s = getFieldValue(n, "align")
-  if s.valid: dispA(d.target, options, " align=\"$1\"", "", [strip(s)])
+  s = esc(d.target, getFieldValue(n, "alt").strip())
+  if s.len > 0:
+    dispA(d.target, options, " alt=\"$1\"", "", [s])
+
+  s = esc(d.target, getFieldValue(n, "align").strip())
+  if s.len > 0:
+    dispA(d.target, options, " align=\"$1\"", "", [s])
 
   if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
 
-  if arg.valid:
-    let htmlOut = if isObject:
-        "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
-      else:
-        "<img src=\"$1\"$2 />"
-    dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
-          [arg, options])
+  var htmlOut = ""
+  if arg.endsWith(".mp4") or arg.endsWith(".ogg") or
+     arg.endsWith(".webm"):
+    htmlOut = """
+      <video src="$1"$2 autoPlay='true' loop='true' muted='true'>
+      Sorry, your browser doesn't support embedded videos
+      </video>
+    """
+  else:
+    htmlOut = "<img src=\"$1\"$2/>"
+  dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
+        [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
@@ -820,7 +822,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ##
   ## This supports the special ``default-language`` internal string generated
   ## by the ``rst`` module to communicate a specific default language.
-  case n.getArgument.toLower
+  case n.getArgument.toLowerAscii
   of "number-lines":
     params.numberLines = true
     # See if the field has a parameter specifying a different line than 1.
@@ -836,8 +838,11 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     params.filename = n.getFieldValue.strip
   of "test":
     params.testCmd = n.getFieldValue.strip
-    if params.testCmd.len == 0: params.testCmd = "nim c -r $1"
-  of "status":
+    if params.testCmd.len == 0:
+      params.testCmd = "nim c -r $1"
+    else:
+      params.testCmd = unescape(params.testCmd)
+  of "status", "exitcode":
     var status: int
     if parseInt(n.getFieldValue, status) > 0:
       params.status = status
@@ -878,7 +883,8 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
   inc d.listingCounter
   let id = $d.listingCounter
   if not params.numberLines:
-    result = (d.config.getOrDefault"doc.listing_start" % [id, $params.lang],
+    result = (d.config.getOrDefault"doc.listing_start" %
+                [id, sourceLanguageToStr[params.lang]],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
@@ -891,7 +897,8 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
     line.inc
     codeLines.dec
   result.beginTable.add("</pre></td><td>" & (
-      d.config.getOrDefault"doc.listing_start" % [id, $params.lang]))
+      d.config.getOrDefault"doc.listing_start" %
+        [id, sourceLanguageToStr[params.lang]]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
@@ -941,7 +948,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
   renderRstToOut(d, n.sons[2], tmp)
-  var arg = strip(getArgument(n))
+  var arg = esc(d.target, strip(getArgument(n)))
   if arg == "":
     dispA(d.target, result, "<div>$1</div>", "$1", [tmp])
   else:

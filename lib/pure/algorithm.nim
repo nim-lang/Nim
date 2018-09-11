@@ -13,9 +13,6 @@ type
   SortOrder* = enum   ## sort order
     Descending, Ascending
 
-{.deprecated: [TSortOrder: SortOrder].}
-
-
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.
@@ -24,16 +21,20 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## fills the array ``a[first..last]`` with `value`.
+template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+  ## fills the array ``a[first..last]`` with `value`.
+  fillImpl(a, first, last, value)
+
 proc fill*[T](a: var openArray[T], value: T) =
   ## fills the array `a` with `value`.
-  fill(a, 0, a.high, value)
+  fillImpl(a, 0, a.high, value)
+
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## reverses the array ``a[first..last]``.
@@ -63,36 +64,72 @@ proc reversed*[T](a: openArray[T]): seq[T] =
   ## returns the reverse of the array `a`.
   reversed(a, 0, a.high)
 
+proc binarySearch*[T, K](a: openArray[T], key: K,
+              cmp: proc (x: T, y: K): int {.closure.}): int =
+  ## binary search for `key` in `a`. Returns -1 if not found.
+  ##
+  ## `cmp` is the comparator function to use, the expected return values are
+  ## the same as that of system.cmp.
+  if a.len == 0:
+    return -1
+
+  let len = a.len
+
+  if len == 1:
+    if cmp(a[0], key) == 0:
+      return 0
+    else:
+      return -1
+
+  if (len and (len - 1)) == 0:
+    # when `len` is a power of 2, a faster shr can be used.
+    var step = len shr 1
+    var cmpRes: int
+    while step > 0:
+      let i = result or step
+      cmpRes = cmp(a[i], key)
+      if cmpRes == 0:
+        return i
+
+      if cmpRes < 1:
+        result = i
+      step = step shr 1
+    if cmp(a[result], key) != 0: result = -1
+  else:
+    var b = len
+    var cmpRes: int
+    while result < b:
+      var mid = (result + b) shr 1
+      cmpRes = cmp(a[mid], key)
+      if cmpRes == 0:
+        return mid
+
+      if cmpRes < 0:
+        result = mid + 1
+      else:
+        b = mid
+    if result >= len or cmp(a[result], key) != 0: result = -1
+
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
-  var b = len(a)
-  while result < b:
-    var mid = (result + b) div 2
-    if a[mid] < key: result = mid + 1
-    else: b = mid
-  if result >= len(a) or a[result] != key: result = -1
+  binarySearch(a, key, cmp[T])
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int =
-  ## ``a.len`` must be a power of 2 for this to work.
-  var step = a.len div 2
-  while step > 0:
-    if a[result or step] <= key:
-      result = result or step
-    step = step shr 1
-  if a[result] != key: result = -1
+proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
+  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
+  binarySearch(a, key, cmp[T])
 
 const
   onlySafeCode = true
 
-proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
-  ## same as binarySearch except that if key is not in `a` then this
-  ## returns the location where `key` would be if it were. In other
-  ## words if you have a sorted sequence and you call
+proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+  ## Returns a position to the first element in the `a` that is greater than `key`, or last
+  ## if no such element is found. In other words if you have a sorted sequence and you call
   ## insert(thing, elm, lowerBound(thing, elm))
   ## the sequence will still be sorted.
   ##
-  ## `cmp` is the comparator function to use, the expected return values are
+  ## The first version uses `cmp` to compare the elements. The expected return values are
   ## the same as that of system.cmp.
+  ## The second version uses the default comparison function `cmp`.
   ##
   ## example::
   ##
@@ -103,7 +140,7 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
   var count = a.high - a.low + 1
   var step, pos: int
   while count != 0:
-    step = count div 2
+    step = count shr 1
     pos = result + step
     if cmp(a[pos], key) < 0:
       result = pos + 1
@@ -112,6 +149,36 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
+
+proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+  ## Returns a position to the first element in the `a` that is not less
+  ## (i.e. greater or equal to) than `key`, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
+  ## insert(thing, elm, upperBound(thing, elm))
+  ## the sequence will still be sorted.
+  ##
+  ## The first version uses `cmp` to compare the elements. The expected return values are
+  ## the same as that of system.cmp.
+  ## The second version uses the default comparison function `cmp`.
+  ##
+  ## example::
+  ##
+  ##   var arr = @[1,2,3,4,6,7,8,9]
+  ##   arr.insert(5, arr.upperBound(4))
+  ##   # after running the above arr is `[1,2,3,4,5,6,7,8,9]`
+  result = a.low
+  var count = a.high - a.low + 1
+  var step, pos: int
+  while count != 0:
+    step = count shr 1
+    pos = result + step
+    if cmp(a[pos], key) <= 0:
+      result = pos + 1
+      count -= step + 1
+    else:
+      count = step
+
+proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
 
 template `<-` (a, b) =
   when false:
@@ -359,10 +426,11 @@ when isMainModule:
   var srt1 = [1,2,3,4,4,4,4,5]
   var srt2 = ["iello","hello"]
   var srt3 = [1.0,1.0,1.0]
-  var srt4: seq[int] = @[]
+  var srt4: seq[int]
   assert srt1.isSorted(cmp) == true
   assert srt2.isSorted(cmp) == false
   assert srt3.isSorted(cmp) == true
+  assert srt4.isSorted(cmp) == true
   var srtseq = newSeq[int]()
   assert srtseq.isSorted(cmp) == true
   # Tests for reversed
@@ -391,7 +459,7 @@ proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
 
   swap(arg[mFirst], arg[next])
   mFirst += 1
-  next  += 1
+  next += 1
   if mFirst == mMiddle:
     mMiddle = next
 
@@ -443,7 +511,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ##   the distance in amount of elements that the data should be rotated. Can be negative, can be any number.
   ##
   ## .. code-block:: nim
-  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   ##     list.rotateLeft(1 .. 8, 3)
   ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
@@ -472,12 +540,12 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   arg.rotatedInternal(0, distLeft, arg.len)
 
 when isMainModule:
-  var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  let list2    = list.rotatedLeft(1 ..< 9, 3)
+  var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  let list2 = list.rotatedLeft(1 ..< 9, 3)
   let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
 
   doAssert list.rotateLeft(1 ..< 9, 3) == 6
-  doAssert list  ==  expected
+  doAssert list == expected
   doAssert list2 == @expected
 
   var s0,s1,s2,s3,s4,s5 = "xxxabcdefgxxx"
@@ -494,3 +562,45 @@ when isMainModule:
   doAssert s4 == "xxxefgabcdxxx"
   doAssert s5.rotateLeft(3 ..< 10, 11) == 6
   doAssert s5 == "xxxefgabcdxxx"
+
+  block product:
+    doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
+    doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
+    doAssert product(@[@[1,2]]) == @[@[1,2]], "a simple case of one element"
+    doAssert product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]], "two elements"
+    doAssert product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]], "three elements"
+    doAssert product(@[@[1,2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
+
+  block lowerBound:
+    doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
+    doAssert lowerBound([1,2,3,10], 11) == 4
+
+  block upperBound:
+    doAssert upperBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert upperBound([1,2,2,3], 3, system.cmp[int]) == 4
+    doAssert upperBound([1,2,3,5], 3) == 3
+
+  block fillEmptySeq:
+    var s = newSeq[int]()
+    s.fill(0)
+
+  block testBinarySearch:
+    var noData: seq[int]
+    doAssert binarySearch(noData, 7) == -1
+    let oneData = @[1]
+    doAssert binarySearch(oneData, 1) == 0
+    doAssert binarySearch(onedata, 7) == -1
+    let someData = @[1,3,4,7]
+    doAssert binarySearch(someData, 1) == 0
+    doAssert binarySearch(somedata, 7) == 3
+    doAssert binarySearch(someData, -1) == -1
+    doAssert binarySearch(someData, 5) == -1
+    doAssert binarySearch(someData, 13) == -1
+    let moreData = @[1,3,5,7,4711]
+    doAssert binarySearch(moreData, -1) == -1
+    doAssert binarySearch(moreData,  1) == 0
+    doAssert binarySearch(moreData,  5) == 2
+    doAssert binarySearch(moreData,  6) == -1
+    doAssert binarySearch(moreData,  4711) == 4
+    doAssert binarySearch(moreData,  4712) == -1

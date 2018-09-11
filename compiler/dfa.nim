@@ -23,7 +23,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs
+import ast, astalgo, types, intsets, tables, msgs, options, lineinfos
 
 type
   InstrKind* = enum
@@ -54,7 +54,7 @@ type
     blocks: seq[TBlock]
 
 proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename & ":" & $info.line
+  result = $info.line #info.toFilename & ":" & $info.line
 
 proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   # for debugging purposes
@@ -87,7 +87,8 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  echo buf
+  when declared(echo):
+    echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -102,14 +103,14 @@ proc genLabel(c: Con): TPosition =
 
 proc jmpBack(c: var Con, n: PNode, p = TPosition(0)) =
   let dist = p.int - c.code.len
-  internalAssert(-0x7fff < dist and dist < 0x7fff)
+  doAssert(-0x7fff < dist and dist < 0x7fff)
   c.code.add Instr(n: n, kind: goto, dest: dist)
 
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
   let p = p.int
   let diff = c.code.len - p
-  internalAssert(-0x7fff < diff and diff < 0x7fff)
+  doAssert(-0x7fff < diff and diff < 0x7fff)
   c.code[p].dest = diff
 
 proc popBlock(c: var Con; oldLen: int) =
@@ -160,7 +161,7 @@ proc genBreak(c: var Con; n: PNode) =
       if c.blocks[i].label == n.sons[0].sym:
         c.blocks[i].fixups.add L1
         return
-    globalError(n.info, errGenerated, "VM problem: cannot find 'break' target")
+    #globalError(n.info, "VM problem: cannot find 'break' target")
   else:
     c.blocks[c.blocks.high].fixups.add L1
 
@@ -323,7 +324,7 @@ proc gen(c: var Con; n: PNode) =
   of nkBreakStmt: genBreak(c, n)
   of nkTryStmt: genTry(c, n)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkClosure, nkObjConstr:
+     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt: gen(c, n.sons[0])
@@ -334,7 +335,7 @@ proc gen(c: var Con; n: PNode) =
   of nkVarSection, nkLetSection: genVarSection(c, n)
   else: discard
 
-proc dfa(code: seq[Instr]) =
+proc dfa(code: seq[Instr]; conf: ConfigRef) =
   var u = newSeq[IntSet](code.len) # usages
   var d = newSeq[IntSet](code.len) # defs
   var c = newSeq[IntSet](code.len) # consumed
@@ -426,17 +427,17 @@ proc dfa(code: seq[Instr]) =
     of use, useWithinCall:
       let s = code[i].sym
       if s.id notin d[i]:
-        localError(code[i].n.info, "usage of uninitialized variable: " & s.name.s)
+        localError(conf, code[i].n.info, "usage of uninitialized variable: " & s.name.s)
       if s.id in c[i]:
-        localError(code[i].n.info, "usage of an already consumed variable: " & s.name.s)
+        localError(conf, code[i].n.info, "usage of an already consumed variable: " & s.name.s)
 
     else: discard
 
-proc dataflowAnalysis*(s: PSym; body: PNode) =
+proc dataflowAnalysis*(s: PSym; body: PNode; conf: ConfigRef) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
   when defined(useDfa) and defined(debugDfa): echoCfg(c.code)
-  dfa(c.code)
+  dfa(c.code, conf)
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.

@@ -13,6 +13,7 @@
 
 import
   strutils
+from algorithm import binarySearch
 
 type
   TokenClass* = enum
@@ -129,7 +130,7 @@ proc nimNumber(g: var GeneralTokenizer, position: int): int =
 
 const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
-              '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
+              '|', '=', '%', '&', '$', '@', '~', ':'}
 
 proc nimNextToken(g: var GeneralTokenizer) =
   const
@@ -365,32 +366,10 @@ proc generalStrLit(g: var GeneralTokenizer, position: int): int =
   result = pos
 
 proc isKeyword(x: openArray[string], y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmp(x[mid], y)
-    if c < 0:
-      a = mid + 1
-    elif c > 0:
-      b = mid - 1
-    else:
-      return mid
-  result = - 1
+  binarySearch(x, y)
 
 proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmpIgnoreCase(x[mid], y)
-    if c < 0:
-      a = mid + 1
-    elif c > 0:
-      b = mid - 1
-    else:
-      return mid
-  result = - 1
+  binarySearch(x, y, cmpIgnoreCase)
 
 type
   TokenizerFlag = enum
@@ -902,7 +881,7 @@ when isMainModule:
       break
     except:
       echo filename, " not found"
-  doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
+  doAssert(keywords.len > 0, "Couldn't read any keywords.txt file!")
   for i in 0..min(keywords.len, nimKeywords.len)-1:
     doAssert keywords[i] == nimKeywords[i], "Unexpected keyword"
   doAssert keywords.len == nimKeywords.len, "No matching lengths"

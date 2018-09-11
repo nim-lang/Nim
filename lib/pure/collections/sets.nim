@@ -11,7 +11,7 @@
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
-## <manual.html#set-type>`_. Sets allow you to store any value that can be
+## <manual.html#types-set-type>`_. Sets allow you to store any value that can be
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
@@ -74,7 +74,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of keys in `s`.
@@ -119,6 +119,13 @@ iterator items*[A](s: HashSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
+
+proc hash*[A](s: HashSet[A]): Hash =
+  ## hashing of HashSet
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    result = result xor s.data[h].hcode
+  result = !$result
 
 const
   growthFactor = 2
@@ -339,6 +346,18 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert s.isValid, "The set `s` needs to be initialized."
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: discard exclImpl(s, item)
+
+proc pop*[A](s: var HashSet[A]): A =
+  ## Remove and return an arbitrary element from the set `s`.
+  ##
+  ## Raises KeyError if the set `s` is empty.
+  ##
+  for h in 0..high(s.data):
+    if isFilled(s.data[h].hcode):
+      result = s.data[h].key
+      excl(s, result)
+      return result
+  raise newException(KeyError, "set is empty")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
@@ -635,7 +654,7 @@ proc isValid*[A](s: OrderedSet[A]): bool =
   ##   proc saveTarotCards(cards: OrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of keys in `s`.
@@ -689,6 +708,13 @@ iterator items*[A](s: OrderedSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
+
+proc hash*[A](s: OrderedSet[A]): Hash =
+  ## hashing of OrderedSet
+  assert s.isValid, "The set needs to be initialized."
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
+  result = !$result
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   assert s.isValid, "The set needs to be initialized"

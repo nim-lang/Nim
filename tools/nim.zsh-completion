@@ -5,7 +5,6 @@ _nim() {
     ':command:((
       {compile,c}\:compile\ project\ with\ default\ code\ generator\ C
       doc\:generate\ the\ documentation\ for\ inputfile
-      doc2\:generate\ the\ documentation\ for\ inputfile
       {compileToC,cc}\:compile\ project\ with\ C\ code\ generator
       {compileToCpp,cpp}\:compile\ project\ to\ C++\ code
       {compileToOC,objc}\:compile\ project\ to\ Objective\ C\ code
@@ -14,7 +13,6 @@ _nim() {
       rst2html\:convert\ a\ reStructuredText\ file\ to\ HTML
       rst2tex\:convert\ a\ reStructuredText\ file\ to\ TeX
       jsondoc\:extract\ the\ documentation\ to\ a\ json\ file
-      jsondoc2\:extract\ documentation\ to\ a\ json\ file\ using\ doc2
       buildIndex\:build\ an\ index\ for\ the\ whole\ documentation
       genDepend\:generate\ a\ DOT\ file\ containing\ the\ module\ dependency\ graph
       dump\:dump\ all\ defined\ conditionals\ and\ search\ paths
@@ -62,8 +60,6 @@ _nim() {
     '*--infChecks=off[turn Inf checks off]' \
     '*--nilChecks=on[turn nil checks on]' \
     '*--nilChecks=off[turn nil checks off]' \
-    '*--deadCodeElim=on[whole program dead code elimination on]' \
-    '*--deadCodeElim=off[whole program dead code elimination off]' \
     '*--opt=none[do not optimize]' \
     '*--opt=speed[optimize for speed|size - use -d:release for a release build]' \
     '*--opt=size[optimize for size]' \
