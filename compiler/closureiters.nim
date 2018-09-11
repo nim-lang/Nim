@@ -678,7 +678,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -687,9 +687,9 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       needsSplit = true
       result = newNodeI(nkStmtListExpr, n.info)
       result.typ = n.typ
-      let (st, ex) = exprToStmtList(n[1])
+      let (st, ex) = exprToStmtList(n[^1])
       result.add(st)
-      n[1] = ex
+      n[^1] = ex
       result.add(n)
 
   of nkAsgn, nkFastAsgn:
@@ -710,6 +710,25 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(st)
         n[1] = ex
 
+      result.add(n)
+
+  of nkBracketExpr:
+    var lhsNeedsSplit = false
+    var rhsNeedsSplit = false
+    n[0] = ctx.lowerStmtListExprs(n[0], lhsNeedsSplit)
+    n[1] = ctx.lowerStmtListExprs(n[1], rhsNeedsSplit)
+    if lhsNeedsSplit or rhsNeedsSplit:
+      needsSplit = true
+      result = newNodeI(nkStmtListExpr, n.info)
+      if lhsNeedsSplit:
+        let (st, ex) = exprToStmtList(n[0])
+        result.add(st)
+        n[0] = ex
+
+      if rhsNeedsSplit:
+        let (st, ex) = exprToStmtList(n[1])
+        result.add(st)
+        n[1] = ex
       result.add(n)
 
   of nkWhileStmt:

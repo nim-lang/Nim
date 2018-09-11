@@ -658,15 +658,16 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   line(p, "}\L")
 
 proc genRaiseStmt(p: PProc, n: PNode) =
-  genLineDir(p, n)
   if n.sons[0].kind != nkEmpty:
     var a: TCompRes
     gen(p, n.sons[0], a)
     let typ = skipTypes(n.sons[0].typ, abstractPtrs)
+    genLineDir(p, n)
     useMagic(p, "raiseException")
     lineF(p, "raiseException($1, $2);$n",
              [a.rdLoc, makeJSString(typ.sym.name.s)])
   else:
+    genLineDir(p, n)
     useMagic(p, "reraiseException")
     line(p, "reraiseException();\L")
 
@@ -764,11 +765,22 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
     of nkSym:
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
-      if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
-        p.body.add mangleName(p.module, v)
+      if false:
+        discard
       else:
         var r: TCompRes
         gen(p, it, r)
+
+        if it.typ.kind == tyPointer:
+          # A fat pointer is disguised as an array
+          r.res = r.address
+          r.address = nil
+        elif r.typ == etyBaseIndex:
+          # Deference first
+          r.res = "$1[$2]" % [r.address, r.res]
+          r.address = nil
+          r.typ = etyNone
+
         p.body.add(r.rdLoc)
     else:
       var r: TCompRes
@@ -845,6 +857,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   else:
     gen(p, x, a)
 
+  genLineDir(p, y)
   gen(p, y, b)
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
@@ -881,11 +894,9 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     lineF(p, "$1 = $2;$n", [a.res, b.res])
 
 proc genAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=false)
 
 proc genFastAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   # 'shallowCopy' always produced 'noCopyNeeded = true' here but this is wrong
   # for code like
   #  while j >= pos:
@@ -1529,18 +1540,18 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1.slice(0,-1)).concat(" % [a.res])
+    r.res.add("($1).concat(" % [a.res])
 
   for i in countup(2, sonsLen(n) - 2):
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1.slice(0,-1)," % [a.res])
+      r.res.add("$1," % [a.res])
 
   gen(p, n.sons[sonsLen(n) - 1], a)
   if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
-    r.res.add("[$1, 0])" % [a.res])
+    r.res.add("[$1])" % [a.res])
   else:
     r.res.add("$1)" % [a.res])
 
@@ -1647,13 +1658,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
-        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
+        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2]; }")
   of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
         binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
     else:
       binaryExpr(p, n, r, "",
-        "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
+        "if ($1 != null) { $1 = ($1).concat($2); } else { $1 = $2;}")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
   of mAppendSeqElem:
     var x, y: TCompRes
@@ -1683,20 +1694,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr:
-    if n.sons[1].typ.skipTypes(abstractInst).kind == tyCString:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)")
-  of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1")
+    unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
+  of mXLenStr:
+    unaryExpr(p, n, r, "", "$1.length")
   of mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
   of mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-2) : -1)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
+    unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
       binaryUintExpr(p, n, r, "+", true)
@@ -1710,7 +1716,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0")
+    binaryExpr(p, n, r, "", "$1.length = $2")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1739,8 +1745,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     localError(p.config, n.info, errXMustBeCompileTime % n.sons[0].sym.name.s)
   of mCopyStr:
     binaryExpr(p, n, r, "", "($1.slice($2))")
-  of mCopyStrLast:
-    ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")
@@ -2065,8 +2069,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "makeNimstrLit")
-      r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      if n.strVal.len != 0:
+        useMagic(p, "makeNimstrLit")
+        r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      else:
+        r.res = rope"[]"
     else:
       r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
