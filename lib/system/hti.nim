@@ -11,7 +11,7 @@ when declared(ThisIsSystem):
   # we are in system module:
   {.pragma: codegenType, compilerproc.}
 else:
-  {.pragma: codegenType, importc.}
+  {.pragma: codegenType.}
 
 type
   # This should be the same as ast.TTypeKind
