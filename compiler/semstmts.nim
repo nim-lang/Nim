@@ -1173,6 +1173,9 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   if b != nil:
     # store the alias:
     n.sons[bodyPos] = newSymNode(b)
+    # Carry over the original symbol magic, this is necessary in order to ensure
+    # the semantic pass is correct
+    s.magic = b.magic
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
