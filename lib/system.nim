@@ -2741,12 +2741,11 @@ type
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
-      var len = `x`.length-1;
+      var len = `x`.length;
       for (var i = 0; i < `y`.length; ++i) {
         `x`[len] = `y`.charCodeAt(i);
         ++len;
       }
-      `x`[len] = 0
     """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
