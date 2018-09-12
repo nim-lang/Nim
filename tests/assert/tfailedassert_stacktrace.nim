@@ -1,14 +1,12 @@
 discard """
   output: '''
-tfailedassert_stacktrace.nim(16) tfailedassert_stacktrace
-tfailedassert_stacktrace.nim(15) foo
-system.nim(3778)         failedAssertImpl
-system.nim(3771)         raiseAssert
-system.nim(2818)         sysFatal
+ok
 '''
 """
 
 
+
+import strutils
 
 try:
   proc foo() =
@@ -16,4 +14,12 @@ try:
   foo()
 except AssertionError:
   let e = getCurrentException()
-  echo e.getStackTrace
+  let expectedStart = """tfailedassert_stacktrace.nim(14) tfailedassert_stacktrace
+tfailedassert_stacktrace.nim(13) foo
+system.nim("""
+  let output = e.getStackTrace
+  if output.startsWith expectedStart:
+    echo "ok"
+  else:
+    echo "error"
+    echo output
