@@ -726,7 +726,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`
     # -> getCurrentException()
-    let excCall = PTransNode(callCodegenProc(c.graph, "getCurrentException", newNodeI(nkEmpty, n.info)))
+    let excCall = PTransNode(callCodegenProc(c.graph, "getCurrentException"))
     # -> (excType)
     let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
     convNode[0] = PTransNode(newNodeI(nkEmpty, n.info))
