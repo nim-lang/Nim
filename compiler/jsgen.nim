@@ -615,7 +615,6 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
-  let dollar = rope("")
   if catchBranchesExist:
     addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
@@ -631,15 +630,42 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       if i > 1: lineF(p, "}$n", [])
     else:
       var orExpr: Rope = nil
+      var excAlias: PNode = nil
+
       useMagic(p, "isObj")
       for j in countup(0, blen - 2):
-        if n.sons[i].sons[j].kind != nkType:
+        var throwObj: PNode
+        let it = n.sons[i].sons[j]
+
+        if it.isInfixAs():
+          throwObj = it[1]
+          excAlias = it[2]
+          # If this is a ``except exc as sym`` branch there must be no following
+          # nodes
+          doAssert orExpr == nil
+        elif it.kind == nkType:
+          throwObj = it
+        else:
           internalError(p.config, n.info, "genTryStmt")
+
         if orExpr != nil: add(orExpr, "||")
-        addf(orExpr, "isObj($2lastJSError.m_type, $1)",
-             [genTypeInfo(p, n.sons[i].sons[j].typ), dollar])
+        # Generate the correct type checking code depending on whether this is a
+        # NIM-native or a JS-native exception
+        # if isJsObject(throwObj.typ):
+        if isImportedException(throwObj.typ, p.config):
+          addf(orExpr, "lastJSError instanceof $1",
+            [throwObj.typ.sym.loc.r])
+        else:
+          addf(orExpr, "isObj(lastJSError.m_type, $1)",
+               [genTypeInfo(p, throwObj.typ)])
+
       if i > 1: line(p, "else ")
-      lineF(p, "if ($1lastJSError && ($2)) {$n", [dollar, orExpr])
+      lineF(p, "if (lastJSError && ($1)) {$n", [orExpr])
+      # If some branch requires a local alias introduce it here. This is needed
+      # since JS cannot do ``catch x as y``.
+      if excAlias != nil:
+        excAlias.sym.loc.r = mangleName(p.module, excAlias.sym)
+        lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.r)
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       lineF(p, "}$n", [])
@@ -650,7 +676,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "else {\L")
       line(p, "\treraiseException();\L")
       line(p, "}\L")
-    addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
+    lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
   line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < length and n.sons[i].kind == nkFinally:
