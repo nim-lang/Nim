@@ -6477,10 +6477,10 @@ Example:
 
   foo(10)
 
-Variables can also be reordered as well. Keep in mind, when we initialize (i.e.
-combined declaration and assignment in one statement) variables, that entire
-statement itself may be reordered. Be wary of what code you execute at the top
-level:
+Variables can also be reordered as well. Variables that are *initialized* (i.e.
+variables that have their declaration and assignment combined in a single
+statement) can have their entire initialization statement reordered. Be wary of
+what code is executed at the top level:
 
 .. code-block:: nim
   {.experimental: "codeReordering".}
