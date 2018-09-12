@@ -960,13 +960,42 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes)
 
-proc genCheckedFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
-  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
-  internalAssert p.config, m.kind == nkCheckedFieldExpr
-  genAddr(p, m, r) # XXX
+proc genFieldCheck(p: PProc, n: PNode) =
+  internalAssert p.config, n.kind == nkCheckedFieldExpr
+  let accessExpr = n[0]
+  var checkExpr = n[1]
+
+  let negCheck = checkExpr[0].sym.magic == mNot
+  if negCheck:
+    checkExpr = checkExpr[^1]
+
+  # Patch the check expression RHS
+  # From: ``discriminator in set``
+  # To:   ``object.discriminator in set``
+  var newField = newTree(nkDotExpr, accessExpr[0], checkExpr[^1])
+  newField.typ = checkExpr[^1].typ
+
+  # Don't modify the node in place otherwise we'll end up doing this
+  # transformation more than once
+  var newCheck = shallowCopy(checkExpr)
+  newCheck[0] = checkExpr[0]
+  newCheck[1] = checkExpr[1]
+  newCheck[2] = newField
+
+  var a: TCompRes
+  gen(p, newCheck, a)
+
+  useMagic(p, "raiseFieldError")
+  useMagic(p, "makeNimstrLit")
+  lineF(p, "if ($3($1)) { raiseFieldError(makeNimstrLit($2)); }$n", a.res,
+    makeJSString(accessExpr[1].sym.name.s),
+    # If the check evaluates to true the field can be accessed, the logic here
+    # is inverted since we generate the failure case here
+    if negCheck: nil else: ~"!")
 
 proc genCheckedFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
-  genFieldAccess(p, n.sons[0], r) # XXX
+  genFieldCheck(p, n)
+  genFieldAccess(p, n.sons[0], r)
 
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -1044,13 +1073,19 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         gen(p, n.sons[0], r)
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(p.config, n.info, "genAddr: 2")
-  of nkCheckedFieldExpr:
-    genCheckedFieldAddr(p, n, r)
-  of nkDotExpr:
+  of nkCheckedFieldExpr, nkDotExpr:
+    var dotExp = n[0]
+
+    # The LHS is just a nkDotExpr, the RHS is the check expression
+    if n[0].kind == nkCheckedFieldExpr:
+      genFieldCheck(p, n[0])
+      dotExp = dotExp[0]
+      internalAssert p.config, dotExp.kind == nkDotExpr
+
     if mapType(p, n.typ) == etyBaseIndex:
-      genFieldAddr(p, n.sons[0], r)
+      genFieldAddr(p, dotExp, r)
     else:
-      genFieldAccess(p, n.sons[0], r)
+      genFieldAccess(p, dotExp, r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in MappedToObject:
