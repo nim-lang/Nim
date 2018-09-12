@@ -501,7 +501,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       rangeCheck(n, result.intVal, g)
   of tyFloat..tyFloat64:
     case srcTyp.kind
-    of tyInt..tyInt64, tyEnum, tyBool, tyChar:
+    of tyInt..tyInt64, tyUint..tyUInt64, tyEnum, tyBool, tyChar:
       result = newFloatNodeT(toBiggestFloat(getOrdValue(a)), n, g)
     else:
       result = a
