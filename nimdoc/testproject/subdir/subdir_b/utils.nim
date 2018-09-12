@@ -1,6 +1,9 @@
 
 type
-  SomeType* = int
+  SomeType* = enum
+    enumValueA,
+    enumValueB,
+    enumValueC
 
 proc someType*(): SomeType =
   ## constructor.

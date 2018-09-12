@@ -7,8 +7,11 @@ var
 
 proc test(dir: string; fixup = false) =
   putEnv("SOURCE_DATE_EPOCH", "100000")
-  if execShellCmd("nim doc --project -o:$1/htmldocs $1/testproject.nim" % dir) != 0:
+  if execShellCmd("nim doc --project --index:on -o:$1/htmldocs $1/testproject.nim" % dir) != 0:
     quit("FAILURE: nim doc failed")
+
+  if execShellCmd("nim buildIndex -o:$1/htmldocs/theindex.html $1/htmldocs" % [dir]) != 0:
+    quit("FAILURE: nim buildIndex failed")
 
   for expected in walkDirRec(dir / "expected/"):
     let produced = expected.replace("/expected/", "/htmldocs/")

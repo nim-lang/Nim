@@ -343,6 +343,7 @@ proc testExample(d: PDoc; ex: PNode) =
                 elif isDefined(d.conf, "objc"): "objc"
                 else: "c"
   if os.execShellCmd(os.getAppFilename() & " " & backend &
+                    " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
                     " -r " & quoteShell(outp)) != 0:
     quit "[Examples] failed: see " & outp.string
@@ -622,11 +623,22 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     [nameRope, result, comm, itemIDRope, plainNameRope, plainSymbolRope,
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope]))
 
+  let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:
     let att = attachToType(d, nameNode.sym)
     if att != nil:
       attype = rope esc(d.target, att.name.s)
+  elif k == skType and nameNode.kind == nkSym and nameNode.sym.typ.kind in {tyEnum, tyBool}:
+    let etyp = nameNode.sym.typ
+    for e in etyp.n:
+      if e.sym.kind != skEnumField: continue
+      let plain = renderPlainSymbolName(e)
+      let symbolOrId = d.newUniquePlainSymbol(plain)
+      setIndexTerm(d[], external, symbolOrId, plain, nameNode.sym.name.s & '.' & plain,
+        xmltree.escape(getPlainDocstring(e).docstringSummary))
+
   add(d.toc[k], ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
@@ -637,11 +649,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
-  var linkTitle = changeFileExt(extractFilename(d.filename), "") & " : "
+  var linkTitle = changeFileExt(extractFilename(d.filename), "") & ": "
   if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
   else: linkTitle.add(xmltree.escape(complexSymbol.strip))
 
-  setIndexTerm(d[], symbolOrId, name, linkTitle,
+  setIndexTerm(d[], external, symbolOrId, name, linkTitle,
     xmltree.escape(plainDocstring.docstringSummary))
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
@@ -847,7 +859,8 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    setIndexTerm(d[], "", title)
+    let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+    setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = "Module " & extractFilename(changeFileExt(d.filename, ""))

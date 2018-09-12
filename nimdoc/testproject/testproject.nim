@@ -3,8 +3,9 @@ import subdir / subdir_b / utils
 
 ## This is the top level module.
 runnableExamples:
+  import subdir / subdir_b / utils
   doAssert bar(3, 4) == 7
-  foo(1, 2)
+  foo(enumValueA, enumValueB)
 
 
 template foo*(a, b: SomeType) =
