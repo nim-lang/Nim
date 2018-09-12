@@ -562,6 +562,35 @@ proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
   else:
     result = c.genx(n)
 
+proc genFieldCheck(c: PCtx, n: PNode) =
+  let accessExpr = n[0]
+  var checkExpr = n[1]
+
+  let negCheck = checkExpr[0].sym.magic == mNot
+  if negCheck:
+    checkExpr = checkExpr[^1]
+
+  # Patch the check expression RHS
+  # From: ``discriminator in set``
+  # To:   ``object.discriminator in set``
+  var newField = newTree(nkDotExpr, accessExpr[0], checkExpr[^1])
+  newField.typ = checkExpr[^1].typ
+
+  # Don't modify the node in place otherwise we'll end up doing this
+  # transformation more than once
+  var newCheck = shallowCopy(checkExpr)
+  newCheck[0] = checkExpr[0]
+  newCheck[1] = checkExpr[1]
+  newCheck[2] = newField
+
+  # This is not 100% ideal since we materialize the object twice, oh well
+  let checkResult = c.genx(newCheck)
+  let L1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, checkResult)
+  # XXX: Do something better than this
+  c.gABC(n, opcQuit, checkResult, checkResult)
+  c.freeTemp(checkResult)
+  c.patch(L1)
+
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
   of nkBracketExpr:
@@ -571,7 +600,7 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
     c.freeTemp(dest)
     c.freeTemp(idx)
   of nkDotExpr, nkCheckedFieldExpr:
-    # XXX field checks here
+    if le.kind == nkCheckedFieldExpr: genFieldCheck(c, le)
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
     let dest = c.genx(left.sons[0], {gfNode})
     let idx = genField(c, left.sons[1])
@@ -1420,7 +1449,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
     c.freeTemp(tmp)
   of nkDotExpr, nkCheckedFieldExpr:
-    # XXX field checks here
+    if le.kind == nkCheckedFieldExpr: genFieldCheck(c, le)
     let left = if le.kind == nkDotExpr: le else: le.sons[0]
     let dest = c.genx(left.sons[0], {gfNode})
     let idx = genField(c, left.sons[1])
@@ -1562,7 +1591,7 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   c.freeTemp(a)
 
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  # XXX implement field checks!
+  genFieldCheck(c, n)
   genObjAccess(c, n.sons[0], dest, flags)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
