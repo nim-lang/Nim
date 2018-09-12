@@ -76,17 +76,19 @@ proc semAsm(c: PContext, n: PNode): PNode =
   if marker == '\0': marker = '`' # default marker
   result = semAsmOrEmit(c, n, marker)
 
-proc semWhile(c: PContext, n: PNode): PNode =
+proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   checkSonsLen(n, 2, c.config)
   openScope(c)
   n.sons[0] = forceBool(c, semExprWithType(c, n.sons[0]))
   inc(c.p.nestedLoopCounter)
-  n.sons[1] = semStmt(c, n.sons[1])
+  n.sons[1] = semStmt(c, n.sons[1], flags)
   dec(c.p.nestedLoopCounter)
   closeScope(c)
   if n.sons[1].typ == c.enforceVoidContext:
     result.typ = c.enforceVoidContext
+  elif efInTypeof in flags:
+    result.typ = n[1].typ
 
 proc toCover(c: PContext, t: PType): BiggestInt =
   let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
@@ -97,8 +99,8 @@ proc toCover(c: PContext, t: PType): BiggestInt =
 
 proc semProc(c: PContext, n: PNode): PNode
 
-proc semExprBranch(c: PContext, n: PNode): PNode =
-  result = semExpr(c, n)
+proc semExprBranch(c: PContext, n: PNode; flags: TExprFlags = {}): PNode =
+  result = semExpr(c, n, flags)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
@@ -130,8 +132,9 @@ proc fixNilType(c: PContext; n: PNode) =
     for it in n: fixNilType(c, it)
   n.typ = nil
 
-proc discardCheck(c: PContext, result: PNode) =
-  if c.matchedConcept != nil: return
+proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
+  if c.matchedConcept != nil or efInTypeof in flags: return
+
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
@@ -148,7 +151,7 @@ proc discardCheck(c: PContext, result: PNode) =
         s.add "; for a function call use ()"
       localError(c.config, n.info, s)
 
-proc semIf(c: PContext, n: PNode): PNode =
+proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   var typ = commonTypeBegin
   var hasElse = false
@@ -165,8 +168,9 @@ proc semIf(c: PContext, n: PNode): PNode =
       it.sons[0] = semExprBranchScope(c, it.sons[0])
       typ = commonType(typ, it.sons[0])
     else: illFormedAst(it, c.config)
-  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
-    for it in n: discardCheck(c, it.lastSon)
+  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
+      (not hasElse and efInTypeof notin flags):
+    for it in n: discardCheck(c, it.lastSon, flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
@@ -178,8 +182,7 @@ proc semIf(c: PContext, n: PNode): PNode =
     result.kind = nkIfExpr
     result.typ = typ
 
-proc semTry(c: PContext, n: PNode): PNode =
-
+proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var check = initIntSet()
   template semExceptBranchType(typeNode: PNode): bool =
     # returns true if exception type is imported type
@@ -246,12 +249,12 @@ proc semTry(c: PContext, n: PNode): PNode =
 
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
-    discardCheck(c, n.sons[0])
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
+    discardCheck(c, n.sons[0], flags)
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
   else:
-    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon)
+    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
     n.sons[0] = fitNode(c, typ, n.sons[0], n.sons[0].info)
     for i in 1..last:
       var it = n.sons[i]
@@ -570,7 +573,7 @@ proc symForVar(c: PContext, n: PNode): PSym =
   if n.kind == nkPragmaExpr:
     pragma(c, result, n.sons[1], forVarPragmas)
 
-proc semForVars(c: PContext, n: PNode): PNode =
+proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   var length = sonsLen(n)
   let iterBase = n.sons[length-2].typ
@@ -601,7 +604,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
         addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
   openScope(c)
-  n.sons[length-1] = semStmt(c, n.sons[length-1])
+  n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)
   closeScope(c)
   dec(c.p.nestedLoopCounter)
 
@@ -685,7 +688,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
   when false:
     result = handleStmtMacro(c, n, n[0], "CaseStmt")
 
-proc semFor(c: PContext, n: PNode): PNode =
+proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
   var length = sonsLen(n)
   if forLoopMacros in c.features:
@@ -702,14 +705,14 @@ proc semFor(c: PContext, n: PNode): PNode =
   if isCallExpr and call[0].kind == nkSym and
       call[0].sym.magic in {mFields, mFieldPairs, mOmpParFor}:
     if call.sons[0].sym.magic == mOmpParFor:
-      result = semForVars(c, n)
+      result = semForVars(c, n, flags)
       result.kind = nkParForStmt
     else:
       result = semForFields(c, n, call.sons[0].sym.magic)
   elif isCallExpr and call.sons[0].typ.callConv == ccClosure and
       tfIterator in call.sons[0].typ.flags:
     # first class iterator:
-    result = semForVars(c, n)
+    result = semForVars(c, n, flags)
   elif not isCallExpr or call.sons[0].kind != nkSym or
       call.sons[0].sym.kind != skIterator:
     if length == 3:
@@ -718,15 +721,17 @@ proc semFor(c: PContext, n: PNode): PNode =
       n.sons[length-2] = implicitIterator(c, "pairs", n.sons[length-2])
     else:
       localError(c.config, n.sons[length-2].info, "iterator within for loop context expected")
-    result = semForVars(c, n)
+    result = semForVars(c, n, flags)
   else:
-    result = semForVars(c, n)
+    result = semForVars(c, n, flags)
   # propagate any enforced VoidContext:
   if n.sons[length-1].typ == c.enforceVoidContext:
     result.typ = c.enforceVoidContext
+  elif efInTypeof in flags:
+    result.typ = result.lastSon.typ
   closeScope(c)
 
-proc semCase(c: PContext, n: PNode): PNode =
+proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   checkMinSonsLen(n, 2, c.config)
   openScope(c)
@@ -782,8 +787,9 @@ proc semCase(c: PContext, n: PNode): PNode =
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
-  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
+  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
+      (not hasElse and efInTypeof notin flags):
+    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
@@ -1795,7 +1801,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
       if containsOrIncl(c.includedFiles, f.int):
         localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
       else:
-        addSon(result, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f)))
+        addSon(result, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
         excl(c.includedFiles, f.int)
 
 proc setLine(n: PNode, info: TLineInfo) =
@@ -1822,7 +1828,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   inc c.inStaticContext
   openScope(c)
-  let a = semStmt(c, n.sons[0])
+  let a = semStmt(c, n.sons[0], {})
   closeScope(c)
   dec c.inStaticContext
   n.sons[0] = a
@@ -1898,11 +1904,11 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n.sons[i].typ == c.enforceVoidContext: #or usesResult(n.sons[i]):
       voidContext = true
       n.typ = c.enforceVoidContext
-    if i == last and (length == 1 or efWantValue in flags):
+    if i == last and (length == 1 or ({efWantValue, efInTypeof} * flags != {})):
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
     elif i != last or voidContext:
-      discardCheck(c, n.sons[i])
+      discardCheck(c, n.sons[i], flags)
     else:
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
@@ -1931,6 +1937,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # it is an old-style comment statement: we replace it with 'discard ""':
       prettybase.replaceComment(result.info)
 
-proc semStmt(c: PContext, n: PNode): PNode =
-  # now: simply an alias:
-  result = semExprNoType(c, n)
+proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
+  if efInTypeof notin flags:
+    result = semExprNoType(c, n)
+  else:
+    result = semExpr(c, n, flags)
