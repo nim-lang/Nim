@@ -877,7 +877,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      lineF(p, "nimCopy($1, $2, $3);$n",
+      lineF(p, "$1 = nimCopy($1, $2, $3);$n",
                [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
@@ -1429,7 +1429,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
 template returnType: untyped =
   ~""
 
-proc genVarInit(p: PProc, v: PSym, n: PNode) =
+proc genVarInit(p: PProc, v: PSym, n: PNode): Rope =
   var
     a: TCompRes
     s: Rope
@@ -1439,8 +1439,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 
   if v.constraint.isNil:
     if useReloadingGuard:
-      lineF(p, "var $1;$n", varName)
-      lineF(p, "if ($1 === undefined) {$n", varName)
+      addf(result, "var $1;$n", [varName])
+      addf(result, "if ($1 === undefined) {$n", [varName])
       varCode = $varName
     else:
       varCode = "var $2"
@@ -1453,40 +1453,42 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     if v.typ.kind in {tyVar, tyPtr, tyLent, tyRef} and mapType(p, v.typ) == etyBaseIndex:
       lineF(p, "var $1_Idx = 0;$n", [varName])
   else:
+    var rhs: Rope
+
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
       if needsNoCopy(p, n):
-        s = a.res
+        rhs = a.res
       else:
         useMagic(p, "nimCopy")
-        s = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
+        rhs = "nimCopy(null, $1, $2)" % [a.res, genTypeInfo(p, n.typ)]
     of etyBaseIndex:
       let targetBaseIndex = {sfAddrTaken, sfGlobal} * v.flags == {}
       if a.typ == etyBaseIndex:
         if targetBaseIndex:
-          lineF(p, varCode & " = $3, $2_Idx = $4;$n",
+          addf(result, varCode & " = $3, $2_Idx = $4;$n",
                    [returnType, v.loc.r, a.address, a.res])
         else:
-          lineF(p, varCode & " = [$3, $4];$n",
+          addf(result, varCode & " = [$3, $4];$n",
                    [returnType, v.loc.r, a.address, a.res])
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
-          lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
+          addf(result, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
                    [tmp, a.res, v.loc.r])
         else:
-          lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, a.res])
+          addf(result, varCode & " = $3;$n", [returnType, v.loc.r, a.res])
       return
     else:
-      s = a.res
+      rhs = a.res
     if isIndirect(v):
-      lineF(p, varCode & " = [$3];$n", [returnType, v.loc.r, s])
+      addf(result, varCode & " = [$3];$n", [returnType, v.loc.r, rhs])
     else:
-      lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, s])
+      addf(result, varCode & " = $3;$n", [returnType, v.loc.r, rhs])
 
   if useReloadingGuard:
-    lineF(p, "}$n")
+    add(result, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -1500,17 +1502,17 @@ proc genVarStmt(p: PProc, n: PNode) =
         assert(a.sons[0].kind == nkSym)
         var v = a.sons[0].sym
         if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
-          genLineDir(p, a)
-          genVarInit(p, v, a.sons[2])
+          if sfGlobal in v.flags:
+            # Let's dump this declaration in the constants section as there's no
+            # specific one for globals
+            p.g.constants.add genVarInit(p, v, a.sons[2])
+          else:
+            genLineDir(p, a)
+            p.body.add genVarInit(p, v, a.sons[2])
 
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
-    let oldBody = p.body
-    p.body = nil
-    #genLineDir(p, c.ast)
-    genVarInit(p, c, c.ast)
-    add(p.g.constants, p.body)
-    p.body = oldBody
+    p.g.constants.add genVarInit(p, c, c.ast)
 
 proc genNew(p: PProc, n: PNode) =
   var a: TCompRes
@@ -2290,4 +2292,3 @@ proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)
-
