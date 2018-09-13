@@ -181,7 +181,7 @@ else:
     discard
 
 proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
-  ## Boolean not; returns true iff ``x == false``.
+  ## Boolean not; returns true if ``x == false``.
 
 proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
   ## Boolean ``and``; returns true iff ``x == y == true``.
