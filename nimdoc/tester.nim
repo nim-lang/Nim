@@ -14,7 +14,7 @@ proc test(dir: string; fixup = false) =
     quit("FAILURE: nim buildIndex failed")
 
   for expected in walkDirRec(dir / "expected/"):
-    let produced = expected.replace("/expected/", "/htmldocs/")
+    let produced = expected.replace('\\', '/').replace("/expected/", "/htmldocs/")
     if not fileExists(produced):
       echo "FAILURE: files not found: ", produced
       inc failures

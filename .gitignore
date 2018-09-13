@@ -45,7 +45,7 @@ xcuserdata/
 
 # Generated files.
 /compile.json
-/compiler/nimrod.dot
+/compiler/nim.dot
 /reject.json
 /run.json
 # for `nim doc foo.nim`
