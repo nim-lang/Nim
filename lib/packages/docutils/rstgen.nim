@@ -361,7 +361,7 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
 
   var term = ""
   renderAux(d, n, term)
-  setIndexTerm(d, "", id, term, d.currentSection)
+  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
   dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}",
         [id, term])
 
@@ -625,7 +625,9 @@ proc readIndexDir(dir: string):
           let i = find(x, '#')
           if i > 0:
             x = x.substr(0, i-1)
-          result.modules.add(x.changeFileExt(""))
+          if i != 0:
+            # don't add entries starting with '#'
+            result.modules.add(x.changeFileExt(""))
       else:
         # Generate the symbolic anchor for index quickjumps.
         title.linkTitle = "doc_toc_" & $result.docs.len
@@ -672,10 +674,11 @@ proc mergeIndexes*(dir: string): string =
     result.add(generateModuleJumps(modules))
     result.add("<p />")
 
-  # Generate the HTML block with API documents.
-  if docs.len > 0:
-    result.add("<h2>Documentation files</h2>\n")
-    result.add(generateDocumentationIndex(docs))
+  when false:
+    # Generate the HTML block with API documents.
+    if docs.len > 0:
+      result.add("<h2>Documentation files</h2>\n")
+      result.add(generateDocumentationIndex(docs))
 
   # Generate the HTML block with symbols.
   if symbols.len > 0:
@@ -734,7 +737,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, "", refname, tmp.stripTocHtml,
+  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
