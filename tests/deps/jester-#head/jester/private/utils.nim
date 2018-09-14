@@ -4,7 +4,7 @@ import parseutils, strtabs, strutils, tables, net, mimetypes, asyncdispatch, os
 from cgi import decodeUrl
 
 const
-  useHttpBeast* = not defined(windows) and not defined(useStdLib)
+  useHttpBeast* = false # not defined(windows) and not defined(useStdLib)
 
 type
   MultiData* = OrderedTable[string, tuple[fields: StringTableRef, body: string]]
