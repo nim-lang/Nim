@@ -14,7 +14,7 @@ import
   strutils, os, intsets, strtabs
 
 import options, ast, astalgo, msgs, semdata, ropes, idents,
-  lineinfos
+  lineinfos, pathutils
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -42,7 +42,7 @@ proc overwriteFiles*(conf: ConfigRef) =
       let newFile = if gOverWrite: conf.m.fileInfos[i].fullpath
                     else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
       try:
-        var f = open(newFile, fmWrite)
+        var f = open(newFile.string, fmWrite)
         for line in conf.m.fileInfos[i].lines:
           if doStrip:
             f.write line.strip(leading = false, trailing = true)
@@ -51,7 +51,7 @@ proc overwriteFiles*(conf: ConfigRef) =
           f.write(conf.m.fileInfos[i], "\L")
         f.close
       except IOError:
-        rawMessage(conf, errGenerated, "cannot open file: " & newFile)
+        rawMessage(conf, errGenerated, "cannot open file: " & newFile.string)
 
 proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:

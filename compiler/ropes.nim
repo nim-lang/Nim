@@ -58,6 +58,8 @@
 import
   hashes
 
+from pathutils import AbsoluteFile
+
 type
   FormatStr* = string  # later we may change it to CString for better
                        # performance of the code generator (assignments
@@ -183,9 +185,9 @@ proc writeRope*(f: File, r: Rope) =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc writeRope*(head: Rope, filename: string): bool =
+proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
   var f: File
-  if open(f, filename, fmWrite):
+  if open(f, filename.string, fmWrite):
     if head != nil: writeRope(f, head)
     close(f)
     result = true
@@ -314,16 +316,16 @@ proc equalsFile*(r: Rope, f: File): bool =
   result = readBuffer(f, addr(buf[0]), 1) == 0 and
       btotal == rtotal # check that we've read all
 
-proc equalsFile*(r: Rope, filename: string): bool =
+proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
   var f: File
-  result = open(f, filename)
+  result = open(f, filename.string)
   if result:
     result = equalsFile(r, f)
     close(f)
 
-proc writeRopeIfNotEqual*(r: Rope, filename: string): bool =
+proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
   # returns true if overwritten
   if not equalsFile(r, filename):
     result = writeRope(r, filename)

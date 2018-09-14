@@ -6,8 +6,7 @@ defined
 3'''
 """
 
-{.reorder: on.}
-{.experimental.}
+{.experimental: "codeReordering".}
 
 proc bar(x: T)
 

@@ -425,7 +425,7 @@ Miscellaneous
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
 Modules for JS backend
----------------------------
+----------------------
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
@@ -440,30 +440,6 @@ Modules for JS backend
   Wrapper of core JavaScript functions. For most purposes you should be using
   the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
-Deprecated modules
-------------------
-
-* `asyncio <asyncio.html>`_
-  This module implements an asynchronous event loop for sockets.
-  **Deprecated since version 0.11.2:**
-  Use the `asyncnet <asyncnet.html>`_ together with the
-  `asyncdispatch <asyncdispatch.html>`_ module instead.
-
-* `ftpclient <ftpclient.html>`_
-  This module implements an FTP client.
-  **Deprecated since version 0.11.3:**
-  Use the `asyncftpclient <asyncftpclient.html>`_ module instead.
-
-* `sockets <sockets.html>`_
-  This module implements a simple portable type-safe sockets layer.
-  **Deprecated since version 0.11.2:**
-  Use the `net <net.html>`_ or the `rawsockets <rawsockets.html>`_ module
-  instead.
-
-* `rawsockets <rawsockets.html>`_
-  **Deprecated since version 0.11.4:**
-  This module has been renamed to `nativesockets <nativesockets.html>`_.
-
 
 Impure libraries
 ================
@@ -475,9 +451,6 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
-* `nre <nre.html>`_
-  Another implementation of procedures for using regular expressions. Also uses
-  PCRE.
 
 
 Database support

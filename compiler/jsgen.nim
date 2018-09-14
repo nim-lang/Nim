@@ -32,7 +32,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils
 
 from modulegraphs import ModuleGraph
 
@@ -2263,7 +2263,7 @@ proc genClass(conf: ConfigRef; obj: PType; content: Rope; ext: string) =
             "class $#$# {$n$#$n}$n") %
            [rope(VersionAsString), cls, extends, content]
 
-  let outfile = changeFileExt(completeCFilePath(conf, $cls), ext)
+  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile($cls)), ext)
   discard writeRopeIfNotEqual(result, outfile)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
@@ -2277,11 +2277,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
             else: "nimsystem"
     let code = wholeCode(graph, m)
     let outfile =
-      if m.config.outFile.len > 0:
-        if m.config.outFile.isAbsolute: m.config.outFile
-        else: getCurrentDir() / m.config.outFile
+      if not m.config.outFile.isEmpty:
+        if m.config.outFile.string.isAbsolute: m.config.outFile
+        else: AbsoluteFile(getCurrentDir() / m.config.outFile.string)
       else:
-        changeFileExt(completeCFilePath(m.config, f), ext)
+        changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
     discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)
