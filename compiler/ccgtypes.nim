@@ -162,9 +162,9 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
-    #of tySet:
-    #  if mapSetType(base) == ctArray: result = ctPtrToArray
-    #  else: result = ctPtr
+    of tySet:
+      if mapSetType(conf, base) == ctArray: result = ctPtrToArray
+      else: result = ctPtr
     # XXX for some reason this breaks the pegs module
     else: result = ctPtr
   of tyPointer: result = ctPtr
@@ -641,10 +641,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
-    if etB.kind in {tyArray, tyOpenArray, tyVarargs}:
-      # this is correct! sets have no proper base type, so we treat
-      # ``var set[char]`` in `getParamTypeDesc`
-      et = elemType(etB)
+    if mapType(m.config, t) == ctPtrToArray:
+      if etB.kind == tySet:
+        et = getSysType(m.g.graph, unknownLineInfo(), tyUInt8)
+      else:
+        et = elemType(etB)
       etB = et.skipTypes(abstractInst)
       star[0] = '*'
     case etB.kind
