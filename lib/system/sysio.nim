@@ -149,6 +149,12 @@ proc readLine(f: File, line: var TaintedString): bool =
   if sp == 0:
     sp = 80
     line.string.setLen(sp)
+  else:
+    when not defined(nimscript):
+      sp = cint(cast[PGenericSeq](line.string).space)
+    else:
+      line.string.setLen(sp + 1)
+
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
