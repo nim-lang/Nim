@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos
+import algorithm, prefixmatches, lineinfos, pathutils
 from wordrecg import wDeprecated
 
 when defined(nimsuggest):
@@ -319,7 +319,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     if n.kind == nkSym and n.sym.kind == skError and c.config.suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
       let fullPath = findModule(c.config, n.sym.name.s, toFullPath(c.config, n.info))
-      if fullPath.len == 0:
+      if fullPath.isEmpty:
         # error: no known module name:
         typ = nil
       else:

@@ -12,7 +12,7 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options]
+import ../compiler / [idents, msgs, ast, syntaxes, renderer, options, pathutils]
 
 import parseopt, strutils, os
 
@@ -42,8 +42,8 @@ proc writeVersion() =
 
 proc prettyPrint(infile, outfile: string) =
   var conf = newConfigRef()
-  let fileIdx = fileInfoIdx(conf, infile)
-  conf.outFile = outfile
+  let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
+  conf.outFile = AbsoluteFile outfile
   when defined(nimpretty2):
     discard parseFile(fileIdx, newIdentCache(), conf)
   else:

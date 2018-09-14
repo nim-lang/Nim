@@ -13,7 +13,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
   try:
     var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
-      filename = findFile(conf, file)
+      filename = findFile(conf, file).string
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:

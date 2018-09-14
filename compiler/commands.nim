@@ -26,7 +26,8 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos
+  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
+  pathutils
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -208,7 +209,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
-  if found == "": found = filename
+  if found.isEmpty: found = AbsoluteFile filename
   extccomp.addExternalFileToCompile(conf, found)
 
 const
@@ -292,31 +293,32 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
-                 notRelativeToProj = false): string =
+                 notRelativeToProj = false): AbsoluteDir =
   let p = if os.isAbsolute(path) or '$' in path:
             path
           elif notRelativeToProj:
             getCurrentDir() / path
           else:
-            conf.projectPath / path
+            conf.projectPath.string / path
   try:
-    result = pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
+    result = AbsoluteDir pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
-    result = p
+    result = AbsoluteDir p
 
-proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): string =
-  let path = if path[0] == '"': strutils.unescape(path) else: path
+proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir =
+  let path = if path.len > 0 and path[0] == '"': strutils.unescape(path)
+             else: path
   let basedir = toFullPath(conf, info).splitFile().dir
   let p = if os.isAbsolute(path) or '$' in path:
             path
           else:
             basedir / path
   try:
-    result = pathSubs(conf, p, basedir)
+    result = AbsoluteDir pathSubs(conf, p, basedir)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
-    result = p
+    result = AbsoluteDir p
 
 const
   errInvalidNumber = "$1 is not a valid number"
@@ -331,9 +333,9 @@ proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   if parseUtils.parseInt(a[3], column) <= 0:
     localError(conf, info, errInvalidNumber % a[2])
 
-  let dirtyOriginalIdx = fileInfoIdx(conf, a[1])
+  let dirtyOriginalIdx = fileInfoIdx(conf, AbsoluteFile a[1])
   if dirtyOriginalIdx.int32 >= 0:
-    msgs.setDirtyFile(conf, dirtyOriginalIdx, a[0])
+    msgs.setDirtyFile(conf, dirtyOriginalIdx, AbsoluteFile a[0])
 
   conf.m.trackPos = newLineInfo(dirtyOriginalIdx, line, column)
 
@@ -345,7 +347,7 @@ proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
     localError(conf, info, errInvalidNumber % a[1])
   if parseUtils.parseInt(a[2], column) <= 0:
     localError(conf, info, errInvalidNumber % a[2])
-  conf.m.trackPos = newLineInfo(conf, a[0], line, column)
+  conf.m.trackPos = newLineInfo(conf, AbsoluteFile a[0], line, column)
 
 proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:
@@ -359,14 +361,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   case switch.normalize
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
-    addPath(conf, if pass == passPP: processCfgPath(conf, arg, info) else: processPath(conf, arg, info), info)
+    addPath(conf, if pass == passPP: processCfgPath(conf, arg, info)
+                  else: processPath(conf, arg, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and optNoNimblePath notin conf.globalOptions:
       expectArg(conf, switch, arg, pass, info)
       var path = processPath(conf, arg, info, notRelativeToProj=true)
-      let nimbleDir = getEnv("NIMBLE_DIR")
-      if nimbleDir.len > 0 and pass == passPP: path = nimbleDir / "pkgs"
+      let nimbleDir = AbsoluteDir getEnv("NIMBLE_DIR")
+      if not nimbleDir.isEmpty and pass == passPP:
+        path = nimbleDir / RelativeDir"pkgs"
       nimblePath(conf, path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(conf, switch, arg, pass, info)
@@ -374,20 +378,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "excludepath":
     expectArg(conf, switch, arg, pass, info)
     let path = processPath(conf, arg, info)
-
-    conf.searchPaths.keepItIf(cmpPaths(it, path) != 0)
-    conf.lazyPaths.keepItIf(cmpPaths(it, path) != 0)
-
-    if (len(path) > 0) and (path[len(path) - 1] == DirSep):
-      let strippedPath = path[0 .. (len(path) - 2)]
-      conf.searchPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
-      conf.lazyPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
+    conf.searchPaths.keepItIf(it != path)
+    conf.lazyPaths.keepItIf(it != path)
   of "nimcache":
     expectArg(conf, switch, arg, pass, info)
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    conf.outFile = arg
+    conf.outFile = AbsoluteFile arg
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -411,7 +409,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}: processCompile(conf, arg)
   of "link":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: addExternalFileToLink(conf, arg)
+    if pass in {passCmd2, passPP}:
+      addExternalFileToLink(conf, AbsoluteFile arg)
   of "debuginfo":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optCDebug)
@@ -581,7 +580,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if pass in {passCmd2, passPP}: conf.cLibs.add processPath(conf, arg, info)
   of "clib":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: conf.cLinkedLibs.add processPath(conf, arg, info)
+    if pass in {passCmd2, passPP}:
+      conf.cLinkedLibs.add processPath(conf, arg, info).string
   of "header":
     if conf != nil: conf.headerFile = arg
     incl(conf.globalOptions, optGenIndex)
@@ -742,7 +742,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
 
-template gCmdLineInfo*(): untyped = newLineInfo(config, "command line", 1, 1)
+template gCmdLineInfo*(): untyped = newLineInfo(config, AbsoluteFile"command line", 1, 1)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   var cmd, arg: string

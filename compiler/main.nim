@@ -19,7 +19,7 @@ import
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   docgen2, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs, tables, rod, lineinfos
+  modulegraphs, tables, rod, lineinfos, pathutils
 
 from magicsys import resetSysTypes
 
@@ -30,8 +30,8 @@ proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
   registerPass g, semPass
 
-proc writeDepsFile(g: ModuleGraph; project: string) =
-  let f = open(changeFileExt(project, "deps"), fmWrite)
+proc writeDepsFile(g: ModuleGraph; project: AbsoluteFile) =
+  let f = open(changeFileExt(project, "deps").string, fmWrite)
   for m in g.modules:
     if m != nil:
       f.writeLine(toFullPath(g.config, m.position.FileIndex))
@@ -47,8 +47,9 @@ proc commandGenDepend(graph: ModuleGraph) =
   let project = graph.config.projectFull
   writeDepsFile(graph, project)
   generateDot(graph, project)
-  execExternalProgram(graph.config, "dot -Tpng -o" & changeFileExt(project, "png") &
-      ' ' & changeFileExt(project, "dot"))
+  execExternalProgram(graph.config, "dot -Tpng -o" &
+      changeFileExt(project, "png").string &
+      ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
   graph.config.errorMax = high(int)  # do not stop after first error
@@ -126,7 +127,7 @@ proc commandEval(graph: ModuleGraph; exp: string) =
     makeStdinModule(graph))
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
-  var f = addFileExt(mainCommandArg(config), NimExt)
+  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
@@ -140,7 +141,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
       if tok.tokType == tkEof: break
     closeLexer(L)
   else:
-    rawMessage(config, errGenerated, "cannot open file: " & f)
+    rawMessage(config, errGenerated, "cannot open file: " & f.string)
 
 const
   PrintRopeCacheStats = false
@@ -231,11 +232,11 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in conf.searchPaths: libpaths.elems.add(%dir)
+      for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
 
       var dumpdata = % [
         (key: "version", val: %VersionAsString),
-        (key: "project_path", val: %conf.projectFull),
+        (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: libpaths)
       ]
@@ -247,7 +248,7 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
-      for it in conf.searchPaths: msgWriteln(conf, it)
+      for it in conf.searchPaths: msgWriteln(conf, it.string)
   of "check":
     conf.cmd = cmdCheck
     commandCheck(graph)

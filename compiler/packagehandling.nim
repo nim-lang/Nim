@@ -41,10 +41,10 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     dec parents
     if parents <= 0: break
 
-proc withPackageName*(conf: ConfigRef; path: string): string =
-  let x = getPackageName(conf, path)
+proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
+  let x = getPackageName(conf, path.string)
   if x.len == 0:
     result = path
   else:
     let (p, file, ext) = path.splitFile
-    result = (p / (x & '_' & file)) & ext
+    result = p / RelativeFile((x & '_' & file) & ext)
