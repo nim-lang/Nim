@@ -68,6 +68,8 @@ else:
     toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+  proc `&=`(c: var MD5Context, r: Rope) =
+    for l in leaves(r): md5Update(c, l, l.len)
   proc `&=`(c: var MD5Context, i: BiggestInt) =
     md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 
@@ -181,11 +183,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
-      #if "Future:" in t.sym.name.s and t.typeInst == nil:
-      #  writeStackTrace()
-      #  echo "yes ", t.sym.name.s
-      #  #quit 1
-      if CoOwnerSig in flags:
+      if {sfCompilerProc} * t.sym.flags != {}:
+        doAssert t.sym.loc.r != nil
+        # The user has set a specific name for this type
+        c &= t.sym.loc.r
+      elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
