@@ -585,7 +585,9 @@ proc pragmaLine(c: PContext, n: PNode) =
       else:
         # XXX check if paths are properly resolved this way:
         let dir = toFullPath(c.config, n.info).splitFile.dir
-        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / RelativeFile(x.strVal))
+        let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
+                  else: RelativeFile(x.strVal)
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
