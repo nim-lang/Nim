@@ -1237,6 +1237,8 @@ proc cmp*[T](x, y: T): int {.procvar.} =
 
 proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## Compare proc for strings. More efficient than the generic version.
+  ## **Note**: The precise result values depend on the used C runtime library and
+  ## can differ between operating systems!
 
 proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
   magic: "ArrToSeq", nosideeffect.}
