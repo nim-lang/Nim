@@ -231,8 +231,17 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   else: resOptions = resOptions - op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
-  if isTurnedOn(c, n): incl(c.module.flags, flag)
-  else: excl(c.module.flags, flag)
+  if isTurnedOn(c, n):
+    incl(c.module.flags, flag)
+    c.features.incl codeReordering
+  else:
+    excl(c.module.flags, flag)
+    # c.features.excl codeReordering
+
+  # deprecated as of 0.18.1
+  message(c.config, n.info, warnDeprecated,
+          "use {.experimental: \"codeReordering.\".} instead; " &
+          (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}"))
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
@@ -351,7 +360,13 @@ proc processExperimental(c: PContext; n: PNode) =
     case n[1].kind
     of nkStrLit, nkRStrLit, nkTripleStrLit:
       try:
-        c.features.incl parseEnum[Feature](n[1].strVal)
+        let feature = parseEnum[Feature](n[1].strVal)
+        c.features.incl feature
+        if feature == codeReordering:
+          if not isTopLevel(c):
+              localError(c.config, n.info,
+                         "Code reordering experimental pragma only valid at toplevel")
+          c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -817,7 +832,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
-      of wReorder: pragmaNoForward(c, it, sfReorder)
+      of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)

@@ -121,7 +121,8 @@ type
     notnil,
     dynamicBindSym,
     forLoopMacros,
-    caseStmtMacros
+    caseStmtMacros,
+    codeReordering,
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
