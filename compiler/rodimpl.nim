@@ -11,7 +11,7 @@
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion
+  btrees, trees, condsyms, nversion, pathutils
 
 ## Todo:
 ## - Dependency computation should use *signature* hashes in order to
@@ -796,7 +796,7 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
                        flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
-        extccomp.addExternalFileToLink(g.config, n[1].strVal)
+        extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)
       of "passl":
         extccomp.addLinkOption(g.config, n[1].strVal)
       of "passc":

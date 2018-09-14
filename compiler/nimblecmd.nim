@@ -10,9 +10,9 @@
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
 import parseutils, strutils, strtabs, os, options, msgs, sequtils,
-  lineinfos
+  lineinfos, pathutils
 
-proc addPath*(conf: ConfigRef; path: string, info: TLineInfo) =
+proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   if not conf.searchPaths.contains(path):
     conf.searchPaths.insert(path, 0)
 
@@ -112,9 +112,9 @@ proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
     if not path.isAbsolute():
       path = p / path
 
-  if not contains(conf.searchPaths, path):
+  if not contains(conf.searchPaths, AbsoluteDir path):
     message(conf, info, hintPath, path)
-    conf.lazyPaths.insert(path, 0)
+    conf.lazyPaths.insert(AbsoluteDir path, 0)
 
 proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
@@ -126,9 +126,9 @@ proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   for p in packages.chosen:
     addNimblePath(conf, p, info)
 
-proc nimblePath*(conf: ConfigRef; path: string, info: TLineInfo) =
-  addPathRec(conf, path, info)
-  addNimblePath(conf, path, info)
+proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
+  addPathRec(conf, path.string, info)
+  addNimblePath(conf, path.string, info)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion

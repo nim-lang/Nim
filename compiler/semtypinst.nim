@@ -367,8 +367,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
         # need to look into this issue later
         assert newbody.kind in {tyRef, tyPtr}
-        assert newbody.lastSon.typeInst == nil
-        newbody.lastSon.typeInst = result
+        if newbody.lastSon.typeInst != nil:
+          #internalError(cl.c.config, cl.info, "ref already has a 'typeInst' field")
+          discard
+        else:
+          newbody.lastSon.typeInst = result
     cl.c.typesWithOps.add((newbody, result))
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):

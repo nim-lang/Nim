@@ -38,16 +38,17 @@ script:
   - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
-  - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
-  - nimble install jester@#head -y
-  - nimble install niminst
+  #- nimble install zip -y
+  #- nimble install opengl
+  #- nimble install sdl1
+  #- nimble install jester@#head -y
+  #- nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
-  - ./koch web
+  - ./koch docs
   - ./koch csource
   - ./koch nimsuggest
   - nim c -r nimsuggest/tester
+  - nim c -r nimdoc/tester

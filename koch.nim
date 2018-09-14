@@ -23,6 +23,8 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   os, strutils, parseopt, osproc, streams
 
+import tools / kochdocs
+
 const VersionAsString = system.NimVersion
 
 const
@@ -49,9 +51,7 @@ Boot options:
                            (not needed on Windows)
 
 Commands for core developers:
-  web [options]            generates the website and the full documentation
-                           (see `nimweb.nim` for cmd line options)
-  website [options]        generates only the website
+  docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
@@ -67,13 +67,6 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-const gaCode = " --googleAnalytics:UA-48159761-1"
-
-proc exe(f: string): string =
-  result = addFileExt(f, ExeExt)
-  when defined(windows):
-    result = result.replace('/','\\')
-
 template withDir(dir, body) =
   let old = getCurrentDir()
   try:
@@ -81,43 +74,6 @@ template withDir(dir, body) =
     body
   finally:
     setCurrentdir(old)
-
-proc findNim(): string =
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
-  for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
-  # assume there is a symlink to the exe or something:
-  return nim
-
-proc exec(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  let prevPath = getEnv("PATH")
-  if additionalPath.len > 0:
-    var absolute = additionalPATH
-    if not absolute.isAbsolute:
-      absolute = getCurrentDir() / absolute
-    echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
-  echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPath)
-
-proc nimexec(cmd: string) =
-  exec findNim() & " " & cmd
-
-proc execCleanPath(cmd: string,
-                   additionalPath = ""; errorcode: int = QuitFailure) =
-  # simulate a poor man's virtual environment
-  let prevPath = getEnv("PATH")
-  when defined(windows):
-    let CleanPath = r"$1\system32;$1;$1\System32\Wbem" % getEnv"SYSTEMROOT"
-  else:
-    const CleanPath = r"/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin"
-  putEnv("PATH", CleanPath & PathSep & additionalPath)
-  echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
-  putEnv("PATH", prevPath)
 
 proc testUnixInstall() =
   let oldCurrentDir = getCurrentDir()
@@ -136,7 +92,7 @@ proc testUnixInstall() =
       execCleanPath("./bin/nim c koch.nim")
       execCleanPath("./koch boot -d:release", destDir / "bin")
       # check the docs build:
-      execCleanPath("./koch web", destDir / "bin")
+      execCleanPath("./koch docs", destDir / "bin")
       # check nimble builds:
       execCleanPath("./koch tools")
       # check the tests work:
@@ -210,7 +166,7 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler --nilseqs:on " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -295,18 +251,19 @@ proc install(args: string) =
   geninstall()
   exec("sh ./install.sh $#" % args)
 
-proc web(args: string) =
-  nimexec("js tools/dochack/dochack.nim")
-  nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
-       [args, VersionAsString])
+when false:
+  proc web(args: string) =
+    nimexec("js tools/dochack/dochack.nim")
+    nimexec("cc -r tools/nimweb.nim $# web/website.ini --putenv:nimversion=$#" %
+        [args, VersionAsString])
 
-proc website(args: string) =
-  nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
-       [args, VersionAsString])
+  proc website(args: string) =
+    nimexec("cc -r tools/nimweb.nim $# --website web/website.ini --putenv:nimversion=$#" %
+        [args, VersionAsString])
 
-proc pdf(args="") =
-  exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-       [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
+  proc pdf(args="") =
+    exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
+        [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
@@ -429,7 +386,7 @@ proc winRelease*() =
   # anymore!
   # Build -docs file:
   when true:
-    web(gaCode)
+    buildDocs(gaCode)
     withDir "web/upload/" & VersionAsString:
       exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
     overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
@@ -553,14 +510,11 @@ when isMainModule:
     case normalize(op.key)
     of "boot": boot(op.cmdLineRest)
     of "clean": clean(op.cmdLineRest)
-    of "web": web(op.cmdLineRest)
-    of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
-    of "json2": web("--json2 " & op.cmdLineRest)
-    of "website": website(op.cmdLineRest & gaCode)
-    of "web0":
+    of "doc", "docs": buildDocs(op.cmdLineRest)
+    of "doc0", "docs0":
       # undocumented command for Araq-the-merciful:
-      web(op.cmdLineRest & gaCode)
-    of "pdf": pdf()
+      buildDocs(op.cmdLineRest & gaCode)
+    of "pdf": buildPdfDoc(op.cmdLineRest, "doc/pdf")
     of "csource", "csources": csource(op.cmdLineRest)
     of "zip": zip(op.cmdLineRest)
     of "xz": xz(op.cmdLineRest)

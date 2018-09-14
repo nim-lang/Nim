@@ -11,7 +11,8 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos
+  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos,
+  pathutils
 
 from modulegraphs import ModuleGraph
 
@@ -38,17 +39,17 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, toFullPath(graph.config, FileIndex g.module.position), HtmlExt, useWarning)
+    writeOutput(g.doc, useWarning)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutputJson(g.doc, toFullPath(graph.config, FileIndex g.module.position), ".json", useWarning)
+    writeOutputJson(g.doc, useWarning)
 
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    generateDoc(g.doc, n)
+    generateDoc(g.doc, n, n)
 
 proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n
@@ -60,7 +61,8 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(toFullPath(graph.config, FileIndex module.position), graph.cache, graph.config)
+  var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
+      graph.cache, graph.config)
   d.hasToc = true
   g.doc = d
   result = g

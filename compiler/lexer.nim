@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, lineinfos
+  wordrecg, lineinfos, pathutils
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -232,7 +232,7 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
     lex.previousToken.fileIndex = fileIdx
   lex.config = config
 
-proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
+proc openLexer*(lex: var TLexer, filename: AbsoluteFile, inputstream: PLLStream;
                 cache: IdentCache; config: ConfigRef) =
   openLexer(lex, fileInfoIdx(config, filename), inputstream, cache, config)
 

@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables
+import ropes, tables, pathutils
 
 const
   explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
@@ -179,8 +179,8 @@ const
 
 type
   TFileInfo* = object
-    fullPath*: string          # This is a canonical full filesystem path
-    projPath*: string          # This is relative to the project's root
+    fullPath*: AbsoluteFile    # This is a canonical full filesystem path
+    projPath*: RelativeFile    # This is relative to the project's root
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
@@ -191,7 +191,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: string         # the file that is actually read into memory
+    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file

@@ -1,10 +1,17 @@
+#
+#
+#           The Nim Compiler
+#        (c) Copyright 2018 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 ## Helpers for binaries that use compiler passes, eg: nim, nimsuggest, nimfix
 
-# TODO: nimfix should use this; currently out of sync
-
 import
-  compiler/[options, idents, nimconf, scriptconfig, extccomp, commands, msgs, lineinfos, modulegraphs, condsyms],
-  std/os
+  options, idents, nimconf, scriptconfig, extccomp, commands, msgs,
+  lineinfos, modulegraphs, condsyms, os, pathutils
 
 type
   NimProg* = ref object
@@ -21,27 +28,27 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
   if self.supportsStdinFile and conf.projectName == "-":
     conf.projectName = "stdinfile"
-    conf.projectFull = "stdinfile"
-    conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    conf.projectFull = AbsoluteFile "stdinfile"
+    conf.projectPath = AbsoluteDir getCurrentDir()
     conf.projectIsStdin = true
   elif conf.projectName != "":
     try:
-      conf.projectFull = canonicalizePath(conf, conf.projectName)
+      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
     except OSError:
-      conf.projectFull = conf.projectName
+      conf.projectFull = AbsoluteFile conf.projectName
     let p = splitFile(conf.projectFull)
-    let dir = if p.dir.len > 0: p.dir else: getCurrentDir()
-    conf.projectPath = canonicalizePath(conf, dir)
+    let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
     conf.projectName = p.name
   else:
-    conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
 proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef): bool =
   loadConfigs(DefaultConfig, cache, conf) # load all config files
   if self.suggestMode:
     conf.command = "nimsuggest"
 
-  proc runNimScriptIfExists(path: string)=
+  proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
       runNimScript(cache, path, freshDefines = false, conf)
 
@@ -53,8 +60,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
     runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
 
   if optSkipParentConfigFiles notin conf.globalOptions:
-    for dir in parentDirs(conf.projectPath, fromRoot = true, inclusive = false):
-      runNimScriptIfExists(dir / DefaultConfigNims)
+    for dir in parentDirs(conf.projectPath.string, fromRoot = true, inclusive = false):
+      runNimScriptIfExists(AbsoluteDir(dir) / DefaultConfigNims)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     runNimScriptIfExists(conf.projectPath / DefaultConfigNims)
@@ -63,10 +70,10 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
     if not self.suggestMode:
       runNimScriptIfExists(scriptFile)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if fileExists(scriptFile) and scriptFile.cmpPaths(conf.projectFull) == 0:
+      if fileExists(scriptFile) and scriptFile == conf.projectFull:
         return false
     else:
-      if scriptFile.cmpPaths(conf.projectFull) != 0:
+      if scriptFile != conf.projectFull:
         runNimScriptIfExists(scriptFile)
       else:
         # 'nimsuggest foo.nims' means to just auto-complete the NimScript file

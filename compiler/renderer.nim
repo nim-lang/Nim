@@ -15,11 +15,12 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TTokType
     length*: int16
+    sym*: PSym
 
   TRenderTokSeq* = seq[TRenderTok]
   TSrcGen* = object
@@ -105,11 +106,12 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.inGenericParams = false
   g.config = config
 
-proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
+proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
   var length = len(g.tokens)
   setLen(g.tokens, length + 1)
   g.tokens[length].kind = kind
   g.tokens[length].length = int16(len(s))
+  g.tokens[length].sym = sym
   add(g.buf, s)
 
 proc addPendingNL(g: var TSrcGen) =
@@ -165,11 +167,11 @@ proc dedent(g: var TSrcGen) =
     dec(g.pendingNL, IndentWidth)
     dec(g.lineLen, IndentWidth)
 
-proc put(g: var TSrcGen, kind: TTokType, s: string) =
+proc put(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
     if len(s) > 0:
-      addTok(g, kind, s)
+      addTok(g, kind, s, sym)
       inc(g.lineLen, len(s))
   else:
     g.pendingWhitespace = s.len
@@ -836,7 +838,7 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  put(g, t, s)
+  put(g, t, s, if n.kind == nkSym and renderSyms in g.flags: n.sym else: nil)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
     when defined(debugMagics):
       put(g, tkIntLit, $n.sym.id & $n.sym.magic)
@@ -1541,3 +1543,9 @@ proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =
     inc(r.idx)
   else:
     kind = tkEof
+
+proc getTokSym*(r: TSrcGen): PSym =
+  if r.idx > 0 and r.idx <= len(r.tokens):
+    result = r.tokens[r.idx-1].sym
+  else:
+    result = nil

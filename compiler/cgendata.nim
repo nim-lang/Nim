@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos
+  tables, ndi, lineinfos, pathutils
 
 from modulegraphs import ModuleGraph
 
@@ -136,8 +136,8 @@ type
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
     module*: PSym
-    filename*: string
-    cfilename*: string        # filename of the module (including path,
+    filename*: AbsoluteFile
+    cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
