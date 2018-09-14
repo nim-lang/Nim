@@ -113,6 +113,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     if castDest.kind notin IntegralTypes+{tyRange}:
       result = convNotNeedeed
     return
+  # Save for later
   var d = skipTypes(castDest, abstractVar)
   var s = src
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
@@ -135,7 +136,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
     of isNone, isGeneric:
-      if not compareTypes(castDest, src, dcEqIgnoreDistinct):
+      if not compareTypes(castDest.skipTypes(abstractVar), src, dcEqIgnoreDistinct):
         result = convNotLegal
     else:
       discard
@@ -917,7 +918,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
   let isPush = hintExtendedContext in c.config.notes
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
-  discardCheck(c, result)
+  discardCheck(c, result, {})
   if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
@@ -1529,7 +1530,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
-      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.p.owner))
+      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.p.owner), {})
     else:
       a = semExprWithType(c, a, {efLValue})
   else:
@@ -1613,7 +1614,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    discardCheck(c, result)
+    discardCheck(c, result, {})
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
@@ -1989,7 +1990,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     var x = n.lastSon
     if x.kind == nkDo: x = x.sons[bodyPos]
     inc c.inParallelStmt
-    result.sons[1] = semStmt(c, x)
+    result.sons[1] = semStmt(c, x, {})
     dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
@@ -2240,7 +2241,7 @@ proc isTupleType(n: PNode): bool =
 
 include semobjconstr
 
-proc semBlock(c: PContext, n: PNode): PNode =
+proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   inc(c.p.nestedBlockCounter)
   checkSonsLen(n, 2, c.config)
@@ -2252,7 +2253,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
     n.sons[0] = newSymNode(labl, n.sons[0].info)
     suggestSym(c.config, n.sons[0].info, labl, c.graph.usageSym)
     styleCheckDef(c.config, labl)
-  n.sons[1] = semExpr(c, n.sons[1])
+  n.sons[1] = semExpr(c, n.sons[1], flags)
   n.typ = n.sons[1].typ
   if isEmptyType(n.typ): n.kind = nkBlockStmt
   else: n.kind = nkBlockExpr
@@ -2497,7 +2498,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkSonsLen(n, 1, c.config)
     n.sons[0] = semExpr(c, n.sons[0], flags)
   of nkCast: result = semCast(c, n)
-  of nkIfExpr, nkIfStmt: result = semIf(c, n)
+  of nkIfExpr, nkIfStmt: result = semIf(c, n, flags)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv:
     checkSonsLen(n, 2, c.config)
     considerGenSyms(c, n)
@@ -2518,7 +2519,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     discard
   of nkStaticExpr: result = semStaticExpr(c, n[0])
   of nkAsgn: result = semAsgn(c, n)
-  of nkBlockStmt, nkBlockExpr: result = semBlock(c, n)
+  of nkBlockStmt, nkBlockExpr: result = semBlock(c, n, flags)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)
   of nkRaiseStmt: result = semRaise(c, n)
   of nkVarSection: result = semVarOrLet(c, n, skVar)
@@ -2526,11 +2527,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkConstSection: result = semConst(c, n)
   of nkTypeSection: result = semTypeSection(c, n)
   of nkDiscardStmt: result = semDiscard(c, n)
-  of nkWhileStmt: result = semWhile(c, n)
-  of nkTryStmt: result = semTry(c, n)
+  of nkWhileStmt: result = semWhile(c, n, flags)
+  of nkTryStmt: result = semTry(c, n, flags)
   of nkBreakStmt, nkContinueStmt: result = semBreakOrContinue(c, n)
-  of nkForStmt, nkParForStmt: result = semFor(c, n)
-  of nkCaseStmt: result = semCase(c, n)
+  of nkForStmt, nkParForStmt: result = semFor(c, n, flags)
+  of nkCaseStmt: result = semCase(c, n, flags)
   of nkReturnStmt: result = semReturn(c, n)
   of nkUsingStmt: result = semUsing(c, n)
   of nkAsmStmt: result = semAsm(c, n)

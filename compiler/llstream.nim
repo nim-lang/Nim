@@ -87,9 +87,9 @@ proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
-  result = inTripleString or
-      line[0] == ' ' or
-      line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
+  result = inTripleString or line.len > 0 and (
+        line[0] == ' ' or
+        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
   var i = 0

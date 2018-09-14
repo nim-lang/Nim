@@ -240,7 +240,7 @@ else: # bootstrapping substitute
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
     ## accepts node of kind nnkSym and returns its owner's symbol.
-    ## result is also mnde of kind nnkSym if owner exists otherwise 
+    ## result is also mnde of kind nnkSym if owner exists otherwise
     ## nnkNilLit is returned
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
@@ -977,7 +977,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   ##
   result = newNimNode(nnkIfStmt)
   for i in branches:
-    result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
+    result.add(newTree(nnkElifBranch, i.cond, i.body))
 
 proc newEnum*(name: NimNode, fields: openArray[NimNode],
               public, pure: bool): NimNode {.compileTime.} =

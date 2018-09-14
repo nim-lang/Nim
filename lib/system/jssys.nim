@@ -182,12 +182,10 @@ proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
   var ln = `c`.length;
-  var result = new Array(ln + 1);
-  var i = 0;
-  for (; i < ln; ++i) {
+  var result = new Array(ln);
+  for (var i = 0; i < ln; ++i) {
     result[i] = `c`.charCodeAt(i);
   }
-  result[i] = 0; // terminating zero
   return result;
   """.}
 
@@ -225,13 +223,12 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
     }
     ++r;
   }
-  result[r] = 0; // terminating zero
   return result;
   """.}
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
-  var len = `s`.length-1;
+  var len = `s`.length;
   var asciiPart = new Array(len);
   var fcc = String.fromCharCode;
   var nonAsciiPart = null;
@@ -262,10 +259,7 @@ proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   asm """
-    var result = new Array(`len`+1);
-    result[0] = 0;
-    result[`len`] = 0;
-    return result;
+    return new Array(`len`);
   """
 
 proc SetCard(a: int): int {.compilerproc, asmNoStackFrame.} =
@@ -323,7 +317,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
     if (!`b`) return 1;
-    for (var i = 0; i < `a`.length - 1 && i < `b`.length - 1; i++) {
+    for (var i = 0; i < `a`.length && i < `b`.length; i++) {
       var result = `a`[i] - `b`[i];
       if (result != 0) return result;
     }
@@ -651,9 +645,7 @@ proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
   return true
 
 proc addChar(x: string, c: char) {.compilerproc, asmNoStackFrame.} =
-  asm """
-    `x`[`x`.length-1] = `c`; `x`.push(0);
-  """
+  asm "`x`.push(`c`);"
 
 {.pop.}
 

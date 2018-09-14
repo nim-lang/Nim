@@ -1552,7 +1552,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     defaultImpl()
   else:
     when defined(js):
-      {.emit: "`x`[`x`_Idx].splice(`i`, 1);".}
+      {.emit: "`x`.splice(`i`, 1);".}
     else:
       defaultImpl()
 
@@ -1574,7 +1574,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   else:
     when defined(js):
       var it : T
-      {.emit: "`x`[`x`_Idx].splice(`i`, 0, `it`);".}
+      {.emit: "`x`.splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
@@ -2741,12 +2741,12 @@ type
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
-      var len = `x`.length-1;
+      if (`x` === null) { `x` = []; }
+      var off = `x`.length;
+      `x`.length += `y`.length;
       for (var i = 0; i < `y`.length; ++i) {
-        `x`[len] = `y`.charCodeAt(i);
-        ++len;
+        `x`[off+i] = `y`.charCodeAt(i);
       }
-      `x`[len] = 0
     """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
@@ -3784,8 +3784,11 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    if not cond:
-      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
+    # here, regardless of --excessiveStackTrace
+    {.line: instantiationInfo(fullPaths = true).}:
+      if not cond:
+        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
