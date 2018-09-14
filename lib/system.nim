@@ -3127,8 +3127,8 @@ when not defined(JS): #and not defined(nimscript):
 
     proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
                   benign.}
-      ## reads a line of text from the file `f` into `line`. `line` must not be
-      ## ``nil``! May throw an IO exception.
+      ## reads a line of text from the file `f` into `line`. May throw an IO
+      ## exception.
       ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
       ## character(s) are not part of the returned string. Returns ``false``
       ## if the end of the file has been reached, ``true`` otherwise. If
