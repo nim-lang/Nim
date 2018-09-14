@@ -173,9 +173,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
-      assert t.typeInst.kind == tyGenericInst
-      for i in countup(0, sonsLen(t.typeInst) - 2):
-        c.hashType t.typeInst.sons[i], flags
+      # prevent against infinite recursions here, see bug #8883:
+      let inst = t.typeInst
+      t.typeInst = nil
+      assert inst.kind == tyGenericInst
+      for i in countup(0, inst.len - 2):
+        c.hashType inst.sons[i], flags
+      t.typeInst = inst
       return
     c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
