@@ -145,15 +145,8 @@ proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
 
   # Use the currently reserved space for a first try
-  var sp = line.string.len
-  if sp == 0:
-    sp = 80
-    line.string.setLen(sp)
-  else:
-    when not defined(nimscript):
-      sp = cint(cast[PGenericSeq](line.string).space)
-    else:
-      line.string.setLen(sp + 1)
+  var sp = max(line.string.len, 80)
+  line.string.setLen(sp)
 
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
