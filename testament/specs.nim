@@ -78,7 +78,7 @@ proc parseTargets*(value: string): set[Target] =
     of "js": result.incl(targetJS)
     else: echo "target ignored: " & v
 
-proc parseSpec*(filename: string, action = actionCompile, targets = {targetC}): Spec =
+proc parseSpec*(filename: string, action = actionCompile, targets: set[Target] = {}): Spec =
   specDefaults(result)
   result.file = filename
   result.action = action
