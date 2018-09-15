@@ -35,8 +35,13 @@ proc `$`*(t: typedesc): string =
   ## An alias for `name`.
   name(t)
 
-proc arity*(t: typedesc): int {.magic: "TypeTrait".}
-  ## Returns the arity of the given type
+proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
+  ## Returns the arity of the given type. This is the number of "type" components or
+  ## the number of generic parameters a given type ``t`` has.
+  runnableExamples:
+    assert arity(seq[string]) == 1
+    assert arity(array[3, int]) == 2
+    assert arity((int, int, float, string)) == 4
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## Accepts an instantiated generic type and returns its
