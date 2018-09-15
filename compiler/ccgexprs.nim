@@ -1596,10 +1596,11 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, a, b, {})
   genAssignment(p, b, tmp, {})
 
-proc rdSetElemLoc(conf: ConfigRef; a: TLoc, setType: PType): Rope =
+proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType): Rope =
   # read a location of an set element; it may need a subtraction operation
   # before the set operation
   result = rdCharLoc(a)
+  let setType = typ.skipTypes(abstractPtrs)
   assert(setType.kind == tySet)
   if firstOrd(conf, setType) != 0:
     result = "($1- $2)" % [result, rope(firstOrd(conf, setType))]
