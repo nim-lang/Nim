@@ -242,6 +242,7 @@ type
     writelnHook*: proc (output: string) {.closure.}
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure.}
+    cppCustomNamespace*: string
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)

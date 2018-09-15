@@ -735,7 +735,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nep1":
     processOnOffSwitchG(conf, {optCheckNep1}, arg, pass, info)
   of "cppcompiletonamespace":
-    expectNoArg(conf, switch, arg, pass, info)
+    if conf != nil:
+      if arg != "":
+        conf.cppCustomNamespace = arg
+      else:
+        conf.cppCustomNamespace = "Nim"
     incl conf.globalOptions, optUseNimNamespace
     defineSymbol(conf.symbols, "cppCompileToNamespace")
   else:
