@@ -6,7 +6,6 @@ import algorithm, compiler/nodejs, os, osproc, specs, streams, strutils,
 const
   targetToExt*: array[Target, string] = ["c", "cpp", "m", "js"]
   targetToCmd*: array[Target, string] = ["c", "cpp", "objc", "js"]
-  cmdTemplate: string = "$prefix $target --lib:lib --hints:on -d:testing $options $file"
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
@@ -127,7 +126,7 @@ proc compilerOutputTests(res: var Result) =
     res.givenMsg = res.given.nimout.strip
 
 proc prefixCmdTemplate(cmd: string): string =
-  if cmd.len < 4: cmdTemplate
+  if cmd.len < 4: cmdTemplate()
   elif cmd[0..<3] == "nim": "$prefix" & cmd[3..^1]
   else: cmd
 
@@ -233,14 +232,18 @@ proc callRun(test: Instance, prefix: string, options: string): TestData =
     return
 
   let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-  var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+  try:
+    var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
 
-  # Treat all failure codes from nodejs as 1. Older versions of nodejs used
-  # to return other codes, but for us it is sufficient to know that it's not 0.
-  if exitCode != 0: exitCode = 1
+    # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+    # to return other codes, but for us it is sufficient to know that it's not 0.
+    if exitCode != 0: exitCode = 1
 
-  result.outp = buf.string
-  result.exitCode = exitCode
+    result.outp = buf.string
+    result.exitCode = exitCode
+  except:
+    result.msg = getCurrentExceptionMsg()
+    result.res = reException
 
 proc callRunC(test: Instance, prefix: string, options: string): TestData =
   # runs C code. Doesn't support any specs, just goes by exit code.
@@ -250,8 +253,12 @@ proc callRunC(test: Instance, prefix: string, options: string): TestData =
     return cdata
 
   let exeFile = changeFileExt(test.filename, ExeExt)
-  var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-  if exitCode != 0: result.res = reExitCodesDiffer
+  try:
+    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
+    if exitCode != 0: result.res = reExitCodesDiffer
+  except:
+    result.msg = getCurrentExceptionMsg()
+    result.res = reException
 
 proc run*(test: Instance, prefix: string, i, n: int): Result =
   result.inst = test
@@ -310,14 +317,17 @@ proc run*(test: Instance, prefix: string, i, n: int): Result =
     setResult(result, "", result.given.msg, result.given.res)
 
   of actionExec:
-    echo test.options
-    let (outp, errC) = execCmdEx(test.options.strip())
+    try:
+      let (outp, errC) = execCmdEx(test.options.strip())
 
-    if errC == 0:
-      result.given.res = reSuccess
-    else:
-      result.given.res = reExitCodesDiffer
-      result.given.msg = outp.string
+      if errC == 0:
+        result.given.res = reSuccess
+      else:
+        result.given.res = reExitCodesDiffer
+        result.given.msg = outp.string
+    except:
+      result.given.msg = getCurrentExceptionMsg()
+      result.given.res = reException
 
     setResult(result, "", result.given.msg, result.given.res)
 

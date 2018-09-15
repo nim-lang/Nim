@@ -29,6 +29,7 @@ type
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
+    reException,        # exception while running test
     reInstallFailed     # package installation failed
     reBuildFailed       # package building failed
     reIgnored,          # test is ignored
