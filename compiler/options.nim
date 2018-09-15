@@ -78,7 +78,6 @@ type                          # please make sure we have under 32 options
     optListFullPaths
     optNoNimblePath
     optDynlibOverrideAll
-    optUseNimNamespace
 
   TGlobalOptions* = set[TGlobalOption]
 

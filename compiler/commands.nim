@@ -735,13 +735,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "nep1":
     processOnOffSwitchG(conf, {optCheckNep1}, arg, pass, info)
   of "cppcompiletonamespace":
-    if conf != nil:
-      if arg != "":
-        conf.cppCustomNamespace = arg
-      else:
-        conf.cppCustomNamespace = "Nim"
-    incl conf.globalOptions, optUseNimNamespace
-    defineSymbol(conf.symbols, "cppCompileToNamespace")
+    if arg.len > 0:
+      conf.cppCustomNamespace = arg
+    else:
+      conf.cppCustomNamespace = "Nim"
+    defineSymbol(conf.symbols, "cppCompileToNamespace", conf.cppCustomNamespace)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

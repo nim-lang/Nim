@@ -1038,7 +1038,7 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if optUseNimNamespace in conf.globalOptions: 
+  if conf.cppCustomNamespace.len > 0: 
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
@@ -1214,11 +1214,11 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin m.config.globalOptions:
-    if optUseNimNamespace in m.config.globalOptions:
+    if m.config.cppCustomNamespace.len > 0:
       m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
 
     appcg(m, m.s[cfsProcs], otherMain, [])
-    if optUseNimNamespace in m.config.globalOptions: m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
+    if m.config.cppCustomNamespace.len > 0: m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
 proc getSomeInitName(m: PSym, suffix: string): Rope =
   assert m.kind == skModule
@@ -1340,10 +1340,10 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders:
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders:
       result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
@@ -1474,13 +1474,13 @@ proc writeHeader(m: BModule) =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):
     rawMessage(m.config, errCannotOpenFile, m.filename.string)
