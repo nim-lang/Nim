@@ -52,11 +52,11 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ##   seq[int].genericHead[float] will be seq[float]
   ##
   ## A compile-time error will be produced if the supplied type
-  ## is not generic
+  ## is not generic.
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## This trait is similar to `genericHead`, but instead of producing
-  ## error for non-generic types, it will just return them unmodified
+  ## error for non-generic types, it will just return them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
