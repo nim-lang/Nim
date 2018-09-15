@@ -114,7 +114,7 @@ proc canon(x: string; result: var string; state: var int) =
       if d > 0: setLen(result, d-1)
     elif isDot(x, b):
       discard "discard the dot"
-    elif b[1] > b[0]:
+    elif b[1] >= b[0]:
       if result.len > 0 and result[^1] != DirSep:
         result.add DirSep
       result.add substr(x, b[0], b[1])
