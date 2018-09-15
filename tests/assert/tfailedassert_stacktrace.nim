@@ -1,13 +1,31 @@
 discard """
-  output: '''
-tfailedassert_stacktrace.nim(16) tfailedassert_stacktrace
-tfailedassert_stacktrace.nim(15) foo
-system.nim(3778)         failedAssertImpl
-system.nim(3771)         raiseAssert
-system.nim(2818)         sysFatal
-'''
+  output: '''true'''
 """
 
+const expected = """
+tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
+tfailedassert_stacktrace.nim(33) foo
+system.nim(*)         failedAssertImpl
+system.nim(*)         raiseAssert
+system.nim(*)         sysFatal"""
+
+proc tmatch(x, p: string): bool =
+  var i = 0
+  var k = 0
+  while i < p.len:
+    if p[i] == '*':
+      let oldk = k
+      while k < x.len and x[k] in {'0'..'9'}: inc k
+      # no digit skipped?
+      if oldk == k: return false
+      inc i
+    elif k < x.len and p[i] == x[k]:
+      inc i
+      inc k
+    else:
+      return false
+  while k < x.len and x[k] in {' ', '\L', '\C'}: inc k
+  result = i >= p.len and k >= x.len
 
 
 try:
@@ -16,4 +34,5 @@ try:
   foo()
 except AssertionError:
   let e = getCurrentException()
-  echo e.getStackTrace
+  let trace = e.getStackTrace
+  echo tmatch(trace, expected)
