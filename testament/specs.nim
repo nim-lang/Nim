@@ -7,63 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-import parseutils, strutils, os, osproc, streams, parsecfg
-
-
-var compilerPrefix* = "compiler" / "nim "
+import parseutils, strutils, os, osproc, streams, types, parsecfg
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 
 proc cmdTemplate*(): string =
-  compilerPrefix & "$target --lib:lib --hints:on -d:testing --nimblePath:tests/deps $options $file"
-
-type
-  TTestAction* = enum
-    actionCompile = "compile"
-    actionRun = "run"
-    actionReject = "reject"
-    actionRunNoSpec = "runNoSpec"
-  TResultEnum* = enum
-    reNimcCrash,     # nim compiler seems to have crashed
-    reMsgsDiffer,       # error messages differ
-    reFilesDiffer,      # expected and given filenames differ
-    reLinesDiffer,      # expected and given line numbers differ
-    reOutputsDiffer,
-    reExitcodesDiffer,
-    reInvalidPeg,
-    reCodegenFailure,
-    reCodeNotFound,
-    reExeNotFound,
-    reInstallFailed     # package installation failed
-    reBuildFailed       # package building failed
-    reIgnored,          # test is ignored
-    reSuccess           # test was successful
-  TTarget* = enum
-    targetC = "C"
-    targetCpp = "C++"
-    targetObjC = "ObjC"
-    targetJS = "JS"
-
-  TSpec* = object
-    action*: TTestAction
-    file*, cmd*: string
-    outp*: string
-    line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
-    exitCode*: int
-    msg*: string
-    ccodeCheck*: string
-    maxCodeSize*: int
-    err*: TResultEnum
-    substr*, sortoutput*: bool
-    targets*: set[TTarget]
-    nimout*: string
+  "$prefix $target --lib:lib --hints:on -d:testing --nimblePath:tests/deps $options $file"
 
 const
-  targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
-  targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
+  targetToExt*: array[Target, string] = ["c", "cpp", "m", "js"]
+  targetToCmd*: array[Target, string] = ["c", "cpp", "objc", "js"]
 
 when not declared(parseCfgBool):
   # candidate for the stdlib:
@@ -102,7 +56,7 @@ template parseSpecAux(fillResult: untyped) =
       fillResult
   close(p)
 
-proc specDefaults*(result: var TSpec) =
+proc specDefaults*(result: var Spec) =
   result.msg = ""
   result.outp = ""
   result.nimout = ""
@@ -115,7 +69,7 @@ proc specDefaults*(result: var TSpec) =
   result.tcolumn = 0
   result.maxCodeSize = 0
 
-proc parseTargets*(value: string): set[TTarget] =
+proc parseTargets*(value: string): set[Target] =
   for v in value.normalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
@@ -124,9 +78,11 @@ proc parseTargets*(value: string): set[TTarget] =
     of "js": result.incl(targetJS)
     else: echo "target ignored: " & v
 
-proc parseSpec*(filename: string): TSpec =
+proc parseSpec*(filename: string, action = actionCompile, targets = {targetC}): Spec =
   specDefaults(result)
   result.file = filename
+  result.action = action
+  result.targets = targets
   parseSpecAux:
     case normalize(e.key)
     of "action":
@@ -164,31 +120,28 @@ proc parseSpec*(filename: string): TSpec =
       result.nimout = e.value
     of "disabled":
       case e.value.normalize
-      of "y", "yes", "true", "1", "on": result.err = reIgnored
+      of "y", "yes", "true", "1", "on": result.res = reIgnored
       of "n", "no", "false", "0", "off": discard
       of "win", "windows":
-        when defined(windows): result.err = reIgnored
+        when defined(windows): result.res = reIgnored
       of "linux":
-        when defined(linux): result.err = reIgnored
+        when defined(linux): result.res = reIgnored
       of "bsd":
-        when defined(bsd): result.err = reIgnored
+        when defined(bsd): result.res = reIgnored
       of "macosx":
-        when defined(macosx): result.err = reIgnored
+        when defined(macosx): result.res = reIgnored
       of "unix":
-        when defined(unix): result.err = reIgnored
+        when defined(unix): result.res = reIgnored
       of "posix":
-        when defined(posix): result.err = reIgnored
+        when defined(posix): result.res = reIgnored
       of "travis":
-        if isTravis: result.err = reIgnored
+        if isTravis: result.res = reIgnored
       of "appveyor":
-        if isAppVeyor: result.err = reIgnored
+        if isAppVeyor: result.res = reIgnored
       else:
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
-      if e.value.startsWith("nim "):
-        result.cmd = compilerPrefix & e.value[4..^1]
-      else:
-        result.cmd = e.value
+      result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value
     of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
     of "target", "targets":

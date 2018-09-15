@@ -527,7 +527,7 @@ At the moment idetools support is still in development so the test
 suite is not integrated with the main test suite and you have to
 run it manually. First you have to compile the tester::
 
-	$ cd my/nim/checkout/tests
+	$ cd my/nim/checkout
 	$ nim c testament/caasdriver.nim
 
 Running the ``caasdriver`` without parameters will attempt to process
