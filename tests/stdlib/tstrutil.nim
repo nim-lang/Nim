@@ -309,5 +309,20 @@ assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
 
+# bug #8911
+when true:
+  static:
+    let a = ""
+    let a2 = a.replace("\n", "\\n")
+
+when true:
+  static:
+    let b = "b"
+    let b2 = b.replace("\n", "\\n")
+
+when true:
+  let c = ""
+  let c2 = c.replace("\n", "\\n")
+
 main()
 #OUT ha/home/a1xyz/usr/bin
