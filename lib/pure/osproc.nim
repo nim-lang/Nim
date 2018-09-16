@@ -902,7 +902,7 @@ elif not defined(useNimRtl):
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      if res != 0'i32: raiseOSError(OSErrorCode(res))
+      if res != 0'i32: raiseOSError(OSErrorCode(res), data.sysCommand)
 
       return pid
   else:

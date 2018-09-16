@@ -57,10 +57,10 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   ## the message ``unknown OS error`` will be used.
   var e: ref OSError; new(e)
   e.errorCode = errorCode.int32
-  if additionalInfo.len == 0:
-    e.msg = osErrorMsg(errorCode)
-  else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: '" & additionalInfo & "'"
+  e.msg = osErrorMsg(errorCode)
+  if additionalInfo.len > 0:
+    e.msg.add  "; Additional info: "
+    e.msg.addQuoted additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e
