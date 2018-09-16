@@ -193,11 +193,11 @@ proc dllTests(cat: Category, options: string): seq[Bundle] =
       bundle.add runBasicDLLTest(cat, options & " -d:release --gc:boehm")
   result.add bundle
 
-# ------------------------------ async tests ----------------------------------
+# ------------------------------ serisl tests ---------------------------------
 
-proc asyncTests(cat: Category, options: string): seq[Bundle] =
-  # Sadly, async tests can't be run in parallel because they open ports and
-  # therefore are prone to collisions
+proc serialTests(cat: Category, options: string): seq[Bundle] =
+  # Sadly, some tests can't be run in parallel because they open ports, depend
+  # on test order or other ugliness
   var bundle: Bundle
   for filename in os.walkFiles("tests" / cat.string / "t*.nim"):
     bundle.add expandSpec(cat, filename, options, parseSpec(filename))
@@ -557,8 +557,8 @@ proc categoryGen*(cat: Category, options: string): seq[Bundle] =
       result = jsTests(cat, options)
   of "dll":
     result = dllTests(cat, options)
-  of "async":
-    result = asyncTests(cat, options)
+  of "async", "osproc":
+    result = serialTests(cat, options)
   of "flags":
     result = flagTests(cat, options)
   of "gc":

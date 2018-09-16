@@ -10,7 +10,7 @@ const
 Command:
   all                         run all tests
   c|cat|category <category>   run all the tests of a certain category
-  r|run <test>                run single test file
+  r|run <test>                run all tests that contain the substring <test>
   html                        generate $1 from the database
 Arguments:
   arguments are passed to the compiler
@@ -117,13 +117,16 @@ when isMainModule:
 
   of "r", "run":
     let testName = p.key.string
+    let options = p.cmdLineRest.string
     filters.add(proc(run: Instance): bool = testName in run.id)
 
-    var d = splitPath(testName)
-    while d[0] != "tests": d = splitPath(d[0])
+    let parts = toSeq(parentDirs(testName))
+    if parts.len >= 2 and parts[0] == "tests":
+      let cat = parts[1].Category
+      generators.add(proc(): auto = categoryGen(cat, options))
+    else:
+      generators.add(proc(): auto = allGen(options))
 
-    let options = p.cmdLineRest.string
-    generators.add(proc(): auto = categoryGen(d[1].Category, options))
   of "html":
     generateHtml(resultsFile, optFailing)
     if optPrintResults:
@@ -134,11 +137,8 @@ when isMainModule:
 
   var tests = newSeq[Bundle]()
   for g in generators:
-    tests.add filter(g(), proc(x: auto): auto =
-      for f in filters:
-        if not any(x, f): return false
-      return true
-    )
+    tests.add map(g(), proc(b: Bundle): Bundle =
+      filter(b, proc(i: Instance): bool = allIt(filters, it(i))))
 
   let total = sum(map(tests) do (x: auto) -> int: x.len)
 
