@@ -964,7 +964,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                        sizeof(socketAddr).Socklen) != 0'i32:
+                           (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
         raiseOSError(osLastError())
 
   proc bindUnix*(socket: Socket, path: string) =
@@ -973,7 +973,7 @@ when defined(posix) or defined(nimdoc):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            sizeof(socketAddr).Socklen) != 0'i32:
+                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
         raiseOSError(osLastError())
 
 when defined(ssl):
