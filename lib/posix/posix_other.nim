@@ -410,7 +410,7 @@ else:
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
