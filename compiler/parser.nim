@@ -1517,7 +1517,7 @@ proc parseCase(p: var TParser): PNode =
   #|             | IND{=} ofBranches)
   var
     b: PNode
-    inElif= false
+    inElif = false
     wasIndented = false
   result = newNodeP(nkCaseStmt, p)
   getTok(p)
