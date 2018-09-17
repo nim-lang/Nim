@@ -399,6 +399,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
       of '+': special "plus"
       of '-': special "minus"
       of '/': special "slash"
+      of '\\': special "backslash"
       of '=': special "eq"
       of '<': special "lt"
       of '>': special "gt"
