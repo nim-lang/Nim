@@ -1275,7 +1275,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
-macro expandMacros*(body: typed): untyped =
+macro expandMacros*(body: typed): typed =
   ## Expands one level of macro - useful for debugging.
   ## Can be used to inspect what happens when a macro call is expanded,
   ## without altering its result.
@@ -1294,7 +1294,7 @@ macro expandMacros*(body: typed): untyped =
   ## will actually dump `x + y`, but at the same time will print at
   ## compile time the expansion of the ``dump`` macro, which in this
   ## case is ``debugEcho ["x + y", " = ", x + y]``.
-  template inner(x: untyped): untyped = x
+  macro inner(x: untyped): untyped = x
 
   result = getAst(inner(body))
   echo result.toStrLit
