@@ -1560,6 +1560,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.lastSon
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.config, c.p.resultSym != nil
+          # Make sure the type is valid for the result variable
+          typeAllowedCheck(c.config, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.sons[0] = rhsTyp
