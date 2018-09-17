@@ -741,6 +741,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc})
+
   case caseTyp.kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
@@ -749,10 +750,21 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     if caseStmtMacros in c.features:
       result = handleCaseStmtMacro(c, n)
-      if result != nil: return result
+      if result != nil:
+        return result
 
-    localError(c.config, n.info, errSelectorMustBeOfCertainTypes)
-    return
+    # Check if a converter can be applied here.
+    # The following code does what ``fitNode`` does but this way we can handle
+    # the type mismatch case
+    let allowed = sysTypeFromName(c.graph, n.info, "SomeNumber")
+    internalAssert allowed != nil
+    let converted = indexTypesMatch(c, allowed, caseTyp, n[0])
+    if converted == nil:
+      localError(c.config, n.info, errSelectorMustBeOfCertainTypes)
+      return
+
+    n.sons[0] = fitNodePostMatch(c, allowed, converted)
+
   for i in countup(1, sonsLen(n) - 1):
     var x = n.sons[i]
     when defined(nimsuggest):
