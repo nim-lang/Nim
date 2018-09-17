@@ -172,11 +172,11 @@ proc runBasicDLLTest(cat: Category, options: string): Bundle =
     # windows looks in the dir of the exe (yay!):
     result.add makeTest(cat, "lib/nimrtl.nim", actionCompile, options = "")
     result.add makeTest(cat, "lib/nimrtl.nim", actionExec,
-        options = " copy lib\\" & nimrtlDll & " tests\\dll")
+        options = " cmd /c copy lib\\" & nimrtlDll & " tests\\dll")
   else:
     result.add makeTest(cat, "lib/nimrtl.nim", actionCompile, options = "")
     result.add makeTest(cat, "lib/nimrtl.nim", actionExec,
-        options = " cp lib/" & nimrtlDll & " tests/dll")
+        options = " sh -x \"cp lib/" & nimrtlDll & " tests/dll \"s")
 
   let filename = "tests/dll/client.nim"
   for b in expandSpec(cat, filename, options & " -d:useNimRtl --threads:on" & rpath,
