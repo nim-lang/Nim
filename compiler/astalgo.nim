@@ -549,7 +549,8 @@ proc strTableAdd*(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
+proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
+                                 onConflictKeepOld = false): PSym =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
@@ -564,13 +565,13 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
     if it.name.id == n.name.id:
-      if it == n: return false
+      if it == n: return nil
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return true             # found it
+    return t.data[replaceSlot] # found it
   elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
@@ -578,7 +579,11 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     assert(t.data[h] == nil)
     t.data[h] = n
   inc(t.counter)
-  result = false
+  result = nil
+
+proc strTableIncl*(t: var TStrTable, n: PSym;
+                   onConflictKeepOld = false): bool {.discardable.} =
+  result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
 
 proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   var h: Hash = name.h and high(t.data)

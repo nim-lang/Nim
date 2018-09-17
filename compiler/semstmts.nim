@@ -1604,7 +1604,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
           ("'" & proto.name.s & "' from " & c.config$proto.info))
     if sfForward notin proto.flags and proto.magic == mNone:
-      wrongRedefinition(c, n.info, proto.name.s)
+      wrongRedefinition(c, n.info, proto.name.s, proto.info)
     excl(proto.flags, sfForward)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
