@@ -19,6 +19,9 @@ import
   typesrenderer, astalgo, modulepaths, lineinfos, sequtils, intsets,
   pathutils
 
+const
+  exportSection = skTemp
+
 type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
@@ -254,6 +257,15 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
   result = module.kind == skModule and module.owner != nil and
       module.owner.id == conf.mainPackageId
 
+proc externalDep(d: PDoc; module: PSym): string =
+  if optWholeProject in d.conf.globalOptions:
+    let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
+    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
+        RelativeDir"htmldocs", sfMainModule notin module.flags)
+    result = relativeTo(tmp, d.thisDir, '/').string
+  else:
+    result = extractFilename toFullPath(d.conf, FileIndex module.position)
+
 proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
   var r: TSrcGen
   var literal = ""
@@ -290,12 +302,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       if s != nil and s.kind == skType and sfExported in s.flags and
           s.owner != nil and belongsToPackage(d.conf, s.owner) and
           d.target == outHtml:
-
-        let full = AbsoluteFile toFullPath(d.conf, FileIndex s.owner.position)
-        let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath),
-            HtmlExt, RelativeDir"htmldocs", sfMainModule notin s.owner.flags)
-
-        let external = tmp.relativeTo(d.thisDir, '/')
+        let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html").string, rope literal,
            rope(esc(d.target, literal))]
@@ -688,15 +695,32 @@ proc traceDeps(d: PDoc, it: PNode) =
       a.sons[2] = x
       traceDeps(d, a)
   elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
-    let full = AbsoluteFile toFullPath(d.conf, FileIndex it.sym.position)
-    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        RelativeDir"htmldocs", sfMainModule notin it.sym.flags)
-    let external = relativeTo(tmp, d.thisDir, '/').string
+    let external = externalDep(d, it.sym)
     if d.section[k] != nil: add(d.section[k], ", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
           rope changeFileExt(external, "html")])
+
+proc exportSym(d: PDoc; s: PSym) =
+  const k = exportSection
+  if s.kind == skModule and belongsToPackage(d.conf, s):
+    let external = externalDep(d, s)
+    if d.section[k] != nil: add(d.section[k], ", ")
+    dispA(d.conf, d.section[k],
+          "<a class=\"reference external\" href=\"$2\">$1</a>",
+          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          rope changeFileExt(external, "html")])
+  elif s.owner != nil:
+    let module = originatingModule(s)
+    if belongsToPackage(d.conf, module):
+      let external = externalDep(d, module)
+      if d.section[k] != nil: add(d.section[k], ", ")
+      # XXX proper anchor generation here
+      dispA(d.conf, d.section[k],
+            "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
+            "$1", [rope esc(d.target, s.name.s),
+            rope changeFileExt(external, "html")])
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
   if orig.info.fileIndex != n.info.fileIndex: return
@@ -732,7 +756,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     if not checkForFalse(n.sons[0].sons[0]):
       generateDoc(d, lastSon(n.sons[0]), orig)
   of nkImportStmt:
-    for i in 0 .. sonsLen(n)-1: traceDeps(d, n.sons[i])
+    for it in n: traceDeps(d, it)
+  of nkExportStmt:
+    for it in n:
+      if it.kind == nkSym: exportSym(d, it.sym)
+  of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   of nkCallKinds:
     var comm: Rope = nil
@@ -828,8 +856,8 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   else: discard
 
 proc genSection(d: PDoc, kind: TSymKind) =
-  const sectionNames: array[skModule..skTemplate, string] = [
-    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+  const sectionNames: array[skTemp..skTemplate, string] = [
+    "Exports", "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
