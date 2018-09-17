@@ -105,7 +105,7 @@ when false:
       localError(pkg.info, "package name must be an identifier or string literal")
       result = ""
 
-proc getModuleName*(conf: ConfigRef; n: PNode): string =
+proc getModuleName*(conf: ConfigRef; module: PSym; n: PNode): string =
   # This returns a short relative module name without the nim extension
   # e.g. like "system", "importer" or "somepath/module"
   # The proc won't perform any checks that the path is actually valid
@@ -133,9 +133,9 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           localError(n.info, "only '/' supported with $package notation")
           result = ""
     else:
-      let modname = getModuleName(conf, n[2])
+      let modname = getModuleName(conf, module, n[2])
       # hacky way to implement 'x / y /../ z':
-      result = getModuleName(conf, n1)
+      result = getModuleName(conf, module, n1)
       result.add renderTree(n0, {renderNoComments}).replace(" ")
       result.add modname
   of nkPrefix:
@@ -150,15 +150,15 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     localError(conf, n.info, warnDeprecated, "using '.' instead of '/' in import paths")
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
-    result = getModuleName(conf, n.sons[0])
+    result = getModuleName(conf, module, n.sons[0])
   else:
     localError(conf, n.info, "invalid module name: '$1'" % n.renderTree)
     result = ""
 
-proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
+proc checkModuleName*(conf: ConfigRef; module: PSym; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
-  let modulename = getModuleName(conf, n)
-  let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
+  let modulename = getModuleName(conf, module, n)
+  let fullPath = findModule(conf, modulename, toFullPath(conf, module.info))
   if fullPath.isEmpty:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n

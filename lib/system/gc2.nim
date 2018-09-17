@@ -326,7 +326,7 @@ proc gcInvariant*() =
     markForDebug(gch)
 {.pop.}
 
-include gc_common
+include "system/gc_common"
 
 proc initGC() =
   when not defined(useNimRtl):

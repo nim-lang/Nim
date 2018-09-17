@@ -1107,7 +1107,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
     case n.kind
     of nkIncludeStmt:
       for i in 0..<n.len:
-        var f = checkModuleName(c.config, n.sons[i])
+        var f = checkModuleName(c.config, c.module, n.sons[i])
         if f != InvalidFileIDX:
           if containsOrIncl(c.includedFiles, f.int):
             localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
@@ -1796,7 +1796,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1):
-    var f = checkModuleName(c.config, n.sons[i])
+    var f = checkModuleName(c.config, c.module, n.sons[i])
     if f != InvalidFileIDX:
       if containsOrIncl(c.includedFiles, f.int):
         localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))

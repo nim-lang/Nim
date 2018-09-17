@@ -10,7 +10,7 @@
 # Low level allocator for Nim. Has been designed to support the GC.
 {.push profiler:off.}
 
-include osalloc
+include "system/osalloc"
 
 template track(op, address, size) =
   when defined(memTracker):
