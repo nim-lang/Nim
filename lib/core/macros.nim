@@ -1321,7 +1321,7 @@ proc customPragmaNode(n: NimNode): NimNode =
       return typ.getImpl()[0][1]
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
-    let name = (if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+    let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
@@ -1349,9 +1349,14 @@ proc customPragmaNode(n: NimNode): NimNode =
 
           else:
             for i in 0 .. identDefs.len - 3:
-              if identDefs[i].kind == nnkPragmaExpr and
-                identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
-                return identDefs[i][1]
+              let varNode = identDefs[i]
+              if varNode.kind == nnkPragmaExpr:
+                var varName = varNode[0]
+                if varName.kind == nnkPostfix:
+                  # This is a public field. We are skipping the postfix *
+                  varName = varName[1]
+                if eqIdent(varName.strVal, name):
+                  return identDefs[i][1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
           typDef = getImpl(obj[1][0])
