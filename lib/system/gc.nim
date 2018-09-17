@@ -231,7 +231,7 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
     dec(i)
   decRef(usrToCell(p))
 
-include gc_common
+include "system/gc_common"
 
 template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
   when false:

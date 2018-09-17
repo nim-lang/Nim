@@ -526,26 +526,26 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
     graph.config.notes = graph.config.foreignPackageNotes
   result = c
 
-proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
-  if g.systemModule == nil: return false
+proc isImportSystemStmt(c: PContext; n: PNode): bool =
+  if c.graph.systemModule == nil: return false
   case n.kind
   of nkImportStmt:
     for x in n:
       if x.kind == nkIdent:
-        let f = checkModuleName(g.config, x, false)
-        if f == g.systemModule.info.fileIndex:
+        let f = checkModuleName(c.graph.config, c.module, x, false)
+        if f == c.graph.systemModule.info.fileIndex:
           return true
   of nkImportExceptStmt, nkFromStmt:
     if n[0].kind == nkIdent:
-      let f = checkModuleName(g.config, n[0], false)
-      if f == g.systemModule.info.fileIndex:
+      let f = checkModuleName(c.graph.config, c.module, n[0], false)
+      if f == c.graph.systemModule.info.fileIndex:
         return true
   else: discard
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if n.kind == nkDefer:
     localError(c.config, n.info, "defer statement not supported at top level")
-  if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
+  if c.topStmts == 0 and not isImportSystemStmt(c, n):
     if sfSystemModule notin c.module.flags and
         n.kind notin {nkEmpty, nkCommentStmt}:
       c.importTable.addSym c.graph.systemModule # import the "System" identifier

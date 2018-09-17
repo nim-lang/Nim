@@ -150,7 +150,7 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   for a in n:
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
-        var f = checkModuleName(graph.config, a.sons[i])
+        var f = checkModuleName(graph.config, module, a.sons[i])
         if f != InvalidFileIDX:
           if containsOrIncl(includedFiles, f.int):
             localError(graph.config, a.info, "recursive dependency: '$1'" %

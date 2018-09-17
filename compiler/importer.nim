@@ -137,7 +137,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
-  let f = checkModuleName(c.config, n)
+  let f = checkModuleName(c.config, c.module, n)
   if f != InvalidFileIDX:
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)

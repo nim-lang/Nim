@@ -208,7 +208,7 @@ when defined(nimGcRefLeak):
         if isNil(line): break
         c_fprintf(stdout, "[Heap] %s(%s)\n", file, line)
 
-include gc_common
+include "system/gc_common"
 
 proc initGC() =
   when not defined(useNimRtl):
