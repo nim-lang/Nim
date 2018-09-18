@@ -976,10 +976,12 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
       # Nim's convention: every path is relative to the file it was written in:
       outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
     writeFile(outp, content)
-    let cmd = cmd % quoteShell(outp)
-    rawMessage(conf, hintExecuting, cmd)
-    if execShellCmd(cmd) != status:
-      rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
+    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+            else: cmd
+    let c2 = c % quoteShell(outp)
+    rawMessage(conf, hintExecuting, c2)
+    if execShellCmd(c2) != status:
+      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
 
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
