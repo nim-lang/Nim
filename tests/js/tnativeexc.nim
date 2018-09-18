@@ -1,13 +1,31 @@
-type
-  JsError {.importc: "Error".} = object of JsRoot
-  JsSyntaxError {.importc: "SyntaxError".} = object of JsError
+discard """
+  action: "run"
+"""
 
+import jsffi
+
+# Can catch JS exceptions
 try:
   asm """throw new Error('a new error');"""
-except JsSyntaxError as se: doAssert false
-except JsError as e:        doAssert true
+except JsError as e:
+  doAssert e.message == "a new error"
+except:
+  doAssert false
 
+# Can distinguish different exceptions
 try:
   asm """JSON.parse(';;');"""
-except JsSyntaxError as se: doAssert true
-except JsError as e:        doAssert false
+except JsEvalError:
+  doAssert false
+except JsSyntaxError as se:
+  doAssert se.message == "Unexpected token ; in JSON at position 0"
+except JsError as e:
+  doAssert false
+
+# Can catch parent exception
+try:
+  asm """throw new SyntaxError();"""
+except JsError as e:
+  discard
+except:
+  doAssert false
