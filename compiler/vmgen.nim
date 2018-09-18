@@ -1842,6 +1842,9 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       let s = n.sons[0].sym
       if s.magic != mNone:
         genMagic(c, n, dest, s.magic)
+      elif s.kind == skMethod:
+        localError(c.config, n.info, "cannot call method " & s.name.s &
+          " at compile time")
       elif matches(s, "stdlib", "marshal", "to"):
         # XXX marshal load&store should not be opcodes, but use the
         # general callback mechanisms.
