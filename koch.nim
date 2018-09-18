@@ -471,6 +471,7 @@ proc testUnixInstall(cmdLineRest: string) =
       # check nimble builds:
       execCleanPath("./koch testtools")
       # check the tests work:
+      putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
       execCleanPath("./koch tests", destDir / "bin")
       #execCleanPath("./koch tests cat newconfig", destDir / "bin")
     else:
