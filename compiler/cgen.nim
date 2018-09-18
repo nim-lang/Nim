@@ -707,7 +707,7 @@ proc containsResult(n: PNode): bool =
     for i in 0..<n.safeLen:
       if containsResult(n[i]): return true
 
-const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef, nkMacroDef} +
                   declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
