@@ -5,7 +5,6 @@ os:
   - osx
 dist: trusty
 
-
 matrix:
   allow_failures:
     - os: osx
@@ -52,3 +51,16 @@ script:
   - ./koch nimsuggest
   - nim c -r nimsuggest/tester
   - nim c -r nimdoc/tester
+
+before_deploy:
+  # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
+  - cp -f ./doc/html/overview.html ./doc/html/index.html
+deploy:
+  provider: pages
+  # local-dir *has* to be a relative path from the repo root.
+  local-dir: "doc/html"
+  skip-cleanup: true
+  github-token: "$GITHUB_OAUTH_TOKEN"
+  keep-history: false
+  on:
+    branch: devel
