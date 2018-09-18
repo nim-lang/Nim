@@ -6,9 +6,9 @@ os:
 dist: trusty
 
 
-#matrix:
-#  allow_failures:
-#    - os: osx
+matrix:
+  allow_failures:
+    - os: osx
 
 addons:
   apt:
@@ -44,7 +44,9 @@ script:
   #- nimble install jester@#head -y
   #- nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
-  - tests/testament/tester --pedantic all -d:nimCoroutines
+  # Do not run the tests on OSX as OSX does 'testinstall' which *also* runs all the tests!
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; tests/testament/tester --pedantic all -d:nimCoroutines
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; ./koch testinstall
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
   - ./koch docs

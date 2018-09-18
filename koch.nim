@@ -75,33 +75,6 @@ template withDir(dir, body) =
   finally:
     setCurrentdir(old)
 
-proc testUnixInstall() =
-  let oldCurrentDir = getCurrentDir()
-  try:
-    let destDir = getTempDir()
-    copyFile("build/nim-$1.tar.xz" % VersionAsString,
-             destDir / "nim-$1.tar.xz" % VersionAsString)
-    setCurrentDir(destDir)
-    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
-    setCurrentDir("nim-$1" % VersionAsString)
-    execCleanPath("sh build.sh")
-    # first test: try if './bin/nim --version' outputs something sane:
-    let output = execProcess("./bin/nim --version").splitLines
-    if output.len > 0 and output[0].contains(VersionAsString):
-      echo "Version check: success"
-      execCleanPath("./bin/nim c koch.nim")
-      execCleanPath("./koch boot -d:release", destDir / "bin")
-      # check the docs build:
-      execCleanPath("./koch docs", destDir / "bin")
-      # check nimble builds:
-      execCleanPath("./koch tools")
-      # check the tests work:
-      execCleanPath("./koch tests", destDir / "bin")
-    else:
-      echo "Version check: failure"
-  finally:
-    setCurrentDir oldCurrentDir
-
 proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0
@@ -475,6 +448,36 @@ proc pushCsources() =
   finally:
     setCurrentDir(cwd)
 
+proc testUnixInstall(cmdLineRest: string) =
+  csource("-d:release " & cmdLineRest)
+  xz(cmdLineRest)
+  let oldCurrentDir = getCurrentDir()
+  try:
+    let destDir = getTempDir()
+    copyFile("build/nim-$1.tar.xz" % VersionAsString,
+             destDir / "nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir(destDir)
+    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir("nim-$1" % VersionAsString)
+    execCleanPath("sh build.sh")
+    # first test: try if './bin/nim --version' outputs something sane:
+    let output = execProcess("./bin/nim --version").splitLines
+    if output.len > 0 and output[0].contains(VersionAsString):
+      echo "Version check: success"
+      execCleanPath("./bin/nim c koch.nim")
+      execCleanPath("./koch boot -d:release", destDir / "bin")
+      # check the docs build:
+      execCleanPath("./koch docs", destDir / "bin")
+      # check nimble builds:
+      execCleanPath("./koch testtools")
+      # check the tests work:
+      execCleanPath("./koch tests", destDir / "bin")
+      #execCleanPath("./koch tests cat newconfig", destDir / "bin")
+    else:
+      echo "Version check: failure"
+  finally:
+    setCurrentDir oldCurrentDir
+
 proc valgrind(cmd: string) =
   # somewhat hacky: '=' sign means "pass to valgrind" else "pass to Nim"
   let args = parseCmdLine(cmd)
@@ -522,7 +525,7 @@ when isMainModule:
     of "geninstall": geninstall(op.cmdLineRest)
     of "distrohelper": geninstall()
     of "install": install(op.cmdLineRest)
-    of "testinstall": testUnixInstall()
+    of "testinstall": testUnixInstall(op.cmdLineRest)
     of "test", "tests": tests(op.cmdLineRest)
     of "temp": temp(op.cmdLineRest)
     of "xtemp": xtemp(op.cmdLineRest)
@@ -531,6 +534,7 @@ when isMainModule:
     of "nimble": buildNimble(existsDir(".git"))
     of "nimsuggest": bundleNimsuggest(buildExe=true)
     of "tools": buildTools(existsDir(".git"))
+    of "testtools": buildTools(true)
     of "pushcsource", "pushcsources": pushCsources()
     of "valgrind": valgrind(op.cmdLineRest)
     else: showHelp()
