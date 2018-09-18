@@ -2332,6 +2332,16 @@ proc `==`*[I, T](x, y: array[I, T]): bool =
       return
   result = true
 
+proc `==`*[T](x, y: openarray[T]): bool =
+  if x.len != y.len:
+    return false
+
+  for f in low(x)..high(x):
+    if x[f] != y[f]:
+      return false
+
+  result = true
+
 proc `@`*[T](a: openArray[T]): seq[T] =
   ## turns an openarray into a sequence. This is not as efficient as turning
   ## a fixed length array into a sequence as it always copies every element
