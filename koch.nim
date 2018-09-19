@@ -60,7 +60,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-  winrelease               creates a Windows release
   pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
@@ -530,7 +529,6 @@ when isMainModule:
     of "test", "tests": tests(op.cmdLineRest)
     of "temp": temp(op.cmdLineRest)
     of "xtemp": xtemp(op.cmdLineRest)
-    #of "winrelease": winRelease()
     of "wintools": bundleWinTools()
     of "nimble": buildNimble(existsDir(".git"))
     of "nimsuggest": bundleNimsuggest(buildExe=true)
