@@ -488,10 +488,10 @@ var SOMAXCONN* {.importc: "SOMAXCONN", header: "<sys/socket.h>".}: cint
 var MSG_PEEK* {.importc: "MSG_PEEK", header: "<sys/socket.h>".}: cint
 var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
 var MSG_WAITALL* {.importc: "MSG_WAITALL", header: "<sys/socket.h>".}: cint
-var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: TSa_Family
-var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: TSa_Family
+var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: cint
+var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: cint
+var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: cint
+var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: cint
 var SHUT_RD* {.importc: "SHUT_RD", header: "<sys/socket.h>".}: cint
 var SHUT_RDWR* {.importc: "SHUT_RDWR", header: "<sys/socket.h>".}: cint
 var SHUT_WR* {.importc: "SHUT_WR", header: "<sys/socket.h>".}: cint

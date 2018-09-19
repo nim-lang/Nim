@@ -423,13 +423,13 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
 
 proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen,
                      address: var IpAddress, port: var Port) =
-  if sa.ss_family.int == toInt(AF_INET) and sl == sizeof(Sockaddr_in).Socklen:
+  if sa.ss_family.cint == toInt(AF_INET) and sl == sizeof(Sockaddr_in).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv4)
     let s = cast[ptr Sockaddr_in](sa)
     copyMem(addr address.address_v4[0], addr s.sin_addr,
             sizeof(address.address_v4))
     port = ntohs(s.sin_port).Port
-  elif sa.ss_family.int == toInt(AF_INET6) and
+  elif sa.ss_family.cint == toInt(AF_INET6) and
        sl == sizeof(Sockaddr_in6).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv6)
     let s = cast[ptr Sockaddr_in6](sa)
@@ -758,10 +758,7 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
 
   if address == "":
     var name: Sockaddr_in
-    when useWinVersion:
-      name.sin_family = toInt(AF_INET).int16
-    else:
-      name.sin_family = toInt(AF_INET)
+    name.sin_family = toInt(AF_INET).uint16
     name.sin_port = htons(port.uint16)
     name.sin_addr.s_addr = htonl(INADDR_ANY)
     if bindAddr(socket.fd, cast[ptr SockAddr](addr(name)),
@@ -952,7 +949,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
 
 when defined(posix) and not defined(nimdoc):
   proc makeUnixAddr(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.toInt
+    result.sun_family = AF_UNIX.uint16
     if path.len >= Sockaddr_un_path_length:
       raise newException(ValueError, "socket path too long")
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
