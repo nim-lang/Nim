@@ -367,9 +367,9 @@ proc winRelease*() =
                   "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     csource("-d:release")
-  when true:
+  when sizeof(pointer) == 4:
     winReleaseArch "32"
-  when true:
+  when sizeof(pointer) == 8:
     winReleaseArch "64"
 
 # -------------- tests --------------------------------------------------------
