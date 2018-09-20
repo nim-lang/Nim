@@ -562,34 +562,7 @@ proc genIndex(c: PCtx; n: PNode; arr: PType): TRegister =
   else:
     result = c.genx(n)
 
-proc genFieldCheck(c: PCtx, n: PNode) =
-  let accessExpr = n[0]
-  var checkExpr = n[1]
-
-  let negCheck = checkExpr[0].sym.magic == mNot
-  if negCheck:
-    checkExpr = checkExpr[^1]
-
-  # Patch the check expression RHS
-  # From: ``discriminator in set``
-  # To:   ``object.discriminator in set``
-  var newField = newTree(nkDotExpr, accessExpr[0], checkExpr[^1])
-  newField.typ = checkExpr[^1].typ
-
-  # Don't modify the node in place otherwise we'll end up doing this
-  # transformation more than once
-  var newCheck = shallowCopy(checkExpr)
-  newCheck[0] = checkExpr[0]
-  newCheck[1] = checkExpr[1]
-  newCheck[2] = newField
-
-  # This is not 100% ideal since we materialize the object twice, oh well
-  let checkResult = c.genx(newCheck)
-  let L1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, checkResult)
-  # XXX: Do something better than this
-  c.gABC(n, opcQuit, checkResult, checkResult)
-  c.freeTemp(checkResult)
-  c.patch(L1)
+proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags)
 
 proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
   case le.kind
@@ -599,12 +572,16 @@ proc genAsgnPatch(c: PCtx; le: PNode, value: TRegister) =
     c.gABC(le, opcWrArr, dest, idx, value)
     c.freeTemp(dest)
     c.freeTemp(idx)
-  of nkDotExpr, nkCheckedFieldExpr:
-    if le.kind == nkCheckedFieldExpr: genFieldCheck(c, le)
-    let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfNode})
-    let idx = genField(c, left.sons[1])
-    c.gABC(left, opcWrObj, dest, idx, value)
+  of nkCheckedFieldExpr:
+    var objR: TDest = -1
+    genCheckedObjAccessAux(c, le, objR, {gfNode})
+    let idx = genField(c, le[0].sons[1])
+    c.gABC(le[0], opcWrObj, objR, idx, value)
+    c.freeTemp(objR)
+  of nkDotExpr:
+    let dest = c.genx(le.sons[0], {gfNode})
+    let idx = genField(c, le.sons[1])
+    c.gABC(le, opcWrObj, dest, idx, value)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfNode})
@@ -1448,13 +1425,19 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     else:
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
     c.freeTemp(tmp)
-  of nkDotExpr, nkCheckedFieldExpr:
-    if le.kind == nkCheckedFieldExpr: genFieldCheck(c, le)
-    let left = if le.kind == nkDotExpr: le else: le.sons[0]
-    let dest = c.genx(left.sons[0], {gfNode})
-    let idx = genField(c, left.sons[1])
+  of nkCheckedFieldExpr:
+    var objR: TDest = -1
+    genCheckedObjAccessAux(c, le, objR, {gfNode})
+    let idx = genField(c, le[0].sons[1])
     let tmp = c.genx(ri)
-    c.preventFalseAlias(left, opcWrObj, dest, idx, tmp)
+    c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
+    c.freeTemp(tmp)
+    c.freeTemp(objR)
+  of nkDotExpr:
+    let dest = c.genx(le.sons[0], {gfNode})
+    let idx = genField(c, le.sons[1])
+    let tmp = c.genx(ri)
+    c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
     c.freeTemp(tmp)
   of nkDerefExpr, nkHiddenDeref:
     let dest = c.genx(le.sons[0], {gfNode})
@@ -1590,9 +1573,59 @@ proc genObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     c.gABC(n, opcLdObj, dest, a, b)
   c.freeTemp(a)
 
+proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
+  internalAssert c.config, n.kind == nkCheckedFieldExpr
+  # nkDotExpr to access the requested field
+  let accessExpr = n[0]
+  # nkCall to check if the discriminant is valid
+  var checkExpr = n[1]
+
+  let negCheck = checkExpr[0].sym.magic == mNot
+  if negCheck:
+    checkExpr = checkExpr[^1]
+
+  # Discriminant symbol
+  let disc = checkExpr[2]
+  internalAssert c.config, disc.sym.kind == skField
+
+  # Load the object in `dest`
+  c.gen(accessExpr[0], dest, flags)
+  # Load the discriminant
+  var discVal = c.getTemp(disc.typ)
+  c.gABC(n, opcLdObj, discVal, dest, genField(c, disc))
+  # Check if its value is contained in the supplied set
+  let setLit = c.genx(checkExpr[1])
+  var rs = c.getTemp(getSysType(c.graph, n.info, tyBool))
+  c.gABC(n, opcContainsSet, rs, setLit, discVal)
+  c.freeTemp(setLit)
+  # If the check fails let the user know
+  let L1 = c.xjmp(n, if negCheck: opcFJmp else: opcTJmp, rs)
+  c.freeTemp(rs)
+  # Not ideal but will do for the moment
+  c.gABC(n, opcQuit)
+  c.patch(L1)
+
 proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
-  genFieldCheck(c, n)
-  genObjAccess(c, n.sons[0], dest, flags)
+  var objR: TDest = -1
+  genCheckedObjAccessAux(c, n, objR, flags)
+
+  let accessExpr = n[0]
+  # Field symbol
+  var field = accessExpr[1]
+  internalAssert c.config, field.sym.kind == skField
+
+  # Load the content now
+  if dest < 0: dest = c.getTemp(n.typ)
+  let fieldPos = genField(c, field)
+  if needsRegLoad():
+    var cc = c.getTemp(accessExpr.typ)
+    c.gABC(n, opcLdObj, cc, objR, fieldPos)
+    c.gABC(n, opcNodeToReg, dest, cc)
+    c.freeTemp(cc)
+  else:
+    c.gABC(n, opcLdObj, dest, objR, fieldPos)
+
+  c.freeTemp(objR)
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n.sons[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
