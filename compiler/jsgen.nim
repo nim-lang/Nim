@@ -960,42 +960,50 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes)
 
-proc genFieldCheck(p: PProc, n: PNode) =
+proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   internalAssert p.config, n.kind == nkCheckedFieldExpr
+  # nkDotExpr to access the requested field
   let accessExpr = n[0]
+  # nkCall to check if the discriminant is valid
   var checkExpr = n[1]
 
   let negCheck = checkExpr[0].sym.magic == mNot
   if negCheck:
     checkExpr = checkExpr[^1]
 
-  # Patch the check expression RHS
-  # From: ``discriminator in set``
-  # To:   ``object.discriminator in set``
-  var newField = newTree(nkDotExpr, accessExpr[0], checkExpr[^1])
-  newField.typ = checkExpr[^1].typ
+  # Field symbol
+  var field = accessExpr[1].sym
+  internalAssert p.config, field.kind == skField
+  if field.loc.r == nil: field.loc.r = mangleName(p.module, field)
+  # Discriminant symbol
+  let disc = checkExpr[2].sym
+  internalAssert p.config, disc.kind == skField
+  if disc.loc.r == nil: disc.loc.r = mangleName(p.module, disc)
 
-  # Don't modify the node in place otherwise we'll end up doing this
-  # transformation more than once
-  var newCheck = shallowCopy(checkExpr)
-  newCheck[0] = checkExpr[0]
-  newCheck[1] = checkExpr[1]
-  newCheck[2] = newField
+  var setx: TCompRes
+  gen(p, checkExpr[1], setx)
 
-  var a: TCompRes
-  gen(p, newCheck, a)
+  var obj: TCompRes
+  gen(p, accessExpr[0], obj)
+  # Avoid evaluating the LHS twice (one to read the discriminant and one to read
+  # the field)
+  let tmp = p.getTemp()
+  lineF(p, "var $1 = $2;$n", tmp, obj.res)
 
   useMagic(p, "raiseFieldError")
   useMagic(p, "makeNimstrLit")
-  lineF(p, "if ($3($1)) { raiseFieldError(makeNimstrLit($2)); }$n", a.res,
-    makeJSString(accessExpr[1].sym.name.s),
-    # If the check evaluates to true the field can be accessed, the logic here
-    # is inverted since we generate the failure case here
-    if negCheck: nil else: ~"!")
+  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
+    setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
+    makeJSString(field.name.s))
 
-proc genCheckedFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
-  genFieldCheck(p, n)
-  genFieldAccess(p, n.sons[0], r)
+  if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
+    r.typ = etyBaseIndex
+    r.res = makeJSString($field.loc.r)
+    r.address = tmp
+  else:
+    r.typ = etyNone
+    r.res = "$1.$2" % [tmp, field.loc.r]
+  r.kind = resExpr
 
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -1073,19 +1081,13 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         gen(p, n.sons[0], r)
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(p.config, n.info, "genAddr: 2")
-  of nkCheckedFieldExpr, nkDotExpr:
-    var dotExp = n[0]
-
-    # The LHS is just a nkDotExpr, the RHS is the check expression
-    if n[0].kind == nkCheckedFieldExpr:
-      genFieldCheck(p, n[0])
-      dotExp = dotExp[0]
-      internalAssert p.config, dotExp.kind == nkDotExpr
-
+  of nkCheckedFieldExpr:
+    genCheckedFieldOp(p, n[0], n.typ, r)
+  of nkDotExpr:
     if mapType(p, n.typ) == etyBaseIndex:
-      genFieldAddr(p, dotExp, r)
+      genFieldAddr(p, n.sons[0], r)
     else:
-      genFieldAccess(p, dotExp, r)
+      genFieldAccess(p, n.sons[0], r)
   of nkBracketExpr:
     var ty = skipTypes(n.sons[0].typ, abstractVarRange)
     if ty.kind in MappedToObject:
@@ -2149,7 +2151,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, r)
   of nkBracketExpr: genArrayAccess(p, n, r)
   of nkDotExpr: genFieldAccess(p, n, r)
-  of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
+  of nkCheckedFieldExpr: genCheckedFieldOp(p, n, nil, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
   of nkCast: genCast(p, n, r)
