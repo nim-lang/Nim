@@ -5,6 +5,7 @@ C
 3.14
 foo
 3.14
+3.14
 '''
 """
 
@@ -36,3 +37,12 @@ block:
     echo a2[]
   let a3 = addr(obj.f3)
   echo a3[]
+
+# Prevent double evaluation of LHS
+block:
+  var flag = false
+  proc wrap(x: X): X =
+    doAssert flag == false
+    flag = true
+    result = x
+  echo wrap(obj).f3
