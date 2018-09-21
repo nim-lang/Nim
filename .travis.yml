@@ -43,9 +43,7 @@ script:
   #- nimble install jester@#head -y
   #- nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
-  # Do not run the tests on OSX as OSX does 'testinstall' which *also* runs all the tests!
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then tests/testament/tester --pedantic all -d:nimCoroutines; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./koch testinstall; fi
+  - tests/testament/tester --pedantic all -d:nimCoroutines
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
   - ./koch docs
