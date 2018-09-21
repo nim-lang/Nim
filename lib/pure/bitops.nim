@@ -18,11 +18,8 @@
 ## as well as the ``compiletime VM``.
 ##
 ## As a result of using optimized function/intrinsics some functions can return
-## undefined results if the input is invalid. You can use the flag `noUndefinedBitOpts`
-## to force predictable behaviour for all input, causing a small performance hit.
-##
-## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
-## may return undefined and/or platform dependant value if given invalid input.
+## undefined results if the input is invalid. You can use the ``maybe*`` flags to
+## disable the extra checking.
 
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
@@ -32,9 +29,12 @@ const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
 
+when defined(noUndefinedBitOpts):
+  {.deprecated: "no undefined bitops deprecated, use parameter instead" .}
+
 # #### Pure Nim version ####
 
-proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
+func firstOneBitNim(x: uint32): int =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
@@ -43,7 +43,7 @@ proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
   var k = not v + 1 # get two's complement # cast[uint32](-cast[int32](v))
   result = 1 + lookup[uint32((v and k) * 0x077CB531'u32) shr 27].int
 
-proc firstSetBit_nim(x: uint64): int {.inline, nosideeffect.} =
+func firstOneBitNim(x: uint64): int =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   var v = uint64(x)
@@ -51,9 +51,9 @@ proc firstSetBit_nim(x: uint64): int {.inline, nosideeffect.} =
   if k == 0:
     k = uint32(v shr 32'u32) and 0xFFFFFFFF'u32
     result = 32
-  result += firstSetBit_nim(k)
+  result += firstOneBitNim(k)
 
-proc fastlog2_nim(x: uint32): int {.inline, nosideeffect.} =
+func fastLog2Nim(x: uint32): int =
   ## Quickly find the log base 2 of a 32-bit or less integer.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
@@ -67,7 +67,7 @@ proc fastlog2_nim(x: uint32): int {.inline, nosideeffect.} =
   v = v or v shr 16
   result = lookup[uint32(v * 0x07C4ACDD'u32) shr 27].int
 
-proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
+func fastLog2Nim(x: uint64): int =
   ## Quickly find the log base 2 of a 64-bit integer.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
@@ -84,8 +84,7 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
-
-proc countSetBits_nim(n: uint32): int {.inline, noSideEffect.} =
+func oneBitsNim(n: uint32): int =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
@@ -94,7 +93,7 @@ proc countSetBits_nim(n: uint32): int {.inline, noSideEffect.} =
   v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
   result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
 
-proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
+func oneBitsNim(n: uint64): int =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint64(n)
@@ -104,7 +103,7 @@ proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
 
-template parity_impl[T](value: T): int =
+template parityImpl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
   when sizeof(T) == 8:
@@ -119,41 +118,43 @@ template parity_impl[T](value: T): int =
 
 
 when useGCC_builtins:
+
   # Returns the number of set 1-bits in value.
-  proc builtin_popcount(x: cuint): cint {.importc: "__builtin_popcount", cdecl.}
-  proc builtin_popcountll(x: culonglong): cint {.importc: "__builtin_popcountll", cdecl.}
+  func builtin_popcount(x: cuint): cint {.importc: "__builtin_popcount", cdecl.}
+  func builtin_popcountll(x: culonglong): cint {.importc: "__builtin_popcountll", cdecl.}
 
   # Returns the bit parity in value
-  proc builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
-  proc builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
+  func builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
+  func builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
 
   # Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero.
-  proc builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
-  proc builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
+  func builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
+  func builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
-  proc builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
+  func builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
+  func builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
-  proc builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
+  func builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
+  func builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
 
 elif useVCC_builtins:
+
   # Counts the number of one bits (population count) in a 16-, 32-, or 64-byte unsigned integer.
-  proc builtin_popcnt16(a2: uint16): uint16 {.importc: "__popcnt16" header: "<intrin.h>", nosideeffect.}
-  proc builtin_popcnt32(a2: uint32): uint32 {.importc: "__popcnt" header: "<intrin.h>", nosideeffect.}
-  proc builtin_popcnt64(a2: uint64): uint64 {.importc: "__popcnt64" header: "<intrin.h>", nosideeffect.}
+  func builtin_popcnt16(a2: uint16): uint16 {.importc: "__popcnt16" header: "<intrin.h>".}
+  func builtin_popcnt32(a2: uint32): uint32 {.importc: "__popcnt" header: "<intrin.h>".}
+  func builtin_popcnt64(a2: uint64): uint64 {.importc: "__popcnt64" header: "<intrin.h>".}
 
   # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).
-  proc bitScanReverse(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanReverse", header: "<intrin.h>", nosideeffect.}
-  proc bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanReverse64", header: "<intrin.h>", nosideeffect.}
+  func bitScanReverse(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanReverse", header: "<intrin.h>".}
+  func bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanReverse64", header: "<intrin.h>".}
 
   # Search the mask data from least significant bit (LSB) to the most significant bit (MSB) for a set bit (1).
-  proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanForward", header: "<intrin.h>", nosideeffect.}
-  proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanForward64", header: "<intrin.h>", nosideeffect.}
+  func bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanForward", header: "<intrin.h>".}
+  func bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanForward64", header: "<intrin.h>".}
 
-  template vcc_scan_impl(fnc: untyped; v: untyped): int =
+  template vcc_scan_impl(fnc: untyped, v: untyped): int =
     var index: culong
     discard fnc(index.addr, v)
     index.int
@@ -163,174 +164,208 @@ elif useICC_builtins:
   # Intel compiler intrinsics: http://fulla.fnal.gov/intel/compiler_c/main_cls/intref_cls/common/intref_allia_misc.htm
   # see also: https://software.intel.com/en-us/node/523362
   # Count the number of bits set to 1 in an integer a, and return that count in dst.
-  proc builtin_popcnt32(a: cint): cint {.importc: "_popcnt" header: "<immintrin.h>", nosideeffect.}
-  proc builtin_popcnt64(a: uint64): cint {.importc: "_popcnt64" header: "<immintrin.h>", nosideeffect.}
+  func builtin_popcnt32(a: cint): cint {.importc: "_popcnt" header: "<immintrin.h>".}
+  func builtin_popcnt64(a: uint64): cint {.importc: "_popcnt64" header: "<immintrin.h>".}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc bitScanForward(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanForward", header: "<immintrin.h>", nosideeffect.}
-  proc bitScanForward64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanForward64", header: "<immintrin.h>", nosideeffect.}
+  func bitScanForward(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanForward", header: "<immintrin.h>".}
+  func bitScanForward64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanForward64", header: "<immintrin.h>".}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc bitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
-  proc bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
+  func bitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>".}
+  func bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>".}
 
-  template icc_scan_impl(fnc: untyped; v: untyped): int =
+  template icc_scan_impl(fnc: untyped, v: untyped): int =
     var index: uint32
     discard fnc(index.addr, v)
     index.int
 
 
-proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
+func oneBits*(x: SomeUnsignedInt): int =
   ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
+  ##
+  ## Example:
+  ## doAssert oneBits(0b01000100'u8) == 2
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when nimvm:
-    when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
-    else:                result = countSetBits_nim(x.uint64)
+    when sizeof(x) <= 4: oneBitsNim(x.uint32)
+    else:                oneBitsNim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_popcount(x.cuint).int
-      else:                result = builtin_popcountll(x.culonglong).int
+      when sizeof(x) <= 4: builtin_popcount(x.cuint).int
+      else:                builtin_popcountll(x.culonglong).int
     elif useVCC_builtins:
-      when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).int
-      elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
-      elif arch64:         result = builtin_popcnt64(x.uint64).int
-      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32 ).int +
-                                    builtin_popcnt32((x.uint64 shr 32'u64).uint32 ).int
+      when sizeof(x) <= 2: builtin_popcnt16(x.uint16).int
+      elif sizeof(x) <= 4: builtin_popcnt32(x.uint32).int
+      elif arch64:         builtin_popcnt64(x.uint64).int
+      else:                builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32 ).int +
+                          builtin_popcnt32((x.uint64 shr 32'u64).uint32 ).int
     elif useICC_builtins:
-      when sizeof(x) <= 4: result = builtin_popcnt32(x.cint).int
-      elif arch64:         result = builtin_popcnt64(x.uint64).int
-      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint ).int +
-                                    builtin_popcnt32((x.uint64 shr 32'u64).cint ).int
+      when sizeof(x) <= 4: builtin_popcnt32(x.cint).int
+      elif arch64:         builtin_popcnt64(x.uint64).int
+      else:                builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint ).int +
+                          builtin_popcnt32((x.uint64 shr 32'u64).cint ).int
     else:
-      when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
-      else:                result = countSetBits_nim(x.uint64)
+      when sizeof(x) <= 4: oneBitsNim(x.uint32)
+      else:                oneBitsNim(x.uint64)
 
-proc popcount*(x: SomeInteger): int {.inline, nosideeffect.} =
+func countSetBits*(x: SomeInteger): int {.deprecated: "oneBits".} =
+  oneBits(x.uint64)
+
+func popcount*(x: SomeInteger): int {.deprecated: "oneBits".}=
   ## Alias for for countSetBits (Hamming weight.)
-  result = countSetBits(x)
+  oneBits(x.uint64)
 
-proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
+func parityBits*(x: SomeUnsignedInt): int =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.
+  ##
+  ## Example:
+  ## doAssert parityBits(0b00000001'u8) == 1
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    when sizeof(x) <= 4: result = parity_impl(x.uint32)
-    else:                result = parity_impl(x.uint64)
+    when sizeof(x) <= 4: parityImpl(x.uint32)
+    else:                parityImpl(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
-      else:                result = builtin_parityll(x.uint64).int
+      when sizeof(x) <= 4: builtin_parity(x.uint32).int
+      else:                builtin_parityll(x.uint64).int
     else:
-      when sizeof(x) <= 4: result = parity_impl(x.uint32)
-      else:                result = parity_impl(x.uint64)
+      when sizeof(x) <= 4: parityImpl(x.uint32)
+      else:                parityImpl(x.uint64)
 
-proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
+func parityBits*(x: SomeSignedInt): int {.deprecated.} =
+  parityBits(x.uint64)
+
+func firstOneBit*(x: SomeUnsignedInt, maybeZero = true): int =
   ## Returns the 1-based index of the least significant set bit of x.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
-  ## otherwise result is undefined.
-  # GCC builtin 'builtin_ffs' already handle zero input.
+  ## If `x` is zero and `maybeZero` is true, result is 0
+  ## If `x` is zero and `maybeZero` is false, result is undefined
+  ##
+  ## Example:
+  ## doAssert firstOneBit(0b00000010'u8) == 2
+  ##
   when nimvm:
-    when noUndefined:
-      if x == 0:
-        return 0
-    when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
-    else:                result = firstSetBit_nim(x.uint64)
-  else:
-    when noUndefined and not useGCC_builtins:
-      if x == 0:
-        return 0
-    when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_ffs(cast[cint](x.cuint)).int
-      else:                result = builtin_ffsll(cast[clonglong](x.culonglong)).int
-    elif useVCC_builtins:
-      when sizeof(x) <= 4:
-        result = 1 + vcc_scan_impl(bitScanForward, x.culong)
-      elif arch64:
-        result = 1 + vcc_scan_impl(bitScanForward64, x.uint64)
-      else:
-        result = firstSetBit_nim(x.uint64)
-    elif useICC_builtins:
-      when sizeof(x) <= 4:
-        result = 1 + icc_scan_impl(bitScanForward, x.uint32)
-      elif arch64:
-        result = 1 + icc_scan_impl(bitScanForward64, x.uint64)
-      else:
-        result = firstSetBit_nim(x.uint64)
-    else:
-      when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
-      else:                result = firstSetBit_nim(x.uint64)
-
-proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
-  ## Quickly find the log base 2 of an integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
-  ## otherwise result is undefined.
-  when noUndefined:
-    if x == 0:
-      return -1
-  when nimvm:
-    when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
-    else:                result = fastlog2_nim(x.uint64)
+    if maybeZero and x == 0: 0
+    elif sizeof(x) <= 4: firstOneBitNim(x.uint32)
+    else:                firstOneBitNim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = 31 - builtin_clz(x.uint32).int
-      else:                result = 63 - builtin_clzll(x.uint64).int
+      # GCC builtin 'builtin_ffs' already handle zero input.
+      when sizeof(x) <= 4: builtin_ffs(cast[cint](x.cuint)).int
+      else:                builtin_ffsll(cast[clonglong](x.culonglong)).int
     elif useVCC_builtins:
-      when sizeof(x) <= 4:
-        result = vcc_scan_impl(bitScanReverse, x.culong)
-      elif arch64:
-        result = vcc_scan_impl(bitScanReverse64, x.uint64)
-      else:
-        result = fastlog2_nim(x.uint64)
+      if maybeZero and x == 0: 0
+      elif sizeof(x) <= 4: 1 + vcc_scan_impl(bitScanForward, x.culong)
+      elif arch64:         1 + vcc_scan_impl(bitScanForward64, x.uint64)
+      else:                firstOneBitNim(x.uint64)
     elif useICC_builtins:
-      when sizeof(x) <= 4:
-        result = icc_scan_impl(bitScanReverse, x.uint32)
-      elif arch64:
-        result = icc_scan_impl(bitScanReverse64, x.uint64)
-      else:
-        result = fastlog2_nim(x.uint64)
+      if maybeZero and x == 0: 0
+      elif sizeof(x) <= 4: 1 + icc_scan_impl(bitScanForward, x.uint32)
+      elif arch64:         1 + icc_scan_impl(bitScanForward64, x.uint64)
+      else:                firstOneBitNim(x.uint64)
     else:
-      when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
-      else:                result = fastlog2_nim(x.uint64)
+      if maybeZero and x == 0: 0
+      elif sizeof(x) <= 4: firstOneBitNim(x.uint32)
+      else:                firstOneBitNim(x.uint64)
 
-proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
+func firstSetBit*(x: SomeInteger): int {.deprecated: "firstOneBit".} =
+  firstOneBit(x.uint64, noUndefined)
+
+func fastLog2Bit*(x: SomeUnsignedInt, maybeZero = true): int =
+  ## Return the truncated base 2 logarithm of `x`
+  ## If `x` is zero and `maybeZero` is true, result is -1
+  ## If `x` is zero and `maybeZero` is false, result is undefined
+  ##
+  ## Example:
+  ## doAssert fastLog2Bit(0b01000000'u8) == 6
+  if maybeZero and x == 0: -1
+  else:
+    when nimvm:
+      when sizeof(x) <= 4: fastlog2Nim(x.uint32)
+      else:                fastlog2Nim(x.uint64)
+    else:
+      when useGCC_builtins:
+        when sizeof(x) <= 4: 31 - builtin_clz(x.uint32).int
+        else:                63 - builtin_clzll(x.uint64).int
+      elif useVCC_builtins:
+        when sizeof(x) <= 4: vcc_scan_impl(bitScanReverse, x.culong)
+        elif arch64:         vcc_scan_impl(bitScanReverse64, x.uint64)
+        else:                fastlog2Nim(x.uint64)
+      elif useICC_builtins:
+        when sizeof(x) <= 4: icc_scan_impl(bitScanReverse, x.uint32)
+        elif arch64:         icc_scan_impl(bitScanReverse64, x.uint64)
+        else:                fastlog2Nim(x.uint64)
+      else:
+        when sizeof(x) <= 4: fastlog2Nim(x.uint32)
+        else:                fastlog2Nim(x.uint64)
+
+func fastlog2*(x: SomeInteger): int {.deprecated: "fastLog2Bit".} =
+  fastLog2Bit(x.uint64, noUndefined)
+
+func leadingZeroBits*(x: SomeInteger, maybeZero = true): int =
   ## Returns the number of leading zero bits in integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
-  ## otherwise result is undefined.
-  when noUndefined:
-    if x == 0:
-      return 0
-  when nimvm:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
+  ## If `x` is zero and maybeZero is true, result is sizeof(x) * 8
+  ## If `x` is zero and maybeZero is false, result is undefined
+  ##
+  ## Example:
+  ## doAssert leadingZeroBits(0b00100000'u8) == 2
+  ##
+  ## Performance note:
+  ## On recent x86_64 cpu's, this translates to the LZCNT instruction
+  if maybeZero and x == 0: sizeof(x) * 8
   else:
-    when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_clz(x.uint32).int - (32 - sizeof(x)*8)
-      else:                result = builtin_clzll(x.uint64).int
+    when nimvm:
+      when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastlog2Nim(x.uint32)
+      else:                sizeof(x)*8 - 1 - fastlog2Nim(x.uint64)
     else:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
+      when useGCC_builtins:
+        when sizeof(x) <= sizeof(cuint):
+          builtin_clz(x.cuint).int - (sizeof(cuint) - sizeof(x)) * 8
+        else:
+          builtin_clzll(x.culonglong).int
+      else:
+        when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastlog2Nim(x.uint32)
+        else:                sizeof(x)*8 - 1 - fastlog2Nim(x.uint64)
 
-proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
+func countLeadingZeroBits*(x: int8): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x.uint8, noUndefined)
+func countLeadingZeroBits*(x: int16): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x.uint16, noUndefined)
+func countLeadingZeroBits*(x: int32): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x.uint32, noUndefined)
+func countLeadingZeroBits*(x: int64): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x.uint64, noUndefined)
+
+func countLeadingZeroBits*(x: SomeUnsignedInt): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x, noUndefined)
+
+func trailingZeroBits*(x: SomeInteger, maybeZero = true): int =
   ## Returns the number of trailing zeros in integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
-  ## otherwise result is undefined.
-  when noUndefined:
-    if x == 0:
-      return 0
-  when nimvm:
-    result = firstSetBit(x) - 1
+  ## If `x` is zero and maybeZero is true, result is sizeof(x) * 8
+  ## If `x` is zero and maybeZero is false, result is undefined
+  ##
+  ## Example:
+  ## doAssert trailingZeroBits(0b00000010'u8) == 1
+  ##
+  ## Performance note:
+  ## On recent x86_64 cpu's, this translates to the TZCNT instruction
+  if maybeZero and x == 0: sizeof(x) * 8
   else:
-    when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_ctz(x.uint32).int
-      else:                result = builtin_ctzll(x.uint64).int
+    when nimvm:
+      firstOneBit(x) - 1
     else:
-      result = firstSetBit(x) - 1
+      when useGCC_builtins:
+        when sizeof(x) <= sizeof(cuint): builtin_ctz(x.cuint).int
+        else:                            builtin_ctzll(x.culonglong).int
+      else: firstOneBit(x) - 1
 
+func countTrailingZeroBits*(x: SomeInteger): int {.deprecated: "trailingZeroBits".} =
+  trailingZeroBits(x.uint64, noUndefined)
 
-proc rotateLeftBits*(value: uint8;
-           amount: range[0..8]): uint8 {.inline, noSideEffect.} =
+func rotateLeftBits*(value: uint8, amount: range[0..8]): uint8 =
   ## Left-rotate bits in a 8-bits value.
   # using this form instead of the one below should handle any value
   # out of range as well as negative values.
@@ -339,45 +374,47 @@ proc rotateLeftBits*(value: uint8;
   let amount = amount and 7
   result = (value shl amount) or (value shr ( (-amount) and 7))
 
-proc rotateLeftBits*(value: uint16;
-           amount: range[0..16]): uint16 {.inline, noSideEffect.} =
+func rotateLeftBits*(value: uint16, amount: range[0..16]): uint16  =
   ## Left-rotate bits in a 16-bits value.
   let amount = amount and 15
   result = (value shl amount) or (value shr ( (-amount) and 15))
 
-proc rotateLeftBits*(value: uint32;
-           amount: range[0..32]): uint32 {.inline, noSideEffect.} =
+func rotateLeftBits*(value: uint32, amount: range[0..32]): uint32  =
   ## Left-rotate bits in a 32-bits value.
   let amount = amount and 31
   result = (value shl amount) or (value shr ( (-amount) and 31))
 
-proc rotateLeftBits*(value: uint64;
-           amount: range[0..64]): uint64 {.inline, noSideEffect.} =
+func rotateLeftBits*(value: uint64, amount: range[0..64]): uint64  =
   ## Left-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shl amount) or (value shr ( (-amount) and 63))
 
-
-proc rotateRightBits*(value: uint8;
-            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
+func rotateRightBits*(value: uint8, amount: range[0..8]): uint8  =
   ## Right-rotate bits in a 8-bits value.
   let amount = amount and 7
   result = (value shr amount) or (value shl ( (-amount) and 7))
 
-proc rotateRightBits*(value: uint16;
-            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
+func rotateRightBits*(value: uint16, amount: range[0..16]): uint16  =
   ## Right-rotate bits in a 16-bits value.
   let amount = amount and 15
   result = (value shr amount) or (value shl ( (-amount) and 15))
 
-proc rotateRightBits*(value: uint32;
-            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
+func rotateRightBits*(value: uint32, amount: range[0..32]): uint32  =
   ## Right-rotate bits in a 32-bits value.
   let amount = amount and 31
   result = (value shr amount) or (value shl ( (-amount) and 31))
 
-proc rotateRightBits*(value: uint64;
-            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
+func rotateRightBits*(value: uint64, amount: range[0..64]): uint64  =
   ## Right-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shr amount) or (value shl ( (-amount) and 63))
+
+when isMainModule:
+  static:
+    doAssert oneBits(0b01000100'u8) == 2
+    doAssert parityBits(0b00000001'u8) == 1
+    doAssert firstOneBit(0b00000010'u8) == 2
+    doAssert fastLog2Bit(0b01000000'u8) == 6
+    doAssert oneBits(0b01000100'u8) == 2
+    doAssert leadingZeroBits(0b00100000'u8) == 2
+    doAssert trailingZeroBits(0b00000010'u8) == 1
