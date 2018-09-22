@@ -32,6 +32,12 @@ const arch64 = sizeof(int) == 8
 when defined(noUndefinedBitOpts):
   {.deprecated: "no undefined bitops deprecated, use parameter instead" .}
 
+template toUnsigned(x: int8): uint8 = x.uint8
+template toUnsigned(x: int16): uint16 = x.uint16
+template toUnsigned(x: int32): uint32 = x.uint32
+template toUnsigned(x: int64): uint64 = x.uint64
+template toUnsigned(x: int): uint = x.uint
+
 # #### Pure Nim version ####
 
 func firstOneBitNim(x: uint32): int =
@@ -88,7 +94,7 @@ func oneBitsNim(n: uint32): int =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
-  var v = uint32(n)
+  var v = n
   v = v - ((v shr 1) and 0x55555555)
   v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
   result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
@@ -96,14 +102,13 @@ func oneBitsNim(n: uint32): int =
 func oneBitsNim(n: uint64): int =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-  var v = uint64(n)
+  var v = n
   v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
   v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
-
-template parityImpl[T](value: T): int =
+func parityBitsNim[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
   when sizeof(T) == 8:
@@ -181,7 +186,7 @@ elif useICC_builtins:
     index.int
 
 
-func oneBits*(x: SomeUnsignedInt): int =
+func oneBits*(x: SomeUnsignedInt): int {.inline.} =
   ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
   ##
   ## Example:
@@ -210,14 +215,17 @@ func oneBits*(x: SomeUnsignedInt): int =
       when sizeof(x) <= 4: oneBitsNim(x.uint32)
       else:                oneBitsNim(x.uint64)
 
-func countSetBits*(x: SomeInteger): int {.deprecated: "oneBits".} =
-  oneBits(x.uint64)
+func countSetBits*(x: SomeUnsignedInt): int {.inline, deprecated: "oneBits".}=
+  oneBits(x)
+func countSetBits*(x: SomeSignedInt): int {.inline, deprecated: "oneBits".}=
+  oneBits(x.toUnsigned)
 
-func popcount*(x: SomeInteger): int {.deprecated: "oneBits".}=
-  ## Alias for for countSetBits (Hamming weight.)
-  oneBits(x.uint64)
+func popcount*(x: SomeUnsignedInt): int {.inline, deprecated: "oneBits".}=
+  oneBits(x)
+func popcount*(x: SomeSignedInt): int {.inline, deprecated: "oneBits".}=
+  oneBits(x.toUnsigned)
 
-func parityBits*(x: SomeUnsignedInt): int =
+func parityBits*(x: SomeUnsignedInt): int {.inline.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.
   ##
@@ -226,20 +234,20 @@ func parityBits*(x: SomeUnsignedInt): int =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    when sizeof(x) <= 4: parityImpl(x.uint32)
-    else:                parityImpl(x.uint64)
+    when sizeof(x) <= 4: parityBitsNim(x.uint32)
+    else:                parityBitsNim(x.uint64)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: builtin_parity(x.uint32).int
       else:                builtin_parityll(x.uint64).int
     else:
-      when sizeof(x) <= 4: parityImpl(x.uint32)
-      else:                parityImpl(x.uint64)
+      when sizeof(x) <= 4: parityBitsNim(x.uint32)
+      else:                parityBitsNim(x.uint64)
 
-func parityBits*(x: SomeSignedInt): int {.deprecated.} =
-  parityBits(x.uint64)
+func parityBits*(x: SomeSignedInt): int {.inline, deprecated.} =
+  parityBits(x.toUnsigned)
 
-func firstOneBit*(x: SomeUnsignedInt, maybeZero = true): int =
+func firstOneBit*(x: SomeUnsignedInt, maybeZero = true): int {.inline.} =
   ## Returns the 1-based index of the least significant set bit of x.
   ## If `x` is zero and `maybeZero` is true, result is 0
   ## If `x` is zero and `maybeZero` is false, result is undefined
@@ -271,10 +279,12 @@ func firstOneBit*(x: SomeUnsignedInt, maybeZero = true): int =
       elif sizeof(x) <= 4: firstOneBitNim(x.uint32)
       else:                firstOneBitNim(x.uint64)
 
-func firstSetBit*(x: SomeInteger): int {.deprecated: "firstOneBit".} =
-  firstOneBit(x.uint64, noUndefined)
+func firstSetBit*(x: SomeUnsignedInt): int {.inline, deprecated: "firstOneBit".} =
+  firstOneBit(x, noUndefined)
+func firstSetBit*(x: SomeSignedInt): int {.inline, deprecated: "firstOneBit".} =
+  firstOneBit(x.toUnsigned, noUndefined)
 
-func fastLog2Bit*(x: SomeUnsignedInt, maybeZero = true): int =
+func fastLog2Bit*(x: SomeUnsignedInt, maybeZero = true): int {.inline.} =
   ## Return the truncated base 2 logarithm of `x`
   ## If `x` is zero and `maybeZero` is true, result is -1
   ## If `x` is zero and `maybeZero` is false, result is undefined
@@ -284,8 +294,8 @@ func fastLog2Bit*(x: SomeUnsignedInt, maybeZero = true): int =
   if maybeZero and x == 0: -1
   else:
     when nimvm:
-      when sizeof(x) <= 4: fastlog2Nim(x.uint32)
-      else:                fastlog2Nim(x.uint64)
+      when sizeof(x) <= 4: fastLog2Nim(x.uint32)
+      else:                fastLog2Nim(x.uint64)
     else:
       when useGCC_builtins:
         when sizeof(x) <= 4: 31 - builtin_clz(x.uint32).int
@@ -293,19 +303,21 @@ func fastLog2Bit*(x: SomeUnsignedInt, maybeZero = true): int =
       elif useVCC_builtins:
         when sizeof(x) <= 4: vcc_scan_impl(bitScanReverse, x.culong)
         elif arch64:         vcc_scan_impl(bitScanReverse64, x.uint64)
-        else:                fastlog2Nim(x.uint64)
+        else:                fastLog2Nim(x.uint64)
       elif useICC_builtins:
         when sizeof(x) <= 4: icc_scan_impl(bitScanReverse, x.uint32)
         elif arch64:         icc_scan_impl(bitScanReverse64, x.uint64)
-        else:                fastlog2Nim(x.uint64)
+        else:                fastLog2Nim(x.uint64)
       else:
-        when sizeof(x) <= 4: fastlog2Nim(x.uint32)
-        else:                fastlog2Nim(x.uint64)
+        when sizeof(x) <= 4: fastLog2Nim(x.uint32)
+        else:                fastLog2Nim(x.uint64)
 
-func fastlog2*(x: SomeInteger): int {.deprecated: "fastLog2Bit".} =
-  fastLog2Bit(x.uint64, noUndefined)
+func fastLog2*(x: SomeUnsignedInt): int {.inline, deprecated: "fastLog2Bit".} =
+  fastLog2Bit(x, noUndefined)
+func fastLog2*(x: SomeSignedInt): int {.inline, deprecated: "fastLog2Bit".} =
+  fastLog2Bit(x.toUnsigned, noUndefined)
 
-func leadingZeroBits*(x: SomeInteger, maybeZero = true): int =
+func leadingZeroBits*(x: SomeInteger, maybeZero = true): int {.inline.} =
   ## Returns the number of leading zero bits in integer.
   ## If `x` is zero and maybeZero is true, result is sizeof(x) * 8
   ## If `x` is zero and maybeZero is false, result is undefined
@@ -318,8 +330,8 @@ func leadingZeroBits*(x: SomeInteger, maybeZero = true): int =
   if maybeZero and x == 0: sizeof(x) * 8
   else:
     when nimvm:
-      when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastlog2Nim(x.uint32)
-      else:                sizeof(x)*8 - 1 - fastlog2Nim(x.uint64)
+      when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastLog2Nim(x.uint32)
+      else:                sizeof(x)*8 - 1 - fastLog2Nim(x.uint64)
     else:
       when useGCC_builtins:
         when sizeof(x) <= sizeof(cuint):
@@ -327,22 +339,15 @@ func leadingZeroBits*(x: SomeInteger, maybeZero = true): int =
         else:
           builtin_clzll(x.culonglong).int
       else:
-        when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastlog2Nim(x.uint32)
-        else:                sizeof(x)*8 - 1 - fastlog2Nim(x.uint64)
-
-func countLeadingZeroBits*(x: int8): int {.inline, deprecated: "leadingZeroBits".} =
-  leadingZeroBits(x.uint8, noUndefined)
-func countLeadingZeroBits*(x: int16): int {.inline, deprecated: "leadingZeroBits".} =
-  leadingZeroBits(x.uint16, noUndefined)
-func countLeadingZeroBits*(x: int32): int {.inline, deprecated: "leadingZeroBits".} =
-  leadingZeroBits(x.uint32, noUndefined)
-func countLeadingZeroBits*(x: int64): int {.inline, deprecated: "leadingZeroBits".} =
-  leadingZeroBits(x.uint64, noUndefined)
+        when sizeof(x) <= 4: sizeof(x)*8 - 1 - fastLog2Nim(x.uint32)
+        else:                sizeof(x)*8 - 1 - fastLog2Nim(x.uint64)
 
 func countLeadingZeroBits*(x: SomeUnsignedInt): int {.inline, deprecated: "leadingZeroBits".} =
   leadingZeroBits(x, noUndefined)
+func countLeadingZeroBits*(x: SomeSignedInt): int {.inline, deprecated: "leadingZeroBits".} =
+  leadingZeroBits(x.toUnsigned, noUndefined)
 
-func trailingZeroBits*(x: SomeInteger, maybeZero = true): int =
+func trailingZeroBits*(x: SomeUnsignedInt, maybeZero = true): int =
   ## Returns the number of trailing zeros in integer.
   ## If `x` is zero and maybeZero is true, result is sizeof(x) * 8
   ## If `x` is zero and maybeZero is false, result is undefined
@@ -362,8 +367,10 @@ func trailingZeroBits*(x: SomeInteger, maybeZero = true): int =
         else:                            builtin_ctzll(x.culonglong).int
       else: firstOneBit(x) - 1
 
-func countTrailingZeroBits*(x: SomeInteger): int {.deprecated: "trailingZeroBits".} =
-  trailingZeroBits(x.uint64, noUndefined)
+func countTrailingZeroBits*(x: SomeUnsignedInt): int {.inline, deprecated: "trailingZeroBits".} =
+  trailingZeroBits(x, noUndefined)
+func countTrailingZeroBits*(x: SomeSignedInt): int {.inline, deprecated: "trailingZeroBits".} =
+  trailingZeroBits(x.toUnsigned, noUndefined)
 
 func rotateLeftBits*(value: uint8, amount: range[0..8]): uint8 =
   ## Left-rotate bits in a 8-bits value.
