@@ -935,12 +935,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    when true:
-      result = transformSons(c, n)
-    else:
-      result = n.PTransNode
-      let L = n.len-1
-      result[L] = transform(c, n.sons[L])
+    result = PTransNode(n)
+    result[0] = transform(c, n[0])
+    # Skip the second son since it only contains an unsemanticized copy of the
+    # variable type used by docgen
+    result[2] = transform(c, n[2])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       PNode(result).comment = n.comment

@@ -230,9 +230,6 @@ proc setTarget*(t: var Target; o: TSystemOS, c: TSystemCPU) =
   #echo "new Target: OS: ", o, " CPU: ", c
   t.targetCPU = c
   t.targetOS = o
-  # assume no cross-compiling
-  t.hostCPU = c
-  t.hostOS = o
   t.intSize = CPU[c].intSize div 8
   t.floatSize = CPU[c].floatSize div 8
   t.ptrSize = CPU[c].bit div 8
@@ -251,4 +248,6 @@ proc nameToCPU*(name: string): TSystemCPU =
   result = cpuNone
 
 proc setTargetFromSystem*(t: var Target) =
-  t.setTarget(nameToOS(system.hostOS), nameToCPU(system.hostCPU))
+  t.hostOS = nameToOS(system.hostOS)
+  t.hostCPU = nameToCPU(system.hostCPU)
+  t.setTarget(t.hostOS, t.hostCPU)

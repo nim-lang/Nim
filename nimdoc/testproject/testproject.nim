@@ -20,3 +20,5 @@ import std/macros
 
 macro bar*(): untyped =
   result = newStmtList()
+
+var aVariable*: array[1,int]

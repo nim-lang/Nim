@@ -177,6 +177,9 @@ proc processBody(node, retFutureSym: NimNode,
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard, node)
+  of RoutineNodes:
+    # skip all the nested procedure definitions
+    return
   else: discard
 
   for i in 0 ..< result.len:

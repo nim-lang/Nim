@@ -41,6 +41,7 @@ Usage:
 Options:
   --help, -h               shows this help and quits
   --latest                 bundle the installers with a bleeding edge Nimble
+  --stable                 bundle the installers with a stable Nimble
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -509,12 +510,14 @@ proc showHelp() =
 when isMainModule:
   var op = initOptParser()
   var latest = false
+  var stable = false
   while true:
     op.next()
     case op.kind
     of cmdLongOption, cmdShortOption:
       case normalize(op.key)
       of "latest": latest = true
+      of "stable": stable = true
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
@@ -537,9 +540,13 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools()
-      of "nimble": buildNimble(existsDir(".git") or latest)
+      of "nimble":
+        if stable: buildNimble(false)
+        else: buildNimble(existsDir(".git") or latest)
       of "nimsuggest": bundleNimsuggest(buildExe=true)
-      of "tools": buildTools(existsDir(".git") or latest)
+      of "tools":
+        if stable: buildTools(false)
+        else: buildTools(existsDir(".git") or latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       else: showHelp()
