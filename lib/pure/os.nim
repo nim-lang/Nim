@@ -919,6 +919,7 @@ iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
   ## ``pcLinkToFile``        yield symbolic links to files
   ## ``pcDir``               yield real directories
   ## ``pcLinkToDir``         yield symbolic links to directories
+  ## ``pcLinkUnresolvable``  yield unresolvable symbolic links
   ## ---------------------   ---------------------------------------------
   ##
   ## ---------------------   ---------------------------------------------
