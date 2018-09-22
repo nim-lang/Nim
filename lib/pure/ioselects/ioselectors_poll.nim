@@ -172,8 +172,9 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   doAssert(pkey.ident != InvalidIdent,
            "Descriptor [" & $fdi & "] is not registered in the queue!")
   pkey.ident = InvalidIdent
-  pkey.events = {}
-  s.pollRemove(fdi.cint)
+  if pkey.events != {}:
+    pkey.events = {}
+    s.pollRemove(fdi.cint)
 
 proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
