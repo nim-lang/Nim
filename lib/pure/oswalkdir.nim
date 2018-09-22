@@ -16,6 +16,7 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
+    pcLinkUnresolvable    ## path refers to an unresolvable symbolic link
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
@@ -31,5 +32,5 @@ iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string =
     for k,p in walkDir(stack.pop()):
       if k in filter:
         case k
-        of pcFile, pcLinkToFile: yield p
+        of pcFile, pcLinkToFile, pcLinkUnresolvable: yield p
         of pcDir, pcLinkToDir: stack.add(p)

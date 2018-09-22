@@ -801,6 +801,7 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
+    pcLinkUnresolvable    ## path refers to an unresolvable symbolic link
 
 
 when defined(posix):
@@ -809,8 +810,8 @@ when defined(posix):
     var s: Stat
     assert(path != "")
     if stat(path, s) < 0'i32:
-      raiseOSError(osLastError())
-    if S_ISDIR(s.st_mode):
+      result = pcLinkUnresolvable
+    elif S_ISDIR(s.st_mode):
       result = pcLinkToDir
     else:
       result = pcLinkToFile
@@ -957,7 +958,7 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## existed in the first place.
   for kind, path in walkDir(dir):
     case kind
-    of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
+    of pcFile, pcLinkToFile, pcLinkToDir, pcLinkUnresolvable: removeFile(path)
     of pcDir: removeDir(path)
   rawRemoveDir(dir)
 
