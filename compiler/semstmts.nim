@@ -495,12 +495,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
-        # keep type desc for doc generator, but only if the user explicitly
-        # added it
-        if a.sons[length-2].kind != nkEmpty:
-          addSon(b, newNodeIT(nkType, a.info, typ))
-        else:
-          addSon(b, a.sons[length-2])
+        # keep type desc for doc generator
+        addSon(b, a.sons[length-2])
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
