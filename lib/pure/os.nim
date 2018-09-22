@@ -800,7 +800,7 @@ type
     pcFile,               ## path refers to a file
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
-    pcLinkToDir           ## path refers to a symbolic link to a directory
+    pcLinkToDir,          ## path refers to a symbolic link to a directory
     pcLinkUnresolvable    ## path refers to an unresolvable symbolic link
 
 
