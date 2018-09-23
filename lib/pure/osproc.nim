@@ -236,6 +236,7 @@ proc execProcesses*(cmds: openArray[string],
   if n > 1:
     var i = 0
     var q = newSeq[Process](n)
+    var idxs = newSeq[int](n) # map process index to cmds index
 
     when defined(windows):
       var w: WOHandleArray
@@ -248,6 +249,7 @@ proc execProcesses*(cmds: openArray[string],
       if beforeRunEvent != nil:
         beforeRunEvent(i)
       q[i] = startProcess(cmds[i], options = options + {poEvalCommand})
+      idxs[i] = i
       when defined(windows):
         w[i] = q[i].fProcessHandle
       inc(i)
@@ -304,12 +306,13 @@ proc execProcesses*(cmds: openArray[string],
 
       if rexit >= 0:
         result = max(result, abs(q[rexit].peekExitCode()))
-        if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
+        if afterRunEvent != nil: afterRunEvent(idxs[rexit], q[rexit])
         close(q[rexit])
         if i < len(cmds):
           if beforeRunEvent != nil: beforeRunEvent(i)
           q[rexit] = startProcess(cmds[i],
                                   options = options + {poEvalCommand})
+          idxs[rexit] = i
           when defined(windows):
             w[rexit] = q[rexit].fProcessHandle
           inc(i)
