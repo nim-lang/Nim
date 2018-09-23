@@ -125,6 +125,10 @@ proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKi
       importStmt.addSon str
       if not processTopLevelStmt(importStmt, a): break
 
+const
+  imperativeCode = {low(TNodeKind)..high(TNodeKind)} - {nkTemplateDef, nkProcDef, nkMethodDef,
+    nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef}
+
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
@@ -191,7 +195,22 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
             sl = reorder(graph, sl, module)
           discard processTopLevelStmt(sl, a)
           break
-        elif not processTopLevelStmt(n, a): break
+        elif n.kind in imperativeCode:
+          # read everything until the next proc declaration etc.
+          var sl = newNodeI(nkStmtList, n.info)
+          sl.add n
+          var rest: PNode = nil
+          while true:
+            var n = parseTopLevelStmt(p)
+            if n.kind == nkEmpty or n.kind notin imperativeCode:
+              rest = n
+              break
+            sl.add n
+          if not processTopLevelStmt(sl, a): break
+          if rest != nil:
+            if not processTopLevelStmt(rest, a): break
+        else:
+          if not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)
