@@ -1529,7 +1529,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 template needsRegLoad(): untyped =
   {gfNode, gfNodeAddr} * flags == {} and
-    fitsRegister(n.typ.skipTypes({tyVar, tyLent}))
+    fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
 
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
@@ -1590,7 +1590,7 @@ proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
   else: globalError(conf, result.info, "cannot create null element for: " & $obj)
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
-  var t = skipTypes(typ, abstractRange-{tyTypeDesc})
+  var t = skipTypes(typ, abstractRange+{tyStatic}-{tyTypeDesc})
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
     result = newNodeIT(nkIntLit, info, t)
@@ -1602,7 +1602,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
   of tyVar, tyLent, tyPointer, tyPtr, tyExpr,
-     tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
+     tyStmt, tyTypeDesc, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
     if t.callConv != ccClosure:
