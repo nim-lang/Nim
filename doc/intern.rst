@@ -8,7 +8,7 @@
 
 .. contents::
 
-  "Abstraction is layering ignorance on top of reality." -- unknown
+  "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
 
 
 Directory structure
