@@ -58,8 +58,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym): bool =
-  result = not strTableIncl(scope.symbols, s)
+proc addUniqueSym*(scope: PScope, s: PSym): PSym =
+  result = strTableInclReportConflict(scope.symbols, s)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -177,24 +177,30 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
           message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(c.config, s))
     s = nextIter(it, scope.symbols)
 
-proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string) =
+proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
+                        conflictsWith: TLineInfo) =
   if c.config.cmd != cmdInteractive:
-    localError(c.config, info, "redefinition of '$1'" % s)
+    localError(c.config, info,
+      "redefinition of '$1'; previous declaration here: $2" %
+      [s, c.config $ conflictsWith])
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
-  if not c.currentScope.addUniqueSym(sym):
-    wrongRedefinition(c, info, sym.name.s)
+  let conflict = c.currentScope.addUniqueSym(sym)
+  if conflict != nil:
+    wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDecl*(c: PContext, sym: PSym) =
-  if not c.currentScope.addUniqueSym(sym):
-    wrongRedefinition(c, sym.info, sym.name.s)
+  let conflict = c.currentScope.addUniqueSym(sym)
+  if conflict != nil:
+    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
-  if not scope.addUniqueSym(sym):
-    wrongRedefinition(c, sym.info, sym.name.s)
+  let conflict = scope.addUniqueSym(sym)
+  if conflict != nil:
+    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
@@ -212,7 +218,7 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
     return
   let check = strTableGet(scope.symbols, fn.name)
   if check != nil and check.kind notin OverloadableSyms:
-    wrongRedefinition(c, fn.info, fn.name.s)
+    wrongRedefinition(c, fn.info, fn.name.s, check.info)
   else:
     scope.addSym(fn)
 

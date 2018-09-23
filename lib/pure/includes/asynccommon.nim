@@ -38,11 +38,11 @@ when defined(windows) or defined(nimdoc):
 
     if domain == Domain.AF_INET6:
       var saddr: Sockaddr_in6
-      saddr.sin6_family = int16(toInt(domain))
+      saddr.sin6_family = uint16(toInt(domain))
       doBind(saddr)
     else:
       var saddr: Sockaddr_in
-      saddr.sin_family = int16(toInt(domain))
+      saddr.sin_family = uint16(toInt(domain))
       doBind(saddr)
 
   proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =

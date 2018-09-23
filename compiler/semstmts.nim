@@ -495,12 +495,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
-        # keep type desc for doc generator, but only if the user explicitly
-        # added it
-        if a.sons[length-2].kind != nkEmpty:
-          addSon(b, newNodeIT(nkType, a.info, typ))
-        else:
-          addSon(b, a.sons[length-2])
+        # keep type desc for doc generator
+        addSon(b, a.sons[length-2])
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
@@ -1604,7 +1600,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
           ("'" & proto.name.s & "' from " & c.config$proto.info))
     if sfForward notin proto.flags and proto.magic == mNone:
-      wrongRedefinition(c, n.info, proto.name.s)
+      wrongRedefinition(c, n.info, proto.name.s, proto.info)
     excl(proto.flags, sfForward)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols

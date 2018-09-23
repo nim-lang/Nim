@@ -92,6 +92,7 @@ proc mangle*(name: string): string =
     of '+': special "plus"
     of '-': special "minus"
     of '/': special "slash"
+    of '\\': special "backslash"
     of '=': special "eq"
     of '<': special "lt"
     of '>': special "gt"

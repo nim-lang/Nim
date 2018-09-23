@@ -1560,6 +1560,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           rhsTyp = rhsTyp.lastSon
         if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.config, c.p.resultSym != nil
+          # Make sure the type is valid for the result variable
+          typeAllowedCheck(c.config, n.info, rhsTyp, skResult)
           lhs.typ = rhsTyp
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ.sons[0] = rhsTyp
@@ -2267,6 +2269,7 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
     return n
   let exceptSet = readExceptSet(c, n)
   let exported = moduleName.sym
+  result = newNodeI(nkExportStmt, n.info)
   strTableAdd(c.module.tab, exported)
   var i: TTabIter
   var s = initTabIter(i, exported.tab)
@@ -2274,11 +2277,12 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet:
       strTableAdd(c.module.tab, s)
+      result.add newSymNode(s, n.info)
     s = nextIter(i, exported.tab)
-  result = n
 
 proc semExport(c: PContext, n: PNode): PNode =
-  var x = newNodeI(n.kind, n.info)
+  result = newNodeI(nkExportStmt, n.info)
+
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2288,20 +2292,19 @@ proc semExport(c: PContext, n: PNode): PNode =
     elif s.kind == skModule:
       # forward everything from that module:
       strTableAdd(c.module.tab, s)
-      x.add(newSymNode(s, a.info))
       var ti: TTabIter
       var it = initTabIter(ti, s.tab)
       while it != nil:
         if it.kind in ExportableSymKinds+{skModule}:
           strTableAdd(c.module.tab, it)
+          result.add newSymNode(it, a.info)
         it = nextIter(ti, s.tab)
     else:
       while s != nil:
         if s.kind in ExportableSymKinds+{skModule}:
-          x.add(newSymNode(s, a.info))
+          result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
         s = nextOverloadIter(o, c, a)
-  result = n
 
 proc shouldBeBracketExpr(n: PNode): bool =
   assert n.kind in nkCallKinds

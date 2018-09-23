@@ -103,6 +103,10 @@ type
   PNimType = ptr TNimType
 
 when defined(nimTypeNames):
-  var nimTypeRoot {.compilerProc.}: PNimType
+  # Declare this variable only once in system.nim
+  when declared(ThisIsSystem):
+    var nimTypeRoot {.compilerProc.}: PNimType
+  else:
+    var nimTypeRoot {.importc.}: PNimType
 
 # node.len may be the ``first`` element of a set

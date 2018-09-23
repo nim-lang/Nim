@@ -3,7 +3,7 @@
 import os, strutils, osproc
 
 const
-  gaCode* = " --googleAnalytics:UA-48159761-1"
+  gaCode* = " --doc.googleAnalytics:UA-48159761-1"
 
   nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"

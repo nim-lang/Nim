@@ -3638,10 +3638,31 @@ Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
 collide 1 because the resolution works from left to right.
 In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
-**Performance note**: Nim does not produce a virtual method table, but
-generates dispatch trees. This avoids the expensive indirect branch for method
-calls and enables inlining. However, other optimizations like compile time
-evaluation or dead code elimination do not work with methods.
+**Note**: Compile time evaluation is not (yet) supported for methods.
+
+
+Inhibit dynamic method resolution via procCall
+-----------------------------------------------
+
+Dynamic method resolution can be inhibited via the builtin `system.procCall`:idx:.
+This is somewhat comparable to the `super`:idx: keyword that traditional OOP
+languages offer.
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    Thing = ref object of RootObj
+    Unit = ref object of Thing
+      x: int
+
+  method m(a: Thing) {.base.} =
+    echo "base"
+
+  method m(a: Unit) =
+    # Call the base method:
+    procCall m(Thing(a))
+    echo "1"
 
 
 Iterators and the for statement
@@ -6549,7 +6570,7 @@ preface definitions inside a module.
 ..
    NOTE: The following was documentation for the code reordering precursor,
    which was {.noForward.}.
-   
+
    In this mode, procedure definitions may appear out of order and the compiler
    will postpone their semantic analysis and compilation until it actually needs
    to generate code using the definitions. In this regard, this mode is similar
@@ -6672,18 +6693,12 @@ The deprecated pragma is used to mark a symbol as deprecated:
 This pragma can also take in an optional warning string to relay to developers.
 
 .. code-block:: nim
-  proc thing(x: bool) {.deprecated: "See arguments of otherThing()".}
+  proc thing(x: bool) {.deprecated: "use thong instead".}
 
-It can also be used as a statement, in that case it takes a list of *renamings*.
-
-.. code-block:: nim
-  type
-    File = object
-    Stream = ref object
-  {.deprecated: [TFile: File, PStream: Stream].}
 
 noSideEffect pragma
 -------------------
+
 The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
 effects. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
@@ -7731,20 +7746,21 @@ documentation for details. These macros are no magic, they don't do anything
 you cannot do yourself by walking AST object representation.
 
 More examples with custom pragmas:
-  - Better serialization/deserialization control:
 
-  .. code-block:: nim
-    type MyObj = object
-      a {.dontSerialize.}: int
-      b {.defaultDeserialize: 5.}: int
-      c {.serializationKey: "_c".}: string
+- Better serialization/deserialization control:
 
-  - Adopting type for gui inspector in a game engine:
+.. code-block:: nim
+  type MyObj = object
+    a {.dontSerialize.}: int
+    b {.defaultDeserialize: 5.}: int
+    c {.serializationKey: "_c".}: string
 
-  .. code-block:: nim
-    type MyComponent = object
-      position {.editable, animatable.}: Vector3
-      alpha {.editRange: [0.0..1.0], animatable.}: float32
+- Adopting type for gui inspector in a game engine:
+
+.. code-block:: nim
+  type MyComponent = object
+    position {.editable, animatable.}: Vector3
+    alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
 

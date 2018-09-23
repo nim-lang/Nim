@@ -78,7 +78,6 @@ type                          # please make sure we have under 32 options
     optListFullPaths
     optNoNimblePath
     optDynlibOverrideAll
-    optUseNimNamespace
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -242,6 +241,7 @@ type
     writelnHook*: proc (output: string) {.closure.}
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure.}
+    cppCustomNamespace*: string
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)

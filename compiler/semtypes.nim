@@ -125,8 +125,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
       else: importPureEnumField(c, e)
-    if isPure and strTableIncl(symbols, e):
-      wrongRedefinition(c, e.info, e.name.s)
+    if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
+      wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
   if not hasNull: incl(result.flags, tfNeedsInit)
 

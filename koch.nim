@@ -16,9 +16,9 @@ when defined(gcc) and defined(windows):
     {.link: "icons/koch_icon.o".}
 
 when defined(amd64) and defined(windows) and defined(vcc):
-  {.link: "icons/koch-amd64-windows-vcc.res" .}
+  {.link: "icons/koch-amd64-windows-vcc.res".}
 when defined(i386) and defined(windows) and defined(vcc):
-  {.link: "icons/koch-i386-windows-vcc.res" .}
+  {.link: "icons/koch-i386-windows-vcc.res".}
 
 import
   os, strutils, parseopt, osproc, streams
@@ -40,6 +40,8 @@ Usage:
   koch [options] command [options for command]
 Options:
   --help, -h               shows this help and quits
+  --latest                 bundle the installers with a bleeding edge Nimble
+  --stable                 bundle the installers with a stable Nimble
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -60,7 +62,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-  winrelease               creates a Windows release
   pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
@@ -74,33 +75,6 @@ template withDir(dir, body) =
     body
   finally:
     setCurrentdir(old)
-
-proc testUnixInstall() =
-  let oldCurrentDir = getCurrentDir()
-  try:
-    let destDir = getTempDir()
-    copyFile("build/nim-$1.tar.xz" % VersionAsString,
-             destDir / "nim-$1.tar.xz" % VersionAsString)
-    setCurrentDir(destDir)
-    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
-    setCurrentDir("nim-$1" % VersionAsString)
-    execCleanPath("sh build.sh")
-    # first test: try if './bin/nim --version' outputs something sane:
-    let output = execProcess("./bin/nim --version").splitLines
-    if output.len > 0 and output[0].contains(VersionAsString):
-      echo "Version check: success"
-      execCleanPath("./bin/nim c koch.nim")
-      execCleanPath("./koch boot -d:release", destDir / "bin")
-      # check the docs build:
-      execCleanPath("./koch docs", destDir / "bin")
-      # check nimble builds:
-      execCleanPath("./koch tools")
-      # check the tests work:
-      execCleanPath("./koch tests", destDir / "bin")
-    else:
-      echo "Version check: failure"
-  finally:
-    setCurrentDir oldCurrentDir
 
 proc tryExec(cmd: string): bool =
   echo(cmd)
@@ -126,17 +100,18 @@ proc csource(args: string) =
            "--main:compiler/nim.nim compiler/installer.ini $1") %
        [args, VersionAsString, compileNimInst])
 
-proc bundleNimbleSrc() =
+proc bundleNimbleSrc(latest: bool) =
   ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
   ## always bundle the latest official release.
   if not dirExists("dist/nimble/.git"):
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  withDir("dist/nimble"):
-    exec("git checkout -f stable")
-    exec("git pull")
+  if not latest:
+    withDir("dist/nimble"):
+      exec("git checkout -f stable")
+      exec("git pull")
 
-proc bundleNimbleExe() =
-  bundleNimbleSrc()
+proc bundleNimbleExe(latest: bool) =
+  bundleNimbleSrc(latest)
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
   nimexec("c -d:release --nilseqs:on dist/nimble/src/nimble.nim")
@@ -190,8 +165,8 @@ proc bundleWinTools() =
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
             r"--path:..\ui tools\downloader.nim")
 
-proc zip(args: string) =
-  bundleNimbleExe()
+proc zip(latest: bool; args: string) =
+  bundleNimbleExe(latest)
   bundleNimsuggest(true)
   bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
@@ -206,9 +181,9 @@ proc ensureCleanGit() =
    if status != 0:
      quit "Not a clean git repository; 'git diff' returned non-zero!"
 
-proc xz(args: string) =
+proc xz(latest: bool; args: string) =
   ensureCleanGit()
-  bundleNimbleSrc()
+  bundleNimbleSrc(latest)
   bundleNimsuggest(false)
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
@@ -230,8 +205,8 @@ proc buildTools(latest: bool) =
 
   buildNimble(latest)
 
-proc nsis(args: string) =
-  bundleNimbleExe()
+proc nsis(latest: bool; args: string) =
+  bundleNimbleExe(latest)
   bundleNimsuggest(true)
   bundleWinTools()
   # make sure we have generated the niminst executables:
@@ -377,7 +352,7 @@ proc winReleaseArch(arch: string) =
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --cpu:$# koch" % cpu
     exec "koch boot -d:release --cpu:$#" % cpu
-    exec "koch zip -d:release"
+    exec "koch --latest zip -d:release"
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -393,9 +368,9 @@ proc winRelease*() =
                   "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     csource("-d:release")
-  when true:
+  when sizeof(pointer) == 4:
     winReleaseArch "32"
-  when true:
+  when sizeof(pointer) == 8:
     winReleaseArch "64"
 
 # -------------- tests --------------------------------------------------------
@@ -475,6 +450,37 @@ proc pushCsources() =
   finally:
     setCurrentDir(cwd)
 
+proc testUnixInstall(cmdLineRest: string) =
+  csource("-d:release " & cmdLineRest)
+  xz(false, cmdLineRest)
+  let oldCurrentDir = getCurrentDir()
+  try:
+    let destDir = getTempDir()
+    copyFile("build/nim-$1.tar.xz" % VersionAsString,
+             destDir / "nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir(destDir)
+    execCleanPath("tar -xJf nim-$1.tar.xz" % VersionAsString)
+    setCurrentDir("nim-$1" % VersionAsString)
+    execCleanPath("sh build.sh")
+    # first test: try if './bin/nim --version' outputs something sane:
+    let output = execProcess("./bin/nim --version").splitLines
+    if output.len > 0 and output[0].contains(VersionAsString):
+      echo "Version check: success"
+      execCleanPath("./bin/nim c koch.nim")
+      execCleanPath("./koch boot -d:release", destDir / "bin")
+      # check the docs build:
+      execCleanPath("./koch docs", destDir / "bin")
+      # check nimble builds:
+      execCleanPath("./koch --latest tools")
+      # check the tests work:
+      putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
+      execCleanPath("./koch tests", destDir / "bin")
+      #execCleanPath("./koch tests cat newconfig", destDir / "bin")
+    else:
+      echo "Version check: failure"
+  finally:
+    setCurrentDir oldCurrentDir
+
 proc valgrind(cmd: string) =
   # somewhat hacky: '=' sign means "pass to valgrind" else "pass to Nim"
   let args = parseCmdLine(cmd)
@@ -503,35 +509,46 @@ proc showHelp() =
 
 when isMainModule:
   var op = initOptParser()
-  op.next()
-  case op.kind
-  of cmdLongOption, cmdShortOption: showHelp()
-  of cmdArgument:
-    case normalize(op.key)
-    of "boot": boot(op.cmdLineRest)
-    of "clean": clean(op.cmdLineRest)
-    of "doc", "docs": buildDocs(op.cmdLineRest)
-    of "doc0", "docs0":
-      # undocumented command for Araq-the-merciful:
-      buildDocs(op.cmdLineRest & gaCode)
-    of "pdf": buildPdfDoc(op.cmdLineRest, "doc/pdf")
-    of "csource", "csources": csource(op.cmdLineRest)
-    of "zip": zip(op.cmdLineRest)
-    of "xz": xz(op.cmdLineRest)
-    of "nsis": nsis(op.cmdLineRest)
-    of "geninstall": geninstall(op.cmdLineRest)
-    of "distrohelper": geninstall()
-    of "install": install(op.cmdLineRest)
-    of "testinstall": testUnixInstall()
-    of "test", "tests": tests(op.cmdLineRest)
-    of "temp": temp(op.cmdLineRest)
-    of "xtemp": xtemp(op.cmdLineRest)
-    #of "winrelease": winRelease()
-    of "wintools": bundleWinTools()
-    of "nimble": buildNimble(existsDir(".git"))
-    of "nimsuggest": bundleNimsuggest(buildExe=true)
-    of "tools": buildTools(existsDir(".git"))
-    of "pushcsource", "pushcsources": pushCsources()
-    of "valgrind": valgrind(op.cmdLineRest)
-    else: showHelp()
-  of cmdEnd: showHelp()
+  var latest = false
+  var stable = false
+  while true:
+    op.next()
+    case op.kind
+    of cmdLongOption, cmdShortOption:
+      case normalize(op.key)
+      of "latest": latest = true
+      of "stable": stable = true
+      else: showHelp()
+    of cmdArgument:
+      case normalize(op.key)
+      of "boot": boot(op.cmdLineRest)
+      of "clean": clean(op.cmdLineRest)
+      of "doc", "docs": buildDocs(op.cmdLineRest)
+      of "doc0", "docs0":
+        # undocumented command for Araq-the-merciful:
+        buildDocs(op.cmdLineRest & gaCode)
+      of "pdf": buildPdfDoc(op.cmdLineRest, "doc/pdf")
+      of "csource", "csources": csource(op.cmdLineRest)
+      of "zip": zip(latest, op.cmdLineRest)
+      of "xz": xz(latest, op.cmdLineRest)
+      of "nsis": nsis(latest, op.cmdLineRest)
+      of "geninstall": geninstall(op.cmdLineRest)
+      of "distrohelper": geninstall()
+      of "install": install(op.cmdLineRest)
+      of "testinstall": testUnixInstall(op.cmdLineRest)
+      of "test", "tests": tests(op.cmdLineRest)
+      of "temp": temp(op.cmdLineRest)
+      of "xtemp": xtemp(op.cmdLineRest)
+      of "wintools": bundleWinTools()
+      of "nimble":
+        if stable: buildNimble(false)
+        else: buildNimble(existsDir(".git") or latest)
+      of "nimsuggest": bundleNimsuggest(buildExe=true)
+      of "tools":
+        if stable: buildTools(false)
+        else: buildTools(existsDir(".git") or latest)
+      of "pushcsource", "pushcsources": pushCsources()
+      of "valgrind": valgrind(op.cmdLineRest)
+      else: showHelp()
+      break
+    of cmdEnd: break
