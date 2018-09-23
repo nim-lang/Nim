@@ -195,7 +195,7 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
       if cmpIgnoreCase(ext, splitFile(f).ext) == 0:
         add(s, f)
     of pcDir: walkDirRecursively(s, f, ext)
-    of pcLinkToDir: discard
+    else: discard
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):

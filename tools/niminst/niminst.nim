@@ -247,7 +247,7 @@ proc walkDirRecursively(s: var seq[string], root, explicit: string,
           add(s, unixToNativePath(f))
       of pcDir:
         walkDirRecursively(s, f, explicit, allowHtml)
-      of pcLinkToDir: discard
+      else: discard
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):

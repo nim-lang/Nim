@@ -24,6 +24,9 @@
   bring the language in line with the standard library (e.g. ``parseOct``).
 - The dot style for import paths (e.g ``import path.to.module`` instead of
   ``import path/to/module``) has been deprecated.
+- ``os.PathComponent`` grew a new enum element ``pcLinkUnresolvable`` to cover
+   the case of dangling symlinks on POSIX.  ``case`` statements expecting
+   complete coverage of enum values may need updating.
 
 #### Breaking changes in the standard library
 
