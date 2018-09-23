@@ -1054,8 +1054,8 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     when useEffectSystem: trackTopLevelStmt(g, module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
-    #if c.needsDestroyPass:
-    #  result = injectDestructorCalls(g, module, result)
+    if c.needsDestroyPass:
+      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
 
 proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
@@ -1067,6 +1067,6 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     liftDefer(c, result)
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
-    #if c.needsDestroyPass:
-    #  result = injectDestructorCalls(g, module, result)
+    if c.needsDestroyPass:
+      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)

@@ -2,6 +2,8 @@ discard """
   exitcode: 0
   output: '''assingment
 assingment
+assingment
+assingment
 '''
 """
 
