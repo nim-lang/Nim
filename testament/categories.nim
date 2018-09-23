@@ -176,7 +176,7 @@ proc runBasicDLLTest(cat: Category, options: string): Bundle =
   else:
     result.add makeTest(cat, "lib/nimrtl.nim", actionCompile, options = "")
     result.add makeTest(cat, "lib/nimrtl.nim", actionExec,
-        options = " sh -x \"cp lib/" & nimrtlDll & " tests/dll \"s")
+        options = " sh -c \"cp lib/" & nimrtlDll & " tests/dll\"")
 
   let filename = "tests/dll/client.nim"
   for b in expandSpec(cat, filename, options & " -d:useNimRtl --threads:on" & rpath,

@@ -127,6 +127,11 @@ when isMainModule:
     else:
       generators.add(proc(): auto = allGen(options))
 
+  of "item":
+    let item = p.key.string
+    runner.runCmdLine(item)
+    quit 0
+
   of "html":
     generateHtml(resultsFile, optFailing)
     if optPrintResults:
@@ -137,14 +142,15 @@ when isMainModule:
 
   var tests = newSeq[Bundle]()
   for g in generators:
-    tests.add map(g(), proc(b: Bundle): Bundle =
-      filter(b, proc(i: Instance): bool = allIt(filters, it(i))))
+    tests.add filter(
+      map(g(), proc(b: Bundle): Bundle =
+        filter(b, proc(i: Instance): bool = allIt(filters, it(i)))),
+      proc(b: Bundle): bool = b.len > 0)
 
   let total = sum(map(tests) do (x: auto) -> int: x.len)
 
   var passed, skipped, failed: int
   var data: string
-
 
   run(tests, prefix, proc (r: Result) =
     case r.given.res

@@ -1,7 +1,7 @@
 # Running of tests and evaluation of success
 
 import algorithm, compiler/nodejs, os, osproc, specs, streams, strutils,
-  pegs, types, times
+  pegs, types, times, json
 
 const
   targetToExt*: array[Target, string] = ["c", "cpp", "m", "js"]
@@ -340,64 +340,62 @@ type
     results: seq[Result]
     i: int
 
-var jobs: Channel[Item]
-var results: Channel[Res]
-
 proc run(bundle: Bundle, prefix: string, i, n: int): seq[Result] =
   for test in bundle:
     result.add run(test, prefix, i, n)
 
-proc worker() {.thread.} =
-  while true:
-    let (ok, item) = jobs.tryRecv()
-    if not ok:
-      break
+proc resultFile(i: int): string =
+  "nimcache" / $i & ".json"
 
-    results.send Res(results: run(item.bundle, item.prefix, item.i, item.n), i: item.i)
+proc `%`*(s: Category): JsonNode {.borrow.}
+
+proc runCmdLine*(item: string) =
+  let it = parseJson(item).to(Item)
+  let res = Res(results: run(it.bundle, it.prefix, it.i, it.n), i: it.i)
+  var s: string
+  toUgly(s, %res)
+  write(open(resultFile(it.i), mode = fmWrite), s)
+
+proc makeCmd(item: Item): string =
+  let self = quoteShell(findExe("testament" / "tester"))
+
+  var tmp: string
+  toUgly(tmp, json.`%`(item))
+
+  result = self & " item " & quoteShell(tmp)
 
 proc run*(tests: seq[Bundle], prefix: string, report: proc(res: Result)) =
-  open(jobs)
-  defer: close(jobs)
-  open(results)
-  defer: close(results)
-
   # Add all jobs
+  var jobs: seq[string]
+
+  createDir("nimcache")
+
   for i in 0..<tests.len:
-    let test = tests[i]
-    jobs.send(Item(bundle: test, prefix: prefix, i:i, n: tests.len))
+    removeFile(resultFile(i))
 
-  var thr: seq[Thread[void]] = @[]
+    jobs.add(makeCmd(
+      Item(bundle: tests[i], prefix: prefix, i: i, n: tests.len)))
 
-  for i in 0..<countProcessors()+1:
-    thr.add Thread[void]()
-    createThread(thr[i], worker)
+  proc onTestDone(i: int, p: Process) =
+    # We want to report progress back as the results come in so that we can show
+    # a nice progress report as the tests are running
+    try:
+      let res = parseJson(readFile(resultFile(i)).string).to(Res)
+      for r in res.results: report(r)
+    except:
+      echo "test failed"
 
-  # Collect results, one by one - order shouldn't really matter but we'll
-  # do it in the same order that was given
-  for i in 0..<tests.len:
-    let res = results.recv()
-
-    for x in res.results: report x
-
-  joinThreads(thr)
-
-  when false:
-    # The following implementation base on spawn is broken: results don't get
-    # reported until the end of all spawn tasks being done it seems
-    proc run(bundle: Bundle, i, n: int): seq[Result] =
-      for test in bundle.tests:
-        result.add run(test, i, n)
-
-    proc run*(tests: seq[Bundle], report: proc(res: Result)) =
-      var responses = newSeq[FlowVar[seq[Result]]](tests.len)
-
-      # Spawn all test runners
-      for i in 0..<tests.len:
-        let test = tests[i]
-        responses[i] = spawn run(test, i, tests.len)
-
-      # Collect results, one by one - order shouldn't really matter but we'll
-      # do it in the same order that was given
-      for i in 0..<tests.len:
-        for result in ^(responses[i]):
-          report result
+  # A more natural solution here would be threads and channels, or I/O
+  # multiplexing over the process stdin/stdout - the former however is fragile
+  # in nim and the latter doesn't exist.
+  #
+  # Since there's no simple way to read and write stdin/stdout of a process,
+  # we pass each test item on the command line and read the results through a
+  # file in nimcache instead.
+  #
+  # To use std/stdout, we would have to have access to the proccess streams and
+  # a way to block until at least one of them has output available, so as to
+  # keep a full buffer from blocking progress.
+  discard execProcesses(jobs,
+    {poStdErrToStdOut, poParentStreams},
+    afterRunEvent = onTestDone)
