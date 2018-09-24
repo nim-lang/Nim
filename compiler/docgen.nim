@@ -304,7 +304,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
           d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
-          [rope changeFileExt(external, "html").string, rope literal,
+          [rope changeFileExt(external, "html"), rope literal,
            rope(esc(d.target, literal))]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
