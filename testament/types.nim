@@ -1,4 +1,4 @@
-import specs, tables
+import tables
 
 type
   Category* = distinct string

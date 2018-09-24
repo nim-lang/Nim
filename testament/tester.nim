@@ -26,7 +26,7 @@ proc addResult(res: Result, passed, skipped, failed, total: int) =
   let expected = inst.expected
   let name = inst.id & res.inst.options
   let duration = res.endTime - res.startTime
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 3)
   backend.writeTestResult(id = inst.id,
                           name = name,
                           category = inst.cat.string,
@@ -36,7 +36,7 @@ proc addResult(res: Result, passed, skipped, failed, total: int) =
                           expected = res.expectedMsg,
                           given = res.givenMsg)
   # r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
-  let counts = " (" & durationStr & " secs, " & $passed & "/" & $skipped & "/" &
+  let counts = " (" & durationStr & "s, " & $passed & "/" & $skipped & "/" &
     $failed & "/" & $total & ")"
   case res.given.res
   of reSuccess:
@@ -77,7 +77,6 @@ when isMainModule:
   os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
-  backend.open()
   var optPrintResults = false
   var optFailing = false
 
@@ -140,6 +139,9 @@ when isMainModule:
   else:
     quit Usage
 
+  backend.open()
+  defer: backend.close()
+
   var tests = newSeq[Bundle]()
   for g in generators:
     tests.add filter(
@@ -163,8 +165,6 @@ when isMainModule:
 
   if optPrintResults:
     echo data
-
-  backend.close()
 
   if failed != 0:
     echo "FAILURE! total: ", total, " passed: ", passed, " skipped: ",

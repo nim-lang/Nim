@@ -6,11 +6,15 @@
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import strutils, os, osproc, json
+import algorithm, strutils, os, osproc, json, types
 
 type
   MachineId* = distinct string
   CommitId = distinct string
+
+  Output = object
+    category: string
+    output: seq[string]
 
 proc `$`*(id: MachineId): string {.borrow.}
 #proc `$`(id: CommitId): string {.borrow.} # not used
@@ -41,35 +45,43 @@ proc getCommit(): CommitId =
   result = CommitId(hash)
 
 var
-  results: File
-  currentCategory: string
-  entries: int
+  results: seq[Output]
 
 proc writeTestResult*(id, name, category, target,
                       action, result, expected, given: string) =
-  createDir("testresults")
-  if currentCategory != category:
-    if currentCategory.len > 0:
-      results.writeLine("]")
-      close(results)
-    currentCategory = category
-    results = open("testresults" / category.addFileExt"json", fmWrite)
-    results.writeLine("[")
-    entries = 0
+  var i = -1
+  for j in 0..<results.len:
+    if results[j].category == category:
+      i = j
+      break
+
+  if i == -1:
+    i = results.len
+    results.add Output(category: category)
 
   let jentry = %*{"id": id, "name": name, "category": category, "target": target,
     "action": action, "result": result, "expected": expected, "given": given,
     "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch}
-  if entries > 0:
-    results.writeLine(",")
-  results.write($jentry)
-  inc entries
+  results[i].output.add $jentry
 
 proc open*() =
   thisMachine = getMachine()
   thisCommit = getCommit()
+  createDir("testresults")
 
 proc close*() =
-  if currentCategory.len > 0:
-    results.writeLine("]")
-    close(results)
+  for r in results.mitems():
+    var sep = ""
+
+    sort(r.output, system.cmp)
+    let f = open("testresults" / r.category.addFileExt"json", fmWrite)
+    f.write("[")
+
+    for o in r.output:
+      f.writeLine(sep)
+      f.write(o)
+      sep = ","
+    f.writeLine("")
+    f.writeLine("]")
+    f.close()
+  results = @[]
