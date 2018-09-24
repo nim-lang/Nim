@@ -802,19 +802,15 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-
 when defined(posix):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
     assert(path != "")
-    if stat(path, s) < 0'i32:
-      raiseOSError(osLastError())
-    if S_ISDIR(s.st_mode):
+    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
       result = pcLinkToDir
     else:
       result = pcLinkToFile
-
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
