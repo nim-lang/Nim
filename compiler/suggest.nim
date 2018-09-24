@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches, lineinfos, pathutils
-from wordrecg import wDeprecated
+from wordrecg import wDeprecated, wError
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -453,25 +453,34 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
         isDecl:
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
-proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  var pragmaNode: PNode
-
+proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
-    pragmaNode = s.ast[pragmasPos]
+    result = s.ast[pragmasPos]
   elif s.kind in {skType}:
     # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-    pragmaNode = s.ast[0][1]
+    result = s.ast[0][1]
+  doAssert result == nil or result.kind == nkPragma
 
-  doAssert pragmaNode == nil or pragmaNode.kind == nkPragma
-
+proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
+  let pragmaNode = extractPragma(s)
   if pragmaNode != nil:
     for it in pragmaNode:
       if whichPragma(it) == wDeprecated and it.safeLen == 2 and
-        it[1].kind in {nkStrLit..nkTripleStrLit}:
+          it[1].kind in {nkStrLit..nkTripleStrLit}:
         message(conf, info, warnDeprecated, it[1].strVal & "; " & s.name.s)
         return
-
   message(conf, info, warnDeprecated, s.name.s)
+
+proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
+  let pragmaNode = extractPragma(s)
+
+  if pragmaNode != nil:
+    for it in pragmaNode:
+      if whichPragma(it) == wError and it.safeLen == 2 and
+          it[1].kind in {nkStrLit..nkTripleStrLit}:
+        localError(conf, info, it[1].strVal & "; usage of '$1' is a user-defined error" % s.name.s)
+        return
+  localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
 
 proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
@@ -479,7 +488,7 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
     incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
-    if sfError in s.flags: localError(conf, info,  "usage of '$1' is a user-defined error" % s.name.s)
+    if sfError in s.flags: userError(conf, info, s)
   when defined(nimsuggest):
     suggestSym(conf, info, s, usageSym, false)
 

@@ -954,12 +954,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "warning", s)
         message(c.config, it.info, warnUser, s)
       of wError:
-        if sym != nil and sym.isRoutine:
+        if sym != nil and (sym.isRoutine or sym.kind == skType):
           # This is subtle but correct: the error *statement* is only
           # allowed for top level statements. Seems to be easier than
           # distinguishing properly between
           # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
-          noVal(c, it)
+          if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfError)
         else:
           let s = expectStrLit(c, it)

@@ -4112,8 +4112,16 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
 
 when defined(nimNoNilSeqs2):
   when not compileOption("nilseqs"):
-    proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil); y: string): bool {.error.} = discard
+    when defined(nimHasUserErrors):
+      proc `==`*(x: string; y: type(nil)): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+      proc `==`*(x: type(nil); y: string): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+    else:
+      proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
+      proc `==`*(x: type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
