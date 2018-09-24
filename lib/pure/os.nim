@@ -1476,6 +1476,24 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
+when defined(haiku):
+  const
+    PATH_MAX = 1024
+    B_FIND_PATH_IMAGE_PATH = 1000
+
+  proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
+                 pathBuffer: cstring, bufferSize: csize): int32
+                {.importc, header: "<FindDirectory.h>".}
+
+  proc getApplHaiku(): string =
+    result = newString(PATH_MAX)
+
+    if find_path(nil, B_FIND_PATH_IMAGE_PATH, nil, result, PATH_MAX) == 0:
+      let realLen = len(cstring(result))
+      setLen(result, realLen)
+    else:
+      result = ""
+
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
@@ -1530,6 +1548,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
+    elif defined(haiku):
+      result = getApplHaiku()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
