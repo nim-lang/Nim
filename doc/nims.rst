@@ -4,38 +4,55 @@
 
 Strictly speaking, ``NimScript`` is the subset of Nim that can be evaluated
 by Nim's builtin virtual machine (VM). This VM is used for Nim's compiletime
-function evaluation features, but also replaces Nim's existing configuration
-system.
+function evaluation features.
 
-So instead of a ``myproject.nim.cfg`` configuration file, you can use
-a ``myproject.nims`` file that simply contains Nim code controlling the
-compilation process. For a directory wide configuration, use ``config.nims``
-instead of ``nim.cfg``.
+You can use a ``<myproject>.nims`` file that simply contains Nim code
+controlling the compilation process. For a directory wide
+configuration, use ``config.nims`` instead of ``<myproject>.nims``.
 
-The VM cannot deal with ``importc``, the FFI is not available, so there are not
-many stdlib modules that you can use with Nim's VM. However, at least the
-following modules are available:
+The VM cannot deal with ``importc`` because the FFI is not
+available. So the stdlib modules using ``importc`` cannot be used with
+Nim's VM. However, at least the following modules are available:
 
-* `strutils <strutils.html>`_
+* `macros <macros.html>`_
 * `ospaths <ospaths.html>`_
+* `strutils <strutils.html>`_
 * `math <math.html>`_
 * `distros <distros.html>`_
 
-The `system <system.html>`_ module in NimScript mode additionally supports
-these operations: `nimscript <nimscript.html>`_.
+In addition to the standard Nim syntax (`system <system.html>`_
+module), NimScripts support the procs and templates defined in the
+`nimscript <nimscript.html>`_ module too.
 
 
 NimScript as a configuration file
 =================================
 
-What is ``x.y.key = "value"`` in the configuration file
-becomes ``switch("x.y.key", "value")``. ``--option`` is ``switch("option")``.
-The ``system`` module also exports 2 ``--`` templates for convenience:
+A command-line switch ``--FOO`` is written as ``switch("FOO")`` in
+NimScript. Similarly, command-line ``--FOO:VAL`` translates to
+``switch("FOO", "VAL")``.
+
+Here are few examples of using the ``switch`` proc:
 
 .. code-block:: nim
-  --forceBuild
-  # is the same as:
+  # command-line: --opt:size
+  switch("opt", "size")
+  # command-line: --define:foo or -d:foo
+  switch("define", "foo")
+  # command-line: --forceBuild
   switch("forceBuild")
+
+*Note that specifically the ``-d:release`` define cannot be set using
+``switch`` in NimScripts.*
+
+NimScripts also support ``--`` templates for convenience, which look
+like command-line switches written as-is in the NimScript file. So the
+above example can be rewritten as:
+
+.. code-block:: nim
+  --opt:size
+  --define:foo
+  --forceBuild
 
 
 NimScript as a build tool
@@ -91,7 +108,7 @@ Standalone NimScript
 
 NimScript can also be used directly as a portable replacement for Bash and
 Batch files. Use ``nim e myscript.nims`` to run ``myscript.nims``. For example,
-installation of Nimble is done with this simple script:
+installation of Nimble could be accomplished with this simple script:
 
 .. code-block:: nim
 
