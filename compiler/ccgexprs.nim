@@ -2360,14 +2360,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCaseStmt: genCase(p, n, d)
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
-  of nkAsgn:
+  of nkAsgn, nkFastAsgn:
     if nfPreventCg notin n.flags:
-      genAsgn(p, n, fastAsgn=false)
-  of nkFastAsgn:
-    if nfPreventCg notin n.flags:
-      # transf is overly aggressive with 'nkFastAsgn', so we work around here.
-      # See tests/run/tcnstseq3 for an example that would fail otherwise.
-      genAsgn(p, n, fastAsgn=p.prc != nil)
+      genAsgn(p, n, fastAsgn=n.kind == nkFastAsgn)
   of nkDiscardStmt:
     let ex = n[0]
     if ex.kind != nkEmpty:

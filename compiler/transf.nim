@@ -111,6 +111,10 @@ proc transformSons(c: PTransf, n: PNode): PTransNode =
     result[i] = transform(c, n.sons[i])
 
 proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
+  result = newTransNode(nkAsgn, PNode(ri).info, 2)
+  result[0] = PTransNode(le)
+  result[1] = ri
+proc newFastAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
   result = newTransNode(nkFastAsgn, PNode(ri).info, 2)
   result[0] = PTransNode(le)
   result[1] = ri
@@ -584,7 +588,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, formal.typ, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      add(stmtList, newFastAsgnStmt(c, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
@@ -595,7 +599,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       addSonSkipIntLit(typ, formal.typ.sons[0])
       var temp = newTemp(c, typ, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      add(stmtList, newFastAsgnStmt(c, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
   var body = iter.getBody.copyTree
