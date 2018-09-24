@@ -127,7 +127,8 @@ proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKi
 
 const
   imperativeCode = {low(TNodeKind)..high(TNodeKind)} - {nkTemplateDef, nkProcDef, nkMethodDef,
-    nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef}
+    nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef, nkPragma,
+    nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
@@ -206,10 +207,13 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
               rest = n
               break
             sl.add n
+          #echo "-----\n", sl
           if not processTopLevelStmt(sl, a): break
           if rest != nil:
+            #echo "-----\n", rest
             if not processTopLevelStmt(rest, a): break
         else:
+          #echo "----- single\n", n
           if not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break

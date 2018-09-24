@@ -542,12 +542,20 @@ proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
         return true
   else: discard
 
+proc isEmptyTree(n: PNode): bool =
+  case n.kind
+  of nkStmtList:
+    for it in n:
+      if not isEmptyTree(it): return false
+    result = true
+  of nkEmpty, nkCommentStmt: result = true
+  else: result = false
+
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if n.kind == nkDefer:
     localError(c.config, n.info, "defer statement not supported at top level")
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
-    if sfSystemModule notin c.module.flags and
-        n.kind notin {nkEmpty, nkCommentStmt}:
+    if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       c.importTable.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts

@@ -291,21 +291,21 @@ proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   if ri.kind in constrExprs:
-    result = genSink(c, ri.typ, dest)
+    result = genSink(c, dest.typ, dest)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
     recurse(ri, ri2)
     result.add ri2
   elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
     # Rule 3: `=sink`(x, z); wasMoved(z)
-    var snk = genSink(c, ri.typ, dest)
+    var snk = genSink(c, dest.typ, dest)
     snk.add p(ri, c)
     result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
   elif ri.kind == nkSym and isSinkParam(ri.sym):
-    result = genSink(c, ri.typ, dest)
+    result = genSink(c, dest.typ, dest)
     result.add destructiveMoveSink(ri, c)
   else:
-    result = genCopy(c, ri.typ, dest)
+    result = genCopy(c, dest.typ, dest)
     result.add p(ri, c)
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =

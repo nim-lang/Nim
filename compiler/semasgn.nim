@@ -216,7 +216,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if c.c.config.selectedGC == gcDestructors:
       discard considerOverloadedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
-      body.add newSeqCall(c.c, x, y)
+      if c.kind != attachedDestructor:
+        body.add newSeqCall(c.c, x, y)
       let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
