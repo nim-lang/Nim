@@ -986,7 +986,7 @@ proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "si
 
 template onSignal*(signals: varargs[cint], body: untyped) =
   ## Setup code to be executed when Unix signals are received. The
-  ## currently handled signal is injected as ``s`` into the calling
+  ## currently handled signal is injected as ``sig`` into the calling
   ## scope.
   ##
   ## Example:
@@ -994,11 +994,12 @@ template onSignal*(signals: varargs[cint], body: untyped) =
   ## .. code-block::
   ##   from posix import SIGINT, SIGTERM
   ##   onSignal(SIGINT, SIGTERM):
-  ##     echo "bye from signal ", s
+  ##     echo "bye from signal ", sig
 
-  for s {.inject.} in signals:
+  for s in signals:
     handle_signal(s,
-      proc (sig: cint) {.noconv.} =
+      proc (signal: cint) {.noconv.} =
+        let sig {.inject.} = signal
         body
     )
 
