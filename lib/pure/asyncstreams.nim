@@ -7,9 +7,9 @@ type
                                   ## a queue. Its API is still
                                   ## experimental and so is
                                   ## subject to change.
-    queue: Deque[T]
+    values: Deque[T]
+    readers: Deque[Future[(bool, T)]]
     finished: bool
-    cb: proc () {.closure, gcsafe.}
 
 proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
   ## Create a new ``FutureStream``. This future's callback is activated when
@@ -24,34 +24,31 @@ proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
   ##
   ## **Note:** The API of FutureStream is still new and so has a higher
   ## likelihood of changing in the future.
-  result = FutureStream[T](finished: false, cb: nil)
-  result.queue = initDeque[T]()
+  FutureStream[T](
+    finished: false,
+    values: initDeque[T](),
+    readers: initDeque[Future[(bool, T)]]())
+
+proc wakeReaders[T](future: FutureStream[T]) =
+  ## Wake pending readers, if possible.
+  while future.values.len > 0 and future.readers.len > 0:
+    let rf = future.readers.popFirst
+    rf.complete((true, future.values.popFirst))
+  while future.finished and future.readers.len > 0:
+    var res: (bool, T)
+    let rf = future.readers.popFirst
+    rf.complete(res)
 
 proc complete*[T](future: FutureStream[T]) =
   ## Completes a ``FutureStream`` signalling the end of data.
   future.finished = true
-  if not future.cb.isNil:
-    future.cb()
-
-proc `callback=`*[T](future: FutureStream[T],
-    cb: proc (future: FutureStream[T]) {.closure,gcsafe.}) =
-  ## Sets the callback proc to be called when data was placed inside the
-  ## future stream.
-  ##
-  ## The callback is also called when the future is completed. So you should
-  ## use ``finished`` to check whether data is available.
-  ##
-  ## If the future stream already has data or is finished then ``cb`` will be
-  ## called immediately.
-  future.cb = proc () = cb(future)
-  if future.queue.len > 0 or future.finished:
-    callSoon(future.cb)
+  wakeReaders(future)
 
 proc finished*[T](future: FutureStream[T]): bool =
   ## Check if a ``FutureStream`` is finished. ``true`` value means that
   ## no more data will be placed inside the stream _and_ that there is
   ## no data waiting to be retrieved.
-  result = future.finished and future.queue.len == 0
+  result = future.finished and future.values.len == 0
 
 proc write*[T](future: FutureStream[T], value: T): Future[void] =
   ## Writes the specified value inside the specified future stream.
@@ -64,8 +61,9 @@ proc write*[T](future: FutureStream[T], value: T): Future[void] =
     return
   # TODO: Implement limiting of the streams storage to prevent it growing
   # infinitely when no reads are occuring.
-  future.queue.addLast(value)
-  if not future.cb.isNil: future.cb()
+  future.values.addLast(value)
+  if future.readers.len > 0:
+    wakeReaders(future)
   result.complete()
 
 proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
@@ -77,29 +75,10 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
   ##
   ## This function will remove the data that was returned from the underlying
   ## ``FutureStream``.
-  var resFut = newFuture[(bool, T)]("FutureStream.take")
-  let savedCb = future.cb
-  future.callback =
-    proc (fs: FutureStream[T]) =
-      # We don't want this callback called again.
-      future.cb = nil
-
-      # The return value depends on whether the FutureStream has finished.
-      var res: (bool, T)
-      if finished(fs):
-        # Remember, this callback is called when the FutureStream is completed.
-        res[0] = false
-      else:
-        res[0] = true
-        res[1] = fs.queue.popFirst()
-
-      if not resFut.finished:
-        resFut.complete(res)
-
-      # If the saved callback isn't nil then let's call it.
-      if not savedCb.isNil: savedCb()
-  return resFut
+  result = newFuture[(bool, T)]("FutureStream.read")
+  future.readers.addLast(result)
+  wakeReaders(future)
 
 proc len*[T](future: FutureStream[T]): int =
   ## Returns the amount of data pieces inside the stream.
-  future.queue.len
+  future.values.len
