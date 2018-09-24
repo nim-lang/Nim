@@ -456,13 +456,10 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sin6_family.cint == nativeAfInet:
-    result = AF_INET
-  elif name.sin6_family.cint == nativeAfInet6:
-    result = AF_INET6
-  else:
-    raiseOSError(osLastError(), "unknown socket family in getSockFamily")
-
+  try:
+    result = toKnownDomain(name.sin6_family.cint).get()
+  except UnpackError:
+    raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
   ## return the string representation of address within sockAddr
