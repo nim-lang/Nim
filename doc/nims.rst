@@ -42,9 +42,6 @@ Here are few examples of using the ``switch`` proc:
   # command-line: --forceBuild
   switch("forceBuild")
 
-*Note that specifically the ``-d:release`` define cannot be set using
-``switch`` in NimScripts.*
-
 NimScripts also support ``--`` templates for convenience, which look
 like command-line switches written as-is in the NimScript file. So the
 above example can be rewritten as:
@@ -53,6 +50,11 @@ above example can be rewritten as:
   --opt:size
   --define:foo
   --forceBuild
+
+**Note**: In general, the *define* switches can also be set in
+NimScripts using ``switch`` or ``--``, as shown in above
+examples. Only the ``release`` define (``-d:release``) cannot be set
+in NimScripts.
 
 
 NimScript as a build tool
