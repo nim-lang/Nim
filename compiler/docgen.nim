@@ -610,7 +610,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
-    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), d.conf.projectPath, '/')
+    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), AbsoluteDir getCurrentDir(), '/')
     when false:
       let cwd = canonicalizePath(d.conf, getCurrentDir())
       var path = toFullPath(d.conf, n.info)
