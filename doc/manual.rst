@@ -724,7 +724,7 @@ intXX
   suffix ``'u`` is of this type.
 
 uintXX
-  additional signed integer types of XX bits use this naming scheme
+  additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16 bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
