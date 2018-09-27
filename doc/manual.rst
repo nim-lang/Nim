@@ -5592,12 +5592,12 @@ via ``{.experimental: "caseStmtMacros".}``.
 
 ``match`` macros are subject to overload resolution. First the
 ``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then the complete ``case`` statement
-body is passed and the macro is evaluated.
+macro to call. To this macro is then passed the complete ``case``
+statement body and the macro is evaluated.
 
 In other words, the macro needs to transform the full ``case`` statement
 but only the statement's selector expression is used to determine which
-``macro`` to call.
+macro to call.
 
 
 Special Types
