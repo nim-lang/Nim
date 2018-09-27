@@ -122,7 +122,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       if op == nil:
         op = liftBody(c.c, t, c.kind, c.info)
     markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-    styleCheckUse(c.info, op)
+    styleCheckUse(c.c.config, c.info, op)
     body.add newAsgnCall(c.c, op, x, y)
     result = true
 
@@ -132,7 +132,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     let op = t.destructor
     if op != nil:
       markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-      styleCheckUse(c.info, op)
+      styleCheckUse(c.c.config, c.info, op)
       body.add destructorCall(c.c, op, x)
       result = true
   of attachedAsgn:
@@ -143,7 +143,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     let op = t.deepCopy
     if op != nil:
       markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-      styleCheckUse(c.info, op)
+      styleCheckUse(c.c.config, c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
 

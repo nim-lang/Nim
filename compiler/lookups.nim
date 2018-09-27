@@ -234,17 +234,20 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
 
 when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifer:
-  proc altSpelling(x: PIdent): PIdent =
+  proc altSpelling(c:PContext, x: PIdent): PIdent =
     case x.s[0]
-    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    else: result = x
+    of 'A'..'Z':
+      result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'a'..'z':
+      result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
+    else:
+      result = x
 
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
-    let alt = ident.altSpelling
-    result = op(c, alt).skipAlias(n)
+    let alt = altSpelling(c, ident)
+    result = op(c, alt).skipAlias(n, c.config)
     if result != nil:
-      prettybase.replaceDeprecated(n.info, ident, alt)
+      prettybase.replaceDeprecated(c.config, n.info, ident, alt)
       return result
 else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard

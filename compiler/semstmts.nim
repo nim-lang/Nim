@@ -61,7 +61,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         incl(s.flags, sfUsed)
         n.sons[0] = x
         suggestSym(c.config, x.info, s, c.graph.usageSym)
-        styleCheckUse(x.info, s)
+        styleCheckUse(c.config, x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
@@ -299,7 +299,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
   suggestSym(c.config, n.info, result, c.graph.usageSym)
-  styleCheckDef(c.config, result)
+  styleCheckDef(c.config, c.cache, result)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
@@ -565,7 +565,7 @@ proc addForVarDecl(c: PContext, v: PSym) =
 proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
-  styleCheckDef(c.config, result)
+  styleCheckDef(c.config, c.cache, result)
   if n.kind == nkPragmaExpr:
     pragma(c, result, n.sons[1], forVarPragmas)
 
@@ -671,7 +671,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
   if r.state == csMatch:
     var match = r.calleeSym
     markUsed(c.config, n[0].info, match, c.graph.usageSym)
-    styleCheckUse(n[0].info, match)
+    styleCheckUse(c.config, n[0].info, match)
 
     # but pass 'n' to the 'match' macro, not 'n[0]':
     r.call.sons[1] = n
@@ -1930,10 +1930,10 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = result.sons[0]
 
   when defined(nimfix):
-    if result.kind == nkCommentStmt and not result.comment.isNil and
+    if result.kind == nkCommentStmt and not result.comment.len == 0 and
         not (result.comment[0] == '#' and result.comment[1] == '#'):
       # it is an old-style comment statement: we replace it with 'discard ""':
-      prettybase.replaceComment(result.info)
+      prettybase.replaceComment(c.config, result.info)
 
 proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if efInTypeof notin flags:

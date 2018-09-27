@@ -447,7 +447,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(c.config, nOrig.info)
 
   markUsed(c.config, n.info, sym, c.graph.usageSym)
-  styleCheckUse(n.info, sym)
+  styleCheckUse(c.config, n.info, sym)
   if sym == c.p.owner:
     globalError(c.config, n.info, "recursive dependency: '$1'" % sym.name.s)
 

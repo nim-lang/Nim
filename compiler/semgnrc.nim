@@ -76,14 +76,14 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
     if macroToExpandSym(s):
-      styleCheckUse(n.info, s)
+      styleCheckUse(c.config, n.info, s)
       result = semTemplateExpr(c, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
       result = symChoice(c, n, s, scOpen)
   of skMacro:
     if macroToExpandSym(s):
-      styleCheckUse(n.info, s)
+      styleCheckUse(c.config, n.info, s)
       result = semMacroExpr(c, n, n, s, {efNoSemCheck})
       result = semGenericStmt(c, result, {}, ctx)
     else:
@@ -96,20 +96,20 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
         result = n
     else:
       result = newSymNodeTypeDesc(s, n.info)
-    styleCheckUse(n.info, s)
+    styleCheckUse(c.config, n.info, s)
   of skParam:
     result = n
-    styleCheckUse(n.info, s)
+    styleCheckUse(c.config, n.info, s)
   of skType:
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
       result = newSymNodeTypeDesc(s, n.info)
     else:
       result = n
-    styleCheckUse(n.info, s)
+    styleCheckUse(c.config, n.info, s)
   else:
     result = newSymNode(s, n.info)
-    styleCheckUse(n.info, s)
+    styleCheckUse(c.config, n.info, s)
 
 proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
             ctx: var GenericCtx): PNode =
@@ -171,7 +171,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
 proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
   let s = newSymS(skUnknown, getIdentNode(c, n), c)
   addPrelimDecl(c, s)
-  styleCheckDef(c.config, n.info, s, kind)
+  styleCheckDef(c.config, c.cache, n.info, s, kind)
 
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
@@ -230,7 +230,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       case s.kind
       of skMacro:
         if macroToExpand(s) and sc.safeLen <= 1:
-          styleCheckUse(fn.info, s)
+          styleCheckUse(c.config, fn.info, s)
           result = semMacroExpr(c, n, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
@@ -239,7 +239,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         mixinContext = true
       of skTemplate:
         if macroToExpand(s) and sc.safeLen <= 1:
-          styleCheckUse(fn.info, s)
+          styleCheckUse(c.config, fn.info, s)
           result = semTemplateExpr(c, n, s, {efNoSemCheck})
           result = semGenericStmt(c, result, flags, ctx)
         else:
@@ -262,17 +262,17 @@ proc semGenericStmt(c: PContext, n: PNode,
         first = 1
       of skGenericParam:
         result.sons[0] = newSymNodeTypeDesc(s, fn.info)
-        styleCheckUse(fn.info, s)
+        styleCheckUse(c.config, fn.info, s)
         first = 1
       of skType:
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam):
           result.sons[0] = newSymNodeTypeDesc(s, fn.info)
-          styleCheckUse(fn.info, s)
+          styleCheckUse(c.config, fn.info, s)
           first = 1
       else:
         result.sons[0] = newSymNode(s, fn.info)
-        styleCheckUse(fn.info, s)
+        styleCheckUse(c.config, fn.info, s)
         first = 1
     elif fn.kind == nkDotExpr:
       result.sons[0] = fuzzyLookup(c, fn, flags, ctx, mixinContext)

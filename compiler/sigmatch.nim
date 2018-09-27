@@ -2129,7 +2129,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     else:
       # only one valid interpretation found:
       markUsed(m.c.config, arg.info, arg.sons[best].sym, m.c.graph.usageSym)
-      styleCheckUse(arg.info, arg.sons[best].sym)
+      styleCheckUse(m.c.config, arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)
   when false:
