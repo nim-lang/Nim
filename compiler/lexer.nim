@@ -139,6 +139,9 @@ type
                               # needs so much look-ahead
     currLineIndent*: int
     strongSpaces*, allowTabs*: bool
+    inAccent*: bool           # if this is true, we're inside backticks. Used to
+                              # allow underscored identifiers in accented
+                              # quotes
     cursor*: CursorPosition
     errorHandler*: TErrorHandler
     cache*: IdentCache
@@ -840,7 +843,8 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       h = h !& ord(c)
       inc(pos)
     of '_':
-      if buf[pos+1] notin SymChars:
+      # trailing underscore allowed if we're within accents
+      if buf[pos+1] notin SymChars and not L.inAccent:
         lexMessage(L, errGenerated, "invalid token: trailing underscore")
         break
       inc(pos)
@@ -1234,10 +1238,12 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '`':
       tok.tokType = tkAccent
+      # toggle `inAccent` field
+      L.inAccent = not L.inAccent
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
-      if L.buf[L.bufpos] notin SymChars+{'_'}:
+      if L.buf[L.bufpos] notin SymChars+{'_'} or L.inAccent:
         tok.tokType = tkSymbol
         tok.ident = L.cache.getIdent("_")
       else:
