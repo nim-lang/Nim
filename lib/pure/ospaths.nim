@@ -391,8 +391,8 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
-proc extractFilename*(path: string, ignoreTrailingSep = false): string {.
-  noSideEffect, rtl, extern: "nos$1".} =
+proc extractFilename*(path: string, ignoreTrailingSep: bool): string {.
+  noSideEffect, rtl, extern: "nos$1ignoreTrailingSep".} =
   ## Extracts the filename of a given `path`. This is the same as
   ## ``name & ext`` from ``splitFile(path)`` (after removing the trailing
   ## separator when ``ignoreTrailingSep``  is true).
@@ -404,6 +404,12 @@ proc extractFilename*(path: string, ignoreTrailingSep = false): string {.
     result = ""
   else:
     result = splitPath(path).tail
+
+proc extractFilename*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## same as extractFilename(path, ignoreTrailingSep = false)
+  # Overload needed for bootstrapping
+  extractFilename(path, ignoreTrailingSep = false)
 
 proc changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
