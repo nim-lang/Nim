@@ -1732,7 +1732,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i) # our counter
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
-      if d.k == locNone: getTemp(p, a.t, d)
+      if d.k == locNone: getTemp(p, setType, d)
       lineF(p, cpsStmts,
            "for ($1 = 0; $1 < $2; $1++) $n" &
            "  $3[$1] = $4[$1] $6 $5[$1];$n", [
