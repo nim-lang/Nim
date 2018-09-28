@@ -56,12 +56,16 @@ before_deploy:
   # Generate the dochack.js for the doc search to work.
   - nim js ./tools/dochack/dochack.nim
   - cp -f ./tools/dochack/nimcache/dochack.js ./doc/.
-  # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
-  - cp -f ./doc/html/overview.html ./doc/html/index.html
-deploy:
+  - mkdir ./publish
+  - cp -rf ./doc/html ./publish/devel
+  # Make https://nim-lang.github.io/Nim/devel work the same as https://nim-lang.github.io/Nim/devel/overview.html
+  - cp -f ./publish/devel/overview.html ./publish/devel/index.html
+  # The dochack.js has to be at a directory level lower than the /devel.
+  - cp -f ./doc/dochack.js ./publish/.
+deploy:                         # https://nim-lang.github.io/Nim/devel
   provider: pages
   # local-dir *has* to be a relative path from the repo root.
-  local-dir: "doc/html"
+  local-dir: "publish"
   skip-cleanup: true
   github-token: "$GITHUB_OAUTH_TOKEN"
   keep-history: false
