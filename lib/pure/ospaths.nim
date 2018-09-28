@@ -157,6 +157,29 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
+proc normalizePathEnd(path: var string, trailingSep = false) =
+  ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
+  ## ``trailingSep``, and taking care of edge cases: it preservers whether
+  ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
+  ## not `AltSep`.
+  if path.len == 0: return
+  var i = path.len
+  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
+  if trailingSep:
+    # foo// => foo
+    path.setLen(i)
+    # foo => foo/
+    path.add DirSep
+  elif i>0:
+    # foo// => foo
+    path.setLen(i)
+  else:
+    # // => / (empty case was already taken care of)
+    path = $DirSep
+
+proc normalizePathEnd(path: string, trailingSep = false): string =
+  result = path
+  result.normalizePathEnd(trailingSep)
 
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -257,6 +280,9 @@ proc parentDir*(path: string): string {.
   ## If there is no parent, "" is returned.
   ## | Example: ``parentDir("/usr/local/bin") == "/usr/local"``.
   ## | Example: ``parentDir("/usr/local/bin/") == "/usr/local"``.
+  ## 
+  ## The remainder can be obtained with:
+  ##    ``extractFilename(path, ignoreTrailingSep = true)``
   let sepPos = parentDirPos(path)
   if sepPos >= 0:
     result = substr(path, 0, sepPos-1)
@@ -365,15 +391,19 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
-proc extractFilename*(path: string): string {.
+proc extractFilename*(path: string, ignoreTrailingSep = false): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as
-  ## ``name & ext`` from ``splitFile(path)``.
+  ## ``name & ext`` from ``splitFile(path)`` (after removing the trailing
+  ## separator when ``ignoreTrailingSep``  is true).
+  ## Aka: basename in some languages.
+  var path = path
+  if ignoreTrailingSep:
+    path.normalizePathEnd(trailingSep = false)
   if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
     result = ""
   else:
     result = splitPath(path).tail
-
 
 proc changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -448,31 +478,6 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '$'
   elif defined(posix):
     result = path[0] == '/'
-
-
-proc normalizePathEnd(path: var string, trailingSep = false) =
-  ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
-  ## ``trailingSep``, and taking care of edge cases: it preservers whether
-  ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
-  ## not `AltSep`.
-  if path.len == 0: return
-  var i = path.len
-  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
-  if trailingSep:
-    # foo// => foo
-    path.setLen(i)
-    # foo => foo/
-    path.add DirSep
-  elif i>0:
-    # foo// => foo
-    path.setLen(i)
-  else:
-    # // => / (empty case was already taken care of)
-    path = $DirSep
-
-proc normalizePathEnd(path: string, trailingSep = false): string =
-  result = path
-  result.normalizePathEnd(trailingSep)
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
