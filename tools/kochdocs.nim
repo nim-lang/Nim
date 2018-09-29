@@ -94,6 +94,8 @@ doc/manual/var_t_return.rst
 lib/system.nim
 lib/system/nimscript.nim
 lib/pure/ospaths.nim
+lib/pure/parsejson.nim
+lib/pure/cstrutils.nim
 lib/core/macros.nim
 lib/pure/marshal.nim
 lib/core/typeinfo.nim
@@ -102,6 +104,7 @@ lib/pure/typetraits.nim
 nimsuggest/sexp.nim
 lib/pure/concurrency/threadpool.nim
 lib/pure/concurrency/cpuinfo.nim
+lib/pure/concurrency/cpuload.nim
 lib/js/dom.nim
 lib/js/jsffi.nim
 lib/js/jsconsole.nim
@@ -139,6 +142,7 @@ lib/pure/browsers.nim
 lib/impure/db_postgres.nim
 lib/impure/db_mysql.nim
 lib/impure/db_sqlite.nim
+lib/impure/db_odbc.nim
 lib/pure/db_common.nim
 lib/pure/httpserver.nim
 lib/pure/httpclient.nim
@@ -156,6 +160,7 @@ lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
 lib/pure/scgi.nim
+lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim
 lib/pure/collections/lists.nim
@@ -166,6 +171,7 @@ lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
+lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
 lib/pure/subexes.nim
@@ -194,6 +200,7 @@ lib/pure/selectors.nim
 lib/pure/sugar.nim
 lib/pure/collections/chains.nim
 lib/pure/asyncfile.nim
+lib/deprecated/pure/ftpclient.nim
 lib/pure/asyncftpclient.nim
 lib/pure/lenientops.nim
 lib/pure/md5.nim
@@ -203,7 +210,9 @@ lib/pure/oswalkdir.nim
 lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
+lib/std/varints.nim
 lib/impure/rdstdin.nim
+lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim
 lib/pure/segfaults.nim
 lib/pure/mersenne.nim
@@ -230,6 +239,8 @@ lib/wrappers/odbcsql.nim
 lib/wrappers/pcre.nim
 lib/wrappers/openssl.nim
 lib/posix/posix.nim
+lib/posix/linux.nim
+lib/posix/termios.nim
 lib/wrappers/odbcsql.nim
 lib/js/jscore.nim
 """.splitWhitespace()

@@ -136,7 +136,7 @@ source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
 enable builds in release mode (``-d:release``) where certain safety checks are
 omitted for better performance. Another common use is the ``-d:ssl`` switch to
-activate `SSL sockets <sockets.html>`_.
+activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
 which may be used in conjunction with the `compile time define
@@ -289,8 +289,7 @@ For example, with the above mentioned config::
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
-`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
-`the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
+`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
 They are:
@@ -396,11 +395,6 @@ the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Debugger option
----------------
-The ``debugger`` option enables or disables the *Embedded Nim Debugger*.
-See the documentation of endb_ for further information.
-
 Hot code reloading
 ------------------
 **Note:** At the moment hot code reloading is supported only in
@@ -441,11 +435,6 @@ initialization with a `once` block to work-around this.
 Once your code is compiled for hot reloading, you can use a framework such
 as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
 to implement the actual reloading behavior in your project.
-
-Breakpoint pragma
------------------
-The *breakpoint* pragma was specially added for the sake of debugging with
-ENDB. See the documentation of `endb <endb.html>`_ for further information.
 
 
 DynlibOverride
@@ -541,13 +530,6 @@ mechanisms. However, the standard library offers some rudimentary support
 for signal handling, in particular, segmentation faults are turned into
 fatal errors that produce a stack trace. This can be disabled with the
 ``-d:noSignalHandler`` switch.
-
-
-Debugging with Nim
-==================
-
-Nim comes with its own *Embedded Nim Debugger*. See
-the documentation of endb_ for further information.
 
 
 Optimizing for Nim
