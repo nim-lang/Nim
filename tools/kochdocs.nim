@@ -160,6 +160,8 @@ lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
 lib/pure/scgi.nim
+lib/impure/nre.nim
+lib/deprecated/pure/sockets.nim
 lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim

@@ -135,7 +135,7 @@ them along the Nim code is easier than using a system library. Libraries
 installed on the host system can be linked in with the `PassL pragma
 <nimc.html#passl-pragma>`_.
 
-To wrap native code, take a look at the `c2nim tool <c2nim.html>`_ which helps
+To wrap native code, take a look at the `c2nim tool <https://nim-lang.org/docs/c2nim.html>`_ which helps
 with the process of scanning and transforming header files into a Nim
 interface.
 

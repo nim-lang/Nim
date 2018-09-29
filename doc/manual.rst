@@ -7344,7 +7344,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 
