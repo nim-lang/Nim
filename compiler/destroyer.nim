@@ -181,7 +181,7 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
       if c.g[i].sym == s:
         if defsite < 0: defsite = i
         else: return false
-    of use:
+    of use, useWithinCall:
       if c.g[i].sym == s:
         if defsite < 0: return false
         for j in defsite .. i:
@@ -190,10 +190,11 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
         # if we want to die after the first 'use':
         if usages > 1: return false
         inc usages
-    of useWithinCall:
-      if c.g[i].sym == s: return false
+    #of useWithinCall:
+    #  if c.g[i].sym == s: return false
     of goto, fork:
       discard "we do not perform an abstract interpretation yet"
+  result = usages <= 1
 
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
@@ -222,26 +223,35 @@ proc patchHead(s: PSym) =
   if sfFromGeneric in s.flags:
     patchHead(s.ast[bodyPos])
 
-template genOp(opr, opname) =
+proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
+  var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
+  if opname == "=" and ri != nil:
+    m.add "; requires a copy because it's not the last read of '"
+    m.add renderTree(ri)
+    m.add '\''
+  localError(c.graph.config, ri.info, errGenerated, m)
+
+template genOp(opr, opname, ri) =
   let op = opr
   if op == nil:
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
+  if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
 
-proc genSink(c: Con; t: PType; dest: PNode): PNode =
+proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(if t.sink != nil: t.sink else: t.assignment, "=sink")
+  genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
 
-proc genCopy(c: Con; t: PType; dest: PNode): PNode =
+proc genCopy(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(t.assignment, "=")
+  genOp(t.assignment, "=", ri)
 
 proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
-  genOp(t.destructor, "=destroy")
+  genOp(t.destructor, "=destroy", nil)
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
@@ -291,33 +301,33 @@ proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   if ri.kind in constrExprs:
-    result = genSink(c, dest.typ, dest)
+    result = genSink(c, dest.typ, dest, ri)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
     recurse(ri, ri2)
     result.add ri2
-  elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
+  elif ri.kind == nkSym and ri.sym.kind != skParam and isHarmlessVar(ri.sym, c):
     # Rule 3: `=sink`(x, z); wasMoved(z)
-    var snk = genSink(c, dest.typ, dest)
+    var snk = genSink(c, dest.typ, dest, ri)
     snk.add p(ri, c)
     result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
   elif ri.kind == nkSym and isSinkParam(ri.sym):
-    result = genSink(c, dest.typ, dest)
+    result = genSink(c, dest.typ, dest, ri)
     result.add destructiveMoveSink(ri, c)
   else:
-    result = genCopy(c, dest.typ, dest)
+    result = genCopy(c, dest.typ, dest, ri)
     result.add p(ri, c)
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
   if hasDestructor(n.typ):
-    var m = genCopy(c, n.typ, tmp)
+    var m = genCopy(c, n.typ, tmp, n)
     m.add p(n, c)
     result.add m
     message(c.graph.config, n.info, hintPerformance,
-      "passing '$1' to a sink parameter introduces an implicit copy; " &
-      "use 'move($1)' to prevent it" % $n)
+      ("passing '$1' to a sink parameter introduces an implicit copy; " &
+      "use 'move($1)' to prevent it") % $n)
   else:
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
@@ -331,6 +341,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
   var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
+  temp.typ = n.typ
   var v = newNodeI(nkLetSection, n.info)
   let tempAsNode = newSymNode(temp)
 
@@ -410,7 +421,7 @@ proc p(n: PNode; c: var Con): PNode =
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
-      var sinkExpr = genSink(c, n.typ, tmp)
+      var sinkExpr = genSink(c, n.typ, tmp, n)
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp

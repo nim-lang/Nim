@@ -1677,7 +1677,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     if s.kind == skMethod: semMethodPrototype(c, s, n)
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
-    if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:
+    if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
