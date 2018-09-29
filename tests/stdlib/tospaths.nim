@@ -39,3 +39,17 @@ else:
     doAssert unixToNativePath("../../abc") == "../../abc"
     doAssert unixToNativePath("/abc", "a") == "/abc"
     doAssert unixToNativePath("/abc/def", "a") == "/abc/def"
+
+block extractFilenameTest:
+  when defined(posix):
+    doAssert extractFilename("foo/bar") == "bar"
+    doAssert extractFilename("foo/bar.txt") == "bar.txt"
+    doAssert extractFilename("foo/") == ""
+    doAssert extractFilename("foo/bar.txt", ignoreTrailingSep = true) == "bar.txt"
+    doAssert extractFilename("foo/", ignoreTrailingSep = true) == "foo"
+when doslikeFileSystem:
+    doAssert extractFilename(r"foo\bar") == "bar"
+    doAssert extractFilename(r"foo\bar.txt") == "bar.txt"
+    doAssert extractFilename(r"foo\") == ""
+    doAssert extractFilename(r"foo\bar.txt", ignoreTrailingSep = true) == "bar.txt"
+    doAssert extractFilename(r"foo\", ignoreTrailingSep = true) == "foo"
