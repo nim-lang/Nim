@@ -409,7 +409,7 @@ else: # JS
   proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
   ## Computes the modulo operation for float operators.
 
-proc round*[T: float32|float64](x: T, places: int = 0): T =
+proc round*[T: float32|float64](x: T, places: int): T =
   ## Round a floating point number.
   ##
   ## If `places` is 0 (or omitted), round to the nearest integral value
