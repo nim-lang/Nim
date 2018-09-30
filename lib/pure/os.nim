@@ -1048,7 +1048,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFile(path, dest / noSource)
@@ -1232,7 +1232,7 @@ proc copyDirWithPermissions*(source, dest: string,
       if not ignorePermissionErrors:
         raise
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)

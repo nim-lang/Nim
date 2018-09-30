@@ -43,6 +43,8 @@ true
 true
 true
 true
+true
+true
 
 '''
 """
@@ -130,6 +132,18 @@ echo dirExists("../dest/a/b")
 echo fileExists("../dest/a/b/file.txt")
 
 echo fileExists("../dest/a/b/c/fileC.txt")
+removeDir("../dest")
+
+# test copyDir:
+# if separator at the end of a path
+createDir("a/b")
+open("a/file.txt", fmWrite).close
+
+copyDir("a/", "../dest/a/")
+removeDir("a")
+
+echo dirExists("../dest/a/b")
+echo fileExists("../dest/a/file.txt")
 removeDir("../dest")
 
 # Test get/set modification times
