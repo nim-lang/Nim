@@ -548,10 +548,9 @@ template toSeq2(iter: iterator): untyped =
 template toSeq*(iter: untyped): untyped =
   ## Transforms any iterable into a sequence.
   runnableExamples:
-    import sugar
     let
       numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      odd_numbers = toSeq(filter(numeric, x => x mod 2 == 1))
+      odd_numbers = toSeq(filter(numeric, proc(x: int): bool = x mod 2 == 1))
     doAssert odd_numbers == @[1, 3, 5, 7, 9]
 
   when compiles(toSeq1(iter)):
