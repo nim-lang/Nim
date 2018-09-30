@@ -112,7 +112,7 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
   declareClosures()
   new(result)
   result.conf = conf
@@ -146,7 +146,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef):
                warnUser, "only 'rst2html' supports the ':test:' attribute")
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
-                                HtmlExt, RelativeDir"htmldocs", false)
+                                outExt, RelativeDir"htmldocs", false)
   result.thisDir = result.destFile.splitFile.dir
 
 proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -960,7 +960,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf)
+  var d = newDocumentor(filen, cache, conf, outExt)
   d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
                           status: int; content: string) =
     var outp: AbsoluteFile
