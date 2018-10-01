@@ -1,5 +1,5 @@
 discard """
-  errormsg: "index out of bounds"
+  errormsg: "type mismatch: got <TTestArr, int literal(2), int literal(50)>"
   line: 11
 """
 

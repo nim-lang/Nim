@@ -962,6 +962,14 @@ when false:
     of tyFloat64: greater({tyFloat128})
     else: discard
 
+proc literalFitsInRange(lit, typ: PType): bool =
+  if skipTypes(typ, {tyRange}).kind in {tyUint..tyUInt64}:
+    return lit.n.intVal >=% firstOrd(nil, typ) and
+      lit.n.intVal <=% lastOrd(nil, typ, fixedUnsigned=true)
+  else:
+    return lit.n.intVal >= firstOrd(nil, typ) and
+      lit.n.intVal <= lastOrd(nil, typ, fixedUnsigned=false)
+
 proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1141,6 +1149,10 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     else:
       if skipTypes(f, {tyRange}).kind == a.kind:
         result = isIntConv
+        if isIntLit(a):
+          # We know the literal value and the range endpoints so let's try to
+          # give a precise answer here
+          result = if literalFitsInRange(a, f): isFromIntLit else: isNone
       elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
         result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)

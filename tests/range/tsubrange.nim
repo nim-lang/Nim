@@ -1,6 +1,6 @@
 discard """
   line: 20
-  errormsg: "cannot convert 60 to TRange"
+  errormsg: "type mismatch: got <int literal(60)> but expected 'TRange = range 0..40(int)'"
 """
 
 type
