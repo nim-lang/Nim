@@ -119,7 +119,7 @@ case $uos in
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
     ;;
-  *mingw* )
+  *mingw* | *msys* )
     myos="windows"
     ;;
   *android* )
