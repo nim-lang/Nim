@@ -380,11 +380,11 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  nimexec "cc --taintMode:on --opt:speed tests/testament/tester"
+  nimexec "cc --taintMode:on --opt:speed testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
-  let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
+  let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
   if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
     exec tester & " html"
