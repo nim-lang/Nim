@@ -7,8 +7,9 @@ const
 
   nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
-  docHtmlOutput = "doc/html"
-  webUploadOutput = "web/upload"
+  docHtmlOutput = "doc" / "html"
+  webUploadOutput = "web" / "upload"
+  docHackDir = "tools" / "dochack"
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -269,8 +270,6 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
-proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
-
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   var
@@ -327,11 +326,15 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
 proc buildJS() =
   exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim() & " js tools/dochack/dochack.nim")
+  exec(findNim() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
-  let a = nimArgs & " " & args
-  buildJS()
+  let
+    a = nimArgs & " " & args
+    docHackJs = "dochack.js"
+    docHackJsSource = docHackDir / "nimcache" / docHackJs
+    docHackJsDest = docHtmlOutput / docHackJs
+  buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
   buildDocSamples(a, docup)
@@ -342,3 +345,4 @@ proc buildDocs*(args: string) =
   createDir(docHtmlOutput)
   buildDocSamples(nimArgs, docHtmlOutput)
   buildDoc(nimArgs, docHtmlOutput)
+  copyFileWithPermissions(docHackJsSource, docHackJsDest)

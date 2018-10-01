@@ -53,12 +53,9 @@ script:
   - nim c -r nimdoc/tester
 
 before_deploy:
-  # Generate the dochack.js for the doc search to work.
-  - nim js ./tools/dochack/dochack.nim
-  - cp -f ./tools/dochack/nimcache/dochack.js ./doc/.
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
   - cp -f ./doc/html/overview.html ./doc/html/index.html
-deploy:
+deploy:                         # https://nim-lang.github.io/Nim
   provider: pages
   # local-dir *has* to be a relative path from the repo root.
   local-dir: "doc/html"
