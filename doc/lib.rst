@@ -184,12 +184,6 @@ Generic Operating System Services
   This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
 
-* `fsmonitor <fsmonitor.html>`_
-  This module implements the ability to monitor a directory/file for changes
-  using Posix's inotify API.
-
-  **Warning:** This module will likely be moved out to a Nimble package soon.
-
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
@@ -238,9 +232,6 @@ Internet Protocols and Support
   This module implements procs for opening URLs with the user's default
   browser.
 
-* `httpserver <httpserver.html>`_
-  This module implements a simple HTTP server.
-
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
@@ -288,11 +279,6 @@ Parsers
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-
-* `parseopt2 <parseopt2.html>`_
-  The ``parseopt2`` module implements a command line option parser. This
-  supports long and short command options with optional values and command line
-  arguments.
 
 * `parsecfg <parsecfg.html>`_
   The ``parsecfg`` module implements a high performance configuration file
@@ -392,10 +378,6 @@ Multimedia support
 
 Miscellaneous
 -------------
-
-* `events <events.html>`_
-  This module implements an event system that is not dependent on external
-  graphical toolkits.
 
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,

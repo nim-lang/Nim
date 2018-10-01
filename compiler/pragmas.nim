@@ -961,6 +961,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfError)
+          excl(sym.flags, sfForward)
         else:
           let s = expectStrLit(c, it)
           recordPragma(c, it, "error", s)

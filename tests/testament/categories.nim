@@ -218,7 +218,7 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
   testSpec c, makeTest("tests/system/helpers/readall_echo", options, cat)
-  testSpec r, makeTest("tests/system/io", options, cat)
+  testSpec r, makeTest("tests/system/tio", options, cat)
 
 # ------------------------- async tests ---------------------------------------
 proc asyncTests(r: var TResults, cat: Category, options: string) =

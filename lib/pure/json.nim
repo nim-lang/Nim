@@ -1147,7 +1147,7 @@ proc processType(typeName: NimNode, obj: NimNode,
         `getEnumCall`
       )
   of nnkSym:
-    let name = ($typeName).normalize
+    let name = normalize($typeName.getTypeImpl())
     case name
     of "string":
       result = quote do:
@@ -1639,3 +1639,17 @@ when isMainModule:
   # bug #6438
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
+
+  # bug #9111
+  block:
+    type
+      Bar = string
+      Foo = object
+        a: int
+        b: Bar
+
+    let
+      js = """{"a": 123, "b": "abc"}""".parseJson
+      foo = js.to Foo
+
+    doAssert(foo.b == "abc")
