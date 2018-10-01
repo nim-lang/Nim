@@ -329,7 +329,30 @@ type
     cAlternateFileName*: array[0..13, WinChar]
 {.deprecated: [TWIN32_FIND_DATA: WIN32_FIND_DATA].}
 
+type
+  FINDEX_INFO_LEVELS* = enum
+    FindExInfoStandard,
+    FindExInfoBasic,
+    FindExInfoMaxInfoLevel
+
+  FINDEX_SEARCH_OPS* = enum
+    FindExSearchNameMatch,
+    FindExSearchLimitToDirectories,
+    FindExSearchLimitToDevices,
+    FindExSearchMaxSearchOp
+
+const
+  FIND_FIRST_EX_CASE_SENSITIVE* = 1
+  FIND_FIRST_EX_LARGE_FETCH* = 2
+
 when useWinUnicode:
+  proc findFirstFileExW*(lpFileName: WideCString,
+                      fInfoLevelId: FINDEX_INFO_LEVELS,
+                      lpFindFileData: var WIN32_FIND_DATA,
+                      fSearchOp: FINDEX_SEARCH_OPS, 
+                      lpSearchFilter: pointer,
+                      dwAdditionalFlags: DWORD): Handle {.
+      stdcall, dynlib: "kernel32", importc: "FindFirstFileExW".}
   proc findFirstFileW*(lpFileName: WideCString,
                       lpFindFileData: var WIN32_FIND_DATA): Handle {.
       stdcall, dynlib: "kernel32", importc: "FindFirstFileW".}
@@ -337,6 +360,13 @@ when useWinUnicode:
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
       stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
 else:
+  proc findFirstFileExA*(lpFileName: cstring, 
+                      fInfoLevelId: FINDEX_INFO_LEVELS,
+                      lpFindFileData: var WIN32_FIND_DATA,
+                      fSearchOp: FINDEX_SEARCH_OPS, 
+                      lpSearchFilter: pointer,
+                      dwAdditionalFlags: DWORD): Handle {.
+      stdcall, dynlib: "kernel32", importc: "FindFirstFileExA".}
   proc findFirstFileA*(lpFileName: cstring,
                       lpFindFileData: var WIN32_FIND_DATA): Handle {.
       stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}

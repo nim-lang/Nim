@@ -46,21 +46,45 @@ proc c_free(p: pointer) {.
 
 
 when defined(windows):
+  var
+    vi: OSVERSIONINFO
+
+  vi.dwOSVersionInfoSize = cast[DWORD](vi.sizeof)
+  discard getVersionExW(addr(vi))
+  let windowsXPorLater*: bool = vi.dwMajorVersion > 5 or 
+                               (vi.dwMajorVersion == 5 and vi.dwMinorVersion >= 1)
+  let windows7orLater*: bool = (vi.dwMajorVersion >= 6 and vi.dwMinorVersion >= 1) or 
+                               (vi.dwMajorVersion >= 10 and vi.dwMinorVersion >= 0)
+
+  template wrapFindFirstFile(f1, f2: untyped, pattern: untyped, findData: var WIN32_FIND_DATA): Handle =
+    if not windowsXPorLater:
+      f1(pattern, findData)
+    else:
+      var
+        findExInfo: FINDEX_INFO_LEVELS = FindExInfoStandard
+        findExFlags: DWORD = 0
+      if windows7orLater: 
+        findExInfo = FindExInfoBasic
+        findExFlags = FIND_FIRST_EX_LARGE_FETCH
+      f2(pattern, findExInfo, findData, FindExSearchNameMatch, nil, findExFlags)
+
   when useWinUnicode:
     template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
 
     template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
-      result = findFirstFileW(newWideCString(a), b)
+
+    template findFirstFile(a, b: untyped): untyped =
+      wrapFindFirstFile(findFirstFileW, findFirstFileExW, newWideCString(a), b)
     template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
     template getCommandLine(): untyped = getCommandLineW()
 
     template getFilename(f: untyped): untyped =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
+    template findFirstFile(a, b: untyped): untyped =
+      wrapFindFirstFile(findFirstFileA, findFirstFileExA, a, b)
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
@@ -1749,7 +1773,6 @@ proc isHidden*(path: string): bool =
         result = (fileName[0] == '.') and (fileName[1] != '.')
       elif nameLen > 2:
         result = (fileName[0] == '.') and (fileName[3] != '.')
-
 {.pop.}
 
 proc setLastModificationTime*(file: string, t: times.Time) =
