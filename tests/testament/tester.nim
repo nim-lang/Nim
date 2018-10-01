@@ -310,7 +310,11 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
     inc(r.total)
     return
 
-  if expected.targets == {}:
+  # Minor hack ahead: On Travis OSX we run every "native code" test
+  # with the C++ compiler, not the C compiler.
+  if defined(osx) and target == targetC and expected.targets == {}:
+    expected.targets.incl(targetCpp)
+  elif expected.targets == {}:
     expected.targets.incl(target)
 
   for target in expected.targets:
