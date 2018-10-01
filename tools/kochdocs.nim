@@ -7,9 +7,9 @@ const
 
   nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
-  docHtmlOutput = "doc" / "html"
-  webUploadOutput = "web" / "upload"
-  docHackDir = "tools" / "dochack"
+  docHtmlOutput = "doc/html"
+  webUploadOutput = "web/upload"
+  docHackDir = "tools/dochack"
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -162,6 +162,7 @@ lib/pure/json.nim
 lib/pure/base64.nim
 lib/pure/scgi.nim
 lib/impure/nre.nim
+lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
 lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
@@ -345,4 +346,5 @@ proc buildDocs*(args: string) =
   createDir(docHtmlOutput)
   buildDocSamples(nimArgs, docHtmlOutput)
   buildDoc(nimArgs, docHtmlOutput)
-  copyFileWithPermissions(docHackJsSource, docHackJsDest)
+  copyFile(docHackJsSource, docHackJsDest)
+  copyFile(docHackJsSource, docup / docHackJs)
