@@ -521,6 +521,8 @@ type
     tfCovariant       # covariant generic param mimicing a ptr type
     tfWeakCovariant   # covariant generic param mimicing a seq/array type
     tfContravariant   # contravariant generic param
+    tfUncheckedArray  # tyArray whose elements are accessed without preliminary
+                      # bound checking
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -563,7 +565,6 @@ const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
-  tfUncheckedArray* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles

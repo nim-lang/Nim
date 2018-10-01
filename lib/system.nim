@@ -253,9 +253,6 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
-  UncheckedArray* {.unchecked.}[T] = array[0, T]
-    ## Array with no bounds checking
-
 when defined(nimHasOpt):
   type opt*{.magic: "Opt".}[T]
 
@@ -298,6 +295,15 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  low(arr) #=> 0
   ##  low(2) #=> -9223372036854775808
   ##  low(int) #=> -9223372036854775808
+
+when defined(nimUncheckedArrRange):
+  type
+    UncheckedArray* {.unchecked.}[T] = array[high(int), T]
+      ## Array with no bounds checking
+else:
+  type
+    UncheckedArray* {.unchecked.}[T] = array[0, T]
+      ## Array with no bounds checking
 
 proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy

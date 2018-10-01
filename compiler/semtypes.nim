@@ -301,7 +301,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if e.intVal < 0:
         localError(c.config, n[1].info,
           "Array length can't be negative, but was " & $e.intVal)
-      result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
+      result = makeRangeType(c, 0, e.intVal - 1, n.info, e.typ)
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)

@@ -749,7 +749,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     add(result, seqStar(m))
   of tyArray:
     var n: BiggestInt = lengthOrd(m.config, t)
-    if n <= 0: n = 1   # make an array of at least one element
+    # make an array of at least one element
+    if tfUncheckedArray in t.flags or n <= 0: n = 1
     result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     if not isImportedType(t):

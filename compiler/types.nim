@@ -1365,7 +1365,8 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
   of tyArray:
     let elemSize = computeSizeAux(conf, typ.sons[1], a)
     if elemSize < 0: return elemSize
-    result = lengthOrd(conf, typ.sons[0]) * elemSize
+    if tfUncheckedArray notin typ.flags:
+      result = lengthOrd(conf, typ.sons[0]) * elemSize
   of tyEnum:
     if firstOrd(conf, typ) < 0:
       result = 4              # use signed int32
