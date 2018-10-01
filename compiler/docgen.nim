@@ -711,7 +711,7 @@ proc exportSym(d: PDoc; s: PSym) =
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
           rope changeFileExt(external, "html")])
-  elif s.owner != nil:
+  elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
       let external = externalDep(d, module)
