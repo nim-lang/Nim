@@ -855,8 +855,10 @@ proc getTypeDesc(m: BModule, typ: PType): Rope =
   result = getTypeDescAux(m, typ, check)
 
 type
-  TClosureTypeKind = enum
-    clHalf, clHalfWithEnv, clFull
+  TClosureTypeKind = enum ## In C closures are mapped to 3 different things.
+    clHalf,           ## fn(args) type without the trailing 'void* env' parameter
+    clHalfWithEnv,    ## fn(args, void* env) type with trailing 'void* env' parameter
+    clFull            ## struct {fn(args, void* env), env}
 
 proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
