@@ -963,7 +963,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let liftBody = liftingWalk(paramType.lastSon, true)
     if liftBody != nil:
       result = liftBody
-      result.shouldHaveMeta
+      result.flags.incl tfHasMeta
+      #result.shouldHaveMeta
 
   of tyGenericInvocation:
     for i in 1 ..< paramType.len:
