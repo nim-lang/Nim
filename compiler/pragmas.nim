@@ -598,18 +598,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        if c.config.projectPath.isEmpty:
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
-        else:
-          when false:
-            # XXX this is still suspicous:
-            let dir = toFullPath(c.config, n.info).splitFile.dir
-            let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
-                      else: RelativeFile(x.strVal)
-            n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
-          else:
-            n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile toFullPath(c.config, n.info))
-
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
