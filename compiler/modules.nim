@@ -66,7 +66,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     if sfMainModule in result.flags:
       graph.config.mainPackageId = result.owner.id
 
-    result.id = getModuleId(graph, fileIdx, toFullPath(graph.config, fileIdx))
+    result.id = getModuleId(graph, fileIdx, AbsoluteFile toFullPath(graph.config, fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
