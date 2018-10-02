@@ -59,7 +59,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    case skipTypes(ty, abstractVarRange + {tyStatic}).kind
+    case skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:

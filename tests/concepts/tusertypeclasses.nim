@@ -4,6 +4,7 @@ Sortable
 Container
 TObj
 int
+111 111
 '''
 """
 
@@ -25,7 +26,7 @@ type
     C.len is Ordinal
     for v in items(C):
       v.type is tuple|object
-   
+
 proc foo(c: ObjectContainer) =
   echo "Container"
 
@@ -94,6 +95,15 @@ proc to(x: TObj, t: type JSonValue) = discard
 proc testFoo(x: TFoo) =
   echo x.TypeName
   echo x.MappedType.name
-  
+
 testFoo(TObj(x: 10))
 
+# bug #7092
+
+type stringTest = concept x
+  x is string
+
+let usedToFail: stringTest = "111"
+let working: string = "111"
+
+echo usedToFail, " ", working
