@@ -2079,7 +2079,7 @@ proc isConstClosure(n: PNode): bool {.inline.} =
       n.sons[1].kind == nkNilLit
 
 proc genClosure(p: BProc, n: PNode, d: var TLoc) =
-  assert n.kind == nkClosure
+  assert n.kind in {nkPar, nkTupleConstr, nkClosure}
 
   if isConstClosure(n):
     inc(p.module.labels)
@@ -2337,7 +2337,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     else:
       genArrayConstr(p, n, d)
   of nkPar, nkTupleConstr:
-    if isDeepConstExpr(n) and n.len != 0:
+    if n.typ != nil and n.typ.kind == tyProc and n.len == 2:
+      genClosure(p, n, d)
+    elif isDeepConstExpr(n) and n.len != 0:
       exprComplexConst(p, n, d)
     else:
       genTupleConstr(p, n, d)
