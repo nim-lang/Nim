@@ -2571,15 +2571,21 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, n.typ)
-    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 0 and
-         n.sons[0].kind == nkNilLit and n.sons[1].kind == nkNilLit:
+    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
+         n.sons[1].kind == nkNilLit:
+      # Conversion: nimcall -> closure.
       # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
       # this behaviour is needed since closure_var = nil must be
       # expanded to {NIM_NIL,NIM_NIL}
       # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
       # leading to duplicate code like this:
       # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
-      result = ~"{NIM_NIL,NIM_NIL}"
+      if n[0].kind == nkNilLit:
+        result = ~"{NIM_NIL,NIM_NIL}"
+      else:
+        var d: TLoc
+        initLocExpr(p, n[0], d)
+        result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
     else:
       result = genConstSimpleList(p, n)
   of nkObjConstr:
