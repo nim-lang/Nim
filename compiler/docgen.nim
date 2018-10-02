@@ -765,7 +765,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCallKinds:
     var comm: Rope = nil
     getAllRunnableExamples(d, n, comm)
-    if comm > nil: add(d.modDesc, comm)
+    if comm != nil: add(d.modDesc, comm)
   else: discard
 
 proc add(d: PDoc; j: JsonNode) =
