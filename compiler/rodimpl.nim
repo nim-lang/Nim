@@ -53,6 +53,7 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
   return false
 
 proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
+  ## Analyse the known dependency graph.
   if g.config.symbolFiles in {disabledSf, writeOnlySf} or
      g.incr.configChanged:
     return getID()
@@ -878,6 +879,7 @@ proc setupModuleCache*(g: ModuleGraph) =
     let oldConfig = db.getValue(sql"select config from config")
     g.incr.configChanged = oldConfig != encodeConfig(g)
   db.exec(sql"pragma journal_mode=off")
+  # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")
   db.exec(sql"pragma LOCKING_MODE=exclusive")
   let lastId = db.getValue(sql"select max(idgen) from controlblock")

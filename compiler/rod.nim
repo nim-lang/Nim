@@ -9,14 +9,14 @@
 
 ## This module implements the canonalization for the various caching mechanisms.
 
-import ast, idgen, lineinfos, msgs, incremental, modulegraphs
+import ast, idgen, lineinfos, msgs, incremental, modulegraphs, pathutils
 
 when not nimIncremental:
   template setupModuleCache*(g: ModuleGraph) = discard
   template storeNode*(g: ModuleGraph; module: PSym; n: PNode) = discard
   template loadNode*(g: ModuleGraph; module: PSym): PNode = newNode(nkStmtList)
 
-  template getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int = getID()
+  template getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int = getID()
 
   template addModuleDep*(g: ModuleGraph; module, fileIdx: FileIndex; isIncludeFile: bool) = discard
 
