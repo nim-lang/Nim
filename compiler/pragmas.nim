@@ -601,11 +601,15 @@ proc pragmaLine(c: PContext, n: PNode) =
         if c.config.projectPath.isEmpty:
           n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         else:
-          # XXX this is still suspicous:
-          let dir = toFullPath(c.config, n.info).splitFile.dir
-          let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
-                    else: RelativeFile(x.strVal)
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
+          when false:
+            # XXX this is still suspicous:
+            let dir = toFullPath(c.config, n.info).splitFile.dir
+            let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
+                      else: RelativeFile(x.strVal)
+            n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
+          else:
+            n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile toFullPath(c.config, n.info))
+
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
