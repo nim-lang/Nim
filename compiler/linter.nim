@@ -48,7 +48,8 @@ proc overwriteFiles*(conf: ConfigRef) =
             f.write line.strip(leading = false, trailing = true)
           else:
             f.write line
-          f.write(conf.m.fileInfos[i], "\L")
+          f.write "\L"
+          # f.write(conf.m.fileInfos[i], "\L")
         f.close
       except IOError:
         rawMessage(conf, errGenerated, "cannot open file: " & newFile.string)
@@ -146,16 +147,16 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   if s.name.s != beau:
     message(conf, info, hintName, beau)
 
-template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
+template styleCheckDef*(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   if optCheckNep1 in conf.globalOptions:
     nep1CheckDefImpl(conf, info, s, k)
   when defined(nimfix):
     if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)
 
-template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  styleCheckDef(conf, info, s, s.kind)
-template styleCheckDef*(conf: ConfigRef; s: PSym) =
-  styleCheckDef(conf, s.info, s, s.kind)
+template styleCheckDef*(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym) =
+  styleCheckDef(conf, cache, info, s, s.kind)
+template styleCheckDef*(conf: ConfigRef; cache: IdentCache; s: PSym) =
+  styleCheckDef(conf, cache, s.info, s, s.kind)
 
 proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
@@ -171,6 +172,6 @@ proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   replaceInFile(conf, info, newName)
   #if newName == "File": writeStackTrace()
 
-template styleCheckUse*(info: TLineInfo; s: PSym) =
+template styleCheckUse*(conf: ConfigRef, info: TLineInfo; s: PSym) =
   when defined(nimfix):
     if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)
