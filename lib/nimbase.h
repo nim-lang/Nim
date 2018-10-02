@@ -280,7 +280,7 @@ namespace USE_NIM_NAMESPACE {
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL nullptr
+#  define NIM_NIL 0
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
