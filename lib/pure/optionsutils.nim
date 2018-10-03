@@ -10,7 +10,9 @@
 ## This module, previously a part of ``options``, implements some more advanced
 ## ways to interact with options. It includes conditional mapping of procedures
 ## over an option, flattening of nested options, and filtering of values within
-## options.
+## options. It also contains macros for wrapping procedures that return an error
+## code or throw an exception into one that returns an option instead for
+## use with other option based things.
 
 import options
 
@@ -50,6 +52,117 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
     none(T)
   else:
     self
+
+macro wrapCall*(statement: untyped): untyped =
+  ## Macro that wraps a procedure which can throw an exception into one that
+  ## returns an option. This version takes a procedure with arguments and a
+  ## return type. It returns a lambda that has the same signature as the
+  ## procedure but returns an Option of the return type. The body executes the
+  ## statement and returns the value if there is no exception, otherwise it
+  ## returns a none option.
+  ##
+  ## .. code-block:: nim
+  ##   let optParseInt = wrapCall: parseInt(x: string): int
+  ##   echo optParseInt("10") # Prints "some(10)"
+  ##   echo optParseInt("bob") # Prints "none(int)"
+  assert(statement.kind == nnkStmtList)
+  assert(statement[0].kind == nnkCall)
+  assert(statement[0].len == 2)
+  assert(statement[0][0].kind == nnkObjConstr)
+  assert(statement[0][0].len >= 1)
+  assert(statement[0][0][0].kind == nnkIdent)
+  for i in 1 ..< statement[0][0].len:
+    assert(statement[0][0][i].kind == nnkExprColonExpr)
+    assert(statement[0][0][i].len == 2)
+    assert(statement[0][0][i][0].kind == nnkIdent)
+  assert(statement[0][1].kind == nnkStmtList)
+  let T = statement[0][1][0]
+  let
+    procName = statement[0][0][0]
+  result = quote do:
+    (proc (): Option[`T`] =
+      try:
+        return some(`procName`())
+      except:
+        return none[`T`]()
+    )
+  # Add the arguments to the argument list of the proc and the call
+  for i in 1 ..< statement[0][0].len:
+    result[0][3].add nnkIdentDefs.newTree(statement[0][0][i][0], statement[0][0][i][1], newEmptyNode())
+    result[0][6][0][0][0][0][1].add statement[0][0][i][0]
+
+macro wrapException*(statement: untyped): untyped =
+  ## Macro that wraps a procedure which can throw an exception into one that
+  ## returns an option. This version takes a procedure with arguments but no
+  ## return type. It returns a lambda that has the same signature as the
+  ## procedure but returns an ``Option[ref Exception]``. The body executes the
+  ## statement and returns a none option if there is no exception. Otherwise it
+  ## returns a some option with the exception.
+  ##
+  ## .. code-block:: nim
+  ##   let optParseInt = wrapException: parseInt(x: string)
+  ##   allSome optParseInt("bob"):
+  ##     just e: echo e.msg
+  ##     none: echo "Execution succeded"
+  assert(statement.len == 1)
+  assert(statement[0].kind == nnkObjConstr)
+  assert(statement[0].len >= 1)
+  assert(statement[0][0].kind == nnkIdent)
+  for i in 1 ..< statement[0].len:
+    assert(statement[0][i].kind == nnkExprColonExpr)
+    assert(statement[0][i].len == 2)
+    assert(statement[0][i][0].kind == nnkIdent)
+  let
+    procName = statement[0][0]
+  result = quote do:
+    (proc (): Option[ref Exception] =
+      try:
+        discard `procName`()
+        return none(ref Exception)
+      except:
+        return some(getCurrentException())
+    )
+  # Add the arguments to the argument list of the proc and the call
+  for i in 1 ..< statement[0].len:
+    result[0][3].add nnkIdentDefs.newTree(statement[0][i][0], statement[0][i][1], newEmptyNode())
+    result[0][6][0][0][0][0].add statement[0][i][0]
+
+macro wrapErrorCode*(statement: untyped): untyped =
+  ## Macro that wraps a procedure which returns an error code into one that
+  ## returns an option. This version takes a procedure with arguments but no
+  ## return type. It returns a lambda that has the same signature as the
+  ## procedure but returns an ``Option[int]``. The body executes the
+  ## statement and returns a none option if the error code is 0. Otherwise it
+  ## returns a some option with the error code.
+  ##
+  ## .. code-block:: nim
+  ##   # We cheat a bit here and use parseInt to emulate an error code
+  ##   let optParseInt = wrapErrorCode: parseInt(x: string)
+  ##   allSome optParseInt("10"):
+  ##     just e: echo "Got error code: ", e
+  ##     none: echo "Execution succeded"
+  assert(statement.len == 1)
+  assert(statement[0].kind == nnkObjConstr)
+  assert(statement[0].len >= 1)
+  assert(statement[0][0].kind == nnkIdent)
+  for i in 1 ..< statement[0].len:
+    assert(statement[0][i].kind == nnkExprColonExpr)
+    assert(statement[0][i].len == 2)
+    assert(statement[0][i][0].kind == nnkIdent)
+  let
+    procName = statement[0][0]
+  result = quote do:
+    (proc (): Option[int] =
+      let eCode = `procName`()
+      if eCode == 0:
+        return none(int)
+      else:
+        return some(eCode)
+    )
+  # Add the arguments to the argument list of the proc and the call
+  for i in 1 ..< statement[0].len:
+    result[0][3].add nnkIdentDefs.newTree(statement[0][i][0], statement[0][i][1], newEmptyNode())
+    result[0][6][0][0][2].add statement[0][i][0]
 
 when isMainModule:
   import unittest, sequtils
