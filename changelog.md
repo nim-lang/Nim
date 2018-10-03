@@ -113,6 +113,7 @@
 - Added a simple interpreting event parser template ``eventParser`` to the ``pegs`` module.
 - Added ``macros.copyLineInfo`` to copy lineInfo from other node.
 - Added ``system.ashr`` an arithmetic right shift for integers.
+- Added ``allSome`` macro to ``optionsutils`` as a safer pattern for option unpacking.
 
 ### Library changes
 
