@@ -14,28 +14,36 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
-## Dynamically retrieving fields from JSON
-## =======================================
+## Overview
+## ========
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## Parsing JSON
+## ------------
+##
+## JSON often arrives into your program (via an API or a file) as a ``string``.
+## The first step is to change it from its serialized form into a nested object
+## structure called a ``JsonNode``.
 ##
 ## The ``parseJson`` procedure takes a string containing JSON and returns a
 ## ``JsonNode`` object. This is an object variant and it is either a
 ## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
-## ``JNull``. You
-## check the kind of this object variant by using the ``kind`` accessor.
+## ``JNull``. You check the kind of this object variant by using the ``kind``
+## accessor.
 ##
 ## For a ``JsonNode`` who's kind is ``JObject``, you can acess its fields using
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
 ##
-## Retrieving the value of a JSON node can then be achieved using one of the
-## helper procedures, which include:
+## Reading values
+## --------------
+##
+## Once you have a ``JsonNode``, retrieving the values can then be achieved
+## by using one of the helper procedures, which include:
 ##
 ## * ``getInt``
 ## * ``getFloat``
@@ -45,43 +53,68 @@
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
+##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
 ##
-## The ``[]`` operator will raise an exception when the specified field does
-## not exist. If you wish to avoid this behaviour you can use the ``{}``
-## operator instead, it will simply return ``nil`` when the field is not found.
-## The ``get``-family of procedures will return a default value when called on
-## ``nil``.
+## **Important:** The ``[]`` operator will raise an exception when the
+## specified field does not exist.
 ##
-## Unmarshalling JSON into a type
-## ==============================
+## Handling optional keys
+## ----------------------
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## By using the ``{}`` operator instead of ``[]``, it will return ``nil``
+## when the field is not found. The ``get``-family of procedures will return a
+## type's default value when called on ``nil``.
 ##
-## This is done using the ``to`` macro. Take a look at
-## `its documentation <#to.m,JsonNode,typedesc>`_ to see an example of its use.
+## .. code-block:: Nim
+##   let jsonNode = parseJson("{}")
+##
+##   doAssert jsonNode{"nope"}.getInt() == 0
+##   doAssert jsonNode{"nope"}.getFloat() == 0
+##   doAssert jsonNode{"nope"}.getStr() == ""
+##   doAssert jsonNode{"nope"}.getBool() == false
+##
+## Using default values
+## --------------------
+##
+## The ``get``-family helpers also accept an additional parameter which allow
+## you to fallback to a default value should the key's values be ``null``:
+##
+## .. code-block:: Nim
+##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
+##
+##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
+##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
+##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##
+## Unmarshalling
+## -------------
+##
+## In addition to reading dynamic data, Nim can also unmarshall JSON directly
+## into a type with the ``to`` macro.
+##
+## .. code-block:: Nim
+##   type User = object
+##     name: string
+##     age: int
+##
+##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
+##   let user = to(userJson, User)
 ##
 ## Creating JSON
 ## =============
 ##
-## This module can also be used to comfortably create JSON using the `%*`
+## This module can also be used to comfortably create JSON using the ``%*``
 ## operator:
 ##
 ## .. code-block:: nim
-##
 ##   var hisName = "John"
 ##   let herAge = 31
 ##   var j = %*
 ##     [
-##       {
-##         "name": hisName,
-##         "age": 30
-##       },
-##       {
-##         "name": "Susan",
-##         "age": herAge
-##       }
+##       { "name": hisName, "age": 30 },
+##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
 ##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
