@@ -10,7 +10,8 @@
 ## This module, previously a part of ``options``, implements some more advanced
 ## ways to interact with options. It includes conditional mapping of procedures
 ## over an option, flattening of nested options, and filtering of values within
-## options.
+## options. It also includes an existential operator that works like regular
+## dot-chaining but stops if the left hand side is a none-option.
 
 import options, macros
 
@@ -52,7 +53,7 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
     self
 
 macro `?.`*(option: untyped, statements: untyped): untyped =
-  ## Optional continuation operator. Works like regular dot-chaining, but if
+  ## Existential operator. Works like regular dot-chaining, but if
   ## the left had side is a ``none`` then the right hand side is not evaluated.
   ## In the case that ``statements`` return something the return type of this
   ## will be ``Option[T]`` where ``T`` is the returned type of ``statements``.
@@ -144,7 +145,7 @@ when isMainModule:
       check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
       check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
 
-    test "conditional continuation":
+    test "existential operator":
       when not compiles(some("Hello world")?.find('w').echo):
         check false
       check (some("Hello world")?.find('w')).unsafeGet == 6
