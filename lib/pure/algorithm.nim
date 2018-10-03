@@ -267,6 +267,9 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
+proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, system.cmp[T], order)
+  ## Shortcut version of ``sort`` that uses ``system.cmp[T]`` as the comparison function.
+
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## returns `a` sorted by `cmp` in the specified `order`.
@@ -274,6 +277,10 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   for i in 0 .. a.high:
     result[i] = a[i]
   sort(result, cmp, order)
+
+proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
+  ## Shortcut version of ``sorted`` that uses ``system.cmp[T]`` as the comparison function.
+  sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
@@ -318,6 +325,10 @@ proc isSorted*[T](a: openarray[T],
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
       return false
+
+proc isSorted*[T](a: openarray[T], order = SortOrder.Ascending): bool =
+  ## Shortcut version of ``isSorted`` that uses ``system.cmp[T]`` as the comparison function.
+  isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
