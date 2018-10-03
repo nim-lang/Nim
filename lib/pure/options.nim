@@ -146,6 +146,13 @@ proc get*[T](self: var Option[T]): var T =
     raise UnpackError(msg: "Can't obtain a value from a `none`")
   return self.val
 
+template either*(self, otherwise: untyped): untyped =
+  ## Similar in function to ``get``, but if ``otherwise`` is a procedure it will
+  ## not be evaluated if ``self`` is a ``some``. This means that ``otherwise``
+  ## can have side effects.
+  let opt = self # In case self is a procedure call returning an option
+  if opt.isSome: opt.val else: otherwise
+
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
   ## or if they have equal values
@@ -240,3 +247,26 @@ when isMainModule:
 
       let noperson = none(Person)
       check($noperson == "None[Person]")
+
+    test "either":
+      check(either(some("Correct"), "Wrong") == "Correct")
+      check(either(stringNone, "Correct") == "Correct")
+
+    test "either without side effect":
+      var evaluated = 0
+      proc dummySome(): Option[string] =
+        evaluated += 1
+        return some("dummy")
+      proc dummyStr(): string =
+        evaluated += 1
+        return "dummy"
+      # Check that dummyStr isn't called when we have an option
+      check(either(some("Correct"), dummyStr()) == "Correct")
+      check evaluated == 0
+      # Check that dummyStr is called when we don't have an option
+      check(either(stringNone, dummyStr()) == "dummy")
+      check evaluated == 1
+      evaluated = 0
+      # Check that dummySome is only called once when used as the some value
+      check(either(dummySome(), "Wrong") == "dummy")
+      check evaluated == 1
