@@ -12,7 +12,7 @@
 
 import
   ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes
+  intsets, platform, llstream, tables, sighashes, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -226,7 +226,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template withCFile(cfilename: string, body: untyped) =
+template withCFile(cfilename: AbsoluteFile, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
@@ -238,7 +238,7 @@ template withCFile(cfilename: string, body: untyped) =
     body
   closeBaseLexer(L)
 
-proc readMergeInfo*(cfilename: string, m: BModule) =
+proc readMergeInfo*(cfilename: AbsoluteFile, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -251,7 +251,7 @@ type
     f: TCFileSections
     p: TCProcSections
 
-proc readMergeSections(cfilename: string, m: var TMergeSections) =
+proc readMergeSections(cfilename: AbsoluteFile, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -285,7 +285,7 @@ proc mergeRequired*(m: BModule): bool =
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
-proc mergeFiles*(cfilename: string, m: BModule) =
+proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   ## merges the C file with the old version on hard disc.
   var old: TMergeSections
   readMergeSections(cfilename, old)

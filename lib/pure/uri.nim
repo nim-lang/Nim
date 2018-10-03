@@ -60,6 +60,7 @@ proc encodeUrl*(s: string, usePlus=true): string =
   let fromSpace = if usePlus: "+" else: "%20"
   for c in s:
     case c
+    # https://tools.ietf.org/html/rfc3986#section-2.3
     of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~': add(result, c)
     of ' ': add(result, fromSpace)
     else:

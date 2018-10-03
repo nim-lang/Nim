@@ -802,19 +802,15 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-
 when defined(posix):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
     assert(path != "")
-    if stat(path, s) < 0'i32:
-      raiseOSError(osLastError())
-    if S_ISDIR(s.st_mode):
+    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
       result = pcLinkToDir
     else:
       result = pcLinkToFile
-
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
@@ -1052,7 +1048,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFile(path, dest / noSource)
@@ -1236,7 +1232,7 @@ proc copyDirWithPermissions*(source, dest: string,
       if not ignorePermissionErrors:
         raise
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)
@@ -1480,6 +1476,24 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
+when defined(haiku):
+  const
+    PATH_MAX = 1024
+    B_FIND_PATH_IMAGE_PATH = 1000
+
+  proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
+                 pathBuffer: cstring, bufferSize: csize): int32
+                {.importc, header: "<FindDirectory.h>".}
+
+  proc getApplHaiku(): string =
+    result = newString(PATH_MAX)
+
+    if find_path(nil, B_FIND_PATH_IMAGE_PATH, nil, result, PATH_MAX) == 0:
+      let realLen = len(cstring(result))
+      setLen(result, realLen)
+    else:
+      result = ""
+
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
@@ -1534,6 +1548,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
+    elif defined(haiku):
+      result = getApplHaiku()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()

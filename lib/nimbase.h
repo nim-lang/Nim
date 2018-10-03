@@ -268,7 +268,7 @@ __clang__
 
 /* wrap all Nim typedefs into namespace Nim */
 #ifdef USE_NIM_NAMESPACE
-namespace Nim {
+namespace USE_NIM_NAMESPACE {
 #endif
 
 /* bool types (C++ has it): */

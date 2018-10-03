@@ -464,7 +464,7 @@ type
     lpVendorInfo: cstring
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
-    sa_family*: int16 # unsigned
+    sa_family*: uint16
     sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
@@ -474,7 +474,7 @@ type
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
-    sin_family*: int16
+    sin_family*: uint16
     sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
@@ -484,21 +484,21 @@ type
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
 
   Sockaddr_in6_old* = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
 
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
-    ss_family*: int16
+    ss_family*: uint16
     ss_pad1: array[6, byte]
     ss_align: int64
     ss_pad2: array[112, byte]

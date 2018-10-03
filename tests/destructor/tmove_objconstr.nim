@@ -59,4 +59,4 @@ for x in getPony():
   echo x
 # XXX this needs to be enabled once top level statements
 # produce destructor calls again.
-echo "Pony is dying!"
+#echo "Pony is dying!"

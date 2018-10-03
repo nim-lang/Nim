@@ -440,8 +440,7 @@ const Sockaddr_un_path_length* = 108
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  # cushort really
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cshort
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr

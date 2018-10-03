@@ -1237,6 +1237,8 @@ proc cmp*[T](x, y: T): int {.procvar.} =
 
 proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## Compare proc for strings. More efficient than the generic version.
+  ## **Note**: The precise result values depend on the used C runtime library and
+  ## can differ between operating systems!
 
 proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
   magic: "ArrToSeq", nosideeffect.}
@@ -1930,10 +1932,10 @@ const
   NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 18
+  NimMinor* {.intdefine.}: int = 19
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2328,6 +2330,16 @@ proc `==`*[I, T](x, y: array[I, T]): bool =
   for f in low(x)..high(x):
     if x[f] != y[f]:
       return
+  result = true
+
+proc `==`*[T](x, y: openarray[T]): bool =
+  if x.len != y.len:
+    return false
+
+  for f in low(x)..high(x):
+    if x[f] != y[f]:
+      return false
+
   result = true
 
 proc `@`*[T](a: openArray[T]): seq[T] =
@@ -2741,12 +2753,12 @@ type
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
-      var len = `x`.length-1;
+      if (`x` === null) { `x` = []; }
+      var off = `x`.length;
+      `x`.length += `y`.length;
       for (var i = 0; i < `y`.length; ++i) {
-        `x`[len] = `y`.charCodeAt(i);
-        ++len;
+        `x`[off+i] = `y`.charCodeAt(i);
       }
-      `x`[len] = 0
     """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
@@ -3127,8 +3139,8 @@ when not defined(JS): #and not defined(nimscript):
 
     proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
                   benign.}
-      ## reads a line of text from the file `f` into `line`. `line` must not be
-      ## ``nil``! May throw an IO exception.
+      ## reads a line of text from the file `f` into `line`. May throw an IO
+      ## exception.
       ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
       ## character(s) are not part of the returned string. Returns ``false``
       ## if the end of the file has been reached, ``true`` otherwise. If
@@ -3784,8 +3796,11 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
-    if not cond:
-      failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+    # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
+    # here, regardless of --excessiveStackTrace
+    {.line: instantiationInfo(fullPaths = true).}:
+      if not cond:
+        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
 
 template assert*(cond: bool, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
@@ -4097,8 +4112,16 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
 
 when defined(nimNoNilSeqs2):
   when not compileOption("nilseqs"):
-    proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil); y: string): bool {.error.} = discard
+    when defined(nimHasUserErrors):
+      proc `==`*(x: string; y: type(nil)): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+      proc `==`*(x: type(nil); y: string): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+    else:
+      proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
+      proc `==`*(x: type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -4127,13 +4150,13 @@ template once*(body: untyped): untyped =
   ## re-executed on each module reload.
   ##
   ## .. code-block:: nim
-  ## proc draw(t: Triangle) =
-  ##   once:
-  ##     graphicsInit()
   ##
-  ##   line(t.p1, t.p2)
-  ##   line(t.p2, t.p3)
-  ##   line(t.p3, t.p1)
+  ##  proc draw(t: Triangle) =
+  ##    once:
+  ##      graphicsInit()
+  ##    line(t.p1, t.p2)
+  ##    line(t.p2, t.p3)
+  ##    line(t.p3, t.p1)
   ##
   var alreadyExecuted {.global.} = false
   if not alreadyExecuted:

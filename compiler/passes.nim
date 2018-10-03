@@ -14,7 +14,7 @@ import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
   nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
-  lineinfos
+  lineinfos, pathutils
 
 
 type
@@ -106,7 +106,7 @@ proc processTopLevelStmt(n: PNode, a: var TPassContextArray): bool =
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
-  if fullPath.len == 0:
+  if fullPath.isEmpty:
     result = InvalidFileIDX
   else:
     result = fileInfoIdx(conf, fullPath)
@@ -124,6 +124,11 @@ proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKi
       str.info = gCmdLineInfo
       importStmt.addSon str
       if not processTopLevelStmt(importStmt, a): break
+
+const
+  imperativeCode = {low(TNodeKind)..high(TNodeKind)} - {nkTemplateDef, nkProcDef, nkMethodDef,
+    nkMacroDef, nkConverterDef, nkIteratorDef, nkFuncDef, nkPragma,
+    nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
@@ -160,7 +165,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
       let filename = toFullPathConsiderDirty(graph.config, fileIdx)
       s = llStreamOpen(filename, fmRead)
       if s == nil:
-        rawMessage(graph.config, errCannotOpenFile, filename)
+        rawMessage(graph.config, errCannotOpenFile, filename.string)
         return false
     else:
       s = stream
@@ -191,7 +196,25 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
             sl = reorder(graph, sl, module)
           discard processTopLevelStmt(sl, a)
           break
-        elif not processTopLevelStmt(n, a): break
+        elif n.kind in imperativeCode:
+          # read everything until the next proc declaration etc.
+          var sl = newNodeI(nkStmtList, n.info)
+          sl.add n
+          var rest: PNode = nil
+          while true:
+            var n = parseTopLevelStmt(p)
+            if n.kind == nkEmpty or n.kind notin imperativeCode:
+              rest = n
+              break
+            sl.add n
+          #echo "-----\n", sl
+          if not processTopLevelStmt(sl, a): break
+          if rest != nil:
+            #echo "-----\n", rest
+            if not processTopLevelStmt(rest, a): break
+        else:
+          #echo "----- single\n", n
+          if not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)

@@ -59,7 +59,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    case skipTypes(ty, abstractVarRange + {tyStatic}).kind
+    case skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
@@ -151,7 +151,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
-proc canMove(n: PNode): bool =
+proc canMove(p: BProc, n: PNode): bool =
   # for now we're conservative here:
   if n.kind == nkBracket:
     # This needs to be kept consistent with 'const' seq code
@@ -159,6 +159,10 @@ proc canMove(n: PNode): bool =
     if not isDeepConstExpr(n) or n.len == 0:
       if skipTypes(n.typ, abstractVarRange).kind == tySequence:
         return true
+  elif optNilSeqs notin p.options and
+    n.kind in nkStrKinds and n.strVal.len == 0:
+    # Empty strings are codegen'd as NIM_NIL so it's just a pointer copy
+    return true
   result = n.kind in nkCallKinds
   #if result:
   #  echo n.info, " optimized ", n
@@ -286,7 +290,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tySequence:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
@@ -295,7 +299,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyString:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
-    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
+    elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       if dest.storage == OnStack or not usesWriteBarrier(p.config):
@@ -1596,10 +1600,11 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   genAssignment(p, a, b, {})
   genAssignment(p, b, tmp, {})
 
-proc rdSetElemLoc(conf: ConfigRef; a: TLoc, setType: PType): Rope =
+proc rdSetElemLoc(conf: ConfigRef; a: TLoc, typ: PType): Rope =
   # read a location of an set element; it may need a subtraction operation
   # before the set operation
   result = rdCharLoc(a)
+  let setType = typ.skipTypes(abstractPtrs)
   assert(setType.kind == tySet)
   if firstOrd(conf, setType) != 0:
     result = "($1- $2)" % [result, rope(firstOrd(conf, setType))]
@@ -1727,7 +1732,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i) # our counter
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
-      if d.k == locNone: getTemp(p, a.t, d)
+      if d.k == locNone: getTemp(p, setType, d)
       lineF(p, cpsStmts,
            "for ($1 = 0; $1 < $2; $1++) $n" &
            "  $3[$1] = $4[$1] $6 $5[$1];$n", [
@@ -1859,6 +1864,23 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   else:
     binaryArith(p, e, d, m)
 
+proc skipAddr(n: PNode): PNode =
+  result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
+
+proc genWasMoved(p: BProc; n: PNode) =
+  var a: TLoc
+  initLocExpr(p, n[1].skipAddr, a)
+  resetLoc(p, a)
+  #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+  #  addrLoc(p.config, a), getTypeDesc(p.module, a.t))
+
+proc genMove(p: BProc; n: PNode; d: var TLoc) =
+  if d.k == locNone: getTemp(p, n.typ, d)
+  var a: TLoc
+  initLocExpr(p, n[1].skipAddr, a)
+  genAssignment(p, d, a, {})
+  resetLoc(p, a)
+
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
@@ -1986,6 +2008,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     initLocExpr(p, e.sons[2], b)
     genDeepCopy(p, a, b)
   of mDotDot, mEqCString: genCall(p, e, d)
+  of mWasMoved: genWasMoved(p, e)
+  of mMove: genMove(p, e, d)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
@@ -2055,7 +2079,7 @@ proc isConstClosure(n: PNode): bool {.inline.} =
       n.sons[1].kind == nkNilLit
 
 proc genClosure(p: BProc, n: PNode, d: var TLoc) =
-  assert n.kind == nkClosure
+  assert n.kind in {nkPar, nkTupleConstr, nkClosure}
 
   if isConstClosure(n):
     inc(p.module.labels)
@@ -2313,7 +2337,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     else:
       genArrayConstr(p, n, d)
   of nkPar, nkTupleConstr:
-    if isDeepConstExpr(n) and n.len != 0:
+    if n.typ != nil and n.typ.kind == tyProc and n.len == 2:
+      genClosure(p, n, d)
+    elif isDeepConstExpr(n) and n.len != 0:
       exprComplexConst(p, n, d)
     else:
       genTupleConstr(p, n, d)
@@ -2547,15 +2573,21 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, n.typ)
-    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 0 and
-         n.sons[0].kind == nkNilLit and n.sons[1].kind == nkNilLit:
+    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
+         n.sons[1].kind == nkNilLit:
+      # Conversion: nimcall -> closure.
       # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
       # this behaviour is needed since closure_var = nil must be
       # expanded to {NIM_NIL,NIM_NIL}
       # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
       # leading to duplicate code like this:
       # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
-      result = ~"{NIM_NIL,NIM_NIL}"
+      if n[0].kind == nkNilLit:
+        result = ~"{NIM_NIL,NIM_NIL}"
+      else:
+        var d: TLoc
+        initLocExpr(p, n[0], d)
+        result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
     else:
       result = genConstSimpleList(p, n)
   of nkObjConstr:

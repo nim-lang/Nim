@@ -557,11 +557,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # a = b.c
       decodeBC(rkNode)
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit}:
-        let n = src.sons[rc + ord(src.kind == nkObjConstr)].skipColon
+      case src.kind
+      of nkEmpty..nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      of nkObjConstr:
+        let n = src.sons[rc + 1].skipColon
         regs[ra].node = n
       else:
-        stackTrace(c, tos, pc, errNilAccess)
+        let n = src.sons[rc]
+        regs[ra].node = n
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)

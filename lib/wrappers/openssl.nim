@@ -399,14 +399,14 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
-  proc allocWrapper(size: int): pointer {.cdecl.} = alloc(size)
+  proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
   proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
     if p == nil:
-      if newSize > 0: result = alloc(newsize)
-    elif newsize == 0: dealloc(p)
-    else: result = realloc(p, newsize)
+      if newSize > 0: result = allocShared(newsize)
+    elif newsize == 0: deallocShared(p)
+    else: result = reallocShared(p, newsize)
   proc deallocWrapper(p: pointer) {.cdecl.} =
-    if p != nil: dealloc(p)
+    if p != nil: deallocShared(p)
 
 proc CRYPTO_malloc_init*() =
   when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):

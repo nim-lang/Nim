@@ -73,7 +73,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         bb = bb.lastSon
       else:
         break
-    if sameType(aa, bb):
+    if sameType(a.typ.sons[i], b.typ.sons[i]):
       if aa.kind == tyObject and result != Invalid:
         result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
@@ -83,7 +83,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
           result = Yes
         else:
           return No
-      elif diff != high(int):
+      elif diff != high(int) and sfFromGeneric notin (a.flags+b.flags):
         result = Invalid
       else:
         return No

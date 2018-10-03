@@ -363,6 +363,12 @@ proc addNodes(n: PRstNode): string =
   addNodesAux(n, result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+  template special(s) =
+    if b:
+      add(r, '-')
+      b = false
+    add(r, s)
+
   if n == nil: return
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
@@ -373,7 +379,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
           b = false
         if len(r) == 0: add(r, 'Z')
         add(r, n.text[i])
-      of 'a'..'z':
+      of 'a'..'z', '\128'..'\255':
         if b:
           add(r, '-')
           b = false
@@ -383,8 +389,27 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
           add(r, '-')
           b = false
         add(r, chr(ord(n.text[i]) - ord('A') + ord('a')))
+      of '$': special "dollar"
+      of '%': special "percent"
+      of '&': special "amp"
+      of '^': special "roof"
+      of '!': special "emark"
+      of '?': special "qmark"
+      of '*': special "star"
+      of '+': special "plus"
+      of '-': special "minus"
+      of '/': special "slash"
+      of '\\': special "backslash"
+      of '=': special "eq"
+      of '<': special "lt"
+      of '>': special "gt"
+      of '~': special "tilde"
+      of ':': special "colon"
+      of '.': special "dot"
+      of '@': special "at"
+      of '|': special "bar"
       else:
-        if (len(r) > 0): b = true
+        if len(r) > 0: b = true
   else:
     for i in countup(0, len(n) - 1): rstnodeToRefnameAux(n.sons[i], r, b)
 

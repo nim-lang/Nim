@@ -383,8 +383,8 @@ when not defined(JS): # C
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated, importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated, importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of `x` divided by `y`
     ##
     ## .. code-block:: nim

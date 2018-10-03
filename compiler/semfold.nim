@@ -37,10 +37,7 @@ proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
 
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
   result = newFloatNode(nkFloatLit, floatVal)
-  if skipTypes(n.typ, abstractVarRange).kind == tyFloat:
-    result.typ = getFloatLitType(g, result)
-  else:
-    result.typ = n.typ
+  result.typ = n.typ
   result.info = n.info
 
 proc newStrNodeT*(strVal: string, n: PNode; g: ModuleGraph): PNode =

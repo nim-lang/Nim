@@ -9,7 +9,7 @@
 
 import
   options, strutils, os, tables, ropes, platform, terminal, macros,
-  lineinfos
+  lineinfos, pathutils
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -35,20 +35,20 @@ proc makeCString*(s: string): Rope =
   add(result, rope(res))
 
 
-proc newFileInfo(fullPath, projPath: string): TFileInfo =
+proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   result.fullPath = fullPath
   #shallow(result.fullPath)
   result.projPath = projPath
   #shallow(result.projPath)
-  let fileName = projPath.extractFilename
+  let fileName = fullPath.extractFilename
   result.shortName = fileName.changeFileExt("")
   result.quotedName = fileName.makeCString
-  result.quotedFullName = fullPath.makeCString
+  result.quotedFullName = fullPath.string.makeCString
   result.lines = @[]
   when defined(nimpretty):
-    if result.fullPath.len > 0:
+    if not result.fullPath.isEmpty:
       try:
-        result.fullContent = readFile(result.fullPath)
+        result.fullContent = readFile(result.fullPath.string)
       except IOError:
         #rawMessage(errCannotOpenFile, result.fullPath)
         # XXX fixme
@@ -58,39 +58,39 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
-proc fileInfoKnown*(conf: ConfigRef; filename: string): bool =
+proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var
-    canon: string
+    canon: AbsoluteFile
   try:
     canon = canonicalizePath(conf, filename)
-  except:
+  except OSError:
     canon = filename
-  result = conf.m.filenameToIndexTbl.hasKey(canon)
+  result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
-proc fileInfoIdx*(conf: ConfigRef; filename: string; isKnownFile: var bool): FileIndex =
+proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
   var
-    canon: string
+    canon: AbsoluteFile
     pseudoPath = false
 
   try:
     canon = canonicalizePath(conf, filename)
-    shallow(canon)
-  except:
+    shallow(canon.string)
+  except OSError:
     canon = filename
     # The compiler uses "filenames" such as `command line` or `stdin`
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  if conf.m.filenameToIndexTbl.hasKey(canon):
-    result = conf.m.filenameToIndexTbl[canon]
+  if conf.m.filenameToIndexTbl.hasKey(canon.string):
+    result = conf.m.filenameToIndexTbl[canon.string]
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
-    conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: filename
-                                            else: shortenDir(conf, canon)))
-    conf.m.filenameToIndexTbl[canon] = result
+    conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
+                                            else: relativeTo(canon, conf.projectPath)))
+    conf.m.filenameToIndexTbl[canon.string] = result
 
-proc fileInfoIdx*(conf: ConfigRef; filename: string): FileIndex =
+proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
   result = fileInfoIdx(conf, filename, dummy)
 
@@ -99,7 +99,7 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.line = uint16(line)
   result.col = int16(col)
 
-proc newLineInfo*(conf: ConfigRef; filename: string, line, col: int): TLineInfo {.inline.} =
+proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
 
@@ -152,13 +152,16 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   else: result = conf.m.msgContext[i]
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
-  (if fileIdx.int32 < 0 or conf == nil: "???" else: conf.m.fileInfos[fileIdx.int32].projPath)
+  if fileIdx.int32 < 0 or conf == nil:
+    "???"
+  else:
+    conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
-  else: result = conf.m.fileInfos[fileIdx.int32].fullPath
+  else: result = conf.m.fileInfos[fileIdx.int32].fullPath.string
 
-proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: string) =
+proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
   conf.m.fileInfos[fileIdx.int32].dirtyFile = filename
 
@@ -170,10 +173,10 @@ proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
   shallowCopy(result, conf.m.fileInfos[fileIdx.int32].hash)
 
-proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): string =
+proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile =
   if fileIdx.int32 < 0:
-    result = "???"
-  elif conf.m.fileInfos[fileIdx.int32].dirtyFile.len > 0:
+    result = AbsoluteFile"???"
+  elif not conf.m.fileInfos[fileIdx.int32].dirtyFile.isEmpty:
     result = conf.m.fileInfos[fileIdx.int32].dirtyFile
   else:
     result = conf.m.fileInfos[fileIdx.int32].fullPath
@@ -188,9 +191,9 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
     result = "???"
   elif optListFullPaths in conf.globalOptions:
-    result = conf.m.fileInfos[info.fileIndex.int32].fullPath
+    result = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
   else:
-    result = conf.m.fileInfos[info.fileIndex.int32].projPath
+    result = conf.m.fileInfos[info.fileIndex.int32].projPath.string
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line

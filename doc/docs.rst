@@ -27,10 +27,6 @@ The documentation consists of several documents:
   | The Nim compiler supports source code filters as a simple yet powerful
     builtin templating system.
 
-- | `Term rewriting macros <trmacros.html>`_
-  | Term rewriting macros enhance the compilation process with user defined
-    optimizations.
-
 - | `Internal documentation <intern.html>`_
   | The internal documentation describes how the compiler is implemented. Read
     this if you want to hack the compiler.

@@ -32,7 +32,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, transf
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils, transf
 
 from modulegraphs import ModuleGraph
 
@@ -1540,18 +1540,18 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1.slice(0,-1)).concat(" % [a.res])
+    r.res.add("($1).concat(" % [a.res])
 
   for i in countup(2, sonsLen(n) - 2):
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1.slice(0,-1)," % [a.res])
+      r.res.add("$1," % [a.res])
 
   gen(p, n.sons[sonsLen(n) - 1], a)
   if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
-    r.res.add("[$1, 0])" % [a.res])
+    r.res.add("[$1])" % [a.res])
   else:
     r.res.add("$1)" % [a.res])
 
@@ -1658,14 +1658,20 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
-        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
+        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2]; }")
   of mAppendStrStr:
+    var lhs, rhs: TCompRes
+    gen(p, n[1], lhs)
+    gen(p, n[2], rhs)
+
+    let rhsIsLit = n[2].kind in nkStrKinds
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
-        binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
+      r.res = "if ($1 != null) { $1 += $2; } else { $1 = $2$3; }" % [
+        lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
     else:
-      binaryExpr(p, n, r, "",
-        "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
-    # XXX: make a copy of $2, because of Javascript's sucking semantics
+      r.res = "if ($1 != null) { $1 = ($1).concat($2); } else { $1 = $2$3; }" % [
+          lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
+    r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1693,21 +1699,12 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
-  of mLengthStr:
-    if n.sons[1].typ.skipTypes(abstractInst).kind == tyCString:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)")
-  of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1")
-  of mLengthSeq, mLengthOpenArray, mLengthArray:
+  of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-  of mXLenSeq:
+  of mXLenStr, mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-2) : -1)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
+    unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
       binaryUintExpr(p, n, r, "+", true)
@@ -1721,7 +1718,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0")
+    binaryExpr(p, n, r, "", "$1.length = $2")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1750,8 +1747,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     localError(p.config, n.info, errXMustBeCompileTime % n.sons[0].sym.name.s)
   of mCopyStr:
     binaryExpr(p, n, r, "", "($1.slice($2))")
-  of mCopyStrLast:
-    ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")
@@ -2077,8 +2072,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "makeNimstrLit")
-      r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      if n.strVal.len != 0:
+        useMagic(p, "makeNimstrLit")
+        r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      else:
+        r.res = rope"[]"
     else:
       r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
@@ -2267,7 +2265,7 @@ proc genClass(conf: ConfigRef; obj: PType; content: Rope; ext: string) =
             "class $#$# {$n$#$n}$n") %
            [rope(VersionAsString), cls, extends, content]
 
-  let outfile = changeFileExt(completeCFilePath(conf, $cls), ext)
+  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile($cls)), ext)
   discard writeRopeIfNotEqual(result, outfile)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
@@ -2281,11 +2279,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
             else: "nimsystem"
     let code = wholeCode(graph, m)
     let outfile =
-      if m.config.outFile.len > 0:
-        if m.config.outFile.isAbsolute: m.config.outFile
-        else: getCurrentDir() / m.config.outFile
+      if not m.config.outFile.isEmpty:
+        if m.config.outFile.string.isAbsolute: m.config.outFile
+        else: AbsoluteFile(getCurrentDir() / m.config.outFile.string)
       else:
-        changeFileExt(completeCFilePath(m.config, f), ext)
+        changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
     discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)

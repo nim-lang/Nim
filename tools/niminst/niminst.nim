@@ -684,7 +684,7 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
             echo("External program failed (7z)")
       else:
-        if execShellCmd("gtar cf $1.tar $1 --exclude=.DS_Store" %
+        if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
                         proj) != 0:
           # try old 'tar' without --exclude feature:
           if execShellCmd("tar cf $1.tar $1" % proj) != 0:

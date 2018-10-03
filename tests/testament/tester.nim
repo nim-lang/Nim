@@ -486,9 +486,9 @@ proc main() =
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-        cmds.add(myself & " cat " & cat & rest)
+        cmds.add(myself & " cat " & quoteShell(cat) & rest)
     for cat in AdditionalCategories:
-      cmds.add(myself & " cat " & cat & rest)
+      cmds.add(myself & " cat " & quoteShell(cat) & rest)
     quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)

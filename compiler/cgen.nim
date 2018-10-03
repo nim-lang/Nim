@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi, lineinfos, transf
+  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils, transf
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -679,8 +679,10 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 
-proc openNamespaceNim(): Rope =
-  result.add("namespace Nim {\L")
+proc openNamespaceNim(namespace: string): Rope =
+  result.add("namespace ")
+  result.add(namespace)
+  result.add(" {\L")
 
 proc closeNamespaceNim(): Rope =
   result.add("}\L")
@@ -705,7 +707,7 @@ proc containsResult(n: PNode): bool =
     for i in 0..<n.safeLen:
       if containsResult(n[i]): return true
 
-const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef, nkMacroDef} +
                   declarativeDefs
 
 proc easyResultAsgn(n: PNode): PNode =
@@ -1038,7 +1040,10 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if optUseNimNamespace in conf.globalOptions: result.add("#define USE_NIM_NAMESPACE\L")
+  if conf.cppCustomNamespace.len > 0: 
+    result.add("#define USE_NIM_NAMESPACE ")
+    result.add(conf.cppCustomNamespace)
+    result.add("\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -1066,7 +1071,8 @@ proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
   for i in 0..<m.config.m.fileInfos.len:
-    result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
+    result.addf("dbgRegisterFilename($1);$N",
+      [m.config.m.fileInfos[i].projPath.string.makeCString])
 
 proc genMainProc(m: BModule) =
   const
@@ -1210,11 +1216,11 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin m.config.globalOptions:
-    if optUseNimNamespace in m.config.globalOptions:
-      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;\L"
+    if m.config.cppCustomNamespace.len > 0:
+      m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
 
     appcg(m, m.s[cfsProcs], otherMain, [])
-    if optUseNimNamespace in m.config.globalOptions: m.s[cfsProcs].add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0: m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
 proc getSomeInitName(m: PSym, suffix: string): Rope =
   assert m.kind == skModule
@@ -1336,10 +1342,10 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders:
-      result.add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders:
+      result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
@@ -1350,7 +1356,7 @@ proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
 
-proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
+proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
   result.tmpBase = rope("TM" & $hashOwner(module) & "_")
@@ -1378,7 +1384,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
-                else: ""
+                else: AbsoluteFile""
   open(result.ndi, ndiName, g.config)
 
 proc nullify[T](arr: var T) =
@@ -1429,7 +1435,7 @@ proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
-  result = rawNewModule(g, module, toFullPath(conf, module.position.FileIndex))
+  result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
 proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
@@ -1448,7 +1454,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
-    let f = if graph.config.headerFile.len > 0: graph.config.headerFile
+    let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
     g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCFilePath(graph.config, f), hExt))
@@ -1470,18 +1476,18 @@ proc writeHeader(m: BModule) =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders: result.add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):
-    rawMessage(m.config, errCannotOpenFile, m.filename)
+    rawMessage(m.config, errCannotOpenFile, m.filename.string)
 
-proc getCFile(m: BModule): string =
+proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".cpp"
       elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".m"
@@ -1526,18 +1532,18 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
     if not equalsFile(code, cfile.cname):
       if isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
-          copyFile(cfile.cname, cfile.cname & ".backup")
-          echo "diff ", cfile.cname, ".backup ", cfile.cname
+          copyFile(cfile.cname.string, cfile.cname.string & ".backup")
+          echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
         else:
-          echo "new file ", cfile.cname
+          echo "new file ", cfile.cname.string
       if not writeRope(code, cfile.cname):
-        rawMessage(m.config, errCannotOpenFile, cfile.cname)
+        rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
       return
-    if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):
+    if fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
       result = false
   else:
     if not writeRope(code, cfile.cname):
-      rawMessage(m.config, errCannotOpenFile, cfile.cname)
+      rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1573,14 +1579,14 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if not writeRope(code, cfile):
-      rawMessage(m.config, errCannotOpenFile, cfile)
+      rawMessage(m.config, errCannotOpenFile, cfile.string)
     addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    if not existsFile(cf.obj): cf.flags = {CfileFlag.Cached}
+    if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   close(m.ndi)
 
@@ -1595,7 +1601,7 @@ proc updateCachedModule(m: BModule) =
 
     var code = genModule(m, cf)
     if not writeRope(code, cfile):
-      rawMessage(m.config, errCannotOpenFile, cfile)
+      rawMessage(m.config, errCannotOpenFile, cfile.string)
   else:
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)

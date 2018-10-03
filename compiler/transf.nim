@@ -928,7 +928,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         # ensure that e.g. discard "some comment" gets optimized away
         # completely:
         result = PTransNode(newNode(nkCommentStmt))
-  of nkCommentStmt, nkTemplateDef, nkImportStmt, nkStaticStmt:
+  of nkCommentStmt, nkTemplateDef, nkImportStmt, nkStaticStmt,
+      nkExportStmt, nkExportExceptStmt:
     return n.PTransNode
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
@@ -948,12 +949,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    when true:
-      result = transformSons(c, n)
-    else:
-      result = n.PTransNode
-      let L = n.len-1
-      result[L] = transform(c, n.sons[L])
+    result = PTransNode(n)
+    result[0] = transform(c, n[0])
+    # Skip the second son since it only contains an unsemanticized copy of the
+    # variable type used by docgen
+    result[2] = transform(c, n[2])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       PNode(result).comment = n.comment
@@ -1074,8 +1074,8 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    #if c.needsDestroyPass:
-    #  result = injectDestructorCalls(g, module, result)
+    if c.needsDestroyPass:
+      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)
 
 proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
@@ -1087,6 +1087,6 @@ proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     liftDefer(c, result)
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
-    #if c.needsDestroyPass:
-    #  result = injectDestructorCalls(g, module, result)
+    if c.needsDestroyPass:
+      result = injectDestructorCalls(g, module, result)
     incl(result.flags, nfTransf)

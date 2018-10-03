@@ -86,7 +86,7 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
           score += ord(LeadingCharMatch)
           
         var onBoundary = (patIndex == high(pattern))
-        if not onBoundary:
+        if not onBoundary and strIndex < high(str):
           let
             nextPatternChar = toLowerAscii(pattern[patIndex + 1])
             nextStrChar     = toLowerAscii(str[strIndex + 1])

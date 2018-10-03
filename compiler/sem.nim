@@ -37,7 +37,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
-proc semStmt(c: PContext, n: PNode): PNode
+proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode
 proc semOpAux(c: PContext, n: PNode)
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym)
 proc addParams(c: PContext, n: PNode, kind: TSymKind)
@@ -399,7 +399,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   excl(result.flags, nfSem)
   #resetSemFlag n
   if s.typ.sons[0] == nil:
-    result = semStmt(c, result)
+    result = semStmt(c, result, flags)
   else:
     case s.typ.sons[0].kind
     of tyExpr:
@@ -408,7 +408,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # semExprWithType(c, result)
       result = semExpr(c, result, flags)
     of tyStmt:
-      result = semStmt(c, result)
+      result = semStmt(c, result, flags)
     of tyTypeDesc:
       if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
@@ -542,12 +542,20 @@ proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
         return true
   else: discard
 
+proc isEmptyTree(n: PNode): bool =
+  case n.kind
+  of nkStmtList:
+    for it in n:
+      if not isEmptyTree(it): return false
+    result = true
+  of nkEmpty, nkCommentStmt: result = true
+  else: result = false
+
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if n.kind == nkDefer:
     localError(c.config, n.info, "defer statement not supported at top level")
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
-    if sfSystemModule notin c.module.flags and
-        n.kind notin {nkEmpty, nkCommentStmt}:
+    if sfSystemModule notin c.module.flags and not isEmptyTree(n):
       c.importTable.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts
@@ -557,7 +565,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = semAllTypeSections(c, n)
   else:
     result = n
-  result = semStmt(c, result)
+  result = semStmt(c, result, {})
   when false:
     # Code generators are lazy now and can deal with undeclared procs, so these
     # steps are not required anymore and actually harmful for the upcoming

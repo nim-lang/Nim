@@ -1376,6 +1376,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
+    let origF = f
     var f = if prev == nil: f else: prev
 
     let roota = a.skipGenericAlias
@@ -1433,7 +1434,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
         result = isNone
     else:
-      result = typeRel(c, lastSon(f), a)
+      assert lastSon(origF) != nil
+      result = typeRel(c, lastSon(origF), a)
       if result != isNone and a.kind != tyNil:
         put(c, f, a)
 

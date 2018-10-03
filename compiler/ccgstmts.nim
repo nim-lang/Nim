@@ -277,7 +277,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
-      # generate better code here:
+      # generate better code here: 'Foo f = x;'
       genLineDir(p, a)
       let decl = localVarDecl(p, vn)
       var tmp: TLoc
@@ -1159,4 +1159,4 @@ proc genStmts(p: BProc, t: PNode) =
   if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
   if isPush: popInfoContext(p.config)
-  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}
+  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar, locExpr}
