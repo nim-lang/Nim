@@ -167,6 +167,7 @@
   the desired target type (as a concrete type or as a type class)
 - The `type` operator now supports checking that the supplied expression
   matches an expected type constraint.
+- Add conditional continuation operator ``?.`` for ``options`` to enable dot-chaining on optional values
 
 ### Language changes
 

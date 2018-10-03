@@ -12,7 +12,7 @@
 ## over an option, flattening of nested options, and filtering of values within
 ## options.
 
-import options
+import options, macros
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
@@ -50,6 +50,48 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
     none(T)
   else:
     self
+
+macro `?.`*(option: untyped, statements: untyped): untyped =
+  ## Optional continuation operator. Works like regular dot-chaining, but if
+  ## the left had side is a ``none`` then the right hand side is not evaluated.
+  ## In the case that ``statements`` return something the return type of this
+  ## will be ``Option[T]`` where ``T`` is the returned type of ``statements``.
+  ## If nothing is returned from ``statements`` this returns nothing.
+  ##
+  ## .. code-block:: nim
+  ##   echo some("Hello")?.find('l') ## Prints out Some(2)
+  ##   some("Hello")?.find('l').echo # Prints out 2
+  ##   none(string)?.find('l').echo # Doesn't print out anything
+  ##   echo none(string)?.find('l') # Prints out None[int] (return type of find)
+  ##   # These also work in things like ifs
+  ##   if some("Hello")?.find('l') == 2:
+  ##     echo "This prints"
+  ##   if none(string)?.find('l') == 2:
+  ##     echo "This doesn't"
+  let opt = genSym(nskLet)
+  var
+    injected = statements
+    firstBarren = statements
+  if firstBarren.len != 0:
+    while true:
+      if firstBarren[0].len == 0:
+        firstBarren[0] = nnkDotExpr.newTree(
+          nnkDotExpr.newTree(opt, newIdentNode("unsafeGet")), firstBarren[0])
+        break
+      firstBarren = firstBarren[0]
+  else:
+    injected = nnkDotExpr.newTree(
+      nnkDotExpr.newTree(opt, newIdentNode("unsafeGet")), firstBarren)
+
+  result = quote do:
+    (proc (): auto =
+      let `opt` = `option`
+      if `opt`.isSome:
+        when compiles(`injected`) and not compiles(some(`injected`)):
+          `injected`
+        else:
+          return some(`injected`)
+    )()
 
 when isMainModule:
   import unittest, sequtils
@@ -102,4 +144,16 @@ when isMainModule:
       check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
       check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
 
+    test "conditional continuation":
+      when not compiles(some("Hello world")?.find('w').echo):
+        check false
+      check (some("Hello world")?.find('w')).unsafeGet == 6
+      var evaluated = false
+      if (some("team")?.find('i')).unsafeGet == -1:
+        evaluated = true
+      check evaluated == true
+      evaluated = false
+      if (none(string)?.find('i')).isSome:
+        evaluated = true
+      check evaluated == false
 
