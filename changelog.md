@@ -24,6 +24,7 @@
   bring the language in line with the standard library (e.g. ``parseOct``).
 - The dot style for import paths (e.g ``import path.to.module`` instead of
   ``import path/to/module``) has been deprecated.
+- The ``options`` module has been split in two
 
 #### Breaking changes in the standard library
 
@@ -75,6 +76,7 @@
 - ``net.sendTo`` no longer returns an int and now raises an ``OSError``.
 - `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
   to avoid confusions with `await` from the `async` macro.
+- ``options`` has been split into ``options`` and ``optionsutils``
 
 
 #### Breaking changes in the compiler
