@@ -674,17 +674,19 @@ template applyIt*(varSeq, op: untyped) =
   ## expression. The expression has to return the same type as the sequence you
   ## are mutating.
   ##
-  runnableExamples:
-    var setOfNums: array[1..10, int]
-    var anotherSetOfNums = @[1, 2, 3, 4]
-    setOfNums[1] = 5
-    setOfNums[10] = 9
-    setOfNums.applyIt(it + 1)
-    doAssert setOfNums[1] + setOfNums[10] == 16
-    doAssert setOfNums[4] == 1
-    anotherSetOfNums.applyIt(it * 3)
-    doAssert anotherSetOfNums[0] + anotherSetOfNums[3] == 15
-    
+  ## Example:
+  ##
+  ## .. code-block::
+  ## var setOfNums: array[1..10, int]
+  ## var anotherSetOfNums = @[1, 2, 3, 4]
+  ## setOfNums[1] = 5
+  ## setOfNums[10] = 9
+  ## setOfNums.applyIt(it + 1)
+  ## doAssert setOfNums[1] + setOfNums[10] == 16
+  ## doAssert setOfNums[4] == 1
+  ## anotherSetOfNums.applyIt(it * 3)
+  ## doAssert anotherSetOfNums[0] + anotherSetOfNums[3] == 15
+
   for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
