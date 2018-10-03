@@ -34,6 +34,8 @@
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode.kind == JObject
@@ -53,6 +55,8 @@
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
@@ -68,6 +72,8 @@
 ## type's default value when called on ``nil``.
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("{}")
 ##
 ##   doAssert jsonNode{"nope"}.getInt() == 0
@@ -82,6 +88,8 @@
 ## you to fallback to a default value should the key's values be ``null``:
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
 ##
 ##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
@@ -95,9 +103,12 @@
 ## into a type with the ``to`` macro.
 ##
 ## .. code-block:: Nim
-##   type User = object
-##     name: string
-##     age: int
+##   import json
+##
+##   type
+##     User = object
+##       name: string
+##       age: int
 ##
 ##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
 ##   let user = to(userJson, User)
@@ -109,6 +120,8 @@
 ## operator:
 ##
 ## .. code-block:: nim
+##   import json
+##
 ##   var hisName = "John"
 ##   let herAge = 31
 ##   var j = %*
