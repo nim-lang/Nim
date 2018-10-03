@@ -35,6 +35,26 @@ proc beta() {.async.} =
 asyncCheck alpha()
 waitFor beta()
 
+template ensureCallbacksAreScheduled =
+  # callbacks are called directly if the dispatcher is not running
+  discard getGlobalDispatcher()
+
+proc testCompletion() {.async.} =
+  ensureCallbacksAreScheduled
+
+  var stream = newFutureStream[string]()
+
+  for _ in 1..5:
+    await stream.write("x")
+
+  var readFuture = stream.readAll()
+  stream.complete()
+  yield readFuture
+  let data = readFuture.read()
+  doAssert(data.len == 5, "actual data len = " & $data.len)
+
+waitFor testCompletion()
+
 # TODO: Something like this should work eventually.
 # proc delta(): FutureStream[string] {.async.} =
 #   for i in 0 .. 5:

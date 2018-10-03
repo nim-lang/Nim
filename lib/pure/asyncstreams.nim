@@ -29,9 +29,11 @@ proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
 
 proc complete*[T](future: FutureStream[T]) =
   ## Completes a ``FutureStream`` signalling the end of data.
-  future.finished = true
-  if not future.cb.isNil:
-    future.cb()
+  callSoon(proc =
+    future.finished = true
+    if not future.cb.isNil:
+      future.cb()
+  )
 
 proc `callback=`*[T](future: FutureStream[T],
     cb: proc (future: FutureStream[T]) {.closure,gcsafe.}) =
