@@ -17,8 +17,10 @@
 ##
 ## This can be useful when you have a value that can be present or not. The
 ## absence of a value is often represented by ``nil``, but it is not always
-## available, nor is it always a good solution.
-##
+## available, nor is it always a good solution. This module also supports
+## non-nillable pointers where ``nil`` pointers would be represented as a
+## ``none`` value and everything else would be a ``some`` with the value of the
+## pointer.
 ##
 ## Tutorial
 ## ========
@@ -37,8 +39,6 @@
 ##     return none(int)  # This line is actually optional,
 ##                       # because the default is empty
 ##
-## .. code-block:: nim
-##
 ##   try:
 ##     assert("abc".find('c').get() == 2)  # Immediately extract the value
 ##   except UnpackError:  # If there is no value
@@ -48,25 +48,11 @@
 ## raises ``UnpackError`` if there is no value. There is another option for
 ## obtaining the value: ``unsafeGet``, but you must only use it when you are
 ## absolutely sure the value is present (e.g. after checking ``isSome``). If
-## you do not care about the tiny overhead that ``get`` causes, you should
-## simply never use ``unsafeGet``.
-##
-## How to deal with an absence of a value:
-##
-## .. code-block:: nim
-##
-##   let result = "team".find('i')
-##
-##   # Nothing was found, so the result is `none`.
-##   assert(result == none(int))
-##   # It has no value:
-##   assert(result.isNone)
-##
-##   try:
-##     echo result.get()
-##     assert(false)  # This will not be reached
-##   except UnpackError:  # Because an exception is raised
-##     discard
+## you do not care about the tiny overhead that ``get`` causes,
+## you should simply never use ``unsafeGet``. Also have a look at ``optionutils``
+## for more ways of safely interacting with optional values. Prior to 0.19.0 many
+## of the features found in that module was part of this module. This module now
+## only contains the basic concept of options.
 import typetraits
 
 type
@@ -110,13 +96,13 @@ proc none*[T]: Option[T] =
 
 proc isSome*[T](self: Option[T]): bool {.inline.} =
   when T is SomePointer:
-    self.val != nil
+    not self.val.isNil
   else:
     self.has
 
 proc isNone*[T](self: Option[T]): bool {.inline.} =
   when T is SomePointer:
-    self.val == nil
+    self.val.isNil
   else:
     not self.has
 
@@ -139,49 +125,11 @@ proc get*[T](self: Option[T], otherwise: T): T =
   else:
     otherwise
 
-proc get*[T](self: var Option[T]): var T =
-  ## Returns contents of the Option. If it is none, then an exception is
-  ## thrown.
-  if self.isNone:
-    raise UnpackError(msg: "Can't obtain a value from a `none`")
-  return self.val
-
-proc map*[T](self: Option[T], callback: proc (input: T)) =
-  ## Applies a callback to the value in this Option
-  if self.isSome:
-    callback(self.val)
-
-proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
-  ## Applies a callback to the value in this Option and returns an option
-  ## containing the new value. If this option is None, None will be returned
-  if self.isSome:
-    some[R]( callback(self.val) )
-  else:
-    none(R)
-
-proc flatten*[A](self: Option[Option[A]]): Option[A] =
-  ## Remove one level of structure in a nested Option.
-  if self.isSome:
-    self.val
-  else:
-    none(A)
-
-proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
-  ## Applies a callback to the value in this Option and returns an
-  ## option containing the new value. If this option is None, None will be
-  ## returned. Similar to ``map``, with the difference that the callback
-  ## returns an Option, not a raw value. This allows multiple procs with a
-  ## signature of ``A -> Option[B]`` (including A = B) to be chained together.
-  map(self, callback).flatten()
-
-proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
-  ## Applies a callback to the value in this Option. If the callback returns
-  ## `true`, the option is returned as a Some. If it returns false, it is
-  ## returned as a None.
-  if self.isSome and not callback(self.val):
-    none(T)
-  else:
-    self
+template either*(self, otherwise: untyped): untyped =
+  ## Similar in function to get, but if ``otherwise`` is a procedure it will not
+  ## be evaluated if ``self`` is a ``some``. This means that ``otherwise`` can
+  ## have side effects.
+  if self.isSome: self.val else: otherwise
 
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
@@ -190,9 +138,9 @@ proc `==`*(a, b: Option): bool =
 
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of this option. If the option has a value,
-  ## the result will be `Some(x)` where `x` is the string representation of the contained value.
-  ## If the option does not have a value, the result will be `None[T]` where `T` is the name of
-  ## the type contained in the option.
+  ## the result will be `Some(x)` where `x` is the string representation of the
+  ## contained value. If the option does not have a value, the result will be
+  ## `None[T]` where `T` is the name of the type contained in the option.
   if self.isSome:
     result = "Some("
     result.addQuoted self.val
@@ -201,7 +149,7 @@ proc `$`*[T](self: Option[T]): string =
     result = "None[" & name(T) & "]"
 
 when isMainModule:
-  import unittest, sequtils
+  import unittest, sequtils, strutils
 
   suite "options":
     # work around a bug in unittest
@@ -218,7 +166,6 @@ when isMainModule:
 
       let result = "team".find('i')
 
-      check result == intNone
       check result.isNone
 
     test "some":
@@ -230,14 +177,16 @@ when isMainModule:
     test "none":
       expect UnpackError:
         discard none(int).get()
-      check(none(int).isNone)
-      check(not none(string).isSome)
+      check none(int).isNone
+      check none(string).isSome == false
 
     test "equality":
       check some("a") == some("a")
       check some(7) != some(6)
-      check some("a") != stringNone
+      check some("a").isNone == false
+      check intNone.isNone
       check intNone == intNone
+      check none(int) == intNone
 
       when compiles(some("a") == some(5)):
         check false
@@ -247,53 +196,12 @@ when isMainModule:
     test "get with a default value":
       check(some("Correct").get("Wrong") == "Correct")
       check(stringNone.get("Correct") == "Correct")
+      check(either(some(100), 10) == 100)
+      check(either(none(int), 10) == 10)
 
     test "$":
       check($(some("Correct")) == "Some(\"Correct\")")
       check($(stringNone) == "None[string]")
-
-    test "map with a void result":
-      var procRan = 0
-      some(123).map(proc (v: int) = procRan = v)
-      check procRan == 123
-      intNone.map(proc (v: int) = check false)
-
-    test "map":
-      check(some(123).map(proc (v: int): int = v * 2) == some(246))
-      check(intNone.map(proc (v: int): int = v * 2).isNone)
-
-    test "filter":
-      check(some(123).filter(proc (v: int): bool = v == 123) == some(123))
-      check(some(456).filter(proc (v: int): bool = v == 123).isNone)
-      check(intNone.filter(proc (v: int): bool = check false).isNone)
-
-    test "flatMap":
-      proc addOneIfNotZero(v: int): Option[int] =
-        if v != 0:
-          result = some(v + 1)
-        else:
-          result = none(int)
-
-      check(some(1).flatMap(addOneIfNotZero) == some(2))
-      check(some(0).flatMap(addOneIfNotZero) == none(int))
-      check(some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3))
-
-      proc maybeToString(v: int): Option[string] =
-        if v != 0:
-          result = some($v)
-        else:
-          result = none(string)
-
-      check(some(1).flatMap(maybeToString) == some("1"))
-
-      proc maybeExclaim(v: string): Option[string] =
-        if v != "":
-          result = some v & "!"
-        else:
-          result = none(string)
-
-      check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
-      check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
 
     test "SomePointer":
       var intref: ref int
@@ -306,7 +214,7 @@ when isMainModule:
 
     test "none[T]":
       check(none[int]().isNone)
-      check(none(int) == none[int]())
+      check(none(int).isNone)
 
     test "$ on typed with .name":
       type Named = object
@@ -321,3 +229,4 @@ when isMainModule:
 
       let noperson = none(Person)
       check($noperson == "None[Person]")
+

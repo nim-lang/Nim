@@ -76,6 +76,10 @@
 - `threadpool`'s `await` and derivatives have been renamed to `blockUntil`
   to avoid confusions with `await` from the `async` macro.
 
+- ``options`` is split into ``options`` and ``optionutils``. ``optionutils`` have
+  added macros for wrapping other kinds of procedures, safe unpacking of options,
+  and conditional continuation.
+
 
 #### Breaking changes in the compiler
 
