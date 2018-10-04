@@ -95,6 +95,8 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
 
       if not resFut.finished:
         resFut.complete(res)
+      else:
+        fs.queue.addFirst(res[1])
 
       # If the saved callback isn't nil then let's call it.
       if not savedCb.isNil: savedCb()
