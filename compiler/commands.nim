@@ -385,7 +385,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    conf.outFile = AbsoluteFile arg
+    if dirExists(AbsoluteDir arg):
+      localError(conf, info, "cannot write to " & arg & " (" & arg & " is a directory)")
+    else:
+      let (outDir, outFile, ext) = splitFile(AbsoluteFile arg)
+      if dirExists(outDir):
+        conf.outFile = AbsoluteFile arg
+      else:
+        localError(conf, info, "cannot write to " & arg & " (" & outDir.string & " does not exist)")
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
