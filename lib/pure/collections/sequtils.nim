@@ -706,10 +706,17 @@ template applyIt*(varSeq, op: untyped) =
   ## Example:
   ##
   ## .. code-block::
-  ##   var nums = @[1, 2, 3, 4]
-  ##   nums.applyIt(it * 3)
-  ##   assert nums[0] + nums[3] == 15
-  for i in 0 ..< varSeq.len:
+  ## var setOfNums: array[1..10, int]
+  ## var anotherSetOfNums = @[1, 2, 3, 4]
+  ## setOfNums[1] = 5
+  ## setOfNums[10] = 9
+  ## setOfNums.applyIt(it + 1)
+  ## doAssert setOfNums[1] + setOfNums[10] == 16
+  ## doAssert setOfNums[4] == 1
+  ## anotherSetOfNums.applyIt(it * 3)
+  ## doAssert anotherSetOfNums[0] + anotherSetOfNums[3] == 15
+
+  for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
