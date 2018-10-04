@@ -2063,6 +2063,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
 
 proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
   var rec: TLoc
+  var tmpVars: seq[tuple[t: PType, n: Rope]] = @[]
   if not handleConstExpr(p, n, d):
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
@@ -2070,9 +2071,14 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
+      let tmpName = getTempName(p.module)
+      linefmt(p,cpsLocals,"$1 $2;$n", getTypeDesc(p.module, it.typ), tmpName)
       initLoc(rec, locExpr, it, d.storage)
-      rec.r = "$1.Field$2" % [rdLoc(d), rope(i)]
+      rec.r = tmpName
+      tmpVars.add((it.typ, tmpName))
       expr(p, it, rec)
+    for i,v in tmpVars:
+      lineCg(p,cpsStmts,"$1.Field$2 = ($3) ($4);$n", rdLoc(d), rope(i), getTypeDesc(p.module, v.t), v.n)
 
 proc isConstClosure(n: PNode): bool {.inline.} =
   result = n.sons[0].kind == nkSym and isRoutine(n.sons[0].sym) and
