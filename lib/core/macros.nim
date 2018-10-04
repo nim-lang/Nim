@@ -1432,5 +1432,6 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
     result.add args[i]
 
 proc getProjectPath*(): string = discard
-  ## Returns the path to the currently compiling project
+  ## Returns the path to the currently compiling project, not to
+  ## be confused with ``system.currentSourcePath``
 
