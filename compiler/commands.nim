@@ -389,7 +389,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "cannot write to " & arg & " (" & arg & " is a directory)")
     else:
       let (outDir, outFile, ext) = splitFile(AbsoluteFile arg)
-      if dirExists(outDir):
+      if dirExists(outDir) or (outDir.string.len == 0 and outFile.len > 0):
         conf.outFile = AbsoluteFile arg
       else:
         localError(conf, info, "cannot write to " & arg & " (" & outDir.string & " does not exist)")
