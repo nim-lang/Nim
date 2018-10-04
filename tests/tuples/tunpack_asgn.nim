@@ -1,7 +1,8 @@
 discard """
   output: '''2 4
 4
-2 0'''
+2 0
+(a: 17, b: 6)'''
 """
 
 proc foobar(): (int, int) = (2, 4)
@@ -32,3 +33,10 @@ echo a
 
 pg(a, b)
 echo a, " ", b
+
+proc tupleAssignmentTest():tuple[a,b:int] =
+  var x = (a: 5, b: 1)
+  x = (3 * x.a + 2 * x.b, x.a + x.b)
+  return x
+
+echo(tupleAssignmentTest())
