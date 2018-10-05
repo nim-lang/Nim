@@ -697,8 +697,12 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, ls)
   # generate cast assignment:
-  linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
-          rdLoc(env.loc), getTypeDesc(p.module, env.typ))
+  if p.config.selectedGC == gcGo:
+    linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, ($2) ClE_0);$n",
+            addrLoc(p.config, env.loc), getTypeDesc(p.module, env.typ))
+  else:
+    linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
+            rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
 proc containsResult(n: PNode): bool =
   if n.kind == nkSym and n.sym.kind == skResult:
