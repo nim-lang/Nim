@@ -632,28 +632,32 @@ when defined(Windows):
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+proc tryRemoveFile*(file: string): bool {.raises: [IOError], rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
-  result = true
-  when defined(Windows):
-    when useWinUnicode:
-      let f = newWideCString(file)
-    else:
-      let f = file
-    if deleteFile(f) == 0:
-      result = false
-      let err = getLastError()
-      if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
-        result = true
-      elif err == ERROR_ACCESS_DENIED and
-         setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
-         deleteFile(f) != 0:
-        result = true
+  if existsDir(file):
+    result = false
+    raise newException(IOError, "The path '" & file & "' is a directory, not a file.")
   else:
-    if c_remove(file) != 0'i32 and errno != ENOENT:
-      result = false
+    result = true
+    when defined(Windows):
+      when useWinUnicode:
+        let f = newWideCString(file)
+      else:
+        let f = file
+      if deleteFile(f) == 0:
+        result = false
+        let err = getLastError()
+        if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
+          result = true
+        elif err == ERROR_ACCESS_DENIED and
+          setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
+          deleteFile(f) != 0:
+          result = true
+    else:
+      if c_remove(file) != 0'i32 and errno != ENOENT:
+        result = false
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
   ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
