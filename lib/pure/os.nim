@@ -944,17 +944,32 @@ proc rawRemoveDir(dir: string) =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError())
 
-proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, recursive: bool = true) {.raises: [IOError], rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign.} =
-  ## Removes the directory `dir` including all subdirectories and files
-  ## in `dir` (recursively).
+  ## Removes the directory `dir`. By default, it will delete all subdirectories
+  ## and files in `dir` recursively. If `recursive` is `false`, then the
+  ## directory will only be deleted if it is empty and is not a file path. If
+  ##`recursive` is `true` (the default), then `dir` will be deleted even if it
+  ## is a file path and not a directory path.
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
   ## existed in the first place.
-  for kind, path in walkDir(dir):
-    case kind
-    of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(path)
+  if recursive:
+    for kind, path in walkDir(dir):
+      case kind
+      of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
+      of pcDir: removeDir(path, recursive)
+  else:
+    if (not dirExists(dir)) and fileExists(dir):
+      raise newException(IOError, "The path '" & dir & "' is a file.")
+    elif (not dirExists(dir)):
+      raise newException(IOError, "The path '" & dir & "' does not exist.")
+    var dirIsEmpty: bool = true
+    for _ in walkDir(dir):
+      dirIsEmpty = false
+      break
+    if not dirIsEmpty:
+      raise newException(IOError, "The directory '" & dir & "' is not empty.")
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string): bool =
