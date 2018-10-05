@@ -632,7 +632,7 @@ when defined(Windows):
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc tryRemoveFile*(file: string): bool {.raises: [IOError], rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+proc tryRemoveFile*(file: string): bool {.raises: [IOError], rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
@@ -659,7 +659,7 @@ proc tryRemoveFile*(file: string): bool {.raises: [IOError], rtl, extern: "nos$1
       if c_remove(file) != 0'i32 and errno != ENOENT:
         result = false
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect].} =
   ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
