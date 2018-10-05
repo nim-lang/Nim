@@ -494,7 +494,9 @@ proc genWhileStmt(p: BProc, t: PNode) =
       # for closure support weird loop bodies are generated:
       if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
         loopBody = loopBody.sons[1]
+      inc(p.splitDecls)
       genComputedGoto(p, loopBody)
+      dec(p.splitDecls)
     else:
       genStmts(p, loopBody)
 

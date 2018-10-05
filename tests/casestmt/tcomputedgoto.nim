@@ -1,21 +1,22 @@
-discard """
-  output: '''yeah A enumB
-yeah A enumB
-yeah CD enumD
-yeah CD enumE
-yeah A enumB
-yeah CD enumE
-yeah CD enumD
-yeah A enumB
-yeah B enumC
-yeah A enumB
-yeah A enumB
-yeah A enumB'''
-"""
 
 type
   MyEnum = enum
     enumA, enumB, enumC, enumD, enumE, enumLast
+
+const lines = [
+  "yeah A enumB",
+  "yeah A enumB",
+  "yeah CD enumD",
+  "yeah CD enumE",
+  "yeah A enumB",
+  "yeah CD enumE",
+  "yeah CD enumD",
+  "yeah A enumB",
+  "yeah B enumC",
+  "yeah A enumB",
+  "yeah A enumB",
+  "yeah A enumB"
+]
 
 proc vm() =
   var instructions: array[0..100, MyEnum]
@@ -35,11 +36,11 @@ proc vm() =
     let ra = instr.succ # instr.regA
     case instr
     of enumA:
-      echo "yeah A ", ra
+      assert lines[pc] == "yeah A " & $ra
     of enumC, enumD:
-      echo "yeah CD ", ra
+      assert lines[pc] == "yeah CD " & $ra
     of enumB:
-      echo "yeah B ", ra
+      assert lines[pc] == "yeah B " & $ra
     of enumE:
       break
     of enumLast: discard
