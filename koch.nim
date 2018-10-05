@@ -272,7 +272,16 @@ proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'cpp' command:
-  let bootOptions = if args.len == 0 or args.startsWith("-"): "cpp" else: ""
+
+  let bootOptions =
+    if args.len == 0 or args.startsWith("-"):
+      if hostos == "macosx":
+        "cpp"
+      else:
+        "c"
+    else:
+      ""
+
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
