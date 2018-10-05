@@ -264,6 +264,16 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
   for h in 0..high(t.data):
     if isFilled(t.data[h].hcode): yield (t.data[h].key, t.data[h].val)
 
+iterator items*[A,B](t: Table[A,B]): tuple[key: A, val: B] =
+  ## iterates over (key, value) tuples in the table `t`.
+  runnableExamples:
+    import sequtils
+    let a = {10: "foo", 12: "bar"}.toTable
+    doAssert mapIt(a, it.key) == [10, 12]
+    doAssert mapIt(a, it.val)[1] == "bar"
+  for key, val in t:
+    yield (key: key, val: val)
+
 iterator keys*[A, B](t: Table[A, B]): A =
   ## iterates over any key in the table `t`.
   for h in 0..high(t.data):
