@@ -29,7 +29,7 @@ proc semLocals*(c: PContext, n: PNode): PNode =
             {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyExpr, tyStmt, tyEmpty}:
 
         var field = newSym(skField, it.name, getCurrOwner(c), n.info)
-        field.typ = it.typ.skipTypes({tyGenericInst, tyVar})
+        field.typ = it.typ.skipTypes({tyVar})
         field.position = counter
         inc(counter)
 

@@ -199,6 +199,12 @@ proc testRFind =
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
   assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
 
+proc testSplitLines() =
+  let fixture = "a\nb\rc\r\nd"
+  assert len(fixture.splitLines) == 4
+  assert splitLines(fixture) == @["a", "b", "c", "d"]
+  assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
+
 proc testCountLines =
   proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
   assertCountLines("")
@@ -229,7 +235,7 @@ proc testParseInts =
   assert "72".parseHexInt == 114
   assert "FF".parseHexInt == 255
   assert "ff".parseHexInt == 255
-  assert "fF".parseHexInt == 255  
+  assert "fF".parseHexInt == 255
   assert "0x7_2".parseHexInt == 114
   rejectParse "".parseHexInt
   rejectParse "_".parseHexInt
@@ -252,6 +258,7 @@ proc testParseInts =
 testDelete()
 testFind()
 testRFind()
+testSplitLines()
 testCountLines()
 testParseInts()
 
@@ -301,6 +308,21 @@ assert(spaces(8) == "        ")
 assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
+
+# bug #8911
+when true:
+  static:
+    let a = ""
+    let a2 = a.replace("\n", "\\n")
+
+when true:
+  static:
+    let b = "b"
+    let b2 = b.replace("\n", "\\n")
+
+when true:
+  let c = ""
+  let c2 = c.replace("\n", "\\n")
 
 main()
 #OUT ha/home/a1xyz/usr/bin

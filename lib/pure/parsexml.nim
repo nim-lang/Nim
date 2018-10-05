@@ -26,27 +26,125 @@
 ##   creates.
 ##
 ##
-## Example 1: Retrieve HTML title
-## ==============================
-##
-## The file ``examples/htmltitle.nim`` demonstrates how to use the
-## XML parser to accomplish a simple task: To determine the title of an HTML
-## document.
-##
-## .. code-block:: nim
-##     :file: ../../examples/htmltitle.nim
-##
-##
-## Example 2: Retrieve all HTML links
-## ==================================
-##
-## The file ``examples/htmlrefs.nim`` demonstrates how to use the
-## XML parser to accomplish another simple task: To determine all the links
-## an HTML document contains.
-##
-## .. code-block:: nim
-##     :file: ../../examples/htmlrefs.nim
-##
+
+##[
+
+Example 1: Retrieve HTML title
+==============================
+
+The file ``examples/htmltitle.nim`` demonstrates how to use the
+XML parser to accomplish a simple task: To determine the title of an HTML
+document.
+
+.. code-block:: nim
+
+    # Example program to show the parsexml module
+    # This program reads an HTML file and writes its title to stdout.
+    # Errors and whitespace are ignored.
+
+    import os, streams, parsexml, strutils
+
+    if paramCount() < 1:
+      quit("Usage: htmltitle filename[.html]")
+
+    var filename = addFileExt(paramStr(1), "html")
+    var s = newFileStream(filename, fmRead)
+    if s == nil: quit("cannot open the file " & filename)
+    var x: XmlParser
+    open(x, s, filename)
+    while true:
+      x.next()
+      case x.kind
+      of xmlElementStart:
+        if cmpIgnoreCase(x.elementName, "title") == 0:
+          var title = ""
+          x.next()  # skip "<title>"
+          while x.kind == xmlCharData:
+            title.add(x.charData)
+            x.next()
+          if x.kind == xmlElementEnd and cmpIgnoreCase(x.elementName, "title") == 0:
+            echo("Title: " & title)
+            quit(0) # Success!
+          else:
+            echo(x.errorMsgExpected("/title"))
+
+      of xmlEof: break # end of file reached
+      else: discard # ignore other events
+
+    x.close()
+    quit("Could not determine title!")
+
+]##
+
+##[
+
+Example 2: Retrieve all HTML links
+==================================
+
+The file ``examples/htmlrefs.nim`` demonstrates how to use the
+XML parser to accomplish another simple task: To determine all the links
+an HTML document contains.
+
+.. code-block:: nim
+
+    # Example program to show the new parsexml module
+    # This program reads an HTML file and writes all its used links to stdout.
+    # Errors and whitespace are ignored.
+
+    import os, streams, parsexml, strutils
+
+    proc `=?=` (a, b: string): bool =
+      # little trick: define our own comparator that ignores case
+      return cmpIgnoreCase(a, b) == 0
+
+    if paramCount() < 1:
+      quit("Usage: htmlrefs filename[.html]")
+
+    var links = 0 # count the number of links
+    var filename = addFileExt(paramStr(1), "html")
+    var s = newFileStream(filename, fmRead)
+    if s == nil: quit("cannot open the file " & filename)
+    var x: XmlParser
+    open(x, s, filename)
+    next(x) # get first event
+    block mainLoop:
+      while true:
+        case x.kind
+        of xmlElementOpen:
+          # the <a href = "xyz"> tag we are interested in always has an attribute,
+          # thus we search for ``xmlElementOpen`` and not for ``xmlElementStart``
+          if x.elementName =?= "a":
+            x.next()
+            if x.kind == xmlAttribute:
+              if x.attrKey =?= "href":
+                var link = x.attrValue
+                inc(links)
+                # skip until we have an ``xmlElementClose`` event
+                while true:
+                  x.next()
+                  case x.kind
+                  of xmlEof: break mainLoop
+                  of xmlElementClose: break
+                  else: discard
+                x.next() # skip ``xmlElementClose``
+                # now we have the description for the ``a`` element
+                var desc = ""
+                while x.kind == xmlCharData:
+                  desc.add(x.charData)
+                  x.next()
+                echo(desc & ": " & link)
+          else:
+            x.next()
+        of xmlEof: break # end of file reached
+        of xmlError:
+          echo(errorMsg(x))
+          x.next()
+        else: x.next() # skip other events
+
+    echo($links & " link(s) found!")
+    x.close()
+
+]##
 
 import
   hashes, strutils, lexbase, streams, unicode
@@ -95,6 +193,7 @@ type
     kind: XmlEventKind
     err: XmlErrorKind
     state: ParserState
+    cIsEmpty: bool
     filename: string
     options: set[XmlParseOption]
 
@@ -125,7 +224,8 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
-  my.c = nil
+  my.c = ""
+  my.cIsEmpty = true
   my.options = options
 
 proc close*(my: var XmlParser) {.inline.} =
@@ -482,6 +582,7 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlElementOpen
     my.state = stateAttr
     my.c = my.a # save for later
+    my.cIsEmpty = false
   else:
     my.kind = xmlElementStart
     let slash = my.buf[my.bufpos] == '/'
@@ -490,7 +591,8 @@ proc parseTag(my: var XmlParser) =
     if slash and my.buf[my.bufpos] == '>':
       inc(my.bufpos)
       my.state = stateEmptyElementTag
-      my.c = nil
+      my.c = ""
+      my.cIsEmpty = true
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)
     else:
@@ -678,7 +780,7 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if not my.c.isNil:
+    if not my.cIsEmpty:
       my.a = my.c
   of stateError:
     my.kind = xmlError

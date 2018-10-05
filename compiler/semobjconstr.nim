@@ -121,7 +121,7 @@ proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string
     if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
       let assignment = locateFieldInInitExpr(c, r.sym, initExpr)
       if assignment == nil:
-        if result == nil:
+        if result.len == 0:
           result = r.sym.name.s
         else:
           result.add ", "
@@ -129,7 +129,7 @@ proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string
 
 proc checkForMissingFields(c: PContext, recList, initExpr: PNode) =
   let missing = missingMandatoryFields(c, recList, initExpr)
-  if missing != nil:
+  if missing.len > 0:
     localError(c.config, initExpr.info, "fields not initialized: $1.", [missing])
 
 proc semConstructFields(c: PContext, recNode: PNode,

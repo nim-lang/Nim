@@ -12,11 +12,11 @@ import parseutils, strutils, os, osproc, streams, parsecfg
 
 var compilerPrefix* = "compiler" / "nim "
 
-let isTravis = existsEnv("TRAVIS")
-let isAppVeyor = existsEnv("APPVEYOR")
+let isTravis* = existsEnv("TRAVIS")
+let isAppVeyor* = existsEnv("APPVEYOR")
 
 proc cmdTemplate*(): string =
-  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
+  compilerPrefix & "$target --lib:lib --hints:on -d:testing --nimblePath:tests/deps $options $file"
 
 type
   TTestAction* = enum

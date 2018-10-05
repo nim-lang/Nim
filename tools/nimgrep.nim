@@ -315,7 +315,7 @@ checkOptions({optFilenames, optReplace}, "filenames", "replace")
 
 if optStdin in options:
   pattern = ask("pattern [ENTER to exit]: ")
-  if isNil(pattern) or pattern.len == 0: quit(0)
+  if pattern.len == 0: quit(0)
   if optReplace in options:
     replacement = ask("replacement [supports $1, $# notations]: ")
 

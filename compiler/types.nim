@@ -279,6 +279,8 @@ proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
 proc isGCRef(t: PType): bool =
   result = t.kind in GcTypeKinds or
     (t.kind == tyProc and t.callConv == ccClosure)
+  if result and t.kind in {tyString, tySequence} and tfHasAsgn in t.flags:
+    result = false
 
 proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the
@@ -427,9 +429,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
+    elif t.kind == tyAlias:
+      result = typeToString(t.sons[0])
     elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
-      if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
+      if t.kind == tyGenericParam and t.sonsLen > 0:
         result.add ": "
         var first = true
         for son in t.sons:
@@ -758,9 +762,10 @@ proc initSameTypeClosure: TSameTypeClosure =
   discard
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
-  result = not isNil(c.s) and c.s.contains((a.id, b.id))
+  result = c.s.len > 0 and c.s.contains((a.id, b.id))
   if not result:
-    if isNil(c.s): c.s = @[]
+    when not defined(nimNoNilSeqs):
+      if isNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
@@ -1200,7 +1205,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
      tyNone, tyForward, tyFromExpr:
     result = t
   of tyNil:
-    if kind != skConst: result = t
+    if kind != skConst and kind != skParam: result = t
   of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
     result = nil
   of tyOrdinal:
@@ -1372,10 +1377,9 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
-  if t.sons != nil:
-    for i in 0 ..< t.sonsLen:
-      if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
-        return true
+  for i in 0 ..< t.sonsLen:
+    if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
+      return true
   return false
 
 type

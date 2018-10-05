@@ -206,7 +206,7 @@ proc makeYamlString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
+  for i in 0 ..< s.len:
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, "\n")
@@ -314,10 +314,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
              [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth)])
@@ -395,10 +392,7 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2_$3",
             [istr, rope(n.sym.name.s), rope(n.sym.id)])
@@ -412,6 +406,8 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
+        if renderType and n.typ != nil:
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
         if sonsLen(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
@@ -553,7 +549,8 @@ proc strTableAdd*(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
+proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
+                                 onConflictKeepOld = false): PSym =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
@@ -568,13 +565,13 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
     if it.name.id == n.name.id:
-      if it == n: return false
+      if it == n: return nil
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return true             # found it
+    return t.data[replaceSlot] # found it
   elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
@@ -582,7 +579,11 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     assert(t.data[h] == nil)
     t.data[h] = n
   inc(t.counter)
-  result = false
+  result = nil
+
+proc strTableIncl*(t: var TStrTable, n: PSym;
+                   onConflictKeepOld = false): bool {.discardable.} =
+  result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
 
 proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   var h: Hash = name.h and high(t.data)
@@ -757,10 +758,6 @@ proc idNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
   if index >= 0: result = t.data[index].val
   else: result = nil
 
-proc idNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
-  if not isNil(t.data):
-    result = idNodeTableGet(t, key)
-
 proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   var h: Hash
   h = key.id and high(data)
@@ -786,10 +783,6 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
       swap(t.data, n)
     idNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc idNodeTablePutLazy*(t: var TIdNodeTable, key: PIdObj, val: PNode) =
-  if isNil(t.data): initIdNodeTable(t)
-  idNodeTablePut(t, key, val)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
   for i in 0 .. high(t.data):

@@ -145,7 +145,7 @@ proc importHandling(data: JsonNode): THandlingRecord
 proc importBullet(data: JsonNode; errors: var seq[string]): PBulletRecord
 proc importSoul(data: JsonNode): TSoulRecord
 proc importExplosion(data: JsonNode; errors: var seq[string]): TExplosionRecord
-proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord
+proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = ""): PSoundRecord
 
 ## this is the only pipe between lobby and main.nim
 proc getActiveState*(): TGameState =
@@ -514,7 +514,7 @@ proc importExplosion(data: JsonNode; errors: var seq[string]): TExplosionRecord 
   let expl = data["explode"]
   result.anim = importAnim(expl, errors)
   result.sound = importSound(expl, errors, "sound")
-proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = nil): PSoundRecord =
+proc importSound*(data: JsonNode; errors: var seq[string]; fieldName: string = ""): PSoundRecord =
   if data.kind == JObject:
     checkKey(data, fieldName)
     result = newSound(data[fieldName].str, errors)

@@ -1,4 +1,5 @@
 discard """
+disabled:true
 $nimsuggest --tester --maxresults:3 $file
 >sug $1
 sug;;skType;;ttype_decl.Other;;Other;;$file;;10;;2;;"";;0;;None

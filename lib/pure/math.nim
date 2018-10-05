@@ -49,7 +49,7 @@ proc fac*(n: int): int =
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
-when defined(Posix) and not defined(haiku):
+when defined(Posix):
   {.passl: "-lm".}
 
 const
@@ -265,7 +265,7 @@ proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
 proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
   ## Computes the inverse hyperbolic cosecant of `x`
 
-const windowsCC89 = defined(windows) and (defined(vcc) or defined(bcc))
+const windowsCC89 = defined(windows) and defined(bcc)
 
 when not defined(JS): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
@@ -383,8 +383,8 @@ when not defined(JS): # C
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated, importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated, importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of `x` divided by `y`
     ##
     ## .. code-block:: nim
@@ -529,8 +529,8 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 
 proc `^`*[T](x: T, y: Natural): T =
-  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
-  ## `pow <#pow,float,float>` for negative exponents.
+  ## Computes ``x`` to the power ``y``. ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>`_ for negative exponents.
   when compiles(y >= T(0)):
     assert y >= T(0)
   else:

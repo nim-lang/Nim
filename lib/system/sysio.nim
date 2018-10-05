@@ -143,19 +143,16 @@ proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
 proc readLine(f: File, line: var TaintedString): bool =
   var pos = 0
-  var sp: cint = 80
+
   # Use the currently reserved space for a first try
-  if line.string.isNil:
-    line = TaintedString(newStringOfCap(80))
-  else:
-    when not defined(nimscript):
-      sp = cint(cast[PGenericSeq](line.string).space)
-    line.string.setLen(sp)
+  var sp = max(line.string.len, 80)
+  line.string.setLen(sp)
+
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
     nimSetMem(addr line.string[pos], '\L'.ord, sp)
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
+    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
     if m != nil:
@@ -163,7 +160,7 @@ proc readLine(f: File, line: var TaintedString): bool =
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
       if last > 0 and line.string[last-1] == '\c':
         line.string.setLen(last-1)
-        return fgetsSuccess
+        return last > 1 or fgetsSuccess
         # We have to distinguish between two possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
@@ -171,7 +168,7 @@ proc readLine(f: File, line: var TaintedString): bool =
         if last < pos + sp - 1 and line.string[last+1] != '\0':
           dec last
       line.string.setLen(last)
-      return fgetsSuccess
+      return last > 0 or fgetsSuccess
     else:
       # fgets will have inserted a null byte at the end of the string.
       dec sp

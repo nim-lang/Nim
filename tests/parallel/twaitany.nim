@@ -18,12 +18,12 @@ var results: seq[int] = @[]
 for i in 0 .. durations.high:
   tasks.add spawn timer(durations[i])
 
-var index = awaitAny(tasks)
+var index = blockUntilAny(tasks)
 while index != -1:
   results.add ^cast[FlowVar[int]](tasks[index])
   tasks.del(index)
   #echo repr results
-  index = awaitAny(tasks)
+  index = blockUntilAny(tasks)
 
 doAssert results.len == 5
 doAssert 1000 in results

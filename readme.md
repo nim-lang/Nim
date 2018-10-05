@@ -2,7 +2,7 @@
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
-the latest release, check out [Nim's website][nim-site].
+the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](https://nim-lang.github.io/Nim/).
 
 ## Community
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
@@ -50,24 +50,33 @@ Next, to build from source you will need:
     other distros as well). 
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
-Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
-of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
-``build64.bat`` on x86_64 Windows):
+Nim from source using ``gcc``, ``git`` and the ``koch`` build tool.
 
 **Note: The following commands are for the development version of the compiler.**
 For most users, installing the latest stable version is enough. Check out
 the installation instructions on the website to do so: https://nim-lang.org/install.html.
 
 ```
+# step 1:
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
+
+# step 2 (posix) clones `csources.git`, bootstraps Nim compiler and compiles tools
+sh build_all.sh
+
+# step 2 (windows)
 git clone --depth 1 https://github.com/nim-lang/csources.git
+
 cd csources
-sh build.sh
-cd ../
-bin/nim c koch
-./koch boot -d:release
-./koch tools # Compile Nimble and other tools.
+# requires `gcc` in your PATH, see also https://nim-lang.org/install_windows.html
+build.bat # x86 Windows
+build64.bat # x86_64 Windows
+cd ..
+
+bin\nim c koch
+koch boot -d:release
+koch tools # Compile Nimble and other tools
+# end of step 2 (windows)
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you

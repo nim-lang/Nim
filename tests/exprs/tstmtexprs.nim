@@ -87,7 +87,7 @@ proc parseResponse(): JsonNode =
     var excMsg = key & "("
     if (var n=result["key2"]; n != nil):
       excMsg &= n.str
-    raise newException(SystemError, excMsg)
+    raise newException(CatchableError, excMsg)
 
 
 

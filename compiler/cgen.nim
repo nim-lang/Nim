@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi, lineinfos
+  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -230,21 +230,30 @@ proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
   inc m.labels
 
+proc rdLoc(a: TLoc): Rope =
+  # 'read' location (deref if indirect)
+  result = a.r
+  if lfIndirect in a.flags: result = "(*$1)" % [result]
+
 proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
+proc lenExpr(p: BProc; a: TLoc): Rope =
+  if p.config.selectedGc == gcDestructors:
+    result = rdLoc(a) & ".len"
+  else:
+    result = "($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)]
+
 proc dataField(p: BProc): Rope =
-  result = rope"->data"
+  if p.config.selectedGc == gcDestructors:
+    result = rope".p->data"
+  else:
+    result = rope"->data"
 
 include ccgliterals
 include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
-
-proc rdLoc(a: TLoc): Rope =
-  # 'read' location (deref if indirect)
-  result = a.r
-  if lfIndirect in a.flags: result = "(*$1)" % [result]
 
 proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r
@@ -325,7 +334,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
   let typ = loc.t
-  if not isComplexValueType(typ):
+  if p.config.selectedGc == gcDestructors and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", rdLoc(loc))
+  elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
   else:
@@ -668,8 +679,10 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef powerpc\L")
   add(m.s[cfsHeaders], "#undef unix\L")
 
-proc openNamespaceNim(): Rope =
-  result.add("namespace Nim {\L")
+proc openNamespaceNim(namespace: string): Rope =
+  result.add("namespace ")
+  result.add(namespace)
+  result.add(" {\L")
 
 proc closeNamespaceNim(): Rope =
   result.add("}\L")
@@ -694,9 +707,10 @@ proc containsResult(n: PNode): bool =
     for i in 0..<n.safeLen:
       if containsResult(n[i]): return true
 
+const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt, nkTemplateDef, nkMacroDef} +
+                  declarativeDefs
+
 proc easyResultAsgn(n: PNode): PNode =
-  const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
-                    declarativeDefs
   case n.kind
   of nkStmtList, nkStmtListExpr:
     var i = 0
@@ -711,6 +725,105 @@ proc easyResultAsgn(n: PNode): PNode =
       result = easyResultAsgn(n[0])
       if result != nil: incl n.flags, nfPreventCg
   else: discard
+
+type
+  InitResultEnum = enum Unknown, InitSkippable, InitRequired
+
+proc allPathsAsgnResult(n: PNode): InitResultEnum =
+  # Exceptions coming from calls don't have not be considered here:
+  #
+  # proc bar(): string = raise newException(...)
+  #
+  # proc foo(): string =
+  #   # optimized out: 'reset(result)'
+  #   result = bar()
+  #
+  # try:
+  #   a = foo()
+  # except:
+  #   echo "a was not written to"
+  #
+  template allPathsInBranch(it) =
+    let a = allPathsAsgnResult(it)
+    case a
+    of InitRequired: return InitRequired
+    of InitSkippable: discard
+    of Unknown:
+      # sticky, but can be overwritten by InitRequired:
+      result = Unknown
+
+  result = Unknown
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    for it in n:
+      result = allPathsAsgnResult(it)
+      if result != Unknown: return result
+  of nkAsgn, nkFastAsgn:
+    if n[0].kind == nkSym and n[0].sym.kind == skResult:
+      if not containsResult(n[1]): result = InitSkippable
+      else: result = InitRequired
+    elif containsResult(n):
+      result = InitRequired
+  of nkReturnStmt:
+    if n.len > 0:
+      result = allPathsAsgnResult(n[0])
+  of nkIfStmt, nkIfExpr:
+    var exhaustive = false
+    result = InitSkippable
+    for it in n:
+      # Every condition must not use 'result':
+      if it.len == 2 and containsResult(it[0]):
+        return InitRequired
+      if it.len == 1: exhaustive = true
+      allPathsInBranch(it.lastSon)
+    # if the 'if' statement is not exhaustive and yet it touched 'result'
+    # in some way, say Unknown.
+    if not exhaustive: result = Unknown
+  of nkCaseStmt:
+    if containsResult(n[0]): return InitRequired
+    result = InitSkippable
+    var exhaustive = skipTypes(n[0].typ,
+        abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
+    for i in 1..<n.len:
+      let it = n[i]
+      allPathsInBranch(it.lastSon)
+      if it.kind == nkElse: exhaustive = true
+    if not exhaustive: result = Unknown
+  of nkWhileStmt:
+    # some dubious code can assign the result in the 'while'
+    # condition and that would be fine. Everything else isn't:
+    result = allPathsAsgnResult(n[0])
+    if result == Unknown:
+      result = allPathsAsgnResult(n[1])
+      # we cannot assume that the 'while' loop is really executed at least once:
+      if result == InitSkippable: result = Unknown
+  of harmless:
+    result = Unknown
+  of nkGotoState, nkBreakState:
+    # give up for now.
+    result = InitRequired
+  of nkSym:
+    # some path reads from 'result' before it was written to!
+    if n.sym.kind == skResult: result = InitRequired
+  of nkTryStmt:
+    # We need to watch out for the following problem:
+    # try:
+    #   result = stuffThatRaises()
+    # except:
+    #   discard "result was not set"
+    #
+    # So ... even if the assignment to 'result' is the very first
+    # assignment this is not good enough! The only pattern we allow for
+    # is 'finally: result = x'
+    result = InitSkippable
+    for it in n:
+      if it.kind == nkFinally:
+        result = allPathsAsgnResult(it.lastSon)
+      else:
+        allPathsInBranch(it.lastSon)
+  else:
+    for i in 0..<safeLen(n):
+      allPathsInBranch(n[i])
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
@@ -738,7 +851,16 @@ proc genProcAux(m: BModule, prc: PSym) =
     else:
       fillResult(p.config, resNode)
       assignParam(p, res)
-      if sfNoInit notin prc.flags: resetLoc(p, res.loc)
+      # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
+      # to 'unsureAsgn(result, x)'
+      # Sketch why this is correct: If 'result' points to a stack location
+      # the 'unsureAsgn' is a nop. If it points to a global variable the
+      # global is either 'nil' or points to valid memory and so the RC operation
+      # succeeds without touching not-initialized memory.
+      if sfNoInit in prc.flags: discard
+      elif allPathsAsgnResult(prc.getBody) == InitSkippable: discard
+      else:
+        resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
@@ -916,7 +1038,10 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if optUseNimNamespace in conf.globalOptions: result.add("#define USE_NIM_NAMESPACE\L")
+  if conf.cppCustomNamespace.len > 0: 
+    result.add("#define USE_NIM_NAMESPACE ")
+    result.add(conf.cppCustomNamespace)
+    result.add("\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -944,7 +1069,8 @@ proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
   for i in 0..<m.config.m.fileInfos.len:
-    result.addf("dbgRegisterFilename($1);$N", [m.config.m.fileInfos[i].projPath.makeCString])
+    result.addf("dbgRegisterFilename($1);$N",
+      [m.config.m.fileInfos[i].projPath.string.makeCString])
 
 proc genMainProc(m: BModule) =
   const
@@ -1088,11 +1214,11 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin m.config.globalOptions:
-    if optUseNimNamespace in m.config.globalOptions:
-      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;\L"
+    if m.config.cppCustomNamespace.len > 0:
+      m.s[cfsProcs].add closeNamespaceNim() & "using namespace " & m.config.cppCustomNamespace & ";\L"
 
     appcg(m, m.s[cfsProcs], otherMain, [])
-    if optUseNimNamespace in m.config.globalOptions: m.s[cfsProcs].add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0: m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
 proc getSomeInitName(m: PSym, suffix: string): Rope =
   assert m.kind == skModule
@@ -1136,12 +1262,29 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
+  # Give this small function its own scope
+  addf(prc, "{$N", [])
+  block:
+    # Keep a bogus frame in case the code needs one
+    add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
+
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.preInitProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
+
+    add(prc, genSectionStart(cpsInit, m.config))
+    add(prc, m.preInitProc.s(cpsInit))
+    add(prc, genSectionEnd(cpsInit, m.config))
+
+    add(prc, genSectionStart(cpsStmts, m.config))
+    add(prc, m.preInitProc.s(cpsStmts))
+    add(prc, genSectionEnd(cpsStmts, m.config))
+  addf(prc, "}$N", [])
+
   add(prc, initGCFrame(m.initProc))
 
   add(prc, genSectionStart(cpsLocals, m.config))
-  add(prc, m.preInitProc.s(cpsLocals))
   add(prc, m.initProc.s(cpsLocals))
-  add(prc, m.postInitProc.s(cpsLocals))
   add(prc, genSectionEnd(cpsLocals, m.config))
 
   if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
@@ -1155,16 +1298,13 @@ proc genInitCode(m: BModule) =
       add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
   add(prc, genSectionStart(cpsInit, m.config))
-  add(prc, m.preInitProc.s(cpsInit))
   add(prc, m.initProc.s(cpsInit))
-  add(prc, m.postInitProc.s(cpsInit))
   add(prc, genSectionEnd(cpsInit, m.config))
 
   add(prc, genSectionStart(cpsStmts, m.config))
-  add(prc, m.preInitProc.s(cpsStmts))
   add(prc, m.initProc.s(cpsStmts))
-  add(prc, m.postInitProc.s(cpsStmts))
   add(prc, genSectionEnd(cpsStmts, m.config))
+
   if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
     add(prc, deinitFrame(m.initProc))
   add(prc, deinitGCFrame(m.initProc))
@@ -1200,26 +1340,21 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders:
-      result.add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders:
+      result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
   # little hack so that unique temporaries are generated:
   result.labels = 100_000
 
-proc newPostInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 200_000
-
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
 
-proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
+proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
   result.tmpBase = rope("TM" & $hashOwner(module) & "_")
@@ -1236,7 +1371,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
-  result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.forwardedProcs = @[]
@@ -1247,9 +1381,8 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
-    excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
-                else: ""
+                else: AbsoluteFile""
   open(result.ndi, ndiName, g.config)
 
 proc nullify[T](arr: var T) =
@@ -1265,7 +1398,6 @@ proc resetModule*(m: BModule) =
   m.initProc = newProc(nil, m)
   m.initProc.options = initProcOptions(m)
   m.preInitProc = newPreInitProc(m)
-  m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
   m.forwardedProcs = @[]
@@ -1301,7 +1433,7 @@ proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
-  result = rawNewModule(g, module, toFullPath(conf, module.position.FileIndex))
+  result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
 proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
@@ -1320,7 +1452,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
-    let f = if graph.config.headerFile.len > 0: graph.config.headerFile
+    let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
     g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCFilePath(graph.config, f), hExt))
@@ -1342,18 +1474,18 @@ proc writeHeader(m: BModule) =
     add(result, genSectionStart(i, m.config))
     add(result, m.s[i])
     add(result, genSectionEnd(i, m.config))
-    if optUseNimNamespace in m.config.globalOptions and i == cfsHeaders: result.add openNamespaceNim()
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
   add(result, m.s[cfsInitProc])
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
-  if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
+  if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):
-    rawMessage(m.config, errCannotOpenFile, m.filename)
+    rawMessage(m.config, errCannotOpenFile, m.filename.string)
 
-proc getCFile(m: BModule): string =
+proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".cpp"
       elif m.config.cmd == cmdCompileToOC or sfCompileToObjC in m.module.flags: ".m"
@@ -1397,18 +1529,18 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
     if not equalsFile(code, cfile.cname):
       if isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
-          copyFile(cfile.cname, cfile.cname & ".backup")
-          echo "diff ", cfile.cname, ".backup ", cfile.cname
+          copyFile(cfile.cname.string, cfile.cname.string & ".backup")
+          echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
         else:
-          echo "new file ", cfile.cname
+          echo "new file ", cfile.cname.string
       if not writeRope(code, cfile.cname):
-        rawMessage(m.config, errCannotOpenFile, cfile.cname)
+        rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
       return
-    if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):
+    if fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
       result = false
   else:
     if not writeRope(code, cfile.cname):
-      rawMessage(m.config, errCannotOpenFile, cfile.cname)
+      rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1444,14 +1576,14 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if not writeRope(code, cfile):
-      rawMessage(m.config, errCannotOpenFile, cfile)
+      rawMessage(m.config, errCannotOpenFile, cfile.string)
     addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
     # ``system.c`` but then compilation fails due to an error. This means
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(cname: cfile, obj: completeCFilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    if not existsFile(cf.obj): cf.flags = {CfileFlag.Cached}
+    if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   close(m.ndi)
 
@@ -1466,7 +1598,7 @@ proc updateCachedModule(m: BModule) =
 
     var code = genModule(m, cf)
     if not writeRope(code, cfile):
-      rawMessage(m.config, errCannotOpenFile, cfile)
+      rawMessage(m.config, errCannotOpenFile, cfile.string)
   else:
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)

@@ -40,29 +40,26 @@ export options
 ##
 ## .. _`some additional terms`: http://pcre.sourceforge.net/license.txt
 ##
-## Example
-## -------
-##
-## .. code-block:: nim
-##
-##     import nre
-##
-##     let vowels = re"[aeoui]"
-##
-##     for match in "moigagoo".findIter(vowels):
-##       echo match.matchBounds
-##     # (a: 1, b: 1)
-##     # (a: 2, b: 2)
-##     # (a: 4, b: 4)
-##     # (a: 6, b: 6)
-##     # (a: 7, b: 7)
-##
-##     let firstVowel = "foo".find(vowels)
-##     let hasVowel = firstVowel.isSome()
-##     if hasVowel:
-##       let matchBounds = firstVowel.get().captureBounds[-1]
-##       echo "first vowel @", matchBounds.get().a
-##       # first vowel @1
+runnableExamples:
+  let vowels = re"[aeoui]"
+
+  let expectedResults = [
+    1 .. 1,
+    2 .. 2,
+    4 .. 4,
+    6 .. 6,
+    7 .. 7,
+  ]
+  var i = 0
+  for match in "moigagoo".findIter(vowels):
+    doAssert match.matchBounds == expectedResults[i]
+    inc i
+
+  let firstVowel = "foo".find(vowels)
+  let hasVowel = firstVowel.isSome()
+  if hasVowel:
+    let matchBounds = firstVowel.get().captureBounds[-1]
+    doAssert matchBounds.get().a == 1
 
 
 # Type definitions {{{
@@ -151,18 +148,18 @@ type
     ##     the whole match is returned. If the given capture was not matched,
     ##     ``nil`` is returned.
     ##
-    ##     -  ``"abc".match(re"(\w)").captures[0] == "a"``
-    ##     -  ``"abc".match(re"(?<letter>\w)").captures["letter"] == "a"``
-    ##     -  ``"abc".match(re"(\w)\w").captures[-1] == "ab"``
+    ##     -  ``"abc".match(re"(\w)").get.captures[0] == "a"``
+    ##     -  ``"abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"``
+    ##     -  ``"abc".match(re"(\w)\w").get.captures[-1] == "ab"``
     ##
     ## ``captureBounds[]: Option[HSlice[int, int]]``
     ##     gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then ``None`` is returned.
     ##     The bounds are both inclusive.
     ##
-    ##     -  ``"abc".match(re"(\w)").captureBounds[0] == 0 .. 0``
-    ##     -  ``"abc".match(re"").captureBounds[-1] == 0 .. -1``
-    ##     -  ``"abc".match(re"abc").captureBounds[-1] == 0 .. 2``
+    ##     -  ``"abc".match(re"(\w)").get.captureBounds[0].get == 0 .. 0``
+    ##     -  ``"abc".match(re"").get.captureBounds[-1].get == 0 .. -1``
+    ##     -  ``"abc".match(re"abc").get.captureBounds[-1].get == 0 .. 2``
     ##
     ## ``match: string``
     ##     the full text of the match.
@@ -208,6 +205,16 @@ type
     ## Thrown when studying the regular expression failes
     ## for whatever reason. The message contains the error
     ## code.
+
+runnableExamples:
+    # This MUST be kept in sync with the examples in RegexMatch
+    doAssert "abc".match(re"(\w)").get.captures[0] == "a"
+    doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
+    doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+
+    doAssert "abc".match(re"(\w)").get.captureBounds[0].get == 0 .. 0
+    doAssert "abc".match(re"").get.captureBounds[-1].get == 0 .. -1
+    doAssert "abc".match(re"abc").get.captureBounds[-1].get == 0 .. 2
 # }}}
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
@@ -267,7 +274,7 @@ proc `[]`*(pattern: Captures, i: int): string =
     let bounds = bounds.get
     return pattern.str.substr(bounds.a, bounds.b)
   else:
-    return nil
+    return ""
 
 proc match*(pattern: RegexMatch): string =
   return pattern.captures[-1]
@@ -291,9 +298,9 @@ template toTableImpl(cond: untyped) {.dirty.} =
     else:
       result[key] = nextVal
 
-proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
+proc toTable*(pattern: Captures, default: string = ""): Table[string, string] =
   result = initTable[string, string]()
-  toTableImpl(nextVal == nil)
+  toTableImpl(nextVal.len == 0)
 
 proc toTable*(pattern: CaptureBounds, default = none(HSlice[int, int])):
     Table[string, Option[HSlice[int, int]]] =
@@ -312,13 +319,13 @@ template itemsImpl(cond: untyped) {.dirty.} =
 iterator items*(pattern: CaptureBounds, default = none(HSlice[int, int])): Option[HSlice[int, int]] =
   itemsImpl(nextVal.isNone)
 
-iterator items*(pattern: Captures, default: string = nil): string =
-  itemsImpl(nextVal == nil)
+iterator items*(pattern: Captures, default: string = ""): string =
+  itemsImpl(nextVal.len == 0)
 
 proc toSeq*(pattern: CaptureBounds, default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
   accumulateResult(pattern.items(default))
 
-proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
+proc toSeq*(pattern: Captures, default: string = ""): seq[string] =
   accumulateResult(pattern.items(default))
 
 proc `$`*(pattern: RegexMatch): string =
@@ -495,8 +502,12 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Like ```find(...)`` <#proc-find>`_, but anchored to the start of the
-  ## string. This means that ``"foo".match(re"f") == true``, but
-  ## ``"foo".match(re"o") == false``.
+  ## string.
+  ##
+  runnableExamples:
+    doAssert "foo".match(re"f").isSome
+    doAssert "foo".match(re"o").isNone
+
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
@@ -570,29 +581,34 @@ proc findAll*(str: string, pattern: Regex, start = 0, endpos = int.high): seq[st
 proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool =
   ## Determine if the string contains the given pattern between the end and
   ## start positions:
-  ## -  "abc".contains(re"bc") == true
-  ## -  "abc".contains(re"cd") == false
-  ## -  "abc".contains(re"a", start = 1) == false
+  ## This function is equivalent to ``isSome(str.find(pattern, start, endpos))``.
   ##
-  ## Same as ``isSome(str.find(pattern, start, endpos))``.
+  runnableExamples:
+    doAssert "abc".contains(re"bc") == true
+    doAssert "abc".contains(re"cd") == false
+    doAssert "abc".contains(re"a", start = 1) == false
+
   return isSome(str.find(pattern, start, endpos))
 
 proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] =
   ## Splits the string with the given regex. This works according to the
-  ## rules that Perl and Javascript use:
-  ##
-  ## -  If the match is zero-width, then the string is still split:
-  ##    ``"123".split(r"") == @["1", "2", "3"]``.
-  ##
-  ## -  If the pattern has a capture in it, it is added after the string
-  ##    split: ``"12".split(re"(\d)") == @["", "1", "", "2", ""]``.
-  ##
-  ## -  If ``maxsplit != -1``, then the string will only be split
-  ##    ``maxsplit - 1`` times. This means that there will be ``maxsplit``
-  ##    strings in the output seq.
-  ##    ``"1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]``
+  ## rules that Perl and Javascript use.
   ##
   ## ``start`` behaves the same as in ```find(...)`` <#proc-find>`_.
+  ##
+  runnableExamples:
+    # -  If the match is zero-width, then the string is still split:
+    doAssert "123".split(re"") == @["1", "2", "3"]
+
+    # -  If the pattern has a capture in it, it is added after the string
+    #    split:
+    doAssert "12".split(re"(\d)") == @["", "1", "", "2", ""]
+
+    # -  If ``maxsplit != -1``, then the string will only be split
+    #    ``maxsplit - 1`` times. This means that there will be ``maxsplit``
+    #    strings in the output seq.
+    doAssert "1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]
+
   result = @[]
   var lastIdx = start
   var splits = 0

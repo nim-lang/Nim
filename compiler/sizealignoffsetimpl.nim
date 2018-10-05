@@ -227,8 +227,15 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
 
-  of tyNil, tyString:
+  of tyNil
     typ.size = conf.target.ptrSize
+    typ.align = int16(conf.target.ptrSize)
+
+  of tyString:
+    if tfHasAsgn in typ.flags:
+      typ.size = conf.target.ptrSize * 2
+    else:
+      typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
 
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
@@ -237,8 +244,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size  = szIllegalRecursion
       typ.align = szIllegalRecursion
     else:
-      typ.size  = conf.target.ptrSize
       typ.align = int16(conf.target.ptrSize)
+      if typ.kind == tySequence and tfHasAsgn in typ.flags:
+        typ.size  = conf.target.ptrSize * 2
+      else:
+        typ.size  = conf.target.ptrSize
 
   of tyArray:
     computeSizeAlign(conf, typ.sons[1])

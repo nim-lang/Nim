@@ -10,7 +10,7 @@
 {.deadCodeElim: on.}  # dce option deprecated
 
 const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
+  hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
@@ -43,6 +43,9 @@ type
 
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+    when defined(haiku):
+      d_dev*: Dev ## Device (not POSIX)
+      d_pdev*: Dev ## Parent device (only for queries) (not POSIX)
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
@@ -54,6 +57,9 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+    elif defined(haiku):
+      d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
+      d_reclen*: cushort ## Length of this record. (not POSIX)
 
     d_name*: array[0..255, char] ## Name of entry.
 
@@ -404,7 +410,7 @@ else:
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
@@ -598,6 +604,10 @@ else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
       ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(haiku):
+  const
+    SIGKILLTHR* = 21 ## BeOS specific: Kill just the thread, not team
 
 when hasSpawnH:
   when defined(linux):

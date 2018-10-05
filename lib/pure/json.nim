@@ -14,28 +14,38 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
-## Dynamically retrieving fields from JSON
-## =======================================
+## Overview
+## ========
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## Parsing JSON
+## ------------
+##
+## JSON often arrives into your program (via an API or a file) as a ``string``.
+## The first step is to change it from its serialized form into a nested object
+## structure called a ``JsonNode``.
 ##
 ## The ``parseJson`` procedure takes a string containing JSON and returns a
 ## ``JsonNode`` object. This is an object variant and it is either a
 ## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
-## ``JNull``. You
-## check the kind of this object variant by using the ``kind`` accessor.
+## ``JNull``. You check the kind of this object variant by using the ``kind``
+## accessor.
 ##
 ## For a ``JsonNode`` who's kind is ``JObject``, you can acess its fields using
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
 ##
-## Retrieving the value of a JSON node can then be achieved using one of the
-## helper procedures, which include:
+## Reading values
+## --------------
+##
+## Once you have a ``JsonNode``, retrieving the values can then be achieved
+## by using one of the helper procedures, which include:
 ##
 ## * ``getInt``
 ## * ``getFloat``
@@ -45,43 +55,79 @@
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
 ##
-## The ``[]`` operator will raise an exception when the specified field does
-## not exist. If you wish to avoid this behaviour you can use the ``{}``
-## operator instead, it will simply return ``nil`` when the field is not found.
-## The ``get``-family of procedures will return a default value when called on
-## ``nil``.
+## **Important:** The ``[]`` operator will raise an exception when the
+## specified field does not exist.
 ##
-## Unmarshalling JSON into a type
-## ==============================
+## Handling optional keys
+## ----------------------
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## By using the ``{}`` operator instead of ``[]``, it will return ``nil``
+## when the field is not found. The ``get``-family of procedures will return a
+## type's default value when called on ``nil``.
 ##
-## This is done using the ``to`` macro. Take a look at
-## `its documentation <#to.m,JsonNode,typedesc>`_ to see an example of its use.
+## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("{}")
+##
+##   doAssert jsonNode{"nope"}.getInt() == 0
+##   doAssert jsonNode{"nope"}.getFloat() == 0
+##   doAssert jsonNode{"nope"}.getStr() == ""
+##   doAssert jsonNode{"nope"}.getBool() == false
+##
+## Using default values
+## --------------------
+##
+## The ``get``-family helpers also accept an additional parameter which allow
+## you to fallback to a default value should the key's values be ``null``:
+##
+## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
+##
+##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
+##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
+##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##
+## Unmarshalling
+## -------------
+##
+## In addition to reading dynamic data, Nim can also unmarshall JSON directly
+## into a type with the ``to`` macro.
+##
+## .. code-block:: Nim
+##   import json
+##
+##   type
+##     User = object
+##       name: string
+##       age: int
+##
+##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
+##   let user = to(userJson, User)
 ##
 ## Creating JSON
 ## =============
 ##
-## This module can also be used to comfortably create JSON using the `%*`
+## This module can also be used to comfortably create JSON using the ``%*``
 ## operator:
 ##
 ## .. code-block:: nim
+##   import json
 ##
 ##   var hisName = "John"
 ##   let herAge = 31
 ##   var j = %*
 ##     [
-##       {
-##         "name": hisName,
-##         "age": 30
-##       },
-##       {
-##         "name": "Susan",
-##         "age": herAge
-##       }
+##       { "name": hisName, "age": 30 },
+##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
 ##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
@@ -256,7 +302,6 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
-  if s.isNil: return
   result.kind = JString
   result.str = s
 
@@ -546,10 +591,9 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJson*(s: string; result: var string) =
-  ## Converts a string `s` to its JSON representation.
+proc escapeJsonUnquoted*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to ``result``.
-  result.add("\"")
   for c in s:
     case c
     of '\L': result.add("\\n")
@@ -562,10 +606,21 @@ proc escapeJson*(s: string; result: var string) =
     of '\14'..'\31': result.add("\\u00" & $ord(c))
     of '\\': result.add("\\\\")
     else: result.add(c)
+
+proc escapeJsonUnquoted*(s: string): string =
+  ## Converts a string `s` to its JSON representation without quotes.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJsonUnquoted(s, result)
+
+proc escapeJson*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation with quotes.
+  ## Appends to ``result``.
+  result.add("\"")
+  escapeJsonUnquoted(s, result)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
-  ## Converts a string `s` to its JSON representation.
+  ## Converts a string `s` to its JSON representation with quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
@@ -1138,13 +1193,13 @@ proc processType(typeName: NimNode, obj: NimNode,
         `getEnumCall`
       )
   of nnkSym:
-    let name = ($typeName).normalize
+    let name = normalize($typeName.getTypeImpl())
     case name
     of "string":
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
+          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
         )
     of "biggestint":
       result = quote do:
@@ -1608,6 +1663,8 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
+  doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
   doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
 
@@ -1628,3 +1685,17 @@ when isMainModule:
   # bug #6438
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
+
+  # bug #9111
+  block:
+    type
+      Bar = string
+      Foo = object
+        a: int
+        b: Bar
+
+    let
+      js = """{"a": 123, "b": "abc"}""".parseJson
+      foo = js.to Foo
+
+    doAssert(foo.b == "abc")

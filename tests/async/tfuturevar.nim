@@ -35,7 +35,7 @@ proc main() {.async.} =
   fut = newFutureVar[string]()
   let retFut = failureTest(fut, true)
   yield retFut
-  doAssert(fut.read().isNil)
+  doAssert(fut.read().len == 0)
   doAssert(fut.finished)
 
   fut = newFutureVar[string]()

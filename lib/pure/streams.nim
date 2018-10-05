@@ -377,7 +377,10 @@ when not defined(js):
 
   proc ssClose(s: Stream) =
     var s = StringStream(s)
-    s.data = nil
+    when defined(nimNoNilSeqs):
+      s.data = ""
+    else:
+      s.data = nil
 
   proc newStringStream*(s: string = ""): StringStream =
     ## creates a new stream from the string `s`.

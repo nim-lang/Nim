@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables
+import ropes, tables, pathutils
 
 const
   explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
@@ -92,7 +92,7 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
-    hintSuccess: "operation successful",
+    hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
@@ -164,13 +164,13 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-    result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
-    result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
-    result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
-      warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-      hintSource, hintGlobalVar, hintGCStats}
-    result[0] = result[1] - {hintSuccessX, hintConf, hintProcessing,
-      hintPattern, hintExecuting, hintLinking}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
+  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+    warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
+    hintSource, hintGlobalVar, hintGCStats}
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+    hintProcessing, hintPattern, hintExecuting, hintLinking}
 
 const
   NotesVerbosity* = computeNotesVerbosity()
@@ -179,8 +179,8 @@ const
 
 type
   TFileInfo* = object
-    fullPath*: string          # This is a canonical full filesystem path
-    projPath*: string          # This is relative to the project's root
+    fullPath*: AbsoluteFile    # This is a canonical full filesystem path
+    projPath*: RelativeFile    # This is relative to the project's root
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
@@ -191,7 +191,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: string         # the file that is actually read into memory
+    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
@@ -222,6 +222,9 @@ type
   ESuggestDone* = object of Exception
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
+
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+  raise newException(ERecoverableError, msg)
 
 const
   InvalidFileIDX* = FileIndex(-1)

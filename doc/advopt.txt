@@ -68,6 +68,8 @@ Advanced options:
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
+  --nilseqs:on|off          allow 'nil' for strings/seqs for
+                            backwards compatibility
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
@@ -79,7 +81,9 @@ Advanced options:
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --noCppExceptions         use default exception handling with C++ backend
-  --cppCompileToNamespace   use namespace "Nim" for the generated C++ code
+  --cppCompileToNamespace:namespace
+                            use the provided namespace for the generated C++ code,
+                            if no namespace is provided "Nim" will be used
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;

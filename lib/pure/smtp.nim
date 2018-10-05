@@ -119,8 +119,7 @@ proc newSmtp*(useSsl = false, debug=false,
     when compiledWithSsl:
       sslContext.wrapSocket(result.sock)
     else:
-      raise newException(SystemError,
-                         "SMTP module compiled without SSL support")
+      {.error: "SMTP module compiled without SSL support".}
 
 proc newAsyncSmtp*(useSsl = false, debug=false,
                    sslContext = defaultSslContext): AsyncSmtp =
@@ -133,8 +132,7 @@ proc newAsyncSmtp*(useSsl = false, debug=false,
     when compiledWithSsl:
       sslContext.wrapSocket(result.sock)
     else:
-      raise newException(SystemError,
-                         "SMTP module compiled without SSL support")
+      {.error: "SMTP module compiled without SSL support".}
 
 proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   var retFuture = newFuture[void]()

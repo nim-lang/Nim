@@ -10,8 +10,8 @@
 ## Serialization utilities for the compiler.
 import strutils, math
 
-# MSVC prior to 2013 doesn't have C99 functions
-when defined(windows) and (defined(vcc) or defined(bcc)):
+# bcc on windows doesn't have C99 functions
+when defined(windows) and defined(bcc):
   {.emit: """#if defined(_MSC_VER) && _MSC_VER < 1900
   #include <stdarg.h>
   static int c99_vsnprintf(char *outBuf, size_t size, const char *format, va_list ap) {

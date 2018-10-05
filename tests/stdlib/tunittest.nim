@@ -13,6 +13,8 @@ discard """
 
 [Suite] bug #5784
 
+[Suite] test suite
+
 [Suite] test name filtering
 
 '''
@@ -122,6 +124,23 @@ suite "bug #5784":
       field: int
     var obj: Obj
     check obj.isNil or obj.field == 0
+
+type
+    SomeType = object
+        value: int
+        children: seq[SomeType]
+
+# bug #5252
+
+proc `==`(a, b: SomeType): bool =
+    return a.value == b.value
+
+suite "test suite":
+    test "test":
+        let a = SomeType(value: 10)
+        let b = SomeType(value: 10)
+
+        check(a == b)
 
 when defined(testing):
   suite "test name filtering":

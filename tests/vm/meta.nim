@@ -39,7 +39,7 @@ proc newIdent*(node: NimNode): Ident =
       raise newException(ValueError, msg)
 
 proc render*(i: Ident): NimNode {.compileTime.} =
-  if i.name == nil:
+  if i.name == "":
     return newNimNode(nnkEmpty)
 
   if i.exported:
@@ -67,7 +67,7 @@ proc newBracket*(node: NimNode): Bracket =
       raise newException(ValueError, msg)
 
 # Field procs
-proc newField*(identifier: Ident, type_name: string, default: string = nil): Field =
+proc newField*(identifier: Ident, type_name: string, default: string = ""): Field =
   result.identifier = identifier
   result.type_name = type_name
   result.default = default
@@ -84,7 +84,7 @@ proc newField*(node: NimNode): Field =
         of nnkIdent:
           result.default = $(node[2])
         else:
-          result.default = nil
+          result.default = ""
     else:
       let msg = "newField cannot initialize from node kind: " & $(node.kind)
       raise newException(ValueError, msg)
@@ -102,7 +102,7 @@ proc newFieldSeq*(node: NimNode): FieldSeq =
         of nnkIdent:
           default = $(default_node)
         else:
-          default = nil
+          default = ""
       for i in 0..node.len - 3:
         let name = newIdent(node[i])
         result.add(newField(name, type_name, default))
@@ -115,8 +115,8 @@ proc newFieldSeq*(node: NimNode): FieldSeq =
 
 proc render*(f: Field): NimNode {.compileTime.} =
   let identifier = f.identifier.render()
-  let type_name = if f.type_name != nil: ident(f.type_name) else: newEmptyNode()
-  let default = if f.default != nil: ident(f.default) else: newEmptyNode()
+  let type_name = if f.type_name != "": ident(f.type_name) else: newEmptyNode()
+  let default = if f.default != "": ident(f.default) else: newEmptyNode()
   newIdentDefs(identifier, type_name, default)
 
 proc render*(fs: FieldSeq): NimNode {.compileTime.} =
@@ -127,7 +127,7 @@ proc render*(fs: FieldSeq): NimNode {.compileTime.} =
 # TypeDef procs
 proc newTypeDef*(identifier: Ident, is_ref = false,
                 object_type = "object",
-                base_type: string = nil): TypeDef {.compileTime.} =
+                base_type: string = ""): TypeDef {.compileTime.} =
   result.identifier = identifier
   result.fields = @[]
   result.is_ref = is_ref
@@ -165,7 +165,7 @@ proc render*(typedef: TypeDef): NimNode {.compileTime.} =
   result.add(newEmptyNode())
   let object_node = newNimNode(nnkObjectTy)
   object_node.add(newEmptyNode())
-  if typedef.base_type == nil:
+  if typedef.base_type == "":
     object_node.add(newEmptyNode())
   else:
     var base_type = newNimNode(nnkOfInherit)
@@ -195,8 +195,8 @@ proc render*(typeseq: TypeDefSeq): NimNode {.compileTime.} =
   for typedef in typeseq:
     result.add(typedef.render())
 
-proc newProc*(identifier: Ident, params: FieldSeq = nil,
-              returns: Ident, generics: FieldSeq = nil): Proc =
+proc newProc*(identifier: Ident, params: FieldSeq = @[],
+              returns: Ident, generics: FieldSeq = @[]): Proc =
   result.identifier = identifier
   result.params = params
   result.returns = returns
@@ -209,7 +209,7 @@ proc newProc*(node: NimNode): Proc =
       case node[2].kind:
         of nnkGenericParams:
           result.generics = newFieldSeq(node[2])
-        else: result.generics = nil
+        else: result.generics = @[]
       let formal_params = node[3]
       case formal_params[0].kind:
         of nnkIdent:

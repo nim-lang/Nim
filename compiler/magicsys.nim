@@ -120,7 +120,8 @@ proc skipIntLit*(t: PType): PType {.inline.} =
     result = t
 
 proc addSonSkipIntLit*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
   add(father.sons, s)
   propagateToOwner(father, s)

@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if p.config.selectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -256,7 +256,15 @@ proc genSingleVar(p: BProc, a: PNode) =
     # That's why we are doing the construction inside the preInitProc.
     # genObjectInit relies on the C runtime's guarantees that
     # global variables will be initialized to zero.
-    genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
+    var loc = v.loc
+
+    # When the native TLS is unavailable, a global thread-local variable needs
+    # one more layer of indirection in order to access the TLS block.
+    # Only do this for complex types that may need a call to `objectInit`
+    if sfThread in v.flags and emulatedThreadVars(p.config) and
+      isComplexValueType(v.typ):
+      initLocExprSingleUse(p.module.preInitProc, vn, loc)
+    genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
@@ -269,7 +277,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
-      # generate better code here:
+      # generate better code here: 'Foo f = x;'
       genLineDir(p, a)
       let decl = localVarDecl(p, vn)
       var tmp: TLoc
@@ -1130,8 +1138,8 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
       patchAsgnStmtListExpr(patchedTree, e, ri)
       genStmts(p, patchedTree)
       return
-
     var a: TLoc
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     if le.kind in {nkDerefExpr, nkHiddenDeref}:
       genDeref(p, le, a, enforceDeref=true)
     else:
@@ -1151,4 +1159,4 @@ proc genStmts(p: BProc, t: PNode) =
   if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
   if isPush: popInfoContext(p.config)
-  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}
+  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar, locExpr}

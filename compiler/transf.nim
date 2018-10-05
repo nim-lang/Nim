@@ -369,6 +369,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
@@ -377,6 +379,8 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       result = PTransNode(n.sons[0])
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         PNode(result).typ = n.typ
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
+        PNode(result).typ = toVar(PNode(result).typ)
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -539,11 +543,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   if call.kind notin nkCallKinds or call.sons[0].kind != nkSym or
       call.sons[0].typ.callConv == ccClosure:
     n.sons[length-1] = transformLoopBody(c, n.sons[length-1]).PNode
-    if not c.tooEarly:
-      n.sons[length-2] = transform(c, n.sons[length-2]).PNode
-      result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
-    else:
-      result[1] = newNode(nkEmpty).PTransNode
+    n.sons[length-2] = transform(c, n.sons[length-2]).PNode
+    result[1] = lambdalifting.liftForLoop(c.graph, n, getCurrOwner(c)).PTransNode
     discard c.breakSyms.pop
     return result
 
@@ -623,7 +624,11 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     case it.kind
     of nkElifBranch:
       if ifs.PNode == nil:
-        ifs = newTransNode(nkIfStmt, it.info, 0)
+        # Generate the right node depending on whether `n` is used as a stmt or
+        # as an expr
+        let kind = if n.typ != nil: nkIfExpr else: nkIfStmt
+        ifs = newTransNode(kind, it.info, 0)
+        ifs.PNode.typ = n.typ
       ifs.add(e)
     of nkElse:
       if ifs.PNode == nil: result.add(e)
@@ -909,7 +914,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         # ensure that e.g. discard "some comment" gets optimized away
         # completely:
         result = PTransNode(newNode(nkCommentStmt))
-  of nkCommentStmt, nkTemplateDef, nkImportStmt, nkStaticStmt:
+  of nkCommentStmt, nkTemplateDef, nkImportStmt, nkStaticStmt,
+      nkExportStmt, nkExportExceptStmt:
     return n.PTransNode
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
@@ -929,12 +935,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    when true:
-      result = transformSons(c, n)
-    else:
-      result = n.PTransNode
-      let L = n.len-1
-      result[L] = transform(c, n.sons[L])
+    result = PTransNode(n)
+    result[0] = transform(c, n[0])
+    # Skip the second son since it only contains an unsemanticized copy of the
+    # variable type used by docgen
+    result[2] = transform(c, n[2])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
       PNode(result).comment = n.comment

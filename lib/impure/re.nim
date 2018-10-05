@@ -113,7 +113,7 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32:
       matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -133,7 +133,7 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
@@ -287,7 +287,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
@@ -456,8 +456,6 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   while true:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
-    assert result != nil
-    assert s != nil
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
     prev = match.last + 1
@@ -615,7 +613,7 @@ when isMainModule:
     doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == nil
+    doAssert matches[0] == ""
   else: doAssert false
 
   if "abc" =~ re"().*":

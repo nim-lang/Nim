@@ -42,18 +42,21 @@ when isMainModule:
 # bug #985
 
 type
-    Pony = object
-        name: string
+  Pony = object
+    name: string
 
 proc `=destroy`(o: var Pony) =
   echo "Pony is dying!"
 
 proc getPony: Pony =
-    result.name = "Sparkles"
+  result.name = "Sparkles"
 
 iterator items(p: Pony): int =
-    for i in 1..4:
-        yield i
+  for i in 1..4:
+    yield i
 
 for x in getPony():
-    echo x
+  echo x
+# XXX this needs to be enabled once top level statements
+# produce destructor calls again.
+#echo "Pony is dying!"

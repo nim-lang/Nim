@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     notes*: TNoteKinds
+    features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -37,6 +38,7 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
+    mappingExists*: bool
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -139,7 +141,6 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -176,12 +177,14 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
-  if p.mapping.data == nil: initIdTable(p.mapping)
+  if not p.mappingExists:
+    initIdTable(p.mapping)
+    p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
 
 proc get*(p: PProcCon; key: PSym): PSym =
-  if p.mapping.data == nil: return nil
+  if not p.mappingExists: return nil
   result = PSym(p.mapping.idTableGet(key))
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
