@@ -636,6 +636,8 @@ proc tryRemoveFile*(file: string): bool {.raises: [IOError], rtl, extern: "nos$1
   ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
+  ##
+  ## If `file` is a directory, `IOError` is raised.
   if existsDir(file):
     result = false
     raise newException(IOError, "The path '" & file & "' is a directory, not a file.")
