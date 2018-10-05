@@ -952,7 +952,9 @@ proc removeDir*(dir: string, recursive: bool = true) {.raises: [IOError], rtl, e
   ##`recursive` is `true` (the default), then `dir` will be deleted even if it
   ## is a file path and not a directory path.
   ##
-  ## If this fails, `OSError` is raised. This does not fail if the directory never
+  ## If this fails because `recursive` is `false` and the path `dir` is a file,
+  ## doesn't exist, or is not empty, `IOError` is raised. If this fails for any
+  ## other reason, `OSError` is raised. This does not fail if the directory never
   ## existed in the first place.
   if recursive:
     for kind, path in walkDir(dir):
@@ -962,8 +964,6 @@ proc removeDir*(dir: string, recursive: bool = true) {.raises: [IOError], rtl, e
   else:
     if (not dirExists(dir)) and fileExists(dir):
       raise newException(IOError, "The path '" & dir & "' is a file.")
-    elif (not dirExists(dir)):
-      raise newException(IOError, "The path '" & dir & "' does not exist.")
     var dirIsEmpty: bool = true
     for _ in walkDir(dir):
       dirIsEmpty = false
