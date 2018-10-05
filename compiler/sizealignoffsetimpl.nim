@@ -176,7 +176,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
     # nothing to do, size and align already computed
     return
 
-  # This function can onld calculate both, size and align at the same time.
+  # This function can only calculate both, size and align at the same time.
   # If one of them is already set this value is stored here and reapplied
   let revertSize = typ.size
   let revertAlign = typ.align
@@ -198,27 +198,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
   var maxAlign, sizeAccum, length: BiggestInt
 
   var tk = typ.kind
-  if tk == tyInt:
-    case conf.target.intSize
-    of 2:
-      tk = tyInt16
-    of 4:
-      tk = tyInt32
-    of 8:
-      tk = tyInt64
-    else:
-      internalError(conf, "unhandled insize: " & $conf.target.intSize)
-  elif tk == tyUInt:
-    case conf.target.intSize
-    of 2:
-      tk = tyUInt16
-    of 4:
-      tk = tyUInt32
-    of 8:
-      tk = tyUInt64
-    else:
-      internalError(conf, "unhandled insize: " & $conf.target.intSize)
-
   case tk
   of tyProc:
     if typ.callConv == ccClosure:
@@ -227,7 +206,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
 
-  of tyNil
+  of tyNil:
     typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
 

@@ -805,9 +805,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if not isPowerOfTwo(size) or size <= 0 or size > 8:
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
         else:
-          sym.typ.size  = size
-          # TODO, this should be properly queried
-          sym.typ.align = target.alignof(int[size * 8])
+          sym.typ.size = size
+          # TODO, this is not correct
+          sym.typ.align = int16(size)
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)

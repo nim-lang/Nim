@@ -323,9 +323,17 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     checkSonsLen(n, 2, c.config)
     result = semTypeOf(c, n.sons[1])
   of mSizeOf:
-    result = newIntNode(nkIntLit, getSize(c.config, n[1].typ))
-    result.info = n.info
-    result.typ = n.typ
+      # TODO there is no proper way to find out if a type cannot be queried for the size.
+      let size = getSize(c.config, n[1].typ)
+      # We just assume here that the type might come from the c backend
+      if size > 0:
+        result = newIntNode(nkIntLit, size)
+        result.info = n.info
+        result.typ = n.typ
+      else:
+        # Forward to the c code generation to emit a `sizeof` in the C code.
+        result = n
+
   of mAlignOf:
     result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
     result.info = n.info

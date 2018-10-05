@@ -65,7 +65,11 @@ macro c_offsetof(a: typed, b: untyped): int32 =
   ## Buffet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral = newLit(repr(b))
+  let bliteral =
+    if b.kind == nnkStrLit:
+      b
+    else:
+      newLit(repr(b))
   result = quote do:
     var res: int32
     {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
@@ -306,16 +310,16 @@ testinstance:
     testOffsetOf(AlignAtEnd, b)
     testOffsetOf(AlignAtEnd, c)
 
-    testOffsetOf(SimpleBranch, kindU, a)
-    testOffsetOf(SimpleBranch, kindU, b)
-    testOffsetOf(SimpleBranch, kindU, c)
+    testOffsetOf(SimpleBranch, "_Ukind", a)
+    testOffsetOf(SimpleBranch, "_Ukind", b)
+    testOffsetOf(SimpleBranch, "_Ukind", c)
 
     testOffsetOf(PaddingBeforeBranchA, cause)
-    testOffsetOf(PaddingBeforeBranchA, kindU, a)
+    testOffsetOf(PaddingBeforeBranchA, "_Ukind", a)
     testOffsetOf(PaddingBeforeBranchB, cause)
-    testOffsetOf(PaddingBeforeBranchB, kindU, a)
+    testOffsetOf(PaddingBeforeBranchB, "_Ukind", a)
 
-    testOffsetOf(PaddingAfterBranch, kindU, a)
+    testOffsetOf(PaddingAfterBranch, "_Ukind", a)
     testOffsetOf(PaddingAfterBranch, cause)
 
     testOffsetOf(Foobar, c)
@@ -336,15 +340,15 @@ testinstance:
     testOffsetOf(EnumObjectB, d)
 
     testOffsetOf(RecursiveStuff, kind)
-    testOffsetOf(RecursiveStuff, kindU.S1.a,             a)
-    testOffsetOf(RecursiveStuff, kindU.S2.b,             b)
-    testOffsetOf(RecursiveStuff, kindU.S3.kind2,         kind2)
-    testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S1.ca1, ca1)
-    testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S1.ca2, ca2)
-    testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S2.cb,  cb)
-    testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S3.cc,  cc)
-    testOffsetOf(RecursiveStuff, kindU.S3.d1,            d1)
-    testOffsetOf(RecursiveStuff, kindU.S3.d2,            d2)
+    testOffsetOf(RecursiveStuff, "_Ukind.S1.a",              a)
+    testOffsetOf(RecursiveStuff, "_Ukind.S2.b",              b)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3.kind2",          kind2)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S1.ca1", ca1)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S1.ca2", ca2)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S2.cb",  cb)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S3.cc",  cc)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3.d1",             d1)
+    testOffsetOf(RecursiveStuff, "_Ukind.S3.d2",             d2)
 
   main()
 
