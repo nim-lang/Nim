@@ -88,7 +88,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect].} =
-  ## Returns true iff the directory `dir` exists. If `dir` is a file, false
+  ## Returns true iff the directory `dir` exists (via a symlink is ok). If `dir` is a file, false
   ## is returned.
   when defined(windows):
     when useWinUnicode:
