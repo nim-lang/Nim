@@ -53,6 +53,10 @@ proc procAddrError(name: cstring) {.noinline.} =
 # http://www.lua.org
 # mailto:info@lua.org
 
+# Note: would like to use a table, but can't since it's included in system.
+when defined(nimDebugDlOpen):
+  var libHandles: seq[(string,LibHandle)]
+
 when defined(posix):
   #
   # =========================================================================
@@ -82,16 +86,31 @@ when defined(posix):
     dlclose(lib)
 
   proc nimLoadLibrary(path: string): LibHandle =
+    discard dlerror()
     result = dlopen(path, RTLD_NOW)
     when defined(nimDebugDlOpen):
+      libHandles.add (path, result)
       let error = dlerror()
-      if error != nil:
+      if error != nil or result == nil:
+        stderr.write("nimLoadLibrary dlerror: ")
         stderr.write(error)
         stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    discard dlerror()
     result = dlsym(lib, name)
-    if result == nil: procAddrError(name)
+    if result == nil:
+      stderr.rawWrite("nimGetProcAddr dlerror: ")
+      stderr.write(dlerror())
+      when defined(nimDebugDlOpen):
+        var found = false
+        for i in 0..libHandles.len-1:
+          if libHandles[i][1] == lib:
+            stderr.rawWrite("; dllname:")
+            stderr.rawWrite(libHandles[i][0])
+            found = true
+      stderr.rawWrite("; ")
+      procAddrError(name)
 
 elif defined(windows) or defined(dos):
   #
