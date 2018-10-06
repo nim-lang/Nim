@@ -944,7 +944,7 @@ proc rawRemoveDir(dir: string) =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError())
 
-proc removeDir*(dir: string, recursive = true) {.raises: [OSError], rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, recursive = true) {.rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign.} =
   ## Removes the directory ``dir``. Additionally removes all subdirectories and files recursively
   ## if ``recursive`` is ``true``.
