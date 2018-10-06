@@ -59,7 +59,7 @@ a location. A query location consists of:
 ``dirtyfile.nim``
     This is optional.
 
-    The ``file`` paramater is enough for static analysis, but IDEs
+    The ``file`` parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -143,7 +143,7 @@ tab characters (``\t``). The values of each column are:
    ``def`` for definition, ``sug`` for suggestion, etc).
 2. Type of the symbol. This can be ``skProc``, ``skLet``, and just
    about any of the enums defined in the module ``compiler/ast.nim``.
-3. Full qualitifed path of the symbol. If you are querying a symbol
+3. Fully qualified path of the symbol. If you are querying a symbol
    defined in the ``proj.nim`` file, this would have the form
    ``proj.symbolName``.
 4. Type/signature. For variables and enums this will contain the
