@@ -567,7 +567,12 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace, optEndb}
       var dest: TLoc
-      initLocExpr(p, lib.path, dest)
+      initLoc(dest, locTemp, lib.path, OnStack)
+      dest.r = getTempName(m)
+      appcg(m, m.s[cfsDynLibInit],"$1 $2;$n",
+           [getTypeDesc(m, lib.path.typ), rdLoc(dest)])
+      expr(p, lib.path, dest)
+
       add(m.s[cfsVars], p.s(cpsLocals))
       add(m.s[cfsDynLibInit], p.s(cpsInit))
       add(m.s[cfsDynLibInit], p.s(cpsStmts))
