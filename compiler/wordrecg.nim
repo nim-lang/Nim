@@ -73,9 +73,9 @@ type
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
     wExplicit, wExtern, wFalse, wFloat, wFriend,
     wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
-    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
+    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast, wRestrict,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
-    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
+    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypeof, wTypename,
     wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
@@ -161,9 +161,9 @@ const
     "dynamic_cast", "explicit", "extern", "false",
     "float", "friend", "goto", "int", "long", "mutable",
     "namespace", "new", "operator",
-    "private", "protected", "public", "register", "reinterpret_cast",
+    "private", "protected", "public", "register", "reinterpret_cast", "restrict",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
-    "this", "throw", "true", "typedef", "typeid",
+    "this", "throw", "true", "typedef", "typeid", "typeof",
     "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
