@@ -946,11 +946,8 @@ proc rawRemoveDir(dir: string) =
 
 proc removeDir*(dir: string, recursive = true) {.raises: [OSError], rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign.} =
-  ## Removes the directory `dir`. By default, it will delete all subdirectories
-  ## and files in `dir`, then `dir` itself, recursively. If `recursive` is
-  ## `false`, then the directory will only be deleted if it is empty and is not
-  ## a file path. If `recursive` is `true` (the default), then `dir` will be
-  ## deleted even if it is a file path and not a directory path.
+  ## Removes the directory ``dir``. Additionally removes all subdirectories and files recursively
+  ## if ``recursive`` is ``true`` (default behavior is recursive).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
   ## existed in the first place.
