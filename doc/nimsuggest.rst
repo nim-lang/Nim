@@ -48,7 +48,7 @@ by default.
 Specifying the location of the query
 ------------------------------------
 
-Nimsuggest than waits for queries to process. A query consists of a
+Nimsuggest then waits for queries to process. A query consists of a
 cryptic 3 letter "command" ``def`` or ``con`` or ``sug`` or ``use`` followed by
 a location. A query location consists of:
 
