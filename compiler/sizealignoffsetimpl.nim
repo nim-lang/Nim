@@ -178,8 +178,6 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   if typ.sym != nil and typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
      typ.kind == tyObject:
-    echo "setting type as imported type"
-    debug(typ.sym)
     typ.size  = szImportedType
     typ.align = szImportedType
     return
