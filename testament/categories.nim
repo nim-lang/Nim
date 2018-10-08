@@ -528,6 +528,12 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
+  of "":
+    for cat in ["rodfiles", "js", "dll", "flags", "gc", "longgc",
+                "debugger", "manyloc", "threads", "io", "async", "lib",
+                "examples", "nimble-core", "nimble-extra", "nimble-all",
+                "niminaction", "untestable"]:
+      echo cat
   else:
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):

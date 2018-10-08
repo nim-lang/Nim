@@ -173,6 +173,8 @@ proc handleShortOption(p: var OptParser; cmd: string) =
 proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## parses the first or next option; ``p.kind`` describes what token has been
   ## parsed. ``p.key`` and ``p.val`` are set accordingly.
+  setLen(p.key.string, 0)
+  setLen(p.val.string, 0)
   if p.idx >= p.cmds.len:
     p.kind = cmdEnd
     return
@@ -180,8 +182,6 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   var i = p.pos
   while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
   p.pos = i
-  setLen(p.key.string, 0)
-  setLen(p.val.string, 0)
   if p.inShortState:
     p.inShortState = false
     if i >= p.cmds[p.idx].len:
