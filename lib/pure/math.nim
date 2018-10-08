@@ -24,7 +24,10 @@ include "system/inclrtl"
 import bitops
 
 proc binom*(n, k: int): int {.noSideEffect.} =
-  ## Computes the binomial coefficient
+  ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_
+  ##
+  ## .. code-block:: nim
+  ##  echo binom(6, 2) ## 15
   if k <= 0: return 1
   if 2*k > n: return binom(n, n-k)
   result = n
@@ -37,7 +40,10 @@ proc createFactTable[N: static[int]]: array[N, int] =
     result[i] = result[i - 1] * i
 
 proc fac*(n: int): int =
-  ## Computes the faculty/factorial function.
+  ## Computes the `factorial <https://en.wikipedia.org/wiki/Factorial>`_ of a non-negative integer `n`
+  ##
+  ## .. code-block:: nim
+  ##  echo fac(4) ## 24
   const factTable =
     when sizeof(int) == 4:
       createFactTable[13]()
@@ -83,6 +89,11 @@ type
 proc classify*(x: float): FloatClass =
   ## Classifies a floating point value. Returns `x`'s class as specified by
   ## `FloatClass`.
+  ##
+  ## .. code-block:: nim
+  ##  echo classify(0.3) ## fcNormal
+  ##  echo classify(0.0) ## fcZero
+  ##  echo classify(0.3/0.0) ## fcInf
 
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
@@ -100,11 +111,19 @@ proc classify*(x: float): FloatClass =
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns true, if `x` is a power of two, false otherwise.
   ## Zero and negative numbers are not a power of two.
+  ##
+  ## .. code-block:: nim
+  ##  echo isPowerOfTwo(5) ## false
+  ##  echo isPowerOfTwo(8) ## true
   return (x > 0) and ((x and (x - 1)) == 0)
 
 proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   ## Returns `x` rounded up to the nearest power of two.
   ## Zero and negative numbers get rounded up to 1.
+  ##
+  ## .. code-block:: nim
+  ##  echo nextPowerOfTwo(8) ## 8
+  ##  echo nextPowerOfTwo(9) ## 16
   result = x - 1
   when defined(cpu64):
     result = result or (result shr 32)
@@ -119,19 +138,28 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
   ## Counts the set bits in `n`.
+  ##
+  ## .. code-block:: nim
+  ##  echo countBits32(13'i32) ## 3
   var v = n
   v = v -% ((v shr 1'i32) and 0x55555555'i32)
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
-  ## Computes the sum of the elements in `x`.
+  ## Computes the sum of the elements in the array `x`.
   ## If `x` is empty, 0 is returned.
+  ##
+  ## .. code-block:: nim
+  ##  echo sum([1.0, 2.5, -3.0, 4.3]) ## 4.8
   for i in items(x): result = result + i
 
 proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the product of the elements in ``x``.
   ## If ``x`` is empty, 1 is returned.
+  ##
+  ## .. code-block:: nim
+  ##  echo prod([1.0, 3.0, -0.2]) ## -0.6
   result = 1.T
   for i in items(x): result = result * i
 
@@ -140,13 +168,18 @@ when not defined(JS): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## Computes the square root of `x`.
+    ## .. code-block:: nim
+    ##  echo sqrt(1.44) ## 1.2
   proc cbrt*(x: float32): float32 {.importc: "cbrtf", header: "<math.h>".}
   proc cbrt*(x: float64): float64 {.importc: "cbrt", header: "<math.h>".}
-    ## Computes the cubic root of `x`
-
+    ## Computes the cubic root of `x`.
+    ## .. code-block:: nim
+    ##  echo cbrt(2.197) ## 1.3
   proc ln*(x: float32): float32 {.importc: "logf", header: "<math.h>".}
   proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
-    ## Computes the natural log of `x`
+    ## Computes the `natural logarithm <https://en.wikipedia.org/wiki/Natural_logarithm>`_ of `x`
+    ## .. code-block:: nim
+    ##  echo ln(exp(4.0)) ## 4.0
 else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
@@ -155,40 +188,62 @@ else: # JS
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
 
 proc log*[T: SomeFloat](x, base: T): T =
-  ## Computes the logarithm ``base`` of ``x``
+  ## Computes the logarithm of ``x`` to base ``base``.
+  ## .. code-block:: nim
+  ##  echo log(9.0, 3.0) ## 2.0
   ln(x) / ln(base)
 
 when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
-    ## Computes the common logarithm (base 10) of `x`
+    ## Computes the common logarithm (base 10) of `x`.
+    ## .. code-block:: nim
+    ##  echo log10(100.0) ## 2.0
   proc exp*(x: float32): float32 {.importc: "expf", header: "<math.h>".}
   proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
-    ## Computes the exponential function of `x` (pow(E, x))
-
+    ## Computes the exponential function of `x` (pow(E, x)).
+    ## .. code-block:: nim
+    ##  echo exp(1.0) ## 2.718281828459045
+    ##  echo ln(exp(4.0)) ## 4.0
   proc sin*(x: float32): float32 {.importc: "sinf", header: "<math.h>".}
   proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
-    ## Computes the sine of `x`
+    ## Computes the sine of `x`.
+    ## .. code-block:: nim
+    ##  echo sin(PI / 6) ## 0.4999999999999999
+    ##  echo sin(degToRad(90.0)) ## 1.0
   proc cos*(x: float32): float32 {.importc: "cosf", header: "<math.h>".}
   proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
-    ## Computes the cosine of `x`
+    ## Computes the cosine of `x`.
+    ## .. code-block:: nim
+    ##  echo cos(2 * PI) ## 1.0
+    ##  echo cos(degToRad(60.0)) ## 0.5000000000000001
   proc tan*(x: float32): float32 {.importc: "tanf", header: "<math.h>".}
   proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
     ## Computes the tangent of `x`
-
+    ## .. code-block:: nim
+    ##  echo tan(degToRad(45.0)) ## 0.9999999999999999
+    ##  echo tan(PI / 4) ## 0.9999999999999999
   proc sinh*(x: float32): float32 {.importc: "sinhf", header: "<math.h>".}
   proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
-    ## Computes the hyperbolic sine of `x`
+    ## Computes the `hyperbolic sine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of `x`.
+    ## .. code-block:: nim
+    ##  echo sinh(1.0) ## 1.175201193643801
   proc cosh*(x: float32): float32 {.importc: "coshf", header: "<math.h>".}
   proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
-    ## Computes the hyperbolic cosine of `x`
+    ## Computes the `hyperbolic cosine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of `x`.
+    ## .. code-block:: nim
+    ##  echo cosh(1.0) ## 1.543080634815244
   proc tanh*(x: float32): float32 {.importc: "tanhf", header: "<math.h>".}
   proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
-    ## Computes the hyperbolic tangent of `x`
+    ## Computes the `hyperbolic tangent <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of `x`.
+    ## .. code-block:: nim
+    ##  echo tanh(1.0) ## 0.7615941559557649
 
   proc arccos*(x: float32): float32 {.importc: "acosf", header: "<math.h>".}
   proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
     ## Computes the arc cosine of `x`
+    ## .. code-block:: nim
+    ##  echo arccos(1.0) ## 0.0
   proc arcsin*(x: float32): float32 {.importc: "asinf", header: "<math.h>".}
   proc arcsin*(x: float64): float64 {.importc: "asin", header: "<math.h>".}
     ## Computes the arc sine of `x`
