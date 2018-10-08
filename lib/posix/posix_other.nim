@@ -475,7 +475,6 @@ type
     sin_family*: TSa_Family ## AF_INET.
     sin_port*: InPort      ## Port number.
     sin_addr*: InAddr      ## IP address.
-    sin_zero: array[16 - 2 - 2 - 4, uint8]
 
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr

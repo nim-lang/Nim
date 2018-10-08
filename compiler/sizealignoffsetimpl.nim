@@ -3,9 +3,9 @@ proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
 const
-  szNonConcreteType* = -3
+  szImportedType*     = -3
   szIllegalRecursion* = -2
-  szUnknownSize* = -1
+  szUncomputedSize*   = -1
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType): void
 
@@ -115,7 +115,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
 
   else:
     result.align = 1
-    result.offset  = szNonConcreteType
+    result.offset  = szImportedType
 
 
 var recDepth = 0
@@ -162,18 +162,26 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
     result = n.sym.offset + n.sym.typ.size
 
   else:
-    result = szNonConcreteType
+    result = szImportedType
 
 # TODO this one needs an alignment map of the individual types
 
-proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
+proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
-  let hasSize = typ.size >= 0
-  let hasAlign = typ.align >= 0
+  let hasSize  = typ.size  >= 0 or typ.size == szImportedType
+  let hasAlign = typ.align >= 0 or typ.size == szImportedType
 
   if hasSize and hasAlign:
     # nothing to do, size and align already computed
+    return
+
+  if typ.sym != nil and typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
+     typ.kind == tyObject:
+    echo "setting type as imported type"
+    debug(typ.sym)
+    typ.size  = szImportedType
+    typ.align = szImportedType
     return
 
   # This function can only calculate both, size and align at the same time.
@@ -260,8 +268,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
 
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
-      typ.size  = szUnknownSize
-      typ.align = szUnknownSize # in original version this was 1
+      typ.size  = szUncomputedSize
+      typ.align = szUncomputedSize # in original version this was 1
     else:
       length = lengthOrd(conf, typ.sons[0])
       if length <= 8:
@@ -370,8 +378,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
-      typ.size = szUnknownSize
-      typ.align = szUnknownSize
+      typ.size = szUncomputedSize
+      typ.align = szUncomputedSize
 
   of tyTypeDesc:
     computeSizeAlign(conf, typ.base)
@@ -389,8 +397,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType): void =
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
-      typ.size = szUnknownSize
-      typ.align = szUnknownSize
+      typ.size = szUncomputedSize
+      typ.align = szUncomputedSize
   else:
-    typ.size  = szUnknownSize
-    typ.align = szUnknownSize
+    typ.size  = szUncomputedSize
+    typ.align = szUncomputedSize

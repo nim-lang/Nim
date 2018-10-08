@@ -73,8 +73,8 @@ type
     next, prev: PBigChunk    # chunks of the same (or bigger) size
     data: AlignType      # start of usable memory
 
-template smallChunkOverhead: int = sizeof(SmallChunk)-sizeof(AlignType)
-template bigChunkOverhead:   int = sizeof(BigChunk)-sizeof(AlignType)
+template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
+template bigChunkOverhead(): untyped = sizeof(BigChunk)-sizeof(AlignType)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk
@@ -371,7 +371,7 @@ iterator elements(t: IntSet): int {.inline.} =
       r = r.next
 
 proc isSmallChunk(c: PChunk): bool {.inline.} =
-  return c.size <= SmallChunkSize-smallChunkOverhead
+  return c.size <= SmallChunkSize-smallChunkOverhead()
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
@@ -748,7 +748,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   var size = roundup(requestedSize, MemAlign)
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
-  if size <= SmallChunkSize-smallChunkOverhead:
+  if size <= SmallChunkSize-smallChunkOverhead():
     # allocate a small block: for small chunks, we use only its next pointer
     var s = size div MemAlign
     var c = a.freeSmallChunks[s]
@@ -758,7 +758,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
       c.acc = size
-      c.free = SmallChunkSize - smallChunkOverhead - size
+      c.free = SmallChunkSize - smallChunkOverhead() - size
       c.next = nil
       c.prev = nil
       listAdd(a.freeSmallChunks[s], c)
@@ -771,7 +771,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       #  c_fprintf(stdout, "csize: %lld; size %lld\n", c.size, size)
       sysAssert c.size == size, "rawAlloc 6"
       if c.freeList == nil:
-        sysAssert(c.acc + smallChunkOverhead + size <= SmallChunkSize,
+        sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
                   "rawAlloc 7")
         result = cast[pointer](cast[ByteAddress](addr(c.data)) +% c.acc)
         inc(c.acc, size)
@@ -787,7 +787,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
       sysAssert(allocInv(a), "rawAlloc: before listRemove test")
       listRemove(a.freeSmallChunks[s], c)
       sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead) %%
+    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead()) %%
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
@@ -846,11 +846,11 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       inc(c.free, s)
     else:
       inc(c.free, s)
-      if c.free == SmallChunkSize-smallChunkOverhead:
+      if c.free == SmallChunkSize-smallChunkOverhead():
         listRemove(a.freeSmallChunks[s div MemAlign], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead) %%
+    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
@@ -874,7 +874,7 @@ proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
       if isSmallChunk(c):
         var c = cast[PSmallChunk](c)
         var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead
+                     smallChunkOverhead()
         result = (c.acc >% offset) and (offset %% c.size == 0) and
           (cast[ptr FreeCell](p).zeroField >% 1)
       else:
@@ -892,7 +892,7 @@ proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
       if isSmallChunk(c):
         var c = cast[PSmallChunk](c)
         var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead
+                     smallChunkOverhead()
         if c.acc >% offset:
           sysAssert(cast[ByteAddress](addr(c.data)) +% offset ==
                     cast[ByteAddress](p), "offset is not what you think it is")
@@ -927,7 +927,7 @@ proc ptrSize(p: pointer): int =
   sysAssert(not chunkUnused(c), "ptrSize")
   result = c.size -% sizeof(FreeCell)
   if not isSmallChunk(c):
-    dec result, bigChunkOverhead
+    dec result, bigChunkOverhead()
 
 proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
   result = rawAlloc(allocator, size+sizeof(FreeCell))

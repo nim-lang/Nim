@@ -1273,16 +1273,11 @@ proc getReturnType*(s: PSym): PType =
 
 proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
-
   result = typ.align
-  if result < 0:
-    internalError(conf, "getAlign: " & $typ.kind)
 
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
   computeSizeAlign(conf, typ)
   result = typ.size
-  if result < 0:
-    internalError(conf, "getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind

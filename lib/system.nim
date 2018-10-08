@@ -613,7 +613,7 @@ proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## of the passed ``size``. This should only be used for optimization
   ## purposes when you know what you're doing!
 
-proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect, compileTime.}
+proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,
@@ -630,16 +630,15 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect, compileTime.}
 
 when defined(nimHasalignOf):
   proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-  when defined(nimtypedescfixed):
-    proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
 
   proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
-  template offsetOf*[T](t : typedesc[T]; member: untyped): int =
+  template offsetOf*[T](t: typedesc[T]; member: untyped): int =
     var tmp: T
     offsetOfDotExpr(tmp.member)
 
-  template offsetOf*[T](value : T; member: untyped): int =
+  template offsetOf*[T](value: T; member: untyped): int =
     offsetOfDotExpr(value.member)
 
   #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}

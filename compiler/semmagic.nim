@@ -326,13 +326,19 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       # TODO there is no proper way to find out if a type cannot be queried for the size.
       let size = getSize(c.config, n[1].typ)
       # We just assume here that the type might come from the c backend
-      if size > 0:
+      if size == szImportedType:
+        # Forward to the c code generation to emit a `sizeof` in the C code.
+        result = n
+      elif size >= 0:
         result = newIntNode(nkIntLit, size)
         result.info = n.info
         result.typ = n.typ
       else:
-        # Forward to the c code generation to emit a `sizeof` in the C code.
-        result = n
+
+        localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+
+        result = nil
+
 
   of mAlignOf:
     result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))

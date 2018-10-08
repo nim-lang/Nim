@@ -2,8 +2,6 @@ discard """
   output: "OK"
 """
 
-# TODO test with small sized kind
-
 type
   TMyEnum = enum
     tmOne, tmTwo, tmThree, tmFour
