@@ -256,10 +256,12 @@ when not defined(JS): # C
   proc arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
     ## Calculate the arc tangent of `y` / `x`.
-    ## `atan2` returns the arc tangent of `y` / `x`; it produces correct
+    ## `arctan2` returns the arc tangent of `y` / `x`; it produces correct
     ## results even when the resulting angle is near pi/2 or -pi/2
     ## (`x` near 0).
-
+    ## .. code-block:: nim
+    ##  echo arctan2(1.0, 0.0) ## 0.7853981633974483
+    ##  echo radToDeg(arctan2(1.0, 0.0)) ## 45.0
   proc arcsinh*(x: float32): float32 {.importc: "asinhf", header: "<math.h>".}
   proc arcsinh*(x: float64): float64 {.importc: "asinh", header: "<math.h>".}
     ## Computes the inverse hyperbolic sine of `x`
