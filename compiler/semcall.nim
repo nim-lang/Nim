@@ -330,10 +330,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
-      else:
-        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
+      if efNoUndeclared notin flags:
+        if nfDotField in n.flags and nfExplicitCall notin n.flags:
+          localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
+        else:
+          localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -500,14 +501,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         # repeat the overload resolution,
         # this time enabling all the diagnostic output (this should fail again)
         discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      else:
+      elif efNoUndeclared notin flags:
         notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    else:
+    elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
