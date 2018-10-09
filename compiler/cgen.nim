@@ -1632,7 +1632,7 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   g.config = config
   let (outDir, _, _) = splitFile(config.outfile)
   if not outDir.isEmpty:
-    try: createDir(outDir) except: discard "couldn't create dir"
+    createDir(outDir)
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):

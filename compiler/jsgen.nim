@@ -2284,7 +2284,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
     let (outDir, _, _) = splitFile(outfile)
     if not outDir.isEmpty:
-      try: createDir(outDir) except: discard "couldn't create dir"
+      createDir(outDir)
     discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)
