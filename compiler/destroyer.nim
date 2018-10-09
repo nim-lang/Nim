@@ -289,7 +289,7 @@ proc destructiveMoveSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let bit = newSymNode dropBit(c, n.sym)
   if optMoveCheck in c.owner.options:
-    result.add callCodegenProc(c.graph, "chckMove", bit)
+    result.add callCodegenProc(c.graph, "chckMove", bit.info, bit)
   result.add newTree(nkAsgn, bit,
     newIntTypeNode(nkIntLit, 0, getSysType(c.graph, n.info, tyBool)))
   result.add n
