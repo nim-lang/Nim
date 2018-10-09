@@ -8,7 +8,7 @@ true
 
 when true:
   # Error: undeclared identifier: '|'
-  proc bar[T](t:T): bool =
+  proc bar*[T](t:T): bool =
     runnableExamples:
       type Foo = int | float
     true
@@ -16,7 +16,7 @@ when true:
 
 when true:
   # ok
-  proc bar(t:int): bool =
+  proc bar*(t:int): bool =
     runnableExamples:
       type Foo = int | float
     true
@@ -24,7 +24,7 @@ when true:
 
 when true:
   # Error: undeclared identifier: '|'
-  proc bar(t:typedesc): bool =
+  proc bar*(t:typedesc): bool =
     runnableExamples:
       type Foo = int | float
     true
