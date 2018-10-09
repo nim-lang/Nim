@@ -449,14 +449,14 @@ when not defined(JS): # C
   proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
   proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of `x` divided by `y`.
-    ## **Deprecated: Use ```mod``` instead.
+    ## **Deprecated: Use the `mod` operator instead.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
     ## Computes the modulo operation for float values (the remainder of `x` divided by `y`).
     ##
     ## .. code-block:: nim
-    ##  echo `mod`(2.5, 0.3) ## 0.1
+    ##  echo 2.5 mod 0.3 ## 0.1
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
@@ -471,17 +471,25 @@ else: # JS
 
   proc `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
   proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
-  ## Computes the modulo operation for float operators.
+    ## Computes the modulo operation for float values (the remainder of `x` divided by `y`).
+    ##
+    ## .. code-block:: nim
+    ##  echo 2.5 mod 0.3 ## 0.1
 
 proc round*[T: float32|float64](x: T, places: int = 0): T =
   ## Round a floating point number.
   ##
-  ## If `places` is 0 (or omitted), round to the nearest integral value
-  ## following normal mathematical rounding rules (e.g. `round(54.5) -> 55.0`).
+  ## If `places` is 0 (or omitted), round to the nearest integer value
+  ## following normal mathematical rounding rules.
   ## If `places` is greater than 0, round to the given number of decimal
-  ## places, e.g. `round(54.346, 2) -> 54.35`.
-  ## If `places` is negative, round to the left of the decimal place, e.g.
-  ## `round(537.345, -1) -> 540.0`
+  ## places.
+  ## If `places` is negative, round to the left of the decimal place.
+  ##
+  ## .. code-block:: nim
+  ##  echo round(54.5) ## 55.0
+  ##  echo round(54.346, 2) ## 54.35
+  ##  echo round(537.345, -1) ## 540.0
+
   if places == 0:
     result = round0(x)
   else:
@@ -493,13 +501,19 @@ proc floorDiv*[T: SomeInteger](x, y: T): T =
   ## This is different from the ``div`` operator, which is defined
   ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
   ## rounds down.
+  ## .. code-block:: nim
+  ##  echo floorDiv(13, 3) # 4
+  ##  echo floorDiv(-13, 3) # -5
   result = x div y
   let r = x mod y
   if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
 
 proc floorMod*[T: SomeNumber](x, y: T): T =
   ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y).
-  ## This proc behaves the same as the ``%`` operator in python.
+  ## This proc behaves the same as the ``%`` operator in Python.
+  ## .. code-block:: nim
+  ##  echo floorMod(13, 3) # 1
+  ##  echo floorMod(-13, 3) # 2
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
@@ -514,6 +528,10 @@ when not defined(JS):
     ## and less than 1) and the integer value n such that `x` (the original
     ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
     ## m.
+    ## .. code-block:: nim
+    ##  var x : int
+    ##  echo frexp(5.0, x) # 0.625
+    ##  echo x # 3
     var exp: int32
     result = c_frexp(x, exp)
     exponent = exp
@@ -557,13 +575,15 @@ else:
         result = 0.99999999999999988898
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
-  ## Breaks `x` into an integral and a fractional part.
+  ## Breaks `x` into an integer and a fractional part.
   ##
-  ## Returns a tuple containing intpart and floatpart representing
+  ## Returns a tuple containing `intpart` and `floatpart` representing
   ## the integer part and the fractional part respectively.
   ##
   ## Both parts have the same sign as `x`.  Analogous to the `modf`
   ## function in C.
+  ## .. code-block:: nim
+  ##  echo splitDecimal(5.25) # (intpart: 5.0, floatpart: 0.25)
   var
     absolute: T
   absolute = abs(x)
@@ -577,16 +597,23 @@ proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
 
 proc degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from degrees to radians
+  ## .. code-block:: nim
+  ##  echo degToRad(180.0) # 3.141592653589793
   result = T(d) * RadPerDeg
 
 proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees
+  ## .. code-block:: nim
+  ##  echo degToRad(2 * PI) # 360.0
   result = T(d) / RadPerDeg
 
 proc sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## Sign function. Returns -1 for negative numbers and `NegInf`, 1 for
   ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
   ## `NaN`.
+  ## .. code-block:: nim
+  ##  echo sgn(-5) # 1
+  ##  echo sgn(-4.1) # -1
   ord(T(0) < x) - ord(x < T(0))
 
 {.pop.}
@@ -595,6 +622,8 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 proc `^`*[T](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``. ``x`` must be non-negative, use
   ## `pow <#pow,float,float>`_ for negative exponents.
+  ## .. code-block:: nim
+  ##  echo 2 ^ 3 # 8
   when compiles(y >= T(0)):
     assert y >= T(0)
   else:
@@ -624,6 +653,8 @@ proc gcd*[T](x, y: T): T =
 proc gcd*(x, y: SomeInteger): SomeInteger =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ## Using binary GCD (aka Stein's) algorithm.
+  ## .. code-block:: nim
+  ##  echo gcd(24, 30) # 6
   when x is SomeSignedInt:
     var x = abs(x)
   else:
@@ -649,6 +680,8 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
+  ## .. code-block:: nim
+  ##  echo lcm(24, 30) # 120
   x div gcd(x, y) * y
 
 when isMainModule and not defined(JS) and not windowsCC89:
