@@ -18,7 +18,7 @@ import
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 when defined(nimfix):
   import nimfix/prettybase
