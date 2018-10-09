@@ -235,7 +235,6 @@ proc genGotoVar(p: BProc; value: PNode) =
 proc genSingleVar(p: BProc, a: PNode) =
   let vn = a.sons[0]
   let v = vn.sym
-  if sfCompileTime in v.flags: return
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
     genGotoVar(p, a.sons[2])
