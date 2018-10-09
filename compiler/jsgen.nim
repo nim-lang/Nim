@@ -34,10 +34,10 @@ import
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TJSGen = object of TPassContext
+  TJSGen = object of PPassContext
     module: PSym
     graph: ModuleGraph
     config: ConfigRef

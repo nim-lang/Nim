@@ -38,7 +38,7 @@ type
                               # if we encounter the 2nd yield statement
     next: PTransCon           # for stacking
 
-  TTransfContext = object of passes.TPassContext
+  TTransfContext = object of TPassContext
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
