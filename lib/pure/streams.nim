@@ -158,12 +158,12 @@ proc peek[T](s: Stream, result: var T) =
 
 proc readChar*(s: Stream): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occurred.
-  ## Returns '\0' as an EOF marker.
+  ## Returns '\\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
   ## peeks a char from the stream `s`. Raises `EIO` if an error occurred.
-  ## Returns '\0' as an EOF marker.
+  ## Returns '\\0' as an EOF marker.
   if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: Stream): bool =
