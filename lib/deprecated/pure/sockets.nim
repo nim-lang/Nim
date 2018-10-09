@@ -32,16 +32,20 @@
 
 include "system/inclrtl"
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
+elif hostOS == "haiku":
+  {.passl: "-lnetwork".}
 
 import os, parseutils
 from times import epochTime
 
 when defined(ssl):
   import openssl
+else:
+  type SSLAcceptResult = int
 
 when defined(Windows):
   import winlean
@@ -206,20 +210,20 @@ proc htons*(x: int16): int16 =
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = sockets.ntohs(x)
 
-template ntohl(x: uint32): expr =
+template ntohl(x: uint32): uint32 =
   cast[uint32](sockets.ntohl(cast[int32](x)))
 
-template ntohs(x: uint16): expr =
+template ntohs(x: uint16): uint16 =
   cast[uint16](sockets.ntohs(cast[int16](x)))
 
-template htonl(x: uint32): expr =
+template htonl(x: uint32): uint32 =
   sockets.ntohl(x)
 
-template htons(x: uint16): expr =
+template htons(x: uint16): uint16 =
   sockets.ntohs(x)
 
 when defined(Posix):
-  proc toInt(domain: Domain): TSa_Family =
+  proc toInt(domain: Domain): cint =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
@@ -260,7 +264,7 @@ proc socket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
 
   # TODO: Perhaps this should just raise EOS when an error occurs.
   when defined(Windows):
-    result = newTSocket(winlean.socket(ord(domain), ord(typ), ord(protocol)), buffered)
+    result = newTSocket(winlean.socket(cint(domain), cint(typ), cint(protocol)), buffered)
   else:
     result = newTSocket(posix.socket(toInt(domain), toInt(typ), toInt(protocol)), buffered)
 
@@ -442,14 +446,13 @@ proc parseIp4*(s: string): BiggestInt =
   if s[i] != '\0': invalidIp4(s)
   result = BiggestInt(a shl 24 or b shl 16 or c shl 8 or d)
 
-template gaiNim(a, p, h, list: expr): stmt =
-  block:
-    var gaiResult = getaddrinfo(a, $p, addr(h), list)
-    if gaiResult != 0'i32:
-      when defined(windows):
-        raiseOSError(osLastError())
-      else:
-        raiseOSError(osLastError(), $gai_strerror(gaiResult))
+template gaiNim(a, p, h, list: untyped): untyped =
+  var gaiResult = getaddrinfo(a, $p, addr(h), list)
+  if gaiResult != 0'i32:
+    when defined(windows):
+      raiseOSError(osLastError())
+    else:
+      raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
@@ -460,9 +463,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   if address == "":
     var name: Sockaddr_in
     when defined(Windows):
-      name.sin_family = int16(ord(AF_INET))
+      name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = posix.AF_INET
+      name.sin_family = uint16(posix.AF_INET)
     name.sin_port = sockets.htons(uint16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(socket.fd, cast[ptr SockAddr](addr(name)),
@@ -482,9 +485,9 @@ proc getSockName*(socket: Socket): Port =
   ## returns the socket's associated port number.
   var name: Sockaddr_in
   when defined(Windows):
-    name.sin_family = int16(ord(AF_INET))
+    name.sin_family = uint16(ord(AF_INET))
   else:
-    name.sin_family = posix.AF_INET
+    name.sin_family = uint16(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
   var namelen = sizeof(name).SockLen
@@ -493,8 +496,8 @@ proc getSockName*(socket: Socket): Port =
     raiseOSError(osLastError())
   result = Port(sockets.ntohs(name.sin_port))
 
-template acceptAddrPlain(noClientRet, successRet: expr,
-                         sslImplementation: stmt): stmt {.immediate.} =
+template acceptAddrPlain(noClientRet, successRet: SSLAcceptResult or int,
+                         sslImplementation: untyped): untyped =
   assert(client != nil)
   var sockAddress: Sockaddr_in
   var addrLen = sizeof(sockAddress).SockLen
@@ -550,7 +553,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string) {.
   ##
   ## **Warning:** When using SSL with non-blocking sockets, it is best to use
   ## the acceptAddrSSL procedure as this procedure will most likely block.
-  acceptAddrPlain(-1, -1):
+  acceptAddrPlain(SSLAcceptResult(-1), SSLAcceptResult(-1)):
     when defined(ssl):
       if server.isSSL:
         # We must wrap the client sock in a ssl context.
@@ -594,7 +597,7 @@ when defined(ssl):
     ##
     ## ``AcceptNoClient`` will be returned when no client is currently attempting
     ## to connect.
-    template doHandshake(): stmt =
+    template doHandshake(): untyped =
       when defined(ssl):
         if server.isSSL:
           client.setBlocking(false)
@@ -726,9 +729,9 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
   when defined(windows):
     result.addrtype = Domain(s.h_addrtype)
   else:
-    if s.h_addrtype == posix.AF_INET:
+    if s.h_addrtype.cint == posix.AF_INET:
       result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
+    elif s.h_addrtype.cint == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
@@ -747,9 +750,9 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   when defined(windows):
     result.addrtype = Domain(s.h_addrtype)
   else:
-    if s.h_addrtype == posix.AF_INET:
+    if s.h_addrtype.cint == posix.AF_INET:
       result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
+    elif s.h_addrtype.cint == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
@@ -952,8 +955,12 @@ when defined(ssl):
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when defined(posix):
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
+    else:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
 proc createFdSet(fd: var TFdSet, s: seq[Socket], m: var int) =
   FD_ZERO(fd)
@@ -1278,7 +1285,7 @@ proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
   ## **Deprecated since version 0.9.2**: This function has been deprecated in
   ## favour of readLine.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if line.len == 0:
       line.add("\c\L")
 
@@ -1319,7 +1326,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if line.len == 0:
       line.add("\c\L")
 

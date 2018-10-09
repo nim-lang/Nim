@@ -3,7 +3,7 @@ discard """
 """
 
 # bug #206
-template optimizeOut{testFunc(a, b)}(a: int, b: int{alias}) : expr = 0
+template optimizeOut{testFunc(a, b)}(a: int, b: int{alias}): untyped = 0
 
 proc testFunc(a, b: int): int = result = a + b
 var testVar = 1

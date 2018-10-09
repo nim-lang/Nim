@@ -8,7 +8,7 @@ type
     TA = tuple[a: int]
     PA = ref TA
 
-macro test*(a: stmt): stmt {.immediate.} =
+macro test*(a: untyped): untyped =
   var val: PA
   new(val)
   val.a = 4
@@ -16,7 +16,7 @@ macro test*(a: stmt): stmt {.immediate.} =
 test:
   "hi"
 
-macro test2*(a: stmt): stmt {.immediate.} =
+macro test2*(a: untyped): untyped =
   proc testproc(recurse: int) =
     echo "Thats weird"
     var o : NimNode = nil
@@ -28,4 +28,3 @@ macro test2*(a: stmt): stmt {.immediate.} =
 
 test2:
   "hi"
-

@@ -9,7 +9,7 @@ type
   MyData = object
       x: int
 
-template newDataWindow(data: ref MyData): stmt =
+template newDataWindow(data: ref MyData): untyped =
     proc testProc(data: ref MyData) =
         echo "Hello, ", data.x
     testProc(data)

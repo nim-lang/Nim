@@ -22,7 +22,7 @@ when not declared(NimString):
 type
   pbytes = ptr array[0.. 0xffff, byte]
   RawChannel {.pure, final.} = object ## msg queue for a thread
-    rd, wr, count, mask: int
+    rd, wr, count, mask, maxItems: int
     data: pbytes
     lock: SysLock
     cond: SysCond
@@ -32,16 +32,15 @@ type
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
   Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
-{.deprecated: [TRawChannel: RawChannel, TLoadStoreMode: LoadStoreMode,
-              TChannel: Channel].}
 
 const ChannelDeadMask = -2
 
-proc initRawChannel(p: pointer) =
+proc initRawChannel(p: pointer, maxItems: int) =
   var c = cast[PRawChannel](p)
   initSysLock(c.lock)
   initSysCond(c.cond)
   c.mask = -1
+  c.maxItems = maxItems
 
 proc deinitRawChannel(p: pointer) =
   var c = cast[PRawChannel](p)
@@ -117,7 +116,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
       if mode == mStore:
         x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
-        unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
+        unsureAsgnRef(x, newSeq(mt, seq.len))
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
       var dstseq = cast[PGenericSeq](dst)
       dstseq.len = seq.len
@@ -143,7 +142,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
     for i in 0..(mt.size div mt.base.size)-1:
       storeAux(cast[pointer](d +% i*% mt.base.size),
                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
-  of tyRef:
+  of tyRef, tyOptAsRef:
     var s = cast[PPointer](src)[]
     var x = cast[PPointer](dest)
     if s == nil:
@@ -203,28 +202,41 @@ proc rawRecv(q: PRawChannel, data: pointer, typ: PNimType) =
   storeAux(data, addr(q.data[q.rd * typ.size]), typ, q, mLoad)
   q.rd = (q.rd + 1) and q.mask
 
-template lockChannel(q: expr, action: stmt) {.immediate.} =
+template lockChannel(q, action): untyped =
   acquireSys(q.lock)
   action
   releaseSys(q.lock)
 
-template sendImpl(q: expr) {.immediate.} =
+proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool =
   if q.mask == ChannelDeadMask:
     sysFatal(DeadThreadError, "cannot send message; thread died")
   acquireSys(q.lock)
-  var typ = cast[PNimType](getTypeInfo(msg))
-  rawSend(q, unsafeAddr(msg), typ)
+  if q.maxItems > 0:
+    # Wait until count is less than maxItems
+    if noBlock and q.count >= q.maxItems:
+      releaseSys(q.lock)
+      return
+
+    while q.count >= q.maxItems:
+      waitSysCond(q.cond, q.lock)
+
+  rawSend(q, msg, typ)
   q.elemType = typ
   releaseSys(q.lock)
   signalSysCond(q.cond)
+  result = true
 
-proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) =
+proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
   ## sends a message to a thread. `msg` is deeply copied.
-  var q = cast[PRawChannel](addr(c))
-  sendImpl(q)
+  discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
+
+proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
+  ## Tries to send a message to a thread. `msg` is deeply copied. Doesn't block.
+  ## Returns `false` if the message was not sent because number of pending items
+  ## in the channel exceeded `maxItems`.
+  sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
-  # to save space, the generic is as small as possible
   q.ready = true
   while q.count <= 0:
     waitSysCond(q.cond, q.lock)
@@ -233,6 +245,9 @@ proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
     releaseSys(q.lock)
     sysFatal(ValueError, "cannot receive message of wrong type")
   rawRecv(q, res, typ)
+  if q.maxItems > 0 and q.count == q.maxItems - 1:
+    # Parent thread is awaiting in send. Wake it up.
+    signalSysCond(q.cond)
 
 proc recv*[TMsg](c: var Channel[TMsg]): TMsg =
   ## receives a message from the channel `c`. This blocks until
@@ -267,9 +282,11 @@ proc peek*[TMsg](c: var Channel[TMsg]): int =
   else:
     result = -1
 
-proc open*[TMsg](c: var Channel[TMsg]) =
-  ## opens a channel `c` for inter thread communication.
-  initRawChannel(addr(c))
+proc open*[TMsg](c: var Channel[TMsg], maxItems: int = 0) =
+  ## opens a channel `c` for inter thread communication. The `send` operation
+  ## will block until number of unprocessed items is less than `maxItems`.
+  ## For unlimited queue set `maxItems` to 0.
+  initRawChannel(addr(c), maxItems)
 
 proc close*[TMsg](c: var Channel[TMsg]) =
   ## closes a channel `c` and frees its associated resources.

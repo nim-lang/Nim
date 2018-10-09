@@ -15,7 +15,7 @@ proc main =
       let val = s[i]()
       if val != $(i*i): echo "bug  ", val
 
-    if getOccupiedMem() > 3000_000: quit("still a leak!")
+    if getOccupiedMem() > 5000_000: quit("still a leak!")
   echo "success"
 
 main()

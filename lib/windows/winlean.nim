@@ -10,12 +10,12 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 import dynlib
 
-when defined(vcc):
-  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+
+{.passC: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -111,6 +111,7 @@ const
   WAIT_TIMEOUT* = 0x00000102'i32
   WAIT_FAILED* = 0xFFFFFFFF'i32
   INFINITE* = -1'i32
+  STILL_ACTIVE* = 0x00000103'i32
 
   STD_INPUT_HANDLE* = -10'i32
   STD_OUTPUT_HANDLE* = -11'i32
@@ -128,7 +129,6 @@ const
   PIPE_ACCESS_OUTBOUND* = 2'i32
   PIPE_NOWAIT* = 0x00000001'i32
   SYNCHRONIZE* = 0x00100000'i32
-  FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
@@ -280,15 +280,31 @@ else:
     importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
 
 const
-  FILE_ATTRIBUTE_ARCHIVE* = 32'i32
-  FILE_ATTRIBUTE_COMPRESSED* = 2048'i32
-  FILE_ATTRIBUTE_NORMAL* = 128'i32
-  FILE_ATTRIBUTE_DIRECTORY* = 16'i32
-  FILE_ATTRIBUTE_HIDDEN* = 2'i32
-  FILE_ATTRIBUTE_READONLY* = 1'i32
-  FILE_ATTRIBUTE_REPARSE_POINT* = 1024'i32
-  FILE_ATTRIBUTE_SYSTEM* = 4'i32
-  FILE_ATTRIBUTE_TEMPORARY* = 256'i32
+  FILE_ATTRIBUTE_READONLY* = 0x00000001'i32
+  FILE_ATTRIBUTE_HIDDEN* = 0x00000002'i32
+  FILE_ATTRIBUTE_SYSTEM* = 0x00000004'i32
+  FILE_ATTRIBUTE_DIRECTORY* = 0x00000010'i32
+  FILE_ATTRIBUTE_ARCHIVE* = 0x00000020'i32
+  FILE_ATTRIBUTE_DEVICE* = 0x00000040'i32
+  FILE_ATTRIBUTE_NORMAL* = 0x00000080'i32
+  FILE_ATTRIBUTE_TEMPORARY* = 0x00000100'i32
+  FILE_ATTRIBUTE_SPARSE_FILE* = 0x00000200'i32
+  FILE_ATTRIBUTE_REPARSE_POINT* = 0x00000400'i32
+  FILE_ATTRIBUTE_COMPRESSED* = 0x00000800'i32
+  FILE_ATTRIBUTE_OFFLINE* = 0x00001000'i32
+  FILE_ATTRIBUTE_NOT_CONTENT_INDEXED* = 0x00002000'i32
+
+  FILE_FLAG_FIRST_PIPE_INSTANCE* = 0x00080000'i32
+  FILE_FLAG_OPEN_NO_RECALL* = 0x00100000'i32
+  FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
+  FILE_FLAG_POSIX_SEMANTICS* = 0x01000000'i32
+  FILE_FLAG_BACKUP_SEMANTICS* = 0x02000000'i32
+  FILE_FLAG_DELETE_ON_CLOSE* = 0x04000000'i32
+  FILE_FLAG_SEQUENTIAL_SCAN* = 0x08000000'i32
+  FILE_FLAG_RANDOM_ACCESS* = 0x10000000'i32
+  FILE_FLAG_NO_BUFFERING* = 0x20000000'i32
+  FILE_FLAG_OVERLAPPED* = 0x40000000'i32
+  FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   MAX_PATH* = 260
 
@@ -380,7 +396,7 @@ else:
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32".}
-  proc moveFileExA*(lpExistingFileName, lpNewFileName: WideCString,
+  proc moveFileExA*(lpExistingFileName, lpNewFileName: cstring,
                     flags: DWORD): WINBOOL {.
     importc: "MoveFileExA", stdcall, dynlib: "kernel32".}
 
@@ -448,7 +464,7 @@ type
     lpVendorInfo: cstring
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
-    sa_family*: int16 # unsigned
+    sa_family*: uint16
     sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
@@ -458,7 +474,7 @@ type
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
-    sin_family*: int16
+    sin_family*: uint16
     sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
@@ -468,17 +484,24 @@ type
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
 
   Sockaddr_in6_old* = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: int16 # unsigned
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
+
+  Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
+                      header: "winsock2.h".} = object
+    ss_family*: uint16
+    ss_pad1: array[6, byte]
+    ss_align: int64
+    ss_pad2: array[112, byte]
 
   Servent* = object
     s_name*: cstring
@@ -541,6 +564,7 @@ var
   SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
   SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
+  TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
@@ -664,6 +688,7 @@ const
   CREATE_ALWAYS* = 2'i32
   CREATE_NEW* = 1'i32
   OPEN_EXISTING* = 3'i32
+  OPEN_ALWAYS* = 4'i32
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
@@ -673,8 +698,6 @@ const
   FILE_MAP_WRITE* = 2'i32
   INVALID_FILE_SIZE* = -1'i32
 
-  FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
-  FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
   DUPLICATE_SAME_ACCESS* = 2
   FILE_READ_DATA* = 0x00000001 # file & pipe
   FILE_WRITE_DATA* = 0x00000002 # file & pipe
@@ -684,6 +707,8 @@ const
   ERROR_FILE_NOT_FOUND* = 2
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
+  ERROR_NO_MORE_FILES* = 18
+  ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
@@ -693,6 +718,11 @@ proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
+
+proc setHandleInformation*(hObject: HANDLE, dwMask: DWORD,
+                           dwFlags: DWORD): WINBOOL {.stdcall,
+    dynlib: "kernel32", importc: "SetHandleInformation".}
+
 proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
@@ -747,6 +777,9 @@ when not useWinUnicode:
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
 
+proc flushViewOfFile*(lpBaseAddress: pointer, dwNumberOfBytesToFlush: DWORD): WINBOOL {.
+  stdcall, dynlib: "kernel32", importc: "FlushViewOfFile".}
+
 type
   OVERLAPPED* {.pure, inheritable.} = object
     internal*: PULONG
@@ -769,7 +802,6 @@ type
 
 const
   ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
-  FILE_FLAG_OVERLAPPED* = 1073741824
   WSAECONNABORTED* = 10053
   WSAEADDRINUSE* = 10048
   WSAECONNRESET* = 10054
@@ -1070,3 +1102,14 @@ proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, d
 proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
+
+proc toFILETIME*(t: int64): FILETIME =
+  ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
+  result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
+
+type
+  LPFILETIME* = ptr FILETIME
+
+proc setFileTime*(hFile: HANDLE, lpCreationTime: LPFILETIME,
+                 lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
+     {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}

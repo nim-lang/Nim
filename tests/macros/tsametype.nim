@@ -13,7 +13,7 @@ false'''
 
 import macros
 
-macro same(a: typedesc, b: typedesc): expr =
+macro same(a: typedesc, b: typedesc): untyped =
   newLit(a.getType[1].sameType b.getType[1])
 
 echo same(int, int)

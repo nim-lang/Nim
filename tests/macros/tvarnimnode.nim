@@ -10,7 +10,7 @@ proc test(f: var NimNode) {.compileTime.} =
   f = newNimNode(nnkStmtList)
   f.add newCall(newIdentNode("echo"), newLit(10))
 
-macro blah(prc: stmt): stmt =
+macro blah(prc: untyped): untyped =
   result = prc
 
   test(result)

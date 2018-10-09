@@ -13,7 +13,7 @@ var
 
 c.i = 89
 
-template atomicRead(L, x): expr =
+template atomicRead(L, x): untyped =
   {.locks: [L].}:
     x
 

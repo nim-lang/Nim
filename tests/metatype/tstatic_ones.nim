@@ -1,5 +1,6 @@
 discard """
-  output: "@[2, 2, 2, 2, 2]"
+  output: '''@[2, 2, 2, 2, 2]
+0'''
 """
 
 # bug #3144
@@ -26,3 +27,8 @@ proc sum[N: static[int]](vs: seq[IntArray[N]]): IntArray[N] =
     result += v
 
 echo sum(@[ones(5), ones(5)])
+
+# bug #6533
+type Value[T: static[int]] = typedesc
+proc foo(order: Value[1]): auto = 0
+echo foo(Value[1])

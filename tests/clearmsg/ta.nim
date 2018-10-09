@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (mc.typ)"
+  errormsg: "type mismatch: got <mc.typ>"
   line: 12
 """
 

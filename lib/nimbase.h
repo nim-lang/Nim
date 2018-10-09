@@ -70,7 +70,7 @@ __clang__
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090)
+#  pragma warning(disable: 4710 4711 4774 4800 4809 4820 4996 4090 4297)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -107,6 +107,8 @@ __clang__
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
+#define N_INLINE_PTR(rettype, name) rettype (*name)
+
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
 #  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
@@ -129,13 +131,13 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
+#elif defined(__TINYC__) || defined(__GENODE__)
+#  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
-#elif defined __TINYC__
-#  define NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -159,6 +161,7 @@ __clang__
 /* ------------------------------------------------------------------- */
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
+#  define N_LIB_PRIVATE
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
@@ -178,6 +181,7 @@ __clang__
 #  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
+#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name
@@ -262,6 +266,11 @@ __clang__
 #  define HAVE_STDINT_H
 #endif
 
+/* wrap all Nim typedefs into namespace Nim */
+#ifdef USE_NIM_NAMESPACE
+namespace USE_NIM_NAMESPACE {
+#endif
+
 /* bool types (C++ has it): */
 #ifdef __cplusplus
 #  ifndef NIM_TRUE
@@ -271,14 +280,13 @@ __clang__
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL 0
-struct NimException
-{
-  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
-
-  struct Exception* exp;
-  const char* msg;
-};
+#  if __cplusplus >= 201103L
+#    /* nullptr is more type safe (less implicit conversions than 0) */
+#    define NIM_NIL nullptr
+#  else
+#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    define NIM_NIL 0
+#  endif
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -373,11 +381,13 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+
 #define STRING_LITERAL(name, str, length) \
-  static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-  } name = {{length, length}, str}
+   static const struct {                   \
+     TGenericSeq Sup;                      \
+     NIM_CHAR data[(length) + 1];          \
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 typedef struct TStringDesc* string;
 
@@ -394,15 +404,13 @@ typedef struct TStringDesc* string;
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__i386__)
-#  ifndef NAN
-static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
-#    define NAN (*(double*) nimNaN)
-#  endif
-#endif
-
+// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#  define NAN (0.0 / 0.0)
+#  ifndef _HUGE_ENUF
+#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#  endif
+#  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#  define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
@@ -418,8 +426,8 @@ static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
 #  endif
 #endif
 
-typedef struct TFrame TFrame;
-struct TFrame {
+typedef struct TFrame_ TFrame;
+struct TFrame_ {
   TFrame* prev;
   NCSTRING procname;
   NI line;
@@ -480,6 +488,9 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like:
    "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
 typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+
+#ifdef USE_NIM_NAMESPACE
+}
 #endif
 
 #ifdef  __cplusplus
@@ -499,11 +510,8 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <sys/types.h>
 #endif
 
-#if defined(__GENODE__)
-#include <libc/component.h>
-extern Libc::Env *genodeEnv;
-#endif
-
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
 #define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+#endif /* NIMBASE_H */

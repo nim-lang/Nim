@@ -126,6 +126,8 @@ type
     OpenBSD
     DragonFlyBSD
 
+    Haiku
+
 
 const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
@@ -158,7 +160,7 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.ArchLinux:
     result = "arch" in toLowerAscii(uname())
   of Distribution.OpenSUSE:
-    result = "suse" in toLowerAscii(uname())
+    result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
   of Distribution.GoboLinux:
     result = "-Gobo " in uname()
   of Distribution.OpenMandriva:
@@ -166,6 +168,8 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Solaris:
     let uname = toLowerAscii(uname())
     result = ("sun" in uname) or ("solaris" in uname)
+  of Distribution.Haiku:
+    result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
     result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release())
@@ -224,6 +228,8 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("pacman -S " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)
+  elif defined(haiku):
+    result = ("pkgman install " & p, true)
   else:
     result = ("brew install " & p, false)
 

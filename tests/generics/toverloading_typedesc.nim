@@ -1,5 +1,6 @@
 discard """
   exitcode: 0
+  disabled: '''true'''
 """
 import moverloading_typedesc
 import tables

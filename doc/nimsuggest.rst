@@ -33,7 +33,7 @@ Nimsuggest is part of Nim's core. Build it via::
 Nimsuggest invocation
 =====================
 
-Run it via ``nimsuggest --stdin --debug --v2 myproject.nim``. Nimsuggest is a
+Run it via ``nimsuggest --stdin --debug myproject.nim``. Nimsuggest is a
 server that takes queries that are related to ``myproject``. There is some
 support so that you can throw random ``.nim`` files which are not part
 of ``myproject`` at Nimsuggest too, but usually the query refer to modules/files

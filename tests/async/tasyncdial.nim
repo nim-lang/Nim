@@ -4,6 +4,7 @@ discard """
 OK AF_INET
 OK AF_INET6
 '''
+  disabled: "travis"
 """
 
 import

@@ -64,7 +64,7 @@ block:
   proc test(): bool =
     let obj = newJsObject()
     obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == "Result is: 6"
+    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
   echo test()
 
 # Test JsObject []()
@@ -267,8 +267,8 @@ block:
   type TestObject = object
     a: int
     onWhatever: proc(e: int): int
-  proc handleWhatever(that: TestObject, e: int): int =
-    e + that.a
+  proc handleWhatever(this: TestObject, e: int): int =
+    e + this.a
   proc test(): bool =
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
     obj.onWhatever(1) == 10
@@ -309,11 +309,11 @@ block:
   on("click") do (e: Event):
     console.log e
 
-  jslib.on "reloaded" do:
+  jslib.on("reloaded") do:
     console.log jsarguments[0]
 
   # this test case is different from the above, because
   # `subscribe` is not overloaded in the current scope
-  jslib.subscribe "updates":
+  jslib.subscribe("updates"):
     console.log jsarguments[0]
 

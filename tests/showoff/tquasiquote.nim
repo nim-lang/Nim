@@ -1,10 +1,10 @@
 discard """
-  outputsub: '''tquasiquote.nim(14,8): Check failed: 1 > 2'''
+  outputsub: '''tquasiquote.nim(14, 8): Check failed: 1 > 2'''
 """
 
 import macros
 
-macro check(ex: expr): stmt =
+macro check(ex: untyped): untyped =
   var info = ex.lineInfo
   var expString = ex.toStrLit
   result = quote do:

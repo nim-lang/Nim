@@ -12,8 +12,6 @@
 
 # To be included from posix.nim!
 
-from times import Time
-
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
@@ -40,13 +38,15 @@ type
 const SIG_HOLD* = cast[SigHandler](2)
 
 type
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
+
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
     tv_sec*: Time  ## Seconds.
     tv_nsec*: clong  ## Nanoseconds.
 
   Dirent* {.importc: "struct dirent",
-             header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+            header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino
     d_off*: Off
     d_reclen*: cushort
@@ -351,8 +351,8 @@ type
 
   Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
              final, pure.} = object ## struct timeval
-    tv_sec*: clong       ## Seconds.
-    tv_usec*: clong ## Microseconds.
+    tv_sec*: Time       ## Seconds.
+    tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
     abi: array[1024 div (8 * sizeof(clong)), clong]
@@ -440,8 +440,7 @@ const Sockaddr_un_path_length* = 108
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  # cushort really
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cshort
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr

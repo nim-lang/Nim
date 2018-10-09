@@ -10,27 +10,26 @@
 ## the ``graphics`` module.
 
 import strutils
+from algorithm import binarySearch
 
 type
   Color* = distinct int ## a color stored as RGB
 
-{.deprecated: [TColor: Color].}
-
 proc `==` *(a, b: Color): bool {.borrow.}
   ## compares two colors.
 
-template extract(a: Color, r, g, b: expr) {.immediate.}=
+template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff
   var g = a.int shr 8 and 0xff
   var b = a.int and 0xff
 
-template rawRGB(r, g, b: int): expr =
+template rawRGB(r, g, b: int): Color =
   Color(r shl 16 or g shl 8 or b)
 
-template colorOp(op: expr) {.immediate.} =
+template colorOp(op): Color =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
-  result = rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
+  rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
 
 proc satPlus(a, b: int): int {.inline.} =
   result = a +% b
@@ -67,12 +66,12 @@ proc intensity*(a: Color, f: float): Color =
   if b >% 255: b = 255
   result = rawRGB(r, g, b)
 
-template mix*(a, b: Color, fn: expr): expr =
+template mix*(a, b: Color, fn: untyped): untyped =
   ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component
   ## R, G, and B. This is a template because `fn` should be inlined and the
   ## compiler cannot inline proc pointers yet. If `fn`'s result is not in the
   ## range[0..255], it will be saturated to be so.
-  template `><` (x: expr): expr =
+  template `><` (x: untyped): untyped =
     # keep it in the range 0..255
     block:
       var y = x # eval only once
@@ -373,37 +372,28 @@ proc `$`*(c: Color): string =
   ## converts a color into its textual representation. Example: ``#00FF00``.
   result = '#' & toHex(int(c), 6)
 
-proc binaryStrSearch(x: openArray[tuple[name: string, col: Color]],
-                     y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmp(x[mid].name, y)
-    if c < 0: a = mid + 1
-    elif c > 0: b = mid - 1
-    else: return mid
-  result = - 1
+proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
+  result = cmpIgnoreCase(x.name, y)
 
 proc parseColor*(name: string): Color =
   ## parses `name` to a color value. If no valid color could be
-  ## parsed ``EInvalidValue`` is raised.
+  ## parsed ``EInvalidValue`` is raised. Case insensitive.
   if name[0] == '#':
     result = Color(parseHexInt(name))
   else:
-    var idx = binaryStrSearch(colorNames, name)
+    var idx = binarySearch(colorNames, name, colorNameCmp)
     if idx < 0: raise newException(ValueError, "unknown color: " & name)
     result = colorNames[idx][1]
 
 proc isColor*(name: string): bool =
   ## returns true if `name` is a known color name or a hexadecimal color
-  ## prefixed with ``#``.
+  ## prefixed with ``#``. Case insensitive.
   if name[0] == '#':
     for i in 1 .. name.len-1:
       if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
     result = true
   else:
-    result = binaryStrSearch(colorNames, name) >= 0
+    result = binarySearch(colorNames, name, colorNameCmp) >= 0
 
 proc rgb*(r, g, b: range[0..255]): Color =
   ## constructs a color from RGB values.

@@ -86,10 +86,10 @@ proc mapType(t: ast.PType): ptr libffi.TType =
     else: result = nil
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
-  of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
+  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
      tyStmt, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
-  of tyDistinct, tyAlias:
+  of tyDistinct, tyAlias, tySink:
     result = mapType(t.sons[0])
   else:
     result = nil
@@ -104,20 +104,20 @@ proc mapCallConv(cc: TCallingConvention, info: TLineInfo): TABI =
   else:
     globalError(info, "cannot map calling convention to FFI")
 
-template rd(T, p: expr): expr {.immediate.} = (cast[ptr T](p))[]
-template wr(T, p, v: expr) {.immediate.} = (cast[ptr T](p))[] = v
-template `+!`(x, y: expr): expr {.immediate.} =
+template rd(T, p: untyped): untyped = (cast[ptr T](p))[]
+template wr(T, p, v: untyped): untyped = (cast[ptr T](p))[] = v
+template `+!`(x, y: untyped): untyped =
   cast[pointer](cast[ByteAddress](x) + y)
 
 proc packSize(v: PNode, typ: PType): int =
   ## computes the size of the blob
   case typ.kind
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
       result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     result = packSize(v, typ.sons[0])
   of tyArray:
     # consider: ptr array[0..1000_000, int] which is common for interfacing;
@@ -151,7 +151,7 @@ proc getField(n: PNode; position: int): PSym =
   else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
-  internalAssert x.kind in {nkObjConstr, nkPar}
+  internalAssert x.kind in {nkObjConstr, nkPar, nkTupleConstr}
   # compute the field's offsets:
   discard typ.getSize
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
@@ -171,7 +171,7 @@ const maxPackDepth = 20
 var packRecCheck = 0
 
 proc pack(v: PNode, typ: PType, res: pointer) =
-  template awr(T, v: expr) {.immediate, dirty.} =
+  template awr(T, v: untyped): untyped =
     wr(T, res, v)
 
   case typ.kind
@@ -209,7 +209,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       awr(cstring, cstring(v.strVal))
     else:
       globalError(v.info, "cannot map pointer/proc value to FFI")
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
       discard
@@ -225,13 +225,13 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
     let baseSize = typ.sons[1].getSize
-    for i in 0 .. <v.len:
+    for i in 0 ..< v.len:
       pack(v.sons[i], typ.sons[1], res +! i * baseSize)
   of tyObject, tyTuple:
     packObject(v, typ, res)
   of tyNil:
     discard
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     pack(v, typ.sons[0], res)
   else:
     globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
@@ -260,14 +260,14 @@ proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # iterate over any actual field of 'n' ... if n is nil we need to create
   # the nkPar node:
   if n.isNil:
-    result = newNode(nkPar)
+    result = newNode(nkTupleConstr)
     result.typ = typ
     if typ.n.isNil:
       internalError("cannot unpack unnamed tuple")
     unpackObjectAdd(x, typ.n, result)
   else:
     result = n
-    if result.kind notin {nkObjConstr, nkPar}:
+    if result.kind notin {nkObjConstr, nkPar, nkTupleConstr}:
       globalError(n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(n.info, "cannot unpack unnamed tuple")
@@ -291,7 +291,7 @@ proc unpackArray(x: pointer, typ: PType, n: PNode): PNode =
     if result.kind != nkBracket:
       globalError(n.info, "cannot map value from FFI")
   let baseSize = typ.sons[1].getSize
-  for i in 0 .. < result.len:
+  for i in 0 ..< result.len:
     result.sons[i] = unpack(x +! i * baseSize, typ.sons[1], result.sons[i])
 
 proc canonNodeKind(k: TNodeKind): TNodeKind =
@@ -302,7 +302,7 @@ proc canonNodeKind(k: TNodeKind): TNodeKind =
   else: result = k
 
 proc unpack(x: pointer, typ: PType, n: PNode): PNode =
-  template aw(k, v, field: expr) {.immediate, dirty.} =
+  template aw(k, v, field: untyped): untyped =
     if n.isNil:
       result = newNode(k)
       result.typ = typ
@@ -326,9 +326,9 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       result.kind = nkNilLit
       result.typ = typ
 
-  template awi(kind, v: expr) {.immediate, dirty.} = aw(kind, v, intVal)
-  template awf(kind, v: expr) {.immediate, dirty.} = aw(kind, v, floatVal)
-  template aws(kind, v: expr) {.immediate, dirty.} = aw(kind, v, strVal)
+  template awi(kind, v: untyped): untyped = aw(kind, v, intVal)
+  template awf(kind, v: untyped): untyped = aw(kind, v, floatVal)
+  template aws(kind, v: untyped): untyped = aw(kind, v, strVal)
 
   case typ.kind
   of tyBool: awi(nkIntLit, rd(bool, x).ord)
@@ -364,7 +364,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       result = n
     else:
       awi(nkPtrLit, cast[ByteAddress](p))
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
@@ -388,14 +388,14 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       aws(nkStrLit, $p)
   of tyNil:
     setNil()
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     result = unpack(x, typ.lastSon, n)
   else:
     # XXX what to do with 'array' here?
     globalError(n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(x: PNode, destTyp: PType): PNode =
-  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyPointer,
+  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyLent, tyPointer,
                                            tyProc, tyCString, tyString,
                                            tySequence}:
     result = newNodeIT(x.kind, x.info, destTyp)
@@ -442,7 +442,7 @@ proc callForeignFunction*(call: PNode): PNode =
   libffi.call(cif, fn, retVal, args)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, typ.sons[0], nil)
     result.info = call.info
@@ -484,7 +484,7 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
   libffi.call(cif, fn, retVal, cargs)
 
   if retVal.isNil:
-    result = emptyNode
+    result = newNode(nkEmpty)
   else:
     result = unpack(retVal, fntyp.sons[0], nil)
     result.info = info

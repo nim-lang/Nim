@@ -66,7 +66,7 @@ proc setItem[T,D](Akey: T, Avalue: D, ANode: PNode[T,D]): ref TItem[T,D] {.inlin
 proc cmp[T:int8|int16|int32|int64|int] (a,b: T): T {.inline.} =
   return a-b
 
-template binSearchImpl *(docmp: expr) {.immediate.} =
+template binSearchImpl *(docmp: untyped) =
   var bFound = false
   result = 0
   var H = haystack.len - 1
@@ -103,7 +103,7 @@ proc DeleteItem[T,D] (n: PNode[T,D], x: int): PNode[T,D] {.inline.} =
 
   else :
     result = n.left
-    n.slots = nil
+    n.slots = @[]
     n.left = nil
 
 proc internalDelete[T,D] (ANode: PNode[T,D], key: T, Avalue: var D): PNode[T,D] =
@@ -200,7 +200,7 @@ proc traceTree[T,D](root: PNode[T,D]) =
       traceln(space)
       write stdout, "left: "
       doTrace(n.left, level+1)
-    for i, el in n.slots :
+    for i, el in n.slots:
       if el != nil and not isClean(el):
         traceln(space)
         traceX(i)

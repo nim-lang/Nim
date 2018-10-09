@@ -5,7 +5,7 @@ discard """
 
 # bug #3498
 
-template defaultOf[T](t: T): expr = (var d: T; d)
+template defaultOf[T](t: T): untyped = (var d: T; d)
 
 echo defaultOf(1) #<- excpected 0
 

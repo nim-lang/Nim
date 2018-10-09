@@ -4,10 +4,10 @@
 #           "# Template is in tools/niminst/makefile.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
-CC = gcc
-LINKER = gcc
-COMP_FLAGS = $(CPPFLAGS) $(CFLAGS) ?{c.ccompiler.flags}
-LINK_FLAGS = $(LDFLAGS) ?{c.linker.flags}
+CC ??= gcc
+LD ??= gcc
+CFLAGS += -Ic_code ?{c.ccompiler.flags}
+LDFLAGS += ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
 
 koch := $(shell sh -c 'test -s ../koch.nim && echo "yes"')
@@ -20,51 +20,51 @@ uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
 
 ifeq ($(uos),linux)
   myos = linux
-  LINK_FLAGS += -ldl -lm
+  LDFLAGS += -ldl -lm
 endif
 ifeq ($(uos),dragonfly)
   myos = freebsd
-  LINK_FLAGS += -lm
+  LDFLAGS += -lm
 endif
 ifeq ($(uos),freebsd)
   myos= freebsd
   CC = clang
-  LINKER = clang
-  LINK_FLAGS += -lm
+  LD = clang
+  LDFLAGS += -lm
 endif
 ifeq ($(uos),openbsd)
   myos = openbsd
-  LINK_FLAGS += -lm
+  LDFLAGS += -lm
 endif
 ifeq ($(uos),netbsd)
   myos = netbsd
-  LINK_FLAGS += -lm
+  LDFLAGS += -lm
 endif
 ifeq ($(uos),darwin)
   myos = macosx
   CC = clang
-  LINKER = clang
-  LINK_FLAGS += -ldl -lm
+  LD = clang
+  LDFLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
   endif
 endif
 ifeq ($(uos),aix)
   myos = aix
-  LINK_FLAGS += -dl -lm
+  LDFLAGS += -dl -lm
 endif
 ifeq ($(uos),solaris)
   myos = solaris
-  LINK_FLAGS += -ldl -lm -lsocket -lnsl
+  LDFLAGS += -ldl -lm -lsocket -lnsl
 endif
 ifeq ($(uos),sun)
   myos = solaris
-  LINK_FLAGS += -ldl -lm -lsocket -lnsl
+  LDFLAGS += -ldl -lm -lsocket -lnsl
 endif
 ifeq ($(uos),haiku)
   myos = haiku
 endif
-ifndef uos
+ifndef myos
   $(error unknown operating system: $(uos))
 endif
 
@@ -101,11 +101,14 @@ endif
 ifeq ($(ucpu),sun)
   mycpu = sparc
 endif
+ifeq ($(ucpu),ppc64le)
+  mycpu = powerpc64el
+endif
 ifeq ($(ucpu),ppc64)
   mycpu = powerpc64
   ifeq ($(myos),linux)
-    COMP_FLAGS += -m64
-    LINK_FLAGS += -m64
+    CFLAGS += -m64
+    LDFLAGS += -m64
   endif
 endif
 ifeq ($(ucpu),powerpc)
@@ -114,8 +117,11 @@ endif
 ifeq ($(ucpu),ppc)
   mycpu = ppc
 endif
-ifeq ($(ucpu),mips)
-  mycpu = mips
+ifneq (,$(filter $(ucpu), mips mips64))
+  mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
+  ifeq (,$(filter $(mycpu), mips mipsel mips64 mips64el))
+    $(error unknown MIPS target: $(mycpu))
+  endif
 endif
 ifeq ($(ucpu),arm)
   mycpu = arm
@@ -129,7 +135,16 @@ endif
 ifeq ($(ucpu),armv6l)
   mycpu = arm
 endif
-ifndef ucpu
+ifeq ($(ucpu),armv7l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv7hl)
+  mycpu = arm
+endif
+ifeq ($(ucpu),aarch64)
+  mycpu = arm64
+endif
+ifndef mycpu
   $(error unknown processor: $(ucpu))
 endif
 
@@ -151,12 +166,9 @@ ifeq ($(strip $(oFiles)),)
   $(error no C code generated for: [$(myos): $(mycpu)])
 endif
 
-%.o: %.c
-	$(CC) $(COMP_FLAGS) -Ic_code -c $< -o $@
-
 ?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
 	@mkdir -p $(binDir)
-	$(LINKER) -o $@ $^ $(LINK_FLAGS)
+	$(LD) -o $@ $^ $(LDFLAGS)
 	@echo "SUCCESS"
 
 .PHONY: clean

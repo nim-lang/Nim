@@ -12,7 +12,7 @@ IMPLICIT VALUE TYPE NAME INT INT
 
 import typetraits, strutils
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
 
 type
@@ -31,7 +31,7 @@ type
     s.pop() is T
 
     type ValueType = T
-    const ValueTypeName = T.name.toUpper
+    const ValueTypeName = T.name.toUpperAscii
 
 proc genericAlgorithm[T](s: var Stack[T], y: T) =
   static:
@@ -60,4 +60,3 @@ reject s.genericAlgorithm "x"
 reject s.genericAlgorithm 1.0
 reject "str".implicitGeneric
 reject implicitGeneric(10)
-

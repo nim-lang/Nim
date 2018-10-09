@@ -28,7 +28,7 @@ proc foo: bool =
   return true
 
 proc err =
-  raise newException(EArithmetic, "some exception")
+  raise newException(ArithmeticError, "some exception")
 
 test "final test":
   echo "inside suite-less test"
@@ -39,9 +39,9 @@ test "final test":
     d > 10
 
 test "arithmetic failure":
-  expect(EArithmetic):
+  expect(ArithmeticError):
     err()
 
-  expect(EArithmetic, ESystem):
+  expect(ArithmeticError, CatchableError):
     discard foo()
 

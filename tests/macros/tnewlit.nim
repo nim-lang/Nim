@@ -138,3 +138,12 @@ macro test_newLit_ComposedType: untyped =
   result = newLit(ct)
 
 doAssert test_newLit_ComposedType == ComposedType(mt: MyType(a: 123, b:"abc"), arr: [1,2,3,4], data: @[1.byte, 3, 7, 127])
+
+macro test_newLit_empty_seq_string: untyped =
+  var strSeq = newSeq[string](0)
+  result = newLit(strSeq)
+
+block:
+  # x needs to be of type seq[string]
+  var x = test_newLit_empty_seq_string
+  x.add("xyz")

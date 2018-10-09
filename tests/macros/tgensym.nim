@@ -11,7 +11,7 @@ proc convertReturns(node, retFutureSym: NimNode): NimNode {.compileTime.} =
     for i in 0 .. <node.len:
       result[i] = convertReturns(node[i], retFutureSym)
 
-macro async2(prc: stmt): stmt {.immediate.} =
+macro async2(prc: untyped): untyped =
   expectKind(prc, nnkProcDef)
 
   var outerProcBody = newNimNode(nnkStmtList)
@@ -28,6 +28,7 @@ macro async2(prc: stmt): stmt {.immediate.} =
   # -> iterator nameIter(): FutureBase {.closure.} = <proc_body>
   # Changing this line to: newIdentNode($prc[0].ident & "Iter") # will make it work.
   var iteratorNameSym = genSym(nskIterator, $prc[0].ident & "Iter")
+  assert iteratorNameSym.symKind == nskIterator
   #var iteratorNameSym = newIdentNode($prc[0].ident & "Iter")
   var procBody = prc[6].convertReturns(retFutureSym)
 
@@ -42,6 +43,7 @@ macro async2(prc: stmt): stmt {.immediate.} =
   var varNameIter = newVarStmt(varNameIterSym, iteratorNameSym)
   outerProcBody.add varNameIter
   var varFirstSym = genSym(nskVar, "first")
+  assert varFirstSym.symKind ==  nskVar
   var varFirst = newVarStmt(varFirstSym, newCall(varNameIterSym))
   outerProcBody.add varFirst
 

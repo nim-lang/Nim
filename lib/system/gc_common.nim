@@ -18,12 +18,54 @@ proc protect*(x: pointer): ForeignCell =
   result.owner = addr(gch)
 
 when defined(nimTypeNames):
-  proc dumpNumberOfInstances* =
+  type InstancesInfo = array[400, (cstring, int, int)]
+  proc sortInstances(a: var InstancesInfo; n: int) =
+    # we use shellsort here; fast and simple
+    var h = 1
+    while true:
+      h = 3 * h + 1
+      if h > n: break
+    while true:
+      h = h div 3
+      for i in countup(h, n - 1):
+        var v = a[i]
+        var j = i
+        while a[j - h][2] < v[2]:
+          a[j] = a[j - h]
+          j = j - h
+          if j < h: break
+        a[j] = v
+      if h == 1: break
+
+  iterator dumpHeapInstances*(): tuple[name: cstring; count: int; sizes: int] =
+    ## Iterate over summaries of types on heaps.
+    ## This data may be inaccurate if allocations
+    ## are made by the iterator body.
+    if strDesc.nextType == nil:
+      strDesc.nextType = nimTypeRoot
+      strDesc.name = "string"
+      nimTypeRoot = addr strDesc
     var it = nimTypeRoot
     while it != nil:
-      if it.instances > 0:
-        c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
+      if (it.instances > 0 or it.sizes != 0):
+        yield (it.name, it.instances, it.sizes)
       it = it.nextType
+
+  proc dumpNumberOfInstances* =
+    var a: InstancesInfo
+    var n = 0
+    var totalAllocated = 0
+    for it in dumpHeapInstances():
+      a[n] = it
+      inc n
+      inc totalAllocated, it.sizes
+    sortInstances(a, n)
+    for i in 0 .. n-1:
+      c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
+    c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
+    when defined(nimTypeNames):
+      let (allocs, deallocs) = getMemCounters()
+      c_fprintf(stdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
@@ -36,12 +78,12 @@ template decTypeSize(cell, t) =
   # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
-      let len = cast[PGenericSeq](cellToUsr(cell)).len
-      let base = if t.kind == tyString: 1 else: t.base.size
-      let size = addInt(mulInt(len, base), GenericSeqSize)
+      let cap = cast[PGenericSeq](cellToUsr(cell)).space
+      let size = if t.kind == tyString: cap+1+GenericSeqSize
+                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
       dec t.sizes, size+sizeof(Cell)
     else:
-      dec t.sizes, t.size+sizeof(Cell)
+      dec t.sizes, t.base.size+sizeof(Cell)
     dec t.instances
 
 template incTypeSize(typ, size) =
@@ -167,7 +209,7 @@ when declared(threadType):
     if threadType == ThreadType.None:
       initAllocator()
       var stackTop {.volatile.}: pointer
-      setStackBottom(addr(stackTop))
+      nimGC_setStackBottom(addr(stackTop))
       initGC()
       threadType = ThreadType.ForeignThread
 
@@ -224,7 +266,7 @@ when nimCoroutines:
     gch.activeStack.setPosition(addr(sp))
 
 when not defined(useNimRtl):
-  proc setStackBottom(theStackBottom: pointer) =
+  proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
     when nimCoroutines:
       if gch.stack.next == nil:
@@ -351,3 +393,70 @@ else:
 # ----------------------------------------------------------------------------
 # end of non-portable code
 # ----------------------------------------------------------------------------
+
+proc prepareDealloc(cell: PCell) =
+  when declared(useMarkForDebug):
+    when useMarkForDebug:
+      gcAssert(cell notin gch.marked, "Cell still alive!")
+  let t = cell.typ
+  if t.finalizer != nil:
+    # the finalizer could invoke something that
+    # allocates memory; this could trigger a garbage
+    # collection. Since we are already collecting we
+    # prevend recursive entering here by a lock.
+    # XXX: we should set the cell's children to nil!
+    inc(gch.recGcLock)
+    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
+    dec(gch.recGcLock)
+  decTypeSize(cell, t)
+
+proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
+  ## happens to ensure the GC can continue to work after the call
+  ## to ``deallocHeap``.
+  template deallocCell(x) =
+    if isCell(x):
+      # cast to PCell is correct here:
+      prepareDealloc(cast[PCell](x))
+
+  if runFinalizers:
+    when not declared(allObjectsAsProc):
+      for x in allObjects(gch.region):
+        deallocCell(x)
+    else:
+      var spaceIter: ObjectSpaceIter
+      while true:
+        let x = allObjectsAsProc(gch.region, addr spaceIter)
+        if spaceIter.state < 0: break
+        deallocCell(x)
+
+  deallocOsPages(gch.region)
+  zeroMem(addr gch.region, sizeof(gch.region))
+  if allowGcAfterwards:
+    initGC()
+
+type
+  GlobalMarkerProc = proc () {.nimcall, benign.}
+var
+  globalMarkersLen: int
+  globalMarkers: array[0..3499, GlobalMarkerProc]
+  threadLocalMarkersLen: int
+  threadLocalMarkers: array[0..3499, GlobalMarkerProc]
+  gHeapidGenerator: int
+
+proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+  if globalMarkersLen <= high(globalMarkers):
+    globalMarkers[globalMarkersLen] = markerProc
+    inc globalMarkersLen
+  else:
+    echo "[GC] cannot register global variable; too many global variables"
+    quit 1
+
+proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+  if threadLocalMarkersLen <= high(threadLocalMarkers):
+    threadLocalMarkers[threadLocalMarkersLen] = markerProc
+    inc threadLocalMarkersLen
+  else:
+    echo "[GC] cannot register thread local variable; too many thread local variables"
+    quit 1

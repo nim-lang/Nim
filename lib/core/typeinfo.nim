@@ -54,6 +54,7 @@ type
     akUInt16 = 42,      ## any represents an unsigned in16
     akUInt32 = 43,      ## any represents an unsigned int32
     akUInt64 = 44,      ## any represents an unsigned int64
+#    akOpt = 44+18       ## the builtin 'opt' type.
 
   Any* = object          ## can represent any nim value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
@@ -97,7 +98,7 @@ proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
 proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
 proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
 
-template `+!!`(a, b: expr): expr = cast[pointer](cast[ByteAddress](a) + b)
+template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b)
 
 proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)

@@ -55,6 +55,7 @@ Objects have access to their type at runtime. There is an
 ``of`` operator that can be used to check the object's type:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     Person = ref object of RootObj
       name*: string  # the * means that `name` is accessible from other modules
@@ -103,16 +104,16 @@ would require arbitrary symbol lookahead which slows down compilation.)
 Example:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
-    Node = ref NodeObj # a traced reference to a NodeObj
-    NodeObj = object
+    Node = ref object  # a reference to an object with the following field:
       le, ri: Node     # left and right subtrees
       sym: ref Sym     # leaves contain a reference to a Sym
 
     Sym = object       # a symbol
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
-      code: Node      # the symbol's abstract syntax tree
+      code: Node       # the symbol's abstract syntax tree
 
 
 Type conversions
@@ -145,6 +146,7 @@ variant types are needed.
 An example:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   # This is an example how an abstract syntax tree could be modelled in Nim
   type
@@ -155,8 +157,7 @@ An example:
       nkAdd,          # an addition
       nkSub,          # a subtraction
       nkIf            # an if statement
-    Node = ref NodeObj
-    NodeObj = object
+    Node = ref object
       case kind: NodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
@@ -203,10 +204,12 @@ This method call syntax is not restricted to objects, it can be used
 for any type:
 
 .. code-block:: nim
+    :test: "nim c $1"
+  import strutils
 
   echo "abc".len # is the same as echo len("abc")
-  echo "abc".toUpper()
-  echo {'a', 'b', 'c'}.card
+  echo "abc".toUpperAscii()
+  echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
@@ -215,10 +218,11 @@ postfix notation.)
 So "pure object oriented" code is easy to write:
 
 .. code-block:: nim
+    :test: "nim c $1"
   import strutils, sequtils
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
-  stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
+  stdout.write(stdin.readLine.splitWhitespace.map(parseInt).max.`$`)
   stdout.writeLine(" is the maximum!")
 
 
@@ -230,18 +234,19 @@ the same. But setting a value is different; for this a special setter syntax
 is needed:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
     Socket* = ref object of RootObj
-      host: int # cannot be accessed from the outside of the module due to missing star
+      h: int # cannot be accessed from the outside of the module due to missing star
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of host address
-    s.host = value
+    s.h = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of host address
-    s.host
+    s.h
 
   var s: Socket
   new s
@@ -254,6 +259,7 @@ The ``[]`` array access operator can be overloaded to provide
 `array properties`:idx:\ :
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
     Vector* = object
       x, y, z: float
@@ -285,23 +291,24 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 ``proc`` keyword by ``method``:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
-    PExpr = ref object of RootObj ## abstract base class for an expression
-    PLiteral = ref object of PExpr
+    Expression = ref object of RootObj ## abstract base class for an expression
+    Literal = ref object of Expression
       x: int
-    PPlusExpr = ref object of PExpr
-      a, b: PExpr
+    PlusExpr = ref object of Expression
+      a, b: Expression
 
   # watch out: 'eval' relies on dynamic binding
-  method eval(e: PExpr): int =
+  method eval(e: Expression): int =
     # override this base method
     quit "to override!"
 
-  method eval(e: PLiteral): int = e.x
-  method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
+  method eval(e: Literal): int = e.x
+  method eval(e: PlusExpr): int = eval(e.a) + eval(e.b)
 
-  proc newLit(x: int): PLiteral = PLiteral(x: x)
-  proc newPlus(a, b: PExpr): PPlusExpr = PPlusExpr(a: a, b: b)
+  proc newLit(x: int): Literal = Literal(x: x)
+  proc newPlus(a, b: Expression): PlusExpr = PlusExpr(a: a, b: b)
 
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
 
@@ -313,6 +320,7 @@ In a multi-method all parameters that have an object type are used for the
 dispatching:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   type
     Thing = ref object of RootObj
@@ -367,6 +375,7 @@ Raise statement
 Raising an exception is done with the ``raise`` statement:
 
 .. code-block:: nim
+    :test: "nim c $1"
   var
     e: ref OSError
   new(e)
@@ -387,6 +396,9 @@ Try statement
 The ``try`` statement handles exceptions:
 
 .. code-block:: nim
+    :test: "nim c $1"
+  from strutils import parseInt
+
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
   var
@@ -481,12 +493,12 @@ with `type parameters`:idx:. They are most useful for efficient type safe
 containers:
 
 .. code-block:: nim
+    :test: "nim c $1"
   type
-    BinaryTreeObj[T] = object # BinaryTree is a generic type with
-                              # with generic param ``T``
-      le, ri: BinaryTree[T]   # left and right subtrees; may be nil
-      data: T                 # the data stored in a node
-    BinaryTree*[T] = ref BinaryTreeObj[T] # type that is exported
+    BinaryTree*[T] = ref object # BinaryTree is a generic type with
+                                # generic param ``T``
+      le, ri: BinaryTree[T]     # left and right subtrees; may be nil
+      data: T                   # the data stored in a node
 
   proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
@@ -576,6 +588,7 @@ Templates are especially useful for lazy evaluation purposes. Consider a
 simple proc for logging:
 
 .. code-block:: nim
+    :test: "nim c $1"
   const
     debug = true
 
@@ -593,6 +606,7 @@ evaluation for procedures is *eager*).
 Turning the ``log`` proc into a template solves this problem:
 
 .. code-block:: nim
+    :test: "nim c $1"
   const
     debug = true
 
@@ -604,9 +618,9 @@ Turning the ``log`` proc into a template solves this problem:
   log("x has the value: " & $x)
 
 The parameters' types can be ordinary types or the meta types ``untyped``,
-``typed``, or ``typedesc``.
-``typedesc`` stands for *type description*, and ``untyped`` means symbol lookups and
-type resolution is not performed before the expression is passed to the template.
+``typed``, or ``type``. ``type`` suggests that only a type symbol may be given
+as an argument, and ``untyped`` means symbol lookups and type resolution is not
+performed before the expression is passed to the template.
 
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
@@ -614,6 +628,7 @@ If the template has no explicit return type,
 To pass a block of statements to a template, use 'untyped' for the last parameter:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template withFile(f: untyped, filename: string, mode: FileMode,
                     body: untyped): typed =
@@ -668,6 +683,7 @@ The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
 
 .. code-block:: nim
+    :test: "nim c $1"
   # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
   import macros
@@ -723,7 +739,7 @@ regular expressions:
 
 .. code-block:: nim
 
-  macro case_token(n: typed): typed =
+  macro case_token(n: varargs[untyped]): typed =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     discard
@@ -747,6 +763,7 @@ dynamic code into something that compiles statically. For the exercise we will
 use the following snippet of code as the starting point:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   import strutils, tables
 
@@ -866,9 +883,9 @@ variables with ``cfg``. In essence, what the compiler is doing is replacing
 the line calling the macro with the following snippet of code:
 
 .. code-block:: nim
-  const cfgversion= "1.1"
-  const cfglicenseOwner= "Hyori Lee"
-  const cfglicenseKey= "M1Tl3PjBWO2CC48m"
+  const cfgversion = "1.1"
+  const cfglicenseOwner = "Hyori Lee"
+  const cfglicenseKey = "M1Tl3PjBWO2CC48m"
 
 You can verify this yourself adding the line ``echo source`` somewhere at the
 end of the macro and compiling the program. Another difference is that instead
@@ -894,12 +911,13 @@ an expression macro.  Since we know that we want to generate a bunch of
 see what the compiler *expects* from us:
 
 .. code-block:: nim
+    :test: "nim c $1"
   import macros
 
   dumpTree:
     const cfgversion: string = "1.1"
-    const cfglicenseOwner= "Hyori Lee"
-    const cfglicenseKey= "M1Tl3PjBWO2CC48m"
+    const cfglicenseOwner = "Hyori Lee"
+    const cfglicenseKey = "M1Tl3PjBWO2CC48m"
 
 During compilation of the source code we should see the following lines in the
 output (again, since this is a macro, compilation is enough, you don't have to
@@ -999,6 +1017,7 @@ Lifting Procs
 +++++++++++++
 
 .. code-block:: nim
+    :test: "nim c $1"
   import math
 
   template liftScalarProc(fname) =

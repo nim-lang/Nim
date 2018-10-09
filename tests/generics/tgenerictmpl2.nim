@@ -27,5 +27,5 @@ ttmpl[int]    #<- crash case #3
 
 # but still allow normal use of [] on non-generic templates
 
-template tarr: expr = [1, 2, 3, 4]
+template tarr: untyped = [1, 2, 3, 4]
 echo tarr[1]

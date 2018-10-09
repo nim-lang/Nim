@@ -9,7 +9,7 @@ type
     data: seq[float]
     fWidth, fHeight: int
 
-template `|`(x, y: int): expr = y * m.fWidth + x
+template `|`(x, y: int): untyped = y * m.fWidth + x
 
 proc createMatrix*(width, height: int): TMatrix =
   result.fWidth = width

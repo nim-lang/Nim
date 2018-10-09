@@ -23,29 +23,29 @@ asm """
 """
 
 proc consoleprint (str:cstring): void {.importc: "print", noDecl.}
-proc print* (a: varargs[string, `$`]) = consoleprint "$1: $2" % [consolePrefix, join (a, " ")]
+proc print* (a: varargs[string, `$`]) = consoleprint "$1: $2" % [consolePrefix, join(a, " ")]
 
 type CallbackProc {.importc.} = proc () : cstring
 
 proc regCallback (fn:CallbackProc) {.importc.}
 proc runCallbacks ():cstring {.importc.}
 
-proc `*` (s:string, n:Natural) : string = s.repeat (n)
+proc `*` (s:string, n:Natural) : string = s.repeat(n)
 
 proc outer (i:Natural) : (string, int) =
-    let c = $char (random (93) + 33)
-    let n = random (40)
+    let c = $char(random(93) + 33)
+    let n = random(40)
     let s = c * n
-    proc inner () : cstring = ("[$1]" % $n) & s & " <--"
-    regCallback (inner)
+    proc inner(): cstring = ("[$1]" % $n) & s & " <--"
+    regCallback(inner)
     return (s, n)
 
 var expected = "\n"
 for i in 1 .. 10:
-    let (s, n) = outer (i)
+    let (s, n) = outer(i)
     expected &= ("($1)[$2]" % [$i, $n]) & s & " <--"
     expected &= "\n"
 
-let results = runCallbacks ()
+let results = runCallbacks()
 
-doAssert(expected == results)
+doAssert(expected == $results)

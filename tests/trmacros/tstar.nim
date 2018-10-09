@@ -10,7 +10,7 @@ proc `&&`(s: varargs[string]): string =
   for i in 1..len(s)-1: result.add s[i]
   inc calls
 
-template optConc{ `&&` * a }(a: string): expr = &&a
+template optConc{ `&&` * a }(a: string): string = &&a
 
 let space = " "
 echo "my" && (space & "awe" && "some " ) && "concat"

@@ -5,10 +5,9 @@ os:
   - osx
 dist: trusty
 
-
-matrix:
-  allow_failures:
-    - os: osx
+#matrix:
+#  allow_failures:
+#    - os: osx
 
 addons:
   apt:
@@ -16,30 +15,52 @@ addons:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
     - libgc-dev
+    - libsfml-dev
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install boehmgc; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install sfml; fi
 
 before_script:
   - set -e
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then unset -f cd; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
   - sh build.sh
   - cd ..
-  - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
-  - export PATH=$(pwd)/bin:$PATH
+  - export PATH=$(pwd)/bin${PATH:+:$PATH}
 script:
   - nim c koch
   - ./koch boot
   - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
-  - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
-  - nimble install jester@#head
-  - nimble install niminst
+  #- nimble install zip -y
+  #- nimble install opengl
+  #- nimble install sdl1
+  #- nimble install jester@#head -y
+  #- nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
+  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
+  - nim c -r nimpretty/tester.nim
+  - ./koch docs
   - ./koch csource
+  - ./koch nimsuggest
+  - nim c -r nimsuggest/tester
+  - nim c -r nimdoc/tester
+
+before_deploy:
+  # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
+  - cp -f ./doc/html/overview.html ./doc/html/index.html
+deploy:                         # https://nim-lang.github.io/Nim
+  provider: pages
+  # local-dir *has* to be a relative path from the repo root.
+  local-dir: "doc/html"
+  skip-cleanup: true
+  github-token: "$GITHUB_OAUTH_TOKEN"
+  keep-history: false
+  on:
+    branch: devel

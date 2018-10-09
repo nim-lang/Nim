@@ -1,71 +1,57 @@
-/* 
- * assert.h
- *
- * Define the assert macro for debug output.
- *
- * This file is part of the Mingw32 package.
- *
- * Contributors:
- *  Created by Colin Peters <colin@bird.fu.is.saga-u.ac.jp>
- *
- *  THIS SOFTWARE IS NOT COPYRIGHTED
- *
- *  This source code is offered for use in the public domain. You may
- *  use, modify or distribute it freely.
- *
- *  This code is distributed in the hope that it will be useful but
- *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
- *  DISCLAIMED. This includes but is not limited to warranties of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- * $Revision: 1.2 $
- * $Author: bellard $
- * $Date: 2005/04/17 13:14:29 $
- *
+/**
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is part of the w64 mingw-runtime package.
+ * No warranty is given; refer to the file DISCLAIMER within this package.
  */
+#ifndef __ASSERT_H_
+#define __ASSERT_H_
 
-#ifndef _ASSERT_H_
-#define	_ASSERT_H_
-
-/* All the headers include this file. */
 #include <_mingw.h>
-
-#ifndef RC_INVOKED
-
-#ifdef	__cplusplus
-extern "C" {
+#ifdef __cplusplus
+#include <stdlib.h>
 #endif
 
 #ifdef NDEBUG
-
-/*
- * If not debugging, assert does nothing.
- */
-#define assert(x)	((void)0)
-
-#else /* debugging enabled */
-
-/*
- * CRTDLL nicely supplies a function which does the actual output and
- * call to abort.
- */
-void	_assert (const char*, const char*, int)
-#ifdef	__GNUC__
-	__attribute__ ((noreturn))
+#ifndef assert
+#define assert(_Expression) ((void)0)
 #endif
-	;
+#else
 
-/*
- * Definition of the assert macro.
- */
-#define assert(e)       ((e) ? (void)0 : _assert(#e, __FILE__, __LINE__))
-#endif	/* NDEBUG */
+#ifndef _CRT_TERMINATE_DEFINED
+#define _CRT_TERMINATE_DEFINED
+  void __cdecl __MINGW_NOTHROW exit(int _Code) __MINGW_ATTRIB_NORETURN;
+ _CRTIMP void __cdecl __MINGW_NOTHROW _exit(int _Code) __MINGW_ATTRIB_NORETURN;
+#if !defined __NO_ISOCEXT /* extern stub in static libmingwex.a */
+/* C99 function name */
+void __cdecl _Exit(int) __MINGW_ATTRIB_NORETURN;
+__CRT_INLINE __MINGW_ATTRIB_NORETURN void __cdecl _Exit(int status)
+{  _exit(status); }
+#endif
 
-#ifdef	__cplusplus
+#pragma push_macro("abort")
+#undef abort
+  void __cdecl __declspec(noreturn) abort(void);
+#pragma pop_macro("abort")
+
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+extern void __cdecl _wassert(const wchar_t *_Message,const wchar_t *_File,unsigned _Line);
+extern void __cdecl _assert(const char *, const char *, unsigned);
+
+#ifdef __cplusplus
 }
 #endif
 
-#endif /* Not RC_INVOKED */
+#ifndef assert
+//#define assert(_Expression) (void)((!!(_Expression)) || (_wassert(_CRT_WIDE(#_Expression),_CRT_WIDE(__FILE__),__LINE__),0))
+#define assert(e) ((e) ? (void)0 : _assert(#e, __FILE__, __LINE__))
+#endif
 
-#endif /* Not _ASSERT_H_ */
+#endif
 
+#endif

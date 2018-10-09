@@ -43,7 +43,7 @@ template forStatic(index, slice, predicate: untyped) =
       block:
         const index = i
         predicate
-    template iterateStartingFrom(i: int): stmt =
+    template iterateStartingFrom(i: int) =
       when i <= b:
         iteration i
         iterateStartingFrom i + 1

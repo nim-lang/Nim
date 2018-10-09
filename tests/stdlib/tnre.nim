@@ -20,12 +20,13 @@ discard """
 
 [Suite] Misc tests'''
 """
+
 import nre
-import nre.init
-import nre.captures
-import nre.find
-import nre.split
-import nre.match
-import nre.replace
-import nre.escape
-import nre.misc
+import nre/init
+import nre/captures
+import nre/find
+import nre/split
+import nre/match
+import nre/replace
+import nre/escape
+import nre/misc

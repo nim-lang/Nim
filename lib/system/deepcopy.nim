@@ -105,7 +105,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     var dst = cast[ByteAddress](cast[PPointer](dest)[])
     for i in 0..seq.len-1:
       genericDeepCopyAux(
-        cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
+        cast[pointer](dst +% i *% mt.base.size +% GenericSeqSize),
         cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
         mt.base, tab)
@@ -122,9 +122,9 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     genericDeepCopyAux(dest, src, mt.node, tab)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericDeepCopyAux(cast[pointer](d +% i*% mt.base.size),
-                         cast[pointer](s +% i*% mt.base.size), mt.base, tab)
-  of tyRef:
+      genericDeepCopyAux(cast[pointer](d +% i *% mt.base.size),
+                         cast[pointer](s +% i *% mt.base.size), mt.base, tab)
+  of tyRef, tyOptAsRef:
     let s2 = cast[PPointer](src)[]
     if s2 == nil:
       unsureAsgnRef(cast[PPointer](dest), s2)
@@ -148,11 +148,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
             let realType = x.typ
             sysAssert realType == mt, " types do differ"
           # this version should work for any possible GC:
-          let size = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[].size else: mt.base.size
-          let z = newObj(mt, size)
+          let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
+          let z = newObj(mt, typ.size)
           unsureAsgnRef(cast[PPointer](dest), z)
           tab.put(s2, z)
-          genericDeepCopyAux(z, s2, mt.base, tab)
+          genericDeepCopyAux(z, s2, typ, tab)
       else:
         unsureAsgnRef(cast[PPointer](dest), z)
   of tyPtr:
@@ -183,5 +183,5 @@ proc genericDeepCopyOpenArray(dest, src: pointer, len: int,
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   for i in 0..len-1:
-    genericDeepCopy(cast[pointer](d +% i*% mt.base.size),
-                    cast[pointer](s +% i*% mt.base.size), mt.base)
+    genericDeepCopy(cast[pointer](d +% i *% mt.base.size),
+                    cast[pointer](s +% i *% mt.base.size), mt.base)

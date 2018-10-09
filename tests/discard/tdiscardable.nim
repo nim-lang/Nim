@@ -13,7 +13,7 @@ q[float](0.8, 0.2)
 
 # bug #942
 
-template maybeMod(x: Tinteger, module:Natural):expr =
+template maybeMod(x: SomeInteger, module: Natural): untyped =
   if module > 0: x mod module
   else: x
 

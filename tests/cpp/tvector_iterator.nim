@@ -1,8 +1,8 @@
 discard """
-  cmd: "nim cpp $file"
+  targets: "cpp"
 """
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 
 template <class T>
 struct Vector {

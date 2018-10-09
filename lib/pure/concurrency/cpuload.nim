@@ -60,17 +60,20 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     proc fscanf(c: File, frmt: cstring) {.varargs, importc,
       header: "<stdio.h>".}
 
-    var f = open("/proc/loadavg")
-    var b: float
-    var busy, total: int
-    fscanf(f,"%lf %lf %lf %ld/%ld",
-           addr b, addr b, addr b, addr busy, addr total)
-    f.close()
-    let cpus = countProcessors()
-    if busy-1 < cpus:
-      result = doCreateThread
-    elif busy-1 >= cpus*2:
-      result = doShutdownThread
+    var f: File
+    if f.open("/proc/loadavg"):
+      var b: float
+      var busy, total: int
+      fscanf(f,"%lf %lf %lf %ld/%ld",
+            addr b, addr b, addr b, addr busy, addr total)
+      f.close()
+      let cpus = countProcessors()
+      if busy-1 < cpus:
+        result = doCreateThread
+      elif busy-1 >= cpus*2:
+        result = doShutdownThread
+      else:
+        result = doNothing
     else:
       result = doNothing
   else:
@@ -78,7 +81,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and isMainModule and not defined(nimdoc):
   import random
 
   proc busyLoop() =

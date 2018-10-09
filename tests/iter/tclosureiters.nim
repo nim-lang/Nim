@@ -18,7 +18,8 @@ discard """
 0
 0
 1
-2'''
+2
+70'''
 """
 
 when true:
@@ -71,3 +72,10 @@ for x in infinite.take(3):
 let inf = infinite
 for x in inf.take(3):
   echo x
+
+# bug #3583
+proc foo(f: (iterator(): int)) =
+  for i in f(): echo i
+
+let fIt = iterator(): int = yield 70
+foo fIt

@@ -1,2 +1,6 @@
-var x = @["1", nil, "3"]
-doAssert $x == "@[1, nil, 3]"
+discard """
+  output: ""
+"""
+
+var x = @["1", "", "3"]
+doAssert $x == """@["1", "", "3"]"""

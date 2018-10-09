@@ -1,7 +1,7 @@
 
 import future
 
-template tempo(s: expr) =
+template tempo(s) =
   s("arg")
 
 tempo((s: string)->auto => echo(s))

@@ -8,7 +8,7 @@ Success'''
 
 var testNumber = 0
 
-template test(opr, a, b, c: expr): stmt {.immediate.} =
+template test(opr, a, b, c: untyped): untyped =
   # test the expression at compile and runtime
   block:
     const constExpr = opr(a, b)

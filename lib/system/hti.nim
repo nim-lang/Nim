@@ -7,12 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-when declared(NimString):
-  # we are in system module:
-  {.pragma: codegenType, compilerproc.}
-else:
-  {.pragma: codegenType, importc.}
-
 type
   # This should be the same as ast.TTypeKind
   # many enum fields are not used at runtime
@@ -62,9 +56,24 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
+    tyOptAsRef, tyUnused1, tyUnused2,
+    tyVarargsHidden,
+    tyUnusedHidden,
+    tyProxyHidden,
+    tyBuiltInTypeClassHidden,
+    tyUserTypeClassHidden,
+    tyUserTypeClassInstHidden,
+    tyCompositeTypeClassHidden,
+    tyInferredHidden,
+    tyAndHidden, tyOrHidden, tyNotHidden,
+    tyAnythingHidden,
+    tyStaticHidden,
+    tyFromExprHidden,
+    tyOpt,
+    tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.codegenType.} = object
+  TNimNode {.compilerProc.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType
@@ -77,7 +86,7 @@ type
     ntfAcyclic = 1,    # type cannot form a cycle
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
-  TNimType {.codegenType.} = object
+  TNimType {.compilerProc.} = object
     size: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
@@ -94,6 +103,10 @@ type
   PNimType = ptr TNimType
 
 when defined(nimTypeNames):
-  var nimTypeRoot {.codegenType.}: PNimType
+  # Declare this variable only once in system.nim
+  when declared(ThisIsSystem):
+    var nimTypeRoot {.compilerProc.}: PNimType
+  else:
+    var nimTypeRoot {.importc.}: PNimType
 
 # node.len may be the ``first`` element of a set

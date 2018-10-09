@@ -1,68 +1,29 @@
 #
 #
 #              The Nim Tester
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import strutils, db_sqlite, os, osproc
-
-var db: DbConn
-
-proc createDb() =
-  db.exec(sql"""
-    create table if not exists Machine(
-      id integer primary key,
-      name varchar(100) not null,
-      os varchar(20) not null,
-      cpu varchar(20) not null
-    );""")
-
-  db.exec(sql"""
-    create table if not exists [Commit](
-      id integer primary key,
-      hash varchar(256) not null,
-      branch varchar(50) not null
-    );""")
-
-  db.exec(sql"""
-    create table if not exists TestResult(
-      id integer primary key,
-      name varchar(100) not null,
-      category varchar(100) not null,
-      target varchar(20) not null,
-      action varchar(10) not null,
-      result varchar(30) not null,
-      [commit] int not null,
-      machine int not null,
-      expected varchar(10000) not null,
-      given varchar(10000) not null,
-      created timestamp not null default (DATETIME('now')),
-
-      foreign key ([commit]) references [commit](id),
-      foreign key (machine) references machine(id)
-    );""")
-
-  #db.exec(sql"""
-  #  --create unique index if not exists TsstNameIx on TestResult(name);
-  #  """, [])
+import strutils, os, osproc, json
 
 type
-  MachineId* = distinct int64
-  CommitId = distinct int64
+  MachineId* = distinct string
+  CommitId = distinct string
 
 proc `$`*(id: MachineId): string {.borrow.}
-proc `$`(id: CommitId): string {.borrow.}
+#proc `$`(id: CommitId): string {.borrow.} # not used
 
 var
   thisMachine: MachineId
   thisCommit: CommitId
+  thisBranch: string
 
 {.experimental.}
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
 
-proc getMachine*(db: DbConn): MachineId =
+proc getMachine*(): MachineId =
   var name = "hostname"()
   if name.len == 0:
     name = when defined(posix): getenv"HOSTNAME".string
@@ -70,54 +31,45 @@ proc getMachine*(db: DbConn): MachineId =
   if name.len == 0:
     quit "cannot determine the machine name"
 
-  let id = db.getValue(sql"select id from Machine where name = ?", name)
-  if id.len > 0:
-    result = id.parseInt.MachineId
-  else:
-    result = db.insertId(sql"insert into Machine(name, os, cpu) values (?,?,?)",
-                         name, system.hostOS, system.hostCPU).MachineId
+  result = MachineId(name)
 
-proc getCommit(db: DbConn): CommitId =
+proc getCommit(): CommitId =
   const commLen = "commit ".len
   let hash = "git log -n 1"()[commLen..commLen+10]
-  let branch = "git symbolic-ref --short HEAD"()
-  if hash.len == 0 or branch.len == 0: quit "cannot determine git HEAD"
+  thisBranch = "git symbolic-ref --short HEAD"()
+  if hash.len == 0 or thisBranch.len == 0: quit "cannot determine git HEAD"
+  result = CommitId(hash)
 
-  let id = db.getValue(sql"select id from [Commit] where hash = ? and branch = ?",
-                       hash, branch)
-  if id.len > 0:
-    result = id.parseInt.CommitId
-  else:
-    result = db.insertId(sql"insert into [Commit](hash, branch) values (?, ?)",
-                         hash, branch).CommitId
+var
+  results: File
+  currentCategory: string
+  entries: int
 
 proc writeTestResult*(name, category, target,
                       action, result, expected, given: string) =
-  let id = db.getValue(sql"""select id from TestResult
-                             where name = ? and category = ? and target = ? and
-                                machine = ? and [commit] = ?""",
-                                name, category, target,
-                                thisMachine, thisCommit)
-  if id.len > 0:
-    db.exec(sql"""update TestResult
-                  set action = ?, result = ?, expected = ?, given = ?
-                  where id = ?""", action, result, expected, given, id)
-  else:
-    db.exec(sql"""insert into TestResult(name, category, target,
-                                         action,
-                                         result, expected, given,
-                                         [commit], machine)
-                  values (?,?,?,?,?,?,?,?,?) """, name, category, target,
-                                        action,
-                                        result, expected, given,
-                                        thisCommit, thisMachine)
+  createDir("testresults")
+  if currentCategory != category:
+    if currentCategory.len > 0:
+      results.writeLine("]")
+      close(results)
+    currentCategory = category
+    results = open("testresults" / category.addFileExt"json", fmWrite)
+    results.writeLine("[")
+    entries = 0
+
+  let jentry = %*{"name": name, "category": category, "target": target,
+    "action": action, "result": result, "expected": expected, "given": given,
+    "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch}
+  if entries > 0:
+    results.writeLine(",")
+  results.write($jentry)
+  inc entries
 
 proc open*() =
-  let dbFile = if existsEnv("TRAVIS") or existsEnv("APPVEYOR"): ":memory:" else: "testament.db"
-  db = open(connection=dbFile, user="testament", password="",
-            database="testament")
-  createDb()
-  thisMachine = getMachine(db)
-  thisCommit = getCommit(db)
+  thisMachine = getMachine()
+  thisCommit = getCommit()
 
-proc close*() = close(db)
+proc close*() =
+  if currentCategory.len > 0:
+    results.writeLine("]")
+    close(results)

@@ -8,7 +8,7 @@ import macros
 
 var gid {.compileTime.} = 3
 
-macro genId(): expr =
+macro genId(): int =
   result = newIntLitNode(gid)
   inc gid
 

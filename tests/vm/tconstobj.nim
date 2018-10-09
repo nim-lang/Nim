@@ -1,5 +1,5 @@
 discard """
-  output: '''(name: hello)
+  output: '''(name: "hello")
 (-1, 0)'''
 """
 

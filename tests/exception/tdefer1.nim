@@ -10,7 +10,7 @@ A'''
 
 # bug #1742
 
-template test(): expr =
+template test(): untyped =
     let a = 0
     defer: echo "hi"
     a
@@ -29,7 +29,7 @@ template atFuncEnd =
   defer:
     echo "B"
 
-template testB(): expr =
+template testB(): untyped =
     let a = 0
     defer: echo "hi" # Delete this line to make it work
     a

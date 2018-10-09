@@ -17,7 +17,7 @@ block SinglyLinkedListTest1:
 block SinglyLinkedListTest2:
   var L: TSinglyLinkedList[string]
   for d in items(data): L.prepend($d)
-  assert($L == "[6, 5, 4, 3, 2, 1]")
+  assert($L == """["6", "5", "4", "3", "2", "1"]""")
 
   assert("4" in L)
 

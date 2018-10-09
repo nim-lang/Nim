@@ -3,8 +3,8 @@ discard """
 @[1, 2, 3]'''
 """
 
-template foo(s: string = nil) =
-  if isNil(s):
+template foo(s: string = "") =
+  if s.len == 0:
     echo "it's nil"
   else:
     echo s

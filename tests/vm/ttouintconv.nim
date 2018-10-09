@@ -20,7 +20,7 @@ msg: '''
 
 #bug #2514
 
-macro foo(): stmt =
+macro foo(): typed =
   var x = 8'u8
   var y = 9'u16
   var z = 17'u32
@@ -57,21 +57,21 @@ macro foo(): stmt =
 
   var zz = 0x7FFFFFFF'u32
   echo zz
-  
-macro foo2(): stmt =
+
+macro foo2(): typed =
   var xx = 0x7FFFFFFFFFFFFFFF
   echo xx
-  
+
   var yy = 0
   echo yy
-  
+
   var zz = 0x80'u8
   echo zz
-  
+
   var ww = -9
   var vv = ww.uint
   var kk = vv.uint32
   echo kk
-  
+
 foo()
 foo2()

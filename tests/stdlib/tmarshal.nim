@@ -1,5 +1,5 @@
 discard """
-  output: '''{"age": 12, "bio": "\u042F Cletus", "blob": [65, 66, 67, 128], "name": "Cletus"}
+  output: '''{"age": 12, "bio": "Я Cletus", "blob": [65, 66, 67, 128], "name": "Cletus"}
 true
 true
 alpha 100
@@ -9,7 +9,7 @@ omega 200
 
 import marshal
 
-template testit(x: expr) = discard $$to[type(x)]($$x)
+template testit(x) = discard $$to[type(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
   ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],

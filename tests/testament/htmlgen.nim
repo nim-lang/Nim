@@ -1,7 +1,7 @@
 #
 #
 #            Nim Tester
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,220 +9,140 @@
 
 ## HTML generator for the tester.
 
-import db_sqlite, cgi, backend, strutils, json
+import cgi, backend, strutils, json, os, tables, times
 
-const
-  TableHeader = """<table border="1">
-                      <tr><td>Test</td><td>Category</td><td>Target</td>
-                          <td>Action</td>
-                          <td>Expected</td>
-                          <td>Given</td>
-                          <td>Success</td></tr>"""
-  TableFooter = "</table>"
-  HtmlBegin = """<html>
-    <head>
-      <title>Test results</title>
-      <style type="text/css">
-      <!--""" & slurp("css/boilerplate.css") & "\n" &
-                slurp("css/style.css") &
-      """
-ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
-ul#tabs li { display: inline; }
-ul#tabs li a { color: #42454a; background-color: #dedbde;
-               border: 1px solid #c9c3ba; border-bottom: none;
-               padding: 0.3em; text-decoration: none; }
-ul#tabs li a:hover { background-color: #f1f0ee; }
-ul#tabs li a.selected { color: #000; background-color: #f1f0ee;
-                        font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
-div.tabContent { border: 1px solid #c9c3ba;
-                 padding: 0.5em; background-color: #f1f0ee; }
-div.tabContent.hide { display: none; }
-      -->
-    </style>
-    <script>
+import "testamenthtml.templ"
 
-    var tabLinks = new Array();
-    var contentDivs = new Array();
+proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
+  let
+    trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str).
+        multiReplace({".": "_", " ": "_", ":": "_"})
+    name = testResultRow["name"].str.htmlQuote()
+    category = testResultRow["category"].str.htmlQuote()
+    target = testResultRow["target"].str.htmlQuote()
+    action = testResultRow["action"].str.htmlQuote()
+    result = htmlQuote testResultRow["result"].str
+    expected = testResultRow["expected"].getStr
+    gotten = testResultRow["given"].getStr
+    timestamp = "unknown"
+  var
+    panelCtxClass, textCtxClass, bgCtxClass: string
+    resultSign, resultDescription: string
+  case result
+  of "reSuccess":
+    panelCtxClass = "success"
+    textCtxClass = "success"
+    bgCtxClass = "success"
+    resultSign = "ok"
+    resultDescription = "PASS"
+  of "reIgnored":
+    panelCtxClass = "info"
+    textCtxClass = "info"
+    bgCtxClass = "info"
+    resultSign = "question"
+    resultDescription = "SKIP"
+  else:
+    panelCtxClass = "danger"
+    textCtxClass = "danger"
+    bgCtxClass = "danger"
+    resultSign = "exclamation"
+    resultDescription = "FAIL"
 
-    function init() {
-      // Grab the tab links and content divs from the page
-      var tabListItems = document.getElementById('tabs').childNodes;
-      for (var i = 0; i < tabListItems.length; i++) {
-        if (tabListItems[i].nodeName == "LI") {
-          var tabLink = getFirstChildWithTagName(tabListItems[i], 'A');
-          var id = getHash(tabLink.getAttribute('href'));
-          tabLinks[id] = tabLink;
-          contentDivs[id] = document.getElementById(id);
-        }
-      }
-      // Assign onclick events to the tab links, and
-      // highlight the first tab
-      var i = 0;
-      for (var id in tabLinks) {
-        tabLinks[id].onclick = showTab;
-        tabLinks[id].onfocus = function() { this.blur() };
-        if (i == 0) tabLinks[id].className = 'selected';
-        i++;
-      }
-      // Hide all content divs except the first
-      var i = 0;
-      for (var id in contentDivs) {
-        if (i != 0) contentDivs[id].className = 'tabContent hide';
-        i++;
-      }
-    }
+  outfile.generateHtmlTestresultPanelBegin(
+    trId, name, target, category, action, resultDescription,
+    timestamp, result, resultSign, panelCtxClass, textCtxClass, bgCtxClass
+  )
+  if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
+    outfile.generateHtmlTestresultOutputNone()
+  else:
+    outfile.generateHtmlTestresultOutputDetails(
+      expected.strip().htmlQuote,
+      gotten.strip().htmlQuote
+    )
+  outfile.generateHtmlTestresultPanelEnd()
 
-    function showTab() {
-      var selectedId = getHash(this.getAttribute('href'));
+type
+  AllTests = object
+    data: JSonNode
+    totalCount, successCount, ignoredCount, failedCount: int
+    successPercentage, ignoredPercentage, failedPercentage: BiggestFloat
 
-      // Highlight the selected tab, and dim all others.
-      // Also show the selected content div, and hide all others.
-      for (var id in contentDivs) {
-        if (id == selectedId) {
-          tabLinks[id].className = 'selected';
-          contentDivs[id].className = 'tabContent';
-        } else {
-          tabLinks[id].className = '';
-          contentDivs[id].className = 'tabContent hide';
-        }
-      }
-      // Stop the browser following the link
-      return false;
-    }
+proc allTestResults(onlyFailing = false): AllTests =
+  result.data = newJArray()
+  for file in os.walkFiles("testresults/*.json"):
+    let data = parseFile(file)
+    if data.kind != JArray:
+      echo "[ERROR] ignoring json file that is not an array: ", file
+    else:
+      for elem in data:
+        let state = elem["result"].str
+        inc result.totalCount
+        if state.contains("reSuccess"): inc result.successCount
+        elif state.contains("reIgnored"): inc result.ignoredCount
+        if not onlyFailing or not(state.contains("reSuccess")):
+          result.data.add elem
+  result.successPercentage = 100 *
+    (result.successCount.toBiggestFloat / result.totalCount.toBiggestFloat)
+  result.ignoredPercentage = 100 *
+    (result.ignoredCount.toBiggestFloat / result.totalCount.toBiggestFloat)
+  result.failedCount = result.totalCount -
+    result.successCount - result.ignoredCount
+  result.failedPercentage = 100 *
+    (result.failedCount.toBiggestFloat / result.totalCount.toBiggestFloat)
 
-    function getFirstChildWithTagName(element, tagName) {
-      for (var i = 0; i < element.childNodes.length; i++) {
-        if (element.childNodes[i].nodeName == tagName) return element.childNodes[i];
-      }
-    }
-    function getHash(url) {
-      var hashPos = url.lastIndexOf('#');
-      return url.substring(hashPos + 1);
-    }
-    </script>
+proc generateTestResultsPanelGroupPartial(outfile: File, allResults: JsonNode) =
+  for testresultRow in allResults:
+    generateTestResultPanelPartial(outfile, testresultRow)
 
-    </head>
-    <body onload="init()">"""
+proc generateAllTestsContent(outfile: File, allResults: AllTests,
+  onlyFailing = false) =
+  if allResults.data.len < 1: return # Nothing to do if there is no data.
+  # Only results from one test run means that test run environment info is the
+  # same for all tests
+  let
+    firstRow = allResults.data[0]
+    commit = htmlQuote firstRow["commit"].str
+    branch = htmlQuote firstRow["branch"].str
+    machine = htmlQuote firstRow["machine"].str
 
-  HtmlEnd = "</body></html>"
+  outfile.generateHtmlAllTestsBegin(
+    machine, commit, branch,
+    allResults.totalCount,
+    allResults.successCount,
+    formatBiggestFloat(allResults.successPercentage, ffDecimal, 2) & "%",
+    allResults.ignoredCount,
+    formatBiggestFloat(allResults.ignoredPercentage, ffDecimal, 2) & "%",
+    allResults.failedCount,
+    formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%",
+    onlyFailing
+  )
+  generateTestResultsPanelGroupPartial(outfile, allResults.data)
+  outfile.generateHtmlAllTestsEnd()
 
-proc td(s: string): string =
-  result = "<td>" & s.substr(0, 200).xmlEncode & "</td>"
-
-proc getCommit(db: DbConn, c: int): string =
-  var commit = c
-  for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
-    if commit == 0: result = thisCommit[0]
-    inc commit
-
-proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
-  const selRow = """select name, category, target, action,
-                           expected, given, result
-                    from TestResult
-                    where [commit] = ? and machine = ?
-                    order by category"""
-  var db = open(connection="testament.db", user="testament", password="",
-                database="testament")
-  # search for proper commit:
-  let lastCommit = db.getCommit(commit)
-
-  var outfile = open(filename, fmWrite)
-  outfile.write(HtmlBegin)
-
-  let commit = db.getValue(sql"select hash from [Commit] where id = ?",
-                            lastCommit)
-  let branch = db.getValue(sql"select branch from [Commit] where id = ?",
-                            lastCommit)
-  outfile.write("<p><b>$# $#</b></p>" % [branch, commit])
-
-  # generate navigation:
-  outfile.write("""<ul id="tabs">""")
-  for m in db.rows(sql"select id, name, os, cpu from Machine order by id"):
-    outfile.writeLine """<li><a href="#$#">$#: $#, $#</a></li>""" % m
-  outfile.write("</ul>")
-
-  for currentMachine in db.rows(sql"select id from Machine order by id"):
-    let m = currentMachine[0]
-    outfile.write("""<div class="tabContent" id="$#">""" % m)
-
-    outfile.write(TableHeader)
-    for row in db.rows(sql(selRow), lastCommit, m):
-      if onlyFailing and row.len > 0 and row[row.high] == "reSuccess":
-        discard
-      else:
-        outfile.write("<tr>")
-        for x in row:
-          outfile.write(x.td)
-        outfile.write("</tr>")
-
-    outfile.write(TableFooter)
-    outfile.write("</div>")
-  outfile.write(HtmlEnd)
-  close(db)
-  close(outfile)
-
-proc generateJson*(filename: string, commit: int) =
-  const
-    selRow = """select count(*),
-                           sum(result = 'reSuccess'),
-                           sum(result = 'reIgnored')
-                from TestResult
-                where [commit] = ? and machine = ?
-                order by category"""
-    selDiff = """select A.category || '/' || A.target || '/' || A.name,
-                        A.result,
-                        B.result
-                from TestResult A
-                inner join TestResult B
-                on A.name = B.name and A.category = B.category
-                where A.[commit] = ? and B.[commit] = ? and A.machine = ?
-                   and A.result != B.result"""
-    selResults = """select
-                      category || '/' || target || '/' || name,
-                      category, target, action, result, expected, given
-                    from TestResult
-                    where [commit] = ?"""
-  var db = open(connection="testament.db", user="testament", password="",
-                database="testament")
-  let lastCommit = db.getCommit(commit)
-  if lastCommit.isNil:
-    quit "cannot determine commit " & $commit
-
-  let previousCommit = db.getCommit(commit-1)
-
+proc generateHtml*(filename: string, onlyFailing: bool) =
+  let
+    currentTime = getTime().local()
+    timestring = htmlQuote format(currentTime, "yyyy-MM-dd HH:mm:ss 'UTC'zzz")
   var outfile = open(filename, fmWrite)
 
-  let machine = $backend.getMachine(db)
-  let data = db.getRow(sql(selRow), lastCommit, machine)
+  outfile.generateHtmlBegin()
 
-  outfile.writeLine("""{"total": $#, "passed": $#, "skipped": $#""" % data)
+  generateAllTestsContent(outfile, allTestResults(onlyFailing), onlyFailing)
 
-  let results = newJArray()
-  for row in db.rows(sql(selResults), lastCommit):
-    var obj = newJObject()
-    obj["name"] = %row[0]
-    obj["category"] = %row[1]
-    obj["target"] = %row[2]
-    obj["action"] = %row[3]
-    obj["result"] = %row[4]
-    obj["expected"] = %row[5]
-    obj["given"] = %row[6]
-    results.add(obj)
-  outfile.writeLine(""", "results": """)
-  outfile.write(results.pretty)
+  outfile.generateHtmlEnd(timestring)
 
-  if not previousCommit.isNil:
-    let diff = newJArray()
-
-    for row in db.rows(sql(selDiff), previousCommit, lastCommit, machine):
-      var obj = newJObject()
-      obj["name"] = %row[0]
-      obj["old"] = %row[1]
-      obj["new"] = %row[2]
-      diff.add obj
-    outfile.writeLine(""", "diff": """)
-    outfile.writeLine(diff.pretty)
-
-  outfile.writeLine "}"
-  close(db)
+  outfile.flushFile()
   close(outfile)
+
+proc dumpJsonTestResults*(prettyPrint, onlyFailing: bool) =
+  var
+    outfile = stdout
+    jsonString: string
+
+  let results = allTestResults(onlyFailing)
+  if prettyPrint:
+    jsonString = results.data.pretty()
+  else:
+    jsonString = $ results.data
+
+  outfile.writeLine(jsonString)

@@ -128,7 +128,7 @@ The ``watchpoint`` pragma is syntactically a statement. It can be used
 to mark a location as a watchpoint:
 
 .. code-block:: Nim
-  var a: array [0..20, int]
+  var a: array[0..20, int]
 
   {.watchpoint: a[3].}
   for i in 0 .. 20: a[i] = i

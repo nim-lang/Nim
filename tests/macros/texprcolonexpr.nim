@@ -13,7 +13,7 @@ Infix
 """
 import macros
 
-macro def(x: stmt): stmt {.immediate.} =
+macro def(x): untyped =
   echo treeRepr(x)
 
 def name(a, b:cint) => nil

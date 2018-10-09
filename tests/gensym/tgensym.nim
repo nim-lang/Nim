@@ -2,7 +2,7 @@ discard """
   output: "123100"
 """
 
-template hygienic(val: expr) =
+template hygienic(val) =
   var x = val
   stdout.write x
 

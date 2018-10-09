@@ -1,13 +1,15 @@
 # test the new 'compiles' feature:
 
-template supports(opr, x: expr): bool {.immediate.} =
+template supports(opr, x: untyped): bool =
   compiles(opr(x)) or compiles(opr(x, x))
 
-template ok(x: expr): stmt =
-  static: assert(x)
+template ok(x) =
+  static:
+    assert(x)
 
-template no(x: expr): stmt =
-  static: assert(not x)
+template no(x) =
+  static:
+    assert(not x)
 
 type
   TObj = object

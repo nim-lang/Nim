@@ -74,7 +74,7 @@ type
                        ## converted to nil.
   InstantRow* = object ## a handle that can be
     res: PPGresult     ## used to get a row's
-    line: int          ## column text on demand             
+    line: int          ## column text on demand
   SqlPrepared* = distinct string ## a identifier for the prepared queries
 {.deprecated: [TRow: Row, TDbConn: DbConn, TSqlPrepared: SqlPrepared].}
 
@@ -98,15 +98,15 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   if args.len > 0 and not string(formatstr).contains("?"):
     dbError("""parameter substitution expects "?" """)
-  for c in items(string(formatstr)):
-    if c == '?':
-      if args[a] == nil:
-        add(result, "NULL")
-      else:
+  if args.len == 0:
+    return string(formatstr)
+  else:
+    for c in items(string(formatstr)):
+      if c == '?':
         add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+        inc(a)
+      else:
+        add(result, c)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [ReadDbEffect, WriteDbEffect].} =
@@ -172,11 +172,11 @@ proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
   return SqlPrepared(stmtName)
 
 proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
-  for col in 0..cols-1:
+  for col in 0'i32..cols-1:
     setLen(r[col], 0)
     let x = pqgetvalue(res, line, col)
     if x.isNil:
-      r[col] = nil
+      r[col] = ""
     else:
       add(r[col], x)
 
@@ -188,7 +188,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   var res = setupQuery(db, query, args)
   var L = pqnfields(res)
   var result = newRow(L)
-  for i in 0..pqntuples(res)-1:
+  for i in 0'i32..pqntuples(res)-1:
     setRow(res, result, i, L)
     yield result
   pqclear(res)
@@ -199,7 +199,7 @@ iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
   var res = setupQuery(db, stmtName, args)
   var L = pqNfields(res)
   var result = newRow(L)
-  for i in 0..pqNtuples(res)-1:
+  for i in 0'i32..pqNtuples(res)-1:
     setRow(res, result, i, L)
     yield result
   pqClear(res)
@@ -210,7 +210,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within iterator body.
   var res = setupQuery(db, query, args)
-  for i in 0..pqNtuples(res)-1:
+  for i in 0'i32..pqNtuples(res)-1:
     yield InstantRow(res: res, line: i)
   pqClear(res)
 
@@ -220,7 +220,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within iterator body.
   var res = setupQuery(db, stmtName, args)
-  for i in 0..pqNtuples(res)-1:
+  for i in 0'i32..pqNtuples(res)-1:
     yield InstantRow(res: res, line: i)
   pqClear(res)
 
@@ -237,7 +237,7 @@ proc getColumnType(res: PPGresult, col: int) : DbType =
   of 21:   return DbType(kind: DbTypeKind.dbInt, name: "int2", size: 2)
   of 23:   return DbType(kind: DbTypeKind.dbInt, name: "int4", size: 4)
   of 20:   return DbType(kind: DbTypeKind.dbInt, name: "int8", size: 8)
-  of 1560: return DbType(kind: DbTypeKind.dbBit, name: "bit")  
+  of 1560: return DbType(kind: DbTypeKind.dbBit, name: "bit")
   of 1562: return DbType(kind: DbTypeKind.dbInt, name: "varbit")
 
   of 18:   return DbType(kind: DbTypeKind.dbFixedChar, name: "char")
@@ -251,7 +251,7 @@ proc getColumnType(res: PPGresult, col: int) : DbType =
   of 700: return DbType(kind: DbTypeKind.dbFloat, name: "float4")
   of 701: return DbType(kind: DbTypeKind.dbFloat, name: "float8")
 
-  of 790:  return DbType(kind: DbTypeKind.dbDecimal, name: "money")  
+  of 790:  return DbType(kind: DbTypeKind.dbDecimal, name: "money")
   of 1700: return DbType(kind: DbTypeKind.dbDecimal, name: "numeric")
 
   of 704:  return DbType(kind: DbTypeKind.dbTimeInterval, name: "tinterval")
@@ -274,12 +274,12 @@ proc getColumnType(res: PPGresult, col: int) : DbType =
   of 603: return DbType(kind: DbTypeKind.dbBox, name: "box")
   of 604: return DbType(kind: DbTypeKind.dbPolygon, name: "polygon")
   of 628: return DbType(kind: DbTypeKind.dbLine, name: "line")
-  of 718: return DbType(kind: DbTypeKind.dbCircle, name: "circle")  
+  of 718: return DbType(kind: DbTypeKind.dbCircle, name: "circle")
 
   of 650: return DbType(kind: DbTypeKind.dbInet, name: "cidr")
   of 829: return DbType(kind: DbTypeKind.dbMacAddress, name: "macaddr")
   of 869: return DbType(kind: DbTypeKind.dbInet, name: "inet")
-  
+
   of 2950: return DbType(kind: DbTypeKind.dbVarchar, name: "uuid")
   of 3614: return DbType(kind: DbTypeKind.dbVarchar, name: "tsvector")
   of 3615: return DbType(kind: DbTypeKind.dbVarchar, name: "tsquery")
@@ -361,11 +361,11 @@ proc getColumnType(res: PPGresult, col: int) : DbType =
 
 proc setColumnInfo(columns: var DbColumns; res: PPGresult; L: int32) =
   setLen(columns, L)
-  for i in 0..<L:
+  for i in 0'i32..<L:
     columns[i].name = $pqfname(res, i)
     columns[i].typ = getColumnType(res, i)
     columns[i].tableName = $(pqftable(res, i)) ## Returns the OID of the table from which the given column was fetched.
-                                               ## Query the system table pg_class to determine exactly which table is referenced.  
+                                               ## Query the system table pg_class to determine exactly which table is referenced.
     #columns[i].primaryKey = libpq does not have a function for that
     #columns[i].foreignKey = libpq does not have a function for that
 
@@ -374,7 +374,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
                       {.tags: [ReadDbEffect].} =
   var res = setupQuery(db, query, args)
   setColumnInfo(columns, res, pqnfields(res))
-  for i in 0..<pqntuples(res):
+  for i in 0'i32..<pqntuples(res):
     yield InstantRow(res: res, line: i)
   pqClear(res)
 
@@ -516,10 +516,13 @@ proc open*(connection, user, password, database: string): DbConn {.
   ##
   ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
   ## for more information.
-  ##
-  ## Note that the connection parameter is not used but exists to maintain
-  ## the nim db api.
-  result = pqsetdbLogin(nil, nil, nil, nil, database, user, password)
+  let
+    colonPos = connection.find(':')
+    host = if colonPos < 0: connection
+           else: substr(connection, 0, colonPos-1)
+    port = if colonPos < 0: ""
+           else: substr(connection, colonPos+1)
+  result = pqsetdbLogin(host, port, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.

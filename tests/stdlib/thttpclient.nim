@@ -2,6 +2,8 @@ discard """
   cmd: "nim c --threads:on -d:ssl $file"
   exitcode: 0
   output: "OK"
+  disabled: "travis"
+  disabled: "appveyor"
 """
 
 import strutils
@@ -37,13 +39,15 @@ proc asyncTest() {.async.} =
     doAssert(false, "HttpRequestError should have been raised")
 
 
-  # Multipart test.
-  var data = newMultipartData()
-  data["output"] = "soap12"
-  data["uploaded_file"] = ("test.html", "text/html",
-    "<html><head></head><body><p>test</p></body></html>")
-  resp = await client.post("http://validator.w3.org/check", multipart=data)
-  doAssert(resp.code.is2xx)
+  when false:
+    # w3.org now blocks travis, so disabled:
+    # Multipart test.
+    var data = newMultipartData()
+    data["output"] = "soap12"
+    data["uploaded_file"] = ("test.html", "text/html",
+      "<html><head></head><body><p>test</p></body></html>")
+    resp = await client.post("http://validator.w3.org/check", multipart=data)
+    doAssert(resp.code.is2xx)
 
   # onProgressChanged
   when manualTests:
@@ -85,13 +89,15 @@ proc syncTest() =
   except:
     doAssert(false, "HttpRequestError should have been raised")
 
-  # Multipart test.
-  var data = newMultipartData()
-  data["output"] = "soap12"
-  data["uploaded_file"] = ("test.html", "text/html",
-    "<html><head></head><body><p>test</p></body></html>")
-  resp = client.post("http://validator.w3.org/check", multipart=data)
-  doAssert(resp.code.is2xx)
+  when false:
+    # w3.org now blocks travis, so disabled:
+    # Multipart test.
+    var data = newMultipartData()
+    data["output"] = "soap12"
+    data["uploaded_file"] = ("test.html", "text/html",
+      "<html><head></head><body><p>test</p></body></html>")
+    resp = client.post("http://validator.w3.org/check", multipart=data)
+    doAssert(resp.code.is2xx)
 
   # onProgressChanged
   when manualTests:

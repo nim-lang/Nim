@@ -5,9 +5,9 @@ discard """
 type
   TMsgKind = enum
     mLine, mEof
-  TMsg = object {.pure, final.}
+  TMsg = object
     case k: TMsgKind
-    of mEof: nil
+    of mEof: discard
     of mLine: data: string
 
 var

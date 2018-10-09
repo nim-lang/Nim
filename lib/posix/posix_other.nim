@@ -7,15 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
-
-from times import Time
+{.deadCodeElim: on.}  # dce option deprecated
 
 const
-  hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
+  hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
-when defined(linux):
+when defined(linux) and not defined(android):
   # On Linux:
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
@@ -36,6 +34,8 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
+
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
     tv_sec*: Time  ## Seconds.
@@ -43,17 +43,23 @@ type
 
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
+    when defined(haiku):
+      d_dev*: Dev ## Device (not POSIX)
+      d_pdev*: Dev ## Parent device (only for queries) (not POSIX)
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
-      d_type*: uint8 
+      d_type*: uint8
     elif defined(linux) or defined(macosx) or defined(freebsd) or
-         defined(netbsd) or defined(openbsd):
+         defined(netbsd) or defined(openbsd) or defined(genode):
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+    elif defined(haiku):
+      d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
+      d_reclen*: cushort ## Length of this record. (not POSIX)
 
     d_name*: array[0..255, char] ## Name of entry.
 
@@ -146,7 +152,7 @@ type
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
-  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int
+  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
   Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>".} = int
@@ -209,24 +215,24 @@ type
     st_gid*: Gid          ## Group ID of file.
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
-                           ## For symbolic links, the length in bytes of the
-                           ## pathname contained in the symbolic link.
-                           ## For a shared memory object, the length in bytes.
-                           ## For a typed memory object, the length in bytes.
-                           ## For other file types, the use of this field is
-                           ## unspecified.
-    when defined(macosx):
-      st_atime*: Time      ## Time of last access.
-      st_mtime*: Time      ## Time of last data modification.
-      st_ctime*: Time      ## Time of last status change.
+                          ## For symbolic links, the length in bytes of the
+                          ## pathname contained in the symbolic link.
+                          ## For a shared memory object, the length in bytes.
+                          ## For a typed memory object, the length in bytes.
+                          ## For other file types, the use of this field is
+                          ## unspecified.
+    when StatHasNanoseconds:
+      st_atim*: Timespec  ## Time of last access.
+      st_mtim*: Timespec  ## Time of last data modification.
+      st_ctim*: Timespec  ## Time of last status change.
     else:
-      st_atim*: Timespec   ## Time of last access.
-      st_mtim*: Timespec   ## Time of last data modification.
-      st_ctim*: Timespec   ## Time of last status change.
-    st_blksize*: Blksize   ## A file system-specific preferred I/O block size
-                           ## for this object. In some file system types, this
-                           ## may vary from file to file.
-    st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
+      st_atime*: Time     ## Time of last access.
+      st_mtime*: Time     ## Time of last data modification.
+      st_ctime*: Time     ## Time of last status change.
+    st_blksize*: Blksize  ## A file system-specific preferred I/O block size
+                          ## for this object. In some file system types, this
+                          ## may vary from file to file.
+    st_blocks*: Blkcnt    ## Number of blocks allocated for this object.
 
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
@@ -335,8 +341,8 @@ type
 
   Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
              final, pure.} = object ## struct timeval
-    tv_sec*: int       ## Seconds.
-    tv_usec*: int ## Microseconds.
+    tv_sec*: Time ## Seconds.
+    tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
@@ -404,7 +410,7 @@ else:
 
 type
   Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
-  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cint
+  TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
@@ -572,7 +578,8 @@ else:
     MAP_POPULATE*: cint = 0
 
 when defined(linux) or defined(nimdoc):
-  when defined(alpha) or defined(mips) or defined(parisc) or
+  when defined(alpha) or defined(mips) or defined(mipsel) or
+      defined(mips64) or defined(mips64el) or defined(parisc) or
       defined(sparc) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections
@@ -597,6 +604,10 @@ else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
       ## No SIGPIPE generated when an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+when defined(haiku):
+  const
+    SIGKILLTHR* = 21 ## BeOS specific: Kill just the thread, not team
 
 when hasSpawnH:
   when defined(linux):

@@ -5,7 +5,7 @@ discard """
 import
   macros, strutils
 
-macro test_macro*(s: string, n: stmt): stmt {.immediate.} =
+macro test_macro*(s: string, n: untyped): untyped =
   result = newNimNode(nnkStmtList)
   var ass : NimNode = newNimNode(nnkAsgn)
   add(ass, newIdentNode("str"))
@@ -16,4 +16,3 @@ when isMainModule:
   test_macro(str):
     var i : integer = 123
   echo str
-

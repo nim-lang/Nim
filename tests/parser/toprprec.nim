@@ -4,9 +4,11 @@ discard """
 """
 # Test operator precedence:
 
-template `@` (x: expr): expr {.immediate.} = self.x
-template `@!` (x: expr): expr {.immediate.} = x
-template `===` (x: expr): expr {.immediate.} = x
+template `@` (x: untyped): untyped {.immediate.} =
+  `self`.x
+
+template `@!` (x: untyped): untyped = x
+template `===` (x: untyped): untyped = x
 
 type
   TO = object
@@ -34,6 +36,3 @@ var s: TA
 assert init(s) == "4"
 
 echo "done"
-
-
-

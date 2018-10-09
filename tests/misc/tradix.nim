@@ -13,16 +13,16 @@ type
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
     len: int8
-    keys: array [0..31, int8]
-    vals: array [0..31, PRadixNode]
+    keys: array[0..31, int8]
+    vals: array[0..31, PRadixNode]
 
   TRadixNodeFull = object of TRadixNode
-    b: array [0..255, PRadixNode]
+    b: array[0..255, PRadixNode]
   TRadixNodeLeafBits = object of TRadixNode
-    b: array [0..7, int]
+    b: array[0..7, int]
   TRadixNodeLeafLinear = object of TRadixNode
     len: int8
-    keys: array [0..31, int8]
+    keys: array[0..31, int8]
 
 var
   root: PRadixNode

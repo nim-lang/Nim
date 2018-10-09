@@ -96,10 +96,6 @@ when not defined(js):
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
-  {.deprecated: [PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
-
-{.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger].}
-
 var
   level {.threadvar.}: Level   ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
@@ -121,7 +117,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
       while frmt[i] in IdentChars:
-        v.add(toLower(frmt[i]))
+        v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v
       of "date": result.add(getDateStr())
@@ -202,13 +198,17 @@ when not defined(js):
 
   proc countLogLines(logger: RollingFileLogger): int =
     result = 0
-    for line in logger.file.lines():
+    let fp = open(logger.baseName, fmRead)
+    for line in fp.lines():
       result.inc()
+    fp.close()
 
   proc countFiles(filename: string): int =
     # Example: file.log.1
     result = 0
-    let (dir, name, ext) = splitFile(filename)
+    var (dir, name, ext) = splitFile(filename)
+    if dir == "":
+      dir = "."
     for kind, path in walkDir(dir):
       if kind == pcFile:
         let llfn = name & ext & ExtSep
@@ -330,7 +330,6 @@ template fatal*(args: varargs[string, `$`]) =
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
-  if handlers.isNil: handlers = @[]
   handlers.add(handler)
 
 proc getHandlers*(): seq[Logger] =
@@ -357,3 +356,6 @@ when not defined(testing) and isMainModule:
   addHandler(L)
   for i in 0 .. 25:
     info("hello", i)
+
+  var nilString: string
+  info "hello ", nilString

@@ -1,6 +1,6 @@
 discard """
   file: "tclosure.nim"
-  output: "1 3 6 11 20"
+  output: '''1 3 6 11 20 foo'''
 """
 # Test the closure implementation
 
@@ -45,3 +45,20 @@ proc getInterf(): ITest =
   return (setter: proc (x: int) = shared = x,
           getter: proc (): int = return shared)
 
+
+# bug #5015
+
+type Mutator* = proc(matched: string): string {.noSideEffect, gcsafe, locks: 0.}
+
+proc putMutated*(
+    MutatorCount: static[int],
+    mTable: static[array[MutatorCount, Mutator]], input: string) =
+  for i in 0..<MutatorCount: echo mTable[i](input)
+
+proc mutator0(matched: string): string =
+    "foo"
+
+const
+  mTable = [Mutator(mutator0)]
+
+putMutated(1, mTable, "foo")

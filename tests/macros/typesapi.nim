@@ -8,7 +8,7 @@ proc (x: int) => typeDesc[proc[void, int]]'''
 
 import macros
 
-macro showType(t:stmt): stmt =
+macro showType(t:typed): untyped =
   let ty = t.getType
   echo t.repr, " => ", ty.repr
 

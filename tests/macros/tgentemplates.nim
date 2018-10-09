@@ -20,7 +20,7 @@ proc parse_template(node: NimNode, value: string) {.compiletime.} =
     while index < value.len and
         parse_until_symbol(node, value, index): discard
 
-macro tmpli*(body: expr): stmt =
+macro tmpli*(body: untyped): typed =
     result = newStmtList()
     result.add parseExpr("result = \"\"")
     result.parse_template body[1].strVal

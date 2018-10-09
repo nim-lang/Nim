@@ -17,7 +17,7 @@ const
 var i = 0
 for item in items(tabs):
   var content = $i
-  var file: TFile
+  var file: File
   if open(file, changeFileExt(item[1], "html"), fmWrite):
     write(file, sunsetTemplate(current=item[1], ticker="", content=content,
                                tabs=tabs))

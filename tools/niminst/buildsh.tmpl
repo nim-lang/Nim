@@ -1,4 +1,4 @@
-#? stdtmpl(subsChar='?') | standard
+﻿#? stdtmpl(subsChar='?') | standard
 #proc generateBuildShellScript(c: ConfigData): string =
 #  result = "#! /bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/niminst/buildsh.tmpl\n" &
@@ -9,6 +9,18 @@ set -e
 while :
 do
   case "$1" in
+    --os)
+      optos=$2
+      shift 2
+      ;;
+    --cpu)
+      optcpu=$2
+      shift 2
+      ;;
+    --osname)
+      optosname=$2
+      shift 2
+      ;;
     --extraBuildArgs)
       extraBuildArgs=" $2"
       shift 2
@@ -27,14 +39,15 @@ do
   esac
 done
 
-CC="gcc"
-LINKER="gcc"
+CC="${CC:-gcc}"
+LINKER="${LD:-gcc}"
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`
+uosname=
 #  add(result, "# bin dir detection\n")
 binDir=?{firstBinPath(c).toUnix}
 
@@ -46,9 +59,21 @@ if [ ! -d $binDir ]; then
   mkdir $binDir
 fi
 
+#  add(result, "# override OS, CPU and OS Name with command-line arguments\n")
+if [ -n "$optos" ]; then 
+  uos="$optos"
+fi
+if [ -n "$optcpu" ]; then
+  ucpu="$optcpu"
+fi
+if [ -n "$optcpu" ]; then
+  uosname="$optosname"
+fi
+
 #  add(result, "# convert to lower case:\n")
 ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
 uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
+uosname=`echo $uosname | tr "[:upper:]" "[:lower:]"`
 
 case $uos in
   *linux* )
@@ -94,8 +119,13 @@ case $uos in
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
     ;;
-  *mingw* )
+  *mingw* | *msys* )
     myos="windows"
+    ;;
+  *android* )
+    myos="android"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
+    LINK_FLAGS="$LINK_FLAGS -landroid-glob"
     ;;
   *)
     echo 2>&1 "Error: unknown operating system: $uos"
@@ -114,6 +144,8 @@ case $ucpu in
       mycpu="sparc64"
     fi
     ;;
+  *ppc64le* )
+    mycpu="powerpc64el" ;;
   *ppc64* )
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"
@@ -123,8 +155,16 @@ case $ucpu in
   *power*|*ppc* )
     mycpu="powerpc" ;;
   *mips* )
-    mycpu="mips" ;;
-  *arm*|*armv6l* )
+    mycpu="$("$CC" -dumpmachine | sed 's/-.*//')"
+    case $mycpu in
+      mips|mipsel|mips64|mips64el)
+        ;;
+      *)
+        echo 2>&1 "Error: unknown MIPS target: $mycpu"
+        exit 1
+    esac
+    ;;
+  *arm*|*armv6l*|*armv71* )
     mycpu="arm" ;;
   *aarch64* )
     mycpu="arm64" ;;
@@ -134,7 +174,17 @@ case $ucpu in
     ;;
 esac
 
+case $uosname in
+  *android* )
+    LINK_FLAGS="$LINK_FLAGS -landroid-glob"
+    myosname="android"
+    myos="android"
+    ;;
+esac
+
 #  add(result, "# call the compiler:\n")
+echo \# OS:  $myos
+echo \# CPU: $mycpu
 
 case $myos in
 #  for osA in 1..c.oses.len:

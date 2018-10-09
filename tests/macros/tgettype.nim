@@ -10,11 +10,18 @@ type
     name : string
     password : string
 
-macro testUser: expr =
-  return newLit(User.getType.lispRepr)
+macro testUser: string =
+  result = newLit(User.getType.lispRepr)
 
-macro testGeneric(T: typedesc[Model]): expr =
-  return newLit(T.getType.lispRepr)
+macro testGeneric(T: typedesc[Model]): string=
+  result = newLit(T.getType.lispRepr)
 
 echo testUser
 echo User.testGeneric
+
+macro assertVoid(e: typed): untyped =
+  assert(getTypeInst(e).typeKind == ntyVoid)
+
+proc voidProc() = discard
+
+assertVoid voidProc()

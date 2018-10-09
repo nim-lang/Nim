@@ -24,7 +24,7 @@ proc prefixMatch*(p, s: string): PrefixMatch =
   # check for prefix/contains:
   while i < L:
     if s[i] == '_': inc i
-    if eq(s[i], p[0]):
+    if i < L and eq(s[i], p[0]):
       var ii = i+1
       var jj = 1
       while ii < L and jj < p.len:
@@ -43,10 +43,10 @@ proc prefixMatch*(p, s: string): PrefixMatch =
     i = 1
     var j = 1
     while i < s.len:
-      if s[i] == '_' and i < s.len-1:
+      if i < s.len-1 and s[i] == '_':
         if j < p.len and eq(p[j], s[i+1]): inc j
         else: return PrefixMatch.None
-      if s[i] in {'A'..'Z'} and s[i-1] notin {'A'..'Z'}:
+      if i < s.len and s[i] in {'A'..'Z'} and s[i-1] notin {'A'..'Z'}:
         if j < p.len and eq(p[j], s[i]): inc j
         else: return PrefixMatch.None
       inc i

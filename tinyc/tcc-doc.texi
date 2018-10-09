@@ -2,6 +2,10 @@
 @c %**start of header
 @setfilename tcc-doc.info
 @settitle Tiny C Compiler Reference Documentation
+@dircategory Software development
+@direntry
+* TCC: (tcc-doc).               The Tiny C Compiler.
+@end direntry
 @c %**end of header
 
 @include config.texi
@@ -64,7 +68,7 @@ ports for the ARM (@code{arm-tcc}) and the TMS320C67xx targets
 (@code{c67-tcc}). More information about the ARM port is available at
 @url{http://lists.gnu.org/archive/html/tinycc-devel/2003-10/msg00044.html}.
 
-For usage on Windows, see also tcc-win32.txt.
+For usage on Windows, see also @url{tcc-win32.txt}.
 
 @node Invoke
 @chapter Command line invocation
@@ -153,42 +157,33 @@ General Options:
 
 @c man begin OPTIONS
 @table @option
-@item -v
-Display current TCC version, increase verbosity.
-
 @item -c
-Generate an object file (@option{-o} option must also be given).
+Generate an object file.
 
 @item -o outfile
 Put object file, executable, or dll into output file @file{outfile}.
-
-@item -Bdir
-Set the path where the tcc internal libraries can be found (default is
-@file{PREFIX/lib/tcc}).
-
-@item -bench
-Output compilation statistics.
 
 @item -run source [args...]
 Compile file @var{source} and run it with the command line arguments
 @var{args}. In order to be able to give more than one argument to a
 script, several TCC options can be given @emph{after} the
-@option{-run} option, separated by spaces. Example:
-
+@option{-run} option, separated by spaces:
 @example
 tcc "-run -L/usr/X11R6/lib -lX11" ex4.c
 @end example
-
 In a script, it gives the following header:
-
 @example
 #!/usr/local/bin/tcc -run -L/usr/X11R6/lib -lX11
-#include <stdlib.h>
-int main(int argc, char **argv)
-@{
-    ...
-@}
 @end example
+
+@item -v
+Display TCC version.
+
+@item -vv
+Show included files.  As sole argument, print search dirs.  -vvv shows tries too.
+
+@item -bench
+Display compilation statistics.
 
 @end table
 
@@ -211,11 +206,15 @@ also be defined: @option{-DF(a)=a+1}
 
 @item -Usym
 Undefine preprocessor symbol @samp{sym}.
+
+@item -E
+Preprocess only, to stdout or file (with -o).
+
 @end table
 
 Compilation flags:
 
-Note: each of the following warning options has a negative form beginning with
+Note: each of the following options has a negative form beginning with
 @option{-fno-}.
 
 @table @option
@@ -230,6 +229,14 @@ Do not generate common symbols for uninitialized data.
 
 @item -fleading-underscore
 Add a leading underscore at the beginning of each C symbol.
+
+@item -fms-extensions
+Allow a MS C compiler extensions to the language. Currently this
+assumes a nested named structure declaration without an identifier
+behaves like an unnamed one.
+
+@item -fdollars-in-identifiers
+Allow dollar signs in identifiers
 
 @end table
 
@@ -274,28 +281,37 @@ default library paths are @file{/usr/local/lib}, @file{/usr/lib} and @file{/lib}
 @item -lxxx
 Link your program with dynamic library libxxx.so or static library
 libxxx.a. The library is searched in the paths specified by the
-@option{-L} option.
+@option{-L} option and @env{LIBRARY_PATH} variable.
+
+@item -Bdir
+Set the path where the tcc internal libraries (and include files) can be
+found (default is @file{PREFIX/lib/tcc}).
 
 @item -shared
-Generate a shared library instead of an executable (@option{-o} option
-must also be given).
+Generate a shared library instead of an executable.
+
+@item -soname name
+set name for shared library to be used at runtime
 
 @item -static
 Generate a statically linked executable (default is a shared linked
-executable) (@option{-o} option must also be given).
+executable).
 
 @item -rdynamic
 Export global symbols to the dynamic linker. It is useful when a library
 opened with @code{dlopen()} needs to access executable symbols.
 
 @item -r
-Generate an object file combining all input files (@option{-o} option must
-also be given).
+Generate an object file combining all input files.
 
-@item -Wl,-Ttext,address
-Set the start of the .text section to @var{address}.
+@item -Wl,-rpath=path
+Put custom search path for dynamic libraries into executable.
 
-@item -Wl,--oformat,fmt
+@item -Wl,--enable-new-dtags
+When putting a custom search path for dynamic libraries into the executable,
+create the new ELF dynamic tag DT_RUNPATH instead of the old legacy DT_RPATH.
+
+@item -Wl,--oformat=fmt
 Use @var{fmt} as output format. The supported output formats are:
 @table @code
 @item elf32-i386
@@ -305,6 +321,18 @@ Binary image (only for executable output)
 @item coff
 COFF output format (only for executable output for TMS320C67xx target)
 @end table
+
+@item -Wl,-subsystem=console/gui/wince/...
+Set type for PE (Windows) executables.
+
+@item -Wl,-[Ttext=# | section-alignment=# | file-alignment=# | image-base=# | stack=#]
+Modify executable layout.
+
+@item -Wl,-Bsymbolic
+Set DT_SYMBOLIC tag.
+
+@item -Wl,-(no-)whole-archive
+Turn on/off linking of all objects in archives.
 
 @end table
 
@@ -322,14 +350,70 @@ Generate additional support code to check
 memory allocations and array/pointer bounds. @option{-g} is implied. Note
 that the generated code is slower and bigger in this case.
 
+Note: @option{-b} is only available on i386 when using libtcc for the moment.
+
 @item -bt N
 Display N callers in stack traces. This is useful with @option{-g} or
 @option{-b}.
 
 @end table
 
+Misc options:
+
+@table @option
+@item -MD
+Generate makefile fragment with dependencies.
+
+@item -MF depfile
+Use @file{depfile} as output for -MD.
+
+@item -print-search-dirs
+Print the configured installation directory and a list of library
+and include directories tcc will search.
+
+@item -dumpversion
+Print version.
+
+@end table
+
+Target specific options:
+
+@table @option
+@item -mms-bitfields
+Use an algorithm for bitfield alignment consistent with MSVC. Default is
+gcc's algorithm.
+
+@item -mfloat-abi (ARM only)
+Select the float ABI. Possible values: @code{softfp} and @code{hard}
+
+@item -mno-sse
+Do not use sse registers on x86_64
+
+@item -m32, -m64
+Pass command line to the i386/x86_64 cross compiler.
+
+@end table
+
 Note: GCC options @option{-Ox}, @option{-fx} and @option{-mx} are
 ignored.
+@c man end
+
+@c man begin ENVIRONMENT
+Environment variables that affect how tcc operates.
+
+@table @option
+
+@item CPATH
+@item C_INCLUDE_PATH
+A colon-separated list of directories searched for include files,
+directories given with @option{-I} are searched first.
+
+@item LIBRARY_PATH
+A colon-separated list of directories searched for libraries for the
+@option{-l} option, directories given with @option{-L} are searched first.
+
+@end table
+
 @c man end
 
 @ignore
@@ -338,6 +422,7 @@ ignored.
 @settitle Tiny C Compiler
 
 @c man begin SEEALSO
+cpp(1),
 gcc(1)
 @c man end
 
@@ -359,12 +444,13 @@ and floating point numbers (@code{long double}, @code{double}, and
 @section ISOC99 extensions
 
 TCC implements many features of the new C standard: ISO C99. Currently
-missing items are: complex and imaginary numbers and variable length
-arrays.
+missing items are: complex and imaginary numbers.
 
 Currently implemented ISOC99 features:
 
 @itemize
+
+@item variable length arrays.
 
 @item 64 bit @code{long long} types are fully supported.
 
@@ -567,8 +653,7 @@ are supported.
 
 @itemize
 
-@item @code{__TINYC__} is a predefined macro to @code{1} to
-indicate that you use TCC.
+@item @code{__TINYC__} is a predefined macro to indicate that you use TCC.
 
 @item @code{#!} at the start of a line is ignored to allow scripting.
 
@@ -584,7 +669,7 @@ indicate that you use TCC.
 
 Since version 0.9.16, TinyCC integrates its own assembler. TinyCC
 assembler supports a gas-like syntax (GNU assembler). You can
-desactivate assembler support if you want a smaller TinyCC executable
+deactivate assembler support if you want a smaller TinyCC executable
 (the C compiler does not rely on the assembler).
 
 TinyCC Assembler is used to handle files with @file{.S} (C
@@ -915,9 +1000,13 @@ be the best solution.
 #define VT_BTYPE      0x000f /* mask for basic type */
 #define VT_UNSIGNED   0x0010  /* unsigned type */
 #define VT_ARRAY      0x0020  /* array type (also has VT_PTR) */
+#define VT_VLA        0x20000 /* VLA type (also has VT_PTR and VT_ARRAY) */
 #define VT_BITFIELD   0x0040  /* bitfield modifier */
+#define VT_CONSTANT   0x0800  /* const modifier */
+#define VT_VOLATILE   0x1000  /* volatile modifier */
+#define VT_DEFSIGN    0x2000  /* signed type */
 
-#define VT_STRUCT_SHIFT 16   /* structure/enum name shift (16 bits left) */
+#define VT_STRUCT_SHIFT 18   /* structure/enum name shift (14 bits left) */
 @end example
 
 When a reference to another type is needed (for pointers, functions and
@@ -928,7 +1017,8 @@ The @code{VT_UNSIGNED} flag can be set for chars, shorts, ints and long
 longs.
 
 Arrays are considered as pointers @code{VT_PTR} with the flag
-@code{VT_ARRAY} set.
+@code{VT_ARRAY} set. Variable length arrays are considered as special
+arrays and have flag @code{VT_VLA} set instead of @code{VT_ARRAY}.
 
 The @code{VT_BITFIELD} flag can be set for chars, shorts, ints and long
 longs. If it is set, then the bitfield position is stored from bits
@@ -944,6 +1034,10 @@ integer:
 #define VT_EXTERN  0x00000080  /* extern definition */
 #define VT_STATIC  0x00000100  /* static variable */
 #define VT_TYPEDEF 0x00000200  /* typedef definition */
+#define VT_INLINE  0x00000400  /* inline definition */
+#define VT_IMPORT  0x00004000  /* win32: extern data imported from dll */
+#define VT_EXPORT  0x00008000  /* win32: data exported from dll */
+#define VT_WEAK    0x00010000  /* win32: data exported from dll */
 @end example
 
 @section Symbols
@@ -952,10 +1046,13 @@ All symbols are stored in hashed symbol stacks. Each symbol stack
 contains @code{Sym} structures.
 
 @code{Sym.v} contains the symbol name (remember
-an idenfier is also a token, so a string is never necessary to store
+an identifier is also a token, so a string is never necessary to store
 it). @code{Sym.t} gives the type of the symbol. @code{Sym.r} is usually
 the register in which the corresponding variable is stored. @code{Sym.c} is
-usually a constant associated to the symbol.
+usually a constant associated to the symbol like its address for normal
+symbols, and the number of entries for symbols representing arrays.
+Variable length array types use @code{Sym.c} as a location on the stack
+which holds the runtime sizeof for the type.
 
 Four main symbol stacks are defined:
 
@@ -992,7 +1089,7 @@ global stack.
 
 @section Sections
 
-The generated code and datas are written in sections. The structure
+The generated code and data are written in sections. The structure
 @code{Section} contains all the necessary information for a given
 section. @code{new_section()} creates a new section. ELF file semantics
 is assumed for each section.
@@ -1017,7 +1114,7 @@ are used when bound checking is activated
 
 @item stab_section
 @itemx stabstr_section
-are used when debugging is activated to store debug information
+are used when debugging is active to store debug information
 
 @item symtab_section
 @itemx strtab_section
@@ -1117,8 +1214,10 @@ if the lvalue has an integer type, then these flags give its real
 type. The type alone is not enough in case of cast optimisations.
 
 @item VT_LLOCAL
-is a saved lvalue on the stack. @code{VT_LLOCAL} should be eliminated
-ASAP because its semantics are rather complicated.
+is a saved lvalue on the stack. @code{VT_LVAL} must also be set with
+@code{VT_LLOCAL}. @code{VT_LLOCAL} can arise when a @code{VT_LVAL} in
+a register has to be saved to the stack, or it can come from an
+architecture-specific calling convention.
 
 @item VT_MUSTCAST
 indicates that a cast to the value type must be performed if the value
@@ -1177,13 +1276,13 @@ should generate a function prolog/epilog.
 
 @item gen_opi(op)
 must generate the binary integer operation @var{op} on the two top
-entries of the stack which are guaranted to contain integer types.
+entries of the stack which are guaranteed to contain integer types.
 
 The result value should be put on the stack.
 
 @item gen_opf(op)
 same as @code{gen_opi()} for floating point operations. The two top
-entries of the stack are guaranted to contain floating point values of
+entries of the stack are guaranteed to contain floating point values of
 same types.
 
 @item gen_cvt_itof()

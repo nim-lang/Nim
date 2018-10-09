@@ -5,7 +5,7 @@ import
   sg_gui, sg_assets, sound_buffer, enet_client
 when defined(profiler):
   import nimprof
-{.deadCodeElim: on.}
+
 type
   PPlayer* = ref TPlayer
   TPlayer* = object
@@ -212,9 +212,10 @@ proc free(obj: PLiveBullet) =
   obj.record = nil
 
 
-template newExplosion(obj, animation): stmt =
+template newExplosion(obj, animation) =
   explosions.add(newAnimation(animation, AnimOnce, obj.body.getPos.cp2sfml, obj.body.getAngle))
-template newExplosion(obj, animation, angle): stmt =
+
+template newExplosion(obj, animation, angle) =
   explosions.add(newAnimation(animation, AnimOnce, obj.body.getPos.cp2sfml, angle))
 
 proc explode*(b: PLiveBullet) =

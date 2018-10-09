@@ -1,11 +1,11 @@
 discard """
-  errormsg: "type mismatch: got (PTest)"
+  errormsg: "type mismatch: got <PTest>"
 """
 
 type
   PTest = ref object
 
-proc test(x: PTest, y: int) = nil
+proc test(x: PTest, y: int) = discard
 
 var buf: PTest
 buf.test()

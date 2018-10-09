@@ -37,9 +37,8 @@ type
     lineNumber*: int          ## the current line number
     sentinel: int
     lineStart: int            # index of last line start in buffer
+    offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
     refillChars: set[char]
-
-{.deprecated: [TBaseLexer: BaseLexer].}
 
 const
   chrSize = sizeof(char)
@@ -107,7 +106,8 @@ proc fillBaseLexer(L: var BaseLexer, pos: int): int =
     result = pos + 1          # nothing to do
   else:
     fillBuffer(L)
-    L.bufpos = 0              # XXX: is this really correct?
+    L.offsetBase += pos
+    L.bufpos = 0
     result = 0
 
 proc handleCR*(L: var BaseLexer, pos: int): int =
@@ -147,6 +147,7 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   assert(input != nil)
   L.input = input
   L.bufpos = 0
+  L.offsetBase = 0
   L.bufLen = bufLen
   L.refillChars = refillChars
   when defined(js):

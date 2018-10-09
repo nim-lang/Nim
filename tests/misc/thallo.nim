@@ -15,7 +15,7 @@ proc fac[T](x: T): T =
   if x <= 1: return 1
   else: return x.`*`(fac(x-1))
 
-macro macrotest(n: expr): stmt {.immediate.} =
+macro macrotest(n: varargs[untyped]): untyped =
   let n = callsite()
   expectKind(n, nnkCall)
   expectMinLen(n, 2)
@@ -24,7 +24,7 @@ macro macrotest(n: expr): stmt {.immediate.} =
     result.add(newCall("write", n[1], n[i]))
   result.add(newCall("writeLine", n[1], newStrLitNode("")))
 
-macro debug(n: expr): stmt {.immediate.} =
+macro debug(n: untyped): untyped {.immediate.} =
   let n = callsite()
   result = newNimNode(nnkStmtList, n)
   for i in 1..n.len-1:
@@ -82,4 +82,3 @@ for i in 2..6:
 
 when isMainModule:
   {.hint: "this is the main file".}
-

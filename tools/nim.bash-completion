@@ -1,0 +1,47 @@
+# bash completion for nim                             -*- shell-script -*-
+
+_nim()
+{
+ local cur prev words cword split
+ _init_completion -s || return
+
+ COMPREPLY=()
+ cur=${COMP_WORDS[COMP_CWORD]}
+
+ if [ $COMP_CWORD -eq 1 ] ; then
+   # first item - suggest commands
+   kw="compile c doc compileToC cc compileToCpp cpp compileToOC objc js e rst2html rst2tex jsondoc buildIndex genDepend dump check"
+   COMPREPLY=( $( compgen -W "${kw}" -- $cur ) )
+   return 0
+ fi
+  case $prev in
+    --stackTrace|--lineTrace|--threads|-x|--checks|--objChecks|--fieldChecks|--rangeChecks|--boundChecks|--overflowChecks|-a|--assertions|--floatChecks|--nanChecks|--infChecks)
+      # Options that require on/off
+      [[ "$cur" == "=" ]] && cur=""
+      COMPREPLY=( $(compgen -W 'on off' -- "$cur") )
+      return 0
+    ;;
+    --opt)
+      [[ "$cur" == "=" ]] && cur=""
+      COMPREPLY=( $(compgen -W 'none speed size' -- "$cur") )
+      return 0
+    ;;
+    --app)
+      [[ "$cur" == "=" ]] && cur=""
+      COMPREPLY=( $(compgen -W 'console gui lib staticlib' -- "$cur") )
+      return 0
+    ;;
+    *)
+      kw="-r -p= --path= -d= --define= -u= --undef= -f --forceBuild --opt= --app= --stackTrace= --lineTrace= --threads= -x= --checks= --objChecks= --fieldChecks= --rangeChecks= --boundChecks= --overflowChecks= -a= --assertions= --floatChecks= --nanChecks= --infChecks="
+      COMPREPLY=( $( compgen -W "${kw}" -- $cur ) )
+      _filedir '@(nim)'
+      #$split
+      return 0
+    ;;
+  esac
+  return 0
+
+} &&
+complete -onospace -F _nim nim
+
+# ex: ts=2 sw=2 et filetypesh

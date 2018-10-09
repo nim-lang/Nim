@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
-
 from posix import Timespec
 
 when defined(macosx) or defined(freebsd) or defined(openbsd) or
@@ -61,7 +59,7 @@ const
   EV_CLEAR*    = 0x0020 ## Clear event state after reporting.
   EV_RECEIPT*  = 0x0040 ## Force EV_ERROR on success, data == 0
   EV_DISPATCH* = 0x0080 ## Disable event after reporting.
-  
+
   EV_SYSFLAGS* = 0xF000 ## Reserved by system
   EV_DROP*     = 0x1000 ## Not should be dropped
   EV_FLAG1*    = 0x2000 ## Filter-specific flag
@@ -87,10 +85,10 @@ when defined(macosx) or defined(freebsd) or defined(dragonfly):
     NOTE_FFAND*      = 0x40000000'u32 ## AND fflags
     NOTE_FFOR*       = 0x80000000'u32 ## OR fflags
     NOTE_FFCOPY*     = 0xc0000000'u32 ## copy fflags
-    NOTE_FFCTRLMASK* = 0xc0000000'u32 ## masks for operations 
+    NOTE_FFCTRLMASK* = 0xc0000000'u32 ## masks for operations
     NOTE_FFLAGSMASK* = 0x00ffffff'u32
 
-    NOTE_TRIGGER*    = 0x01000000'u32 ## Cause the event to be triggered 
+    NOTE_TRIGGER*    = 0x01000000'u32 ## Cause the event to be triggered
                                       ## for output.
 
 # data/hint flags for EVFILT_{READ|WRITE}, shared with userspace

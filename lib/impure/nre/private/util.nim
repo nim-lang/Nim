@@ -10,13 +10,9 @@ proc fget*[K, V](self: Table[K, V], key: K): V =
 const Ident = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
 const StartIdent = Ident - {'0'..'9'}
 
-proc checkNil(arg: string): string =
-  if arg == nil:
-    raise newException(ValueError, "Cannot use nil capture")
-  else:
-    return arg
+template checkNil(arg: string): string = arg
 
-template formatStr*(howExpr, namegetter, idgetter: expr): expr =
+template formatStr*(howExpr, namegetter, idgetter): untyped =
   let how = howExpr
   var val = newStringOfCap(how.len)
   var i = 0
