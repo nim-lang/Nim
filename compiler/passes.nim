@@ -16,21 +16,8 @@ import
   nimsets, syntaxes, times, idgen, modulegraphs, reorder, rod,
   lineinfos, pathutils
 
-
 type
-  TPassContext* = object of RootObj # the pass's context
-
-  PPassContext* = ref TPassContext
-
-  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
-  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
-  TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
-
-  TPass* = tuple[open: TPassOpen, process: TPassProcess, close: TPassClose,
-                 isFrontend: bool]
-
   TPassData* = tuple[input: PNode, closeOutput: PNode]
-  TPasses* = openArray[TPass]
 
 # a pass is a tuple of procedure vars ``TPass.close`` may produce additional
 # nodes. These are passed to the other close procedures.
@@ -57,16 +44,12 @@ const
 type
   TPassContextArray = array[0..maxPasses - 1, PPassContext]
 
-var
-  gPasses: array[0..maxPasses - 1, TPass]
-  gPassesLen*: int
-
 proc clearPasses*(g: ModuleGraph) =
-  gPassesLen = 0
+  g.passes.setLen(0)
 
 proc registerPass*(g: ModuleGraph; p: TPass) =
-  gPasses[gPassesLen] = p
-  inc(gPassesLen)
+  internalAssert g.config, g.passes.len < maxPasses
+  g.passes.add(p)
 
 proc carryPass*(g: ModuleGraph; p: TPass, module: PSym;
                 m: TPassData): TPassData =
@@ -76,7 +59,7 @@ proc carryPass*(g: ModuleGraph; p: TPass, module: PSym;
                        else: m.closeOutput
 
 proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
-                  passes: TPasses) =
+                  passes: openArray[TPass]) =
   var passdata: TPassData
   passdata.input = nodes
   for pass in passes:
@@ -84,23 +67,23 @@ proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
 
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
                 module: PSym) =
-  for i in countup(0, gPassesLen - 1):
-    if not isNil(gPasses[i].open):
-      a[i] = gPasses[i].open(g, module)
+  for i in countup(0, g.passes.len - 1):
+    if not isNil(g.passes[i].open):
+      a[i] = g.passes[i].open(g, module)
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
-  for i in countup(0, gPassesLen - 1):
-    if not isNil(gPasses[i].close): m = gPasses[i].close(graph, a[i], m)
+  for i in countup(0, graph.passes.len - 1):
+    if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
-proc processTopLevelStmt(n: PNode, a: var TPassContextArray): bool =
+proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
   var m = n
-  for i in countup(0, gPassesLen - 1):
-    if not isNil(gPasses[i].process):
-      m = gPasses[i].process(a[i], m)
+  for i in countup(0, graph.passes.len - 1):
+    if not isNil(graph.passes[i].process):
+      m = graph.passes[i].process(a[i], m)
       if isNil(m): return false
   result = true
 
@@ -111,19 +94,19 @@ proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   else:
     result = fileInfoIdx(conf, fullPath)
 
-proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKind,
+proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNodeKind,
                       a: var TPassContextArray; m: PSym) =
   # XXX fixme this should actually be relative to the config file!
   let gCmdLineInfo = newLineInfo(FileIndex(0), 1, 1)
-  let relativeTo = toFullPath(conf, m.info)
+  let relativeTo = toFullPath(graph.config, m.info)
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
-    if m.position != resolveMod(conf, module, relativeTo).int32:
+    if m.position != resolveMod(graph.config, module, relativeTo).int32:
       var importStmt = newNodeI(nodeKind, gCmdLineInfo)
       var str = newStrNode(nkStrLit, module)
       str.info = gCmdLineInfo
       importStmt.addSon str
-      if not processTopLevelStmt(importStmt, a): break
+      if not processTopLevelStmt(graph, importStmt, a): break
 
 const
   imperativeCode = {low(TNodeKind)..high(TNodeKind)} - {nkTemplateDef, nkProcDef, nkMethodDef,
@@ -139,25 +122,25 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     fileIdx = module.fileIdx
   if module.id < 0:
     # new module caching mechanism:
-    for i in 0..<gPassesLen:
-      if not isNil(gPasses[i].open) and not gPasses[i].isFrontend:
-        a[i] = gPasses[i].open(graph, module)
+    for i in 0 ..< graph.passes.len:
+      if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:
+        a[i] = graph.passes[i].open(graph, module)
       else:
         a[i] = nil
 
     if not graph.stopCompile():
       let n = loadNode(graph, module)
       var m = n
-      for i in 0..<gPassesLen:
-        if not isNil(gPasses[i].process) and not gPasses[i].isFrontend:
-          m = gPasses[i].process(a[i], m)
+      for i in 0 ..< graph.passes.len:
+        if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
+          m = graph.passes[i].process(a[i], m)
           if isNil(m):
             break
 
     var m: PNode = nil
-    for i in 0..<gPassesLen:
-      if not isNil(gPasses[i].close) and not gPasses[i].isFrontend:
-        m = gPasses[i].close(graph, a[i], m)
+    for i in 0 ..< graph.passes.len:
+      if not isNil(graph.passes[i].close) and not graph.passes[i].isFrontend:
+        m = graph.passes[i].close(graph, a[i], m)
       a[i] = nil
   else:
     openPasses(graph, a, module)
@@ -177,8 +160,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits graph.config, graph.config.implicitImports, nkImportStmt, a, module
-        processImplicits graph.config, graph.config.implicitIncludes, nkIncludeStmt, a, module
+        processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         if graph.stopCompile(): break
@@ -194,7 +177,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
             sl.add n
           if sfReorder in module.flags:
             sl = reorder(graph, sl, module)
-          discard processTopLevelStmt(sl, a)
+          discard processTopLevelStmt(graph, sl, a)
           break
         elif n.kind in imperativeCode:
           # read everything until the next proc declaration etc.
@@ -208,13 +191,13 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
               break
             sl.add n
           #echo "-----\n", sl
-          if not processTopLevelStmt(sl, a): break
+          if not processTopLevelStmt(graph, sl, a): break
           if rest != nil:
             #echo "-----\n", rest
-            if not processTopLevelStmt(rest, a): break
+            if not processTopLevelStmt(graph, rest, a): break
         else:
           #echo "----- single\n", n
-          if not processTopLevelStmt(n, a): break
+          if not processTopLevelStmt(graph, n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)

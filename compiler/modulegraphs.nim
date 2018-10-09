@@ -62,6 +62,19 @@ type
     cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
+    passes*: seq[TPass]
+
+  TPassContext* = object of RootObj # the pass's context
+  PPassContext* = ref TPassContext
+
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
+
+  TPass* = tuple[open: TPassOpen,
+                 process: TPassProcess,
+                 close: TPassClose,
+                 isFrontend: bool]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 

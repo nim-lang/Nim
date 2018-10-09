@@ -18,7 +18,7 @@ import
 
 import strutils except `%` # collides with ropes.`%`
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
