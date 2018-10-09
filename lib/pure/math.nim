@@ -249,7 +249,10 @@ when not defined(JS): # C
     ## Computes the arc sine of `x`
   proc arctan*(x: float32): float32 {.importc: "atanf", header: "<math.h>".}
   proc arctan*(x: float64): float64 {.importc: "atan", header: "<math.h>".}
-    ## Calculate the arc tangent of `y` / `x`
+    ## Calculate the arc tangent of `x`.
+    ## .. code-block:: nim
+    ##  echo arctan(1.0) ## 0.7853981633974483
+    ##  echo radToDeg(arctan(1.0)) ## 45.0
   proc arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
     ## Calculate the arc tangent of `y` / `x`.
