@@ -1660,6 +1660,11 @@ proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind == skProc and sfCompileTime in s.flags
 
+proc isRunnableExamples*(n: PNode): bool =
+  # Templates and generics don't perform symbol lookups.
+  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
+    n.kind == nkIdent and n.ident.s == "runnableExamples"
+
 proc requiredParams*(s: PSym): int =
   # Returns the number of required params (without default values)
   # XXX: Perhaps we can store this in the `offset` field of the
