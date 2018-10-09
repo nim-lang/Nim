@@ -110,8 +110,8 @@ proc transformSons(c: PTransf, n: PNode): PTransNode =
   for i in countup(0, sonsLen(n)-1):
     result[i] = transform(c, n.sons[i])
 
-proc newAsgnStmt(c: PTransf, le: PNode, ri: PTransNode): PTransNode =
-  result = newTransNode(nkFastAsgn, PNode(ri).info, 2)
+proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PTransNode): PTransNode =
+  result = newTransNode(kind, PNode(ri).info, 2)
   result[0] = PTransNode(le)
   result[1] = ri
 
@@ -299,12 +299,6 @@ proc transformBreak(c: PTransf, n: PNode): PTransNode =
   else:
     result = n.PTransNode
 
-proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
-  # XXX: BUG: what if `n` is an expression with side-effects?
-  for i in countup(0, sonsLen(c.transCon.forStmt) - 3):
-    add(father, newAsgnStmt(c, c.transCon.forStmt.sons[i],
-        transform(c, newTupleAccess(c.graph, n, i))))
-
 proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
   case n.kind
   of nkSym:
@@ -328,6 +322,18 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
       result[i] = introduceNewLocalVars(c, n.sons[i])
 
 proc transformYield(c: PTransf, n: PNode): PTransNode =
+  proc asgnTo(lhs: PNode, rhs: PTransNode): PTransNode =
+    # Choose the right assignment instruction according to the given ``lhs``
+    # node since it may not be a nkSym (a stack-allocated skForVar) but a
+    # nkDotExpr (a heap-allocated slot into the envP block)
+    case lhs.kind:
+    of nkSym:
+      internalAssert c.graph.config, lhs.sym.kind == skForVar
+      result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
+    of nkDotExpr:
+      result = newAsgnStmt(c, nkAsgn, lhs, rhs)
+    else:
+      internalAssert c.graph.config, false
   result = newTransNode(nkStmtList, n.info, 0)
   var e = n.sons[0]
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
@@ -340,13 +346,20 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       for i in countup(0, sonsLen(e) - 1):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
-        add(result, newAsgnStmt(c, c.transCon.forStmt.sons[i],
-                                transform(c, v)))
+        let lhs = c.transCon.forStmt.sons[i]
+        let rhs = transform(c, v)
+        add(result, asgnTo(lhs, rhs))
     else:
-      unpackTuple(c, e, result)
+      # Unpack the tuple into the loop variables
+      # XXX: BUG: what if `n` is an expression with side-effects?
+      for i in countup(0, sonsLen(c.transCon.forStmt) - 3):
+        let lhs = c.transCon.forStmt.sons[i]
+        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        add(result, asgnTo(lhs, rhs))
   else:
-    var x = transform(c, e)
-    add(result, newAsgnStmt(c, c.transCon.forStmt.sons[0], x))
+    let lhs = c.transCon.forStmt.sons[0]
+    let rhs = transform(c, e)
+    add(result, asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
@@ -584,7 +597,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       # generate a temporary and produce an assignment statement:
       var temp = newTemp(c, formal.typ, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
       assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
@@ -595,7 +608,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       addSonSkipIntLit(typ, formal.typ.sons[0])
       var temp = newTemp(c, typ, formal.info)
       addVar(v, temp)
-      add(stmtList, newAsgnStmt(c, temp, arg.PTransNode))
+      add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
   var body = iter.getBody.copyTree
