@@ -122,6 +122,9 @@ when defined(posix):
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
     RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
+    RTLD_DEFAULT* {.importc: "RTLD_DEFAULT", header: "<dlfcn.h>".}: LibHandle
+    RTLD_NEXT* {.importc: "RTLD_NEXT", header: "<dlfcn.h>".}: LibHandle
+
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
   proc dlopen(path: cstring, mode: int): LibHandle {.
       importc, header: "<dlfcn.h>".}
