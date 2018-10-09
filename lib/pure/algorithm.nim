@@ -374,7 +374,7 @@ func isSorted*[T](a: openArray[T],
       return false
 
 func isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
-  ## checks whether `a` is sorted with a default lexicographical ordering
+  ## checks whether ``a`` is sorted with a default lexicographical ordering.
   runnableExamples:
     let test = @[1,1,2,3,5,8]
     doAssert test.isSorted()
