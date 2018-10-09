@@ -39,7 +39,7 @@ Options:
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
-  --epc                   use emacs epc mode
+  --epc                   use EPC (Emacs RPC) mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
   --v1                    use version 1 of the protocol; for backwards compatibility
@@ -104,6 +104,17 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
   else:
     i += parseUntil(cmd, outp, seps, i)
   result = i
+
+proc sexpHighlight(s: Suggest): SexpNode =
+  ## Convert Suggest type to SexpNode for ideHighlight for EPC option
+  let sk =
+    if s.symkind == skVar and s.isGlobal:
+      "skGlobalVar"
+    elif s.symKind == skLet and s.isGlobal:
+      "skGlobalLet"
+    else:
+      $s.symkind
+  result = convertSexp([sk, s.line, s.column, s.tokenLen])
 
 proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 
@@ -256,6 +267,8 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
       list.add sexp(res.doc)
     of ideKnown:
       list.add sexp(res.quality == 1)
+    of ideHighlight:
+      list.add sexpHighlight(res)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
