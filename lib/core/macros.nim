@@ -1294,10 +1294,8 @@ macro expandMacros*(body: typed): typed =
   ## will actually dump `x + y`, but at the same time will print at
   ## compile time the expansion of the ``dump`` macro, which in this
   ## case is ``debugEcho ["x + y", " = ", x + y]``.
-  macro inner(x: untyped): untyped = x
-
-  result = getAst(inner(body))
-  echo result.toStrLit
+  echo body.toStrLit
+  result = body
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
