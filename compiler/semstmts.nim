@@ -207,6 +207,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   typ = commonType(typ, n[0].typ)
 
   var last = sonsLen(n) - 1
+  var catchAllExcepts = 0
+
   for i in countup(1, last):
     let a = n.sons[i]
     checkMinSonsLen(a, 1, c.config)
@@ -227,8 +229,16 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
+      elif a.len == 1:
+          # count number of ``except: body`` blocks
+          inc catchAllExcepts
+
       else:
         # support ``except KeyError, ValueError, ... : body``
+        if catchAllExcepts > 0:
+          # if ``except: body`` already encountered,
+          # cannot be followed by a ``except KeyError, ... : body`` block
+          inc catchAllExcepts
         var is_native, is_imported: bool
         for j in 0..a.len-2:
           let tmp = semExceptBranchType(a[j])
@@ -238,8 +248,17 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         if is_native and is_imported:
           localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
 
-    elif a.kind != nkFinally:
+    elif a.kind == nkFinally:
+      if i != n.len-1:
+        localError(c.config, a.info, "Only one finally is allowed after all other branches")
+
+    else:
       illFormedAst(n, c.config)
+
+    if catchAllExcepts > 1:
+      # if number of ``except: body`` blocks is greater than 1
+      # or more specific exception follows a general except block, it is invalid
+      localError(c.config, a.info, "Only one general except clause is allowed after more specific exceptions")
 
     # last child of an nkExcept/nkFinally branch is a statement:
     a[^1] = semExprBranchScope(c, a[^1])
