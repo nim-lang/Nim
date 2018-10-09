@@ -942,17 +942,18 @@ proc rawRemoveDir(dir: string) =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError())
 
-proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, recursive = true) {.rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign.} =
-  ## Removes the directory `dir` including all subdirectories and files
-  ## in `dir` (recursively).
+  ## Removes the directory ``dir``. Additionally removes all subdirectories and files recursively
+  ## if ``recursive`` is ``true``.
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
   ## existed in the first place.
-  for kind, path in walkDir(dir):
-    case kind
-    of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(path)
+  if recursive:
+    for kind, path in walkDir(dir):
+      case kind
+      of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
+      of pcDir: removeDir(path, recursive)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string): bool =

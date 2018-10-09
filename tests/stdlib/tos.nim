@@ -27,6 +27,7 @@ __really_obscure_dir_name/created
 __really_obscure_dir_name/dirs
 __really_obscure_dir_name/some
 __really_obscure_dir_name/test
+Raises
 false
 false
 false
@@ -88,6 +89,12 @@ echo "Dirs:"
 
 for path in walkDirs(dname/"*"):
   echo path.norm
+
+# Test that the `recursive = false` argument doesn't remove non-empty dirs
+try:
+  removeDir(dname, recursive = false)
+except OSError:
+  echo "Raises"
 
 # Test removal of files dirs
 for dir in dirs:
