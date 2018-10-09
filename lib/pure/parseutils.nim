@@ -18,6 +18,20 @@
 
 include "system/inclrtl"
 
+type
+  Indexable[T] = concept c
+    var i: int
+    c[i] is T
+    c.len is int
+
+  StringLike = Indexable[char]
+
+#  StringLike = concept s
+#    s is Indexable[char]
+#    var first, last: int
+#    substr(s, first, last)
+#    substr(s, first)
+
 const
   Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
@@ -27,7 +41,7 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
+proc parseHex*(s: StringLike, number: var int, start = 0; maxLen = 0): int {.
   rtl, extern: "npuParseHex", noSideEffect.}  =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
@@ -72,7 +86,7 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
+proc parseOct*(s: StringLike, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseOct", noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
@@ -95,7 +109,7 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
+proc parseBin*(s: StringLike, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseBin", noSideEffect.} =
   ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
@@ -118,7 +132,7 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseIdent*(s: string, ident: var string, start = 0): int =
+proc parseIdent*(s: StringLike, ident: var string, start = 0): int =
   ## parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   var i = start
@@ -128,7 +142,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     ident = substr(s, start, i-1)
     result = i-start
 
-proc parseIdent*(s: string, start = 0): string =
+proc parseIdent*(s: StringLike, start = 0): string =
   ## parses an identifier and stores it in ``ident``.
   ## Returns the parsed identifier or an empty string in case of an error.
   result = ""
@@ -138,7 +152,7 @@ proc parseIdent*(s: string, start = 0): string =
     while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
 
-proc parseToken*(s: string, token: var string, validChars: set[char],
+proc parseToken*(s: StringLike, token: var string, validChars: set[char],
                  start = 0): int {.inline, deprecated.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
@@ -150,12 +164,12 @@ proc parseToken*(s: string, token: var string, validChars: set[char],
   result = i-start
   token = substr(s, start, i-1)
 
-proc skipWhitespace*(s: string, start = 0): int {.inline.} =
+proc skipWhitespace*(s: StringLike, start = 0): int {.inline.} =
   ## skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
-proc skip*(s, token: string, start = 0): int {.inline.} =
+proc skip*(s: StringLike, token: string, start = 0): int {.inline.} =
   ## skips the `token` starting at ``s[start]``. Returns the length of `token`
   ## or 0 if there was no `token` at ``s[start]``.
   while start+result < s.len and result < token.len and
@@ -163,30 +177,30 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
     inc(result)
   if result != token.len: result = 0
 
-proc skipIgnoreCase*(s, token: string, start = 0): int =
+proc skipIgnoreCase*(s: StringLike, token: string, start = 0): int =
   ## same as `skip` but case is ignored for token matching.
   while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
 
-proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
+proc skipUntil*(s: StringLike, until: set[char], start = 0): int {.inline.} =
   ## Skips all characters until one char from the set `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
   while start+result < s.len and s[result+start] notin until: inc(result)
 
-proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
+proc skipUntil*(s: StringLike, until: char, start = 0): int {.inline.} =
   ## Skips all characters until the char `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
   while start+result < s.len and s[result+start] != until: inc(result)
 
-proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
-  ## Skips all characters while one char from the set `token` is found.
+proc skipWhile*(s: StringLike, toSkip: set[char], start = 0): int {.inline.} =
+  ## Skips all characters while one char from the set `toSkip` is found.
   ## Returns number of characters skipped.
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
-proc parseUntil*(s: string, token: var string, until: set[char],
+proc parseUntil*(s: StringLike, token: var string, until: set[char],
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
@@ -196,7 +210,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   result = i-start
   token = substr(s, start, i-1)
 
-proc parseUntil*(s: string, token: var string, until: char,
+proc parseUntil*(s: StringLike, token: var string, until: char,
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
@@ -206,7 +220,7 @@ proc parseUntil*(s: string, token: var string, until: char,
   result = i-start
   token = substr(s, start, i-1)
 
-proc parseUntil*(s: string, token: var string, until: string,
+proc parseUntil*(s: StringLike, token: var string, until: string,
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
@@ -225,7 +239,7 @@ proc parseUntil*(s: string, token: var string, until: string,
   result = i-start
   token = substr(s, start, i-1)
 
-proc parseWhile*(s: string, token: var string, validChars: set[char],
+proc parseWhile*(s: StringLike, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
@@ -235,7 +249,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   result = i-start
   token = substr(s, start, i-1)
 
-proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
+proc captureBetween*(s: StringLike, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
   var i = skipUntil(s, first, start)+1+start
@@ -244,7 +258,7 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
 
 {.push overflowChecks: on.}
 # this must be compiled with overflow checking turned on:
-proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
+proc rawParseInt(s: StringLike, b: var BiggestInt, start = 0): int =
   var
     sign: BiggestInt = -1
     i = start
@@ -263,7 +277,7 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
     result = i - start
 {.pop.} # overflowChecks
 
-proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
+proc parseBiggestInt*(s: StringLike, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
@@ -274,7 +288,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   result = rawParseInt(s, res, start)
   number = res
 
-proc parseInt*(s: string, number: var int, start = 0): int {.
+proc parseInt*(s: StringLike, number: var int, start = 0): int {.
   rtl, extern: "npuParseInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
@@ -287,7 +301,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   elif result != 0:
     number = int(res)
 
-proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
+proc parseSaturatedNatural*(s: StringLike, b: var int, start = 0): int =
   ## parses a natural number into ``b``. This cannot raise an overflow
   ## error. Instead of an ``Overflow`` exception ``high(int)`` is returned.
   ## The number of processed character is returned.
@@ -313,7 +327,7 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
     result = i - start
 
 # overflowChecks doesn't work with BiggestUInt
-proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
+proc rawParseUInt(s: StringLike, b: var BiggestUInt, start = 0): int =
   var
     res = 0.BiggestUInt
     prev = 0.BiggestUInt
@@ -331,7 +345,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
     b = res
     result = i - start
 
-proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
+proc parseBiggestUInt*(s: StringLike, number: var BiggestUInt, start = 0): int {.
   rtl, extern: "npuParseBiggestUInt", noSideEffect.} =
   ## parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
@@ -343,7 +357,7 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
   result = rawParseUInt(s, res, start)
   number = res
 
-proc parseUInt*(s: string, number: var uint, start = 0): int {.
+proc parseUInt*(s: StringLike, number: var uint, start = 0): int {.
   rtl, extern: "npuParseUInt", noSideEffect.} =
   ## parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
@@ -357,13 +371,13 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   if result != 0:
     number = uint(res)
 
-proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
+proc parseBiggestFloat*(s: StringLike, number: var BiggestFloat, start = 0): int {.
   magic: "ParseBiggestFloat", importc: "nimParseBiggestFloat", noSideEffect.}
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if a parsing error
   ## occurred.
 
-proc parseFloat*(s: string, number: var float, start = 0): int {.
+proc parseFloat*(s: StringLike, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occurred a parsing
@@ -382,7 +396,7 @@ type
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
-iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
+iterator interpolatedFragments*(s: StringLike): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
