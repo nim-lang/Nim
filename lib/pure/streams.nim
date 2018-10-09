@@ -47,6 +47,7 @@ type
                                  ## can override them.
     closeImpl*: proc (s: Stream) {.nimcall, tags: [], gcsafe.}
     atEndImpl*: proc (s: Stream): bool {.nimcall, tags: [], gcsafe.}
+    sizeImpl*: proc (s: Stream): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int) {.nimcall, tags: [], gcsafe.}
     getPositionImpl*: proc (s: Stream): int {.nimcall, tags: [], gcsafe.}
     readDataImpl*: proc (s: Stream, buffer: pointer,
@@ -73,6 +74,10 @@ proc atEnd*(s: Stream): bool =
   ## checks if more data can be read from `f`. Returns true if all data has
   ## been read.
   result = s.atEndImpl(s)
+
+proc size*(s: Stream): int =
+  ## retrieves the current size of the stream `s`.
+  result = s.sizeImpl(s)
 
 proc setPosition*(s: Stream, pos: int) =
   ## sets the position `pos` of the stream `s`.
@@ -337,17 +342,14 @@ when not defined(js):
       data*: string
       pos: int
 
-  proc ssAtEnd(s: Stream): bool =
-    var s = StringStream(s)
-    return s.pos >= s.data.len
+  proc ssAtEnd(s: Stream): bool = StringStream(s).pos >= StringStream(s).data.len
+  proc ssSize(s: Stream): int = StringStream(s).data.len
 
   proc ssSetPosition(s: Stream, pos: int) =
     var s = StringStream(s)
     s.pos = clamp(pos, 0, s.data.len)
 
-  proc ssGetPosition(s: Stream): int =
-    var s = StringStream(s)
-    return s.pos
+  proc ssGetPosition(s: Stream): int = StringStream(s).pos
 
   proc ssReadData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
@@ -389,6 +391,7 @@ when not defined(js):
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
+    result.sizeImpl = ssSize
     result.setPositionImpl = ssSetPosition
     result.getPositionImpl = ssGetPosition
     result.readDataImpl = ssReadData
@@ -405,9 +408,10 @@ when not defined(js):
       close(FileStream(s).f)
       FileStream(s).f = nil
   proc fsFlush(s: Stream) = flushFile(FileStream(s).f)
-  proc fsAtEnd(s: Stream): bool = return endOfFile(FileStream(s).f)
+  proc fsAtEnd(s: Stream): bool = endOfFile(FileStream(s).f)
+  proc fsSize(s: Stream): int = int(getFileSize(FileStream(s).f))
   proc fsSetPosition(s: Stream, pos: int) = setFilePos(FileStream(s).f, pos)
-  proc fsGetPosition(s: Stream): int = return int(getFilePos(FileStream(s).f))
+  proc fsGetPosition(s: Stream): int = int(getFilePos(FileStream(s).f))
 
   proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
     result = readBuffer(FileStream(s).f, buffer, bufLen)
@@ -427,6 +431,7 @@ when not defined(js):
     result.f = f
     result.closeImpl = fsClose
     result.atEndImpl = fsAtEnd
+    result.sizeImpl = fsSize
     result.setPositionImpl = fsSetPosition
     result.getPositionImpl = fsGetPosition
     result.readDataImpl = fsReadData
@@ -525,7 +530,9 @@ else:
     result = newFileHandleStream(handle)
 
 when isMainModule and defined(testing):
-  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
+  const text = "The quick brown fox jumped over the lazy dog.\nThe lazy dog ran"
+  var ss = newStringStream(text)
+  assert(ss.size == text.len)
   assert(ss.getPosition == 0)
   assert(ss.peekStr(5) == "The q")
   assert(ss.getPosition == 0) # haven't moved

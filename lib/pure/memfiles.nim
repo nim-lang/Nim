@@ -433,6 +433,8 @@ proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
 proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
                                  (MemMapFileStream(s).pos < 0)
 
+proc mmsSize(s: Stream): int = MemMapFileStream(s).mf.size
+
 proc mmsSetPosition(s: Stream, pos: int) =
   if pos > MemMapFileStream(s).mf.size or pos < 0:
     raise newEIO("cannot set pos in stream")
@@ -475,6 +477,7 @@ proc newMemMapFileStream*(filename: string, mode: FileMode = fmRead, fileSize: i
   result.mf = mf
   result.closeImpl = mmsClose
   result.atEndImpl = mmsAtEnd
+  result.sizeImpl = mmsSize
   result.setPositionImpl = mmsSetPosition
   result.getPositionImpl = mmsGetPosition
   result.readDataImpl = mmsReadData
