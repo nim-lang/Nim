@@ -535,6 +535,18 @@ proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `symmetricDifference(s1, s2) <#symmetricDifference>`_.
   result = symmetricDifference(s1, s2)
 
+proc `+=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
+  ## Alias for `s1 = union(s1, s2) <#union>`_.
+  s1 = union(s1, s2)
+
+proc `*=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
+  ## Alias for `s1 = intersection(s1, s2) <#intersection>`_.
+  s1 = intersection(s1, s2)
+
+proc `-=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
+  ## Alias for `s1 = difference(s1, s2) <#difference>`_.
+  s1 = difference(s1, s2)
+
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns true iff the sets `s1` and `s2` have no items in common.
   ##
@@ -1049,6 +1061,21 @@ when isMainModule and not defined(release):
       assert a -+- b == toSet(["a", "c"])
       assert disjoint(a, b) == false
       assert disjoint(a, b - a) == true
+
+    block modifySets:
+      var
+        a = toSet([1, 2, 3])
+        b = toSet([3, 4, 5])
+        c = a
+        d = b
+      c += d
+      assert c == toSet([1, 2, 3, 4, 5])
+      d *= a
+      assert d == toSet([3])
+      c = a
+      d = b
+      c -= d
+      assert c == toSet([1, 2])
 
     block mapSet:
       var a = toSet([1, 2, 3])
