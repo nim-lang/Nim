@@ -264,40 +264,97 @@ when defined(nimNewRuntime):
   type lent*{.magic: "BuiltinType".}[T]
 
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
-  ## returns the highest possible index of an array, a sequence, a string or
-  ## the highest possible value of an ordinal value `x`. As a special
+  ## returns the highest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  high(2) #=> 9223372036854775807
+
+proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+  ## returns the highest possible value of an ordinal or enum type.
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  high(int) #=> 9223372036854775807
+
+proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a sequence `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,2,3,4,5,6,7]
+  ##  high(s) #=> 6
+  ##  for i in low(s)..high(s):
+  ##    echo s[i]
+
+proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array `x`.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
   ##  high(arr) #=> 6
-  ##  high(2) #=> 9223372036854775807
-  ##  high(int) #=> 9223372036854775807
+  ##  for i in low(arr)..high(arr):
+  ##    echo arr[i]
 
-proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
-proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
-proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array type.
+  ##
+  ## .. code-block:: nim
+  ##  high(array[7, int]) #=> 6
+
 proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a compatible string `x`.
+  ## This is sometimes an O(n) operation.
+
 proc high*(x: string): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a string `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  high(str) #=> 11
 
 proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible value of an ordinal or enum type.
+  ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  low(int) #=> -9223372036854775808
+
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a sequence `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,2,3,4,5,6,7]
+  ##  low(s) #=> 0
+
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
-proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
-proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
-proc low*(x: string): int {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
-  ## the lowest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
+  ## returns the lowest possible index of an array `x`.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
   ##  low(arr) #=> 0
+
+proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
   ##  low(2) #=> -9223372036854775808
-  ##  low(int) #=> -9223372036854775808
+
+proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of an array type.
+  ##
+  ## .. code-block:: nim
+  ##  low(array[7, int]) #=> 0
+
+proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a compatible string `x`.
+
+proc low*(x: string): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a string `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  low(str) #=> 0
 
 proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
@@ -726,19 +783,42 @@ when not defined(JS) and not defined(gcDestructors):
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
+  ## returns the length of an openarray.
+  ##
+  ## .. code-block:: nim
+  ##  var s = [1,1,1,1,1]
+  ##  len(s) #=> 5
+
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+  ## returns the length of a string.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  len(str) #=> 12
+
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
+  ## returns the length of a compatible string. This is sometimes
+  ## an O(n) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var str: cstring = "Hello world!"
+  ##  len(str) #=> 12
+
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
-  ## returns the length of an array, an openarray, a sequence or a string.
-  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
-  ## always an int.
+  ## returns the length of an array or an array type.
+  ## This is roughly the same as ``high(T)-low(T)+1``.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,1,1,1,1]
   ##  len(arr) #=> 5
-  ##  for i in 0..<arr.len:
-  ##    echo arr[i] #=> 1,1,1,1,1
+  ##  len(array[3..8, int]) #=> 6
+
+proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+  ## returns the length of a sequence.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,1,1,1,1]
+  ##  len(s) #=> 5
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
@@ -1935,7 +2015,7 @@ const
   NimMinor* {.intdefine.}: int = 19
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 0
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch

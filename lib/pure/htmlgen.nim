@@ -32,7 +32,7 @@ import
 
 const
   coreAttr* = " accesskey class contenteditable dir hidden id lang " &
-    "spellcheck style tabindex title translate "
+    "spellcheck style tabindex title translate "  ## HTML DOM Core Attributes
   eventAttr* = "onabort onblur oncancel oncanplay oncanplaythrough onchange " &
     "onclick oncuechange ondblclick ondurationchange onemptied onended " &
     "onerror onfocus oninput oninvalid onkeydown onkeypress onkeyup onload " &
@@ -40,9 +40,9 @@ const
     "onmouseleave onmousemove onmouseout onmouseover onmouseup onmousewheel " &
     "onpause onplay onplaying onprogress onratechange onreset onresize " &
     "onscroll onseeked onseeking onselect onshow onstalled onsubmit " &
-    "onsuspend ontimeupdate ontoggle onvolumechange onwaiting "
-  ariaAttr* = " role "
-  commonAttr* = coreAttr & eventAttr & ariaAttr
+    "onsuspend ontimeupdate ontoggle onvolumechange onwaiting " ## HTML DOM Event Attributes
+  ariaAttr* = " role "  ## HTML DOM Aria Attributes
+  commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
 proc getIdent(e: NimNode): string {.compileTime.} =
   case e.kind
@@ -203,6 +203,11 @@ macro caption*(e: varargs[untyped]): untyped =
   let e = callsite()
   result = xmlCheckedTag(e, "caption", commonAttr)
 
+macro center*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``center`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "center", commonAttr)
+
 macro cite*(e: varargs[untyped]): untyped =
   ## generates the HTML ``cite`` element.
   let e = callsite()
@@ -243,10 +248,20 @@ macro del*(e: varargs[untyped]): untyped =
   let e = callsite()
   result = xmlCheckedTag(e, "del", "cite datetime" & commonAttr)
 
+macro details*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``details`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "details", commonAttr & "open")
+
 macro dfn*(e: varargs[untyped]): untyped =
   ## generates the HTML ``dfn`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "dfn", commonAttr)
+
+macro dialog*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``dialog`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "dialog", commonAttr & "open")
 
 macro `div`*(e: varargs[untyped]): untyped =
   ## generates the HTML ``div`` element.
@@ -428,6 +443,13 @@ macro mark*(e: varargs[untyped]): untyped =
   let e = callsite()
   result = xmlCheckedTag(e, "mark", commonAttr)
 
+macro marquee*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``marquee`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "marquee", coreAttr &
+    "behavior bgcolor direction height hspace loop scrollamount " &
+    "scrolldelay truespeed vspace width onbounce onfinish onstart")
+
 macro meta*(e: varargs[untyped]): untyped =
   ## generates the HTML ``meta`` element.
   let e = callsite()
@@ -486,6 +508,11 @@ macro param*(e: varargs[untyped]): untyped =
   ## generates the HTML ``param`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "param", commonAttr, "name value", true)
+
+macro picture*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``picture`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "picture", commonAttr)
 
 macro pre*(e: varargs[untyped]): untyped =
   ## generates the HTML ``pre`` element.
@@ -554,6 +581,11 @@ macro select*(e: varargs[untyped]): untyped =
   result = xmlCheckedTag(e, "select", "autofocus disabled form multiple " &
     "name required size" & commonAttr)
 
+macro slot*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``slot`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "slot", commonAttr)
+
 macro small*(e: varargs[untyped]): untyped =
   ## generates the HTML ``small`` element.
   let e = callsite()
@@ -583,6 +615,11 @@ macro sub*(e: varargs[untyped]): untyped =
   ## generates the HTML ``sub`` element.
   let e = callsite()
   result = xmlCheckedTag(e, "sub", commonAttr)
+
+macro summary*(e: varargs[untyped]): untyped =
+  ## Generates the HTML ``summary`` element.
+  let e = callsite()
+  result = xmlCheckedTag(e, "summary", commonAttr)
 
 macro sup*(e: varargs[untyped]): untyped =
   ## generates the HTML ``sup`` element.
@@ -684,7 +721,7 @@ macro wbr*(e: varargs[untyped]): untyped =
   let e = callsite()
   result = xmlCheckedTag(e, "wbr", commonAttr, "", true)
 
-when isMainModule:
+runnableExamples:
   let nim = "Nim"
   assert h1(a(href="http://nim-lang.org", nim)) ==
     """<h1><a href="http://nim-lang.org">Nim</a></h1>"""

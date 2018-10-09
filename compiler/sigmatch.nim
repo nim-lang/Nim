@@ -1292,7 +1292,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyDistinct:
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
-      elif f.base.kind == tyAnything: result = isGeneric
+      #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a)
     elif a.kind == tyNil and f.base.kind in NilableTypes:
       result = f.allowsNil
@@ -1911,10 +1911,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        arg.typ = newTypeS(tyStatic, c)
-        arg.typ.sons = @[evaluated.typ]
-        arg.typ.n = evaluated
-        a = arg.typ
+        # Don't build the type in-place because `evaluated` and `arg` may point
+        # to the same object and we'd end up creating recursive types (#9255)
+        let typ = newTypeS(tyStatic, c)
+        typ.sons = @[evaluated.typ]
+        typ.n = evaluated
+        arg.typ = typ
+        a = typ
       else:
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:

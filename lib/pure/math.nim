@@ -428,13 +428,13 @@ when not defined(JS): # C
       if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
       result = truncImpl(x)
 
-    proc round0[T: float32|float64](x: T): T =
+    proc round*[T: float32|float64](x: T): T =
       ## Windows compilers prior to MSVC 2012 do not implement 'round',
       ## 'roundl' or 'roundf'.
       result = if x < 0.0: ceil(x - T(0.5)) else: floor(x + T(0.5))
   else:
-    proc round0(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
-    proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
+    proc round*(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
+    proc round*(x: float64): float64 {.importc: "round", header: "<math.h>".}
       ## Rounds a float to zero decimal places.  Used internally by the round
       ## function when the specified number of places is 0.
 
@@ -465,7 +465,7 @@ else: # JS
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   proc ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-  proc round0(x: float): float {.importc: "Math.round", nodecl.}
+  proc round*(x: float): float {.importc: "Math.round", nodecl.}
   proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 
@@ -476,25 +476,22 @@ else: # JS
     ## .. code-block:: nim
     ##  echo 2.5 mod 0.3 ## 0.1
 
-proc round*[T: float32|float64](x: T, places: int = 0): T =
-  ## Round a floating point number.
+proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use format instead".} =
+  ## Decimal rounding on a binary floating point number.
   ##
-  ## If `places` is 0 (or omitted), round to the nearest integer value
-  ## following normal mathematical rounding rules.
-  ## If `places` is greater than 0, round to the given number of decimal
-  ## places.
-  ## If `places` is negative, round to the left of the decimal place.
-  ##
-  ## .. code-block:: nim
-  ##  echo round(54.5) ## 55.0
-  ##  echo round(54.346, 2) ## 54.35
-  ##  echo round(537.345, -1) ## 540.0
-
+  ## This function is NOT reliable. Floating point numbers cannot hold
+  ## non integer decimals precisely.  If `places` is 0 (or omitted),
+  ## round to the nearest integral value following normal mathematical
+  ## rounding rules (e.g.  `round(54.5) -> 55.0`).  If `places` is
+  ## greater than 0, round to the given number of decimal places,
+  ## e.g. `round(54.346, 2) -> 54.350000000000001421...`.  If `places` is negative, round
+  ## to the left of the decimal place, e.g.  `round(537.345, -1) ->
+  ## 540.0`
   if places == 0:
-    result = round0(x)
+    result = round(x)
   else:
     var mult = pow(10.0, places.T)
-    result = round0(x*mult)/mult
+    result = round(x*mult)/mult
 
 proc floorDiv*[T: SomeInteger](x, y: T): T =
   ## Floor division is conceptually defined as ``floor(x / y)``.
