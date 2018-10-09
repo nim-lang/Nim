@@ -33,8 +33,6 @@ else:
 import ospaths
 export ospaths
 
-proc c_remove(filename: cstring): cint {.
-  importc: "remove", header: "<stdio.h>".}
 proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 proc c_system(cmd: cstring): cint {.
@@ -652,7 +650,7 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
          deleteFile(f) != 0:
         result = true
   else:
-    if c_remove(file) != 0'i32 and errno != ENOENT:
+    if unlink(file) != 0'i32 and errno != ENOENT:
       result = false
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
