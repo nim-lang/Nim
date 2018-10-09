@@ -856,6 +856,15 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   else:
     genRecordField(p, e.sons[0], d)
 
+proc genUncheckedArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
+  var a, b: TLoc
+  initLocExpr(p, x, a)
+  initLocExpr(p, y, b)
+  var ty = skipTypes(a.t, abstractVarRange + abstractPtrs + tyUserTypeClasses)
+  d.inheritLocation(a)
+  putIntoDest(p, d, n, ropecg(p.module, "$1[$2]", rdLoc(a), rdCharLoc(b)),
+              a.storage)
+
 proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
@@ -949,6 +958,7 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange + tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
+  of tyUncheckedArray: genUncheckedArrayElem(p, n, n.sons[0], n.sons[1], d)
   of tyArray: genArrayElem(p, n, n.sons[0], n.sons[1], d)
   of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, n.sons[0], n.sons[1], d)
   of tySequence, tyString: genSeqElem(p, n, n.sons[0], n.sons[1], d)

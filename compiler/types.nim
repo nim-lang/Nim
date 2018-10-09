@@ -400,7 +400,7 @@ const
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
-    "void"]
+    "void", "UncheckedArray[$1]"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
@@ -526,6 +526,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else:
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
+  of tyUncheckedArray:
+    result = "uncheckedArray[" & typeToString(t.sons[0]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOpt:
@@ -638,6 +640,8 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = 0
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
@@ -695,6 +699,8 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = high(BiggestInt)
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
@@ -1030,7 +1036,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink,
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
@@ -1210,7 +1216,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred, tyUncheckedArray:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin

@@ -417,9 +417,12 @@ type
     tyVoid
       # now different from tyEmpty, hurray!
 
-static:
-  # remind us when TTypeKind stops to fit in a single 64-bit word
-  assert TTypeKind.high.ord <= 63
+    tyUncheckedArray
+      # An array with boundaries [0,+∞]
+
+# static:
+#   # remind us when TTypeKind stops to fit in a single 64-bit word
+#   assert TTypeKind.high.ord <= 63
 
 const
   tyPureObject* = tyTuple
@@ -657,7 +660,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType, mSymOwner
+    mException, mBuiltinType, mSymOwner, mUncheckedArray
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const

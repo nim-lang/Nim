@@ -253,7 +253,13 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
-  UncheckedArray* {.unchecked.}[T] = array[0, T]
+when defined(nimUncheckedArrayTyp):
+  type
+    UncheckedArray*{.magic: "UncheckedArray".}[T]
+    ## Array with no bounds checking
+else:
+  type
+    UncheckedArray*{.unchecked.}[T] = array[0,T]
     ## Array with no bounds checking
 
 when defined(nimHasOpt):
