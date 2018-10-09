@@ -339,16 +339,17 @@ when not defined(JS): # C
     ## computes x to power raised of y.
     ##
     ## To compute power between integers, use `^` e.g. 2 ^ 6
+    ## .. code-block:: nim
+    ##  echo pow(16.0, 0.5) ## 4.0
 
   # TODO: add C89 version on windows
   when not windowsCC89:
     proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
     proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
-      ## The error function
+      ## Computes the `error function <https://en.wikipedia.org/wiki/Error_function>`_ for `x`.
     proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
     proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
-      ## The complementary error function
-
+      ## Computes the `complementary error function <https://en.wikipedia.org/wiki/Error_function#Complementary_error_function>`_ for `x`.
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
       ## The gamma function
