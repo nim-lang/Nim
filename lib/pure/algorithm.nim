@@ -272,7 +272,7 @@ func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
   runnableExamples:
     var s = @[1,3,2,5,4]
     s.sort
-    doAssert a == @[1,2,3,4,5]
+    doAssert s == @[1,2,3,4,5]
   sort(a, system.cmp, order)
 
 func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
