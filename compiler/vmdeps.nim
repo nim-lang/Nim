@@ -237,8 +237,15 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyRange:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("range", mRange)
-    result.add t.n.sons[0].copyTree
-    result.add t.n.sons[1].copyTree
+    if inst:
+      let rng = newNodeX(nkInfix)
+      rng.add newIdentNode(getIdent(cache, ".."), info)
+      rng.add t.n.sons[0].copyTree
+      rng.add t.n.sons[1].copyTree
+      result.add rng
+    else:
+      result.add t.n.sons[0].copyTree
+      result.add t.n.sons[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
   of tyString: result = atomicType("string", mString)
   of tyCString: result = atomicType("cstring", mCString)
