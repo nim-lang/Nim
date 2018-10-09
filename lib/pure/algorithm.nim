@@ -14,7 +14,7 @@ type
     Descending, Ascending
 
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
-  ## Flips ``x`` if ``order == Descending``.
+  ## flips ``x`` if ``order == Descending``.
   ## If ``order == Ascending`` then ``x`` is returned.
   ##
   ## ``x`` is supposed to be the result of a comparator, i.e.
@@ -31,7 +31,7 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
     inc(x)
 
 proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## Fills the slice ``a[first..last]`` with ``value``.
+  ## fills the slice ``a[first..last]`` with ``value``.
   runnableExamples:
       var a: array[6, int]
       a.fill(1, 3, 9)
@@ -39,7 +39,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
-  ## Fills the container ``a`` with ``value``.
+  ## fills the container ``a`` with ``value``.
   runnableExamples:
       var a: array[6, int]
       a.fill(9)
@@ -48,7 +48,7 @@ proc fill*[T](a: var openArray[T], value: T) =
 
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
-  ## Reverses the slice ``a[first..last]``.
+  ## reverses the slice ``a[first..last]``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
       a.reverse(1, 3)
@@ -61,15 +61,15 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     inc(x)
 
 proc reverse*[T](a: var openArray[T]) =
-  ## Reverses the contents of the container ``a``.
+  ## reverses the contents of the container ``a``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
       a.reverse()
       doAssert  a == [6, 5, 4, 3, 2, 1]
   reverse(a, 0, max(0, a.high))
 
-proc reversed*[T](a: openArray[T], first, last: Natural): seq[T] =
-  ## Returns the reverse of the slice ``a[first..last]``.
+proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
+  ## returns the reverse of the slice ``a[first..last]``.
   runnableExamples:
       let
         a = [1, 2, 3, 4, 5, 6]
@@ -85,7 +85,7 @@ proc reversed*[T](a: openArray[T], first, last: Natural): seq[T] =
     inc(x)
 
 proc reversed*[T](a: openArray[T]): seq[T] =
-  ## Returns the reverse of the container ``a``.
+  ## returns the reverse of the container ``a``.
   runnableExamples:
       let
         a = [1, 2, 3, 4, 5, 6]
@@ -151,7 +151,7 @@ const
   onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## Returns a position to the first element in the ``a`` that is greater than
+  ## returns a position to the first element in the ``a`` that is greater than
   ## ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## ``insert(thing, elm, lowerBound(thing, elm))``
@@ -181,7 +181,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 
 proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## Returns a position to the first element in the ``a`` that is not less
+  ## returns a position to the first element in the ``a`` that is not less
   ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## ``insert(thing, elm, upperBound(thing, elm))``
@@ -298,7 +298,7 @@ func sort*[T](a: var openArray[T],
     s = s*2
 
 func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
-  ## Sort an openarray in-place with a default lexicographical ordering.
+  ## sorts an openarray in-place with a default lexicographical ordering.
   runnableExamples:
     var s = @[1,3,2,5,4]
     s.sort
@@ -307,7 +307,7 @@ func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
 
 func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
-  ## Returns ``a`` sorted by ``cmp`` in the specified ``order``.
+  ## returns ``a`` sorted by ``cmp`` in the specified ``order``.
   runnableExamples:
       let
         a = [2, 3, 1, 5, 4]
@@ -321,7 +321,7 @@ func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   sort(result, cmp, order)
 
 func sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
-  ## Returns `a` sorted with default lexicographical ordering
+  ## returns ``a`` sorted with default lexicographical ordering.
   runnableExamples:
     let orig = @[2,3,1,2]
     let copy = orig.sorted()
@@ -365,7 +365,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
 func isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
-  ## Checks to see whether ``a`` is already sorted in ``order``
+  ## checks to see whether ``a`` is already sorted in ``order``
   ## using ``cmp`` for the comparison. Parameters identical
   ## to ``sort``.
   result = true
@@ -374,14 +374,14 @@ func isSorted*[T](a: openArray[T],
       return false
 
 func isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
-  ## Checks whether `a` is sorted with a default lexicographical ordering
+  ## checks whether `a` is sorted with a default lexicographical ordering
   runnableExamples:
     let test = @[1,1,2,3,5,8]
     doAssert test.isSorted()
   result = isSorted(a, system.cmp, order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
-  ## Produces the Cartesian product of the array. Warning: complexity
+  ## produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   result = newSeq[seq[T]]()
   if x.len == 0:
@@ -414,7 +414,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     indexes[index] -= 1
 
 proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
-  ## Calculates the next lexicographic permutation, directly modifying ``x``.
+  ## calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
   ##
@@ -443,7 +443,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   result = true
 
 proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
-  ## Calculates the previous lexicographic permutation, directly modifying
+  ## calculates the previous lexicographic permutation, directly modifying
   ## ``x``. The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
   ##
@@ -555,7 +555,7 @@ proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
     result[i] = arg[i]
 
 proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
-  ## Performs a left rotation on a range of elements. If you want to rotate
+  ## performs a left rotation on a range of elements. If you want to rotate
   ## right, use a negative ``dist``. Specifically, ``rotateLeft`` rotates
   ## the elements at ``slice`` by ``dist`` positions.
   ##
