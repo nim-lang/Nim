@@ -41,13 +41,13 @@ proc main() =
 main()
 
 block issue9180:
-  proc evalString(code: string, moduleName = "script.nim"):auto=
+  proc evalString(code: string, moduleName = "script.nim") =
     let stream = llStreamOpen(code)
-    defer: llStreamClose(stream)
     let std = findNimStdLibCompileTime()
     var intr = createInterpreter(moduleName, [std])
-    defer: destroyInterpreter(intr)
     intr.evalScript(stream)
+    destroyInterpreter(intr)
+    llStreamClose(stream)
 
   evalString("echo 10+1")
   evalString("echo 10+2")
