@@ -158,6 +158,8 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
   srcSize = computeSize(conf, src)
+  if dstSize == -3 or srcSize == -3: # szImportedSize
+    return true
   if dstSize < 0:
     result = false
   elif srcSize < 0:
