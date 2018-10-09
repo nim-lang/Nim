@@ -332,7 +332,8 @@ when not defined(JS): # C
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## Computes the hypotenuse of a right-angle triangle with `x` and
     ## `y` as its base and height. Equivalent to ``sqrt(x*x + y*y)``.
-
+    ## .. code-block:: nim
+    ##  echo hypot(4.0, 3.0) ## 5.0
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
