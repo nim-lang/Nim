@@ -260,17 +260,17 @@ when not defined(JS): # C
     ## results even when the resulting angle is near pi/2 or -pi/2
     ## (`x` near 0).
     ## .. code-block:: nim
-    ##  echo arctan2(1.0, 0.0) ## 0.7853981633974483
-    ##  echo radToDeg(arctan2(1.0, 0.0)) ## 45.0
+    ##  echo arctan2(1.0, 0.0) ## 1.570796326794897
+    ##  echo radToDeg(arctan2(1.0, 0.0)) ## 90.0
   proc arcsinh*(x: float32): float32 {.importc: "asinhf", header: "<math.h>".}
   proc arcsinh*(x: float64): float64 {.importc: "asinh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic sine of `x`
+    ## Computes the inverse hyperbolic sine of `x`.
   proc arccosh*(x: float32): float32 {.importc: "acoshf", header: "<math.h>".}
   proc arccosh*(x: float64): float64 {.importc: "acosh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic cosine of `x`
+    ## Computes the inverse hyperbolic cosine of `x`.
   proc arctanh*(x: float32): float32 {.importc: "atanhf", header: "<math.h>".}
   proc arctanh*(x: float64): float64 {.importc: "atanh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic tangent of `x`
+    ## Computes the inverse hyperbolic tangent of `x`.
 
 else: # JS
   proc log10*(x: float32): float32 {.importc: "Math.log10", nodecl.}
@@ -298,32 +298,32 @@ else: # JS
   proc arctanh*[T: float32|float64](x: T): T {.importc: "Math.atanh", nodecl.}
 
 proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
-  ## Computes the cotangent of `x`
+  ## Computes the cotangent of `x`.
 proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
   ## Computes the secant of `x`.
 proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
-  ## Computes the cosecant of `x`
+  ## Computes the cosecant of `x`.
 
 proc coth*[T: float32|float64](x: T): T = 1.0 / tanh(x)
-  ## Computes the hyperbolic cotangent of `x`
+  ## Computes the hyperbolic cotangent of `x`.
 proc sech*[T: float32|float64](x: T): T = 1.0 / cosh(x)
-  ## Computes the hyperbolic secant of `x`
+  ## Computes the hyperbolic secant of `x`.
 proc csch*[T: float32|float64](x: T): T = 1.0 / sinh(x)
-  ## Computes the hyperbolic cosecant of `x`
+  ## Computes the hyperbolic cosecant of `x`.
 
 proc arccot*[T: float32|float64](x: T): T = arctan(1.0 / x)
-  ## Computes the inverse cotangent of `x`
+  ## Computes the inverse cotangent of `x`.
 proc arcsec*[T: float32|float64](x: T): T = arccos(1.0 / x)
-  ## Computes the inverse secant of `x`
+  ## Computes the inverse secant of `x`.
 proc arccsc*[T: float32|float64](x: T): T = arcsin(1.0 / x)
-  ## Computes the inverse cosecant of `x`
+  ## Computes the inverse cosecant of `x`.
 
 proc arccoth*[T: float32|float64](x: T): T = arctanh(1.0 / x)
-  ## Computes the inverse hyperbolic cotangent of `x`
+  ## Computes the inverse hyperbolic cotangent of `x`.
 proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
-  ## Computes the inverse hyperbolic secant of `x`
+  ## Computes the inverse hyperbolic secant of `x`.
 proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
-  ## Computes the inverse hyperbolic cosecant of `x`
+  ## Computes the inverse hyperbolic cosecant of `x`.
 
 const windowsCC89 = defined(windows) and defined(bcc)
 
