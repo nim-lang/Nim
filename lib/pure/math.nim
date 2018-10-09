@@ -352,7 +352,7 @@ when not defined(JS): # C
       ## Computes the `complementary error function <https://en.wikipedia.org/wiki/Error_function#Complementary_error_function>`_ for `x`.
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
-      ## The gamma function
+      ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for `x`.
     proc tgamma*(x: float32): float32
       {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
     proc tgamma*(x: float64): float64
@@ -361,18 +361,18 @@ when not defined(JS): # C
       ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
-      ## Natural log of the gamma function
+      ## Computes the natural log of the gamma function for `x`. 
 
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
-    ## Computes the floor function (i.e., the largest integer not greater than `x`)
+    ## Computes the floor function (i.e., the largest integer not greater than `x`).
     ##
     ## .. code-block:: nim
     ##  echo floor(-3.5) ## -4.0
 
   proc ceil*(x: float32): float32 {.importc: "ceilf", header: "<math.h>".}
   proc ceil*(x: float64): float64 {.importc: "ceil", header: "<math.h>".}
-    ## Computes the ceiling function (i.e., the smallest integer not less than `x`)
+    ## Computes the ceiling function (i.e., the smallest integer not less than `x`).
     ##
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
@@ -440,21 +440,23 @@ when not defined(JS): # C
 
     proc trunc*(x: float32): float32 {.importc: "truncf", header: "<math.h>".}
     proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
-      ## Truncates `x` to the decimal point
+      ## Truncates `x` to the decimal point.
       ##
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
+      ##  echo trunc(-1.85) # -1.0
 
   proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
   proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
-    ## Computes the remainder of `x` divided by `y`
-    ##
-    ## .. code-block:: nim
-    ##  echo fmod(-2.5, 0.3) ## -0.1
+    ## Computes the remainder of `x` divided by `y`.
+    ## **Deprecated: Use ```mod``` instead.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
-    ## Computes the modulo operation for float operators.
+    ## Computes the modulo operation for float values (the remainder of `x` divided by `y`).
+    ##
+    ## .. code-block:: nim
+    ##  echo `mod`(2.5, 0.3) ## 0.1
 else: # JS
   proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
