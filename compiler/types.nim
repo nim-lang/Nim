@@ -1436,6 +1436,8 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
   of tyStatic:
     result = if typ.n != nil: computeSizeAux(conf, typ.lastSon, a)
              else: szUnknownSize
+  of tyUncheckedArray:
+    result = 0
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
