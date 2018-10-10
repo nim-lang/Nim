@@ -53,122 +53,122 @@ true
 
 import os, strutils
 
-let files = @["these.txt", "are.x", "testing.r", "files.q"]
-let dirs = @["some", "created", "test", "dirs"]
+block fileOperations:
+  let files = @["these.txt", "are.x", "testing.r", "files.q"]
+  let dirs = @["some", "created", "test", "dirs"]
 
-let dname = "__really_obscure_dir_name"
+  let dname = "__really_obscure_dir_name"
 
-# TODO: move these under `block XXX`, see `block normalizedPath` below, to
-# avoid variable scoping bugs.
-createDir(dname)
-echo dirExists(dname)
-
-# Test creating files and dirs
-for dir in dirs:
-  createDir(dname/dir)
-  echo dirExists(dname/dir)
-
-for file in files:
-  let fh = open(dname/file, fmReadWrite)
-  fh.close()
-  echo fileExists(dname/file)
-
-echo "All:"
-
-template norm(x): untyped =
-  (when defined(windows): x.replace('\\', '/') else: x)
-
-for path in walkPattern(dname/"*"):
-  echo path.norm
-
-echo "Files:"
-
-for path in walkFiles(dname/"*"):
-  echo path.norm
-
-echo "Dirs:"
-
-for path in walkDirs(dname/"*"):
-  echo path.norm
-
-# Test removal of files dirs
-for dir in dirs:
-  removeDir(dname/dir)
-  echo dirExists(dname/dir)
-
-for file in files:
-  removeFile(dname/file)
-  echo fileExists(dname/file)
-
-removeDir(dname)
-echo dirExists(dname)
-
-# createDir should create recursive directories
-createDir(dirs[0] / dirs[1])
-echo dirExists(dirs[0] / dirs[1]) # true
-removeDir(dirs[0])
-
-# createDir should properly handle trailing separator
-createDir(dname / "")
-echo dirExists(dname) # true
-removeDir(dname)
-
-# createDir should raise IOError if the path exists
-# and is not a directory
-open(dname, fmWrite).close
-try:
   createDir(dname)
-except IOError:
-  echo "Raises"
-removeFile(dname)
+  echo dirExists(dname)
 
-# removeFile should not remove directory
-createDir(dname)
-try:
+  # Test creating files and dirs
+  for dir in dirs:
+    createDir(dname/dir)
+    echo dirExists(dname/dir)
+
+  for file in files:
+    let fh = open(dname/file, fmReadWrite)
+    fh.close()
+    echo fileExists(dname/file)
+
+  echo "All:"
+
+  template norm(x): untyped =
+    (when defined(windows): x.replace('\\', '/') else: x)
+
+  for path in walkPattern(dname/"*"):
+    echo path.norm
+
+  echo "Files:"
+
+  for path in walkFiles(dname/"*"):
+    echo path.norm
+
+  echo "Dirs:"
+
+  for path in walkDirs(dname/"*"):
+    echo path.norm
+
+  # Test removal of files dirs
+  for dir in dirs:
+    removeDir(dname/dir)
+    echo dirExists(dname/dir)
+
+  for file in files:
+    removeFile(dname/file)
+    echo fileExists(dname/file)
+
+  removeDir(dname)
+  echo dirExists(dname)
+
+  # createDir should create recursive directories
+  createDir(dirs[0] / dirs[1])
+  echo dirExists(dirs[0] / dirs[1]) # true
+  removeDir(dirs[0])
+
+  # createDir should properly handle trailing separator
+  createDir(dname / "")
+  echo dirExists(dname) # true
+  removeDir(dname)
+
+  # createDir should raise IOError if the path exists
+  # and is not a directory
+  open(dname, fmWrite).close
+  try:
+    createDir(dname)
+  except IOError:
+    echo "Raises"
   removeFile(dname)
-except OSError:
-  echo "Raises"
-removeDir(dname)
 
-# test copyDir:
-createDir("a/b")
-open("a/b/file.txt", fmWrite).close
-createDir("a/b/c")
-open("a/b/c/fileC.txt", fmWrite).close
+  # removeFile should not remove directory
+  createDir(dname)
+  try:
+    removeFile(dname)
+  except OSError:
+    echo "Raises"
+  removeDir(dname)
 
-copyDir("a", "../dest/a")
-removeDir("a")
+  # test copyDir:
+  createDir("a/b")
+  open("a/b/file.txt", fmWrite).close
+  createDir("a/b/c")
+  open("a/b/c/fileC.txt", fmWrite).close
 
-echo dirExists("../dest/a/b")
-echo fileExists("../dest/a/b/file.txt")
+  copyDir("a", "../dest/a")
+  removeDir("a")
 
-echo fileExists("../dest/a/b/c/fileC.txt")
-removeDir("../dest")
+  echo dirExists("../dest/a/b")
+  echo fileExists("../dest/a/b/file.txt")
 
-# test copyDir:
-# if separator at the end of a path
-createDir("a/b")
-open("a/file.txt", fmWrite).close
+  echo fileExists("../dest/a/b/c/fileC.txt")
+  removeDir("../dest")
 
-copyDir("a/", "../dest/a/")
-removeDir("a")
+  # test copyDir:
+  # if separator at the end of a path
+  createDir("a/b")
+  open("a/file.txt", fmWrite).close
 
-echo dirExists("../dest/a/b")
-echo fileExists("../dest/a/file.txt")
-removeDir("../dest")
+  copyDir("a/", "../dest/a/")
+  removeDir("a")
 
-# Test get/set modification times
-# Should support at least microsecond resolution
+  echo dirExists("../dest/a/b")
+  echo fileExists("../dest/a/file.txt")
+  removeDir("../dest")
+
 import times
-let tm = fromUnix(0) + 100.microseconds
-writeFile("a", "")
-setLastModificationTime("a", tm)
+block modificationTime:
+  # Test get/set modification times
+  # Should support at least microsecond resolution
+  let tm = fromUnix(0) + 100.microseconds
+  writeFile("a", "")
+  setLastModificationTime("a", tm)
 
-when defined(macosx):
-  echo "true"
-else:
-  echo getLastModificationTime("a") == tm
-removeFile("a")
+  when defined(macosx):
+    echo "true"
+  else:
+    echo getLastModificationTime("a") == tm
+  removeFile("a")
 
 block normalizedPath:
   when defined(posix):
