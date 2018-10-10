@@ -263,6 +263,31 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
   else:
     notFoundError(c, n, errors)
 
+proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+    var msg = ""
+    if c.compilesContextId > 0:
+      # we avoid running more diagnostic when inside a `compiles(expr)`, to
+      # errors while running diagnostic (see test D20180828T234921), and
+      # also avoid slowdowns in evaluating `compiles(expr)`.
+      discard
+    else:
+      var o: TOverloadIter
+      var sym = initOverloadIter(o, c, f)
+      while sym != nil:
+        proc toHumanStr(kind: TSymKind): string =
+          result = $kind
+          assert result.startsWith "sk"
+          result = result[2..^1].toLowerAscii
+        msg &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+        sym = nextOverloadIter(o, c, n)
+
+    let ident = considerQuotedIdent(c, f, n).s
+    if nfDotField in n.flags and nfExplicitCall notin n.flags:
+      msg = errUndeclaredField % ident & msg
+    else:
+      if msg.len == 0: msg = errUndeclaredRoutine % ident
+      else: msg = errBadRoutine % [ident, msg]
+    result = msg
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
                       errors: var CandidateErrors,
@@ -332,30 +357,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags:
-        var msg = ""
-        if c.compilesContextId > 0:
-          # we avoid running more diagnostic when inside a `compiles(expr)`, to
-          # errors while running diagnostic (see test D20180828T234921), and
-          # also avoid slowdowns in evaluating `compiles(expr)`.
-          discard
-        else:
-          var o: TOverloadIter
-          var sym = initOverloadIter(o, c, f)
-          while sym != nil:
-            proc toHumanStr(kind: TSymKind): string =
-              result = $kind
-              assert result.startsWith "sk"
-              result = result[2..^1].toLowerAscii
-            msg &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
-            sym = nextOverloadIter(o, c, n)
-
-        let ident = considerQuotedIdent(c, f, n).s
-        if nfDotField in n.flags and nfExplicitCall notin n.flags:
-          msg = errUndeclaredField % ident & msg
-        else:
-          if msg.len == 0: msg = errUndeclaredRoutine % ident
-          else: msg = errBadRoutine % [ident, msg]
-        localError(c.config, n.info, msg)
+        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
