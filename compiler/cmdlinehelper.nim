@@ -69,8 +69,9 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
     let scriptFile = conf.projectFull.changeFileExt("nims")
     if not self.suggestMode:
       runNimScriptIfExists(scriptFile)
-      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if fileExists(scriptFile) and scriptFile == conf.projectFull:
+      # 'nim foo.nims', 'nim task foo' means to just run the NimScript file
+      # and do nothing more:
+      if fileExists(scriptFile) and conf.command in ["nop", "e"]:
         return false
     else:
       if scriptFile != conf.projectFull:
