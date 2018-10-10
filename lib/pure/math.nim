@@ -449,7 +449,7 @@ when not defined(JS): # C
   proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
   proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of ``x`` divided by ``y``.
-    ## **Deprecated: Use the ``mod`` operator instead.
+    ## **Deprecated since version 0.19.0**: Use the ``mod`` operator instead.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
