@@ -342,10 +342,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           var o: TOverloadIter
           var sym = initOverloadIter(o, c, f)
           while sym != nil:
-            proc toHumanStr(kind: TSymKind): string=
+            proc toHumanStr(kind: TSymKind): string =
               result = $kind
-              if result.startsWith "sk": result = result[2..^1].toLowerAscii
-            msg &= "\n  * found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+              assert result.startsWith "sk"
+              result = result[2..^1].toLowerAscii
+            msg &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
             sym = nextOverloadIter(o, c, n)
 
         let ident = considerQuotedIdent(c, f, n).s
