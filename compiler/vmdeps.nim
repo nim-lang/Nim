@@ -98,6 +98,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyStmt: result = atomicType("stmt", mStmt)
   of tyVoid: result = atomicType("void", mVoid)
   of tyEmpty: result = atomicType("empty", mNone)
+  of tyUncheckedArray:
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+    result.add atomicType("uncheckedArray", mUncheckedArray)
+    result.add mapTypeToAst(t.sons[0], info)
   of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)
@@ -289,7 +293,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef: assert(false, "mapTypeToAstX")
+  of tyOptAsRef: assert(false, "mapTypeToAstX")
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(cache, t, info, false, true)

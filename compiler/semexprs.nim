@@ -1365,7 +1365,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString:
+     tyCString, tyUncheckedArray:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1):

@@ -363,7 +363,9 @@ type
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
     tyOptAsRef, tySink, tyLent,
     tyVarargs,
-    tyUnused,
+    tyUncheckedArray
+      # An array with boundaries [0,+∞]
+
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass
@@ -657,7 +659,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType, mSymOwner
+    mException, mBuiltinType, mSymOwner, mUncheckedArray
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
