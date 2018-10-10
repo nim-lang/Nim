@@ -1635,6 +1635,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
   g.config = config
+  let (outDir, _, _) = splitFile(config.outfile)
+  if not outDir.isEmpty:
+    createDir(outDir)
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):
