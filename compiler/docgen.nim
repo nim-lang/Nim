@@ -398,16 +398,11 @@ proc prepareExamples(d: PDoc; n: PNode) =
   runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
   testExample(d, runnableExamples)
 
-proc isRunnableExample(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
-
 proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
   of nkCallKinds:
-    if isRunnableExample(n[0]) and
+    if isRunnableExamples(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
       prepareExamples(d, n)
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
