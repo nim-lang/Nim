@@ -1414,11 +1414,11 @@ const
     ## compiler magic. It is useful to embed testing code in a module.
 
   CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
-    ## is the date of compilation as a string of the form
+    ## is the date (in UTC) of compilation as a string of the form
     ## ``YYYY-MM-DD``. This works thanks to compiler magic.
 
   CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
-    ## is the time of compilation as a string of the form
+    ## is the time (in UTC) of compilation as a string of the form
     ## ``HH:MM:SS``. This works thanks to compiler magic.
 
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
