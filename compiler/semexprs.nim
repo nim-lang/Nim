@@ -26,7 +26,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   markUsed(c.config, n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
-  pushInfoContext(c.config, n.info)
+  pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
