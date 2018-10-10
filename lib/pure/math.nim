@@ -146,6 +146,26 @@ proc countBits32*(n: int32): int {.noSideEffect.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
+func isClose*(a, b: float; relTol = 1e-09, absTol = 0.0): bool =
+  # sanity check on the inputs
+  assert(relTol >= 0.0 and absTol >= 0.0, "tolerances must be non-negative")
+  if a == b:
+    # short circuit exact equality -- needed to catch two infinities of
+    # the same sign. And perhaps speeds things up a bit sometimes.
+    return true
+  # This catches the case of two infinities of opposite sign, or
+  # one infinity and one finite number. Two infinities of opposite
+  # sign would otherwise have an infinite relative tolerance.
+  # Two infinities of the same sign are caught by the equality check
+  # above.
+  template isInfinity(x): bool = classify(x) in {fcNegInf, fcInf}
+  if a.isInfinity or b.isInfinity:
+     return false
+  # now do the regular computation
+  # this is essentially the "weak" test from the Boost library
+  let diff = abs(b - a)
+  result = (diff <= abs(relTol * b) or diff <= abs(relTol * a)) or diff <= absTol
+
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in ``x``.
   ## If ``x`` is empty, 0 is returned.
@@ -153,6 +173,22 @@ proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## .. code-block:: nim
   ##  echo sum([1.0, 2.5, -3.0, 4.3]) ## 4.8
   for i in items(x): result = result + i
+
+func sumKbn*[T](x: openArray[T]): T =
+  ## Kahan (compensated) summation: O(1) error growth, at the expense
+  ## of a considerable increase in computational expense.
+  if len(x) == 0: return
+  var sum = x[0]
+  var c = T(0)
+  for i in 1 ..< len(x):
+    let xi = x[i]
+    let t = sum + xi
+    if abs(sum) >= abs(xi):
+      c += (sum - t) + xi
+    else:
+      c += (xi - t) + sum
+    sum = t
+  result = sum + c
 
 proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the product of the elements in ``x``.
@@ -820,3 +856,22 @@ when isMainModule:
     doAssert log2(2.0'f32) == 1.0'f32
     doAssert log2(1.0'f32) == 0.0'f32
     doAssert classify(log2(0.0'f32)) == fcNegInf
+
+  block: # sumKbn
+    var epsilon = 1.0
+    while 1.0 + epsilon != 1.0:
+      epsilon /= 2.0
+
+    let data = @[1.0, epsilon, -epsilon]
+    assert sumKbn(data) == 1.0
+    assert (1.0 + epsilon) - epsilon != 1.0
+
+  block: # isClose
+    assert isClose(1.0, 1.001) == false
+    assert isClose(1.0, 1.0000000001) == true
+    assert isClose(1.0, 2.0000000001) == false
+    assert isClose(Inf, Inf) == true
+    assert isClose(-Inf, -Inf) == true
+    assert isClose(Inf, -Inf) == false
+    assert isClose(Inf, NaN) == false
+    assert isClose(NaN, NaN) == false
