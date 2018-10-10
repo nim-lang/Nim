@@ -151,8 +151,6 @@ lib/pure/smtp.nim
 lib/impure/ssl.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
-lib/pure/xmldom.nim
-lib/pure/xmldomparser.nim
 lib/pure/xmlparser.nim
 lib/pure/htmlparser.nim
 lib/pure/xmltree.nim

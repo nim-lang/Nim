@@ -493,6 +493,6 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodegenProc(g, "openBarrier", barrier)
+  result.add callCodegenProc(g, "openBarrier", barrier.info, barrier)
   result.add transformSpawn(g, owner, body, barrier)
-  result.add callCodegenProc(g, "closeBarrier", barrier)
+  result.add callCodegenProc(g, "closeBarrier", barrier.info, barrier)

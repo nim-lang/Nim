@@ -139,7 +139,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(conf, typ)
-  of tyOpenArray, tyArray, tyVarargs: result = ctArray
+  of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
@@ -161,7 +161,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   of tyPtr, tyVar, tyLent, tyRef, tyOptAsRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
-    of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
+    of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
     of tySet:
       if mapSetType(conf, base) == ctArray: result = ctPtrToArray
       else: result = ctPtr
@@ -290,7 +290,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
-  of tyNil: result = typeNameOrLiteral(m, typ, "0")
+  of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
@@ -747,6 +747,12 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       else:
         result = rope("TGenericSeq")
     add(result, seqStar(m))
+  of tyUncheckedArray:
+    result = getTypeName(m, origTyp, sig)
+    m.typeCache[sig] = result
+    if not isImportedType(t):
+      let foo = getTypeDescAux(m, t.sons[0], check)
+      addf(m.s[cfsTypes], "typedef $1 $2[1];$n", [foo, result])
   of tyArray:
     var n: BiggestInt = lengthOrd(m.config, t)
     if n <= 0: n = 1   # make an array of at least one element
@@ -1218,7 +1224,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
-  of tyPtr, tyRange: genTypeInfoAux(m, t, t, result, info)
+  of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
   of tySet: genSetInfo(m, t, result, info)
   of tyEnum: genEnumInfo(m, t, result, info)

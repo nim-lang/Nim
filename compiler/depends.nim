@@ -13,10 +13,10 @@ import
   os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths,
   pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TGen = object of TPassContext
+  TGen = object of PPassContext
     module: PSym
     config: ConfigRef
     graph: ModuleGraph

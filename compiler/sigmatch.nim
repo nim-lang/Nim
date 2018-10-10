@@ -186,7 +186,7 @@ proc sumGeneric(t: PType): int =
   var isvar = 1
   while true:
     case t.kind
-    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct,
+    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
         tyLent:
       t = t.lastSon
@@ -1199,6 +1199,11 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
     else: discard
+  of tyUncheckedArray:
+    if a.kind == tyUncheckedArray:
+      result = typeRel(c, base(f), base(a))
+      if result < isGeneric: result = isNone
+    else: discard
   of tyOpenArray, tyVarargs:
     # varargs[expr] is special too but handled earlier. So we only need to
     # handle varargs[stmt] which is the same as varargs[typed]:
@@ -1292,7 +1297,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyDistinct:
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
-      elif f.base.kind == tyAnything: result = isGeneric
+      #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a)
     elif a.kind == tyNil and f.base.kind in NilableTypes:
       result = f.allowsNil
@@ -1362,6 +1367,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       if a.len == 1:
         let pointsTo = a.sons[0].skipTypes(abstractInst)
         if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyUncheckedArray and pointsTo.sons[0].kind == tyChar:
+          result = isConvertible
         elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo.sons[0]) == 0 and
             skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
             pointsTo.sons[1].kind == tyChar:
@@ -1911,10 +1918,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        arg.typ = newTypeS(tyStatic, c)
-        arg.typ.sons = @[evaluated.typ]
-        arg.typ.n = evaluated
-        a = arg.typ
+        # Don't build the type in-place because `evaluated` and `arg` may point
+        # to the same object and we'd end up creating recursive types (#9255)
+        let typ = newTypeS(tyStatic, c)
+        typ.sons = @[evaluated.typ]
+        typ.n = evaluated
+        arg.typ = typ
+        a = typ
       else:
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:

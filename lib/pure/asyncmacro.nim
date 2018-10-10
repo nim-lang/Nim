@@ -190,7 +190,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
-  of nnkIdent:
+  of nnkIdent, nnkSym:
     return node.strVal
   of nnkEmpty:
     return "anonymous"
