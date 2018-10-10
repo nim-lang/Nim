@@ -268,6 +268,12 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size  = lengthOrd(conf, typ.sons[0]) * elemSize
       typ.align = typ.sons[1].align
 
+  of tyUncheckedArray:
+    let base = typ.lastSon
+    computeSizeAlign(conf, base)
+    # this should probably be szUnknownSize
+    typ.size = 0
+    typ.align = base.align
   of tyEnum:
     if firstOrd(conf, typ) < 0:
       typ.size  = 4              # use signed int32
