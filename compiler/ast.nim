@@ -363,7 +363,9 @@ type
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
     tyOptAsRef, tySink, tyLent,
     tyVarargs,
-    tyUnused,
+    tyUncheckedArray
+      # An array with boundaries [0,+∞]
+
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass
@@ -417,12 +419,9 @@ type
     tyVoid
       # now different from tyEmpty, hurray!
 
-    tyUncheckedArray
-      # An array with boundaries [0,+∞]
-
-# static:
-#   # remind us when TTypeKind stops to fit in a single 64-bit word
-#   assert TTypeKind.high.ord <= 63
+static:
+  # remind us when TTypeKind stops to fit in a single 64-bit word
+  assert TTypeKind.high.ord <= 63
 
 const
   tyPureObject* = tyTuple

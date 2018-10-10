@@ -293,7 +293,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef: assert(false, "mapTypeToAstX")
+  of tyOptAsRef: assert(false, "mapTypeToAstX")
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(cache, t, info, false, true)

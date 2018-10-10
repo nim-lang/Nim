@@ -195,7 +195,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyOptAsRef: doAssert(false, "mapType")
+  of tyOptAsRef: doAssert(false, "mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
