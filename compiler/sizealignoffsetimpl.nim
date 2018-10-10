@@ -3,14 +3,16 @@ proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
 
 const
-  szImportedType*     = -3
+  ## a size is concidered "unknown" when it is an imported type from C
+  ## or C++.
+  szUnknownSize*      = -3
   szIllegalRecursion* = -2
   szUncomputedSize*   = -1
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType): void
 
 proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
-  ## returns object size and align
+  ## returns object alignment
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
@@ -48,6 +50,11 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
 
+  if n.typ != nil and n.typ.size == szIllegalRecursion:
+    result.offset = szIllegalRecursion
+    result.align  = szIllegalRecursion
+    return
+
   result.align = 1
   case n.kind
   of nkRecCase:
@@ -64,25 +71,34 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
         # offset parameter cannot be known yet, it needs to know the alignment first
         let align = computeSubObjectAlign(conf, n.sons[i].lastSon)
 
-        if align < 0:
-          result.offset  = align
-          result.align = align
+        if align == szIllegalRecursion:
+          result.offset  = szIllegalRecursion
+          result.align = szIllegalRecursion
           return
 
-        maxChildAlign = max(maxChildAlign, align)
+        if align == szUnknownSize or maxChildAlign == szUnknownSize:
+          maxChildAlign = szUnknownSize
+        else:
+          maxChildAlign = max(maxChildAlign, align)
       else:
         internalError(conf, "computeObjectOffsetsFoldFunction(record case branch)")
 
-    # the union neds to be aligned first, before the offsets can be assigned
-    let kindUnionOffset = align(kindOffset, maxChildAlign)
+    if maxChildAlign == szUnknownSize:
+      result.align  = szUnknownSize
+      result.offset = szUnknownSize
 
-    var maxChildOffset: BiggestInt = 0
-    for i in 1 ..< sonsLen(n):
-      let (offset, align) = computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
-      maxChildOffset = max(maxChildOffset, offset)
+    else:
+      # the union neds to be aligned first, before the offsets can be assigned
+      let kindUnionOffset = align(kindOffset, maxChildAlign)
 
-    result.align = max(kindAlign, maxChildAlign)
-    result.offset  = maxChildOffset
+      var maxChildOffset: BiggestInt = 0
+      for i in 1 ..< sonsLen(n):
+        let (offset, align) = computeObjectOffsetsFoldFunction(conf, n.sons[i].lastSon, kindUnionOffset)
+        maxChildOffset = max(maxChildOffset, offset)
+
+      result.align = max(kindAlign, maxChildAlign)
+      result.offset  = maxChildOffset
+
 
   of nkRecList:
 
@@ -93,29 +109,41 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
     for i, child in n.sons:
       let (new_offset, align) = computeObjectOffsetsFoldFunction(conf, child, offset)
 
-      if new_offset < 0:
-        result.offset  = new_offset
-        result.align = align
+      if new_offset == szIllegalRecursion:
+        result.offset  = szIllegalRecursion
+        result.align = szIllegalRecursion
         return
 
-      offset = new_offset
+      elif new_offset == szUnknownSize or offset == szUnknownSize:
+        # if anything is unknown, the rest becomes unknown as well
+        offset = szUnknownSize
+        result.align  = szUnknownSize
 
-      result.align = max(result.align, align)
+      else:
+        offset = new_offset
+        result.align = max(result.align, align)
 
     # final alignment
-    result.offset  = align(offset, result.align)
+    if offset == szUnknownSize:
+      result.offset = szUnknownSize
+    else:
+      result.offset = align(offset, result.align)
 
   of nkSym:
     computeSizeAlign(conf, n.sym.typ)
     let size  = n.sym.typ.size
     let align = n.sym.typ.align
     result.align  = align
-    n.sym.offset = align(initialOffset, align).int
-    result.offset = n.sym.offset + n.sym.typ.size
+    if initialOffset == szUnknownSize:
+      n.sym.offset  = szUnknownSize
+      result.offset = szUnknownSize
+    else:
+      n.sym.offset = align(initialOffset, align).int
+      result.offset = n.sym.offset + n.sym.typ.size
 
   else:
-    result.align = 1
-    result.offset  = szImportedType
+    result.align  = szUnknownSize
+    result.offset = szUnknownSize
 
 
 var recDepth = 0
@@ -153,7 +181,7 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
     result = initialOffset
     for i, child in n.sons:
       result = computePackedObjectOffsetsFoldFunction(conf, child, result, debug)
-      if result < 0:
+      if result == szIllegalRecursion:
         break
 
   of nkSym:
@@ -162,24 +190,18 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
     result = n.sym.offset + n.sym.typ.size
 
   else:
-    result = szImportedType
+    result = szUnknownSize
 
 # TODO this one needs an alignment map of the individual types
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
-  let hasSize  = typ.size  >= 0 or typ.size == szImportedType
-  let hasAlign = typ.align >= 0 or typ.size == szImportedType
+  let hasSize  = typ.size  != szUncomputedSize
+  let hasAlign = typ.align != szUncomputedSize
 
   if hasSize and hasAlign:
     # nothing to do, size and align already computed
-    return
-
-  if typ.sym != nil and typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
-     typ.kind == tyObject:
-    typ.size  = szImportedType
-    typ.align = szImportedType
     return
 
   # This function can only calculate both, size and align at the same time.
@@ -197,7 +219,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     # --> illegal recursion in type
     return
 
-  # mark as being computed
+  # mark computation in progress
   typ.size  = szIllegalRecursion
   typ.align = szIllegalRecursion
 
@@ -225,7 +247,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
-    if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
+    if base == typ:
+      # this is not the correct location to detect ``type A = ptr A``
       typ.size  = szIllegalRecursion
       typ.align = szIllegalRecursion
     else:
@@ -297,9 +320,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       let child = typ.sons[i]
       computeSizeAlign(conf, child)
 
-      if child.size < 0:
-        typ.size  = child.size
-        typ.align = child.align
+      if child.size == szIllegalRecursion:
+        typ.size  = szIllegalRecursion
+        typ.align = szIllegalRecursion
         return
 
       maxAlign = max(maxAlign, child.align)
@@ -313,14 +336,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     var headerAlign: int16
 
     if typ.sons[0] != nil:
+      # compute header size
       var st = typ.sons[0]
 
       while st.kind in skipPtrs:
         st = st.sons[^1]
 
       computeSizeAlign(conf, st)
-
-      if st.size < 0:
+      if st.size == szIllegalRecursion:
         typ.size = st.size
         typ.align = st.align
         return
@@ -340,13 +363,20 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     let (offset, align) =
       if tfPacked in typ.flags:
         (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
-        #(computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
       else:
         computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
 
-    if offset < 0:
-      typ.size = offset
-      typ.align = int16(align)
+    if offset == szIllegalRecursion:
+      typ.size = szIllegalRecursion
+      typ.align = szIllegalRecursion
+      return
+
+    if offset == szUnknownSize or (
+          typ.sym != nil and
+          typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}
+    ):
+      typ.size  = szUnknownSize
+      typ.align = szUnknownSize
       return
 
     # header size is already in size from computeObjectOffsetsFoldFunction

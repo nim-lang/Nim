@@ -326,7 +326,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       # TODO there is no proper way to find out if a type cannot be queried for the size.
       let size = getSize(c.config, n[1].typ)
       # We just assume here that the type might come from the c backend
-      if size == szImportedType:
+      if size == szUnknownSize:
         # Forward to the c code generation to emit a `sizeof` in the C code.
         result = n
       elif size >= 0:
