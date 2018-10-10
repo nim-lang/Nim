@@ -439,7 +439,7 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         accessExpr: Rope, rectype: PType,
-                        check: var IntSet): Rope =      
+                        check: var IntSet): Rope =
   result = nil
   case n.kind
   of nkRecList:
