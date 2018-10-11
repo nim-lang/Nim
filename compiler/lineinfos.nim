@@ -248,7 +248,7 @@ type
                             ## some close token.
 
     errorOutputs*: TErrorOutputs
-    msgContext*: seq[TLineInfo]
+    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
     lastError*: TLineInfo
     filenameToIndexTbl*: Table[string, FileIndex]
     fileInfos*: seq[TFileInfo]
