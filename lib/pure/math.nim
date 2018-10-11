@@ -146,26 +146,6 @@ proc countBits32*(n: int32): int {.noSideEffect.} =
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
-func isClose*(a, b: float; relTol = 1e-09, absTol = 0.0): bool =
-  # sanity check on the inputs
-  assert(relTol >= 0.0 and absTol >= 0.0, "tolerances must be non-negative")
-  if a == b:
-    # short circuit exact equality -- needed to catch two infinities of
-    # the same sign. And perhaps speeds things up a bit sometimes.
-    return true
-  # This catches the case of two infinities of opposite sign, or
-  # one infinity and one finite number. Two infinities of opposite
-  # sign would otherwise have an infinite relative tolerance.
-  # Two infinities of the same sign are caught by the equality check
-  # above.
-  template isInfinity(x): bool = classify(x) in {fcNegInf, fcInf}
-  if a.isInfinity or b.isInfinity:
-     return false
-  # now do the regular computation
-  # this is essentially the "weak" test from the Boost library
-  let diff = abs(b - a)
-  result = (diff <= abs(relTol * b) or diff <= abs(relTol * a)) or diff <= absTol
-
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in ``x``.
   ## If ``x`` is empty, 0 is returned.
@@ -189,6 +169,30 @@ func sumKbn*[T](x: openArray[T]): T =
       c += (xi - t) + sum
     sum = t
   result = sum + c
+
+func sumPairwise[T](x: openArray[T], i0, n: int): T =
+  if n < 128:
+    result = x[i0]
+    for i in i0 + 1 ..< i0 + n:
+      result += x[i]
+  else:
+    let n2 = n div 2
+    result = sumPairwise(x, i0, n2) + sumPairwise(x, i0 + n2, n - n2)
+
+func sumPairs*[T](x: openArray[T]): T =
+  ## Pairwise (cascade) summation of ``x[i0:i0+n-1]``, which O(log n) error growth
+  ## [vs O(n) for a simple loop] with negligible performance cost if
+  ## the base case is large enough.  See, e.g.:
+  ##        http://en.wikipedia.org/wiki/Pairwise_summation
+  ##        Higham, Nicholas J. (1993), "The accuracy of floating point
+  ##        summation", SIAM Journal on Scientific Computing 14 (4): 783–799.
+  ## In fact, the root-mean-square error growth, assuming random roundoff
+  ## errors, is only O(sqrt(log n)), which is nearly indistinguishable from O(1)
+  ## in practice.  See:
+  ##        Manfred Tasche and Hansmartin Zeuner, Handbook of
+  ##        Analytic-Computational Methods in Applied Mathematics (2000).
+  let n = len(x)
+  if n == 0: T(0) else: sumPairwise(x, 0, n)
 
 proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the product of the elements in ``x``.
@@ -857,21 +861,23 @@ when isMainModule:
     doAssert log2(1.0'f32) == 0.0'f32
     doAssert classify(log2(0.0'f32)) == fcNegInf
 
-  block: # sumKbn
+  block: # sumKbn, sumPairs
     var epsilon = 1.0
     while 1.0 + epsilon != 1.0:
       epsilon /= 2.0
-
     let data = @[1.0, epsilon, -epsilon]
     assert sumKbn(data) == 1.0
-    assert (1.0 + epsilon) - epsilon != 1.0
+    assert sumPairs(tc0) != 1.0 # known to fail
+    # assert (1.0 + epsilon) - epsilon != 1.0
 
-  block: # isClose
-    assert isClose(1.0, 1.001) == false
-    assert isClose(1.0, 1.0000000001) == true
-    assert isClose(1.0, 2.0000000001) == false
-    assert isClose(Inf, Inf) == true
-    assert isClose(-Inf, -Inf) == true
-    assert isClose(Inf, -Inf) == false
-    assert isClose(Inf, NaN) == false
-    assert isClose(NaN, NaN) == false
+    var tc1: seq[float]
+    for n in 1 .. 1000:
+      tc1.add 1.0 / n.float
+    assert sumKbn(tc1) == 7.485470860550345
+    assert sumPairs(tc1) == 7.485470860550345
+
+    var tc2: seq[float]
+    for n in 1 .. 1000:
+      tc2.add pow(-1.0, n.float) / n.float
+    assert sumKbn(tc2) == -0.6926474305598203
+    assert sumPairs(tc2) == -0.69264743055982025
