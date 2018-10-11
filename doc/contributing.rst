@@ -157,6 +157,7 @@ was used in the past for nimrod -> nim migration).
 Besides pure renamings (eg when parameters change) you can mark a symbol as
 deprecated using the following:
 
+.. code-block:: nim
   # for routines (proc/template/macro/iterator) and types:
   proc oldProc() {.deprecated: "use `newImpl: string -> int` instead".} = ...
 
