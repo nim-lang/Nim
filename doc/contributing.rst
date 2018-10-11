@@ -2,6 +2,7 @@ Writing tests
 =============
 
 There are 3 types of tests:
+
 1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
 These end up in documentation and ensure documentation stays in sync with code.
 
