@@ -20,13 +20,13 @@ Parsing, Lexing                araq
 Renderer                       cooldome, araq
 Order of passes                cooldome
 Semantic Checking              araq
-Virtual machine                jangko, cooldome, GULPF, araq
-Sempass2: effects tracking     araq
+Virtual machine                jangko, GULPF, araq
+Sempass2: effects tracking     cooldome, araq
 type system, concepts          zahary
-transf                         araq
+transf                         cooldome, araq
 semfold constant folding       araq
 template instantiation         zahary, araq
-term rewriting macros          araq
+term rewriting macros          cooldome, araq
 closure interators             yglukhov, araq
 lambda lifting                 yglukhov, araq
 c, cpp codegen                 lemonboy, araq
@@ -53,7 +53,7 @@ times                          GULPF
 os, ospaths                    dom96, araq
 re                             araq
 nre                            flaviu
-math                           krux02
+math, fenv                     krux02,  cooldome
 io                             dom96
 garbage collector              araq
 Go garbage collector           stefantalpalaru
