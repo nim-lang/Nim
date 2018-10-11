@@ -19,7 +19,7 @@
 ## which is more convenient in certain situations.
 
 include "system/inclrtl"
-
+import std / baseconcepts
 import macros
 
 when not defined(nimhygiene):
@@ -68,7 +68,7 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](s: openArray[T], x: T): int =
+proc count*[T](s: Indexable[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
   ## Example:
@@ -82,7 +82,7 @@ proc count*[T](s: openArray[T], x: T): int =
     if itm == x:
       inc result
 
-proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
+proc cycle*[T](s: Indexable[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
   ## `n` times.
   ##
@@ -115,7 +115,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 ..< n:
     result[i] = x
 
-proc deduplicate*[T](s: openArray[T]): seq[T] =
+proc deduplicate*[T](s: Indexable[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## Example:
@@ -132,7 +132,7 @@ proc deduplicate*[T](s: openArray[T]): seq[T] =
   for itm in items(s):
     if not result.contains(itm): result.add(itm)
 
-proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
+proc zip*[S, T](s1: Indexable[S], s2: Indexable[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input containers.
   ##
   ## For convenience you can access the returned tuples through the named
@@ -220,7 +220,7 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
         result[i].add(s[g])
       first = last
 
-proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
+proc map*[T, S](s: Indexable[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` applied to every item in
   ## the container `s`.
@@ -239,7 +239,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
+proc map*[T](s: var Indexable[T], op: proc (x: var T) {.closure.})
                                                               {.deprecated.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -258,7 +258,7 @@ proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ## **Deprecated since version 0.12.0:** Use the ``apply`` proc instead.
   for i in 0 ..< s.len: op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
+proc apply*[T](s: var Indexable[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -278,7 +278,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ##
   for i in 0 ..< s.len: op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
+proc apply*[T](s: var Indexable[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -298,7 +298,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ##
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: Indexable[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container and yields every item that fulfills the
   ## predicate.
   ##
@@ -313,7 +313,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+proc filter*[T](s: Indexable[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
@@ -371,7 +371,7 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     inc(j)
   setLen(s, newLen)
 
-proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
+proc insert*[T](dest: var seq[T], src: Indexable[T], pos=0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
   ##
@@ -442,7 +442,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc all*[T](s: Indexable[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -473,7 +473,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+proc any*[T](s: Indexable[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if some item fulfills the
   ## predicate.
   ##

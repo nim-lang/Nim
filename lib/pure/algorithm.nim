@@ -8,6 +8,7 @@
 #
 
 ## This module implements some common generic algorithms.
+import std / baseconcepts
 
 type
   SortOrder* = enum
@@ -24,13 +25,13 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
-template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
+template fillImpl[T](a: var Indexable[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+proc fill*[T](a: var Indexable[T], first, last: Natural, value: T) =
   ## fills the slice ``a[first..last]`` with ``value``.
   runnableExamples:
       var a: array[6, int]
@@ -38,7 +39,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
       doAssert a == [0, 9, 9, 9, 0, 0]
   fillImpl(a, first, last, value)
 
-proc fill*[T](a: var openArray[T], value: T) =
+proc fill*[T](a: var Indexable[T], value: T) =
   ## fills the container ``a`` with ``value``.
   runnableExamples:
       var a: array[6, int]
@@ -47,7 +48,7 @@ proc fill*[T](a: var openArray[T], value: T) =
   fillImpl(a, 0, a.high, value)
 
 
-proc reverse*[T](a: var openArray[T], first, last: Natural) =
+proc reverse*[T](a: var Indexable[T], first, last: Natural) =
   ## reverses the slice ``a[first..last]``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
@@ -60,7 +61,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     dec(y)
     inc(x)
 
-proc reverse*[T](a: var openArray[T]) =
+proc reverse*[T](a: var Indexable[T]) =
   ## reverses the contents of the container ``a``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
@@ -68,7 +69,7 @@ proc reverse*[T](a: var openArray[T]) =
       doAssert  a == [6, 5, 4, 3, 2, 1]
   reverse(a, 0, max(0, a.high))
 
-proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
+proc reversed*[T](a: Indexable[T], first: Natural, last: int): seq[T] =
   ## returns the reverse of the slice ``a[first..last]``.
   runnableExamples:
       let
@@ -84,7 +85,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
     dec(i)
     inc(x)
 
-proc reversed*[T](a: openArray[T]): seq[T] =
+proc reversed*[T](a: Indexable[T]): seq[T] =
   ## returns the reverse of the container ``a``.
   runnableExamples:
       let
@@ -93,7 +94,7 @@ proc reversed*[T](a: openArray[T]): seq[T] =
       doAssert b == @[6, 5, 4, 3, 2, 1]
   reversed(a, 0, a.high)
 
-proc binarySearch*[T, K](a: openArray[T], key: K,
+proc binarySearch*[T, K](a: Indexable[T], key: K,
               cmp: proc (x: T, y: K): int {.closure.}): int =
   ## Binary search for ``key`` in ``a``. Returns -1 if not found.
   ##
@@ -139,18 +140,18 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
         b = mid
     if result >= len or cmp(a[result], key) != 0: result = -1
 
-proc binarySearch*[T](a: openArray[T], key: T): int =
+proc binarySearch*[T](a: Indexable[T], key: T): int =
   ## Binary search for ``key`` in ``a``. Returns -1 if not found.
   binarySearch(a, key, cmp[T])
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
+proc smartBinarySearch*[T](a: Indexable[T], key: T): int {.deprecated.} =
   ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
   binarySearch(a, key, cmp[T])
 
 const
   onlySafeCode = true
 
-proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+proc lowerBound*[T, K](a: Indexable[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## returns a position to the first element in the ``a`` that is greater than
   ## ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -178,9 +179,9 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
     else:
       count = step
 
-proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
+proc lowerBound*[T](a: Indexable[T], key: T): int = lowerBound(a, key, cmp[T])
 
-proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+proc upperBound*[T, K](a: Indexable[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## returns a position to the first element in the ``a`` that is not less
   ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
@@ -208,7 +209,7 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
     else:
       count = step
 
-proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
+proc upperBound*[T](a: Indexable[T], key: T): int = upperBound(a, key, cmp[T])
 
 template `<-` (a, b) =
   when false:
@@ -218,7 +219,7 @@ template `<-` (a, b) =
   else:
     copyMem(addr(a), addr(b), sizeof(T))
 
-proc merge[T](a, b: var openArray[T], lo, m, hi: int,
+proc merge[T](a, b: var Indexable[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4  ## 5 6 7 8
@@ -257,7 +258,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   else:
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
-func sort*[T](a: var openArray[T],
+func sort*[T](a: var Indexable[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
@@ -297,7 +298,7 @@ func sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
+func sort*[T](a: var Indexable[T], order = SortOrder.Ascending) =
   ## sorts an openarray in-place with a default lexicographical ordering.
   runnableExamples:
     var s = @[1,3,2,5,4]
@@ -305,7 +306,7 @@ func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
     doAssert s == @[1,2,3,4,5]
   sort(a, system.cmp, order)
 
-func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+func sorted*[T](a: Indexable[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## returns ``a`` sorted by ``cmp`` in the specified ``order``.
   runnableExamples:
@@ -320,7 +321,7 @@ func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
     result[i] = a[i]
   sort(result, cmp, order)
 
-func sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
+func sorted*[T](a: Indexable[T], order = SortOrder.Ascending): seq[T] =
   ## returns ``a`` sorted with default lexicographical ordering.
   runnableExamples:
     let orig = @[2,3,1,2]
@@ -362,7 +363,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     result = cmp(a, b))
   result
 
-func isSorted*[T](a: openArray[T],
+func isSorted*[T](a: Indexable[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
   ## checks to see whether ``a`` is already sorted in ``order``
@@ -373,7 +374,7 @@ func isSorted*[T](a: openArray[T],
     if cmp(a[i],a[i+1]) * order > 0:
       return false
 
-func isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
+func isSorted*[T](a: Indexable[T], order = SortOrder.Ascending): bool =
   ## checks whether ``a`` is sorted with a default lexicographical ordering.
   runnableExamples:
     let test = @[1,1,2,3,5,8]
