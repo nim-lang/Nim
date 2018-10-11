@@ -36,6 +36,7 @@ dfa, writetracking             araq
 parallel, multithreading       araq
 incremental                    araq
 sizeof computations            krux02
+Exception handling             cooldome, araq
 ======================         ======================================================
 
 
@@ -53,7 +54,7 @@ times                          GULPF
 os, ospaths                    dom96, araq
 re                             araq
 nre                            flaviu
-math, fenv                     krux02,  cooldome
+math, fenv                     krux02, cooldome
 io                             dom96
 garbage collector              araq
 Go garbage collector           stefantalpalaru
