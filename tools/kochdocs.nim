@@ -323,8 +323,6 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(d, "tex"))
 
 proc buildJS() =
-  exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
-      [webUploadOutput / "nimblepkglist.js"])
   exec(findNim() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
