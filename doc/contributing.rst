@@ -4,10 +4,10 @@ Writing tests
 There are 3 types of tests:
 
 1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
-These end up in documentation and ensure documentation stays in sync with code.
+   These end up in documentation and ensure documentation stays in sync with code.
 
 2. tests in `when isMainModule:` block, ran by ``nim c mymod.nim``
-``nimble test`` also typially runs these in external nimble packages.
+   ``nimble test`` also typially runs these in external nimble packages.
 
 3. testament tests, eg: tests/stdlib/tospaths.nim (only used for Nim repo).
 
