@@ -43,22 +43,22 @@ sizeof computations            krux02
 Standard library
 ~~~~~~~~~~~~~~~~
 
-======================    ======================================================
-subsystem                 owner(s)
-======================    ======================================================
-async                     dom96
-strutils                  araq
-sequtils                  dom96, araq
-times                     GULPF
-os, ospaths               dom96, araq
-re                        araq
-nre                       flaviu
-math                      krux02
-io                        dom96
-garbage collector         araq
-Go garbage collector      stefantalpalaru
-coroutines                Rokas Kupstys
-collections               GULPF
-parseopt                  araq
-json                      dom96
-======================    ======================================================
+======================         ======================================================
+subsystem                      owner(s)
+======================         ======================================================
+async                          dom96
+strutils                       araq
+sequtils                       dom96, araq
+times                          GULPF
+os, ospaths                    dom96, araq
+re                             araq
+nre                            flaviu
+math                           krux02
+io                             dom96
+garbage collector              araq
+Go garbage collector           stefantalpalaru
+coroutines                     Rokas Kupstys
+collections                    GULPF
+parseopt                       araq
+json                           dom96
+======================         ======================================================
