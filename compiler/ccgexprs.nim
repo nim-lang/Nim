@@ -1533,8 +1533,19 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var typ = skipTypes(a.typ, abstractVar + tyUserTypeClasses)
   case typ.kind
   of tyOpenArray, tyVarargs:
-    if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
-    else: unaryExpr(p, e, d, "$1Len_0")
+    # Bug #9279, len(toOpenArray()) has to work:
+    if a.kind in nkCallKinds and a[0].kind == nkSym and a[0].sym.magic == mSlice:
+      # magic: pass slice to openArray:
+      var b, c: TLoc
+      initLocExpr(p, a[2], b)
+      initLocExpr(p, a[3], c)
+      if op == mHigh:
+        putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
+      else:
+        putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)+1", [rdLoc(b), rdLoc(c)]))
+    else:
+      if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
+      else: unaryExpr(p, e, d, "$1Len_0")
   of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
@@ -2020,6 +2031,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
+  of mSlice:
+    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
+      " 'toOpenArray' is only valid within a call expression")
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
