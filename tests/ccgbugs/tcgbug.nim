@@ -1,6 +1,8 @@
 discard """
   file: "tcgbug.nim"
-  output: "success"
+  output: '''success
+M1 M2
+'''
 """
 
 type
@@ -36,3 +38,41 @@ type
 
 var k = PFuture[void]()
 
+
+##bug #9297
+import strutils
+
+type
+  MyKind = enum
+    M1, M2, M3
+
+  MyObject {.exportc: "ExtObject"} = object
+    case kind: MyKind
+      of M1: a:int
+      of M2: b:float
+      of M3: c:cstring
+
+  MyObjectRef {.exportc: "ExtObject2"} = ref object
+    case kind: MyKind
+      of M1: a:int
+      of M2: b:float
+      of M3: c:cstring
+
+proc newMyObject(kind: MyKind, val: string): MyObject =
+  result.kind = kind
+
+  case kind
+    of M1: result.a = parseInt(val)
+    of M2: result.b = parseFloat(val)
+    of M3: result.c = val
+
+proc newMyObjectRef(kind: MyKind, val: string): MyObjectRef =
+  new(result)
+  result.kind = kind
+  case kind
+    of M1: result.a = parseInt(val)
+    of M2: result.b = parseFloat(val)
+    of M3: result.c = val
+
+ 
+echo newMyObject(M1, "2").kind, " ", newMyObjectRef(M2, "3").kind

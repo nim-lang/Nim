@@ -26,7 +26,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   markUsed(c.config, n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
-  pushInfoContext(c.config, n.info)
+  pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
@@ -1365,7 +1365,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString:
+     tyCString, tyUncheckedArray:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1):

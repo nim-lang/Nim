@@ -53,7 +53,10 @@ let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
   pegLineTemplate =
-    peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' 'template/generic instantiation from here'.*"
+    peg"""
+      {[^(]*} '(' {\d+} ', ' {\d+} ') '
+      'template/generic instantiation' ( ' of `' [^`]+ '`' )? ' from here' .*
+    """
   pegOtherError = peg"'Error:' \s* {.*}"
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError

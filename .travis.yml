@@ -46,7 +46,7 @@ script:
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
-  - ./koch docs
+  - ./koch docs --git.commit:devel
   - ./koch csource
   - ./koch nimsuggest
   - nim c -r nimsuggest/tester

@@ -39,6 +39,7 @@ false
 true
 true
 Raises
+Raises
 true
 true
 true
@@ -118,6 +119,14 @@ try:
 except IOError:
   echo "Raises"
 removeFile(dname)
+
+# removeFile should not remove directory
+createDir(dname)
+try:
+  removeFile(dname)
+except OSError:
+  echo "Raises"
+removeDir(dname)
 
 # test copyDir:
 createDir("a/b")
