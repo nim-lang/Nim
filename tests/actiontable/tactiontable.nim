@@ -1,7 +1,7 @@
 discard """
   output: '''
 action 3 arg
-action3 arg
+action 3 arg
 '''
 """
 

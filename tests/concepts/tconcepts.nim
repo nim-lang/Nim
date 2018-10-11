@@ -1,14 +1,6 @@
 discard """
   file: "tconcepts.nim"
   output: '''
-int
-int
-INFERRED int
-VALUE TYPE int
-VALUE TYPE NAME INT
-IMPLICIT INFERRED int int
-IMPLICIT VALUE TYPE int int
-IMPLICIT VALUE TYPE NAME INT INT
 10
 20
 int
