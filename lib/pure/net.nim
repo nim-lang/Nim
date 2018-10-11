@@ -1194,7 +1194,10 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
     data.setLen(0)
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): return
-    if cint(lastError) in [EAGAIN, EWOULDBLOCK]: return 0
+    when useWinVersion:
+      if cint(lastError) == WSAEWOULDBLOCK: return 0
+    else:
+      if cint(lastError) in [EAGAIN, EWOULDBLOCK]: return 0
     socket.socketError(result, lastError = lastError)
   data.setLen(result)
 
