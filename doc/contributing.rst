@@ -272,11 +272,11 @@ General commit rules
 
 3. Describe your commit and use your common sense.
 
-Example Commit messages: ``Fixes #123; refs #124``
+   Example Commit messages: ``Fixes #123; refs #124``
 
-indicates that issue ``#123`` is completely fixed (github may automatically close
-it when the PR is committed), wheres issue ``#124`` is referenced
-(eg: partially fixed) and won't close the issue when committed.
+   indicates that issue ``#123`` is completely fixed (github may automatically
+   close it when the PR is committed), wheres issue ``#124`` is referenced
+   (eg: partially fixed) and won't close the issue when committed.
 
 4. Commits should be always be rebased against devel (so that a fast forward
 merge can happen), eg using ``git pull --rebase origin devel``.
