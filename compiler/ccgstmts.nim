@@ -400,6 +400,15 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
     genStmts(p, it.lastSon)
     endBlock(p)
 
+
+proc genStmtsAux(p: BProc; n: PNode): Rope =
+  let topBlock = p.blocks.len-1
+  let oldBody = p.blocks[topBlock].sections[cpsStmts]
+  p.blocks[topBlock].sections[cpsStmts] = nil
+  genStmts(p, n)
+  result = p.blocks[topBlock].sections[cpsStmts]
+  p.blocks[topBlock].sections[cpsStmts] = oldBody
+
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
@@ -429,24 +438,15 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let tmp = "TMP$1_" % [id.rope]
   var gotoArray = "static void* $#[$#] = {" % [tmp, arraySize.rope]
   for i in 1..arraySize-1:
-    gotoArray.addf("&&TMP$#_, ", [(id+i).rope])
-  gotoArray.addf("&&TMP$#_};$n", [(id+arraySize).rope])
+    gotoArray.addf("&&TMP$#_, ", [rope(id+i)])
+  gotoArray.addf("&&TMP$#_};$n", [rope(id+arraySize)])
   line(p, cpsLocals, gotoArray)
 
-  let topBlock = p.blocks.len-1
-  let oldBody = p.blocks[topBlock].sections[cpsStmts]
-  p.blocks[topBlock].sections[cpsStmts] = nil
-
-  for j in casePos+1 ..< n.len: genStmts(p, n.sons[j])
-  let tailB = p.blocks[topBlock].sections[cpsStmts]
-
-  p.blocks[topBlock].sections[cpsStmts] = nil
-  for j in 0 .. casePos-1: genStmts(p, n.sons[j])
-  let tailA = p.blocks[topBlock].sections[cpsStmts]
-
-  p.blocks[topBlock].sections[cpsStmts] = oldBody & tailA
-
   let caseStmt = n.sons[casePos]
+
+  for j in 0 .. casePos-1:
+    discard genStmtsAux(p, n.sons[j])
+
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
   # first goto:
@@ -462,10 +462,10 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
     genStmts(p, it.lastSon)
-    #for j in casePos+1 ..< n.len: genStmts(p, n.sons[j]) # tailB
-    #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
-    add(p.s(cpsStmts), tailB)
-    add(p.s(cpsStmts), tailA)
+    for j in casePos+1 ..< n.len:
+      p.s(cpsStmts).add genStmtsAux(p, n.sons[j])
+    for j in 0 .. casePos-1:
+      p.s(cpsStmts).add genStmtsAux(p, n.sons[j])
 
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
