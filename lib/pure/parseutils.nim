@@ -17,20 +17,10 @@
                        # of the standard library!
 
 include "system/inclrtl"
+import std / baseconcepts
 
 type
-  Indexable[T] = concept c
-    var i: int
-    c[i] is T
-    c.len is int
-
-  StringLike = Indexable[char]
-
-#  StringLike = concept s
-#    s is Indexable[char]
-#    var first, last: int
-#    substr(s, first, last)
-#    substr(s, first)
+  StringLike = Indexable[char] # TODO: workaround bug 9289
 
 const
   Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}

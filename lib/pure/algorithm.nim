@@ -25,13 +25,13 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
-template fillImpl[T](a: var Indexable[T], first, last: int, value: T) =
+template fillImpl[T](a: var MIndexable[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
-proc fill*[T](a: var Indexable[T], first, last: Natural, value: T) =
+proc fill*[T](a: var MIndexable[T], first, last: Natural, value: T) =
   ## fills the slice ``a[first..last]`` with ``value``.
   runnableExamples:
       var a: array[6, int]
@@ -39,7 +39,7 @@ proc fill*[T](a: var Indexable[T], first, last: Natural, value: T) =
       doAssert a == [0, 9, 9, 9, 0, 0]
   fillImpl(a, first, last, value)
 
-proc fill*[T](a: var Indexable[T], value: T) =
+proc fill*[T](a: var MIndexable[T], value: T) =
   ## fills the container ``a`` with ``value``.
   runnableExamples:
       var a: array[6, int]
@@ -48,7 +48,7 @@ proc fill*[T](a: var Indexable[T], value: T) =
   fillImpl(a, 0, a.high, value)
 
 
-proc reverse*[T](a: MutIndexable[T], first, last: Natural) =
+proc reverse*[T](a: var MIndexable[T], first, last: Natural) =
   ## reverses the slice ``a[first..last]``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
@@ -61,7 +61,7 @@ proc reverse*[T](a: MutIndexable[T], first, last: Natural) =
     dec(y)
     inc(x)
 
-proc reverse*[T](a: MutIndexable[T]) =
+proc reverse*[T](a: var MIndexable[T]) =
   ## reverses the contents of the container ``a``.
   runnableExamples:
       var a = [1, 2, 3, 4, 5, 6]
@@ -219,7 +219,7 @@ template `<-` (a, b) =
   else:
     copyMem(addr(a), addr(b), sizeof(T))
 
-proc merge[T](a, b: var Indexable[T], lo, m, hi: int,
+proc merge[T](a, b: var MIndexable[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4  ## 5 6 7 8
@@ -258,7 +258,7 @@ proc merge[T](a, b: var Indexable[T], lo, m, hi: int,
   else:
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
-func sort*[T](a: var Indexable[T],
+func sort*[T](a: var MIndexable[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
@@ -298,7 +298,7 @@ func sort*[T](a: var Indexable[T],
       dec(m, s*2)
     s = s*2
 
-func sort*[T](a: var Indexable[T], order = SortOrder.Ascending) =
+func sort*[T](a: var MIndexable[T], order = SortOrder.Ascending) =
   ## sorts an openarray in-place with a default lexicographical ordering.
   runnableExamples:
     var s = @[1,3,2,5,4]
@@ -414,7 +414,7 @@ proc product*[T](x: openarray[seq[T]]): seq[seq[T]] =
     index = 0
     indexes[index] -= 1
 
-proc nextPermutation*[T](x: var Indexable[T]): bool {.discardable.} =
+proc nextPermutation*[T](x: var MIndexable[T]): bool {.discardable.} =
   ## calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
@@ -443,7 +443,7 @@ proc nextPermutation*[T](x: var Indexable[T]): bool {.discardable.} =
 
   result = true
 
-proc prevPermutation*[T](x: var Indexable[T]): bool {.discardable.} =
+proc prevPermutation*[T](x: var MIndexable[T]): bool {.discardable.} =
   ## calculates the previous lexicographic permutation, directly modifying
   ## ``x``. The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
@@ -503,7 +503,7 @@ when isMainModule:
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 
-proc rotateInternal[T](arg: var Indexable[T]; first, middle, last: int): int =
+proc rotateInternal[T](arg: var MIndexable[T]; first, middle, last: int): int =
   ## A port of std::rotate from c++. Ported from `this reference <http://www.cplusplus.com/reference/algorithm/rotate/>`_.
   result = first + last - middle
 
@@ -555,7 +555,7 @@ proc rotatedInternal[T](arg: Indexable[T]; first, middle, last: int): seq[T] =
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotateLeft*[T](arg: var Indexable[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
+proc rotateLeft*[T](arg: var MIndexable[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
   ## performs a left rotation on a range of elements. If you want to rotate
   ## right, use a negative ``dist``. Specifically, ``rotateLeft`` rotates
   ## the elements at ``slice`` by ``dist`` positions.
@@ -584,7 +584,7 @@ proc rotateLeft*[T](arg: var Indexable[T]; slice: HSlice[int, int]; dist: int): 
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
 
-proc rotateLeft*[T](arg: var Indexable[T]; dist: int): int {.discardable.} =
+proc rotateLeft*[T](arg: var MIndexable[T]; dist: int): int {.discardable.} =
   ## Default arguments for slice, so that this procedure operates on the entire
   ## ``arg``, and not just on a part of it.
   runnableExamples:

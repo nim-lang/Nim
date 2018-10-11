@@ -7,13 +7,13 @@ type
     c[i] is T
     c.len is int
 
-  MutIndexable*[T] = concept var c of Indexable[T]
+  MIndexable*[T] = concept c of Indexable[T]
     var i: int
     c[i] is var T
     var val: T
     c[i] = val
 
-  BufferLike*[T] = concept var c of MutIndexable[T]
+  BufferLike*[T] = concept c of MIndexable[T]
     var val: T
     c.add(val)
     c.pop() is T
@@ -24,6 +24,6 @@ type
     substr(c, first, last)
     substr(c, first)
 
-  MutStringLike* = concept var c of StringLike
+  MStringLike* = concept c of StringLike
     c.add(char)
     c.add(string)
