@@ -5965,6 +5965,12 @@ curlies is the pattern to match against. The operators ``*``,  ``**``,
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 
+Term rewriting macro are applied recursively, up to a limit. This means that
+if the result of a term rewriting macro is eligible for another rewriting,
+the compiler will try to perform it, and so on, until no more optimizations
+are applicable. To avoid putting the compiler into an infinite loop, there is
+a hard limit on how many times a single term rewriting macro can be applied.
+Once this limit has been passed, the term rewriting macro will be ignored.
 
 Unfortunately optimizations are hard to get right and even the tiny example
 is **wrong**:
