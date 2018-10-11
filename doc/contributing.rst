@@ -149,6 +149,7 @@ Backward compatibility is important, so if you are renaming a routine
 (proc/template/macro/iterator) or a type you can use:
 
 .. code-block:: nim
+
   {.deprecated: [oldName: new_name].}
 
 This form may enable future automated tooling to upgrade code (eg nimfix, which
@@ -158,6 +159,7 @@ Besides pure renamings (eg when parameters change) you can mark a symbol as
 deprecated using the following:
 
 .. code-block:: nim
+
   # for routines (proc/template/macro/iterator) and types:
   proc oldProc() {.deprecated: "use `newImpl: string -> int` instead".} = ...
 
