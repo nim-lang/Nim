@@ -66,7 +66,7 @@ proc skipRandomNumbers*(s: var Rand) =
     s0 = ui 0
     s1 = ui 0
   for i in 0..high(helper):
-    for b in 0..< 64:
+    for b in 0 ..< 64:
       if (helper[i] and (ui(1) shl ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1

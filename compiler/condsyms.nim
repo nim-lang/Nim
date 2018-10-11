@@ -13,6 +13,7 @@ import
   strtabs, platform, strutils, idents
 
 from options import Feature
+from lineinfos import HintsToStr, WarningsToStr
 
 const
   catNone = "false"
@@ -74,11 +75,20 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoZeroTerminator")
   defineSymbol("nimNotNil")
   defineSymbol("nimVmExportFixed")
+  defineSymbol("nimHasSymOwnerInMacro")
+  defineSymbol("nimNewRuntime")
   defineSymbol("nimIncrSeqV3")
   defineSymbol("nimAshr")
   defineSymbol("nimNoNilSeqs")
   defineSymbol("nimNoNilSeqs2")
+  defineSymbol("nimHasUserErrors")
+  defineSymbol("nimUncheckedArrayTyp")
 
   defineSymbol("nimHasNilSeqs")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
+
+  for s in WarningsToStr:
+    defineSymbol("nimHasWarning" & s)
+  for s in HintsToStr:
+    defineSymbol("nimHasHint" & s)

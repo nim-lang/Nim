@@ -7,14 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements the symbol importing mechanism.
+## This module implements the symbol importing mechanism.
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
   semdata, passes, renderer, modulepaths, sigmatch, lineinfos
-
-proc evalImport*(c: PContext, n: PNode): PNode
-proc evalFrom*(c: PContext, n: PNode): PNode
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -24,9 +21,15 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
     result.incl(ident.id)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
-  var check = strTableGet(c.importTable.symbols, s.name)
+  let check = strTableGet(c.importTable.symbols, s.name)
   if check == nil:
-    strTableAdd(c.pureEnumFields, s)
+    let checkB = strTableGet(c.pureEnumFields, s.name)
+    if checkB == nil:
+      strTableAdd(c.pureEnumFields, s)
+    else:
+      # mark as ambigous:
+      incl(c.ambiguousSymbols, checkB.id)
+      incl(c.ambiguousSymbols, s.id)
 
 proc rawImportSymbol(c: PContext, s: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be
@@ -134,7 +137,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
-  var f = checkModuleName(c.config, n)
+  let f = checkModuleName(c.config, n)
   if f != InvalidFileIDX:
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
@@ -162,9 +165,19 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
       else:
         message(c.config, n.info, warnDeprecated, result.name.s)
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
-    importStmtResult.add newStrNode(toFullPath(c.config, f), n.info)
+    importStmtResult.add newSymNode(result, n.info)
+    #newStrNode(toFullPath(c.config, f), n.info)
+
+proc transformImportAs(c: PContext; n: PNode): PNode =
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
+    result = newNodeI(nkImportAs, n.info)
+    result.add n.sons[1]
+    result.add n.sons[2]
+  else:
+    result = n
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
+  let it = transformImportAs(c, it)
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     var emptySet: IntSet
@@ -173,27 +186,34 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     importAllSymbolsExcept(c, m, emptySet)
     #importForwarded(c, m.ast, emptySet)
 
-proc evalImport(c: PContext, n: PNode): PNode =
-  #result = n
+proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
       let sep = it[0]
       let dir = it[1]
-      let a = newNodeI(nkInfix, it.info)
-      a.add sep
-      a.add dir
-      a.add sep # dummy entry, replaced in the loop
+      var imp = newNodeI(nkInfix, it.info)
+      imp.add sep
+      imp.add dir
+      imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
-        a.sons[2] = x
-        impMod(c, a, result)
+        # transform `a/b/[c as d]` to `/a/b/c as d`
+        if x.kind == nkInfix and x.sons[0].ident.s == "as":
+          let impAs = copyTree(x)
+          imp.sons[2] = x.sons[1]
+          impAs.sons[1] = imp
+          impMod(c, imp, result)
+        else:
+          imp.sons[2] = x
+          impMod(c, imp, result)
     else:
       impMod(c, it, result)
 
-proc evalFrom(c: PContext, n: PNode): PNode =
+proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
+  n.sons[0] = transformImportAs(c, n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)
@@ -205,6 +225,7 @@ proc evalFrom(c: PContext, n: PNode): PNode =
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
+  n.sons[0] = transformImportAs(c, n.sons[0])
   var m = myImportModule(c, n.sons[0], result)
   if m != nil:
     n.sons[0] = newSymNode(m)

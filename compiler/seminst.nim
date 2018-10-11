@@ -326,7 +326,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # no need to instantiate generic templates/macros:
   internalAssert c.config, fn.kind notin {skMacro, skTemplate}
   # generates an instantiated proc
-  if c.instCounter > 1000: internalError(c.config, fn.ast.info, "nesting too deep")
+  if c.instCounter > 50:
+    globalError(c.config, info, "generic instantiation too nested")
   inc(c.instCounter)
   # careful! we copy the whole AST including the possibly nil body!
   var n = copyTree(fn.ast)
@@ -347,7 +348,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let gp = n.sons[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
-  pushInfoContext(c.config, info)
+  pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
   # we need to compare both the generic types and the concrete types:

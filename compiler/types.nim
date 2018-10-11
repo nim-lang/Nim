@@ -278,6 +278,8 @@ proc analyseObjectWithTypeField(t: PType): TTypeFieldResult =
 proc isGCRef(t: PType): bool =
   result = t.kind in GcTypeKinds or
     (t.kind == tyProc and t.callConv == ccClosure)
+  if result and t.kind in {tyString, tySequence} and tfHasAsgn in t.flags:
+    result = false
 
 proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the
@@ -394,7 +396,7 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "opt", "sink",
-    "lent", "varargs[$1]", "unused", "Error Type",
+    "lent", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -524,6 +526,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else:
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
+  of tyUncheckedArray:
+    result = "uncheckedArray[" & typeToString(t.sons[0]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOpt:
@@ -636,6 +640,8 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = 0
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
@@ -693,6 +699,8 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = high(BiggestInt)
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
@@ -759,9 +767,10 @@ proc initSameTypeClosure: TSameTypeClosure =
   discard
 
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
-  result = not isNil(c.s) and c.s.contains((a.id, b.id))
+  result = c.s.len > 0 and c.s.contains((a.id, b.id))
   if not result:
-    if isNil(c.s): c.s = @[]
+    when not defined(nimNoNilSeqs):
+      if isNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
@@ -1027,7 +1036,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink,
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
@@ -1051,7 +1060,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyOptAsRef: result = false
+  of tyOptAsRef: result = false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1207,7 +1216,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred, tyUncheckedArray:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
@@ -1249,7 +1258,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused, tyOptAsRef: result = t
+  of tyOptAsRef: result = t
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1341,14 +1350,23 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
     if typ.callConv == ccClosure: result = 2 * conf.target.ptrSize
     else: result = conf.target.ptrSize
     a = conf.target.ptrSize
-  of tyString, tyNil:
+  of tyString:
+    if tfHasAsgn in typ.flags:
+      result = conf.target.ptrSize * 2
+    else:
+      result = conf.target.ptrSize
+  of tyNil:
     result = conf.target.ptrSize
     a = result
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion
-    else: result = conf.target.ptrSize
+    else:
+      if typ.kind == tySequence and tfHasAsgn in typ.flags:
+        result = conf.target.ptrSize * 2
+      else:
+        result = conf.target.ptrSize
     a = result
   of tyArray:
     let elemSize = computeSizeAux(conf, typ.sons[1], a)
@@ -1418,6 +1436,8 @@ proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt 
   of tyStatic:
     result = if typ.n != nil: computeSizeAux(conf, typ.lastSon, a)
              else: szUnknownSize
+  of tyUncheckedArray:
+    result = 0
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize

@@ -27,7 +27,8 @@ when isMainModule:
   outp.close
 
 import
-  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos
+  llstream, lexer, idents, strutils, ast, astalgo, msgs, options, lineinfos,
+  pathutils
 
 when defined(nimpretty2):
   import layouter
@@ -114,7 +115,7 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
   p.strongSpaces = strongSpaces
   p.emptyNode = newNode(nkEmpty)
 
-proc openParser*(p: var TParser, filename: string, inputStream: PLLStream,
+proc openParser*(p: var TParser, filename: AbsoluteFile, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef;
                  strongSpaces=false) =
   openParser(p, fileInfoIdx(config, filename), inputStream, cache, config, strongSpaces)
@@ -251,41 +252,6 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
   ## Determines whether the token is right assocative.
   result = tok.tokType == tkOpr and tok.ident.s[0] == '^'
   # or (let L = tok.ident.s.len; L > 1 and tok.ident.s[L-1] == '>'))
-
-proc getPrecedence(tok: TToken, strongSpaces: bool): int =
-  ## Calculates the precedence of the given token.
-  template considerStrongSpaces(x): untyped =
-    x + (if strongSpaces: 100 - tok.strongSpaceA.int*10 else: 0)
-
-  case tok.tokType
-  of tkOpr:
-    let L = tok.ident.s.len
-    let relevantChar = tok.ident.s[0]
-
-    # arrow like?
-    if L > 1 and tok.ident.s[L-1] == '>' and
-      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
-
-    template considerAsgn(value: untyped) =
-      result = if tok.ident.s[L-1] == '=': 1 else: value
-
-    case relevantChar
-    of '$', '^': considerAsgn(10)
-    of '*', '%', '/', '\\': considerAsgn(9)
-    of '~': result = 8
-    of '+', '-', '|': considerAsgn(8)
-    of '&': considerAsgn(7)
-    of '=', '<', '>', '!': result = 5
-    of '.': considerAsgn(6)
-    of '?': result = 2
-    else: considerAsgn(2)
-  of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotin, tkIs, tkIsnot, tkNot, tkOf, tkAs: result = 5
-  of tkDotDot: result = 6
-  of tkAnd: result = 4
-  of tkOr, tkXor, tkPtr, tkRef: result = 3
-  else: return -10
-  result = considerStrongSpaces(result)
 
 proc isOperator(tok: TToken): bool =
   ## Determines if the given token is an operator type token.
@@ -572,7 +538,7 @@ proc parsePar(p: var TParser): PNode =
   flexComment(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
                        tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
-                       tkConst, tkLet, tkWhen, tkVar,
+                       tkConst, tkLet, tkWhen, tkVar, tkFor,
                        tkMixin}:
     # XXX 'bind' used to be an expression, so we exclude it here;
     # tests/reject/tbind2 fails otherwise.
@@ -1147,7 +1113,7 @@ proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
 
 proc isExprStart(p: TParser): bool =
   case p.tok.tokType
-  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
+  of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkFor,
      tkProc, tkFunc, tkIterator, tkBind, tkBuiltInMagics,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
      tkTuple, tkObject, tkWhen, tkCase, tkOut:
@@ -1187,16 +1153,35 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     result.addSon list
     parseSymbolList(p, list)
 
+proc parseFor(p: var TParser): PNode =
+  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
+  #| forExpr = forStmt
+  result = newNodeP(nkForStmt, p)
+  getTokNoInd(p)
+  var a = identWithPragma(p)
+  addSon(result, a)
+  while p.tok.tokType == tkComma:
+    getTok(p)
+    optInd(p, a)
+    a = identWithPragma(p)
+    addSon(result, a)
+  eat(p, tkIn)
+  addSon(result, parseExpr(p))
+  colcom(p, result)
+  addSon(result, parseStmt(p))
+
 proc parseExpr(p: var TParser): PNode =
   #| expr = (blockExpr
   #|       | ifExpr
   #|       | whenExpr
   #|       | caseExpr
+  #|       | forExpr
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
   of tkBlock: result = parseBlock(p)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
+  of tkFor: result = parseFor(p)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=true)
@@ -1532,7 +1517,7 @@ proc parseCase(p: var TParser): PNode =
   #|             | IND{=} ofBranches)
   var
     b: PNode
-    inElif= false
+    inElif = false
     wasIndented = false
   result = newNodeP(nkCaseStmt, p)
   getTok(p)
@@ -1593,29 +1578,12 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
     colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
-    if b.kind == nkFinally: break
   if b == nil: parMessage(p, "expected 'except'")
 
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =
   #| exceptBlock = 'except' colcom stmt
   result = newNodeP(kind, p)
   getTok(p)
-  colcom(p, result)
-  addSon(result, parseStmt(p))
-
-proc parseFor(p: var TParser): PNode =
-  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
-  result = newNodeP(nkForStmt, p)
-  getTokNoInd(p)
-  var a = identWithPragma(p)
-  addSon(result, a)
-  while p.tok.tokType == tkComma:
-    getTok(p)
-    optInd(p, a)
-    a = identWithPragma(p)
-    addSon(result, a)
-  eat(p, tkIn)
-  addSon(result, parseExpr(p))
   colcom(p, result)
   addSon(result, parseStmt(p))
 
@@ -2270,7 +2238,7 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
   # spaces...
   parser.lex.errorHandler = errorHandler
-  openParser(parser, filename, stream, cache, config, false)
+  openParser(parser, AbsoluteFile filename, stream, cache, config, false)
 
   result = parser.parseAll
   closeParser(parser)

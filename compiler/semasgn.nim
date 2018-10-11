@@ -197,12 +197,26 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyString, tyRef, tyOpt:
+      tyPtr, tyRef, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
-  of tyArray, tySequence:
+  of tyArray:
     if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
-      if t.kind == tySequence:
-        # XXX add 'nil' handling here
+      let i = declareCounter(c, body, firstOrd(c.c.config, t))
+      let whileLoop = genWhileLoop(c, i, x)
+      let elemType = t.lastSon
+      liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
+                                                  y.at(i, elemType))
+      addIncStmt(c, whileLoop.sons[1], i)
+      body.add whileLoop
+    else:
+      defaultOp(c, t, body, x, y)
+  of tySequence:
+    # note that tfHasAsgn is propagated so we need the check on
+    # 'selectedGC' here to determine if we have the new runtime.
+    if c.c.config.selectedGC == gcDestructors:
+      discard considerOverloadedOp(c, t, body, x, y)
+    elif tfHasAsgn in t.flags:
+      if c.kind != attachedDestructor:
         body.add newSeqCall(c.c, x, y)
       let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
@@ -211,6 +225,11 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
                                                   y.at(i, elemType))
       addIncStmt(c, whileLoop.sons[1], i)
       body.add whileLoop
+    else:
+      defaultOp(c, t, body, x, y)
+  of tyString:
+    if tfHasAsgn in t.flags:
+      discard considerOverloadedOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyObject, tyDistinct:
@@ -241,7 +260,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef: internalError(c.c.config, "liftBodyAux")
+  of tyOptAsRef: internalError(c.c.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

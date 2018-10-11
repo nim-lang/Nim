@@ -41,10 +41,7 @@ proc createServer(port: Port) {.async.} =
   var server = newAsyncNativeSocket()
   block:
     var name: Sockaddr_in
-    when defined(windows):
-      name.sin_family = toInt(AF_INET).int16
-    else:
-      name.sin_family = toInt(AF_INET)
+    name.sin_family = toInt(AF_INET).uint16
     name.sin_port = htons(uint16(port))
     name.sin_addr.s_addr = htonl(INADDR_ANY)
     if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),

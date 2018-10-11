@@ -32,12 +32,12 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TJSGen = object of TPassContext
+  TJSGen = object of PPassContext
     module: PSym
     graph: ModuleGraph
     config: ConfigRef
@@ -179,7 +179,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence, tyOpt: result = etySeq
-  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
+  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs, tyUncheckedArray:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericParam, tyGenericBody, tyGenericInvocation,
@@ -195,7 +195,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyOptAsRef: doAssert(false, "mapType")
+  of tyOptAsRef: doAssert(false, "mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -243,7 +243,8 @@ proc mangleName(m: BModule, s: PSym): Rope =
           x.add("HEX" & toHex(ord(c), 2))
         inc i
       result = rope(x)
-    if s.name.s != "this" and s.kind != skField:
+    # From ES5 on reserved words can be used as object field names
+    if s.kind != skField:
       if optHotCodeReloading in m.config.options:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
@@ -271,9 +272,7 @@ proc escapeJSString(s: string): string =
   result.add("\"")
 
 proc makeJSString(s: string, escapeNonAscii = true): Rope =
-  if s.isNil:
-    result = "null".rope
-  elif escapeNonAscii:
+  if escapeNonAscii:
     result = strutils.escape(s).rope
   else:
     result = escapeJSString(s).rope
@@ -616,7 +615,6 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
-  let dollar = rope("")
   if catchBranchesExist:
     addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
@@ -632,15 +630,42 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       if i > 1: lineF(p, "}$n", [])
     else:
       var orExpr: Rope = nil
+      var excAlias: PNode = nil
+
       useMagic(p, "isObj")
       for j in countup(0, blen - 2):
-        if n.sons[i].sons[j].kind != nkType:
+        var throwObj: PNode
+        let it = n.sons[i].sons[j]
+
+        if it.isInfixAs():
+          throwObj = it[1]
+          excAlias = it[2]
+          # If this is a ``except exc as sym`` branch there must be no following
+          # nodes
+          doAssert orExpr == nil
+        elif it.kind == nkType:
+          throwObj = it
+        else:
           internalError(p.config, n.info, "genTryStmt")
+
         if orExpr != nil: add(orExpr, "||")
-        addf(orExpr, "isObj($2lastJSError.m_type, $1)",
-             [genTypeInfo(p, n.sons[i].sons[j].typ), dollar])
+        # Generate the correct type checking code depending on whether this is a
+        # NIM-native or a JS-native exception
+        # if isJsObject(throwObj.typ):
+        if isImportedException(throwObj.typ, p.config):
+          addf(orExpr, "lastJSError instanceof $1",
+            [throwObj.typ.sym.loc.r])
+        else:
+          addf(orExpr, "isObj(lastJSError.m_type, $1)",
+               [genTypeInfo(p, throwObj.typ)])
+
       if i > 1: line(p, "else ")
-      lineF(p, "if ($1lastJSError && ($2)) {$n", [dollar, orExpr])
+      lineF(p, "if (lastJSError && ($1)) {$n", [orExpr])
+      # If some branch requires a local alias introduce it here. This is needed
+      # since JS cannot do ``catch x as y``.
+      if excAlias != nil:
+        excAlias.sym.loc.r = mangleName(p.module, excAlias.sym)
+        lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.r)
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       lineF(p, "}$n", [])
@@ -651,7 +676,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "else {\L")
       line(p, "\treraiseException();\L")
       line(p, "}\L")
-    addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
+    lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
   line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < length and n.sons[i].kind == nkFinally:
@@ -659,15 +684,16 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   line(p, "}\L")
 
 proc genRaiseStmt(p: PProc, n: PNode) =
-  genLineDir(p, n)
   if n.sons[0].kind != nkEmpty:
     var a: TCompRes
     gen(p, n.sons[0], a)
     let typ = skipTypes(n.sons[0].typ, abstractPtrs)
+    genLineDir(p, n)
     useMagic(p, "raiseException")
     lineF(p, "raiseException($1, $2);$n",
              [a.rdLoc, makeJSString(typ.sym.name.s)])
   else:
+    genLineDir(p, n)
     useMagic(p, "reraiseException")
     line(p, "reraiseException();\L")
 
@@ -765,11 +791,22 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
     of nkSym:
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
-      if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
-        p.body.add mangleName(p.module, v)
+      if false:
+        discard
       else:
         var r: TCompRes
         gen(p, it, r)
+
+        if it.typ.kind == tyPointer:
+          # A fat pointer is disguised as an array
+          r.res = r.address
+          r.address = nil
+        elif r.typ == etyBaseIndex:
+          # Deference first
+          r.res = "$1[$2]" % [r.address, r.res]
+          r.address = nil
+          r.typ = etyNone
+
         p.body.add(r.rdLoc)
     else:
       var r: TCompRes
@@ -846,6 +883,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   else:
     gen(p, x, a)
 
+  genLineDir(p, y)
   gen(p, y, b)
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
@@ -882,11 +920,9 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     lineF(p, "$1 = $2;$n", [a.res, b.res])
 
 proc genAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=false)
 
 proc genFastAsgn(p: PProc, n: PNode) =
-  genLineDir(p, n)
   # 'shallowCopy' always produced 'noCopyNeeded = true' here but this is wrong
   # for code like
   #  while j >= pos:
@@ -950,13 +986,50 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes)
 
-proc genCheckedFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
-  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
-  internalAssert p.config, m.kind == nkCheckedFieldExpr
-  genAddr(p, m, r) # XXX
+proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
+  internalAssert p.config, n.kind == nkCheckedFieldExpr
+  # nkDotExpr to access the requested field
+  let accessExpr = n[0]
+  # nkCall to check if the discriminant is valid
+  var checkExpr = n[1]
 
-proc genCheckedFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
-  genFieldAccess(p, n.sons[0], r) # XXX
+  let negCheck = checkExpr[0].sym.magic == mNot
+  if negCheck:
+    checkExpr = checkExpr[^1]
+
+  # Field symbol
+  var field = accessExpr[1].sym
+  internalAssert p.config, field.kind == skField
+  if field.loc.r == nil: field.loc.r = mangleName(p.module, field)
+  # Discriminant symbol
+  let disc = checkExpr[2].sym
+  internalAssert p.config, disc.kind == skField
+  if disc.loc.r == nil: disc.loc.r = mangleName(p.module, disc)
+
+  var setx: TCompRes
+  gen(p, checkExpr[1], setx)
+
+  var obj: TCompRes
+  gen(p, accessExpr[0], obj)
+  # Avoid evaluating the LHS twice (one to read the discriminant and one to read
+  # the field)
+  let tmp = p.getTemp()
+  lineF(p, "var $1 = $2;$n", tmp, obj.res)
+
+  useMagic(p, "raiseFieldError")
+  useMagic(p, "makeNimstrLit")
+  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
+    setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
+    makeJSString(field.name.s))
+
+  if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
+    r.typ = etyBaseIndex
+    r.res = makeJSString($field.loc.r)
+    r.address = tmp
+  else:
+    r.typ = etyNone
+    r.res = "$1.$2" % [tmp, field.loc.r]
+  r.kind = resExpr
 
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -1035,7 +1108,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(p.config, n.info, "genAddr: 2")
   of nkCheckedFieldExpr:
-    genCheckedFieldAddr(p, n, r)
+    genCheckedFieldOp(p, n[0], n.typ, r)
   of nkDotExpr:
     if mapType(p, n.typ) == etyBaseIndex:
       genFieldAddr(p, n.sons[0], r)
@@ -1369,7 +1442,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     let length = int(lengthOrd(p.config, t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
-    if not jsTyp.isNil:
+    if jsTyp.len > 0:
       result = "new $1($2)" % [rope(jsTyp), rope(length)]
     elif length > 32:
       useMagic(p, "arrayConstr")
@@ -1530,18 +1603,18 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1.slice(0,-1)).concat(" % [a.res])
+    r.res.add("($1).concat(" % [a.res])
 
   for i in countup(2, sonsLen(n) - 2):
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1.slice(0,-1)," % [a.res])
+      r.res.add("$1," % [a.res])
 
   gen(p, n.sons[sonsLen(n) - 1], a)
   if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
-    r.res.add("[$1, 0])" % [a.res])
+    r.res.add("[$1])" % [a.res])
   else:
     r.res.add("$1)" % [a.res])
 
@@ -1648,14 +1721,20 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
-        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
+        "if ($1 != null) { addChar($1, $2); } else { $1 = [$2]; }")
   of mAppendStrStr:
+    var lhs, rhs: TCompRes
+    gen(p, n[1], lhs)
+    gen(p, n[2], rhs)
+
+    let rhsIsLit = n[2].kind in nkStrKinds
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
-        binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
+      r.res = "if ($1 != null) { $1 += $2; } else { $1 = $2$3; }" % [
+        lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
     else:
-      binaryExpr(p, n, r, "",
-        "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
-    # XXX: make a copy of $2, because of Javascript's sucking semantics
+      r.res = "if ($1 != null) { $1 = ($1).concat($2); } else { $1 = $2$3; }" % [
+          lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()"]
+    r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1683,21 +1762,12 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
-  of mLengthStr:
-    if n.sons[1].typ.skipTypes(abstractInst).kind == tyCString:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? $1.length-1 : 0)")
-  of mXLenStr: unaryExpr(p, n, r, "", "$1.length-1")
-  of mLengthSeq, mLengthOpenArray, mLengthArray:
+  of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")
-  of mXLenSeq:
+  of mXLenStr, mXLenSeq:
     unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
-    if skipTypes(n.sons[1].typ, abstractVar).kind == tyString:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-2) : -1)")
-    else:
-      unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
+    unaryExpr(p, n, r, "", "($1 != null ? ($1.length-1) : -1)")
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
       binaryUintExpr(p, n, r, "+", true)
@@ -1711,7 +1781,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0")
+    binaryExpr(p, n, r, "", "$1.length = $2")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -1740,8 +1810,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     localError(p.config, n.info, errXMustBeCompileTime % n.sons[0].sym.name.s)
   of mCopyStr:
     binaryExpr(p, n, r, "", "($1.slice($2))")
-  of mCopyStrLast:
-    ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")
@@ -2066,8 +2134,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       r.kind = resExpr
   of nkStrLit..nkTripleStrLit:
     if skipTypes(n.typ, abstractVarRange).kind == tyString:
-      useMagic(p, "makeNimstrLit")
-      r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      if n.strVal.len != 0:
+        useMagic(p, "makeNimstrLit")
+        r.res = "makeNimstrLit($1)" % [makeJSString(n.strVal)]
+      else:
+        r.res = rope"[]"
     else:
       r.res = makeJSString(n.strVal, false)
     r.kind = resExpr
@@ -2106,7 +2177,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, r)
   of nkBracketExpr: genArrayAccess(p, n, r)
   of nkDotExpr: genFieldAccess(p, n, r)
-  of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
+  of nkCheckedFieldExpr: genCheckedFieldOp(p, n, nil, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
   of nkCast: genCast(p, n, r)
@@ -2255,7 +2326,7 @@ proc genClass(conf: ConfigRef; obj: PType; content: Rope; ext: string) =
             "class $#$# {$n$#$n}$n") %
            [rope(VersionAsString), cls, extends, content]
 
-  let outfile = changeFileExt(completeCFilePath(conf, $cls), ext)
+  let outfile = changeFileExt(completeCFilePath(conf, AbsoluteFile($cls)), ext)
   discard writeRopeIfNotEqual(result, outfile)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
@@ -2269,11 +2340,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
             else: "nimsystem"
     let code = wholeCode(graph, m)
     let outfile =
-      if m.config.outFile.len > 0:
-        if m.config.outFile.isAbsolute: m.config.outFile
-        else: getCurrentDir() / m.config.outFile
+      if not m.config.outFile.isEmpty:
+        if m.config.outFile.string.isAbsolute: m.config.outFile
+        else: AbsoluteFile(getCurrentDir() / m.config.outFile.string)
       else:
-        changeFileExt(completeCFilePath(m.config, f), ext)
+        changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
+    let (outDir, _, _) = splitFile(outfile)
+    if not outDir.isEmpty:
+      createDir(outDir)
     discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)

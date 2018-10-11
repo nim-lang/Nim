@@ -125,8 +125,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
       else: importPureEnumField(c, e)
-    if isPure and strTableIncl(symbols, e):
-      wrongRedefinition(c, e.info, e.name.s)
+    if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
+      wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
   if not hasNull: incl(result.flags, tfNeedsInit)
 
@@ -145,9 +145,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "set")
     addSonSkipIntLit(result, errorType(c))
 
-proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
-                  prev: PType): PType =
-  result = newOrPrevType(kind, prev, c)
+proc semContainerArg(c: PContext; n: PNode, kindStr: string; result: PType) =
   if sonsLen(n) == 2:
     var base = semTypeNode(c, n.sons[1], nil)
     if base.kind == tyVoid:
@@ -156,6 +154,11 @@ proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % kindStr)
     addSonSkipIntLit(result, errorType(c))
+
+proc semContainer(c: PContext, n: PNode, kind: TTypeKind, kindStr: string,
+                  prev: PType): PType =
+  result = newOrPrevType(kind, prev, c)
+  semContainerArg(c, n, kindStr, result)
 
 proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tyVarargs, prev, c)
@@ -369,7 +372,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
     result = getGenSym(c, n.sym)
   else:
-    result = pickSym(c, n, {skType, skGenericParam})
+    result = pickSym(c, n, {skType, skGenericParam, skParam})
     if result.isNil:
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
@@ -584,12 +587,12 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     checkForOverlap(c, t, i, branchIndex)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType)
+                      father: PNode, rectype: PType, hasCaseFields = false)
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
   checkMinSonsLen(n, 2, c.config)
-  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
+  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype, hasCaseFields = true)
   if a.sons[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
@@ -616,13 +619,13 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       checkSonsLen(b, 1, c.config)
     else: illFormedAst(n, c.config)
     delSon(b, sonsLen(b) - 1)
-    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
+    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != lengthOrd(c.config, a.sons[0].typ):
     localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType) =
+                      father: PNode, rectype: PType, hasCaseFields = false) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -691,7 +694,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.position = pos
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         f.loc.r == nil:
+         not hasCaseFields and f.loc.r == nil:
         f.loc.r = rope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
@@ -960,7 +963,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let liftBody = liftingWalk(paramType.lastSon, true)
     if liftBody != nil:
       result = liftBody
-      result.shouldHaveMeta
+      result.flags.incl tfHasMeta
+      #result.shouldHaveMeta
 
   of tyGenericInvocation:
     for i in 1 ..< paramType.len:
@@ -1158,7 +1162,7 @@ proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
   checkMinSonsLen(n, 1, c.config)
   var length = sonsLen(n)
   for i in countup(0, length - 2):
-    n.sons[i] = semStmt(c, n.sons[i])
+    n.sons[i] = semStmt(c, n.sons[i], {})
   if length > 0:
     result = semTypeNode(c, n.sons[length - 1], prev)
     n.typ = result
@@ -1403,6 +1407,13 @@ proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType =
   result.rawAddSon(base)
   result.flags.incl tfHasStatic
 
+proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
+  openScope(c)
+  let t = semExprWithType(c, n, {efInTypeof})
+  closeScope(c)
+  fixupTypeOf(c, prev, t)
+  result = t.typ
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   inc c.inTypeContext
@@ -1413,9 +1424,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
-    let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
-    fixupTypeOf(c, prev, typExpr)
-    result = typExpr.typ
+    result = semTypeof(c, n.sons[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
@@ -1484,9 +1493,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semAnyRef(c, n, tyRef, prev)
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
-        let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
-        fixupTypeOf(c, prev, typExpr)
-        result = typExpr.typ
+        result = semTypeof(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)
@@ -1504,10 +1511,28 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
+    of mUncheckedArray: result = semContainer(c, n, tyUncheckedArray, "uncheckedarray", prev)
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
-    of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mSeq:
+      if c.config.selectedGc == gcDestructors:
+        let s = c.graph.sysTypes[tySequence]
+        assert s != nil
+        assert prev == nil
+        result = copyType(s, s.owner, keepId=false)
+        # XXX figure out why this has children already...
+        result.sons.setLen 0
+        result.n = nil
+        if c.config.selectedGc == gcDestructors:
+          result.flags = {tfHasAsgn}
+        else:
+          result.flags = {}
+        semContainerArg(c, n, "seq", result)
+      else:
+        result = semContainer(c, n, tySequence, "seq", prev)
+        if c.config.selectedGc == gcDestructors:
+          incl result.flags, tfHasAsgn
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mTypeTy:
@@ -1687,6 +1712,9 @@ proc processMagicType(c: PContext, m: PSym) =
   of mString:
     setMagicType(c.config, m, tyString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
+    when false:
+      if c.config.selectedGc == gcDestructors:
+        incl m.typ.flags, tfHasAsgn
   of mCstring:
     setMagicType(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
@@ -1724,8 +1752,14 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mSet:
     setMagicType(c.config, m, tySet, 0)
+  of mUncheckedArray:
+    setMagicType(c.config, m, tyUncheckedArray, 0)
   of mSeq:
     setMagicType(c.config, m, tySequence, 0)
+    if c.config.selectedGc == gcDestructors:
+      incl m.typ.flags, tfHasAsgn
+    assert c.graph.sysTypes[tySequence] == nil
+    c.graph.sysTypes[tySequence] = m.typ
   of mOpt:
     setMagicType(c.config, m, tyOpt, 0)
   of mOrdinal:

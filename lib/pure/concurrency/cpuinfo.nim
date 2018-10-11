@@ -44,12 +44,12 @@ when defined(genode):
     importcpp: "@->cpu().affinity_space().total()".}
 
 when defined(haiku):
-  {.emit: "#include <OS.h>".}
   type
-    SystemInfo {.importc: "system_info", bycopy.} = object
+    SystemInfo {.importc: "system_info", header: "<OS.h>".} = object
       cpuCount {.importc: "cpu_count".}: uint32
 
-  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info".}
+  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info",
+                                                    header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.

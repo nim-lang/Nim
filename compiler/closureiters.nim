@@ -210,7 +210,7 @@ proc newUnrollFinallyAccess(ctx: var Ctx, info: TLineInfo): PNode =
 
 proc newCurExcAccess(ctx: var Ctx): PNode =
   if ctx.curExcSym.isNil:
-    ctx.curExcSym = ctx.newEnvVar(":curExc", ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode).typ)
+    ctx.curExcSym = ctx.newEnvVar(":curExc", ctx.g.callCodegenProc("getCurrentException").typ)
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
@@ -239,7 +239,7 @@ proc toStmtList(n: PNode): PNode =
 proc addGotoOut(n: PNode, gotoOut: PNode): PNode =
   # Make sure `n` is a stmtlist, and ends with `gotoOut`
   result = toStmtList(n)
-  if result.len != 0 and result.sons[^1].kind != nkGotoState:
+  if result.len == 0 or result.sons[^1].kind != nkGotoState:
     result.add(gotoOut)
 
 proc newTempVar(ctx: var Ctx, typ: PType): PSym =
@@ -324,7 +324,7 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
           assert(c[i].kind == nkType)
           let nextCond = newTree(nkCall,
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException", ctx.g.emptyNode),
+            g.callCodegenProc("getCurrentException"),
             c[i])
           nextCond.typ = ctx.g.getSysType(c.info, tyBool)
           nextCond.info = c.info
@@ -364,7 +364,7 @@ proc addElseToExcept(ctx: var Ctx, n: PNode) =
     block: # :curExc = getCurrentException()
       branchBody.add(newTree(nkAsgn,
         ctx.newCurExcAccess(),
-        ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode)))
+        ctx.g.callCodegenProc("getCurrentException")))
 
     block: # goto nearestFinally
       branchBody.add(newTree(nkGotoState, ctx.g.newIntLit(n.info, ctx.nearestFinally)))
@@ -678,7 +678,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv, nkObjDownConv:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
@@ -687,9 +687,9 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       needsSplit = true
       result = newNodeI(nkStmtListExpr, n.info)
       result.typ = n.typ
-      let (st, ex) = exprToStmtList(n[1])
+      let (st, ex) = exprToStmtList(n[^1])
       result.add(st)
-      n[1] = ex
+      n[^1] = ex
       result.add(n)
 
   of nkAsgn, nkFastAsgn:
@@ -710,6 +710,25 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
         result.add(st)
         n[1] = ex
 
+      result.add(n)
+
+  of nkBracketExpr:
+    var lhsNeedsSplit = false
+    var rhsNeedsSplit = false
+    n[0] = ctx.lowerStmtListExprs(n[0], lhsNeedsSplit)
+    n[1] = ctx.lowerStmtListExprs(n[1], rhsNeedsSplit)
+    if lhsNeedsSplit or rhsNeedsSplit:
+      needsSplit = true
+      result = newNodeI(nkStmtListExpr, n.info)
+      if lhsNeedsSplit:
+        let (st, ex) = exprToStmtList(n[0])
+        result.add(st)
+        n[0] = ex
+
+      if rhsNeedsSplit:
+        let (st, ex) = exprToStmtList(n[1])
+        result.add(st)
+        n[1] = ex
       result.add(n)
 
   of nkWhileStmt:
@@ -784,7 +803,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let branch = newTree(nkElifBranch, cmp, retStmt)
 
   # The C++ backend requires `getCurrentException` here.
-  let raiseStmt = newTree(nkRaiseStmt, ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode))
+  let raiseStmt = newTree(nkRaiseStmt, ctx.g.callCodegenProc("getCurrentException"))
   raiseStmt.info = info
   let elseBranch = newTree(nkElse, raiseStmt)
 
@@ -1185,7 +1204,7 @@ proc newCatchBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
   block:
     result.add(newTree(nkAsgn,
       ctx.newCurExcAccess(),
-      ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode)))
+      ctx.g.callCodegenProc("getCurrentException")))
 
 proc wrapIntoTryExcept(ctx: var Ctx, n: PNode): PNode {.inline.} =
   let setupExc = newTree(nkCall,

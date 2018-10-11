@@ -442,4 +442,5 @@ proc dataflowAnalysis*(s: PSym; body: PNode; conf: ConfigRef) =
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
   var c = Con(code: @[], blocks: @[])
+  gen(c, body)
   shallowCopy(result, c.code)

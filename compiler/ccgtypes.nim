@@ -139,7 +139,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   of tyBool: result = ctBool
   of tyChar: result = ctChar
   of tySet: result = mapSetType(conf, typ)
-  of tyOpenArray, tyArray, tyVarargs: result = ctArray
+  of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass
@@ -161,10 +161,10 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
   of tyPtr, tyVar, tyLent, tyRef, tyOptAsRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
-    of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
-    #of tySet:
-    #  if mapSetType(base) == ctArray: result = ctPtrToArray
-    #  else: result = ctPtr
+    of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
+    of tySet:
+      if mapSetType(conf, base) == ctArray: result = ctPtrToArray
+      else: result = ctPtr
     # XXX for some reason this breaks the pegs module
     else: result = ctPtr
   of tyPointer: result = ctPtr
@@ -282,7 +282,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyString:
     case detectStrVersion(m)
     of 2:
-      discard cgsym(m, "string")
+      discard cgsym(m, "NimStringV2")
       result = typeNameOrLiteral(m, typ, "NimStringV2")
     else:
       discard cgsym(m, "NimStringDesc")
@@ -290,7 +290,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
-  of tyNil: result = typeNameOrLiteral(m, typ, "0")
+  of tyNil: result = typeNameOrLiteral(m, typ, "void*")
   of tyInt..tyUInt64:
     result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
   of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ.sons[0])
@@ -324,6 +324,10 @@ proc getForwardStructFormat(m: BModule): string =
   if m.compileToCpp: result = "$1 $2;$n"
   else: result = "typedef $1 $2 $2;$n"
 
+proc seqStar(m: BModule): string =
+  if m.config.selectedGC == gcDestructors: result = ""
+  else: result = "*"
+
 proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   result = cacheGetType(m.forwTypeCache, sig)
   if result != nil: return
@@ -355,8 +359,11 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
       result = getTypeForward(m, t, hashType(t))
       pushType(m, t)
   of tySequence:
-    result = getTypeForward(m, t, hashType(t)) & "*"
-    pushType(m, t)
+    if m.config.selectedGC == gcDestructors:
+      result = getTypeDescAux(m, t, check)
+    else:
+      result = getTypeForward(m, t, hashType(t)) & seqStar(m)
+      pushType(m, t)
   else:
     result = getTypeDescAux(m, t, check)
 
@@ -423,9 +430,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
   else: add(params, ")")
   params = "(" & params
 
-proc mangleRecFieldName(m: BModule; field: PSym, rectype: PType): Rope =
-  if (rectype.sym != nil) and
-      ({sfImportc, sfExportc} * rectype.sym.flags != {}):
+proc mangleRecFieldName(m: BModule; field: PSym): Rope =
+  if {sfImportc, sfExportc} * field.flags != {}:
     result = field.loc.r
   else:
     result = rope(mangleField(m, field.name))
@@ -442,7 +448,9 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
     add(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
-    let uname = rope(mangle(n.sons[0].sym.name.s) & 'U')
+    # prefix mangled name with "_U" to avoid clashes with other field names,
+    # since identifiers are not allowed to start with '_'
+    let uname = rope("_U" & mangle(n.sons[0].sym.name.s))
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, uname]
              else: uname
     var unionBody: Rope = nil
@@ -475,7 +483,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
-    let sname = mangleRecFieldName(m, field, rectype)
+    let sname = mangleRecFieldName(m, field)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
     fillLoc(field.loc, locField, n, ae, OnUnknown)
@@ -487,7 +495,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
-      elif fieldType.kind in {tySequence, tyOpt}:
+      elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
       elif field.bitsize != 0:
@@ -601,6 +609,15 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
       result = if result.kind == tyGenericInst: result.sons[1]
                else: result.elemType
 
+proc getSeqPayloadType(m: BModule; t: PType): Rope =
+  result = getTypeForward(m, t, hashType(t)) & "_Content"
+  when false:
+    var check = initIntSet()
+    # XXX remove this duplication:
+    appcg(m, m.s[cfsSeqTypes],
+      "struct $2_Content { NI cap; void* allocator; $1 data[SEQ_DECL_SIZE]; };$n",
+      [getTypeDescAux(m, t.sons[0], check), result])
+
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
   var t = origTyp.skipTypes(irrelevantForBackend)
@@ -623,10 +640,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
-    if etB.kind in {tyArray, tyOpenArray, tyVarargs}:
-      # this is correct! sets have no proper base type, so we treat
-      # ``var set[char]`` in `getParamTypeDesc`
-      et = elemType(etB)
+    if mapType(m.config, t) == ctPtrToArray:
+      if etB.kind == tySet:
+        et = getSysType(m.g.graph, unknownLineInfo(), tyUInt8)
+      else:
+        et = elemType(etB)
       etB = et.skipTypes(abstractInst)
       star[0] = '*'
     case etB.kind
@@ -641,7 +659,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     of tySequence:
       # no restriction! We have a forward declaration for structs
       let name = getTypeForward(m, et, hashType et)
-      result = name & "*" & star
+      result = name & seqStar(m) & star
       m.typeCache[sig] = result
       pushType(m, et)
     else:
@@ -705,20 +723,35 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             [structOrUnion(t), result])
       m.forwTypeCache[sig] = result
     assert(cacheGetType(m.typeCache, sig) == nil)
-    m.typeCache[sig] = result & "*"
+    m.typeCache[sig] = result & seqStar(m)
     if not isImportedType(t):
       if skipTypes(t.sons[0], typedescInst).kind != tyEmpty:
         const
           cppSeq = "struct $2 : #TGenericSeq {$n"
           cSeq = "struct $2 {$n" &
                  "  #TGenericSeq Sup;$n"
-        appcg(m, m.s[cfsSeqTypes],
-            (if m.compileToCpp: cppSeq else: cSeq) &
-            "  $1 data[SEQ_DECL_SIZE];$n" &
+        if m.config.selectedGC == gcDestructors:
+          appcg(m, m.s[cfsTypes],
+            "typedef struct{ NI cap;void* allocator;$1 data[SEQ_DECL_SIZE];}$2_Content;$n" &
+            "struct $2 {$n" &
+            "  NI len; $2_Content* p;$n" &
             "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+        else:
+          appcg(m, m.s[cfsSeqTypes],
+              (if m.compileToCpp: cppSeq else: cSeq) &
+              "  $1 data[SEQ_DECL_SIZE];$n" &
+              "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+      elif m.config.selectedGC == gcDestructors:
+        internalError(m.config, "cannot map the empty seq type to a C type")
       else:
         result = rope("TGenericSeq")
-    add(result, "*")
+    add(result, seqStar(m))
+  of tyUncheckedArray:
+    result = getTypeName(m, origTyp, sig)
+    m.typeCache[sig] = result
+    if not isImportedType(t):
+      let foo = getTypeDescAux(m, t.sons[0], check)
+      addf(m.s[cfsTypes], "typedef $1 $2[1];$n", [foo, result])
   of tyArray:
     var n: BiggestInt = lengthOrd(m.config, t)
     if n <= 0: n = 1   # make an array of at least one element
@@ -827,8 +860,10 @@ proc getTypeDesc(m: BModule, typ: PType): Rope =
   result = getTypeDescAux(m, typ, check)
 
 type
-  TClosureTypeKind = enum
-    clHalf, clHalfWithEnv, clFull
+  TClosureTypeKind = enum ## In C closures are mapped to 3 different things.
+    clHalf,           ## fn(args) type without the trailing 'void* env' parameter
+    clHalfWithEnv,    ## fn(args, void* env) type with trailing 'void* env' parameter
+    clFull            ## struct {fn(args, void* env), env}
 
 proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
@@ -1177,12 +1212,18 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     else:
       let x = fakeClosureType(m, t.owner)
       genTupleInfo(m, x, x, result, info)
-  of tySequence, tyRef, tyOptAsRef:
+  of tySequence:
+    if m.config.selectedGC != gcDestructors:
+      genTypeInfoAux(m, t, t, result, info)
+      if m.config.selectedGC >= gcMarkAndSweep:
+        let markerProc = genTraverseProc(m, origType, sig)
+        addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
+  of tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
-  of tyPtr, tyRange: genTypeInfoAux(m, t, t, result, info)
+  of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
   of tySet: genSetInfo(m, t, result, info)
   of tyEnum: genEnumInfo(m, t, result, info)

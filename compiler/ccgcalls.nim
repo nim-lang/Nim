@@ -124,15 +124,19 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
+        var t: TLoc
+        t.r = "(*$1)" % [a.rdLoc]
+        result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       else:
-        result = "$1$3, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
+        result = "$1$3, $2" % [a.rdLoc, lenExpr(p, a), dataField(p)]
     of tyArray:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)$3, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p), dataField(p)]
+        var t: TLoc
+        t.r = "(*$1)" % [a.rdLoc]
+        result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
       else:

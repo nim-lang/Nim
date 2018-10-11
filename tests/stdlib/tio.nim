@@ -1,9 +1,12 @@
 discard """
   output: '''9
-b = false
+b = true
 123456789
 Second readLine raised an exception
 123456789
+1
+2aaaaaaaa
+3bbbbbbb
 '''
 """
 # bug #5349
@@ -38,3 +41,9 @@ echo line
 f.close()
 
 removeFile(fn)
+
+# bug #8961
+writeFile("test.txt", "1\C\L2aaaaaaaa\C\L3bbbbbbb")
+
+for line in lines("test.txt"):
+  echo line

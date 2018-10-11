@@ -16,7 +16,7 @@ const
     # above X strings a hash-switch for strings is generated
 
 proc registerGcRoot(p: BProc, v: PSym) =
-  if p.config.selectedGC in {gcMarkAndSweep, gcGenerational, gcV2, gcRefc} and
+  if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -71,7 +71,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
     else:
       if t.n.sons[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
-      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym, t)]
+      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym)]
     putLocIntoDest(p, v.loc, field)
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
@@ -277,7 +277,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         not containsHiddenPointer(v.typ):
       # C++ really doesn't like things like 'Foo f; f = x' as that invokes a
       # parameterless constructor followed by an assignment operator. So we
-      # generate better code here:
+      # generate better code here: 'Foo f = x;'
       genLineDir(p, a)
       let decl = localVarDecl(p, vn)
       var tmp: TLoc
@@ -1159,4 +1159,4 @@ proc genStmts(p: BProc, t: PNode) =
   if isPush: pushInfoContext(p.config, t.info)
   expr(p, t, a)
   if isPush: popInfoContext(p.config)
-  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar}
+  internalAssert p.config, a.k in {locNone, locTemp, locLocalVar, locExpr}

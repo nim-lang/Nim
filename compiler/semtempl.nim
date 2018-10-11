@@ -210,7 +210,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       if s != nil and s.owner == c.owner and sfGenSym in s.flags:
         styleCheckUse(n.info, s)
         replaceIdentBySym(c.c, n, newSymNode(s, n.info))
-      else:
+      elif not (n.kind == nkSym and sfGenSym in n.sym.flags):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
@@ -493,7 +493,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     else:
       result = semTemplBodySons(c, n)
   of nkCallKinds-{nkPostfix}:
-    result = semTemplBodySons(c, n)
+    # do not transform runnableExamples (bug #9143)
+    if not isRunnableExamples(n[0]):
+      result = semTemplBodySons(c, n)
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

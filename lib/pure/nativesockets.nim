@@ -112,7 +112,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
 proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
-proc toInt*(domain: Domain): cshort
+proc toInt*(domain: Domain): cint
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
 proc toInt*(typ: SockType): cint
@@ -122,12 +122,12 @@ proc toInt*(p: Protocol): cint
   ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
-  proc toInt(domain: Domain): cshort =
+  proc toInt(domain: Domain): cint =
     case domain
-    of AF_UNSPEC:      result = posix.AF_UNSPEC.cshort
-    of AF_UNIX:        result = posix.AF_UNIX.cshort
-    of AF_INET:        result = posix.AF_INET.cshort
-    of AF_INET6:       result = posix.AF_INET6.cshort
+    of AF_UNSPEC:      result = posix.AF_UNSPEC.cint
+    of AF_UNIX:        result = posix.AF_UNIX.cint
+    of AF_INET:        result = posix.AF_INET.cint
+    of AF_INET6:       result = posix.AF_INET6.cint
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent ``cint`` to the Domain or none(),
@@ -155,8 +155,8 @@ when not useWinVersion:
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
 
 else:
-  proc toInt(domain: Domain): cshort =
-    result = toU16(ord(domain))
+  proc toInt(domain: Domain): cint =
+    result = toU32(ord(domain)).cint
 
   proc toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent ``cint`` to the Domain or none(),
@@ -456,19 +456,16 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sin6_family == nativeAfInet:
-    result = AF_INET
-  elif name.sin6_family == nativeAfInet6:
-    result = AF_INET6
-  else:
-    raiseOSError(osLastError(), "unknown socket family in getSockFamily")
-
+  try:
+    result = toKnownDomain(name.sin6_family.cint).get()
+  except UnpackError:
+    raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
   ## return the string representation of address within sockAddr
-  if sockAddr.sa_family == nativeAfInet:
+  if sockAddr.sa_family.cint == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
-  elif sockAddr.sa_family == nativeAfInet6:
+  elif sockAddr.sa_family.cint == nativeAfInet6:
     let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
                   else: 46 # it's actually 46 in both cases
     result = newString(addrLen)
@@ -491,9 +488,9 @@ proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
   var name: Sockaddr_in
   when useWinVersion:
-    name.sin_family = int16(ord(AF_INET))
+    name.sin_family = uint16(ord(AF_INET))
   else:
-    name.sin_family = posix.AF_INET
+    name.sin_family = uint16(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
   var namelen = sizeof(name).SockLen
@@ -510,9 +507,9 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   of AF_INET:
     var name: Sockaddr_in
     when useWinVersion:
-      name.sin_family = int16(ord(AF_INET))
+      name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = posix.AF_INET
+      name.sin_family = uint16(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -522,9 +519,9 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   of AF_INET6:
     var name: Sockaddr_in6
     when useWinVersion:
-      name.sin6_family = int16(ord(AF_INET6))
+      name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = posix.AF_INET6
+      name.sin6_family = uint16(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getsockname(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -547,9 +544,9 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   of AF_INET:
     var name: Sockaddr_in
     when useWinVersion:
-      name.sin_family = int16(ord(AF_INET))
+      name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = posix.AF_INET
+      name.sin_family = uint16(posix.AF_INET)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:
@@ -559,9 +556,9 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
   of AF_INET6:
     var name: Sockaddr_in6
     when useWinVersion:
-      name.sin6_family = int16(ord(AF_INET6))
+      name.sin6_family = uint16(ord(AF_INET6))
     else:
-      name.sin6_family = posix.AF_INET6
+      name.sin6_family = uint16(posix.AF_INET6)
     var namelen = sizeof(name).SockLen
     if getpeername(socket, cast[ptr SockAddr](addr(name)),
                    addr(namelen)) == -1'i32:

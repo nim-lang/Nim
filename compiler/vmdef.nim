@@ -62,7 +62,7 @@ type
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu,
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat,
     opcLeFloat, opcLtFloat, opcLeu, opcLtu,
-    opcEqRef, opcEqNimrodNode, opcSameNodeType,
+    opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
@@ -141,7 +141,8 @@ type
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt
+    opcToNarrowInt,
+    opcSymOwner
 
   TBlock* = object
     label*: PSym
@@ -190,7 +191,7 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
-  TCtx* = object of passes.TPassContext # code gen context
+  TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation

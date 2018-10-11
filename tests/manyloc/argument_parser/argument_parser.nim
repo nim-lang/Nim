@@ -232,7 +232,7 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   if not custom_validator.isNil:
     try:
       let message = custom_validator(parameter, parsed_parameter)
-      if not message.isNil and message.len > 0:
+      if message.len > 0:
         raise_or_quit(ValueError, ("Failed to validate value for " &
           "parameter $1:\n$2" % [escape(parameter), message]))
     except:

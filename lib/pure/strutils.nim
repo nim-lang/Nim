@@ -820,7 +820,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     # handle negative overflow
     if n == 0 and x < 0: n = -1
 
-proc toHex*[T](x: T): string =
+proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   toHex(BiggestInt(x), T.sizeOf * 2)
 
@@ -1325,7 +1325,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
 
-proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last: Natural = 0): int
+proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
   ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed table `a`.
   ## If `last` is unspecified, it defaults to `s.high`.
@@ -1363,7 +1363,7 @@ when not (defined(js) or defined(nimdoc) or defined(nimscript)):
 else:
   const hasCStringBuiltin = false
 
-proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
+proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` inside range `start`..`last`.
   ## If `last` is unspecified, it defaults to `s.high`.
@@ -1371,7 +1371,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   let last = if last==0: s.high else: last
   when nimvm:
-    for i in start..last:
+    for i in int(start)..last:
       if sub == s[i]: return i
   else:
     when hasCStringBuiltin:
@@ -1381,11 +1381,11 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:
-      for i in start..last:
+      for i in int(start)..last:
         if sub == s[i]: return i
   return -1
 
-proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
+proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start`..`last`.
   ## If `last` is unspecified, it defaults to `s.high`.
@@ -1397,14 +1397,14 @@ proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideE
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)
 
-proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
+proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
   ## Searches for `chars` in `s` inside range `start`..`last`.
   ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
   let last = if last==0: s.high else: last
-  for i in start..last:
+  for i in int(start)..last:
     if s[i] in chars: return i
   return -1
 
@@ -1692,14 +1692,12 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
     dec(L)
 
 proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuEscape", deprecated.} =
+  rtl, extern: "nsuEscape".} =
   ## Escapes a string `s`. See `system.addEscapedChar <system.html#addEscapedChar>`_
   ## for the escaping scheme.
   ##
   ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
   ## Both may be empty strings.
-  ##
-  ## **Warning:** This procedure is deprecated because it's to easy to missuse.
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -1714,7 +1712,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   add(result, suffix)
 
 proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuUnescape", deprecated.} =
+  rtl, extern: "nsuUnescape".} =
   ## Unescapes a string `s`.
   ##
   ## This complements `escape <#escape>`_ as it performs the opposite
@@ -1722,8 +1720,6 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ##
   ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
   ## ValueError exception will be raised.
-  ##
-  ## **Warning:** This procedure is deprecated because it's to easy to missuse.
   result = newStringOfCap(s.len)
   var i = prefix.len
   if not s.startsWith(prefix):

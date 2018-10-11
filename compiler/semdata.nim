@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     notes*: TNoteKinds
+    features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -64,7 +65,10 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoEvaluateGeneric, efInCall, efFromHlo
+    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoUndeclared
+      # Use this if undeclared identifiers should not raise an error during
+      # overload resolution.
 
   TExprFlags* = set[TExprFlag]
 
@@ -140,7 +144,6 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

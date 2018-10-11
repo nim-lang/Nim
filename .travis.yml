@@ -5,10 +5,9 @@ os:
   - osx
 dist: trusty
 
-
-matrix:
-  allow_failures:
-    - os: osx
+#matrix:
+#  allow_failures:
+#    - os: osx
 
 addons:
   apt:
@@ -38,16 +37,30 @@ script:
   - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
-  - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
-  - nimble install jester@#head -y
-  - nimble install niminst
+  #- nimble install zip -y
+  #- nimble install opengl
+  #- nimble install sdl1
+  #- nimble install jester@#head -y
+  #- nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
-  - ./koch web
+  - ./koch docs --git.commit:devel
   - ./koch csource
   - ./koch nimsuggest
-#  - nim c -r nimsuggest/tester
+  - nim c -r nimsuggest/tester
+  - nim c -r nimdoc/tester
+
+before_deploy:
+  # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
+  - cp -f ./doc/html/overview.html ./doc/html/index.html
+deploy:                         # https://nim-lang.github.io/Nim
+  provider: pages
+  # local-dir *has* to be a relative path from the repo root.
+  local-dir: "doc/html"
+  skip-cleanup: true
+  github-token: "$GITHUB_OAUTH_TOKEN"
+  keep-history: false
+  on:
+    branch: devel

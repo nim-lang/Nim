@@ -1,12 +1,20 @@
-# test the new time module
 discard """
   file: "ttimes.nim"
+  target: "c js"
   output: '''[Suite] ttimes
 '''
 """
 
-import
-  times, os, strutils, unittest
+import times, strutils, unittest
+
+when not defined(js):
+  import os
+
+# Normally testament configures unittest with environment variables,
+# but that doesn't work for the JS target. So instead we must set the correct
+# settings here.
+addOutputFormatter(
+  newConsoleOutputFormatter(PRINT_FAILURES, colorOutput = false))
 
 proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
   let offset = hours * 3600 + minutes * 60 + seconds
@@ -23,99 +31,12 @@ proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
 
   newTimezone("", zonedTimeFromTime, zonedTImeFromAdjTime)
 
-# $ date --date='@2147483647'
-# Tue 19 Jan 03:14:07 GMT 2038
-
-proc checkFormat(t: DateTime, format, expected: string) =
-  let actual = t.format(format)
-  if actual != expected:
-    echo "Formatting failure!"
-    echo "expected: ", expected
-    echo "actual  : ", actual
-    doAssert false
-
-let t2 = fromUnix(160070789).utc() # Mon 27 Jan 16:06:29 GMT 1975
-t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz",
-  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 Z Z Z")
-
-var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
-t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
-
-# Interval tests
-(t4 - initTimeInterval(years = 2)).checkFormat("yyyy", "1995")
-(t4 - initTimeInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
-
-# checking dayOfWeek matches known days
-doAssert getDayOfWeek(01, mJan, 0000) == dSat
-doAssert getDayOfWeek(01, mJan, -0023) == dSat
-doAssert getDayOfWeek(21, mSep, 1900) == dFri
-doAssert getDayOfWeek(01, mJan, 1970) == dThu
-doAssert getDayOfWeek(21, mSep, 1970) == dMon
-doAssert getDayOfWeek(01, mJan, 2000) == dSat
-doAssert getDayOfWeek(01, mJan, 2021) == dFri
-
-# toUnix tests with GM timezone
-let t4L = fromUnix(876124714).utc
-doAssert toUnix(toTime(t4L)) == 876124714
-doAssert toUnix(toTime(t4L)) + t4L.utcOffset == toUnix(toTime(t4))
-
-# adding intervals
-var
-  a1L = toUnix(toTime(t4L + initTimeInterval(hours = 1))) + t4L.utcOffset
-  a1G = toUnix(toTime(t4)) + 60 * 60
-doAssert a1L == a1G
-
-# subtracting intervals
-a1L = toUnix(toTime(t4L - initTimeInterval(hours = 1))) + t4L.utcOffset
-a1G = toUnix(toTime(t4)) - (60 * 60)
-doAssert a1L == a1G
-
-# Comparison between Time objects should be detected by compiler
-# as 'noSideEffect'.
-proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
-  result = t1 == t2
-doAssert cmpTimeNoSideEffect(0.fromUnix, 0.fromUnix)
-# Additionally `==` generic for seq[T] has explicit 'noSideEffect' pragma
-# so we can check above condition by comparing seq[Time] sequences
-let seqA: seq[Time] = @[]
-let seqB: seq[Time] = @[]
-doAssert seqA == seqB
-
-for tz in [
-    (staticTz(seconds = 0), "+0", "+00", "+00:00"), # UTC
-    (staticTz(seconds = -3600), "+1", "+01", "+01:00"), # CET
-    (staticTz(seconds = -39600), "+11", "+11", "+11:00"), # two digits
-    (staticTz(seconds = -1800), "+0", "+00", "+00:30"), # half an hour
-    (staticTz(seconds = 7200), "-2", "-02", "-02:00"), # positive
-    (staticTz(seconds = 38700), "-10", "-10", "-10:45")]: # positive with three quaters hour
-  let dt = initDateTime(1, mJan, 2000, 00, 00, 00, tz[0])
-  doAssert dt.format("z") == tz[1]
-  doAssert dt.format("zz") == tz[2]
-  doAssert dt.format("zzz") == tz[3]
-
-block countLeapYears:
-  # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
-  doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
-  doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
-  doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
-
-block timezoneConversion:
-  var l = now()
-  let u = l.utc
-  l = u.local
-
-  doAssert l.timezone == local()
-  doAssert u.timezone == utc()
-
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
     parsed = s.parse(f, utc())
     parsedStr = $parsed
-  if parsedStr != sExpected:
-    echo "GOT ", parsedStr, " EXPECTED ", sExpected, " FORMAT ", f
   check parsedStr == sExpected
-  check(parsed.yearday == ydExpected)
+  check parsed.yearday == ydExpected
 
 template parseTestExcp(s, f: string) =
   expect ValueError:
@@ -192,8 +113,8 @@ suite "ttimes":
 
   # Generate tests for multiple timezone files where available
   # Set the TZ env var for each test
-  when defined(Linux) or defined(macosx):
-    const tz_dir = "/usr/share/zoneinfo"
+  when defined(linux) or defined(macosx):
+    let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
     
     let orig_tz = getEnv("TZ")
@@ -333,7 +254,19 @@ suite "ttimes":
     check isLeapYear(2000)
     check (not isLeapYear(1900))
 
-  test "subtract months":
+  test "TimeInterval":
+    let t = fromUnix(876124714).utc # Mon 6 Oct 08:58:34 BST 1997
+    # Interval tests
+    let t2 = t - 2.years
+    check t2.year == 1995
+    let t3 = (t - 7.years - 34.minutes - 24.seconds)
+    check t3.year == 1990
+    check t3.minute == 24
+    check t3.second == 10
+    check (t + 1.hours).toTime.toUnix == t.toTime.toUnix + 60 * 60
+    check (t - 1.hours).toTime.toUnix == t.toTime.toUnix - 60 * 60
+
+  test "TimeInterval - months":
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
     check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00Z"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
@@ -404,14 +337,17 @@ suite "ttimes":
     let day = 24.hours
     let tomorrow = now + day
     check tomorrow - now == initDuration(days = 1)
-  
-  test "fromWinTime/toWinTime":
-    check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
-    check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
-    check -1.fromWinTime.toWinTime == -1
-    # One nanosecond is discarded due to differences in time resolution
-    check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
-    check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
+
+  # Disabled for JS because it fails due to precision errors
+  # (The JS target uses float64 for int64).
+  when not defined(js):
+    test "fromWinTime/toWinTime":
+      check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
+      check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
+      check (-1).fromWinTime.toWinTime == -1
+      # One nanosecond is discarded due to differences in time resolution
+      check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
+      check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
 
   test "issue 7620":
     let layout = "M/d/yyyy' 'h:mm:ss' 'tt' 'z"
@@ -477,6 +413,18 @@ suite "ttimes":
     expect ValueError:
       discard initTimeFormat("foo'")
 
+    for tz in [
+        (staticTz(seconds = 0), "+0", "+00", "+00:00"), # UTC
+        (staticTz(seconds = -3600), "+1", "+01", "+01:00"), # CET
+        (staticTz(seconds = -39600), "+11", "+11", "+11:00"), # two digits
+        (staticTz(seconds = -1800), "+0", "+00", "+00:30"), # half an hour
+        (staticTz(seconds = 7200), "-2", "-02", "-02:00"), # positive
+        (staticTz(seconds = 38700), "-10", "-10", "-10:45")]: # positive with three quaters hour
+      let dt = initDateTime(1, mJan, 2000, 00, 00, 00, tz[0])
+      doAssert dt.format("z") == tz[1]
+      doAssert dt.format("zz") == tz[2]
+      doAssert dt.format("zzz") == tz[3]
+
   test "parse":
     check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
     parseTestExcp("+120180101", "yyyyMMdd")
@@ -497,3 +445,26 @@ suite "ttimes":
     discard parse("'", "''")
 
     parseTestExcp("2000 A", "yyyy g")
+
+  test "countLeapYears":
+    # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
+    check countLeapYears(1920) + 1 == countLeapYears(1921)
+    check countLeapYears(2004) + 1 == countLeapYears(2005)
+    check countLeapYears(2020) + 1 == countLeapYears(2021)
+
+  test "timezoneConversion":
+    var l = now()
+    let u = l.utc
+    l = u.local
+
+    check l.timezone == local()
+    check u.timezone == utc()
+
+  test "getDayOfWeek":
+    check getDayOfWeek(01, mJan, 0000) == dSat
+    check getDayOfWeek(01, mJan, -0023) == dSat
+    check getDayOfWeek(21, mSep, 1900) == dFri
+    check getDayOfWeek(01, mJan, 1970) == dThu
+    check getDayOfWeek(21, mSep, 1970) == dMon
+    check getDayOfWeek(01, mJan, 2000) == dSat
+    check getDayOfWeek(01, mJan, 2021) == dFri

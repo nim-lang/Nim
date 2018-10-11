@@ -136,12 +136,15 @@ source code with the `when statement <manual.html#when-statement>`_ and
 `defined proc <system.html#defined>`_. The typical use of this switch is to
 enable builds in release mode (``-d:release``) where certain safety checks are
 omitted for better performance. Another common use is the ``-d:ssl`` switch to
-activate `SSL sockets <sockets.html>`_.
+activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
 which may be used in conjunction with the `compile time define
 pragmas<manual.html#implementation-specific-pragmas-compile-time-define-pragmas>`_
 to override symbols during build time.
+
+Compile time symbols are completely **case insensitive** and underscores are
+ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
 
 
 Configuration files
@@ -155,7 +158,7 @@ The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
 1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``%NIM%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
-2) ``$HOME/.config/nim.cfg`` (POSIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
+2) If environment variable ``XDG_CONFIG_HOME`` is defined, ``$XDG_CONFIG_HOME/nim/nim.cfg`` or ``~/.config/nim/nim.cfg`` (POSIX) or ``%APPDATA%/nim/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
 5) A project can also have a project specific configuration file named ``$project.nim.cfg`` that resides in the same directory as ``$project.nim``. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -286,8 +289,7 @@ For example, with the above mentioned config::
 
 This will generate a file called ``switchhomebrew.elf`` which can then be turned into
 an nro file with the ``elf2nro`` tool in the DevkitPro release. Examples can be found at
-`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_ or you can use
-`the switch builder tool <https://github.com/jyapayne/switch-builder.git>`_.
+`the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
 They are:
@@ -326,40 +328,41 @@ The standard library supports a growing number of ``useX`` conditional defines
 affecting how some features are implemented. This section tries to give a
 complete list.
 
-==================   =========================================================
-Define               Effect
-==================   =========================================================
-``release``          Turns off runtime checks and turns on the optimizer.
-``useWinAnsi``       Modules like ``os`` and ``osproc`` use the Ansi versions
-                     of the Windows API. The default build uses the Unicode
-                     version.
-``useFork``          Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
-``useNimRtl``        Compile and link against ``nimrtl.dll``.
-``useMalloc``        Makes Nim use C's `malloc`:idx: instead of Nim's
-                     own memory manager, ableit prefixing each allocation with
-                     its size to support clearing memory on reallocation.
-                     This only works with ``gc:none``.
-``useRealtimeGC``    Enables support of Nim's GC for *soft* realtime
-                     systems. See the documentation of the `gc <gc.html>`_
-                     for further information.
-``nodejs``           The JS target is actually ``node.js``.
-``ssl``              Enables OpenSSL support for the sockets module.
-``memProfiler``      Enables memory profiling for the native GC.
-``uClibc``           Use uClibc instead of libc. (Relevant for Unix-like OSes)
-``checkAbi``         When using types from C headers, add checks that compare
-                     what's in the Nim file with what's in the C header
-                     (requires a C compiler with _Static_assert support, like
-                     any C11 compiler)
-``tempDir``          This symbol takes a string as its value, like
-                     ``--define:tempDir:/some/temp/path`` to override the
-                     temporary directory returned by ``os.getTempDir()``.
-                     The value **should** end with a directory separator
-                     character. (Relevant for the Android platform)
-``useShPath``        This symbol takes a string as its value, like
-                     ``--define:useShPath:/opt/sh/bin/sh`` to override the
-                     path for the ``sh`` binary, in cases where it is not
-                     located in the default location ``/bin/sh``
-==================   =========================================================
+======================   =========================================================
+Define                   Effect
+======================   =========================================================
+``release``              Turns off runtime checks and turns on the optimizer.
+``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
+                         of the Windows API. The default build uses the Unicode
+                         version.
+``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
+``useNimRtl``            Compile and link against ``nimrtl.dll``.
+``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
+                         own memory manager, ableit prefixing each allocation with
+                         its size to support clearing memory on reallocation.
+                         This only works with ``gc:none``.
+``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
+                         systems. See the documentation of the `gc <gc.html>`_
+                         for further information.
+``nodejs``               The JS target is actually ``node.js``.
+``ssl``                  Enables OpenSSL support for the sockets module.
+``memProfiler``          Enables memory profiling for the native GC.
+``uClibc``               Use uClibc instead of libc. (Relevant for Unix-like OSes)
+``checkAbi``             When using types from C headers, add checks that compare
+                         what's in the Nim file with what's in the C header
+                         (requires a C compiler with _Static_assert support, like
+                         any C11 compiler)
+``tempDir``              This symbol takes a string as its value, like
+                         ``--define:tempDir:/some/temp/path`` to override the
+                         temporary directory returned by ``os.getTempDir()``.
+                         The value **should** end with a directory separator
+                         character. (Relevant for the Android platform)
+``useShPath``            This symbol takes a string as its value, like
+                         ``--define:useShPath:/opt/sh/bin/sh`` to override the
+                         path for the ``sh`` binary, in cases where it is not
+                         located in the default location ``/bin/sh``.
+``noSignalHandler``      Disable the crash handler from ``system.nim``.
+======================   =========================================================
 
 
 
@@ -391,11 +394,6 @@ The ``lineTrace`` option implies the ``stackTrace`` option. If turned on,
 the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
-
-Debugger option
----------------
-The ``debugger`` option enables or disables the *Embedded Nim Debugger*.
-See the documentation of endb_ for further information.
 
 Hot code reloading
 ------------------
@@ -437,11 +435,6 @@ initialization with a `once` block to work-around this.
 Once your code is compiled for hot reloading, you can use a framework such
 as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
 to implement the actual reloading behavior in your project.
-
-Breakpoint pragma
------------------
-The *breakpoint* pragma was specially added for the sake of debugging with
-ENDB. See the documentation of `endb <endb.html>`_ for further information.
 
 
 DynlibOverride
@@ -529,11 +522,14 @@ See the documentation of Nim's soft realtime `GC <gc.html>`_ for further
 information.
 
 
-Debugging with Nim
-==================
+Signal handling in Nim
+======================
 
-Nim comes with its own *Embedded Nim Debugger*. See
-the documentation of endb_ for further information.
+The Nim programming language has no concept of Posix's signal handling
+mechanisms. However, the standard library offers some rudimentary support
+for signal handling, in particular, segmentation faults are turned into
+fatal errors that produce a stack trace. This can be disabled with the
+``-d:noSignalHandler`` switch.
 
 
 Optimizing for Nim

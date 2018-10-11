@@ -183,7 +183,6 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
-  assert(not s.isNil, "`s` can't be nil")
   if num < 2:
     result = @[s]
     return
@@ -710,7 +709,7 @@ template applyIt*(varSeq, op: untyped) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.applyIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
-  for i in 0 ..< varSeq.len:
+  for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 

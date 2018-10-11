@@ -20,7 +20,8 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, vm, prefixmatches, lineinfos]
+  idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper,
+  pathutils]
 
 when defined(windows):
   import winlean
@@ -158,10 +159,11 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
   if m != nil and m.ast != nil:
     result = findNode(m.ast, trackPos)
 
-proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
+proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
              graph: ModuleGraph) =
   let conf = graph.config
-  myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+  myLog("cmd: " & $cmd & ", file: " & file.string &
+        ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
   conf.ideCmd = cmd
   if cmd == ideChk:
@@ -175,8 +177,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
-  if dirtyfile.len != 0: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
-  else: msgs.setDirtyFile(conf, dirtyIdx, "")
+  if not dirtyfile.isEmpty: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
+  else: msgs.setDirtyFile(conf, dirtyIdx, AbsoluteFile"")
 
   conf.m.trackPos = newLineInfo(dirtyIdx, line, col)
   conf.m.trackPosAttached = false
@@ -186,7 +188,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if not isKnownFile:
     graph.compileProject()
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
-      dirtyfile.len == 0:
+      dirtyfile.isEmpty:
     discard "no need to recompile anything"
   else:
     let modIdx = graph.parentModule(dirtyIdx)
@@ -204,12 +206,12 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
                 graph: ModuleGraph) =
   let
-    file = args[0].getStr
+    file = AbsoluteFile args[0].getStr
     line = args[1].getNum
     column = args[2].getNum
-  var dirtyfile = ""
+  var dirtyfile = AbsoluteFile""
   if len(args) > 3:
-    dirtyfile = args[3].getStr("")
+    dirtyfile = AbsoluteFile args[3].getStr("")
   execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
@@ -431,11 +433,11 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   i += parseInt(cmd, col, i)
 
   if conf.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, orig))))
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-    execute(conf.ideCmd, orig, dirtyfile, line, col, graph)
+    execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph) =
@@ -451,7 +453,7 @@ proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
   if gLogging:
     for it in conf.searchPaths:
-      log(it)
+      log(it.string)
 
   proc wrHook(line: string) {.closure.} =
     if gMode == mepc:
@@ -496,7 +498,7 @@ proc mainCommand(graph: ModuleGraph) =
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
-    quit "cannot find file: " & conf.projectFull
+    quit "cannot find file: " & conf.projectFull.string
 
   add(conf.searchPaths, conf.libpath)
 
@@ -518,9 +520,9 @@ proc mainCommand(graph: ModuleGraph) =
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
   of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
   of mcmdsug: createThread(inputThread, replCmdline,
-                            (gPort, "sug \"" & conf.projectFull & "\":" & gAddress))
+                            (gPort, "sug \"" & conf.projectFull.string & "\":" & gAddress))
   of mcmdcon: createThread(inputThread, replCmdline,
-                            (gPort, "con \"" & conf.projectFull & "\":" & gAddress))
+                            (gPort, "con \"" & conf.projectFull.string & "\":" & gAddress))
   mainThread(graph)
   joinThread(inputThread)
   close(requests)
@@ -582,55 +584,33 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  condsyms.initDefines(conf.symbols)
-  defineSymbol conf.symbols, "nimsuggest"
+  let self = NimProg(
+    suggestMode: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
+  self.initDefinesProg(conf, "nimsuggest")
 
   if paramCount() == 0:
     stdout.writeline(Usage)
-  else:
-    processCmdLine(passCmd1, "", conf)
-    if gMode != mstdin:
-      conf.writelnHook = proc (msg: string) = discard
-    if conf.projectName != "":
-      try:
-        conf.projectFull = canonicalizePath(conf, conf.projectName)
-      except OSError:
-        conf.projectFull = conf.projectName
-      var p = splitFile(conf.projectFull)
-      conf.projectPath = canonicalizePath(conf, p.dir)
-      conf.projectName = p.name
-    else:
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    return
 
-    # Find Nim's prefix dir.
-    let binaryPath = findExe("nim")
-    if binaryPath == "":
-      raise newException(IOError,
-          "Cannot find Nim standard library: Nim compiler not in PATH")
-    conf.prefixDir = binaryPath.splitPath().head.parentDir()
-    if not dirExists(conf.prefixDir / "lib"): conf.prefixDir = ""
+  self.processCmdLineAndProjectPath(conf)
 
-    #msgs.writelnHook = proc (line: string) = log(line)
-    myLog("START " & conf.projectFull)
+  if gMode != mstdin:
+    conf.writelnHook = proc (msg: string) = discard
+  # Find Nim's prefix dir.
+  let binaryPath = findExe("nim")
+  if binaryPath == "":
+    raise newException(IOError,
+        "Cannot find Nim standard library: Nim compiler not in PATH")
+  conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
+  if not dirExists(conf.prefixDir / RelativeDir"lib"):
+    conf.prefixDir = AbsoluteDir""
 
-    loadConfigs(DefaultConfig, cache, conf) # load all config files
-    # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
-    conf.command = "nimsuggest"
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if fileExists(scriptFile):
-      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file:
-      if scriptFile != conf.projectFull:
-        runNimScript(cache, scriptFile, freshDefines=false, conf)
-    elif fileExists(conf.projectPath / "config.nims"):
-      # directory wide NimScript file
-      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
+  #msgs.writelnHook = proc (line: string) = log(line)
+  myLog("START " & conf.projectFull.string)
 
-    extccomp.initVars(conf)
-    processCmdLine(passCmd2, "", conf)
-
-    let graph = newModuleGraph(cache, conf)
-    graph.suggestMode = true
-    mainCommand(graph)
+  discard self.loadConfigsAndRunMainCommand(cache, conf)
 
 handleCmdline(newIdentCache(), newConfigRef())

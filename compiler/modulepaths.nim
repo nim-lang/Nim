@@ -7,9 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, strutils, msgs, options, idents, os, lineinfos
-
-import nimblecmd
+import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
+  pathutils, nimblecmd
 
 when false:
   const
@@ -126,13 +125,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   of nkInfix:
     let n0 = n[0]
     let n1 = n[1]
-    if n0.kind == nkIdent and n0.ident.s == "as":
-      # XXX hack ahead:
-      n.kind = nkImportAs
-      n.sons[0] = n.sons[1]
-      n.sons[1] = n.sons[2]
-      n.sons.setLen(2)
-      return getModuleName(conf, n.sons[0])
     when false:
       if n1.kind == nkPrefix and n1[0].kind == nkIdent and n1[0].ident.s == "$":
         if n0.kind == nkIdent and n0.ident.s == "/":
@@ -167,7 +159,7 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
   let modulename = getModuleName(conf, n)
   let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
-  if fullPath.len == 0:
+  if fullPath.isEmpty:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
       localError(conf, n.info, "cannot open file: " & m)

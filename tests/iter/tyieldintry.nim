@@ -403,5 +403,41 @@ block: # yield in blockexpr
 
   test(it, 1, 2, 3)
 
+block: #8851 
+  type
+    Foo = ref object of RootObj
+  template someFoo(): Foo =
+    var f: Foo
+    yield 1
+    f
+  iterator it(): int {.closure.} =
+    var o: RootRef
+    o = someFoo()
+
+  test(it, 1)
+
+block: # 8243
+  iterator it(): int {.closure.} =
+    template yieldAndSeq: seq[int] =
+      yield 1
+      @[123, 5, 123]
+
+    checkpoint(yieldAndSeq[1])
+
+  test(it, 1, 5)
+
+block:
+  iterator it(): int {.closure.} =
+    template yieldAndSeq: seq[int] =
+      yield 1
+      @[123, 5, 123]
+
+    template yieldAndNum: int =
+      yield 2
+      1
+
+    checkpoint(yieldAndSeq[yieldAndNum])
+
+  test(it, 1, 2, 5)
 
 echo "ok"

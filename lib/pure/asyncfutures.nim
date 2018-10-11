@@ -250,7 +250,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
         indent.inc(2)
       else:
         indent.dec(2)
-        result.add(spaces(indent)& "]#\n")
+        result.add(spaces(indent) & "]#\n")
       continue
 
     let left = "$#($#)" % [$entry.filename, $entry.line]

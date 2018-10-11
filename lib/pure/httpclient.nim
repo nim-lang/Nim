@@ -185,7 +185,7 @@ proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
   ## The response's body stream is read synchronously.
-  if response.body.isNil():
+  if response.body.len == 0:
     response.body = response.bodyStream.readAll()
   return response.body
 
@@ -198,7 +198,7 @@ proc `body=`*(response: Response, value: string) {.deprecated.} =
 proc body*(response: AsyncResponse): Future[string] {.async.} =
   ## Reads the response's body and caches it. The read is performed only
   ## once.
-  if response.body.isNil:
+  if response.body.len == 0:
     response.body = await readAll(response.bodyStream)
   return response.body
 

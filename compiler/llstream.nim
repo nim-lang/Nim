@@ -10,7 +10,7 @@
 ## Low-level streams for high performance.
 
 import
-  strutils
+  strutils, pathutils
 
 # support '-d:useGnuReadline' for backwards compatibility:
 when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):
@@ -41,10 +41,10 @@ proc llStreamOpen*(f: File): PLLStream =
   result.f = f
   result.kind = llsFile
 
-proc llStreamOpen*(filename: string, mode: FileMode): PLLStream =
+proc llStreamOpen*(filename: AbsoluteFile, mode: FileMode): PLLStream =
   new(result)
   result.kind = llsFile
-  if not open(result.f, filename, mode): result = nil
+  if not open(result.f, filename.string, mode): result = nil
 
 proc llStreamOpen*(): PLLStream =
   new(result)
@@ -87,9 +87,9 @@ proc endsWithOpr*(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
-  result = inTripleString or
-      line[0] == ' ' or
-      line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs)
+  result = inTripleString or line.len > 0 and (
+        line[0] == ' ' or
+        line.endsWith(LineContinuationOprs+AdditionalLineContinuationOprs))
 
 proc countTriples(s: string): int =
   var i = 0

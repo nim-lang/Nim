@@ -11,9 +11,9 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos
+  tables, ndi, lineinfos, pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -132,12 +132,12 @@ type
                             # nimtvDeps is VERY hard to cache because it's
                             # not a list of IDs nor can it be made to be one.
 
-  TCGen = object of TPassContext # represents a C source file
+  TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
     module*: PSym
-    filename*: string
-    cfilename*: string        # filename of the module (including path,
+    filename*: AbsoluteFile
+    cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types

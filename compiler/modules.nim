@@ -12,7 +12,7 @@
 import
   ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
-  lineinfos
+  lineinfos, pathutils
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
@@ -66,7 +66,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     if sfMainModule in result.flags:
       graph.config.mainPackageId = result.owner.id
 
-    result.id = getModuleId(graph, fileIdx, toFullPath(graph.config, fileIdx))
+    result.id = getModuleId(graph, fileIdx, AbsoluteFile toFullPath(graph.config, fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
@@ -102,19 +102,21 @@ proc connectCallbacks*(graph: ModuleGraph) =
 proc compileSystemModule*(graph: ModuleGraph) =
   if graph.systemModule == nil:
     connectCallbacks(graph)
-    graph.config.m.systemFileIdx = fileInfoIdx(graph.config, graph.config.libpath / "system.nim")
+    graph.config.m.systemFileIdx = fileInfoIdx(graph.config,
+        graph.config.libpath / RelativeFile"system.nim")
     discard graph.compileModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
 proc wantMainModule*(conf: ConfigRef) =
-  if conf.projectFull.len == 0:
-    fatal(conf, newLineInfo(conf, "command line", 1, 1), errGenerated, "command expects a filename")
+  if conf.projectFull.isEmpty:
+    fatal(conf, newLineInfo(conf, AbsoluteFile"command line", 1, 1), errGenerated,
+        "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
   connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
-  let systemFileIdx = fileInfoIdx(conf, conf.libpath / "system.nim")
+  let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile"system.nim")
   let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
@@ -123,8 +125,11 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
     graph.compileSystemModule()
     discard graph.compileModule(projectFile, {sfMainModule})
 
-proc makeModule*(graph: ModuleGraph; filename: string): PSym =
+proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
   result.id = getID()
 
-proc makeStdinModule*(graph: ModuleGraph): PSym = graph.makeModule"stdin"
+proc makeModule*(graph: ModuleGraph; filename: string): PSym =
+  result = makeModule(graph, AbsoluteFile filename)
+
+proc makeStdinModule*(graph: ModuleGraph): PSym = graph.makeModule(AbsoluteFile"stdin")

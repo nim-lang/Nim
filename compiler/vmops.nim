@@ -82,7 +82,7 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
 
   proc getProjectPathWrapper(a: VmArgs) =
-    setResult a, c.config.projectPath
+    setResult a, c.config.projectPath.string
 
   wrap1f_math(sqrt)
   wrap1f_math(ln)
