@@ -45,6 +45,9 @@ else:
 
 when useBuiltinSwap:
   template swapOpImpl(T: typedesc, op: untyped) =
+    ## We have to use `copyMem` here instead of a simple deference because they
+    ## may point to a unaligned address. A sufficiently smart compiler _should_
+    ## be able to elide them when they're not necessary.
     var tmp: T
     copyMem(addr tmp, inp, sizeOf(T))
     tmp = op(tmp)
