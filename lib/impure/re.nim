@@ -428,7 +428,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ##   "; "
   result = ""
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
@@ -453,7 +453,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
