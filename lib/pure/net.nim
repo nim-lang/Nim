@@ -1194,6 +1194,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
     data.setLen(0)
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): return
+    if lastError == OSErrorCode(EAGAIN): return 0
     socket.socketError(result, lastError = lastError)
   data.setLen(result)
 
