@@ -771,7 +771,13 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       result = InitRequired
   of nkReturnStmt:
     if n.len > 0:
-      result = allPathsAsgnResult(n[0])
+      if n[0].kind == nkEmpty and result != InitSkippable:
+        # This is a bare `return` statement, if `result` was not initialized
+        # anywhere else (or if we're not sure about this) let's require it to be
+        # initialized. This avoids cases like #9286 where this heuristic lead to
+        # wrong code being generated.
+        result = InitRequired
+      else: result = allPathsAsgnResult(n[0])
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
