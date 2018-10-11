@@ -158,10 +158,14 @@ template rawGetKnownHCImpl() {.dirty.} =
     h = nextTry(h, high(s.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template rawGetImpl() {.dirty.} =
-  hc = hash(key)
+template genHash(key: typed): Hash =
+  var hc = hash(key)
   if hc == 0:       # This almost never taken branch should be very predictable.
     hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+  hc
+
+template rawGetImpl() {.dirty.} =
+  hc = genHash(key)
   rawGetKnownHCImpl()
 
 template rawInsertImpl() {.dirty.} =
@@ -794,39 +798,24 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
 
 proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."
-  var hc: Hash
-  var i = rawGet(s, key, hc)
-  var msk = high(s.data)
+  var n: OrderedKeyValuePairSeq[A]
+  newSeq(n, len(s.data))
+  var h = s.first
+  s.first = -1
+  s.last = -1
+  swap(s.data, n)
+  let hc = genHash(key)
   result = true
-
-  if i >= 0:
-    result = false
-    # Fix ordering
-    if s.first == i:
-      s.first = s.data[i].next
-    else:
-      var itr = s.first
-      while true:
-        if (s.data[itr].next == i):
-          s.data[itr].next = s.data[i].next
-          if s.last == i:
-            s.last = itr
-          break
-        itr = s.data[itr].next
-
-    dec(s.counter)
-    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i         # The correctness of this depends on (h+1) in nextTry,
-      var r = j         # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0              # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
-      s.data[i].next = 0
-      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk            # increment mod table size
-        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
-          return
-        r = s.data[i].hcode and msk    # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      if n[h].hcode == hc and n[h].key == key:
+        dec s.counter
+        result = false
+      else:
+        var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
+        rawInsert(s, s.data, n[h].key, n[h].hcode, j)
+    h = nxt
 
 proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
   ## Excludes `key` in the set `s` and tells if `key` was removed from `s`. Efficiency: O(n).
@@ -1096,6 +1085,12 @@ when isMainModule and not defined(release):
       var items = newSeq[int]()
       for item in s: items.add item
       assert items == @[2, 6, 7]
+
+    block: #9005
+      var s = initOrderedSet[(int, int)]()
+      for i in 0 .. 30: incl(s, (i, 0))
+      for i in 0 .. 30: excl(s, (i, 0))
+      doAssert s.len == 0
 
     #block orderedSetIterator:
     #  var a = initOrderedSet[int]()

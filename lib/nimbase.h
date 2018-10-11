@@ -280,7 +280,13 @@ namespace USE_NIM_NAMESPACE {
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL 0
+#  if __cplusplus >= 201103L
+#    /* nullptr is more type safe (less implicit conversions than 0) */
+#    define NIM_NIL nullptr
+#  else
+#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    define NIM_NIL 0
+#  endif
 #else
 #  ifdef bool
 #    define NIM_BOOL bool

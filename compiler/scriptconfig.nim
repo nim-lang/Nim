@@ -96,6 +96,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf fileExists:
     setResult(a, os.fileExists(a.getString 0))
 
+  cbconf projectName:
+    setResult(a, conf.projectName)
+  cbconf projectDir:
+    setResult(a, conf.projectPath.string)
+  cbconf projectPath:
+    setResult(a, conf.projectFull.string)
   cbconf thisDir:
     setResult(a, vthisDir)
   cbconf put:
@@ -159,11 +165,8 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   defineSymbol(conf.symbols, "nimscript")
   defineSymbol(conf.symbols, "nimconfig")
-  var registeredPasses {.global.} = false
-  if not registeredPasses:
-    registerPass(graph, semPass)
-    registerPass(graph, evalPass)
-    registeredPasses = true
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
 
   conf.searchPaths.add(conf.libpath)
 

@@ -197,7 +197,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyRef, tyOpt:
+      tyPtr, tyRef, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyArray:
     if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
@@ -260,7 +260,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef: internalError(c.c.config, "liftBodyAux")
+  of tyOptAsRef: internalError(c.c.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

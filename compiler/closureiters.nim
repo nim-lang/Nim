@@ -210,7 +210,7 @@ proc newUnrollFinallyAccess(ctx: var Ctx, info: TLineInfo): PNode =
 
 proc newCurExcAccess(ctx: var Ctx): PNode =
   if ctx.curExcSym.isNil:
-    ctx.curExcSym = ctx.newEnvVar(":curExc", ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode).typ)
+    ctx.curExcSym = ctx.newEnvVar(":curExc", ctx.g.callCodegenProc("getCurrentException").typ)
   ctx.newEnvVarAccess(ctx.curExcSym)
 
 proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
@@ -324,7 +324,7 @@ proc collectExceptState(ctx: var Ctx, n: PNode): PNode {.inline.} =
           assert(c[i].kind == nkType)
           let nextCond = newTree(nkCall,
             newSymNode(g.getSysMagic(c.info, "of", mOf)),
-            g.callCodegenProc("getCurrentException", ctx.g.emptyNode),
+            g.callCodegenProc("getCurrentException"),
             c[i])
           nextCond.typ = ctx.g.getSysType(c.info, tyBool)
           nextCond.info = c.info
@@ -364,7 +364,7 @@ proc addElseToExcept(ctx: var Ctx, n: PNode) =
     block: # :curExc = getCurrentException()
       branchBody.add(newTree(nkAsgn,
         ctx.newCurExcAccess(),
-        ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode)))
+        ctx.g.callCodegenProc("getCurrentException")))
 
     block: # goto nearestFinally
       branchBody.add(newTree(nkGotoState, ctx.g.newIntLit(n.info, ctx.nearestFinally)))
@@ -803,7 +803,7 @@ proc newEndFinallyNode(ctx: var Ctx, info: TLineInfo): PNode =
   let branch = newTree(nkElifBranch, cmp, retStmt)
 
   # The C++ backend requires `getCurrentException` here.
-  let raiseStmt = newTree(nkRaiseStmt, ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode))
+  let raiseStmt = newTree(nkRaiseStmt, ctx.g.callCodegenProc("getCurrentException"))
   raiseStmt.info = info
   let elseBranch = newTree(nkElse, raiseStmt)
 
@@ -1204,7 +1204,7 @@ proc newCatchBody(ctx: var Ctx, info: TLineInfo): PNode {.inline.} =
   block:
     result.add(newTree(nkAsgn,
       ctx.newCurExcAccess(),
-      ctx.g.callCodegenProc("getCurrentException", ctx.g.emptyNode)))
+      ctx.g.callCodegenProc("getCurrentException")))
 
 proc wrapIntoTryExcept(ctx: var Ctx, n: PNode): PNode {.inline.} =
   let setupExc = newTree(nkCall,

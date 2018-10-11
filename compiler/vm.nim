@@ -24,7 +24,7 @@ import
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 when hasFFI:
   import evalffi

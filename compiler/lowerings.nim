@@ -281,15 +281,16 @@ proc genDeref*(n: PNode): PNode =
                      n.typ.skipTypes(abstractInst).sons[0])
   result.add n
 
-proc callCodegenProc*(g: ModuleGraph; name: string, arg1: PNode;
-                      arg2, arg3, optionalArgs: PNode = nil): PNode =
-  result = newNodeI(nkCall, arg1.info)
+proc callCodegenProc*(g: ModuleGraph; name: string;
+                      info: TLineInfo = unknownLineInfo();
+                      arg1, arg2, arg3, optionalArgs: PNode = nil): PNode =
+  result = newNodeI(nkCall, info)
   let sym = magicsys.getCompilerProc(g, name)
   if sym == nil:
-    localError(g.config, arg1.info, "system module needs: " & name)
+    localError(g.config, info, "system module needs: " & name)
   else:
     result.add newSymNode(sym)
-    result.add arg1
+    if arg1 != nil: result.add arg1
     if arg2 != nil: result.add arg2
     if arg3 != nil: result.add arg3
     if optionalArgs != nil:
@@ -412,7 +413,8 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     threadLocalBarrier = addLocalVar(g, varSection2, nil, argsParam.owner,
                                      barrier.typ, barrier)
     body.add varSection2
-    body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.info,
+      threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
     threadLocalProm = addLocalVar(g, varSection, nil, argsParam.owner, fv.typ, fv)
@@ -427,7 +429,8 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
       "owner", fv.info, g.cache), threadParam.newSymNode)
 
-  body.add callCodegenProc(g, "nimArgsPassingDone", threadParam.newSymNode)
+  body.add callCodegenProc(g, "nimArgsPassingDone", threadParam.info,
+    threadParam.newSymNode)
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
@@ -446,11 +449,13 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     if barrier == nil:
       # by now 'fv' is shared and thus might have beeen overwritten! we need
       # to use the thread-local view instead:
-      body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.newSymNode)
+      body.add callCodegenProc(g, "nimFlowVarSignal", threadLocalProm.info,
+        threadLocalProm.newSymNode)
   else:
     body.add call
   if barrier != nil:
-    body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.newSymNode)
+    body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.info,
+      threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
   params.add newNodeI(nkEmpty, f.info)
@@ -712,7 +717,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
-      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField)
+      result.add callCodegenProc(g, "nimFlowVarCreateSemaphore", fvField.info,
+        fvField)
 
   elif spawnKind == srByVar:
     var field = newSym(skField, getIdent(g.cache, "fv"), owner, n.info, g.config.options)
@@ -725,7 +731,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   let wrapper = createWrapperProc(g, fn, threadParam, argsParam,
                                   varSection, varInit, call,
                                   barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapper.newSymNode,
-                             genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
+  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapper.info,
+    wrapper.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField
