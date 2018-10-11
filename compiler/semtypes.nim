@@ -587,12 +587,12 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     checkForOverlap(c, t, i, branchIndex)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType)
+                      father: PNode, rectype: PType, hasCaseFields = false)
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
   checkMinSonsLen(n, 2, c.config)
-  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
+  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype, hasCaseFields = true)
   if a.sons[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
@@ -619,13 +619,13 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       checkSonsLen(b, 1, c.config)
     else: illFormedAst(n, c.config)
     delSon(b, sonsLen(b) - 1)
-    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
+    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != lengthOrd(c.config, a.sons[0].typ):
     localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType) =
+                      father: PNode, rectype: PType, hasCaseFields = false) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -694,7 +694,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.position = pos
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         f.loc.r == nil:
+         not hasCaseFields and f.loc.r == nil:
         f.loc.r = rope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)

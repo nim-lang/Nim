@@ -430,9 +430,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
   else: add(params, ")")
   params = "(" & params
 
-proc mangleRecFieldName(m: BModule; field: PSym, rectype: PType): Rope =
-  if (rectype.sym != nil) and
-      ({sfImportc, sfExportc} * rectype.sym.flags != {}):
+proc mangleRecFieldName(m: BModule; field: PSym): Rope =
+  if {sfImportc, sfExportc} * field.flags != {}:
     result = field.loc.r
   else:
     result = rope(mangleField(m, field.name))
@@ -484,7 +483,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
-    let sname = mangleRecFieldName(m, field, rectype)
+    let sname = mangleRecFieldName(m, field)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
     fillLoc(field.loc, locField, n, ae, OnUnknown)
