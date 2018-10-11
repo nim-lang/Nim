@@ -414,7 +414,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     index = 0
     indexes[index] -= 1
 
-proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc nextPermutation*[T](x: var Indexable[T]): bool {.discardable.} =
   ## calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
@@ -443,7 +443,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
 
   result = true
 
-proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
+proc prevPermutation*[T](x: var Indexable[T]): bool {.discardable.} =
   ## calculates the previous lexicographic permutation, directly modifying
   ## ``x``. The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
@@ -503,7 +503,7 @@ when isMainModule:
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 
-proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
+proc rotateInternal[T](arg: var Indexable[T]; first, middle, last: int): int =
   ## A port of std::rotate from c++. Ported from `this reference <http://www.cplusplus.com/reference/algorithm/rotate/>`_.
   result = first + last - middle
 
@@ -542,7 +542,7 @@ proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
     elif next == last:
       next = mMiddle
 
-proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
+proc rotatedInternal[T](arg: Indexable[T]; first, middle, last: int): seq[T] =
   result = newSeq[T](arg.len)
   for i in 0 ..< first:
     result[i] = arg[i]
@@ -555,7 +555,7 @@ proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
+proc rotateLeft*[T](arg: var Indexable[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
   ## performs a left rotation on a range of elements. If you want to rotate
   ## right, use a negative ``dist``. Specifically, ``rotateLeft`` rotates
   ## the elements at ``slice`` by ``dist`` positions.
@@ -584,7 +584,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
 
-proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
+proc rotateLeft*[T](arg: var Indexable[T]; dist: int): int {.discardable.} =
   ## Default arguments for slice, so that this procedure operates on the entire
   ## ``arg``, and not just on a part of it.
   runnableExamples:
@@ -595,14 +595,14 @@ proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
 
-proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq[T] =
+proc rotatedLeft*[T](arg: Indexable[T]; slice: HSlice[int, int], dist: int): seq[T] =
   ## Same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead.
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
 
-proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
+proc rotatedLeft*[T](arg: Indexable[T]; dist: int): seq[T] =
   ## Same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead.
   let arglen = arg.len
