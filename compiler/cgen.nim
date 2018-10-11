@@ -560,7 +560,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
         n.info = lib.path.info
         appcg(m, loadlib, "($1 = #nimLoadLibrary($2))$n",
               [tmp, genStringLiteral(m, n)])
-      appcg(m, m.s[cfsDynLibInit],
+      appcg(m, m.s[cfsDynLibInitDlopen],
             "if (!($1)) #nimLoadLibraryError($2);$n",
             [loadlib, genStringLiteral(m, lib.path)])
     else:
@@ -574,9 +574,9 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       expr(p, lib.path, dest)
 
       add(m.s[cfsVars], p.s(cpsLocals))
-      add(m.s[cfsDynLibInit], p.s(cpsInit))
-      add(m.s[cfsDynLibInit], p.s(cpsStmts))
-      appcg(m, m.s[cfsDynLibInit],
+      add(m.s[cfsDynLibInitDlopen], p.s(cpsInit))
+      add(m.s[cfsDynLibInitDlopen], p.s(cpsStmts))
+      appcg(m, m.s[cfsDynLibInitDlopen],
            "if (!($1 = #nimLoadLibrary($2))) #nimLoadLibraryError($2);$n",
            [tmp, rdLoc(dest)])
 
