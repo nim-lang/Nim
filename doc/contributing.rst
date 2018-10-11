@@ -278,10 +278,11 @@ General commit rules
    close it when the PR is committed), wheres issue ``#124`` is referenced
    (eg: partially fixed) and won't close the issue when committed.
 
-4. Commits should be always be rebased against devel (so that a fast forward
-merge can happen), eg using ``git pull --rebase origin devel``.
-This is to avoid messing up git history, see
-`#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ . Exceptions should be
-very rare.
+4. Commits should be always be rebased against devel (so a fast forward
+   merge can happen)
+
+   eg: use ``git pull --rebase origin devel``. This is to avoid messing up
+   git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
+   Exceptions should be very rare.
 
 .. include:: docstyle.rst
