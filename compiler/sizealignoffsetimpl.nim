@@ -251,12 +251,21 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       # this is not the correct location to detect ``type A = ptr A``
       typ.size  = szIllegalRecursion
       typ.align = szIllegalRecursion
+      return
+
+    # recursive tuplers are not allowed and should be detected in the frontend
+    if base.kind == tyTuple:
+      computeSizeAlign(conf, base)
+      if base.size == szIllegalRecursion:
+        typ.size  = szIllegalRecursion
+        typ.align = szIllegalRecursion
+        return
+
+    typ.align = int16(conf.target.ptrSize)
+    if typ.kind == tySequence and tfHasAsgn in typ.flags:
+      typ.size  = conf.target.ptrSize * 2
     else:
-      typ.align = int16(conf.target.ptrSize)
-      if typ.kind == tySequence and tfHasAsgn in typ.flags:
-        typ.size  = conf.target.ptrSize * 2
-      else:
-        typ.size  = conf.target.ptrSize
+      typ.size  = conf.target.ptrSize
 
   of tyArray:
     computeSizeAlign(conf, typ.sons[1])
