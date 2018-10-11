@@ -131,7 +131,6 @@ you should familiarize yourself with the following repository structure:
 * ``tests/`` - contains categorized tests for the compiler and standard library.
 * ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
   ``koch``).
-* ``web/`` - [the Nim website][nim-site].
 * ``koch.nim`` - tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
 

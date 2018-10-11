@@ -446,7 +446,7 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
 proc buildJS(c: TConfigData) =
-  exec(findNim(c) & " js -d:release --out:$1 web/nimblepkglist.nim" %
+  exec(findNim(c) & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [c.webUploadOutput / "nimblepkglist.js"])
 
 proc readSponsors(sponsorsFile: string): seq[Sponsor] =
