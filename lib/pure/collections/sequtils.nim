@@ -21,6 +21,7 @@
 include "system/inclrtl"
 
 import macros
+import pure/lambda
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -638,6 +639,34 @@ template foldr*(sequence, operation: untyped): untyped =
     result = operation
   result
 
+# TODO: make public after merging with `map`
+template map2(s: typed, lambda: untyped): untyped =
+    ## like ``mapIt`` but with cleaner syntax: ``[1,2].mapIt(a ~> a*10)``
+    # runnableExamples:
+    #   doAssert [1,2].map2(a~>a*10) == @[10,20]
+    makeLambda(lambda, lambda2)
+    type outType = type((
+      block:
+        var it: type(items(s))
+        lambda2(it)
+        ))
+
+    when compiles(s.len):
+      var result: seq[outType]
+      block:
+        evalOnceAs(s2, s, compiles((let _ = s)))
+        var i = 0
+        var result = newSeq[outType](s2.len)
+        for it in s2:
+          result[i] = lambda2(it)
+          i += 1
+        result
+    else:
+      var result: seq[outType] = @[]
+      for it in s:
+        result.add lambda2(it)
+      result
+
 template mapIt*(s, typ, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
@@ -1137,3 +1166,9 @@ when isMainModule:
 
   when not defined(testing):
     echo "Finished doc tests"
+
+  block map2Test:
+    # PENDING https://github.com/nim-lang/Nim/issues/7280
+    discard [1].map2(a ~> a)
+    # once map2 is public, remove this (will be covered by runnableExamples)
+    doAssert [1,2].map2(a ~> a*10) == @[10,20]
