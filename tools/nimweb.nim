@@ -445,10 +445,6 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
 
-proc buildJS(c: TConfigData) =
-  exec(findNim(c) & " js -d:release --out:$1 web/nimblepkglist.nim" %
-      [c.webUploadOutput / "nimblepkglist.js"])
-
 proc readSponsors(sponsorsFile: string): seq[Sponsor] =
   result = @[]
   var fileStream = newFileStream(sponsorsFile, fmRead)
@@ -528,7 +524,6 @@ proc onlyDocs(c: var TConfigData) =
 
 proc main(c: var TConfigData) =
   buildWebsite(c)
-  buildJS(c)
   let docup = c.webUploadOutput / NimVersion
   createDir(docup)
   buildAddDoc(c, docup)
