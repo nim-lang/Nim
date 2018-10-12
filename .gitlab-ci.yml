@@ -53,8 +53,8 @@ test-windows:
   <<: *win_set_path_def
   script:
     - call ci\deps.bat
-    - nim c --taintMode:on tests\testament\tester
-    - tests\testament\tester.exe --pedantic all
+    - nim c --taintMode:on testament\tester
+    - testament\tester.exe --pedantic all
   tags:
     - windows
     - fast
