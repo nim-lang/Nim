@@ -11,6 +11,9 @@
 # It is not possible to do this in a platform independent way, unfortunately.
 # However, the interface has been designed to take platform differences into
 # account and been ported to all major platforms.
+# Subtle bugs can occur if trying to dlopen a GC and the code below calls the GC,
+# see https://github.com/nim-lang/Nim/issues/9123, so we should avoid calling the
+# GC in the procs here.
 
 {.push stack_trace: off.}
 
