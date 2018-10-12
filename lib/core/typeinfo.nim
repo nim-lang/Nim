@@ -246,8 +246,8 @@ proc base*(x: Any): Any =
 
 
 proc isNil*(x: Any): bool =
-  ## `isNil` for an any `x` that represents a sequence, string, cstring,
-  ## proc or some pointer type.
+  ## `isNil` for an any `x` that represents a cstring, proc or
+  ## some pointer type.
   assert x.rawType.kind in {tyCString, tyRef, tyPtr, tyPointer, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
