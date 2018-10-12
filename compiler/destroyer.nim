@@ -133,6 +133,7 @@ type
     toDropBit: Table[int, PSym]
     graph: ModuleGraph
     emptyNode: PNode
+    otherRead: PNode
 
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   # XXX why are temps fields in an object here?
@@ -181,7 +182,7 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
       if c.g[i].sym == s:
         if defsite < 0: defsite = i
         else: return false
-    of use, useWithinCall:
+    of use:
       if c.g[i].sym == s:
         if defsite < 0: return false
         for j in defsite .. i:
@@ -195,6 +196,66 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
     of goto, fork:
       discard "we do not perform an abstract interpretation yet"
   result = usages <= 1
+
+proc isLastRead(n: PNode; c: var Con): bool =
+  # first we need to search for the instruction that belongs to 'n':
+  doAssert n.kind == nkSym
+  c.otherRead = nil
+  var instr = -1
+  for i in 0..<c.g.len:
+    if c.g[i].n == n:
+      if instr < 0: instr = i
+      else:
+        # eh, we found two positions that belong to 'n'?
+        # better return 'false' then:
+        return false
+  if instr < 0: return false
+  # we go through all paths beginning from 'instr+1' and need to
+  # ensure that we don't find another 'use X' instruction.
+  if instr+1 >= c.g.len: return true
+  let s = n.sym
+  var pcs: seq[int] = @[instr+1]
+  var takenGotos: IntSet
+  while pcs.len > 0:
+    var pc = pcs.pop
+
+    takenGotos = initIntSet()
+    while pc < c.g.len:
+      case c.g[pc].kind
+      of def:
+        if c.g[pc].sym == s:
+          # the path lead to a redefinition of 's' --> abandon it.
+          when false:
+            # Too complex thinking ahead: In reality it is enough to find
+            # the 'def x' here on the current path to make the 'use x' valid.
+            # but for this the definition needs to dominate the usage:
+            var dominates = true
+            for j in pc+1 .. instr:
+              # not within the same basic block?
+              if c.g[j].kind in {goto, fork} and (j + c.g[j].dest) in (pc+1 .. instr):
+                #if j in c.jumpTargets:
+                dominates = false
+            if dominates: break
+          break
+        inc pc
+      of use:
+        if c.g[pc].sym == s:
+          c.otherRead = c.g[pc].n
+          return false
+        inc pc
+      of goto:
+        # we must leave endless loops eventually:
+        if not takenGotos.containsOrIncl(pc):
+          pc = pc + c.g[pc].dest
+        else:
+          inc pc
+      of fork:
+        # we follow the next instruction but push the dest onto our "work" stack:
+        if not takenGotos.containsOrIncl(pc):
+          pcs.add pc + c.g[pc].dest
+        inc pc
+  #echo c.graph.config $ n.info, " last read here!"
+  return true
 
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
@@ -229,6 +290,9 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
+    if c.otherRead != nil:
+      m.add "; another read is done here: "
+      m.add c.graph.config $ c.otherRead.info
   localError(c.graph.config, ri.info, errGenerated, m)
 
 template genOp(opr, opname, ri) =
@@ -303,6 +367,8 @@ proc genWasMoved(n: PNode; c: var Con): PNode =
 
 proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
+  # XXX: Strictly speaking we can only move if there is a ``=sink`` defined
+  # or if no ``=sink`` is defined and also no assignment.
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
   var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
@@ -339,13 +405,16 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     if arg.kind in nkCallKinds:
       # recurse but skip the call expression in order to prevent
       # destructor injections: Rule 5.1 is different from rule 5.4!
-      let a = copyNode(arg)
-      recurse(arg, a)
-      result = a
+      result = copyNode(arg)
+      let parameters = arg[0].typ
+      let L = if parameters != nil: parameters.len else: 0
+      result.add arg[0]
+      for i in 1..<arg.len:
+        result.add pArg(arg[i], c, i < L and parameters[i].kind == tySink)
     elif arg.kind in {nkObjConstr, nkCharLit..nkFloat128Lit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
-    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isHarmlessVar(arg.sym, c):
+    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
       # if x is a variable and it its last read we eliminate its
       # destructor invokation, but don't. We need to reset its memory
       # to disable its destructor which we have not elided:
@@ -382,7 +451,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
     result.add ri2
   of nkSym:
-    if ri.sym.kind != skParam and isHarmlessVar(ri.sym, c):
+    if ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add p(ri, c)
@@ -478,6 +547,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   for i in 0..<c.g.len:
     if c.g[i].kind in {goto, fork}:
       c.jumpTargets.incl(i+c.g[i].dest)
+  #if owner.name.s == "test0p1":
+  #  echoCfg(c.g)
   if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
     let params = owner.typ.n
     for i in 1 ..< params.len:
@@ -495,7 +566,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     result.add body
 
   when defined(nimDebugDestroys):
-    if owner.name.s == "test1": # or true:
+    if true:
       echo "------------------------------------"
       echo owner.name.s, " transformed to: "
       echo result
