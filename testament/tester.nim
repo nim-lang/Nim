@@ -477,7 +477,7 @@ proc main() =
   case action
   of "all":
     let testsDir = "tests" & DirSep
-    var myself = quoteShell(findExe("tests" / "testament" / "tester"))
+    var myself = quoteShell(findExe("testament" / "tester"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
@@ -488,7 +488,7 @@ proc main() =
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
-      if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
+      if kind == pcDir and cat notin ["testdata", "nimcache"]:
         cmds.add(myself & " cat " & quoteShell(cat) & rest)
     for cat in AdditionalCategories:
       cmds.add(myself & " cat " & quoteShell(cat) & rest)

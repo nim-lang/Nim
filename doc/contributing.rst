@@ -109,7 +109,7 @@ only want to see the output of failing tests, go for
 
 You can also run only a single category of tests. A category is a subdirectory
 in the ``tests`` directory. There are a couple of special categories; for a
-list of these, see ``tests/testament/categories.nim``, at the bottom.
+list of these, see ``testament/categories.nim``, at the bottom.
 
 ::
 
