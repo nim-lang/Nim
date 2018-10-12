@@ -379,7 +379,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = newStrNodeT(s, n, g)
     else:
       result = newStrNodeT(getStrOrChar(a), n, g)
-  of mStrToStr: result = a
+  of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a, g), n, g)
   of mArrToSeq:
     result = copyTree(a)
