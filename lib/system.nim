@@ -4338,6 +4338,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
   proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
