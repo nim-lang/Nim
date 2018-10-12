@@ -1471,15 +1471,14 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## Count the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
+  doAssert sub.len > 0
   var i = 0
-  if sub.len <= 0: return s.len + 1
-  else:
-    while true:
-      i = s.find(sub, i)
-      if i < 0: break
-      if overlapping: inc i
-      else: i += sub.len
-      inc result
+  while true:
+    i = s.find(sub, i)
+    if i < 0: break
+    if overlapping: inc i
+    else: i += sub.len
+    inc result
 
 proc count*(s: string, sub: char): int {.noSideEffect,
   rtl, extern: "nsuCountChar".} =
@@ -1490,10 +1489,9 @@ proc count*(s: string, sub: char): int {.noSideEffect,
 proc count*(s: string, subs: set[char]): int {.noSideEffect,
   rtl, extern: "nsuCountCharSet".} =
   ## Count the occurrences of the group of character `subs` in the string `s`.
-  if card(subs) == 0: return s.len + 1
-  else:
-    for c in s:
-      if c in subs: inc result
+  doAssert card(subs) > 0
+  for c in s:
+    if c in subs: inc result
 
 proc quoteIfContainsWhite*(s: string): string {.deprecated.} =
   ## Returns ``'"' & s & '"'`` if `s` contains a space and does not
