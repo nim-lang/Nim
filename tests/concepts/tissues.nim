@@ -5,13 +5,11 @@ discard """
 Printable
 true
 true
-9
 true
 true
 true
 f
 0
-true
 10
 10
 5
@@ -25,7 +23,6 @@ p has been called.
 p has been called.
 implicit generic
 generic
-false
 true
 -1
 Meow
@@ -166,7 +163,7 @@ block t5642:
   let
     stud = Students(id: @[1,2,3], name: @["Vas", "Pas", "NafNaf"], age: @[10,16,32])
 
-  echo nrow(stud)
+  doAssert nrow(stud) == 9
 
 
 
@@ -223,7 +220,7 @@ block t6462:
     a.fil.test
 
   var s = SeqGen[int](fil: FilterMixin[int](test: nil, trans: nil))
-  echo s.test() == nil
+  doAssert s.test() == nil
 
 
 

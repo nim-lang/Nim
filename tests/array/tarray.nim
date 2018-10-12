@@ -1,16 +1,13 @@
 discard """
   file: "tarray.nim"
-  output: 
+  output:
 '''
-100124
 [4, 5, 6]
 
 [16, 25, 36]
 
 [16, 25, 36]
 
-3
-6
 apple
 banana
 Fruit
@@ -20,10 +17,6 @@ Fruit
 none
 skin
 paper
-0
-0
-bc
-bcdefg
 @[2, 3, 4]321
 9.0 4.0
 3
@@ -31,18 +24,11 @@ bcdefg
 2
 @["a", "new one", "c"]
 @[1, 2, 3]
-c
 3
-OK
-OK
-OK
-OK
-OK
 dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajs
 dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
-OK
 '''
 """
 
@@ -64,10 +50,9 @@ block tarray:
   proc getPos(r: TMyRecord): int =
     result = r.x + r.y
 
-  write(stdout, sum([1, 2, 3, 4]))
-  write(stdout, sum([]))
-  write(stdout, getPos( (x: 5, y: 7) ))
-  #OUT 10012
+  doAssert sum([1, 2, 3, 4]) == 10
+  doAssert sum([]) == 0
+  doAssert getPos( (x: 5, y: 7) ) == 12
 
   # bug #1669
   let filesToCreate = ["tempdir/fl1.a", "tempdir/fl2.b",
@@ -75,7 +60,7 @@ block tarray:
 
   var found: array[0..filesToCreate.high, bool]
 
-  echo found.len
+  doAssert found.len == 4
 
   # make sure empty arrays are assignable (bug #6853)
   const arr1: array[0, int] = []
@@ -116,7 +101,8 @@ block tarray:
   const
     myData = [[1,2,3], [4, 5, 6]]
 
-  echo myData[0][2]
+  doAssert myData[0][2] == 3
+
 
 
 block tarraycons:
@@ -134,7 +120,8 @@ block tarraycons:
       eF: [2, 1: 9]
     ]
 
-  echo myMapping[eC][1]
+  doAssert myMapping[eC][1] == 6
+
 
 
 block tarraycons_ptr_generic:
@@ -177,6 +164,7 @@ block tarraycons_ptr_generic:
 
   let z = [bn, hs, bp]
   for c in z: echo c.cover
+
 
 
 block tarraylen:
@@ -225,16 +213,14 @@ block tarrayindx:
   var
     obj: SomeObject
 
-  echo obj.s1[0]
-  echo obj.s1[0u]
-
+  doAssert obj.s1[0] == 0
+  doAssert obj.s1[0u] == 0
 
   # bug #8049
+  proc `[]`(s: ustring, i: int): ustring = s
+  doAssert "abcdefgh"[1..2] == "bc"
+  doAssert "abcdefgh"[1..^2] == "bcdefg"
 
-  when true:
-    proc `[]`(s: ustring, i: int): ustring = s
-    echo "abcdefgh"[1..2]
-    echo "abcdefgh"[1..^2]
 
 
 block troof:
@@ -274,7 +260,7 @@ block troof:
 
 
   var d: array['a'..'c', string] = ["a", "b", "c"]
-  echo d[^1]
+  doAssert d[^1] == "c"
 
 
 
@@ -351,16 +337,13 @@ block troofregression:
     a ... pred(b)
 
   template check(a, b) =
-    if $a == b: echo "OK"
-    else: echo "Failure ", a, " != ", b
+    if $a != b:
+      echo "Failure ", a, " != ", b
 
   check type(4 ...< 1), "HSlice[system.int, system.int]"
-
   check type(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
   check type(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
-
   check type(4 ... mypred(8)), "HSlice[system.int, system.int]"
-
   check type(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
 
   var rot = 8
@@ -373,7 +356,6 @@ block troofregression:
 
   echo bug(testStr)
   echo testStr[testStr.len - 8 .. testStr.len - 1] & "__" & testStr[0 .. testStr.len - pred(rot)]
-
 
   var
     instructions = readFile(getAppDir() / "troofregression2.txt").split(',')
@@ -411,9 +393,9 @@ block troofregression:
         return seen[iterations mod i]
       seen.add(dancers)
 
-
   echo dance(programs)
   echo longDance(programs)
+
 
 
 block tunchecked:
@@ -422,6 +404,7 @@ block tunchecked:
 
   var x = cast[ptr Unchecked](alloc(100))
   x[5] = 'x'
+
 
 
 import macros
@@ -449,12 +432,12 @@ block t7818:
     let y = peek([c, b, v])
     let z = peek([v, c, b])
     doAssert(y == z)
-    
+
   block test_t7906_1:
     proc init(x: typedesc, y: int): ref x =
       result = new(ref x)
       result.tire = y
-    
+
     var v = init(Vehicle[int], 3)
     var c = init(Car[int], 4)
     var b = init(Bike[int], 2)
@@ -462,7 +445,7 @@ block t7818:
     let y = peek([c, b, v])
     let z = peek([v, c, b])
     doAssert(y == z)
-    
+
   block test_t7906_2:
     var v = Vehicle[int](tire: 3)
     var c = Car[int](tire: 4)
@@ -486,13 +469,13 @@ block t7818:
     let z = peek([c.addr, b.addr, v.addr])
     let y = peek([v.addr, c.addr, b.addr])
     doAssert(y == z)
-    
+
   type
     Fruit[T] = ref object of RootObj
       color: T
     Apple[T] = ref object of Fruit[T]
     Banana[T] = ref object of Fruit[T]
-      
+
   proc testArray[T](x: array[3, Fruit[T]]): string =
     result = ""
     for c in x:
@@ -502,7 +485,7 @@ block t7818:
     result = ""
     for c in x:
       result.add $c.color
-      
+
   block test_t7906_4:
     var v = Fruit[int](color: 3)
     var c = Apple[int](color: 4)
@@ -511,7 +494,7 @@ block t7818:
     let y = peek([c, b, v])
     let z = peek([v, c, b])
     doAssert(y == z)
-    
+
   block test_t7906_5:
     var a = Fruit[int](color: 1)
     var b = Apple[int](color: 2)
@@ -540,14 +523,12 @@ block t7818:
     var u = Vehicle[int](tire: 1)
     var v = Bike[int](tire: 2)
     var w = Car[int](tire: 3)
-    
+
     doAssert(testArray([u.addr, v.addr, w.addr]) == "123")
     doAssert(testArray([w.addr, u.addr, v.addr]) == "312")
-    
+
     doAssert(testOpenArray([u.addr, v.addr, w.addr]) == "123")
     doAssert(testOpenArray([w.addr, u.addr, v.addr]) == "312")
-    
+
     doAssert(testOpenArray(@[u.addr, v.addr, w.addr]) == "123")
     doAssert(testOpenArray(@[w.addr, u.addr, v.addr]) == "312")
-    
-  echo "OK"

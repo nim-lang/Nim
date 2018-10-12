@@ -2,14 +2,7 @@ discard """
   file: "tassign.nim"
   output:
 '''
-4
-jkl
-4
-soll
-2
 TEMP=C:\Programs\xyz\bin
-came here
-abc232
 8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
@@ -55,17 +48,17 @@ block tassign:
 
     b = a # perform a deep copy here!
     b.seq = @["xyz", "huch", "was", "soll"]
-    writeLine(stdout, len(a.seq))
-    writeLine(stdout, a.seq[3])
-    writeLine(stdout, len(b.seq))
-    writeLine(stdout, b.seq[3])
-    writeLine(stdout, b.y)
+    doAssert len(a.seq) == 4
+    doAssert a.seq[3] == "jkl"
+    doAssert len(b.seq) == 4
+    doAssert b.seq[3] == "soll"
+    doAssert b.y == 2
 
   test()
 
 
-import strutils
 
+import strutils
 block tcopy:
   proc main() =
     const
@@ -79,6 +72,7 @@ block tcopy:
     writeLine(stdout, a & '=' & b)
 
   main()
+
 
 
 block tgenericassign:
@@ -100,7 +94,6 @@ block tgenericassign:
     ret.add(tup)
     assert(ret[ret.len()-1][0] == "example")
 
-  echo "came here"
 
 
 block tgenericassign_tuples:
@@ -113,7 +106,9 @@ block tgenericassign_tuples:
   s = t
   s = ugh()[0]
 
-  echo s[0], t[1]
+  doAssert s[0] == "abc"
+  doAssert s[1] == 232
+
 
 
 block tobjasgn:

@@ -4,38 +4,6 @@ int32
 int32
 1280
 1280
-B0
-B1
-B2
-B3
-B4
-B5
-B6
--5
--5
--5
--5
-4
-4
-4
-4
-251
-65531
-4294967291
-18446744073709551611
-4
-4
-4
-4
-0
-0
-1
-1
-0
-0
-0
-1
-1
 '''
 """
 
@@ -55,6 +23,7 @@ block tand:
   echo((ii8 and 0x7F'i32) shl 7'i32)
 
 
+
 block tcast:
   template crossCheck(ty: untyped, exp: untyped) =
     let rt = ty(exp)
@@ -71,34 +40,28 @@ block tcast:
   template sub1(x: uint16): untyped = x - 1
   template sub1(x: uint32): untyped = x - 1
 
-  echo "B0"
   crossCheck(int8, 0'i16 - 5'i16)
   crossCheck(int16, 0'i32 - 5'i32)
   crossCheck(int32, 0'i64 - 5'i64)
 
-  echo "B1"
   crossCheck(uint8, 0'u8 - 5'u8)
   crossCheck(uint16, 0'u16 - 5'u16)
   crossCheck(uint32, 0'u32 - 5'u32)
   crossCheck(uint64, 0'u64 - 5'u64)
 
-  echo "B2"
   crossCheck(uint8, uint8.high + 5'u8)
   crossCheck(uint16, uint16.high + 5'u16)
   crossCheck(uint32, uint32.high + 5'u32)
   crossCheck(uint64, (-1).uint64 + 5'u64)
 
-  echo "B3"
   doAssert $sub1(0'u8) == "255"
   doAssert $sub1(0'u16) == "65535"
   doAssert $sub1(0'u32) == "4294967295"
 
-  echo "B4"
   doAssert $add1(255'u8) == "0"
   doAssert $add1(65535'u16) == "0"
   doAssert $add1(4294967295'u32) == "0"
 
-  echo "B5"
   crossCheck(int32, high(int32))
   crossCheck(int32, high(int32).int32)
   crossCheck(int32, low(int32))
@@ -106,11 +69,11 @@ block tcast:
   crossCheck(int64, high(int8).int16.int32.int64)
   crossCheck(int64, low(int8).int16.int32.int64)
 
-  echo "B6"
   crossCheck(int64, 0xFFFFFFFFFFFFFFFF'u64)
   crossCheck(int32, 0xFFFFFFFFFFFFFFFF'u64)
   crossCheck(int16, 0xFFFFFFFFFFFFFFFF'u64)
   crossCheck(int8 , 0xFFFFFFFFFFFFFFFF'u64)
+
 
 
 block tnot:
@@ -124,14 +87,14 @@ block tnot:
     const t5: int16 = not -5
     const t6: int32 = not -5
     const t7: int64 = not -5
-    echo t0
-    echo t1
-    echo t2
-    echo t3
-    echo t4
-    echo t5
-    echo t6
-    echo t7
+    doAssert t0 == -5
+    doAssert t1 == -5
+    doAssert t2 == -5
+    doAssert t3 == -5
+    doAssert t4 == 4
+    doAssert t5 == 4
+    doAssert t6 == 4
+    doAssert t7 == 4
 
   # Unsigned types
   block:
@@ -143,14 +106,15 @@ block tnot:
     const t5: uint16 = not 65531'u16
     const t6: uint32 = not 4294967291'u32
     const t7: uint64 = not 18446744073709551611'u64
-    echo t0
-    echo t1
-    echo t2
-    echo t3
-    echo t4
-    echo t5
-    echo t6
-    echo t7
+    doAssert t0 == 251
+    doAssert t1 == 65531
+    doAssert t2 == 4294967291'u32
+    doAssert t3 == 18446744073709551611'u64
+    doAssert t4 == 4
+    doAssert t5 == 4
+    doAssert t6 == 4
+    doAssert t7 == 4
+
 
 
 block tshl:
@@ -160,10 +124,10 @@ block tshl:
     const t1: int16 = 1'i16 shl 16
     const t2: int32 = 1'i32 shl 32
     const t3: int64 = 1'i64 shl 64
-    echo t0
-    echo t1
-    echo t2
-    echo t3
+    doAssert t0 == 0
+    doAssert t1 == 0
+    doAssert t2 == 1
+    doAssert t3 == 1
 
   # Unsigned types
   block:
@@ -171,10 +135,11 @@ block tshl:
     const t1: uint16 = 1'u16 shl 16
     const t2: uint32 = 1'u32 shl 32
     const t3: uint64 = 1'u64 shl 64
-    echo t0
-    echo t1
-    echo t2
-    echo t3
+    doAssert t0 == 0
+    doAssert t1 == 0
+    doAssert t2 == 0
+    doAssert t3 == 1
+
 
 
 block tshr:
@@ -195,6 +160,7 @@ block tshr:
     T()
 
 
+
 block tsubrange:
   # bug #5854
   type
@@ -204,4 +170,4 @@ block tsubrange:
   let maxLevel: n16 = 1
 
   level = min(level + 2, maxLevel)
-  echo level
+  doAssert level == 1

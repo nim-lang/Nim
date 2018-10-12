@@ -12,7 +12,6 @@ x as ParameterizedType[T]
 x as ParameterizedType
 x as ParameterizedType
 x as CustomTypeClass
-15
 1
 2
 3
@@ -27,7 +26,6 @@ s
 t
 z
 e
-true
 1
 2
 3
@@ -230,7 +228,7 @@ block titerable:
       static: echo element.type.name
       result += element
 
-  echo sum([1, 2, 3, 4, 5])
+  doAssert sum([1, 2, 3, 4, 5]) == 15
 
 
 
@@ -327,7 +325,7 @@ block tmonoid:
 
   proc z(x: typedesc[int]): int = 0
 
-  echo(int is Monoid)
+  doAssert(int is Monoid)
 
   # https://github.com/nim-lang/Nim/issues/8126
   type AdditiveMonoid = concept x, y, type T

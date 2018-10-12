@@ -1,5 +1,5 @@
 discard """
-  file: "tassign.nim"
+  file: "tbind.nim"
   output:
 '''
 3

@@ -1,10 +1,6 @@
 discard """
   file: "tcollections.nim"
   output: '''
-true
-true
-true
-true
 '''
 """
 
@@ -16,7 +12,7 @@ block tapply:
   x.apply(proc(x: var int) = x = x+10)
   x.apply(proc(x: int): int = x+100)
   x.applyIt(it+5000)
-  echo x == @[5111, 5112, 5113]
+  doAssert x == @[5111, 5112, 5113]
 
 
 block tdeques:
@@ -29,14 +25,13 @@ block tdeques:
     assert testDeque.index(0) == 1
 
   main()
-  echo "true"
 
 
 block tmapit:
   var x = @[1, 2, 3]
   # This mapIt call will run with preallocation because ``len`` is available.
   var y = x.mapIt($(it+10))
-  echo y == @["11", "12", "13"]
+  doAssert y == @["11", "12", "13"]
 
   type structureWithoutLen = object
     a: array[5, int]
@@ -58,6 +53,4 @@ block tmapit:
   # this will run without preallocating the result
   # since ``len`` is not available
   var r = st.mapIt($(it+10))
-  echo r == @["10", "11", "12", "13", "14"]
-
-
+  doAssert r == @["10", "11", "12", "13", "14"]

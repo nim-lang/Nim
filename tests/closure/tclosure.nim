@@ -13,37 +13,8 @@ foo88
 99 99
 12 99 99
 12 99 99
-0
-11
-1
-11
-2
-11
-3
-11
-4
-11
-5
-11
-6
-11
-7
-11
-8
-11
-9
-11
-11
-py
-py
-py
-py
-px
-6
 success
-Hey!
 @[1, 2, 5]
-int: 108
 click at 10,20
 lost focus 1
 lost focus 2
@@ -51,28 +22,16 @@ registered handler for UserEvent 1
 registered handler for UserEvent 2
 registered handler for UserEvent 3
 registered handler for UserEvent 4
-20365011074
 asdas
 processClient end
 false
-56 66
 baro0
 foo88
 23 24foo 88
 foo88
 23 24foo 88
-hohoho
 11
-@[1]
-@[1, 1]
-@[1, 2, 1]
-@[1, 3, 3, 1]
-@[1, 4, 6, 4, 1]
-@[1, 5, 10, 10, 5, 1]
-@[1, 6, 15, 20, 15, 6, 1]
-@[1, 7, 21, 35, 35, 21, 7, 1]
-@[1, 8, 28, 56, 70, 56, 28, 8, 1]
-@[1, 9, 36, 84, 126, 126, 84, 36, 9, 1]
+@[1, 10, 45, 120, 210, 252, 210, 120, 45, 10, 1]
 '''
 """
 
@@ -89,8 +48,7 @@ block tclosure:
     for i in 0..n.len-1:
       fn(n[i])
 
-  var
-    myData: array[0..4, int] = [0, 1, 2, 3, 4]
+  var myData: array[0..4, int] = [0, 1, 2, 3, 4]
 
   proc testA() =
     var p = 0
@@ -168,8 +126,7 @@ block tclosure0:
     var rawE = fn.rawEnv()
 
     # A type to cast the function pointer into a nimcall
-    type
-      TimesClosure = proc(a: int, x: pointer): int {.nimcall.}
+    type TimesClosure = proc(a: int, x: pointer): int {.nimcall.}
 
     # Call the function with its closure
     echo cast[TimesClosure](rawP)(3, rawE)
@@ -216,77 +173,6 @@ block tclosure0:
 
 
 
-block tclosure2:
-  when true:
-    proc ax =
-      for xxxx in 0..9:
-        var i = 0
-        proc bx =
-          if i > 10:
-            echo xxxx
-            return
-          i += 1
-          #for j in 0 .. 0: echo i
-          bx()
-
-        bx()
-        echo i
-
-    ax()
-
-  when true:
-    proc accumulator(start: int): (proc(): int {.closure.}) =
-      var x = start-1
-      #let dummy = proc =
-      #  discard start
-
-      result = proc (): int =
-        #var x = 9
-        for i in 0 .. 0: x = x + 1
-
-        return x
-
-    var a = accumulator(3)
-    let b = accumulator(4)
-    echo a() + b() + a()
-
-
-    proc outer =
-
-      proc py() =
-        # no closure here:
-        for i in 0..3: echo "py"
-
-      py()
-
-    outer()
-
-
-  when true:
-    proc outer2 =
-      var errorValue = 3
-      proc fac[T](n: T): T =
-        if n < 0: result = errorValue
-        elif n <= 1: result = 1
-        else: result = n * fac(n-1)
-
-      proc px() {.closure.} =
-        echo "px"
-
-      proc py() {.closure.} =
-        echo "py"
-
-      let
-        mapping = {
-          "abc": px,
-          "xyz": py
-        }
-      mapping[0][1]()
-
-      echo fac(3)
-
-
-    outer2()
 
 
 
@@ -312,13 +198,11 @@ block tclosure3:
 
 import json, tables, sequtils
 block tclosure4:
-
   proc run(json_params: OrderedTable) =
     let json_elems = json_params["files"].elems
     # These fail compilation.
     var files = map(json_elems, proc (x: JsonNode): string = x.str)
     #var files = json_elems.map do (x: JsonNode) -> string: x.str
-    echo "Hey!"
 
   let text = """{"files": ["a", "b", "c"]}"""
   run((text.parseJson).fields)
@@ -548,23 +432,6 @@ block tcodegenerr1923:
 
 
 
-block deeplynested:
-  # bug #4070
-  proc id(f: (proc())): auto =
-    return f
-
-  proc foo(myinteger: int): (iterator(): int) =
-    return iterator(): int {.closure.} =
-            proc bar() =
-              proc kk() =
-                echo "int: ", myinteger
-              kk()
-            id(bar)()
-
-  discard foo(108)()
-
-
-
 block doNotation:
   type
     Button = object
@@ -621,7 +488,7 @@ block fib50:
       return fib(i-1) + fib(i-2)
   )
 
-  echo fib(50)
+  doAssert fib(50) == 20365011074
 
 
 
@@ -721,7 +588,8 @@ block tinterf:
   var i = getInterf()
   i.setter(56)
 
-  echo i.getter1(), " ", i.getter2()
+  doAssert i.getter1() == 56
+  doAssert i.getter2() == 66
 
 
 
@@ -811,11 +679,9 @@ block tnestedclosure:
       proc cbIter() =
         block:
           proc fooIter() =
-            echo response
+            doAssert response == "hohoho"
           fooIter()
-
       cbIter()
-
   cbOuter()
 
 
@@ -835,7 +701,6 @@ block tnoclosure:
   proc pascal(n: int) =
     var row = @[1]
     for r in 1..n:
-      echo row
       row = zip(row & @[0], @[0] & row).mapIt(it[0] + it[1])
-
+    echo row
   pascal(10)
