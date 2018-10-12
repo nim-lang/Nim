@@ -1471,6 +1471,7 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## Count the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
+  doAssert sub.len > 0
   var i = 0
   while true:
     i = s.find(sub, i)
@@ -1488,6 +1489,7 @@ proc count*(s: string, sub: char): int {.noSideEffect,
 proc count*(s: string, subs: set[char]): int {.noSideEffect,
   rtl, extern: "nsuCountCharSet".} =
   ## Count the occurrences of the group of character `subs` in the string `s`.
+  doAssert card(subs) > 0
   for c in s:
     if c in subs: inc result
 
