@@ -75,6 +75,10 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
+  runnableExamples:
+    doAssert isAlphaAscii('e') == true
+    doAssert isAlphaAscii('E') == true
+    doAssert isAlphaAscii('8') == false
   return c in Letters
 
 proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
@@ -82,6 +86,10 @@ proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
+  runnableExamples:
+    doAssert isAlphaNumeric('n') == true
+    doAssert isAlphaNumeric('8') == true
+    doAssert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
 proc isDigit*(c: char): bool {.noSideEffect, procvar,
@@ -89,11 +97,17 @@ proc isDigit*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
+  runnableExamples:
+    doAssert isDigit('n') == false
+    doAssert isDigit('8') == true
   return c in Digits
 
 proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
+  runnableExamples:
+    doAssert isSpaceAscii('n') == false
+    doAssert isSpaceAscii(' ') == true
   return c in Whitespace
 
 proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
@@ -101,6 +115,10 @@ proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
+  runnableExamples:
+    doAssert isLowerAscii('e') == true
+    doAssert isLowerAscii('E') == false
+    doAssert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
 proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
@@ -108,6 +126,10 @@ proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
+  runnableExamples:
+    doAssert isLowerAscii('e') == false
+    doAssert isLowerAscii('E') == true
+    doAssert isLowerAscii('7') == false
   return c in {'A'..'Z'}
 
 template isImpl(call) =
@@ -124,6 +146,10 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   ## Returns true if all characters in `s` are
   ## alphabetic and there is at least one character
   ## in `s`.
+  runnableExamples:
+    doAssert isAlphaAscii("fooBar") == true
+    doAssert isAlphaAscii("fooBar1") == false 
+    doAssert isAlphaAscii("foo Bar") == false 
   isImpl isAlphaAscii
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
@@ -134,6 +160,10 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   ## Returns true if all characters in `s` are
   ## alpanumeric and there is at least one character
   ## in `s`.
+  runnableExamples:
+    doAssert isAlphaNumeric("fooBar") == true
+    doAssert isAlphaNumeric("fooBar") == true 
+    doAssert isAlphaNumeric("foo Bar") == false
   isImpl isAlphaNumeric
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
@@ -144,6 +174,9 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   ## Returns true if all characters in `s` are
   ## numeric and there is at least one character
   ## in `s`.
+  runnableExamples:
+    doAssert isDigit("1908") == true
+    doAssert isDigit("fooBar1") == false 
   isImpl isDigit
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
@@ -152,6 +185,9 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   ##
   ## Returns true if all characters in `s` are whitespace
   ## characters and there is at least one character in `s`.
+  runnableExamples:
+    doAssert isSpaceAscii("   ") == true
+    doAssert isSpaceAscii("") == false 
   isImpl isSpaceAscii
 
 template isCaseImpl(s, charProc, skipNonAlpha) =
@@ -183,6 +219,10 @@ proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
   ##
   ## For either value of ``skipNonAlpha``, returns false if ``s`` is
   ## an empty string.
+  runnableExamples:
+    doAssert isLowerAscii("1foobar", false) == false
+    doAssert isLowerAscii("1foobar", true) == true
+    doAssert isLowerAscii("1fooBar", true) == false
   isCaseImpl(s, isLowerAscii, skipNonAlpha)
 
 proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
@@ -199,15 +239,22 @@ proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
   ##
   ## For either value of ``skipNonAlpha``, returns false if ``s`` is
   ## an empty string.
+  runnableExamples:
+    doAssert isUpperAscii("1FOO", false) == false
+    doAssert isUpperAscii("1FOO", true) == true
+    doAssert isUpperAscii("1Foo", true) == false
   isCaseImpl(s, isUpperAscii, skipNonAlpha)
 
 proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =
-  ## Converts `c` into lower case.
+  ## Returns the lower case version of ``c``.
   ##
   ## This works only for the letters ``A-Z``. See `unicode.toLower
   ## <unicode.html#toLower>`_ for a version that works for any Unicode
   ## character.
+  runnableExamples:
+    doAssert toLowerAscii('A') == 'a'
+    doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
     result = chr(ord(c) + (ord('a') - ord('A')))
   else:
@@ -225,6 +272,8 @@ proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
   ## This works only for the letters ``A-Z``. See `unicode.toLower
   ## <unicode.html#toLower>`_ for a version that works for any Unicode
   ## character.
+  runnableExamples:
+    doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
 proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
@@ -234,6 +283,9 @@ proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
   ## <unicode.html#toUpper>`_ for a version that works for any Unicode
   ## character.
+  runnableExamples:
+    doAssert toLowerAscii('a') == 'A'
+    doAssert toLowerAscii('E') == 'E'
   if c in {'a'..'z'}:
     result = chr(ord(c) - (ord('a') - ord('A')))
   else:
@@ -246,6 +298,8 @@ proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
   ## This works only for the letters ``A-Z``.  See `unicode.toUpper
   ## <unicode.html#toUpper>`_ for a version that works for any Unicode
   ## character.
+  runnableExamples:
+    doAssert toLowerAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
 proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
@@ -253,6 +307,9 @@ proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
   ## Converts the first character of `s` into upper case.
   ##
   ## This works only for the letters ``A-Z``.
+  runnableExamples:
+    doAssert capitalizeAscii("foo") == "Foo"
+    doAssert capitalizeAscii("-bar") == "-bar"
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
@@ -262,6 +319,9 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   ##
   ## That means to convert it to lower case and remove any '_'. This
   ## should NOT be used to normalize Nim identifier names.
+  runnableExamples:
+    doAssert normalize("Foo_bar") == "foobar"
+    doAssert normalize("Foo Bar") == "foo bar"
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -280,6 +340,10 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
   ## | 0 iff a == b
   ## | < 0 iff a < b
   ## | > 0 iff a > b
+  runnableExamples:
+    doAssert cmpIgnoreCase("FooBar", "foobar") == 0
+    doAssert cmpIgnoreCase("bar", "Foo") < 0
+    doAssert cmpIgnoreCase("Foo5", "foo4") > 0
   var i = 0
   var m = min(a.len, b.len)
   while i < m:
@@ -301,6 +365,9 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   ## | 0 iff a == b
   ## | < 0 iff a < b
   ## | > 0 iff a > b
+  runnableExamples:
+    doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
+    doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
   var i = 0
   var j = 0
   while true:
@@ -330,6 +397,10 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
   ## If both are false, the string is returned unchanged.
+  runnableExamples:
+    doAssert strip(" foo\t") == "foo"
+    doAssert strip("1foo2018", leading=false, chars=Digits) == "1foo"
+    doAssert strip(" 2018__foo!", trailing=false, chars=AllChars - Letters) == "foo!"
   var
     first = 0
     last = len(s)-1
@@ -344,6 +415,8 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   ##
   ## The resulting string may not have a leading zero. Its length is always
   ## exactly 3.
+  runnableExamples:
+    doAssert toOctal('!') == "041" 
   result = newString(3)
   var val = ord(c)
   for i in countdown(2, 0):
