@@ -88,6 +88,7 @@ doc/nimsuggest.rst
 doc/nep1.rst
 doc/nims.rst
 doc/contributing.rst
+doc/codeowners.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
