@@ -2,6 +2,7 @@ discard """
   file: "tcasestmt.nim"
   output:
 '''
+Not found!
 Found!
 1
 compiles for 1
