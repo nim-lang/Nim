@@ -1,4 +1,4 @@
-import algorithm, future
+import algorithm, sugar
 
 type Deck = object
   value: int
