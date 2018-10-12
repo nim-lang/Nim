@@ -15,6 +15,7 @@ discard """
 1
 2
 3
+2
 48
 49
 50
@@ -96,6 +97,10 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+
+type seqqType = ptr UncheckedArray[int]
+let qData = cast[seqqType](addr seqq[0])
+oaFirstElm(toOpenArray(qData, 1, 3))
 
 proc foo(a: openArray[byte]) =
   for x in a: echo x
