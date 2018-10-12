@@ -1,7 +1,5 @@
 discard """
-  file: "tusertypeclasses.nim"
-  output: '''
-Sortable
+  output: '''Sortable
 Sortable
 Container
 TObj
@@ -13,147 +11,118 @@ int
 
 import typetraits
 
+template reject(expr) = assert(not compiles(x))
 
-block one:
-  template reject(expr) = assert(not compiles(x))
+type
+  TObj = object
+    x: int
 
-  type
-    TObj = object
-      x: int
+  JSonValue = object
+    val: string
 
-    JSonValue = object
-      val: string
+  Sortable = concept x, y
+    (x < y) is bool
 
-    Sortable = concept x, y
-      (x < y) is bool
+  ObjectContainer = concept C
+    C.len is Ordinal
+    for v in items(C):
+      v.type is tuple|object
 
-    ObjectContainer = concept C
-      C.len is Ordinal
-      for v in items(C):
-        v.type is tuple|object
+proc foo(c: ObjectContainer) =
+  echo "Container"
 
-  proc foo(c: ObjectContainer) =
-    echo "Container"
+proc foo(x: Sortable) =
+  echo "Sortable"
 
-  proc foo(x: Sortable) =
-    echo "Sortable"
+foo 10
+foo "test"
+foo(@[TObj(x: 10), TObj(x: 20)])
 
-  foo 10
-  foo "test"
-  foo(@[TObj(x: 10), TObj(x: 20)])
+proc intval(x: int): int = 10
 
-  proc intval(x: int): int = 10
+type
+  TFoo = concept o, type T, ref r, var v, ptr p, static s
+    o.x
+    y(o) is int
 
-  type
-    TFoo = concept o, type T, ref r, var v, ptr p, static s
-      o.x
-      y(o) is int
+    var str: string
+    var intref: ref int
 
-      var str: string
-      var intref: ref int
+    refproc(ref T, ref int)
+    varproc(var T)
+    ptrproc(ptr T, str)
 
-      refproc(ref T, ref int)
-      varproc(var T)
-      ptrproc(ptr T, str)
+    staticproc(static[T])
 
-      staticproc(static[T])
+    typeproc T
+    T.typeproc
+    typeproc o.type
+    o.type.typeproc
 
-      typeproc T
-      T.typeproc
-      typeproc o.type
-      o.type.typeproc
+    o.to(type string)
+    o.to(type JsonValue)
 
-      o.to(type string)
-      o.to(type JsonValue)
+    refproc(r, intref)
+    varproc(v)
+    p.ptrproc(string)
+    staticproc s
+    typeproc(T)
 
-      refproc(r, intref)
-      varproc(v)
-      p.ptrproc(string)
-      staticproc s
-      typeproc(T)
+    const TypeName = T.name
+    type MappedType = type(o.y)
 
-      const TypeName = T.name
-      type MappedType = type(o.y)
+    intval y(o)
+    let z = intval(o.y)
 
-      intval y(o)
-      let z = intval(o.y)
+    static:
+      assert T.name.len == 4
+      reject o.name
+      reject o.typeproc
+      reject staticproc(o)
+      reject o.varproc
+      reject T.staticproc
+      reject p.staticproc
 
-      static:
-        assert T.name.len == 4
-        reject o.name
-        reject o.typeproc
-        reject staticproc(o)
-        reject o.varproc
-        reject T.staticproc
-        reject p.staticproc
+proc y(x: TObj): int = 10
 
-  proc y(x: TObj): int = 10
+proc varproc(x: var TObj) = discard
+proc refproc(x: ref TObj, y: ref int) = discard
+proc ptrproc(x: ptr TObj, y: string) = discard
+proc staticproc(x: static[TObj]) = discard
+proc typeproc(t: type TObj) = discard
+proc to(x: TObj, t: type string) = discard
+proc to(x: TObj, t: type JSonValue) = discard
 
-  proc varproc(x: var TObj) = discard
-  proc refproc(x: ref TObj, y: ref int) = discard
-  proc ptrproc(x: ptr TObj, y: string) = discard
-  proc staticproc(x: static[TObj]) = discard
-  proc typeproc(t: type TObj) = discard
-  proc to(x: TObj, t: type string) = discard
-  proc to(x: TObj, t: type JSonValue) = discard
+proc testFoo(x: TFoo) =
+  echo x.TypeName
+  echo x.MappedType.name
 
-  proc testFoo(x: TFoo) =
-    echo x.TypeName
-    echo x.MappedType.name
+testFoo(TObj(x: 10))
 
-  testFoo(TObj(x: 10))
+# bug #7092
 
-  # bug #7092
+type stringTest = concept x
+  x is string
 
-  type stringTest = concept x
-    x is string
+let usedToFail: stringTest = "111"
+let working: string = "111"
 
-  let usedToFail: stringTest = "111"
-  let working: string = "111"
+echo usedToFail, " ", working
 
-  echo usedToFail, " ", working
+# bug #5868
 
-  # bug #5868
+type TaggedType[T; Key: static[string]] = T
 
-  type TaggedType[T; Key: static[string]] = T
+proc setKey*[DT](dt: DT, key: static[string]): TaggedType[DT, key] =
+  result = cast[type(result)](dt)
 
-  proc setKey[DT](dt: DT, key: static[string]): TaggedType[DT, key] =
-    result = cast[type(result)](dt)
+type Students = object
+   id : seq[int]
+   name : seq[string]
+   age: seq[int]
 
-  type Students = object
-    id : seq[int]
-    name : seq[string]
-    age: seq[int]
+let
+  stud = Students(id : @[1,2,3], name : @["Vas", "Pas", "NafNaf"], age : @[10,16,18])
+  stud2 = stud.setkey("id")
 
-  let
-    stud = Students(id: @[1,2,3], name: @["Vas", "Pas", "NafNaf"], age: @[10,16,18])
-    stud2 = stud.setkey("id")
-
-  echo stud2
-
-
-
-block two:
-  type
-    hasFieldX = concept z
-      z.x is int
-
-    obj_x = object
-      x: int
-
-    ref_obj_x = ref object
-      x: int
-
-    ref_to_obj_x = ref obj_x
-
-    p_o_x = ptr obj_x
-    v_o_x = var obj_x
-
-  template check(x) =
-    static: assert(x)
-
-  check obj_x is hasFieldX
-  check ref_obj_x is hasFieldX
-  check ref_to_obj_x is hasFieldX
-  check p_o_x is hasFieldX
-  check v_o_x is hasFieldX
+echo stud2
