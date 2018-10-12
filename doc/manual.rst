@@ -3037,7 +3037,7 @@ The `case expression` is again very similar to the case statement:
 
 As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
-the last expression as the result value, much like in an `expr` template.
+the last expression as the result value.
 
 Table constructor
 -----------------
@@ -4611,8 +4611,8 @@ The concept types can be parametric just like the regular generic types:
     M.data[m * M.N + n] = v
 
   # Adapt the Matrix type to the concept's requirements
-  template Rows*(M: type Matrix): expr = M.M
-  template Cols*(M: type Matrix): expr = M.N
+  template Rows*(M: type Matrix): int = M.M
+  template Cols*(M: type Matrix): int = M.N
   template ValueType*(M: type Matrix): type = M.T
 
   -------------
@@ -5036,9 +5036,8 @@ an ``immediate`` pragma and then these templates do not take part in
 overloading resolution and the parameters' types are *ignored* by the
 compiler. Explicit immediate templates are now deprecated.
 
-**Note**: For historical reasons ``stmt`` is an alias for ``typed`` and
-``expr`` an alias for ``untyped``, but new code should use the newer,
-clearer names.
+**Note**: For historical reasons ``stmt`` was an alias for ``typed`` and
+``expr`` was an alias for ``untyped``, but they are removed.
 
 
 Passing a code block to a template
@@ -5128,9 +5127,6 @@ also ``varargs[untyped]`` so that not even the number of parameters is fixed:
 
 However, since a template cannot iterate over varargs, this feature is
 generally much more useful for macros.
-
-**Note**: For historical reasons ``varargs[expr]`` is not equivalent
-to ``varargs[untyped]``.
 
 
 Symbol binding in templates
