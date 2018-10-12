@@ -646,18 +646,6 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mNone:
         # If it has no sideEffect, it should be evaluated. But not here.
         return
-      of mSizeOf:
-        var a = n.sons[1]
-        if computeSize(g.config, a.typ) < 0:
-          localError(g.config, a.info, "cannot evaluate 'sizeof' because its type is not defined completely")
-          result = nil
-        elif skipTypes(a.typ, typedescInst+{tyRange, tyArray}).kind in
-             IntegralTypes+NilableTypes+{tySet}:
-          #{tyArray,tyObject,tyTuple}:
-          result = newIntNodeT(getSize(g.config, a.typ), n, g)
-        else:
-          result = nil
-          # XXX: size computation for complex types is still wrong
       of mLow:
         result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
       of mHigh:

@@ -238,6 +238,7 @@ proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
+
   result = t.kind == tyObject and t.sons[0] == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
@@ -1142,7 +1143,6 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): PType =
   if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, flags)
-    #if not result: debug(n.typ)
     if result == nil:
       case n.kind
       of nkNone..nkNilLit:
@@ -1266,196 +1266,24 @@ proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PTyp
   var marker = initIntSet()
   result = typeAllowedAux(marker, t, kind, flags)
 
-proc align(address, alignment: BiggestInt): BiggestInt =
-  result = (address + (alignment - 1)) and not (alignment - 1)
-
-const
-  szNonConcreteType* = -3
-  szIllegalRecursion* = -2
-  szUnknownSize* = -1
-
-proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt
-proc computeRecSizeAux(conf: ConfigRef; n: PNode, a, currOffset: var BiggestInt): BiggestInt =
-  var maxAlign, maxSize, b, res: BiggestInt
-  case n.kind
-  of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    result = computeRecSizeAux(conf, n.sons[0], a, currOffset)
-    maxSize = 0
-    maxAlign = 1
-    for i in countup(1, sonsLen(n) - 1):
-      case n.sons[i].kind
-      of nkOfBranch, nkElse:
-        res = computeRecSizeAux(conf, lastSon(n.sons[i]), b, currOffset)
-        if res < 0: return res
-        maxSize = max(maxSize, res)
-        maxAlign = max(maxAlign, b)
-      else:
-        return szIllegalRecursion
-    currOffset = align(currOffset, maxAlign) + maxSize
-    result = align(result, maxAlign) + maxSize
-    a = maxAlign
-  of nkRecList:
-    result = 0
-    maxAlign = 1
-    for i in countup(0, sonsLen(n) - 1):
-      res = computeRecSizeAux(conf, n.sons[i], b, currOffset)
-      if res < 0: return res
-      currOffset = align(currOffset, b) + res
-      result = align(result, b) + res
-      if b > maxAlign: maxAlign = b
-    a = maxAlign
-  of nkSym:
-    result = computeSizeAux(conf, n.sym.typ, a)
-    n.sym.offset = int(currOffset)
-  else:
-    a = 1
-    result = szNonConcreteType
-
-proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt =
-  var res, maxAlign, length, currOffset: BiggestInt
-  if typ.size == szIllegalRecursion:
-    # we are already computing the size of the type
-    # --> illegal recursion in type
-    return szIllegalRecursion
-  if typ.size >= 0:
-    # size already computed
-    result = typ.size
-    a = typ.align
-    return
-  typ.size = szIllegalRecursion # mark as being computed
-  case typ.kind
-  of tyInt, tyUInt:
-    result = conf.target.intSize
-    a = result
-  of tyInt8, tyUInt8, tyBool, tyChar:
-    result = 1
-    a = result
-  of tyInt16, tyUInt16:
-    result = 2
-    a = result
-  of tyInt32, tyUInt32, tyFloat32:
-    result = 4
-    a = result
-  of tyInt64, tyUInt64, tyFloat64:
-    result = 8
-    a = result
-  of tyFloat128:
-    result = 16
-    a = result
-  of tyFloat:
-    result = conf.target.floatSize
-    a = result
-  of tyProc:
-    if typ.callConv == ccClosure: result = 2 * conf.target.ptrSize
-    else: result = conf.target.ptrSize
-    a = conf.target.ptrSize
-  of tyString:
-    if tfHasAsgn in typ.flags:
-      result = conf.target.ptrSize * 2
-    else:
-      result = conf.target.ptrSize
-  of tyNil:
-    result = conf.target.ptrSize
-    a = result
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
-    let base = typ.lastSon
-    if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
-      result = szIllegalRecursion
-    else:
-      if typ.kind == tySequence and tfHasAsgn in typ.flags:
-        result = conf.target.ptrSize * 2
-      else:
-        result = conf.target.ptrSize
-    a = result
-  of tyArray:
-    let elemSize = computeSizeAux(conf, typ.sons[1], a)
-    if elemSize < 0: return elemSize
-    result = lengthOrd(conf, typ.sons[0]) * elemSize
-  of tyEnum:
-    if firstOrd(conf, typ) < 0:
-      result = 4              # use signed int32
-    else:
-      length = lastOrd(conf, typ)   # BUGFIX: use lastOrd!
-      if length + 1 < `shl`(1, 8): result = 1
-      elif length + 1 < `shl`(1, 16): result = 2
-      elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
-      else: result = 8
-    a = result
-  of tySet:
-    if typ.sons[0].kind == tyGenericParam:
-      result = szUnknownSize
-    else:
-      length = lengthOrd(conf, typ.sons[0])
-      if length <= 8: result = 1
-      elif length <= 16: result = 2
-      elif length <= 32: result = 4
-      elif length <= 64: result = 8
-      elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
-      else: result = align(length, 8) div 8 + 1
-    a = result
-  of tyRange:
-    result = computeSizeAux(conf, typ.sons[0], a)
-  of tyTuple:
-    result = 0
-    maxAlign = 1
-    for i in countup(0, sonsLen(typ) - 1):
-      res = computeSizeAux(conf, typ.sons[i], a)
-      if res < 0: return res
-      maxAlign = max(maxAlign, a)
-      result = align(result, a) + res
-    result = align(result, maxAlign)
-    a = maxAlign
-  of tyObject:
-    if typ.sons[0] != nil:
-      result = computeSizeAux(conf, typ.sons[0].skipTypes(skipPtrs), a)
-      if result < 0: return
-      maxAlign = a
-    elif isObjectWithTypeFieldPredicate(typ):
-      result = conf.target.intSize
-      maxAlign = result
-    else:
-      result = 0
-      maxAlign = 1
-    currOffset = result
-    result = computeRecSizeAux(conf, typ.n, a, currOffset)
-    if result < 0: return
-    if a < maxAlign: a = maxAlign
-    result = align(result, a)
-  of tyInferred:
-    if typ.len > 1:
-      result = computeSizeAux(conf, typ.lastSon, a)
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink:
-    result = computeSizeAux(conf, lastSon(typ), a)
-  of tyTypeClasses:
-    result = if typ.isResolvedUserTypeClass: computeSizeAux(conf, typ.lastSon, a)
-             else: szUnknownSize
-  of tyTypeDesc:
-    result = computeSizeAux(conf, typ.base, a)
-  of tyForward: return szIllegalRecursion
-  of tyStatic:
-    result = if typ.n != nil: computeSizeAux(conf, typ.lastSon, a)
-             else: szUnknownSize
-  of tyUncheckedArray:
-    result = 0
-  else:
-    #internalError("computeSizeAux()")
-    result = szUnknownSize
-  typ.size = result
-  typ.align = int16(a)
+include sizealignoffsetimpl
 
 proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
-  var a: BiggestInt = 1
-  result = computeSizeAux(conf, typ, a)
+  computeSizeAlign(conf, typ)
+  result = typ.size
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
   assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
+proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
+  computeSizeAlign(conf, typ)
+  result = typ.align
+
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
-  result = computeSize(conf, typ)
-  if result < 0: internalError(conf, "getSize: " & $typ.kind)
+  computeSizeAlign(conf, typ)
+  result = typ.size
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind
