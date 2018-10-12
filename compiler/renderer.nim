@@ -319,7 +319,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
     let enumfields = typ.n
     # we need a slow linear search because of enums with holes:
     for e in items(enumfields):
-      if e.sym.position == x: 
+      if e.sym.position == x:
         result &= e.sym.name.s
         return
 
@@ -868,19 +868,19 @@ proc isBracket*(n: PNode): bool =
   of nkSym: result = n.sym.name.s == "[]"
   else: result = false
 
-proc skipHiddenNodes(n: PNode): PNode = 
+proc skipHiddenNodes(n: PNode): PNode =
   result = n
   while result != nil:
-    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and result.len > 1: 
+    if result.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and result.len > 1:
       result = result[1]
     elif result.kind in {nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString} and
-        result.len > 0: 
+        result.len > 0:
       result = result[0]
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
   if n == nil: return
-  let isOperator = 
+  let isOperator =
     if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in OpChars: true
     elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in OpChars: true
     else: false
@@ -900,7 +900,7 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if n_next.kind == nkInfix:
     if n_next[0].kind in {nkSym, nkIdent} and n[0].kind in {nkSym, nkIdent}:
       let nextId = if n_next[0].kind == nkSym: n_next[0].sym.name else: n_next[0].ident
-      let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident     
+      let nnId = if n[0].kind == nkSym: n[0].sym.name else: n[0].ident
       if getPrecedence(nextId) < getPrecedence(nnId):
         needsParenthesis = true
   if needsParenthesis:
@@ -908,7 +908,7 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   gsub(g, n, i)
   if needsParenthesis:
     put(g, tkParRi, ")")
-  
+
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
@@ -1115,7 +1115,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    if not fits(g, lsub(g, n.sons[2]) + lsub(g, n.sons[0]) + 1):
+    if n.len == 3 and not fits(g, lsub(g, n.sons[2]) + lsub(g, n.sons[0]) + 1):
       optNL(g, g.indent + longIndentWid)
     else:
       put(g, tkSpaces, Space)
