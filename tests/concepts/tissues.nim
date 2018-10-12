@@ -23,6 +23,7 @@ p has been called.
 p has been called.
 implicit generic
 generic
+false
 true
 -1
 Meow
@@ -418,7 +419,3 @@ block misc_issues:
 
   var a: Thing = Cat()
   a.sayHello()
-
-
-
-  
