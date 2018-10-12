@@ -1,5 +1,6 @@
 discard """
-  output: '''yeah A enumB
+  output: '''
+yeah A enumB
 yeah A enumB
 yeah CD enumD
 yeah CD enumE
@@ -10,7 +11,8 @@ yeah A enumB
 yeah B enumC
 yeah A enumB
 yeah A enumB
-yeah A enumB'''
+yeah A enumB
+'''
 """
 
 type
