@@ -1,3 +1,16 @@
+Contributing
+============
+
+Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
+reviewed before it can be merged and the Continuous Integration should be green.
+
+The PR has to be approved (and is often merged too) by one "code owner", either
+by the code owner who is responsible for the subsystem the PR belongs to or by
+two core developers or by Araq.
+
+See `codeowners <codeowners.html>`_ for more details.
+
+
 Writing tests
 =============
 
@@ -6,7 +19,7 @@ There are 3 types of tests:
 1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
    These end up in documentation and ensure documentation stays in sync with code.
 
-2. tests in `when isMainModule:` block, ran by ``nim c mymod.nim``
+2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
 3. testament tests, eg: tests/stdlib/tospaths.nim (only used for Nim repo).
@@ -146,18 +159,8 @@ tell you if any new tests passed/failed.
 Deprecation
 ===========
 
-Backward compatibility is important, so if you are renaming a routine
-(proc/template/macro/iterator) or a type you can use:
-
-.. code-block:: nim
-
-  {.deprecated: [oldName: new_name].}
-
-This form may enable future automated tooling to upgrade code (eg nimfix, which
-was used in the past for nimrod -> nim migration).
-
-Besides pure renamings (eg when parameters change) you can mark a symbol as
-deprecated using the following:
+Backward compatibility is important, so instead of a rename you need to deprecate
+the old name and introduce a new name:
 
 .. code-block:: nim
 
@@ -169,9 +172,6 @@ deprecated using the following:
 
   # for enum types ``deprecated`` is not yet supported.
 
-Note that currently the ``deprecated`` statement does not work well with
-overloading so for routines the latter variant is better.
-
 
 See also `Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
 pragma in the manual.
@@ -180,8 +180,8 @@ pragma in the manual.
 Documentation
 =============
 
-When contributing new procedures, be sure to add documentation, especially if
-the procedure is public. Documentation begins on the line
+When contributing new procs, be sure to add documentation, especially if
+the proc is public. Documentation begins on the line
 following the ``proc`` definition, and is prefixed by ``##`` on each line.
 
 Runnable code examples are also encouraged, to show typical behavior with a few
@@ -194,7 +194,7 @@ as well as ``testament`` and guarantee they stay in sync.
     ## Adds "Bar" to ``a``.
     runnableExamples:
       doAssert "baz".addBar == "bazBar"
-     
+
      result = a & "Bar"
 
 See `parentDir <https://nim-lang.github.io/Nim/ospaths.html#parentDir%2Cstring>`_

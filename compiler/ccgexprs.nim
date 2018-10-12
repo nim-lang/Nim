@@ -169,7 +169,7 @@ proc canMove(p: BProc, n: PNode): bool =
   #  result = false
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
-  if dest.storage == OnStack or not usesWriteBarrier(p.config):
+  if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
     # location is on heap
@@ -265,7 +265,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         rdLoc(dest), rdLoc(src))
   elif needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
-    if dest.storage == OnStack or not usesWriteBarrier(p.config):
+    if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
       linefmt(p, cpsStmts,
            "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, sizeof($3));$n",
            addrLoc(p.config, dest), addrLoc(p.config, src), rdLoc(dest))
@@ -302,7 +302,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
       genRefAssign(p, dest, src, flags)
     else:
-      if dest.storage == OnStack or not usesWriteBarrier(p.config):
+      if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
       elif dest.storage == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
@@ -1193,13 +1193,19 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
 
   let args = [getTypeDesc(p.module, typ), ti, sizeExpr]
   if a.storage == OnHeap and usesWriteBarrier(p.config):
-    # use newObjRC1 as an optimization
     if canFormAcycle(a.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
     else:
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", a.rdLoc)
-    b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
-    linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
+    if p.config.selectedGC == gcGo:
+      # newObjRC1() would clash with unsureAsgnRef() - which is used by gcGo to
+      # implement the write barrier
+      b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
+      linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n", addrLoc(p.config, a), b.rdLoc)
+    else:
+      # use newObjRC1 as an optimization
+      b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
+      linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
   else:
     b.r = ropecg(p.module, "($1) #newObj($2, $3)", args)
     genAssignment(p, a, b, {})  # set the object type:
@@ -1229,8 +1235,13 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
     else:
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     if not lenIsZero:
-      call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
-      linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
+      if p.config.selectedGC == gcGo:
+        # we need the write barrier
+        call.r = ropecg(p.module, "($1) #newSeq($2, $3)", args)
+        linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n", addrLoc(p.config, dest), call.rdLoc)
+      else:
+        call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
+        linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
   else:
     if lenIsZero:
       call.r = rope"NIM_NIL"
@@ -1533,8 +1544,19 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var typ = skipTypes(a.typ, abstractVar + tyUserTypeClasses)
   case typ.kind
   of tyOpenArray, tyVarargs:
-    if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
-    else: unaryExpr(p, e, d, "$1Len_0")
+    # Bug #9279, len(toOpenArray()) has to work:
+    if a.kind in nkCallKinds and a[0].kind == nkSym and a[0].sym.magic == mSlice:
+      # magic: pass slice to openArray:
+      var b, c: TLoc
+      initLocExpr(p, a[2], b)
+      initLocExpr(p, a[3], c)
+      if op == mHigh:
+        putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)", [rdLoc(b), rdLoc(c)]))
+      else:
+        putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)+1", [rdLoc(b), rdLoc(c)]))
+    else:
+      if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
+      else: unaryExpr(p, e, d, "$1Len_0")
   of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
@@ -2020,6 +2042,9 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
+  of mSlice:
+    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
+      " 'toOpenArray' is only valid within a call expression")
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind

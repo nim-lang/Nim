@@ -297,15 +297,10 @@ func sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
-func sort*[T](a: var openArray[T], order = SortOrder.Ascending) =
-  ## sorts an openarray in-place with a default lexicographical ordering.
-  runnableExamples:
-    var s = @[1,3,2,5,4]
-    s.sort
-    doAssert s == @[1,2,3,4,5]
-  sort(a, system.cmp, order)
+proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, system.cmp[T], order)
+  ## Shortcut version of ``sort`` that uses ``system.cmp[T]`` as the comparison function.
 
-func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## returns ``a`` sorted by ``cmp`` in the specified ``order``.
   runnableExamples:
@@ -320,14 +315,9 @@ func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
     result[i] = a[i]
   sort(result, cmp, order)
 
-func sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
-  ## returns ``a`` sorted with default lexicographical ordering.
-  runnableExamples:
-    let orig = @[2,3,1,2]
-    let copy = orig.sorted()
-    doAssert orig == @[2,3,1,2]
-    doAssert copy == @[1,2,2,3]
-  return sorted(a, system.cmp, order)
+proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
+  ## Shortcut version of ``sorted`` that uses ``system.cmp[T]`` as the comparison function.
+  sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
@@ -373,12 +363,9 @@ func isSorted*[T](a: openArray[T],
     if cmp(a[i],a[i+1]) * order > 0:
       return false
 
-func isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
-  ## checks whether ``a`` is sorted with a default lexicographical ordering.
-  runnableExamples:
-    let test = @[1,1,2,3,5,8]
-    doAssert test.isSorted()
-  result = isSorted(a, system.cmp, order)
+proc isSorted*[T](a: openarray[T], order = SortOrder.Ascending): bool =
+  ## Shortcut version of ``isSorted`` that uses ``system.cmp[T]`` as the comparison function.
+  isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity

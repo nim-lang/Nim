@@ -25,6 +25,7 @@ discard """
 55
 56
 57
+2
 '''
 """
 
@@ -102,3 +103,17 @@ proc foo(a: openArray[byte]) =
 
 let str = "0123456789"
 foo(toOpenArrayByte(str, 0, str.high))
+
+
+template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
+  toOpenarray(x, max(0, first), min(x.high, last))
+
+# bug #9281
+
+proc foo[T](x: openarray[T]) =
+  echo x.len
+
+let a = @[1, 2, 3]
+
+# a.boundedOpenArray(1, 2).foo()  # Works
+echo a.boundedOpenArray(1, 2).len # Internal compiler error
