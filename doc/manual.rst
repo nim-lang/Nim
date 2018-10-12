@@ -5036,8 +5036,8 @@ an ``immediate`` pragma and then these templates do not take part in
 overloading resolution and the parameters' types are *ignored* by the
 compiler. Explicit immediate templates are now deprecated.
 
-**Note**: For historical reasons ``stmt`` was an alias for ``typed`` and
-``expr`` was an alias for ``untyped``, but they are removed.
+**Note**: For historical reasons ``stmt`` was an alias for ``untyped`` and
+``expr`` was an alias for ``typed``, but they are removed.
 
 
 Passing a code block to a template
