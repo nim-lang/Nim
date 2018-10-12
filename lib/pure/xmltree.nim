@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## A simple XML tree. More efficient and simpler than the DOM.
+## A simple XML tree.
 
 import macros, strtabs, strutils
 

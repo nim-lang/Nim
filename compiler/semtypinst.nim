@@ -373,12 +373,17 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         else:
           newbody.lastSon.typeInst = result
     cl.c.typesWithOps.add((newbody, result))
-    let methods = skipTypes(bbody, abstractPtrs).methods
-    for col, meth in items(methods):
-      # we instantiate the known methods belonging to that type, this causes
-      # them to be registered and that's enough, so we 'discard' the result.
-      discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
-        attachedAsgn, col)
+    let mm = skipTypes(bbody, abstractPtrs)
+    if tfFromGeneric notin mm.flags:
+      # bug #5479, prevent endless recursions here:
+      incl mm.flags, tfFromGeneric
+      let methods = mm.methods
+      for col, meth in items(methods):
+        # we instantiate the known methods belonging to that type, this causes
+        # them to be registered and that's enough, so we 'discard' the result.
+        discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
+          attachedAsgn, col)
+      excl mm.flags, tfFromGeneric
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really

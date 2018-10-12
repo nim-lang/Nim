@@ -598,14 +598,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        if c.config.projectPath.isEmpty:
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
-        else:
-          # XXX this is still suspicous:
-          let dir = toFullPath(c.config, n.info).splitFile.dir
-          let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
-                    else: RelativeFile(x.strVal)
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
@@ -730,13 +723,13 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     result = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds + {nkIdent}:
+  elif n.kind in nkPragmaCallKinds:
     result = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
   else:

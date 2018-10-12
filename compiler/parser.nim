@@ -1578,7 +1578,6 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
     colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
-    if b.kind == nkFinally: break
   if b == nil: parMessage(p, "expected 'except'")
 
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =

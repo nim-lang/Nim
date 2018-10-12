@@ -98,7 +98,7 @@ type
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
     ntyUnused0, ntyUnused1, ntyUnused2,
     ntyVarargs,
-    ntyUnused,
+    ntyUncheckedArray,
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
@@ -1275,7 +1275,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
 
-macro expandMacros*(body: typed): untyped =
+macro expandMacros*(body: typed): typed =
   ## Expands one level of macro - useful for debugging.
   ## Can be used to inspect what happens when a macro call is expanded,
   ## without altering its result.
@@ -1294,10 +1294,8 @@ macro expandMacros*(body: typed): untyped =
   ## will actually dump `x + y`, but at the same time will print at
   ## compile time the expansion of the ``dump`` macro, which in this
   ## case is ``debugEcho ["x + y", " = ", x + y]``.
-  template inner(x: untyped): untyped = x
-
-  result = getAst(inner(body))
-  echo result.toStrLit
+  echo body.toStrLit
+  result = body
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
@@ -1432,5 +1430,7 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
     result.add args[i]
 
 proc getProjectPath*(): string = discard
-  ## Returns the path to the currently compiling project
+  ## Returns the path to the currently compiling project, not to
+  ## be confused with ``system.currentSourcePath`` which returns
+  ## the path of the current module.
 

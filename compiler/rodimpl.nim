@@ -34,10 +34,10 @@ proc encodeConfig(g: ModuleGraph): string =
 
   depConfigFields(serialize)
 
-proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
+proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
                     cycleCheck: var IntSet): bool =
   let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
-    fullpath)
+    fullpath.string)
   if root[0].len == 0: return true
   if root[1] != hashFileCached(g.config, fileIdx, fullpath):
     return true
@@ -47,22 +47,23 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: string;
   # check dependencies (recursively):
   for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
                          root[0]):
-    let dep = row[0]
+    let dep = AbsoluteFile row[0]
     if needsRecompile(g, g.config.fileInfoIdx(dep), dep, cycleCheck):
       return true
   return false
 
-proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
+proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
+  ## Analyse the known dependency graph.
   if g.config.symbolFiles in {disabledSf, writeOnlySf} or
      g.incr.configChanged:
     return getID()
   let module = g.incr.db.getRow(
-    sql"select id, fullHash, nimid from modules where fullpath = ?", fullpath)
+    sql"select id, fullHash, nimid from modules where fullpath = ?", string fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
   if module[0].len == 0:
     result = getID()
     db.exec(sql"insert into modules(fullpath, interfHash, fullHash, nimid) values (?, ?, ?, ?)",
-      fullpath, "", currentFullhash, result)
+      string fullpath, "", currentFullhash, result)
   else:
     result = parseInt(module[2])
     if currentFullhash == module[1]:
@@ -70,7 +71,7 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: string): int =
       doAssert(result != 0)
       var cycleCheck = initIntSet()
       if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
-        echo "cached successfully! ", fullpath
+        echo "cached successfully! ", string fullpath
         return -result
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
     db.exec(sql"delete from deps where module = ?", module[0])
@@ -792,7 +793,7 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
         internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
-        var cf = Cfile(cname: n[1].strVal, obj: n[2].strVal,
+        var cf = Cfile(cname: AbsoluteFile n[1].strVal, obj: AbsoluteFile n[2].strVal,
                        flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
@@ -841,7 +842,7 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
   of nkImportStmt:
     for x in n:
       internalAssert g.config, x.kind == nkStrLit
-      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, n[0].strVal))
+      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, AbsoluteFile n[0].strVal))
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
@@ -864,20 +865,21 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf: return
   g.recordStmt = recordStmt
-  let dbfile = getNimcacheDir(g.config) / "rodfiles.db"
+  let dbfile = getNimcacheDir(g.config) / RelativeFile"rodfiles.db"
   if g.config.symbolFiles == writeOnlySf:
     removeFile(dbfile)
   if not fileExists(dbfile):
-    db = open(connection=dbfile, user="nim", password="",
+    db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     createDb(db)
     db.exec(sql"insert into config(config) values (?)", encodeConfig(g))
   else:
-    db = open(connection=dbfile, user="nim", password="",
+    db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     let oldConfig = db.getValue(sql"select config from config")
     g.incr.configChanged = oldConfig != encodeConfig(g)
   db.exec(sql"pragma journal_mode=off")
+  # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")
   db.exec(sql"pragma LOCKING_MODE=exclusive")
   let lastId = db.getValue(sql"select max(idgen) from controlblock")

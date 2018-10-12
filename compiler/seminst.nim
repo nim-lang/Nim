@@ -348,7 +348,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let gp = n.sons[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
-  pushInfoContext(c.config, info)
+  pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
   # we need to compare both the generic types and the concrete types:

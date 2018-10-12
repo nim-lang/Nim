@@ -122,6 +122,8 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
                                s+1))
       result.reserved = s
+      when defined(gogc):
+        result.elemSize = 1
     else:
       result = rawNewStringNoInit(src.len)
     result.len = src.len

@@ -9,6 +9,7 @@ const
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
+  docHackDir = "tools/dochack"
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -150,8 +151,6 @@ lib/pure/smtp.nim
 lib/impure/ssl.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
-lib/pure/xmldom.nim
-lib/pure/xmldomparser.nim
 lib/pure/xmlparser.nim
 lib/pure/htmlparser.nim
 lib/pure/xmltree.nim
@@ -161,6 +160,7 @@ lib/pure/json.nim
 lib/pure/base64.nim
 lib/pure/scgi.nim
 lib/impure/nre.nim
+lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
 lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
@@ -269,8 +269,6 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
-proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
-
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   var
@@ -327,11 +325,15 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
 proc buildJS() =
   exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim() & " js tools/dochack/dochack.nim")
+  exec(findNim() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
-  let a = nimArgs & " " & args
-  buildJS()
+  let
+    a = nimArgs & " " & args
+    docHackJs = "dochack.js"
+    docHackJsSource = docHackDir / "nimcache" / docHackJs
+    docHackJsDest = docHtmlOutput / docHackJs
+  buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
   buildDocSamples(a, docup)
@@ -342,3 +344,5 @@ proc buildDocs*(args: string) =
   createDir(docHtmlOutput)
   buildDocSamples(nimArgs, docHtmlOutput)
   buildDoc(nimArgs, docHtmlOutput)
+  copyFile(docHackJsSource, docHackJsDest)
+  copyFile(docHackJsSource, docup / docHackJs)

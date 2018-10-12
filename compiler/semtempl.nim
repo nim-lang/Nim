@@ -493,7 +493,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     else:
       result = semTemplBodySons(c, n)
   of nkCallKinds-{nkPostfix}:
-    result = semTemplBodySons(c, n)
+    # do not transform runnableExamples (bug #9143)
+    if not isRunnableExamples(n[0]):
+      result = semTemplBodySons(c, n)
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

@@ -177,7 +177,7 @@ proc processBody(node, retFutureSym: NimNode,
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard, node)
-  of RoutineNodes:
+  of RoutineNodes-{nnkTemplateDef}:
     # skip all the nested procedure definitions
     return
   else: discard
@@ -190,7 +190,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
-  of nnkIdent:
+  of nnkIdent, nnkSym:
     return node.strVal
   of nnkEmpty:
     return "anonymous"

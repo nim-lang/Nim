@@ -14,10 +14,10 @@ import
   os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos,
   pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TGen = object of TPassContext
+  TGen = object of PPassContext
     doc: PDoc
     module: PSym
   PGen = ref TGen

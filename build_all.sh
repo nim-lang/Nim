@@ -6,7 +6,7 @@ set -u # error on undefined variables
 set -e # exit on first error
 
 echo_run(){
-  echo "\n$@"
+  printf "\n$*\n"
   "$@"
 }
 
