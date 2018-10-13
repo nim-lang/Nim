@@ -73,7 +73,7 @@ Possible keys are:
 - file: The file the errormsg was produced at
 - line: The line the errormsg was produced at
 
-For a full spec, see here: ``tests/testament/specs.nim``
+For a full spec, see here: ``testament/specs.nim``
 
 An example for a test:
 
