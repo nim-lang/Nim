@@ -366,27 +366,6 @@ block t7510:
 
 
 
-block t9006:
-  type Foo[T] = object
-
-  type SomeFoo = concept a
-    a.type is Foo[a.type.T]
-
-  proc fun(s: SomeFoo)=
-    when defined(case1):
-      # Error: undeclared field: 'T'
-      type T2 = s.type.T
-    when defined(case2):
-      # Error: type mismatch: got <type SomeFoo> but expected 'T = Forward'
-      type T = s.type.T
-    discard
-
-  proc test=
-    var s: Foo[int]
-    fun(s)
-
-
-
 block misc_issues:
   # https://github.com/nim-lang/Nim/issues/1147
   type TTest = object
