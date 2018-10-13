@@ -2754,8 +2754,11 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
-template accumulateResult*(iter: untyped) =
+template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
   ## helps to convert an iterator to a proc.
+  ## See also `sequtils.toSeq` which is more hygienic and efficient.
+  ##
+  ## **Deprecated since v0.19.2:** use toSeq instead
   result = @[]
   for x in iter: add(result, x)
 
