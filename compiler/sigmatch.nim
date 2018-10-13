@@ -2612,4 +2612,3 @@ tests:
 
     yes int, ordinal
     no  string, ordinal
-

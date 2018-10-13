@@ -467,7 +467,7 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
-    of "nim": compilerPrefix = p.val.string
+    of "nim": compilerPrefix = p.val.string & " "
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage

@@ -158,6 +158,10 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
   srcSize = computeSize(conf, src)
+  if dstSize == -3 or srcSize == -3: # szUnknownSize
+    # The Nim compiler can't detect if it's legal or not.
+    # Just assume the programmer knows what he is doing.
+    return true
   if dstSize < 0:
     result = false
   elif srcSize < 0:
@@ -306,15 +310,6 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       n.typ = makeTypeFromExpr(c, n.copyTree)
     else:
       localError(c.config, n.info, "invalid argument for: " & opToStr[m])
-  result = n
-
-proc semSizeof(c: PContext, n: PNode): PNode =
-  if sonsLen(n) != 2:
-    localError(c.config, n.info, errXExpectsTypeOrValue % "sizeof")
-  else:
-    n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-  n.typ = getSysType(c.graph, n.info, tyInt)
   result = n
 
 proc fixupStaticType(c: PContext, n: PNode) =
@@ -1958,7 +1953,6 @@ proc setMs(n: PNode, s: PSym): PNode =
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
-  # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
   result = n
   case s.magic # magics that need special treatment
   of mAddr:
@@ -1975,7 +1969,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
   #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
   #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
-  of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s), flags)
   #of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)

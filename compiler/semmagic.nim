@@ -307,6 +307,14 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
+  ## This is the preferred code point to implement magics.
+  ## This function basically works like a macro, with the difference
+  ## that it is implemented in the compiler and not on the nimvm.
+  ## ``c`` the current module, a symbol table to a very good approximation
+  ## ``n`` the ast like it would be passed to a real macro
+  ## ``flags`` Some flags for more contextual information on how the
+  ## "macro" is calld.
+
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2, c.config)
@@ -314,8 +322,53 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mTypeOf:
     checkSonsLen(n, 2, c.config)
     result = semTypeOf(c, n.sons[1])
-  of mArrGet: result = semArrGet(c, n, flags)
-  of mArrPut: result = semArrPut(c, n, flags)
+  of mSizeOf:
+      # TODO there is no proper way to find out if a type cannot be queried for the size.
+      let size = getSize(c.config, n[1].typ)
+      # We just assume here that the type might come from the c backend
+      if size == szUnknownSize:
+        # Forward to the c code generation to emit a `sizeof` in the C code.
+        result = n
+      elif size >= 0:
+        result = newIntNode(nkIntLit, size)
+        result.info = n.info
+        result.typ = n.typ
+      else:
+
+        localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+
+        result = nil
+
+
+  of mAlignOf:
+    result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
+    result.info = n.info
+    result.typ = n.typ
+  of mOffsetOf:
+    var dotExpr: PNode
+
+    block findDotExpr:
+      if n[1].kind == nkDotExpr:
+        dotExpr = n[1]
+      elif n[1].kind == nkCheckedFieldExpr:
+        dotExpr = n[1][0]
+      else:
+        illFormedAst(n, c.config)
+
+    assert dotExpr != nil
+
+    let value = dotExpr[0]
+    let member = dotExpr[1]
+
+    discard computeSize(c.config, value.typ)
+
+    result = newIntNode(nkIntLit, member.sym.offset)
+    result.info = n.info
+    result.typ = n.typ
+  of mArrGet:
+    result = semArrGet(c, n, flags)
+  of mArrPut:
+    result = semArrPut(c, n, flags)
   of mAsgn:
     if n[0].sym.name.s == "=":
       result = semAsgnOpr(c, n)
