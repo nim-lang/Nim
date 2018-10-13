@@ -27,6 +27,7 @@ false
 true
 -1
 Meow
+10
 '''
 """
 
@@ -57,20 +58,20 @@ block t3414:
       v.empty is bool
       v.front is T
       popFront v
-  
+
   proc find(view: View; target: View.T): View =
     result = view
-  
+
     while not result.empty:
       if view.front == target:
         return
-  
+
       mixin popFront
       popFront result
-  
+
   proc popFront[T](s: var seq[T]) = discard
   proc empty[T](s: seq[T]): bool = false
-  
+
   var s1 = @[1, 2, 3]
   let s2 = s1.find(10)
 
@@ -293,13 +294,13 @@ block t3452:
     XY = tuple[x, y: int]
     MyGraph = object
       points: seq[XY]
-  
+
   static:
     assert XY is Node
-  
+
   proc distance( g: MyGraph, a, b: XY): float =
     sqrt( pow(float(a.x - b.x), 2) + pow(float(a.y - b.y), 2) )
-  
+
   static:
     assert MyGraph is Graph1
     assert MyGraph is Graph2
@@ -313,9 +314,9 @@ block t6691:
     ConceptB = concept c
         c.myProc(ConceptA)
     Obj = object
-  
+
   proc myProc(obj: Obj, x: ConceptA) = discard
-  
+
   echo Obj is ConceptB
 
 
@@ -419,3 +420,15 @@ block misc_issues:
 
   var a: Thing = Cat()
   a.sayHello()
+
+
+
+block t7510:
+  type
+    A[T] = concept a
+        a.x is T
+    B[T] = object
+        x: T
+  proc getx(v: A): v.T = v.x
+  var v = B[int32](x: 10)
+  echo v.getx
