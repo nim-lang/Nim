@@ -1,7 +1,18 @@
 discard """
-  output: '''2
-88'''
+  output: '''
+1
+2
+3
+4
+2
+88
+'''
 """
+
+
+for x in [1, 2, 3, 4]:
+  echo x
+
 
 type
   TValue* {.pure, final.} = object of RootObj
