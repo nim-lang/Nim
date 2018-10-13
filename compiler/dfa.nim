@@ -21,7 +21,10 @@
 ## Contrary to popular belief, exception handling doesn't cause
 ## many problems for this DFA representation, ``raise`` is a statement
 ## that ``goes to`` the outer ``finally`` or ``except`` if there is one,
-## otherwise it is the same as ``return``.
+## otherwise it is the same as ``return``. Every call is treated as
+## a call that can potentially ``raise``. However, without a surrounding
+## ``try`` we don't emit these ``fork ReturnLabel`` instructions in order
+## to speed up the dataflow analysis passes.
 ##
 ## The data structures and algorithms used here are inspired by
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
