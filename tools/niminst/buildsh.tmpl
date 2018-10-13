@@ -168,6 +168,8 @@ case $ucpu in
     mycpu="arm" ;;
   *aarch64* )
     mycpu="arm64" ;;
+  *riscv64* )
+    mycpu="riscv64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
