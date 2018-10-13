@@ -14,16 +14,20 @@ b()
 @[1, 2]
 @[3, 4]
 1
+concrete 88
 123
 1
 2
 3
 !!Hi!!
+G:0,1:0.1
+G:0,1:0.1
+H:1:0.1
 '''
 """
 
 
-import macros, sequtils, sugar, tables, typetraits
+import macros, sequtils, sets, sugar, tables, typetraits
 
 
 block t88:
@@ -627,6 +631,22 @@ block t3498:
 
 
 
+block t3499:
+  proc foo[T](x: proc(): T) =
+    echo "generic ", x()
+
+  proc foo(x: proc(): int) =
+    echo "concrete ", x()
+
+  # note the following 'proc' is not .closure!
+  foo(proc (): auto {.nimcall.} = 88)
+
+  # bug #3499 last snippet fixed
+  # bug 705  last snippet fixed
+
+
+
+
 block t797:
   proc foo[T](s:T):string = $s
 
@@ -683,3 +703,49 @@ block t4672:
 
 
 
+block t4863:
+  type
+    G[i,j: static[int]] = object
+      v:float
+    H[j: static[int]] = G[0,j]
+  proc p[i,j: static[int]](x:G[i,j]) = echo "G:", i, ",", j, ":", x.v
+  proc q[j: static[int]](x:H[j]) = echo "H:", j, ":", x.v
+
+  var
+    g0 = G[0,1](v: 0.1)
+    h0:H[1] = g0
+  p(g0)
+  p(h0)
+  q(h0)
+
+
+
+block t1684:
+  type
+    BaseType {.inheritable pure.} = object
+      idx: int
+
+    DerivedType {.final pure.} = object of BaseType
+
+  proc index[Toohoo: BaseType](h: Toohoo): int {.inline.} = h.idx
+  proc newDerived(idx: int): DerivedType {.inline.} = DerivedType(idx: idx)
+
+  let d = newDerived(2)
+  assert(d.index == 2)
+
+
+
+block t5632:
+  type Option[T] = object
+
+  proc point[A](v: A, t: typedesc[Option[A]]): Option[A] =
+    discard
+
+  discard point(1, Option)
+
+
+
+block t7247:
+  type n8 = range[0'i8..127'i8]
+  var tab = initSet[n8]()
+  doAssert tab.contains(8) == false
