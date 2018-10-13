@@ -3880,7 +3880,7 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
 
 include "system/helpers" # for `lineInfoToString`
 
-template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
+template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
   bind instantiationInfo
   mixin failedAssertImpl
@@ -3889,9 +3889,9 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
     # here, regardless of --excessiveStackTrace
     {.line: instantiationInfo(fullPaths = true).}:
       if not cond:
-        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+        failedAssertImpl(loc & " `" & expr & "` " & msg)
 
-template assert*(cond: bool, msg = "") =
+template assert*(cond: untyped, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
@@ -3900,11 +3900,13 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  assertImpl(cond, msg, compileOption("assertions"))
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, compileOption("assertions"))
 
-template doAssert*(cond: bool, msg = "") =
+template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
-  assertImpl(cond, msg, true)
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
