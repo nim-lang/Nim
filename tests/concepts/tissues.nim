@@ -15,6 +15,7 @@ f
 5
 ()
 false
+10
 true
 true
 true
@@ -30,7 +31,7 @@ Meow
 '''
 """
 
-import macros, typetraits
+import macros, typetraits, os, posix
 
 
 block t5983:
@@ -57,20 +58,20 @@ block t3414:
       v.empty is bool
       v.front is T
       popFront v
-  
+
   proc find(view: View; target: View.T): View =
     result = view
-  
+
     while not result.empty:
       if view.front == target:
         return
-  
+
       mixin popFront
       popFront result
-  
+
   proc popFront[T](s: var seq[T]) = discard
   proc empty[T](s: seq[T]): bool = false
-  
+
   var s1 = @[1, 2, 3]
   let s2 = s1.find(10)
 
@@ -293,13 +294,13 @@ block t3452:
     XY = tuple[x, y: int]
     MyGraph = object
       points: seq[XY]
-  
+
   static:
     assert XY is Node
-  
+
   proc distance( g: MyGraph, a, b: XY): float =
     sqrt( pow(float(a.x - b.x), 2) + pow(float(a.y - b.y), 2) )
-  
+
   static:
     assert MyGraph is Graph1
     assert MyGraph is Graph2
@@ -313,10 +314,55 @@ block t6691:
     ConceptB = concept c
         c.myProc(ConceptA)
     Obj = object
-  
+
   proc myProc(obj: Obj, x: ConceptA) = discard
-  
+
   echo Obj is ConceptB
+
+
+
+block t6782:
+  type
+    Reader = concept c
+      c.read(openarray[byte], int, int) is int
+    Rdr = concept c
+      c.rd(openarray[byte], int, int) is int
+
+  type TestFile = object
+
+  proc read(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+      result = 0
+  proc rd(r: TestFile, dest: openarray[byte], offset: int, limit: int): int =
+      result = 0
+
+  doAssert TestFile is Reader
+  doAssert TestFile is Rdr
+
+
+
+block t7114:
+  type
+    MyConcept = concept x
+      x.close() # error, doesn't work
+    MyConceptImplementer = object
+
+  proc close(self: MyConceptImplementer) = discard
+  proc takeConcept(window: MyConcept) =
+    discard
+
+  takeConcept(MyConceptImplementer())
+
+
+
+block t7510:
+  type
+    A[T] = concept a
+        a.x is T
+    B[T] = object
+        x: T
+  proc getx(v: A): v.T = v.x
+  var v = B[int32](x: 10)
+  echo v.getx
 
 
 
