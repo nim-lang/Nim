@@ -432,3 +432,24 @@ block t7510:
   proc getx(v: A): v.T = v.x
   var v = B[int32](x: 10)
   echo v.getx
+
+
+
+block t9006:
+  type Foo[T] = object
+
+  type SomeFoo = concept a
+    a.type is Foo[a.type.T]
+
+  proc fun(s: SomeFoo)=
+    when defined(case1):
+      # Error: undeclared field: 'T'
+      type T2 = s.type.T
+    when defined(case2):
+      # Error: type mismatch: got <type SomeFoo> but expected 'T = Forward'
+      type T = s.type.T
+    discard
+
+  proc test=
+    var s: Foo[int]
+    fun(s)
