@@ -228,8 +228,14 @@ proc `[]=`*(x: Any, i: int, y: Any) =
 proc len*(x: Any): int =
   ## len for an any `x` that represents an array or a sequence.
   case x.rawType.kind
-  of tyArray: result = x.rawType.size div x.rawType.base.size
-  of tySequence: result = cast[PGenSeq](cast[ppointer](x.value)[]).len
+  of tyArray:
+    result = x.rawType.size div x.rawType.base.size
+  of tySequence:
+    let pgenSeq = cast[PGenSeq](cast[ppointer](x.value)[])
+    if isNil(pgenSeq):
+      result = 0
+    else:
+      result = pgenSeq.len
   else: assert false
 
 
@@ -240,10 +246,9 @@ proc base*(x: Any): Any =
 
 
 proc isNil*(x: Any): bool =
-  ## `isNil` for an any `x` that represents a sequence, string, cstring,
-  ## proc or some pointer type.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
-                            tySequence, tyProc}
+  ## `isNil` for an any `x` that represents a cstring, proc or
+  ## some pointer type.
+  assert x.rawType.kind in {tyCString, tyRef, tyPtr, tyPointer, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
 proc getPointer*(x: Any): pointer =
@@ -716,5 +721,3 @@ when isMainModule:
     for i in 0 .. m.len-1:
       for j in 0 .. m[i].len-1:
         echo getString(m[i][j])
-
-
