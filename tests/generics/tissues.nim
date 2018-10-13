@@ -749,3 +749,17 @@ block t7247:
   type n8 = range[0'i8..127'i8]
   var tab = initSet[n8]()
   doAssert tab.contains(8) == false
+
+
+
+block t3717:
+  type
+    Foo[T] = object
+      a: T
+    Foo1[T] = Foo[T] | int
+
+  proc foo[T](s: Foo1[Foo[T]]): T =
+    5
+
+  var f: Foo[Foo[int]]
+  discard foo(f)
