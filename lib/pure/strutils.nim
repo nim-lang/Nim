@@ -2392,6 +2392,29 @@ proc removePrefix*(s: var string, prefix: string) {.
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
+proc stripLineEnd*(s: var string) =
+  ## Returns ``s`` stripped from one of these suffixes:
+  ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
+  ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
+  runnableExamples:
+    var s = "foo\n\n"
+    s.stripLineEnd
+    doAssert s == "foo\n"
+    s = "foo\r\n"
+    s.stripLineEnd
+    doAssert s == "foo"
+  if s.len > 0:
+    case s[^1]
+    of '\n':
+      if s.len > 1 and s[^2] == '\r':
+        s.setLen s.len-2
+      else:
+        s.setLen s.len-1
+    of '\r', '\v', '\f':
+      s.setLen s.len-1
+    else:
+      discard
+
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
