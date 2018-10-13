@@ -408,7 +408,7 @@ proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   result = matchLen(s, prefix) >= 0
 
 proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
