@@ -2043,6 +2043,14 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
+  of mOmpParFor:
+    checkMinSonsLen(n, 3, c.config)
+    if n.sonsLen == 4:
+      let annotationStr = getConstExpr(c.module, semExpr(c, n[^1]), c.graph)
+      if annotationStr == nil or annotationStr.kind notin nkStrKinds:
+        localError(c.config, result[^1].info,
+          "The annotation string for `||` must be known at compile time")
+    result = semDirectOp(c, n, flags)
   else:
     result = semDirectOp(c, n, flags)
 
