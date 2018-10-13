@@ -6,6 +6,10 @@ TEMP=C:\Programs\xyz\bin
 8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
+'''
+"""
+
+#[
 Concrete '='
 Concrete '='
 Concrete '='
@@ -21,8 +25,7 @@ GenericT[T] '=' bool
 GenericT[T] '=' bool
 GenericT[T] '=' bool
 GenericT[T] '=' bool
-'''
-"""
+]#
 
 block tassign:
 # Test the assignment operator for complex types which need RTTI
@@ -149,8 +152,7 @@ block tobjasgn:
   echo "assignment test ", x
 
 
-import typetraits
-block toverload_asgn:
+when false:
   type
     Concrete = object
       a, b: string
