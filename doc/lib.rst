@@ -59,7 +59,7 @@ Core
   This module defines compile-time reflection procs for working with types.
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#spawn>`_.
+  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
