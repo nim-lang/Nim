@@ -3070,6 +3070,10 @@ when not defined(JS): #and not defined(nimscript):
   include "system/ansi_c"
   include "system/memory"
 
+  proc rawWrite(f: File, s: string|cstring) {.inline.} =
+    # Writes `s` to `f` without allocating memory nor raising exceptions
+    discard c_fwrite(cstring(s), 1, s.len, f)
+
   proc zeroMem(p: pointer, size: Natural) =
     nimZeroMem(p, size)
     when declared(memTrackerOp):

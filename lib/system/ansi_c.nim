@@ -119,6 +119,9 @@ proc c_sprintf(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
+proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
 when defined(windows):
   proc c_fileno(f: File): cint {.
       importc: "_fileno", header: "<stdio.h>".}

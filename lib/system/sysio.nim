@@ -40,10 +40,6 @@ proc c_clearerr(f: File) {.
 proc c_feof(f: File): cint {.
   importc: "feof", header: "<stdio.h>".}
 
-when not declared(c_fwrite):
-  proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
-    importc: "fwrite", header: "<stdio.h>".}
-
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}

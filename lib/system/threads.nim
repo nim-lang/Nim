@@ -329,10 +329,12 @@ when not defined(useNimRtl):
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
-      echo "too large thread local storage size requested ",
-           "(", nimThreadVarsSize(), "/", sizeof(ThreadLocalStorage), "). ",
-           "Use -d:\"nimTlsSize=", nimThreadVarsSize(),
-           "\" to preallocate sufficient storage."
+      stderr.rawWrite "too large thread local storage size requested ("
+      stderr.rawWrite $nimThreadVarsSize()
+      stderr.rawWrite "/" & $sizeof(ThreadLocalStorage) & "). "
+      stderr.rawWrite "Use -d:\"nimTlsSize="
+      stderr.rawWrite $nimThreadVarsSize()
+      stderr.rawWrite "\" to preallocate sufficient storage.\n"
 
       quit 1
 
