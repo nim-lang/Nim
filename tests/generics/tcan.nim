@@ -33,3 +33,14 @@ block tspecialise:
   type
     TGen[T] = object {.inheritable.}
     TSpef = object of TGen[string]
+
+
+block tspecialised_equivalent:
+  type
+    TGen[T] = tuple[a: T]
+    TSpef = tuple[a: string]
+
+  var
+    a: TGen[string]
+    b: TSpef
+  a = b
