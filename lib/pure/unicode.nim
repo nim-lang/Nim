@@ -1889,6 +1889,121 @@ proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffec
   ## that returns a sequence of substrings.
   accResult(split(s, sep, maxsplit))
 
+proc strip*(s: string, leading = true, trailing = true,
+            runes: openarray[Rune] = unicodeSpaces): string {.noSideEffect,
+            rtl, extern: "nucStrip".} =
+  ## Strips leading or trailing `runes` from `s` and returns
+  ## the resulting string.
+  ##
+  ## If `leading` is true, leading `runes` are stripped.
+  ## If `trailing` is true, trailing `runes` are stripped.
+  ## If both are false, the string is returned unchanged.
+  var
+    s_i = 0 ## starting index into string ``s``
+    e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
+  if leading:
+    var
+      i = 0
+      l_i: int ## value of ``s_i`` at the beginning of the iteration
+      rune: Rune
+    while i < len(s):
+      l_i = i
+      fastRuneAt(s, i, rune)
+      s_i = i # Assume to start from next rune
+      if not runes.contains(rune):
+        s_i = l_i # Go back to where the current rune starts
+        break
+  if trailing:
+    var
+      i = e_i
+      l_i: int
+      rune: Rune
+    while i >= 0:
+      l_i = i
+      fastRuneAt(s, l_i, rune)
+      var p_i = i - 1
+      while p_i >= 0:
+        var
+          p_i_end = p_i
+          p_rune: Rune
+        fastRuneAt(s, p_i_end, p_rune)
+        if p_i_end < l_i: break
+        i = p_i
+        rune = p_rune
+        dec(p_i)
+      if not runes.contains(rune):
+        e_i = l_i - 1
+        break
+      dec(i)
+  let newLen = e_i - s_i
+  result = newStringOfCap(newLen)
+  if e_i > s_i:
+    result.add s[s_i .. e_i]
+
+proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
+  rtl, extern: "nucRepeatRune".} =
+  ## Returns a string of `count` Runes `c`.
+  ##
+  ## The returned string will have a rune-length of `count`.
+  let s = $c
+  result = newStringOfCap(count * s.len)
+  for i in 0 ..< count:
+    result.add s
+
+proc align*(s: string, count: Natural, padding = ' '.Rune): string {.
+  noSideEffect, rtl, extern: "nucAlignString".} =
+  ## Aligns a unicode string `s` with `padding`, so that it has a rune-length
+  ## of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added before `s` resulting in
+  ## right alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to left align a string use the `alignLeft
+  ## proc <#alignLeft>`_.
+  runnableExamples:
+     assert align("abc", 4) == " abc"
+     assert align("a", 0) == "a"
+     assert align("1232", 6) == "  1232"
+     assert align("1232", 6, '#'.Rune) == "##1232"
+     assert align("Åge", 5) == "  Åge"
+     assert align("×", 4, '_'.Rune) == "___×"
+
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(padStr.len * count)
+    let spaces = count - sLen
+    for i in 0 ..< spaces: result.add padStr
+    result.add s
+  else:
+    result = s
+
+proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
+    noSideEffect.} =
+  ## Left-Aligns a unicode string `s` with `padding`, so that it has a
+  ## rune-length of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added after `s` resulting in
+  ## left alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to right align a string use the `align
+  ## proc <#align>`_.
+  runnableExamples:
+    assert alignLeft("abc", 4) == "abc "
+    assert alignLeft("a", 0) == "a"
+    assert alignLeft("1232", 6) == "1232  "
+    assert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    assert alignLeft("Åge", 5) == "Åge  "
+    assert alignLeft("×", 4, '_'.Rune) == "×___"
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(s.len + (count - sLen) * padStr.len)
+    result.add s
+    for i in sLen ..< count:
+      result.add padStr
+  else:
+    result = s
+
+
 when isMainModule:
 
   proc asRune(s: static[string]): Rune =
@@ -2074,3 +2189,37 @@ when isMainModule:
     doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+
+  block stripTests:
+    doAssert(strip("  foofoofoo  ") == "foofoofoo")
+    doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
+
+    block:
+      let stripTestRunes = ['b'.Rune, 'a'.Rune, 'r'.Rune]
+      doAssert(strip("barfoofoofoobar", runes = stripTestRunes) == "foofoofoo")
+    doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
+    doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
+
+    block:
+      let stripTestRunes = ["«".asRune, "»".asRune]
+      doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
+    doAssert(strip("copyright©", leading = false, runes = ["©".asRune]) == "copyright")
+    doAssert(strip("¿Question?", trailing = false, runes = ["¿".asRune]) == "Question?")
+    doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
+    doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
+
+  block repeatTests:
+    doAssert repeat('c'.Rune, 5) == "ccccc"
+    doAssert repeat("×".asRune, 5) == "×××××"
+
+  block alignTests:
+    doAssert align("abc", 4) == " abc"
+    doAssert align("a", 0) == "a"
+    doAssert align("1232", 6) == "  1232"
+    doAssert align("1232", 6, '#'.Rune) == "##1232"
+    doAssert align("1232", 6, "×".asRune) == "××1232"
+    doAssert alignLeft("abc", 4) == "abc "
+    doAssert alignLeft("a", 0) == "a"
+    doAssert alignLeft("1232", 6) == "1232  "
+    doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    doAssert alignLeft("1232", 6, "×".asRune) == "1232××"
