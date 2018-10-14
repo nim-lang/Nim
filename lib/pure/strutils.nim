@@ -336,6 +336,8 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
   ## If both are false, the string is returned unchanged.
+  runnableExamples:
+    doAssert " vhellov ".strip().strip(trailing = false, chars = {'v'}) == "hellov"
   var
     first = 0
     last = len(s)-1
