@@ -117,7 +117,8 @@ template isImpl(call) =
     if not call(c): return false
 
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr".} =
+  rtl, extern: "nsuIsAlphaAsciiStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -127,7 +128,8 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   isImpl isAlphaAscii
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr".} =
+  rtl, extern: "nsuIsAlphaNumericStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -137,7 +139,8 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   isImpl isAlphaNumeric
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr".} =
+  rtl, extern: "nsuIsDigitStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -147,7 +150,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   isImpl isDigit
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr".} =
+  rtl, extern: "nsuIsSpaceAsciiStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -169,7 +173,8 @@ template isCaseImpl(s, charProc, skipNonAlpha) =
         return false
   return if skipNonAlpha: hasAtleastOneAlphaChar else: true
 
-proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
+proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is lower case.
   ##
   ## This checks ASCII characters only.
@@ -185,7 +190,8 @@ proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
   ## an empty string.
   isCaseImpl(s, isLowerAscii, skipNonAlpha)
 
-proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
+proc isUpperAscii*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is upper case.
   ##
   ## This checks ASCII characters only.
@@ -2534,34 +2540,17 @@ when isMainModule:
     doAssert isAlphaAscii('A')
     doAssert(not isAlphaAscii('$'))
 
-    doAssert isAlphaAscii("Rasp")
-    doAssert isAlphaAscii("Args")
-    doAssert(not isAlphaAscii("$Tomato"))
-
     doAssert isAlphaNumeric('3')
     doAssert isAlphaNumeric('R')
     doAssert(not isAlphaNumeric('!'))
-
-    doAssert isAlphaNumeric("34ABc")
-    doAssert isAlphaNumeric("Rad")
-    doAssert isAlphaNumeric("1234")
-    doAssert(not isAlphaNumeric("@nose"))
 
     doAssert isDigit('3')
     doAssert(not isDigit('a'))
     doAssert(not isDigit('%'))
 
-    doAssert isDigit("12533")
-    doAssert(not isDigit("12.33"))
-    doAssert(not isDigit("A45b"))
-
     doAssert isSpaceAscii('\t')
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
-
-    doAssert isSpaceAscii("\t\l \v\r\f")
-    doAssert isSpaceAscii("       ")
-    doAssert(not isSpaceAscii("ABc   \td"))
 
     doAssert(isNilOrWhitespace(""))
     doAssert(isNilOrWhitespace("       "))
@@ -2575,32 +2564,10 @@ when isMainModule:
     doAssert(not isLowerAscii('&'))
     doAssert(not isLowerAscii(' '))
 
-    doAssert isLowerAscii("abcd", false)
-    doAssert(not isLowerAscii("33aa", false))
-    doAssert(not isLowerAscii("a b", false))
-
-    doAssert(not isLowerAscii("abCD", true))
-    doAssert isLowerAscii("33aa", true)
-    doAssert isLowerAscii("a b", true)
-    doAssert isLowerAscii("1, 2, 3 go!", true)
-    doAssert(not isLowerAscii(" ", true))
-    doAssert(not isLowerAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
-
     doAssert isUpperAscii('A')
     doAssert(not isUpperAscii('b'))
     doAssert(not isUpperAscii('5'))
     doAssert(not isUpperAscii('%'))
-
-    doAssert isUpperAscii("ABC", false)
-    doAssert(not isUpperAscii("A#$", false))
-    doAssert(not isUpperAscii("A B", false))
-
-    doAssert(not isUpperAscii("AAcc", true))
-    doAssert isUpperAscii("A#$", true)
-    doAssert isUpperAscii("A B", true)
-    doAssert isUpperAscii("1, 2, 3 GO!", true)
-    doAssert(not isUpperAscii(" ", true))
-    doAssert(not isUpperAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
 
     doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]

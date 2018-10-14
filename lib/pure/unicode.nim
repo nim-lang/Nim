@@ -1435,7 +1435,8 @@ template runeCaseCheck(s, runeProc, skipNonAlpha) =
         return false
   return if skipNonAlpha: hasAtleastOneAlphaRune else: true
 
-proc isLower*(s: string, skipNonAlpha: bool): bool =
+proc isLower*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is lower case.
   ##
   ## If ``skipNonAlpha`` is true, returns true if all alphabetical
@@ -1449,7 +1450,8 @@ proc isLower*(s: string, skipNonAlpha: bool): bool =
   ## an empty string.
   runeCaseCheck(s, isLower, skipNonAlpha)
 
-proc isUpper*(s: string, skipNonAlpha: bool): bool =
+proc isUpper*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is upper case.
   ##
   ## If ``skipNonAlpha`` is true, returns true if all alphabetical
@@ -1608,12 +1610,13 @@ proc title*(s: string): string {.noSideEffect, procvar,
     rune.fastToUTF8Copy(result, lastIndex)
 
 proc isTitle*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".}=
+  rtl, extern: "nuc$1Str",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".}=
   ## Checks whether or not `s` is a unicode title.
   ##
   ## Returns true if the first character in each word inside `s`
   ## are upper case and there is at least one character in `s`.
-  if s.len() == 0:
+  if s.len == 0:
     return false
 
   result = true
@@ -1764,12 +1767,6 @@ when isMainModule:
   doAssert capitalize("foo") == "Foo"
   doAssert capitalize("") == ""
 
-  doAssert isTitle("Foo")
-  doAssert(not isTitle("Foo bar"))
-  doAssert(not isTitle("αlpha Βeta"))
-  doAssert(isTitle("Αlpha Βeta Γamma"))
-  doAssert(not isTitle("fFoo"))
-
   doAssert swapCase("FooBar") == "fOObAR"
   doAssert swapCase(" ") == " "
   doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
@@ -1797,37 +1794,7 @@ when isMainModule:
 
   doAssert(not isLower(' '.Rune))
 
-  doAssert isLower("a", false)
-  doAssert isLower("γ", true)
-  doAssert(not isLower("Γ", false))
-  doAssert(not isLower("4", true))
-  doAssert(not isLower("", false))
-  doAssert isLower("abcdγ", false)
-  doAssert(not isLower("33aaΓ", false))
-  doAssert(not isLower("a b", false))
-
-  doAssert(not isLower("abCDΓ", true))
-  doAssert isLower("a b", true)
-  doAssert isLower("1, 2, 3 go!", true)
-  doAssert(not isLower(" ", true))
-  doAssert(not isLower("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
-
   doAssert(not isUpper(' '.Rune))
-
-  doAssert isUpper("Γ", false)
-  doAssert(not isUpper("α", false))
-  doAssert(not isUpper("", false))
-  doAssert isUpper("ΑΒΓ", false)
-  doAssert(not isUpper("A#$β", false))
-  doAssert(not isUpper("A B", false))
-
-  doAssert(not isUpper("b", true))
-  doAssert(not isUpper("✓", true))
-  doAssert(not isUpper("AAccβ", true))
-  doAssert isUpper("A B", true)
-  doAssert isUpper("1, 2, 3 GO!", true)
-  doAssert(not isUpper(" ", true))
-  doAssert(not isUpper("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
 
   doAssert toUpper("Γ") == "Γ"
   doAssert toUpper("b") == "B"
