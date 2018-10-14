@@ -12,81 +12,58 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, msgs, ropes, idents, rodutils
+  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  msgs
 
 proc hashNode*(p: RootRef): Hash
-proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
   # YAML code generator and it is invaluable for debugging purposes.
   # If maxRecDepht <> -1 then it won't print the whole graph.
-proc typeToYaml*(n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope
-proc symToYaml*(n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
-proc lineInfoToStr*(info: TLineInfo): Rope
+proc typeToYaml*(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc symToYaml*(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 
-# ----------------------- node sets: ---------------------------------------
-proc objectSetContains*(t: TObjectSet, obj: RootRef): bool
-  # returns true whether n is in t
-proc objectSetIncl*(t: var TObjectSet, obj: RootRef)
-  # include an element n in the table t
-proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool
-  # more are not needed ...
+when declared(echo):
+  # these are for debugging only: They are not really deprecated, but I want
+  # the warning so that release versions do not contain debugging statements:
+  proc debug*(n: PSym; conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
+  proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
+  proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
-# ----------------------- str table -----------------------------------------
-proc strTableContains*(t: TStrTable, n: PSym): bool
-proc strTableAdd*(t: var TStrTable, n: PSym)
-proc strTableGet*(t: TStrTable, name: PIdent): PSym
-
-type
-  TTabIter*{.final.} = object # consider all fields here private
-    h*: Hash                  # current hash
-
-proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym
-proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym
-  # usage:
-  # var
-  #   i: TTabIter
-  #   s: PSym
-  # s = InitTabIter(i, table)
-  # while s != nil:
-  #   ...
-  #   s = NextIter(i, table)
-  #
-
-type
-  TIdentIter*{.final.} = object # iterator over all syms with same identifier
-    h*: Hash                    # current hash
-    name*: PIdent
-
-
-proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym
-proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
-
-# these are for debugging only: They are not really deprecated, but I want
-# the warning so that release versions do not contain debugging statements:
-proc debug*(n: PSym) {.deprecated.}
-proc debug*(n: PType) {.deprecated.}
-proc debug*(n: PNode) {.deprecated.}
-
-template mdbg*: bool {.dirty.} =
-  when compiles(c.module):
-    c.module.fileIdx == gProjectMainIdx
-  elif compiles(c.c.module):
-    c.c.module.fileIdx == gProjectMainIdx
-  elif compiles(m.c.module):
-    m.c.module.fileIdx == gProjectMainIdx
-  elif compiles(cl.c.module):
-    cl.c.module.fileIdx == gProjectMainIdx
-  elif compiles(p):
-    when compiles(p.lex):
-      p.lex.fileIdx == gProjectMainIdx
+  template debug*(x: PSym|PType|PNode) {.deprecated.} =
+    when compiles(c.config):
+      debug(c.config, x)
+    elif compiles(c.graph.config):
+      debug(c.graph.config, x)
     else:
-      p.module.module.fileIdx == gProjectMainIdx
-  elif compiles(m.module.fileIdx):
-    m.module.fileIdx == gProjectMainIdx
-  elif compiles(L.fileIdx):
-    L.fileIdx == gProjectMainIdx
-  else:
-    error()
+      error()
+
+  template debug*(x: auto) {.deprecated.} =
+    echo x
+
+  template mdbg*: bool {.deprecated.} =
+    when compiles(c.graph):
+      c.module.fileIdx == c.graph.config.projectMainIdx
+    elif compiles(c.module):
+      c.module.fileIdx == c.config.projectMainIdx
+    elif compiles(c.c.module):
+      c.c.module.fileIdx == c.c.config.projectMainIdx
+    elif compiles(m.c.module):
+      m.c.module.fileIdx == m.c.config.projectMainIdx
+    elif compiles(cl.c.module):
+      cl.c.module.fileIdx == cl.c.config.projectMainIdx
+    elif compiles(p):
+      when compiles(p.lex):
+        p.lex.fileIdx == p.lex.config.projectMainIdx
+      else:
+        p.module.module.fileIdx == p.config.projectMainIdx
+    elif compiles(m.module.fileIdx):
+      m.module.fileIdx == m.config.projectMainIdx
+    elif compiles(L.fileIdx):
+      L.fileIdx == L.config.projectMainIdx
+    else:
+      error()
 
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
@@ -102,7 +79,6 @@ proc idNodeTablePut*(t: var TIdNodeTable, key: PIdObj, val: PNode)
 
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym
 proc lookupInRecord*(n: PNode, field: PIdent): PSym
-proc getModule*(s: PSym): PSym
 proc mustRehash*(length, counter: int): bool
 proc nextTry*(h, maxHash: Hash): Hash {.inline.}
 
@@ -180,7 +156,7 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       result = lookupInRecord(n.sons[i], field)
       if result != nil: return
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(n.info, "lookupInRecord")
+    if (n.sons[0].kind != nkSym): return nil
     result = lookupInRecord(n.sons[0], field)
     if result != nil: return
     for i in countup(1, sonsLen(n) - 1):
@@ -188,12 +164,12 @@ proc lookupInRecord(n: PNode, field: PIdent): PSym =
       of nkOfBranch, nkElse:
         result = lookupInRecord(lastSon(n.sons[i]), field)
         if result != nil: return
-      else: internalError(n.info, "lookupInRecord(record case branch)")
+      else: return nil
   of nkSym:
     if n.sym.name.id == field.id: result = n.sym
-  else: internalError(n.info, "lookupInRecord()")
+  else: return nil
 
-proc getModule(s: PSym): PSym =
+proc getModule*(s: PSym): PSym =
   result = s
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
@@ -203,7 +179,7 @@ proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
     if list.sons[i].kind == nkSym:
       result = list.sons[i].sym
       if result.name.id == ident.id: return
-    else: internalError(list.info, "getSymFromList")
+    else: return nil
   result = nil
 
 proc hashNode(p: RootRef): Hash =
@@ -230,7 +206,7 @@ proc makeYamlString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
+  for i in 0 ..< s.len:
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, "\n")
@@ -250,16 +226,16 @@ proc flagsToStr[T](flags: set[T]): Rope =
       add(result, makeYamlString($x))
     result = "[" & result & "]"
 
-proc lineInfoToStr(info: TLineInfo): Rope =
-  result = "[$1, $2, $3]" % [makeYamlString(toFilename(info)),
+proc lineInfoToStr(conf: ConfigRef; info: TLineInfo): Rope =
+  result = "[$1, $2, $3]" % [makeYamlString(toFilename(conf, info)),
                              rope(toLinenumber(info)),
                              rope(toColumn(info))]
 
-proc treeToYamlAux(n: PNode, marker: var IntSet,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
-proc symToYamlAux(n: PSym, marker: var IntSet,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet,
                   indent, maxRecDepth: int): Rope
-proc typeToYamlAux(n: PType, marker: var IntSet,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
 
 proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
@@ -273,7 +249,7 @@ proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
     inc(i, 2)
   addf(result, "$N$1}", [rspaces(indent)])
 
-proc symToYamlAux(n: PSym, marker: var IntSet, indent: int,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
                   maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -281,20 +257,20 @@ proc symToYamlAux(n: PSym, marker: var IntSet, indent: int,
     result = "\"$1 @$2\"" % [rope(n.name.s), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
-    var ast = treeToYamlAux(n.ast, marker, indent + 2, maxRecDepth - 1)
+    var ast = treeToYamlAux(conf, n.ast, marker, indent + 2, maxRecDepth - 1)
     result = ropeConstr(indent, [rope("kind"),
                                  makeYamlString($n.kind),
                                  rope("name"), makeYamlString(n.name.s),
-                                 rope("typ"), typeToYamlAux(n.typ, marker,
+                                 rope("typ"), typeToYamlAux(conf, n.typ, marker,
                                    indent + 2, maxRecDepth - 1),
-                                 rope("info"), lineInfoToStr(n.info),
+                                 rope("info"), lineInfoToStr(conf, n.info),
                                  rope("flags"), flagsToStr(n.flags),
                                  rope("magic"), makeYamlString($n.magic),
                                  rope("ast"), ast, rope("options"),
                                  flagsToStr(n.options), rope("position"),
                                  rope(n.position)])
 
-proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -306,15 +282,15 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
       result = rope("[")
       for i in countup(0, sonsLen(n) - 1):
         if i > 0: add(result, ",")
-        addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(n.sons[i],
+        addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
             marker, indent + 4, maxRecDepth - 1)])
       addf(result, "$N$1]", [rspaces(indent + 2)])
     else:
       result = rope("null")
     result = ropeConstr(indent, [rope("kind"),
                                  makeYamlString($n.kind),
-                                 rope("sym"), symToYamlAux(n.sym, marker,
-        indent + 2, maxRecDepth - 1), rope("n"), treeToYamlAux(n.n, marker,
+                                 rope("sym"), symToYamlAux(conf, n.sym, marker,
+        indent + 2, maxRecDepth - 1), rope("n"), treeToYamlAux(conf, n.n, marker,
         indent + 2, maxRecDepth - 1), rope("flags"), flagsToStr(n.flags),
                                  rope("callconv"),
                                  makeYamlString(CallingConvToStr[n.callConv]),
@@ -322,7 +298,7 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
                                  rope("align"), rope(n.align),
                                  rope("sons"), result])
 
-proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -330,7 +306,7 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
     var istr = rspaces(indent + 2)
     result = "{$N$1\"kind\": $2" % [istr, makeYamlString($n.kind)]
     if maxRecDepth != 0:
-      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
+      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
       case n.kind
       of nkCharLit..nkInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
@@ -338,13 +314,10 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
-             [istr, symToYamlAux(n.sym, marker, indent + 2, maxRecDepth)])
+             [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth)])
       of nkIdent:
         if n.ident != nil:
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
@@ -355,27 +328,27 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
             if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(n.sons[i],
+            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n.sons[i],
                 marker, indent + 4, maxRecDepth - 1)])
           addf(result, "$N$1]", [istr])
       addf(result, ",$N$1\"typ\": $2",
-           [istr, typeToYamlAux(n.typ, marker, indent + 2, maxRecDepth)])
+           [istr, typeToYamlAux(conf, n.typ, marker, indent + 2, maxRecDepth)])
     addf(result, "$N$1}", [rspaces(indent)])
 
-proc treeToYaml(n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc treeToYaml(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = treeToYamlAux(n, marker, indent, maxRecDepth)
+  result = treeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc typeToYaml(n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc typeToYaml(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = typeToYamlAux(n, marker, indent, maxRecDepth)
+  result = typeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = symToYamlAux(n, marker, indent, maxRecDepth)
+  result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc debugTree*(n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
-proc debugType(n: PType, maxRecDepth=100): Rope =
+proc debugTree*(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
+proc debugType(conf: ConfigRef; n: PType, maxRecDepth=100): Rope =
   if n == nil:
     result = rope("null")
   else:
@@ -385,7 +358,7 @@ proc debugType(n: PType, maxRecDepth=100): Rope =
       add(result, n.sym.name.s)
     if n.kind in IntegralTypes and n.n != nil:
       add(result, ", node: ")
-      add(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
+      add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       add(result, "(")
       for i in countup(0, sonsLen(n) - 1):
@@ -393,13 +366,13 @@ proc debugType(n: PType, maxRecDepth=100): Rope =
         if n.sons[i] == nil:
           add(result, "null")
         else:
-          add(result, debugType(n.sons[i], maxRecDepth-1))
+          add(result, debugType(conf, n.sons[i], maxRecDepth-1))
       if n.kind == tyObject and n.n != nil:
         add(result, ", node: ")
-        add(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
+        add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
       add(result, ")")
 
-proc debugTree(n: PNode, indent: int, maxRecDepth: int;
+proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
                renderType=false): Rope =
   if n == nil:
     result = rope("null")
@@ -409,7 +382,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
              [istr, makeYamlString($n.kind)]
     when defined(useNodeIds):
       addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
-    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
+    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
     if maxRecDepth != 0:
       addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
       case n.kind
@@ -419,48 +392,48 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2_$3",
             [istr, rope(n.sym.name.s), rope(n.sym.id)])
         #     [istr, symToYaml(n.sym, indent, maxRecDepth),
         #     rope(n.sym.id)])
         if renderType and n.sym.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(n.sym.typ, 2)])
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, 2)])
       of nkIdent:
         if n.ident != nil:
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
+        if renderType and n.typ != nil:
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
         if sonsLen(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
             if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(n.sons[i],
+            addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(conf, n.sons[i],
                 indent + 4, maxRecDepth - 1, renderType)])
           addf(result, "$N$1]", [istr])
     addf(result, "$N$1}", [rspaces(indent)])
 
-proc debug(n: PSym) =
-  if n == nil:
-    echo("null")
-  elif n.kind == skUnknown:
-    echo("skUnknown")
-  else:
-    #writeLine(stdout, $symToYaml(n, 0, 1))
-    echo("$1_$2: $3, $4, $5, $6" % [
-      n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
-      $lineInfoToStr(n.info), $n.kind])
+when declared(echo):
+  proc debug(n: PSym; conf: ConfigRef) =
+    if n == nil:
+      echo("null")
+    elif n.kind == skUnknown:
+      echo("skUnknown")
+    else:
+      #writeLine(stdout, $symToYaml(n, 0, 1))
+      echo("$1_$2: $3, $4, $5, $6" % [
+        n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
+        $lineInfoToStr(conf, n.info), $n.kind])
 
-proc debug(n: PType) =
-  echo($debugType(n))
+  proc debug(n: PType; conf: ConfigRef) =
+    echo($debugType(conf, n))
 
-proc debug(n: PNode) =
-  echo($debugTree(n, 0, 100))
+  proc debug(n: PNode; conf: ConfigRef) =
+    echo($debugTree(conf, n, 0, 100))
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
@@ -468,7 +441,7 @@ proc nextTry(h, maxHash: Hash): Hash =
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
 
-proc objectSetContains(t: TObjectSet, obj: RootRef): bool =
+proc objectSetContains*(t: TObjectSet, obj: RootRef): bool =
   # returns true whether n is in t
   var h: Hash = hashNode(obj) and high(t.data) # start with real hash value
   while t.data[h] != nil:
@@ -492,12 +465,12 @@ proc objectSetEnlarge(t: var TObjectSet) =
     if t.data[i] != nil: objectSetRawInsert(n, t.data[i])
   swap(t.data, n)
 
-proc objectSetIncl(t: var TObjectSet, obj: RootRef) =
+proc objectSetIncl*(t: var TObjectSet, obj: RootRef) =
   if mustRehash(len(t.data), t.counter): objectSetEnlarge(t)
   objectSetRawInsert(t.data, obj)
   inc(t.counter)
 
-proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
+proc objectSetContainsOrIncl*(t: var TObjectSet, obj: RootRef): bool =
   # returns true if obj is already in the string table:
   var h: Hash = hashNode(obj) and high(t.data)
   while true:
@@ -515,7 +488,7 @@ proc objectSetContainsOrIncl(t: var TObjectSet, obj: RootRef): bool =
   inc(t.counter)
   result = false
 
-proc strTableContains(t: TStrTable, n: PSym): bool =
+proc strTableContains*(t: TStrTable, n: PSym): bool =
   var h: Hash = n.name.h and high(t.data) # start with real hash value
   while t.data[h] != nil:
     if (t.data[h] == n):
@@ -571,12 +544,13 @@ proc strTableEnlarge(t: var TStrTable) =
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
   swap(t.data, n)
 
-proc strTableAdd(t: var TStrTable, n: PSym) =
+proc strTableAdd*(t: var TStrTable, n: PSym) =
   if mustRehash(len(t.data), t.counter): strTableEnlarge(t)
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
+proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
+                                 onConflictKeepOld = false): PSym =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
@@ -591,13 +565,13 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
     if it.name.id == n.name.id:
-      if it == n: return false
+      if it == n: return nil
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return true             # found it
+    return t.data[replaceSlot] # found it
   elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
@@ -605,9 +579,13 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     assert(t.data[h] == nil)
     t.data[h] = n
   inc(t.counter)
-  result = false
+  result = nil
 
-proc strTableGet(t: TStrTable, name: PIdent): PSym =
+proc strTableIncl*(t: var TStrTable, n: PSym;
+                   onConflictKeepOld = false): bool {.discardable.} =
+  result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
+
+proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   var h: Hash = name.h and high(t.data)
   while true:
     result = t.data[h]
@@ -615,13 +593,13 @@ proc strTableGet(t: TStrTable, name: PIdent): PSym =
     if result.name.id == name.id: break
     h = nextTry(h, high(t.data))
 
-proc initIdentIter(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
-  ti.h = s.h
-  ti.name = s
-  if tab.counter == 0: result = nil
-  else: result = nextIdentIter(ti, tab)
 
-proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
+type
+  TIdentIter* = object # iterator over all syms with same identifier
+    h*: Hash           # current hash
+    name*: PIdent
+
+proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym =
   var h = ti.h and high(tab.data)
   var start = h
   result = tab.data[h]
@@ -633,6 +611,12 @@ proc nextIdentIter(ti: var TIdentIter, tab: TStrTable): PSym =
       break
     result = tab.data[h]
   ti.h = nextTry(h, high(tab.data))
+
+proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
+  ti.h = s.h
+  ti.name = s
+  if tab.counter == 0: result = nil
+  else: result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
                          excluding: IntSet): PSym =
@@ -657,19 +641,32 @@ proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
   if tab.counter == 0: result = nil
   else: result = nextIdentExcluding(ti, tab, excluding)
 
-proc initTabIter(ti: var TTabIter, tab: TStrTable): PSym =
-  ti.h = 0                    # we start by zero ...
-  if tab.counter == 0:
-    result = nil              # FIX 1: removed endless loop
-  else:
-    result = nextIter(ti, tab)
+type
+  TTabIter* = object
+    h: Hash
 
-proc nextIter(ti: var TTabIter, tab: TStrTable): PSym =
+proc nextIter*(ti: var TTabIter, tab: TStrTable): PSym =
+  # usage:
+  # var
+  #   i: TTabIter
+  #   s: PSym
+  # s = InitTabIter(i, table)
+  # while s != nil:
+  #   ...
+  #   s = NextIter(i, table)
+  #
   result = nil
   while (ti.h <= high(tab.data)):
     result = tab.data[ti.h]
     inc(ti.h)                 # ... and increment by one always
     if result != nil: break
+
+proc initTabIter*(ti: var TTabIter, tab: TStrTable): PSym =
+  ti.h = 0
+  if tab.counter == 0:
+    result = nil
+  else:
+    result = nextIter(ti, tab)
 
 iterator items*(tab: TStrTable): PSym =
   var it: TTabIter
@@ -761,10 +758,6 @@ proc idNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
   if index >= 0: result = t.data[index].val
   else: result = nil
 
-proc idNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
-  if not isNil(t.data):
-    result = idNodeTableGet(t, key)
-
 proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   var h: Hash
   h = key.id and high(data)
@@ -790,10 +783,6 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
       swap(t.data, n)
     idNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc idNodeTablePutLazy*(t: var TIdNodeTable, key: PIdObj, val: PNode) =
-  if isNil(t.data): initIdNodeTable(t)
-  idNodeTablePut(t, key, val)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
   for i in 0 .. high(t.data):

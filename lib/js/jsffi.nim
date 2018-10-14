@@ -70,22 +70,40 @@ template mangleJsName(name: cstring): cstring =
   "mangledName" & $nameCounter
 
 type
-  JsRoot* = ref object of RootObj
-    ## Root type of both JsObject and JsAssoc
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.
   JsAssoc*[K, V] = ref object of JsRoot
     ## Statically typed wrapper around a JavaScript object.
-  NotString = concept c
-    c isnot string
+
   js* = JsObject
 
-var jsarguments* {.importc: "arguments", nodecl}: JsObject
-  ## JavaScript's arguments pseudo-variable
+var
+  jsArguments* {.importc: "arguments", nodecl}: JsObject
+    ## JavaScript's arguments pseudo-variable
+  jsNull* {.importc: "null", nodecl.}: JsObject
+    ## JavaScript's null literal
+  jsUndefined* {.importc: "undefined", nodecl.}: JsObject
+    ## JavaScript's undefined literal
+  jsDirname* {.importc: "__dirname", nodecl.}: cstring
+    ## JavaScript's __dirname pseudo-variable
+  jsFilename* {.importc: "__filename", nodecl.}: cstring
+    ## JavaScript's __filename pseudo-variable
+
+# Exceptions
+type
+  JsError* {.importc: "Error".} = object of JsRoot
+    message*: cstring
+  JsEvalError* {.importc: "EvalError".} = object of JsError
+  JsRangeError* {.importc: "RangeError".} = object of JsError
+  JsReferenceError* {.importc: "ReferenceError".} = object of JsError
+  JsSyntaxError* {.importc: "SyntaxError".} = object of JsError
+  JsTypeError* {.importc: "TypeError".} = object of JsError
+  JsURIError* {.importc: "URIError".} = object of JsError
 
 # New
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject
+
 proc newJsAssoc*[K, V]: JsAssoc[K, V] {. importcpp: "{@}" .}
   ## Creates a new empty JsAssoc with key type `K` and value type `V`.
 
@@ -97,12 +115,15 @@ proc hasOwnProperty*(x: JsObject, prop: cstring): bool
 proc jsTypeOf*(x: JsObject): cstring {. importcpp: "typeof(#)" .}
   ## Returns the name of the JsObject's JavaScript type as a cstring.
 
-proc jsnew*(x: auto): JsObject {.importcpp: "(new #)".}
+proc jsNew*(x: auto): JsObject {.importcpp: "(new #)".}
   ## Turns a regular function call into an invocation of the
   ## JavaScript's `new` operator
 
-proc jsdelete*(x: auto): JsObject {.importcpp: "(delete #)".}
+proc jsDelete*(x: auto): JsObject {.importcpp: "(delete #)".}
   ## JavaScript's `delete` operator
+
+proc require*(module: cstring): JsObject {.importc.}
+  ## JavaScript's `require` function
 
 # Conversion to and from JsObject
 proc to*(x: JsObject, T: typedesc): T {. importcpp: "(#)" .}
@@ -155,7 +176,7 @@ proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
 proc `[]=`*[T](obj: JsObject, field: int, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
 
-proc `[]`*[K: NotString, V](obj: JsAssoc[K, V], field: K): V
+proc `[]`*[K: not string, V](obj: JsAssoc[K, V], field: K): V
   {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
@@ -163,7 +184,7 @@ proc `[]`*[V](obj: JsAssoc[string, V], field: cstring): V
   {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
-proc `[]=`*[K: NotString, V](obj: JsAssoc[K, V], field: K, val: V)
+proc `[]=`*[K: not string, V](obj: JsAssoc[K, V], field: K, val: V)
   {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
 

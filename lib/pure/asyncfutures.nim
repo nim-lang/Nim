@@ -27,8 +27,6 @@ type
   FutureError* = object of Exception
     cause*: FutureBase
 
-{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
-
 when not defined(release):
   var currentID = 0
 
@@ -177,7 +175,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
 
-proc clearCallbacks(future: FutureBase) =
+proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
@@ -221,10 +219,10 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  if entry.procname == "processPendingCallbacks":
+  if entry.procname == cstring"processPendingCallbacks":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
-  elif entry.procname == "poll":
+  elif entry.procname == cstring"poll":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
@@ -252,7 +250,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
         indent.inc(2)
       else:
         indent.dec(2)
-        result.add(spaces(indent)& "]#\n")
+        result.add(spaces(indent) & "]#\n")
       continue
 
     let left = "$#($#)" % [$entry.filename, $entry.line]

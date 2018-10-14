@@ -46,7 +46,7 @@ type
   type1 = typedesc
   type2 = typedesc
 
-proc typePairs(A, B: type1; C, D: type2) = nil
+proc typePairs(A, B: type1; C, D: type2) = discard
 
 accept typePairs(int, int, TFoo, TFOO)
 accept typePairs(TBAR, TBar, TBAR, TBAR)
@@ -55,7 +55,7 @@ accept typePairs(int, int, string, string)
 reject typePairs(TBAR, TBar, TBar, TFoo)
 reject typePairs(string, int, TBAR, TBAR)
 
-proc typePairs2[T: typedesc, U: typedesc](A, B: T; C, D: U) = nil
+proc typePairs2[T: typedesc, U: typedesc](A, B: T; C, D: U) = discard
 
 accept typePairs2(int, int, TFoo, TFOO)
 accept typePairs2(TBAR, TBar, TBAR, TBAR)
@@ -71,12 +71,12 @@ proc dontBind(a: typedesc, b: typedesc) =
 accept dontBind(int, float)
 accept dontBind(TFoo, TFoo)
 
-proc dontBind2(a, b: typedesc) = nil
+proc dontBind2(a, b: typedesc) = discard
 
 accept dontBind2(int, float)
 accept dontBind2(TBar, int)
 
-proc bindArg(T: typedesc, U: typedesc, a, b: T, c, d: U) = nil
+proc bindArg(T: typedesc, U: typedesc, a, b: T, c, d: U) = discard
 
 accept bindArg(int, string, 10, 20, "test", "nest")
 accept bindArg(int, int, 10, 20, 30, 40)

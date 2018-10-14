@@ -31,8 +31,6 @@ type
   SubexError* = object of ValueError ## exception that is raised for
                                      ## an invalid subex
 
-{.deprecated: [EInvalidSubex: SubexError].}
-
 proc raiseInvalidFormat(msg: string) {.noinline.} =
   raise newException(SubexError, "invalid format string: " & msg)
 
@@ -44,7 +42,6 @@ type
     else:
       f: cstring
     num, i, lineLen: int
-{.deprecated: [TFormatParser: FormatParser].}
 
 template call(x: untyped): untyped =
   p.i = i

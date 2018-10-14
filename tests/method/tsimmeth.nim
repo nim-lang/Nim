@@ -6,7 +6,7 @@ discard """
 
 import strutils
 
-var x = "hello world!".toLower.toUpper
+var x = "hello world!".toLowerAscii.toUpperAscii
 x.echo()
 #OUT HELLO WORLD!
 

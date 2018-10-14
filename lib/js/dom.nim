@@ -45,6 +45,7 @@ type
     location*: Location
     closed*: bool
     defaultStatus*: cstring
+    devicePixelRatio*: float
     innerHeight*, innerWidth*: int
     locationbar*: ref TLocationBar
     menubar*: ref TMenuBar
@@ -53,11 +54,15 @@ type
     pageXOffset*, pageYOffset*: int
     personalbar*: ref TPersonalBar
     scrollbars*: ref TScrollBars
+    scrollX*: float
+    scrollY*: float
     statusbar*: ref TStatusBar
     status*: cstring
     toolbar*: ref TToolBar
     frames*: seq[TFrame]
     screen*: Screen
+    performance*: Performance
+    onpopstate*: proc (event: Event)
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -171,6 +176,12 @@ type
     text*: cstring
     value*: cstring
 
+  TextAreaElement* = ref object of ElementObj
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
+
   FormElement* = ref FormObj
   FormObj {.importc.} = object of ElementObj
     action*: cstring
@@ -190,7 +201,7 @@ type
     vspace*: int
     width*: int
 
-  Style = ref StyleObj
+  Style* = ref StyleObj
   StyleObj {.importc.} = object of RootObj
     background*: cstring
     backgroundAttachment*: cstring
@@ -253,6 +264,8 @@ type
     minHeight*: cstring
     minWidth*: cstring
     overflow*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
     padding*: cstring
     paddingBottom*: cstring
     paddingLeft*: cstring
@@ -400,12 +413,47 @@ type
     once*: bool
     passive*: bool
 
+  BoundingRect* {.importc.} = ref object
+    top*, bottom*, left*, right*, x*, y*, width*, height*: float
+
+  PerformanceMemory* {.importc.} = ref object 
+    jsHeapSizeLimit*: float
+    totalJSHeapSize*: float
+    usedJSHeapSize*: float
+
+  PerformanceTiming* {.importc.} = ref object 
+    connectStart*: float
+    domComplete*: float
+    domContentLoadedEventEnd*: float
+    domContentLoadedEventStart*: float
+    domInteractive*: float
+    domLoading*: float
+    domainLookupEnd*: float
+    domainLookupStart*: float
+    fetchStart*: float
+    loadEventEnd*: float
+    loadEventStart*: float
+    navigationStart*: float
+    redirectEnd*: float
+    redirectStart*: float
+    requestStart*: float
+    responseEnd*: float
+    responseStart*: float
+    secureConnectionStart*: float
+    unloadEventEnd*: float
+    unloadEventStart*: float
+
+  Performance* {.importc.} = ref object
+    memory*: PerformanceMemory
+    timing*: PerformanceTiming
+
 {.push importcpp.}
 
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
 proc removeEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -451,6 +499,7 @@ proc cloneNode*(n: Node, copyContent: bool): Node
 proc deleteData*(n: Node, start, len: int)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
+proc getBoundingClientRect*(e: Node): BoundingRect
 proc hasChildNodes*(n: Node): bool
 proc insertBefore*(n, newNode, before: Node)
 proc insertData*(n: Node, position: int, data: cstring)
@@ -459,7 +508,7 @@ proc removeAttributeNode*(n, attr: Node)
 proc removeChild*(n, child: Node)
 proc replaceChild*(n, newNode, oldNode: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
-proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, alignToTop: bool=true)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 
@@ -530,6 +579,9 @@ proc preventDefault*(ev: Event)
 proc identifiedTouch*(list: TouchList): Touch
 proc item*(list: TouchList, i: int): Touch
 
+# Performance "methods"
+proc now*(p: Performance): float
+
 {.pop.}
 
 var
@@ -552,6 +604,7 @@ proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}
 proc parseInt*(s: cstring, radix: int):int {.importc, nodecl.}
 
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 type
   TEventHandlers* {.deprecated.} = EventTargetObj

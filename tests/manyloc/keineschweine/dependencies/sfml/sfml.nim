@@ -12,7 +12,7 @@ else:
     LibS = "libcsfml-system.so.2.0"
     LibW = "libcsfml-window.so.2.0"
   #{.error: "Platform unsupported".}
-{.deadCodeElim: on.}
+
 {.pragma: pf, pure, final.}
 type
   PClock* = ptr TClock

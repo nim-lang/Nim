@@ -18,13 +18,13 @@ proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
   createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 proc newAsyncNativeSocket*(domain: cint, sockType: cint,
-                           protocol: cint): AsyncFD {.deprecated.} =
+                           protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
   createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
                            sockType: SockType = SOCK_STREAM,
                            protocol: Protocol = IPPROTO_TCP): AsyncFD
-                           {.deprecated.} =
+                           {.deprecated: "use createAsyncNativeSocket instead".} =
   createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 when defined(windows) or defined(nimdoc):
@@ -38,11 +38,11 @@ when defined(windows) or defined(nimdoc):
 
     if domain == Domain.AF_INET6:
       var saddr: Sockaddr_in6
-      saddr.sin6_family = int16(toInt(domain))
+      saddr.sin6_family = uint16(toInt(domain))
       doBind(saddr)
     else:
       var saddr: Sockaddr_in
-      saddr.sin_family = int16(toInt(domain))
+      saddr.sin_family = uint16(toInt(domain))
       doBind(saddr)
 
   proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): Future[void] =

@@ -17,9 +17,9 @@
 ## Loading a simple C function
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
-## The following example demonstrates loading a function called 'greet' 
+## The following example demonstrates loading a function called 'greet'
 ## from a library that is determined at runtime based upon a language choice.
-## If the library fails to load or the function 'greet' is not found, 
+## If the library fails to load or the function 'greet' is not found,
 ## it quits with a failure error code.
 ##
 ## .. code-block::nim
@@ -58,8 +58,6 @@ import strutils
 
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
-
-{.deprecated: [TLibHandle: LibHandle].}
 
 proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not
@@ -138,6 +136,28 @@ when defined(posix):
   proc unloadLib(lib: LibHandle) = dlclose(lib)
   proc symAddr(lib: LibHandle, name: cstring): pointer =
     return dlsym(lib, name)
+
+elif defined(nintendoswitch):
+  #
+  # =========================================================================
+  # Nintendo switch DevkitPro sdk does not have these. Raise an error if called.
+  # =========================================================================
+  #
+
+  proc dlclose(lib: LibHandle) =
+    raise newException(OSError, "dlclose not implemented on Nintendo Switch!")
+  proc dlopen(path: cstring, mode: int): LibHandle =
+    raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
+  proc dlsym(lib: LibHandle, name: cstring): pointer =
+    raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
+  proc loadLib(path: string, global_symbols=false): LibHandle =
+    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
+  proc loadLib(): LibHandle =
+    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
+  proc unloadLib(lib: LibHandle) =
+    raise newException(OSError, "unloadLib not implemented on Nintendo Switch!")
+  proc symAddr(lib: LibHandle, name: cstring): pointer =
+    raise newException(OSError, "symAddr not implemented on Nintendo Switch!")
 
 elif defined(windows) or defined(dos):
   #

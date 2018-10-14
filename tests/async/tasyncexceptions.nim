@@ -20,7 +20,7 @@ proc processClient(fd: int) {.async.} =
   var line = await recvLine(fd)
   var foo = line[0]
   if foo == 'g':
-    raise newException(EBase, "foobar")
+    raise newException(Exception, "foobar")
 
 proc serve() {.async.} =
 

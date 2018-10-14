@@ -32,10 +32,12 @@
 
 include "system/inclrtl"
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
+elif hostOS == "haiku":
+  {.passl: "-lnetwork".}
 
 import os, parseutils
 from times import epochTime
@@ -221,7 +223,7 @@ template htons(x: uint16): uint16 =
   sockets.ntohs(x)
 
 when defined(Posix):
-  proc toInt(domain: Domain): TSa_Family =
+  proc toInt(domain: Domain): cint =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
@@ -461,9 +463,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   if address == "":
     var name: Sockaddr_in
     when defined(Windows):
-      name.sin_family = int16(ord(AF_INET))
+      name.sin_family = uint16(ord(AF_INET))
     else:
-      name.sin_family = posix.AF_INET
+      name.sin_family = uint16(posix.AF_INET)
     name.sin_port = sockets.htons(uint16(port))
     name.sin_addr.s_addr = sockets.htonl(INADDR_ANY)
     if bindSocket(socket.fd, cast[ptr SockAddr](addr(name)),
@@ -483,9 +485,9 @@ proc getSockName*(socket: Socket): Port =
   ## returns the socket's associated port number.
   var name: Sockaddr_in
   when defined(Windows):
-    name.sin_family = int16(ord(AF_INET))
+    name.sin_family = uint16(ord(AF_INET))
   else:
-    name.sin_family = posix.AF_INET
+    name.sin_family = uint16(posix.AF_INET)
   #name.sin_port = htons(cint16(port))
   #name.sin_addr.s_addr = htonl(INADDR_ANY)
   var namelen = sizeof(name).SockLen
@@ -727,9 +729,9 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
   when defined(windows):
     result.addrtype = Domain(s.h_addrtype)
   else:
-    if s.h_addrtype == posix.AF_INET:
+    if s.h_addrtype.cint == posix.AF_INET:
       result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
+    elif s.h_addrtype.cint == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
@@ -748,9 +750,9 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   when defined(windows):
     result.addrtype = Domain(s.h_addrtype)
   else:
-    if s.h_addrtype == posix.AF_INET:
+    if s.h_addrtype.cint == posix.AF_INET:
       result.addrtype = AF_INET
-    elif s.h_addrtype == posix.AF_INET6:
+    elif s.h_addrtype.cint == posix.AF_INET6:
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
@@ -953,8 +955,12 @@ when defined(ssl):
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when defined(posix):
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
+    else:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
 proc createFdSet(fd: var TFdSet, s: seq[Socket], m: var int) =
   FD_ZERO(fd)

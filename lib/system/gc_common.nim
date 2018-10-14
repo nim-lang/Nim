@@ -37,26 +37,35 @@ when defined(nimTypeNames):
         a[j] = v
       if h == 1: break
 
-  proc dumpNumberOfInstances* =
-    # also add the allocated strings to the list of known types:
+  iterator dumpHeapInstances*(): tuple[name: cstring; count: int; sizes: int] =
+    ## Iterate over summaries of types on heaps.
+    ## This data may be inaccurate if allocations
+    ## are made by the iterator body.
     if strDesc.nextType == nil:
       strDesc.nextType = nimTypeRoot
       strDesc.name = "string"
       nimTypeRoot = addr strDesc
+    var it = nimTypeRoot
+    while it != nil:
+      if (it.instances > 0 or it.sizes != 0):
+        yield (it.name, it.instances, it.sizes)
+      it = it.nextType
+
+  proc dumpNumberOfInstances* =
     var a: InstancesInfo
     var n = 0
-    var it = nimTypeRoot
     var totalAllocated = 0
-    while it != nil:
-      if (it.instances > 0 or it.sizes != 0) and n < a.len:
-        a[n] = (it.name, it.instances, it.sizes)
-        inc n
+    for it in dumpHeapInstances():
+      a[n] = it
+      inc n
       inc totalAllocated, it.sizes
-      it = it.nextType
     sortInstances(a, n)
     for i in 0 .. n-1:
       c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
     c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
+    when defined(nimTypeNames):
+      let (allocs, deallocs) = getMemCounters()
+      c_fprintf(stdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
@@ -200,7 +209,7 @@ when declared(threadType):
     if threadType == ThreadType.None:
       initAllocator()
       var stackTop {.volatile.}: pointer
-      setStackBottom(addr(stackTop))
+      nimGC_setStackBottom(addr(stackTop))
       initGC()
       threadType = ThreadType.ForeignThread
 
@@ -257,7 +266,7 @@ when nimCoroutines:
     gch.activeStack.setPosition(addr(sp))
 
 when not defined(useNimRtl):
-  proc setStackBottom(theStackBottom: pointer) =
+  proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
     when nimCoroutines:
       if gch.stack.next == nil:
@@ -431,9 +440,9 @@ type
   GlobalMarkerProc = proc () {.nimcall, benign.}
 var
   globalMarkersLen: int
-  globalMarkers: array[0.. 3499, GlobalMarkerProc]
+  globalMarkers: array[0..3499, GlobalMarkerProc]
   threadLocalMarkersLen: int
-  threadLocalMarkers: array[0.. 3499, GlobalMarkerProc]
+  threadLocalMarkers: array[0..3499, GlobalMarkerProc]
   gHeapidGenerator: int
 
 proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =

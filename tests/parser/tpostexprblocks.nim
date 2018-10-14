@@ -1,82 +1,82 @@
 discard """
 nimout: '''
 StmtList
-  Ident ident"foo010"
+  Ident "foo010"
   Call
-    Ident ident"foo020"
+    Ident "foo020"
   Call
-    Ident ident"foo030"
-    Ident ident"x"
+    Ident "foo030"
+    Ident "x"
   Command
-    Ident ident"foo040"
-    Ident ident"x"
+    Ident "foo040"
+    Ident "x"
   Call
-    Ident ident"foo050"
+    Ident "foo050"
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident ident"foo060"
+    Ident "foo060"
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident ident"foo070"
-    StrLit test
+    Ident "foo070"
+    StrLit "test"
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident ident"foo080"
-    StrLit test
-    StmtList
-      DiscardStmt
-        Empty
-  Command
-    Ident ident"foo090"
-    StrLit test
+    Ident "foo080"
+    StrLit "test"
     StmtList
       DiscardStmt
         Empty
   Command
-    Ident ident"foo100"
+    Ident "foo090"
+    StrLit "test"
+    StmtList
+      DiscardStmt
+        Empty
+  Command
+    Ident "foo100"
     Call
-      StrLit test
+      StrLit "test"
       StmtList
         DiscardStmt
           Empty
   Command
-    Ident ident"foo101"
+    Ident "foo101"
     Call
       IntLit 10
       StmtList
         DiscardStmt
           Empty
   Command
-    Ident ident"foo110"
+    Ident "foo110"
     IntLit 1
     Par
       Infix
-        Ident ident"+"
+        Ident "+"
         IntLit 2
         IntLit 3
     StmtList
       DiscardStmt
         Empty
   Command
-    Ident ident"foo120"
+    Ident "foo120"
     IntLit 1
     Call
       Par
         Infix
-          Ident ident"+"
+          Ident "+"
           IntLit 2
           IntLit 3
       StmtList
         DiscardStmt
           Empty
   Call
-    Ident ident"foo130"
+    Ident "foo130"
     Do
       Empty
       Empty
@@ -84,7 +84,7 @@ StmtList
       FormalParams
         Empty
         IdentDefs
-          Ident ident"x"
+          Ident "x"
           Empty
           Empty
       Empty
@@ -93,7 +93,7 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident ident"foo140"
+    Ident "foo140"
     Do
       Empty
       Empty
@@ -101,8 +101,8 @@ StmtList
       FormalParams
         Empty
         IdentDefs
-          Ident ident"x"
-          Ident ident"int"
+          Ident "x"
+          Ident "int"
           Empty
       Empty
       Empty
@@ -110,16 +110,16 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident ident"foo150"
+    Ident "foo150"
     Do
       Empty
       Empty
       Empty
       FormalParams
-        Ident ident"int"
+        Ident "int"
         IdentDefs
-          Ident ident"x"
-          Ident ident"int"
+          Ident "x"
+          Ident "int"
           Empty
       Empty
       Empty
@@ -127,9 +127,9 @@ StmtList
         DiscardStmt
           Empty
   Command
-    Ident ident"foo160"
+    Ident "foo160"
     Call
-      Ident ident"x"
+      Ident "x"
       Do
         Empty
         Empty
@@ -137,7 +137,7 @@ StmtList
         FormalParams
           Empty
           IdentDefs
-            Ident ident"y"
+            Ident "y"
             Empty
             Empty
         Empty
@@ -146,7 +146,7 @@ StmtList
           DiscardStmt
             Empty
   Call
-    Ident ident"foo170"
+    Ident "foo170"
     StmtList
       DiscardStmt
         Empty
@@ -155,7 +155,7 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident ident"foo180"
+    Ident "foo180"
     StmtList
       DiscardStmt
         Empty
@@ -167,9 +167,9 @@ StmtList
         DiscardStmt
           Empty
   Command
-    Ident ident"foo190"
+    Ident "foo190"
     Call
-      Ident ident"x"
+      Ident "x"
       Do
         Empty
         Empty
@@ -177,7 +177,7 @@ StmtList
         FormalParams
           Empty
           IdentDefs
-            Ident ident"y"
+            Ident "y"
             Empty
             Empty
         Empty
@@ -190,9 +190,9 @@ StmtList
         Empty
         Empty
         FormalParams
-          Ident ident"int"
+          Ident "int"
           IdentDefs
-            Ident ident"z"
+            Ident "z"
             Empty
             Empty
         Empty
@@ -205,10 +205,10 @@ StmtList
         Empty
         Empty
         FormalParams
-          Ident ident"int"
+          Ident "int"
           IdentDefs
-            Ident ident"w"
-            Ident ident"int"
+            Ident "w"
+            Ident "int"
             Empty
         Empty
         Empty
@@ -223,10 +223,10 @@ StmtList
           DiscardStmt
             Empty
   Call
-    Ident ident"foo200"
-    Ident ident"x"
+    Ident "foo200"
+    Ident "x"
     Call
-      Ident ident"bar"
+      Ident "bar"
       StmtList
         DiscardStmt
           Empty
@@ -236,53 +236,53 @@ StmtList
             Empty
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
-      Ident ident"foo210"
+      Ident "foo210"
   VarSection
     IdentDefs
-      Ident ident"a"
-      Empty
-      Call
-        Ident ident"foo220"
-  VarSection
-    IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
       Call
-        Ident ident"foo230"
-        Ident ident"x"
+        Ident "foo220"
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
+      Empty
+      Call
+        Ident "foo230"
+        Ident "x"
+  VarSection
+    IdentDefs
+      Ident "a"
       Empty
       Command
-        Ident ident"foo240"
-        Ident ident"x"
+        Ident "foo240"
+        Ident "x"
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
       Call
-        Ident ident"foo250"
+        Ident "foo250"
         StmtList
           DiscardStmt
             Empty
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
       Call
-        Ident ident"foo260"
+        Ident "foo260"
         StmtList
           DiscardStmt
             Empty
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
       Call
-        Ident ident"foo270"
+        Ident "foo270"
         StmtList
           DiscardStmt
             Empty
@@ -292,12 +292,12 @@ StmtList
               Empty
   VarSection
     IdentDefs
-      Ident ident"a"
+      Ident "a"
       Empty
       Command
-        Ident ident"foo280"
+        Ident "foo280"
         Call
-          Ident ident"x"
+          Ident "x"
           Do
             Empty
             Empty
@@ -305,7 +305,7 @@ StmtList
             FormalParams
               Empty
               IdentDefs
-                Ident ident"y"
+                Ident "y"
                 Empty
                 Empty
             Empty
@@ -318,40 +318,40 @@ StmtList
               DiscardStmt
                 Empty
   Asgn
-    Ident ident"a"
-    Ident ident"foo290"
+    Ident "a"
+    Ident "foo290"
   Asgn
-    Ident ident"a"
+    Ident "a"
     Call
-      Ident ident"foo300"
+      Ident "foo300"
   Asgn
-    Ident ident"a"
+    Ident "a"
     Call
-      Ident ident"foo310"
-      Ident ident"x"
+      Ident "foo310"
+      Ident "x"
   Asgn
-    Ident ident"a"
+    Ident "a"
     Command
-      Ident ident"foo320"
-      Ident ident"x"
+      Ident "foo320"
+      Ident "x"
   Asgn
-    Ident ident"a"
+    Ident "a"
     Call
-      Ident ident"foo330"
+      Ident "foo330"
       StmtList
         DiscardStmt
           Empty
   Asgn
-    Ident ident"a"
+    Ident "a"
     Call
-      Ident ident"foo340"
+      Ident "foo340"
       StmtList
         DiscardStmt
           Empty
   Asgn
-    Ident ident"a"
+    Ident "a"
     Call
-      Ident ident"foo350"
+      Ident "foo350"
       StmtList
         DiscardStmt
           Empty
@@ -360,13 +360,13 @@ StmtList
           DiscardStmt
             Empty
   Asgn
-    Ident ident"a"
+    Ident "a"
     Command
-      Ident ident"foo360"
+      Ident "foo360"
       Call
         DotExpr
-          Ident ident"x"
-          Ident ident"bar"
+          Ident "x"
+          Ident "bar"
         Do
           Empty
           Empty
@@ -374,7 +374,7 @@ StmtList
           FormalParams
             Empty
             IdentDefs
-              Ident ident"y"
+              Ident "y"
               Empty
               Empty
           Empty
@@ -388,20 +388,20 @@ StmtList
               Empty
   Command
     DotExpr
-      Ident ident"foo370"
-      Ident ident"add"
+      Ident "foo370"
+      Ident "add"
     Call
-      Ident ident"quote"
+      Ident "quote"
       StmtList
         DiscardStmt
           Empty
   Call
     DotExpr
-      Ident ident"foo380"
-      Ident ident"add"
+      Ident "foo380"
+      Ident "add"
     BracketExpr
       Call
-        Ident ident"quote"
+        Ident "quote"
         StmtList
           DiscardStmt
             Empty
@@ -540,4 +540,3 @@ dumpTree:
   foo380.add((quote do:
     discard
   )[0])
-

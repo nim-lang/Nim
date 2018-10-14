@@ -66,7 +66,7 @@ proc skipRandomNumbers*(s: var Rand) =
     s0 = ui 0
     s1 = ui 0
   for i in 0..high(helper):
-    for b in 0..< 64:
+    for b in 0 ..< 64:
       if (helper[i] and (ui(1) shl ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1
@@ -110,7 +110,7 @@ proc random*[T](a: openArray[T]): T {.deprecated.} =
   ## Use ``rand`` instead.
   result = a[random(a.low..a.len)]
 
-proc rand*(r: var Rand; max: int): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -128,7 +128,7 @@ proc rand*(max: int): int {.benign.} =
   ## number, i.e. a tickcount.
   rand(state, max)
 
-proc rand*(r: var Rand; max: float): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -191,8 +191,8 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    let time = int64(times.epochTime() * 1_000_000_000)
-    randomize(time)
+    let now = times.getTime()
+    randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
 {.pop.}
 
@@ -217,5 +217,18 @@ when isMainModule:
 
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
+
+    when compileOption("rangeChecks"):
+      try:
+        discard rand(-1)
+        doAssert false
+      except RangeError:
+        discard
+
+      try:
+        discard rand(-1.0)
+        doAssert false
+      except RangeError:
+        discard
 
   main()

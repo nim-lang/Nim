@@ -29,11 +29,6 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
-    FReadDir: ReadDirEffect,
-    FWriteDir: WriteDirEffect,
-    TOSErrorCode: OSErrorCode
-].}
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
@@ -152,7 +147,7 @@ else: # UNIX-like operating system
     DirSep* = '/'
     AltSep* = DirSep
     PathSep* = ':'
-    FileSystemCaseSensitive* = true
+    FileSystemCaseSensitive* = when defined(macosx): false else: true
     ExeExt* = ""
     ScriptExt* = ""
     DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
@@ -162,6 +157,29 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
+proc normalizePathEnd(path: var string, trailingSep = false) =
+  ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
+  ## ``trailingSep``, and taking care of edge cases: it preservers whether
+  ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
+  ## not `AltSep`.
+  if path.len == 0: return
+  var i = path.len
+  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
+  if trailingSep:
+    # foo// => foo
+    path.setLen(i)
+    # foo => foo/
+    path.add DirSep
+  elif i>0:
+    # foo// => foo
+    path.setLen(i)
+  else:
+    # // => / (empty case was already taken care of)
+    path = $DirSep
+
+proc normalizePathEnd(path: string, trailingSep = false): string =
+  result = path
+  result.normalizePathEnd(trailingSep)
 
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -191,12 +209,12 @@ proc joinPath*(head, tail: string): string {.
   if len(head) == 0:
     result = tail
   elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & substr(tail, 1)
     else:
       result = head & tail
   else:
-    if tail[0] in {DirSep, AltSep}:
+    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
       result = head & tail
     else:
       result = head & DirSep & tail
@@ -258,10 +276,15 @@ proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
-  ## This is often the same as the ``head`` result of ``splitPath``.
-  ## If there is no parent, "" is returned.
-  ## | Example: ``parentDir("/usr/local/bin") == "/usr/local"``.
-  ## | Example: ``parentDir("/usr/local/bin/") == "/usr/local"``.
+  ## This is the same as ``splitPath(path).head`` when ``path`` doesn't end
+  ## in a dir separator.
+  ## The remainder can be obtained with ``lastPathPart(path)``
+  runnableExamples:
+    doAssert parentDir("") == ""
+    when defined(posix):
+      doAssert parentDir("/usr/local/bin") == "/usr/local"
+      doAssert parentDir("foo/bar/") == "foo"
+
   let sepPos = parentDirPos(path)
   if sepPos >= 0:
     result = substr(path, 0, sepPos-1)
@@ -373,12 +396,25 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
 proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`. This is the same as
-  ## ``name & ext`` from ``splitFile(path)``.
+  ## ``name & ext`` from ``splitFile(path)``. See also ``lastPathPart``.
+  runnableExamples:
+    when defined(posix):
+      doAssert extractFilename("foo/bar/") == ""
+      doAssert extractFilename("foo/bar") == "bar"
   if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
     result = ""
   else:
     result = splitPath(path).tail
 
+proc lastPathPart*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## like ``extractFilename``, but ignores trailing dir separator; aka: baseName
+  ## in some other languages.
+  runnableExamples:
+    when defined(posix):
+      doAssert lastPathPart("foo/bar/") == "bar"
+  let path = path.normalizePathEnd(trailingSep = false)
+  result = extractFilename(path)
 
 proc changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -415,6 +451,11 @@ proc cmpPaths*(pathA, pathB: string): int {.
   ## | 0 iff pathA == pathB
   ## | < 0 iff pathA < pathB
   ## | > 0 iff pathA > pathB
+  runnableExamples:
+    when defined(macosx):
+      doAssert cmpPaths("foo", "Foo") == 0
+    elif defined(posix):
+      doAssert cmpPaths("foo", "Foo") > 0
   if FileSystemCaseSensitive:
     result = cmp(pathA, pathB)
   else:
@@ -428,12 +469,22 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Checks whether a given `path` is absolute.
   ##
   ## On Windows, network paths are considered absolute too.
+  runnableExamples:
+    doAssert(not "".isAbsolute)
+    doAssert(not ".".isAbsolute)
+    when defined(posix):
+      doAssert "/".isAbsolute
+      doAssert(not "a/".isAbsolute)
+
+  if len(path) == 0: return false
+
   when doslikeFileSystem:
     var len = len(path)
-    result = (len > 0 and path[0] in {'/', '\\'}) or
+    result = (path[0] in {'/', '\\'}) or
               (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
   elif defined(macos):
-    result = path.len > 0 and path[0] != ':'
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
   elif defined(posix):
@@ -454,6 +505,9 @@ proc unixToNativePath*(path: string, drive=""): string {.
   when defined(unix):
     result = path
   else:
+    if path.len == 0:
+        return ""
+
     var start: int
     if path[0] == '/':
       # an absolute path
@@ -467,17 +521,17 @@ proc unixToNativePath*(path: string, drive=""): string {.
       else:
         result = $DirSep
       start = 1
-    elif path[0] == '.' and path[1] == '/':
+    elif path[0] == '.' and (path.len == 1 or path[1] == '/'):
       # current directory
       result = $CurDir
-      start = 2
+      start = when doslikeFileSystem: 1 else: 2
     else:
       result = ""
       start = 0
 
     var i = start
     while i < len(path): # ../../../ --> ::::
-      if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
         # parent directory
         when defined(macos):
           if result[high(result)] == ':':
@@ -512,15 +566,17 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## Returns the config directory of the current user for applications.
   ##
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the XDG_CONFIG_DIR environment
+  ## spec. Thus, this proc returns the value of the XDG_CONFIG_HOME environment
   ## variable if it is set, and returns the default configuration directory,
   ## "~/.config/", otherwise.
   ##
   ## An OS-dependent trailing slash is always present at the end of the
-  ## returned string; `\\` on Windows and `/` on all other OSs.
-  when defined(windows): return string(getEnv("APPDATA")) & "\\"
-  elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
-  else: return string(getEnv("HOME")) & "/.config/"
+  ## returned string; `\` on Windows and `/` on all other OSs.
+  when defined(windows):
+    result = getEnv("APPDATA").string
+  else:
+    result = getEnv("XDG_CONFIG_HOME", getEnv("HOME").string / ".config").string
+  result.normalizePathEnd(trailingSep = true)
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -540,25 +596,25 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Expands a path starting with ``~/`` to a full path.
+  ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
+  ## ``~`` with ``getHomeDir()`` (otherwise returns ``path`` unmodified).
   ##
-  ## If `path` starts with the tilde character and is followed by `/` or `\\`
-  ## this proc will return the reminder of the path appended to the result of
-  ## the getHomeDir() proc, otherwise the input path will be returned without
-  ## modification.
-  ##
-  ## The behaviour of this proc is the same on the Windows platform despite
-  ## not having this convention. Example:
-  ##
-  ## .. code-block:: nim
-  ##   let configFile = expandTilde("~" / "appname.cfg")
-  ##   echo configFile
-  ##   # --> C:\Users\amber\appname.cfg
-  if len(path) > 1 and path[0] == '~' and (path[1] == '/' or path[1] == '\\'):
+  ## Windows: this is still supported despite Windows platform not having this
+  ## convention; also, both ``~/`` and ``~\`` are handled.
+  runnableExamples:
+    doAssert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
+  if len(path) == 0 or path[0] != '~':
+    result = path
+  elif len(path) == 1:
+    result = getHomeDir()
+  elif (path[1] in {DirSep, AltSep}):
     result = getHomeDir() / path.substr(2)
   else:
+    # TODO: handle `~bob` and `~bob/` which means home of bob
     result = path
 
+# TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
+# belong in `strutils` instead; they are not specific to paths
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
@@ -602,13 +658,25 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
   else:
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
-when defined(windows) or defined(posix):
+when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote ``s``, so it can be safely passed to shell.
     when defined(windows):
       return quoteShellWindows(s)
     else:
       return quoteShellPosix(s)
+
+  proc quoteShellCommand*(args: openArray[string]): string =
+    ## Concatenates and quotes shell arguments `args`
+    runnableExamples:
+      when defined(posix):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa '' 'c d'"
+      when defined(windows):
+        assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
+    # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    for i in 0..<args.len:
+      if i > 0: result.add " "
+      result.add quoteShell(args[i])
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
@@ -622,3 +690,24 @@ when isMainModule:
 
   when defined(posix):
     assert quoteShell("") == "''"
+
+  block normalizePathEndTest:
+    # handle edge cases correctly: shouldn't affect whether path is
+    # absolute/relative
+    doAssert "".normalizePathEnd(true) == ""
+    doAssert "".normalizePathEnd(false) == ""
+    doAssert "/".normalizePathEnd(true) == $DirSep
+    doAssert "/".normalizePathEnd(false) == $DirSep
+
+    when defined(posix):
+      doAssert "//".normalizePathEnd(false) == "/"
+      doAssert "foo.bar//".normalizePathEnd == "foo.bar"
+      doAssert "bar//".normalizePathEnd(trailingSep = true) == "bar/"
+    when defined(Windows):
+      doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
+      doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
+      # this one is controversial: we could argue for returning `D:\` instead,
+      # but this is simplest.
+      doAssert r"D:\".normalizePathEnd == r"D:"
+      doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
+      doAssert "/".normalizePathEnd == r"\"

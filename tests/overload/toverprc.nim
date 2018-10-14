@@ -11,7 +11,7 @@ proc parseInt(x: float): int {.noSideEffect.} = discard
 proc parseInt(x: bool): int {.noSideEffect.} = discard
 proc parseInt(x: float32): int {.noSideEffect.} = discard
 proc parseInt(x: int8): int {.noSideEffect.} = discard
-proc parseInt(x: TFile): int {.noSideEffect.} = discard
+proc parseInt(x: File): int {.noSideEffect.} = discard
 proc parseInt(x: char): int {.noSideEffect.} = discard
 proc parseInt(x: int16): int {.noSideEffect.} = discard
 

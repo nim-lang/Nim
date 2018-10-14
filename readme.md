@@ -2,7 +2,7 @@
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
-the latest release, check out [Nim's website][nim-site].
+the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](https://nim-lang.github.io/Nim/).
 
 ## Community
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
@@ -16,6 +16,8 @@ the latest release, check out [Nim's website][nim-site].
   Also where most development decisions get made.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
+* [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
+  is the official Telegram channel.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
 * [Github Wiki][nim-wiki] - Misc user-contributed content.
@@ -48,19 +50,33 @@ Next, to build from source you will need:
     other distros as well). 
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
-Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
-of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
-``build64.bat`` on x86_64 Windows):
+Nim from source using ``gcc``, ``git`` and the ``koch`` build tool.
+
+**Note: The following commands are for the development version of the compiler.**
+For most users, installing the latest stable version is enough. Check out
+the installation instructions on the website to do so: https://nim-lang.org/install.html.
 
 ```
+# step 1:
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
+
+# step 2 (posix) clones `csources.git`, bootstraps Nim compiler and compiles tools
+sh build_all.sh
+
+# step 2 (windows)
 git clone --depth 1 https://github.com/nim-lang/csources.git
+
 cd csources
-sh build.sh
-cd ../
-bin/nim c koch
-./koch boot -d:release
+# requires `gcc` in your PATH, see also https://nim-lang.org/install_windows.html
+build.bat # x86 Windows
+build64.bat # x86_64 Windows
+cd ..
+
+bin\nim c koch
+koch boot -d:release
+koch tools # Compile Nimble and other tools
+# end of step 2 (windows)
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
@@ -80,15 +96,13 @@ For more information on the ``koch`` build tool please see the documentation
 within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Nimble
-``nimble`` is Nim's package manager and it can be acquired from the
-[``nim-lang/nimble``][nimble-repo] repository. Assuming that you added Nim's
-``bin`` directory to your PATH, you may install Nimble from source by running
-``koch nimble`` within the root of the cloned repository.
 
+``nimble`` is Nim's package manager. To learn more about it, see the
+[``nim-lang/nimble``][nimble-repo] repository.
 
 ## Contributors
 
-This project exists thanks to all the people who contribute. [Read on to find out how to contribute](#contributing).
+This project exists thanks to all the people who contribute.
 <a href="https://github.com/nim-lang/Nim/graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
 
 ## Contributing
@@ -97,6 +111,7 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 [![Open Source Helpers](https://www.codetriage.com/nim-lang/nim/badges/users.svg)](https://www.codetriage.com/nim-lang/nim)
 
+See [detailed contributing guidelines](https://nim-lang.github.io/Nim/contributing.html).
 We welcome all contributions to Nim regardless of how small or large
 they are. Everything from spelling fixes to new modules to be included in the
 standard library are welcomed and appreciated. Before you start contributing,
@@ -116,7 +131,6 @@ you should familiarize yourself with the following repository structure:
 * ``tests/`` - contains categorized tests for the compiler and standard library.
 * ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
   ``koch``).
-* ``web/`` - [the Nim website][nim-site].
 * ``koch.nim`` - tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
 
@@ -177,7 +191,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2018 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
@@ -189,6 +203,7 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
+[nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble

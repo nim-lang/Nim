@@ -13,8 +13,8 @@ import
   strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
-  modulegraphs
+  magicsys, nversion, nimsets, parser, times, passes, vmdef,
+  modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     notes*: TNoteKinds
+    features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -37,6 +38,7 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
+    mappingExists*: bool
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -63,7 +65,10 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoUndeclared
+      # Use this if undeclared identifiers should not raise an error during
+      # overload resolution.
 
   TExprFlags* = set[TExprFlag]
 
@@ -75,6 +80,7 @@ type
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
+    enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
@@ -89,6 +95,7 @@ type
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
+    inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
@@ -130,13 +137,15 @@ type
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    features*: set[Feature]
     inTypeContext*: int
     typesWithOps*: seq[(PType, PType)] #\
       # We need to instantiate the type bound ops lazily after
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
+
+template config*(c: PContext): ConfigRef = c.graph.config
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -144,7 +153,7 @@ proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
 
 proc filename*(c: PContext): string =
   # the module's filename
-  return c.module.filename
+  return toFilename(c.config, FileIndex c.module.position)
 
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
@@ -163,7 +172,7 @@ proc pushOwner*(c: PContext; owner: PSym) =
 proc popOwner*(c: PContext) =
   var length = len(c.graph.owners)
   if length > 0: setLen(c.graph.owners, length - 1)
-  else: internalError("popOwner")
+  else: internalError(c.config, "popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
   result = c.optionStack[^1]
@@ -171,12 +180,14 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
-  if p.mapping.data == nil: initIdTable(p.mapping)
+  if not p.mappingExists:
+    initIdTable(p.mapping)
+    p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
 
 proc get*(p: PProcCon; key: PSym): PSym =
-  if p.mapping.data == nil: return nil
+  if not p.mappingExists: return nil
   result = PSym(p.mapping.idTableGet(key))
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
@@ -199,19 +210,20 @@ proc considerGenSyms*(c: PContext; n: PNode) =
     for i in 0..<n.safeLen:
       considerGenSyms(c, n.sons[i])
 
-proc newOptionEntry*(): POptionEntry =
+proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
-  result.options = gOptions
+  result.options = conf.options
   result.defaultCC = ccDefault
   result.dynlib = nil
-  result.notes = gNotes
+  result.notes = conf.notes
 
-proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
+proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
+  result.enforceVoidContext = PType(kind: tyStmt)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]
-  result.optionStack.add(newOptionEntry())
+  result.optionStack.add(newOptionEntry(graph.config))
   result.module = module
   result.friendModules = @[module]
   result.converters = @[]
@@ -221,11 +233,11 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
-  result.cache = cache
+  result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
   result.typesWithOps = @[]
-
+  result.features = graph.config.features
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
@@ -254,7 +266,7 @@ proc newTypeS*(kind: TTypeKind, c: PContext): PType =
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
-  addSonSkipIntLit(result, baseType.assertNotNil)
+  addSonSkipIntLit(result, baseType)
 
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
@@ -265,25 +277,27 @@ proc makeTypeWithModifier*(c: PContext,
     result = baseType
   else:
     result = newTypeS(modifier, c)
-    addSonSkipIntLit(result, baseType.assertNotNil)
+    addSonSkipIntLit(result, baseType)
 
 proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
     result = newTypeS(kind, c)
-    addSonSkipIntLit(result, baseType.assertNotNil)
+    addSonSkipIntLit(result, baseType)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc:
     result = typ
   else:
     result = newTypeS(tyTypeDesc, c)
-    result.addSonSkipIntLit(typ.assertNotNil)
+    result.addSonSkipIntLit(typ)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
-  let typedesc = makeTypeDesc(c, typ)
-  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info).linkTo(typedesc)
+  let typedesc = newTypeS(tyTypeDesc, c)
+  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
+  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
+                   c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
@@ -338,21 +352,20 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl(t1.flags * {tfHasStatic})
   result.flags.incl tfHasMeta
 
-proc nMinusOne*(n: PNode): PNode =
+proc nMinusOne(c: PContext; n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("pred", mPred)),
-    n])
+    newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n])
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
-  let intType = getSysType(tyInt)
+  let intType = getSysType(c.graph, n.info, tyInt)
   result = newTypeS(tyRange, c)
   result.sons = @[intType]
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
   result.n = newNode(nkRange, n.info, @[
     newIntTypeNode(nkIntLit, 0, intType),
-    makeStaticExpr(c, n.nMinusOne)])
+    makeStaticExpr(c, nMinusOne(c, n))])
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
   tfUnresolved in t.flags
@@ -371,7 +384,8 @@ proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.size = - 1
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
-                    info: TLineInfo; intType = getSysType(tyInt)): PType =
+                    info: TLineInfo; intType: PType = nil): PType =
+  let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
   addSon(n, newIntTypeNode(nkIntLit, first, intType))
   addSon(n, newIntTypeNode(nkIntLit, last, intType))
@@ -384,20 +398,17 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
 
-proc illFormedAst*(n: PNode) =
-  globalError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+proc illFormedAst*(n: PNode; conf: ConfigRef) =
+  globalError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc illFormedAstLocal*(n: PNode) =
-  localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+proc illFormedAstLocal*(n: PNode; conf: ConfigRef) =
+  localError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
-proc checkSonsLen*(n: PNode, length: int) =
-  if sonsLen(n) != length: illFormedAst(n)
+proc checkSonsLen*(n: PNode, length: int; conf: ConfigRef) =
+  if sonsLen(n) != length: illFormedAst(n, conf)
 
-proc checkMinSonsLen*(n: PNode, length: int) =
-  if sonsLen(n) < length: illFormedAst(n)
+proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
+  if sonsLen(n) < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
-
-proc experimentalMode*(c: PContext): bool {.inline.} =
-  result = gExperimentalMode or sfExperimental in c.module.flags

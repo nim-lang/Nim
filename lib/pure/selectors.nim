@@ -261,6 +261,9 @@ else:
       param: int
       data: T
 
+  const
+    InvalidIdent = -1
+
   proc raiseIOSelectorsError[T](message: T) =
     var msg = ""
     when T is string:
@@ -271,7 +274,7 @@ else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)
     raise err
-  
+
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 
@@ -302,6 +305,12 @@ else:
         if posix.sigprocmask(SIG_UNBLOCK, newmask, oldmask) == -1:
           raiseIOSelectorsError(osLastError())
 
+  template clearKey[T](key: ptr SelectorKey[T]) =
+    var empty: T
+    key.ident = InvalidIdent
+    key.events = {}
+    key.data = empty
+
   when defined(linux):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
@@ -312,22 +321,24 @@ else:
     include ioselects/ioselectors_poll # need to replace it with event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
+  elif defined(nintendoswitch):
+    include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll
 
 proc register*[T](s: Selector[T], fd: int | SocketHandle,
-                  events: set[Event], data: T) {.deprecated.} =
+                  events: set[Event], data: T) {.deprecated: "use registerHandle instead".} =
   ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
   s.registerHandle(fd, events, data)
 
-proc setEvent*(ev: SelectEvent) {.deprecated.} =
+proc setEvent*(ev: SelectEvent) {.deprecated: "use trigger instead".} =
   ## Trigger event ``ev``.
   ##
   ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
   ev.trigger()
 
 proc update*[T](s: Selector[T], fd: int | SocketHandle,
-                events: set[Event]) {.deprecated.} =
+                events: set[Event]) {.deprecated: "use updateHandle instead".} =
   ## Update file/socket descriptor ``fd``, registered in selector
   ## ``s`` with new events set ``event``.
   ##

@@ -451,6 +451,9 @@ var POSIX_TYPED_MEM_ALLOCATE* {.importc: "POSIX_TYPED_MEM_ALLOCATE", header: "<s
 var POSIX_TYPED_MEM_ALLOCATE_CONTIG* {.importc: "POSIX_TYPED_MEM_ALLOCATE_CONTIG", header: "<sys/mman.h>".}: cint
 var POSIX_TYPED_MEM_MAP_ALLOCATABLE* {.importc: "POSIX_TYPED_MEM_MAP_ALLOCATABLE", header: "<sys/mman.h>".}: cint
 
+# <sys/resource.h>
+var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cint
+
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 
@@ -485,10 +488,10 @@ var SOMAXCONN* {.importc: "SOMAXCONN", header: "<sys/socket.h>".}: cint
 var MSG_PEEK* {.importc: "MSG_PEEK", header: "<sys/socket.h>".}: cint
 var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
 var MSG_WAITALL* {.importc: "MSG_WAITALL", header: "<sys/socket.h>".}: cint
-var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: TSa_Family
-var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: TSa_Family
+var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: cint
+var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: cint
+var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: cint
+var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: cint
 var SHUT_RD* {.importc: "SHUT_RD", header: "<sys/socket.h>".}: cint
 var SHUT_RDWR* {.importc: "SHUT_RDWR", header: "<sys/socket.h>".}: cint
 var SHUT_WR* {.importc: "SHUT_WR", header: "<sys/socket.h>".}: cint

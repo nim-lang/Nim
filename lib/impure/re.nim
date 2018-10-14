@@ -10,11 +10,11 @@
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
-## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
-## C library. This means that your application will depend on the PRCE
+## `PCRE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
+## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
-## PRCE's licence follows:
+## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
 ##
@@ -113,7 +113,7 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32:
       matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -133,7 +133,7 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
@@ -287,7 +287,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
@@ -408,7 +408,7 @@ proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   result = matchLen(s, prefix) >= 0
 
 proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
@@ -428,7 +428,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ##   "; "
   result = ""
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
@@ -453,11 +453,9 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
-    assert result != nil
-    assert s != nil
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
     prev = match.last + 1
@@ -615,7 +613,7 @@ when isMainModule:
     doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == nil
+    doAssert matches[0] == ""
   else: doAssert false
 
   if "abc" =~ re"().*":

@@ -1,5 +1,8 @@
 # bug #4462
 import macros
+import os
+import ospaths
+import strutils
 
 block:
   proc foo(t: typedesc) {.compileTime.} =
@@ -16,9 +19,9 @@ block:
     var x = default(type(0))
 
 # #6379
+import algorithm
+
 static:
-  import algorithm
-  
   var numArray = [1, 2, 3, 4, -1]
   numArray.sort(cmp)
   assert numArray == [-1, 1, 2, 3, 4]
@@ -57,10 +60,91 @@ block:
     result = @[0]
     result.setLen(2)
     var tmp: int
-      
-    for i in 0 .. <2:
+
+    for i in 0 ..< 2:
       inc tmp
       result[i] = tmp
 
   const fact1000 = abc()
   assert fact1000 == @[1, 2]
+
+# Tests for VM ops
+block:
+  static:
+    assert "vm" in getProjectPath()
+
+    let b = getEnv("UNSETENVVAR")
+    assert b == ""
+    assert existsEnv("UNSERENVVAR") == false
+    putEnv("UNSETENVVAR", "VALUE")
+    assert getEnv("UNSETENVVAR") == "VALUE"
+    assert existsEnv("UNSETENVVAR") == true
+
+    assert fileExists("MISSINGFILE") == false
+    assert dirExists("MISSINGDIR") == false
+
+# #7210
+block:
+  static:
+    proc f(size: int): int =
+      var some = newStringOfCap(size)
+      result = size
+    doAssert f(4) == 4
+
+# #6689
+block:
+  static:
+    proc foo(): int = 0
+    var f: proc(): int
+    doAssert f.isNil
+    f = foo
+    doAssert(not f.isNil)
+
+block:
+  static:
+    var x: ref ref int
+    new(x)
+    doAssert(not x.isNil)
+
+# #7871
+static:
+  type Obj = object
+    field: int
+  var s = newSeq[Obj](1)
+  var o = Obj()
+  s[0] = o
+  o.field = 2
+  doAssert s[0].field == 0
+
+# #8125
+static:
+   let def_iter_var = ident("it")
+
+# #8142
+static:
+  type Obj = object
+    names: string
+
+  proc pushName(o: var Obj) =
+    var s = ""
+    s.add("FOOBAR")
+    o.names.add(s)
+
+  var o = Obj()
+  o.names = ""
+  o.pushName()
+  o.pushName()
+  doAssert o.names == "FOOBARFOOBAR"
+
+# #8154
+import parseutils
+
+static:
+  type Obj = object
+    i: int
+
+  proc foo(): Obj =
+    discard parseInt("1", result.i, 0)
+
+  static:
+    doAssert foo().i == 1

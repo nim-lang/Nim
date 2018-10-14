@@ -11,7 +11,7 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
@@ -47,13 +47,15 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
   ##   discard parseHex("0x38", value)
   ##   assert value == -200
   ##
-  ## If 'maxLen==0' the length of the hexadecimal number has no
-  ## upper bound. Not more than ```maxLen`` characters are parsed.
+  ## If ``maxLen == 0`` the length of the hexadecimal number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  if s[i] == '0' and (s[i+1] == 'x' or s[i+1] == 'X'): inc(i, 2)
-  elif s[i] == '#': inc(i)
-  let last = if maxLen == 0: s.len else: i+maxLen
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'x', 'X'}): inc(i, 2)
+  elif i < last and s[i] == '#': inc(i)
   while i < last:
     case s[i]
     of '_': discard
@@ -70,14 +72,20 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseOct*(s: string, number: var int, start = 0): int  {.
+proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseOct", noSideEffect.} =
-  ## parses an octal number and stores its value in ``number``. Returns
+  ## Parses an octal number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ##
+  ## If ``maxLen == 0`` the length of the octal number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  if s[i] == '0' and (s[i+1] == 'o' or s[i+1] == 'O'): inc(i, 2)
-  while true:
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+  while i < last:
     case s[i]
     of '_': discard
     of '0'..'7':
@@ -87,14 +95,20 @@ proc parseOct*(s: string, number: var int, start = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseBin*(s: string, number: var int, start = 0): int  {.
+proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   rtl, extern: "npuParseBin", noSideEffect.} =
-  ## parses an binary number and stores its value in ``number``. Returns
+  ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ##
+  ## If ``maxLen == 0`` the length of the binary number has no upper bound.
+  ## Else no more than ``start + maxLen`` characters are parsed, up to the
+  ## length of the string.
   var i = start
   var foundDigit = false
-  if s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
-  while true:
+  # get last index based on minimum `start + maxLen` or `s.len`
+  let last = min(s.len, if maxLen == 0: s.len else: i+maxLen)
+  if i+1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
+  while i < last:
     case s[i]
     of '_': discard
     of '0'..'1':
@@ -108,9 +122,9 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   var i = start
-  if s[i] in IdentStartChars:
+  if i < s.len and s[i] in IdentStartChars:
     inc(i)
-    while s[i] in IdentChars: inc(i)
+    while i < s.len and s[i] in IdentChars: inc(i)
     ident = substr(s, start, i-1)
     result = i-start
 
@@ -119,11 +133,9 @@ proc parseIdent*(s: string, start = 0): string =
   ## Returns the parsed identifier or an empty string in case of an error.
   result = ""
   var i = start
-
-  if s[i] in IdentStartChars:
+  if i < s.len and s[i] in IdentStartChars:
     inc(i)
-    while s[i] in IdentChars: inc(i)
-
+    while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
@@ -134,24 +146,26 @@ proc parseToken*(s: string, token: var string, validChars: set[char],
   ##
   ## **Deprecated since version 0.8.12**: Use ``parseWhile`` instead.
   var i = start
-  while s[i] in validChars: inc(i)
+  while i < s.len and s[i] in validChars: inc(i)
   result = i-start
   token = substr(s, start, i-1)
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.
-  while s[start+result] in Whitespace: inc(result)
+  while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
   ## skips the `token` starting at ``s[start]``. Returns the length of `token`
   ## or 0 if there was no `token` at ``s[start]``.
-  while result < token.len and s[result+start] == token[result]: inc(result)
+  while start+result < s.len and result < token.len and
+      s[result+start] == token[result]:
+    inc(result)
   if result != token.len: result = 0
 
 proc skipIgnoreCase*(s, token: string, start = 0): int =
   ## same as `skip` but case is ignored for token matching.
-  while result < token.len and
+  while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
 
@@ -159,18 +173,18 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
   ## Skips all characters until one char from the set `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
-  while s[result+start] notin until and s[result+start] != '\0': inc(result)
+  while start+result < s.len and s[result+start] notin until: inc(result)
 
 proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   ## Skips all characters until the char `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
-  while s[result+start] != until and s[result+start] != '\0': inc(result)
+  while start+result < s.len and s[result+start] != until: inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
-  while s[result+start] in toSkip and s[result+start] != '\0': inc(result)
+  while start+result < s.len and s[result+start] in toSkip: inc(result)
 
 proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
@@ -197,6 +211,9 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
+  if until.len == 0:
+    token.setLen(0)
+    return 0
   var i = start
   while i < s.len:
     if s[i] == until[0]:
@@ -214,7 +231,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
   var i = start
-  while s[i] in validChars: inc(i)
+  while i < s.len and s[i] in validChars: inc(i)
   result = i-start
   token = substr(s, start, i-1)
 
@@ -231,16 +248,17 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   var
     sign: BiggestInt = -1
     i = start
-  if s[i] == '+': inc(i)
-  elif s[i] == '-':
-    inc(i)
-    sign = 1
-  if s[i] in {'0'..'9'}:
+  if i < s.len:
+    if s[i] == '+': inc(i)
+    elif s[i] == '-':
+      inc(i)
+      sign = 1
+  if i < s.len and s[i] in {'0'..'9'}:
     b = 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       b = b * 10 - (ord(s[i]) - ord('0'))
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = b * sign
     result = i - start
 {.pop.} # overflowChecks
@@ -281,17 +299,17 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
   ##   discard parseSaturatedNatural("848", res)
   ##   doAssert res == 848
   var i = start
-  if s[i] == '+': inc(i)
-  if s[i] in {'0'..'9'}:
+  if i < s.len and s[i] == '+': inc(i)
+  if i < s.len and s[i] in {'0'..'9'}:
     b = 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       let c = ord(s[i]) - ord('0')
       if b <= (high(int) - c) div 10:
         b = b * 10 + c
       else:
         b = high(int)
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     result = i - start
 
 # overflowChecks doesn't work with BiggestUInt
@@ -300,16 +318,16 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
     res = 0.BiggestUInt
     prev = 0.BiggestUInt
     i = start
-  if s[i] == '+': inc(i) # Allow
-  if s[i] in {'0'..'9'}:
+  if i < s.len and s[i] == '+': inc(i) # Allow
+  if i < s.len and s[i] in {'0'..'9'}:
     b = 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       prev = res
       res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
         return 0 # overflowChecks emulation
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = res
     result = i - start
 
@@ -364,8 +382,6 @@ type
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
-{.deprecated: [TInterpolatedKind: InterpolatedKind].}
-
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
@@ -389,31 +405,31 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   var kind: InterpolatedKind
   while true:
     var j = i
-    if s[j] == '$':
-      if s[j+1] == '{':
+    if j < s.len and s[j] == '$':
+      if j+1 < s.len and s[j+1] == '{':
         inc j, 2
         var nesting = 0
-        while true:
-          case s[j]
-          of '{': inc nesting
-          of '}':
-            if nesting == 0:
-              inc j
-              break
-            dec nesting
-          of '\0':
-            raise newException(ValueError,
-              "Expected closing '}': " & substr(s, i, s.high))
-          else: discard
-          inc j
+        block curlies:
+          while j < s.len:
+            case s[j]
+            of '{': inc nesting
+            of '}':
+              if nesting == 0:
+                inc j
+                break curlies
+              dec nesting
+            else: discard
+            inc j
+          raise newException(ValueError,
+            "Expected closing '}': " & substr(s, i, s.high))
         inc i, 2 # skip ${
         kind = ikExpr
-      elif s[j+1] in IdentStartChars:
+      elif j+1 < s.len and s[j+1] in IdentStartChars:
         inc j, 2
-        while s[j] in IdentChars: inc(j)
+        while j < s.len and s[j] in IdentChars: inc(j)
         inc i # skip $
         kind = ikVar
-      elif s[j+1] == '$':
+      elif j+1 < s.len and s[j+1] == '$':
         inc j, 2
         inc i # skip $
         kind = ikDollar

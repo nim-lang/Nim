@@ -2,6 +2,8 @@ discard ""
 type
    TObj = ref object
 
+{.experimental: "notnil".}
+
 proc check(a: TObj not nil) =
   echo repr(a)
 

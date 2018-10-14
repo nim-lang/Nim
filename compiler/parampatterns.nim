@@ -10,7 +10,8 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg, trees
+import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg, trees,
+  options
 
 # we precompile the pattern here for efficiency into some internal
 # stack based VM :-) Why? Because it's fun; I did no benchmarks to see if that
@@ -41,8 +42,8 @@ type
 const
   MaxStackSize* = 64 ## max required stack size by the VM
 
-proc patternError(n: PNode) =
-  localError(n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
+proc patternError(n: PNode; conf: ConfigRef) =
+  localError(conf, n.info, "illformed AST: " & renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
   add(code, chr(ord(op)))
@@ -53,42 +54,42 @@ proc whichAlias*(p: PSym): TAliasRequest =
   else:
     result = aqNone
 
-proc compileConstraints(p: PNode, result: var TPatternCode) =
+proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
   case p.kind
   of nkCallKinds:
     if p.sons[0].kind != nkIdent:
-      patternError(p.sons[0])
+      patternError(p.sons[0], conf)
       return
     let op = p.sons[0].ident
     if p.len == 3:
       if op.s == "|" or op.id == ord(wOr):
-        compileConstraints(p.sons[1], result)
-        compileConstraints(p.sons[2], result)
+        compileConstraints(p.sons[1], result, conf)
+        compileConstraints(p.sons[2], result, conf)
         result.add(ppOr)
       elif op.s == "&" or op.id == ord(wAnd):
-        compileConstraints(p.sons[1], result)
-        compileConstraints(p.sons[2], result)
+        compileConstraints(p.sons[1], result, conf)
+        compileConstraints(p.sons[2], result, conf)
         result.add(ppAnd)
       else:
-        patternError(p)
+        patternError(p, conf)
     elif p.len == 2 and (op.s == "~" or op.id == ord(wNot)):
-      compileConstraints(p.sons[1], result)
+      compileConstraints(p.sons[1], result, conf)
       result.add(ppNot)
     else:
-      patternError(p)
+      patternError(p, conf)
   of nkAccQuoted, nkPar:
     if p.len == 1:
-      compileConstraints(p.sons[0], result)
+      compileConstraints(p.sons[0], result, conf)
     else:
-      patternError(p)
+      patternError(p, conf)
   of nkIdent:
     let spec = p.ident.s.normalize
     case spec
-    of "atom":  result.add(ppAtom)
-    of "lit":   result.add(ppLit)
-    of "sym":   result.add(ppSym)
+    of "atom": result.add(ppAtom)
+    of "lit": result.add(ppLit)
+    of "sym": result.add(ppSym)
     of "ident": result.add(ppIdent)
-    of "call":  result.add(ppCall)
+    of "call": result.add(ppCall)
     of "alias": result[0] = chr(aqShouldAlias.ord)
     of "noalias": result[0] = chr(aqNoAlias.ord)
     of "lvalue": result.add(ppLValue)
@@ -97,24 +98,24 @@ proc compileConstraints(p: PNode, result: var TPatternCode) =
     of "nosideeffect": result.add(ppNoSideEffect)
     else:
       # check all symkinds:
-      internalAssert int(high(TSymKind)) < 255
+      internalAssert conf, int(high(TSymKind)) < 255
       for i in low(TSymKind)..high(TSymKind):
         if cmpIgnoreStyle(($i).substr(2), spec) == 0:
           result.add(ppSymKind)
           result.add(chr(i.ord))
           return
       # check all nodekinds:
-      internalAssert int(high(TNodeKind)) < 255
+      internalAssert conf, int(high(TNodeKind)) < 255
       for i in low(TNodeKind)..high(TNodeKind):
         if cmpIgnoreStyle($i, spec) == 0:
           result.add(ppNodeKind)
           result.add(chr(i.ord))
           return
-      patternError(p)
+      patternError(p, conf)
   else:
-    patternError(p)
+    patternError(p, conf)
 
-proc semNodeKindConstraints*(p: PNode): PNode =
+proc semNodeKindConstraints*(p: PNode; conf: ConfigRef): PNode =
   ## does semantic checking for a node kind pattern and compiles it into an
   ## efficient internal format.
   assert p.kind == nkCurlyExpr
@@ -123,11 +124,11 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   result.strVal.add(chr(aqNone.ord))
   if p.len >= 2:
     for i in 1..<p.len:
-      compileConstraints(p.sons[i], result.strVal)
+      compileConstraints(p.sons[i], result.strVal, conf)
     if result.strVal.len > MaxStackSize-1:
-      internalError(p.info, "parameter pattern too complex")
+      internalError(conf, p.info, "parameter pattern too complex")
   else:
-    patternError(p)
+    patternError(p, conf)
   result.strVal.add(ppEof)
 
 type
@@ -216,7 +217,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     if n.typ != nil and n.typ.kind == tyVar:
       result = arLValue
   of nkSym:
-    let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet}
+    let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
                 else: {skVar, skResult, skTemp}
     if n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and
@@ -235,7 +236,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0], isUnsafeAddr)
-    if result != arNone and sfDiscriminant in n.sons[1].sym.flags:
+    if result != arNone and n[1].kind == nkSym and
+        sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
   of nkBracketExpr:
     if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in

@@ -59,7 +59,7 @@ Core
   This module defines compile-time reflection procs for working with types.
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#spawn>`_.
+  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
@@ -184,12 +184,6 @@ Generic Operating System Services
   This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
 
-* `fsmonitor <fsmonitor.html>`_
-  This module implements the ability to monitor a directory/file for changes
-  using Posix's inotify API.
-
-  **Warning:** This module will likely be moved out to a Nimble package soon.
-
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
@@ -238,9 +232,6 @@ Internet Protocols and Support
   This module implements procs for opening URLs with the user's default
   browser.
 
-* `httpserver <httpserver.html>`_
-  This module implements a simple HTTP server.
-
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
@@ -288,11 +279,6 @@ Parsers
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-
-* `parseopt2 <parseopt2.html>`_
-  The ``parseopt2`` module implements a command line option parser. This
-  supports long and short command options with optional values and command line
-  arguments.
 
 * `parsecfg <parsecfg.html>`_
   The ``parsecfg`` module implements a high performance configuration file
@@ -344,12 +330,6 @@ Parsers
 XML Processing
 --------------
 
-* `xmldom <xmldom.html>`_
-  This module implements the XML DOM Level 2.
-
-* `xmldomparser <xmldomparser.html>`_
-  This module parses an XML Document into a XML DOM Document representation.
-
 * `xmltree <xmltree.html>`_
   A simple XML tree. More efficient and simpler than the DOM. It also
   contains a macro for XML/HTML code generation.
@@ -393,10 +373,6 @@ Multimedia support
 Miscellaneous
 -------------
 
-* `events <events.html>`_
-  This module implements an event system that is not dependent on external
-  graphical toolkits.
-
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
   a unique counter and a random value. This combination should suffice to
@@ -412,9 +388,8 @@ Miscellaneous
 * `options <options.html>`_
   Types which encapsulate an optional value.
 
-* `future <future.html>`_
-  This module implements new experimental features. Currently the syntax
-  sugar for anonymous procedures.
+* `sugar <sugar.html>`_
+  This module implements nice syntactic sugar based on Nim's macro system.
 
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
@@ -426,7 +401,7 @@ Miscellaneous
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
 Modules for JS backend
----------------------------
+----------------------
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
@@ -437,29 +412,9 @@ Modules for JS backend
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
 
-Deprecated modules
-------------------
-
-* `asyncio <asyncio.html>`_
-  This module implements an asynchronous event loop for sockets.
-  **Deprecated since version 0.11.2:**
-  Use the `asyncnet <asyncnet.html>`_ together with the
-  `asyncdispatch <asyncdispatch.html>`_ module instead.
-
-* `ftpclient <ftpclient.html>`_
-  This module implements an FTP client.
-  **Deprecated since version 0.11.3:**
-  Use the `asyncftpclient <asyncftpclient.html>`_ module instead.
-
-* `sockets <sockets.html>`_
-  This module implements a simple portable type-safe sockets layer.
-  **Deprecated since version 0.11.2:**
-  Use the `net <net.html>`_ or the `rawsockets <rawsockets.html>`_ module
-  instead.
-
-* `rawsockets <rawsockets.html>`_
-  **Deprecated since version 0.11.4:**
-  This module has been renamed to `nativesockets <nativesockets.html>`_.
+* `jscore <jscore.html>`_
+  Wrapper of core JavaScript functions. For most purposes you should be using
+  the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
 
 Impure libraries
@@ -472,9 +427,6 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
-* `nre <nre.html>`_
-  Another implementation of procedures for using regular expressions. Also uses
-  PCRE.
 
 
 Database support
@@ -562,29 +514,4 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-Official packages
------------------
-
-These packages are officially supported and will therefore be continually
-maintained to ensure that they work with the latest versions of the Nim
-compiler.
-
-.. raw:: html
-
-  <div id="officialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-Unofficial packages
--------------------
-
-These packages have been developed by independent Nim developers and as
-such may not always be up to date with the latest developments in the
-Nim programming language.
-
-.. raw:: html
-
-  <div id="unofficialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-  <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="https://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.

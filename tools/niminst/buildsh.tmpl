@@ -39,8 +39,8 @@ do
   esac
 done
 
-CC="gcc"
-LINKER="gcc"
+CC="${CC:-gcc}"
+LINKER="${LD:-gcc}"
 COMP_FLAGS="${CPPFLAGS:-} ${CFLAGS:-} ?{c.ccompiler.flags}$extraBuildArgs"
 LINK_FLAGS="${LDFLAGS:-} ?{c.linker.flags}"
 PS4=""
@@ -119,7 +119,7 @@ case $uos in
     myos="haiku"
     LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
     ;;
-  *mingw* )
+  *mingw* | *msys* )
     myos="windows"
     ;;
   *android* )
@@ -168,6 +168,8 @@ case $ucpu in
     mycpu="arm" ;;
   *aarch64* )
     mycpu="arm64" ;;
+  *riscv64* )
+    mycpu="riscv64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1

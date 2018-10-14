@@ -11,7 +11,7 @@
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
-## <manual.html#set-type>`_. Sets allow you to store any value that can be
+## <manual.html#types-set-type>`_. Sets allow you to store any value that can be
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
@@ -74,7 +74,7 @@ proc isValid*[A](s: HashSet[A]): bool =
   ##   proc savePreferences(options: HashSet[string]) =
   ##     assert options.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of keys in `s`.
@@ -120,6 +120,13 @@ iterator items*[A](s: HashSet[A]): A =
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
 
+proc hash*[A](s: HashSet[A]): Hash =
+  ## hashing of HashSet
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    result = result xor s.data[h].hcode
+  result = !$result
+
 const
   growthFactor = 2
 
@@ -151,10 +158,14 @@ template rawGetKnownHCImpl() {.dirty.} =
     h = nextTry(h, high(s.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template rawGetImpl() {.dirty.} =
-  hc = hash(key)
+template genHash(key: typed): Hash =
+  var hc = hash(key)
   if hc == 0:       # This almost never taken branch should be very predictable.
     hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+  hc
+
+template rawGetImpl() {.dirty.} =
+  hc = genHash(key)
   rawGetKnownHCImpl()
 
 template rawInsertImpl() {.dirty.} =
@@ -339,6 +350,18 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   assert s.isValid, "The set `s` needs to be initialized."
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: discard exclImpl(s, item)
+
+proc pop*[A](s: var HashSet[A]): A =
+  ## Remove and return an arbitrary element from the set `s`.
+  ##
+  ## Raises KeyError if the set `s` is empty.
+  ##
+  for h in 0..high(s.data):
+    if isFilled(s.data[h].hcode):
+      result = s.data[h].key
+      excl(s, result)
+      return result
+  raise newException(KeyError, "set is empty")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
@@ -635,7 +658,7 @@ proc isValid*[A](s: OrderedSet[A]): bool =
   ##   proc saveTarotCards(cards: OrderedSet[int]) =
   ##     assert cards.isValid, "Pass an initialized set!"
   ##     # Do stuff here, may crash in release builds!
-  result = not s.data.isNil
+  result = s.data.len > 0
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of keys in `s`.
@@ -689,6 +712,13 @@ iterator items*[A](s: OrderedSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
+
+proc hash*[A](s: OrderedSet[A]): Hash =
+  ## hashing of OrderedSet
+  assert s.isValid, "The set needs to be initialized."
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
+  result = !$result
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   assert s.isValid, "The set needs to be initialized"
@@ -768,39 +798,24 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
 
 proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."
-  var hc: Hash
-  var i = rawGet(s, key, hc)
-  var msk = high(s.data)
+  var n: OrderedKeyValuePairSeq[A]
+  newSeq(n, len(s.data))
+  var h = s.first
+  s.first = -1
+  s.last = -1
+  swap(s.data, n)
+  let hc = genHash(key)
   result = true
-
-  if i >= 0:
-    result = false
-    # Fix ordering
-    if s.first == i:
-      s.first = s.data[i].next
-    else:
-      var itr = s.first
-      while true:
-        if (s.data[itr].next == i):
-          s.data[itr].next = s.data[i].next
-          if s.last == i:
-            s.last = itr
-          break
-        itr = s.data[itr].next
-
-    dec(s.counter)
-    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i         # The correctness of this depends on (h+1) in nextTry,
-      var r = j         # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0              # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
-      s.data[i].next = 0
-      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk            # increment mod table size
-        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
-          return
-        r = s.data[i].hcode and msk    # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      if n[h].hcode == hc and n[h].key == key:
+        dec s.counter
+        result = false
+      else:
+        var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
+        rawInsert(s, s.data, n[h].key, n[h].hcode, j)
+    h = nxt
 
 proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
   ## Excludes `key` in the set `s` and tells if `key` was removed from `s`. Efficiency: O(n).
@@ -1070,6 +1085,12 @@ when isMainModule and not defined(release):
       var items = newSeq[int]()
       for item in s: items.add item
       assert items == @[2, 6, 7]
+
+    block: #9005
+      var s = initOrderedSet[(int, int)]()
+      for i in 0 .. 30: incl(s, (i, 0))
+      for i in 0 .. 30: excl(s, (i, 0))
+      doAssert s.len == 0
 
     #block orderedSetIterator:
     #  var a = initOrderedSet[int]()

@@ -208,7 +208,8 @@ Note that declaring multiple variables with a single assignment which calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use only constant values.
+different values! For safety use side-effect free procedures if making multiple
+assignments.
 
 
 Constants
@@ -570,8 +571,8 @@ With parenthesis and semicolons ``(;)`` you can use statements where only
 an expression is allowed:
 
 .. code-block:: nim
-  # computes fac(4) at compile time:
     :test: "nim c $1"
+  # computes fac(4) at compile time:
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
 
@@ -642,7 +643,7 @@ initialisation.
 
 Parameters
 ----------
-Parameters are constant in the procedure body. By default, their value cannot be
+Parameters are immutable in the procedure body. By default, their value cannot be
 changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
@@ -890,7 +891,7 @@ important differences:
   future version of the compiler.)
 
 However, you can also use a ``closure`` iterator to get a different set of
-restrictions. See `first class iterators <manual.html#first-class-iterators>`_
+restrictions. See `first class iterators <manual.html#iterators-and-the-for-statement-first-class-iterators>`_
 for details. Iterators can have the same name and parameters as a proc, since
 essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the
@@ -944,12 +945,8 @@ String variables are **mutable**, so appending to a string
 is possible, and quite efficient. Strings in Nim are both zero-terminated and have a
 length field. A string's length can be retrieved with the builtin ``len``
 procedure; the length never counts the terminating zero. Accessing the
-terminating zero is not an error and often leads to simpler code:
-
-.. code-block:: nim
-  if s[i] == 'a' and s[i+1] == 'b':
-    # no need to check whether ``i < len(s)``!
-    ...
+terminating zero is an error, it only exists so that a Nim string can be converted
+to a ``cstring`` without doing a copy.
 
 The assignment operator for strings copies the string. You can use the ``&``
 operator to concatenate strings and ``add`` to append to a string.
@@ -960,11 +957,7 @@ enforced. For example, when reading strings from binary files, they are merely
 a sequence of bytes. The index operation ``s[i]`` means the i-th *char* of
 ``s``, not the i-th *unichar*.
 
-String variables are initialized with a special value, called ``nil``. However,
-most string operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. It is best to use empty strings ``""``
-rather than ``nil`` as the *empty* value. But ``""`` often creates a string
-object on the heap, so there is a trade-off to be made here.
+A string variable is initialized with the empty string ``""``.
 
 
 Integers
@@ -1119,21 +1112,12 @@ proc can convert it to its underlying integer value.
 
 For better interfacing to other programming languages, the symbols of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
-must be in ascending order. A symbol whose ordinal value is not
-explicitly given is assigned the value of the previous symbol + 1.
-
-An explicit ordered enum can have *holes*:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  type
-    MyEnum = enum
-      a = 2, b = 4, c = 89
+must be in ascending order.
 
 
 Ordinal types
 -------------
-Enumerations without holes, integer types, ``char`` and ``bool`` (and
+Enumerations, integer types, ``char`` and ``bool`` (and
 subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 
@@ -1309,11 +1293,7 @@ Example:
     x: seq[int] # a reference to a sequence of integers
   x = @[1, 2, 3, 4, 5, 6] # the @ turns the array into a sequence allocated on the heap
 
-Sequence variables are initialized with ``nil``. However, most sequence
-operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. Thus one should use empty sequences ``@[]``
-rather than ``nil`` as the *empty* value. But ``@[]`` creates a sequence
-object on the heap, so there is a trade-off to be made here.
+Sequence variables are initialized with ``@[]``.
 
 The ``for`` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
@@ -1355,10 +1335,8 @@ type does not matter.
 .. code-block:: nim
     :test: "nim c $1"
   var
-    fruits:   seq[string]       # reference to a sequence of strings that is initialized with 'nil'
+    fruits:   seq[string]       # reference to a sequence of strings that is initialized with '@[]'
     capitals: array[3, string]  # array of strings with a fixed size
-
-  fruits = @[]                  # creates an empty sequence on the heap that will be referenced by 'fruits'
 
   capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows assignment of only three elements
   fruits.add("Banana")          # sequence 'fruits' is dynamically expandable during runtime
@@ -1691,7 +1669,7 @@ rules apply:
   write(stdout, x(3))   # no error: A.x is called
   write(stdout, x(""))  # no error: B.x is called
 
-  proc x*(a: int): string = nil
+  proc x*(a: int): string = discard
   write(stdout, x(3))   # ambiguous: which `x` is to call?
 
 

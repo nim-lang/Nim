@@ -1,11 +1,11 @@
 discard """
-  output: '''obj2 nil
-obj nil
-obj3 nil
+  output: '''obj2 @[]
+obj @[]
+obj3 @[]
 3
-obj2 nil
-obj nil
-obj3 nil'''
+obj2 @[]
+obj @[]
+obj3 @[]'''
   cmd: "nim c -r --threads:on $file"
 """
 

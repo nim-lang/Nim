@@ -10,33 +10,49 @@
 ## This module implements some common generic algorithms.
 
 type
-  SortOrder* = enum   ## sort order
+  SortOrder* = enum
     Descending, Ascending
 
-{.deprecated: [TSortOrder: SortOrder].}
-
-
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
-  ## flips `x` if ``order == Descending``;
-  ## if ``order == Ascending`` then `x` is returned.
-  ## `x` is supposed to be the result of a comparator, ie ``< 0`` for
-  ## *less than*, ``== 0`` for *equal*, ``> 0`` for *greater than*.
+  ## flips ``x`` if ``order == Descending``.
+  ## If ``order == Ascending`` then ``x`` is returned.
+  ##
+  ## ``x`` is supposed to be the result of a comparator, i.e.
+  ## | ``< 0`` for *less than*,
+  ## | ``== 0`` for *equal*,
+  ## | ``> 0`` for *greater than*.
   var y = order.ord - 1
   result = (x xor y) - y
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## fills the array ``a[first..last]`` with `value`.
+template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+  ## fills the slice ``a[first..last]`` with ``value``.
+  runnableExamples:
+      var a: array[6, int]
+      a.fill(1, 3, 9)
+      doAssert a == [0, 9, 9, 9, 0, 0]
+  fillImpl(a, first, last, value)
+
 proc fill*[T](a: var openArray[T], value: T) =
-  ## fills the array `a` with `value`.
-  fill(a, 0, a.high, value)
+  ## fills the container ``a`` with ``value``.
+  runnableExamples:
+      var a: array[6, int]
+      a.fill(9)
+      doAssert a == [9, 9, 9, 9, 9, 9]
+  fillImpl(a, 0, a.high, value)
+
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
-  ## reverses the array ``a[first..last]``.
+  ## reverses the slice ``a[first..last]``.
+  runnableExamples:
+      var a = [1, 2, 3, 4, 5, 6]
+      a.reverse(1, 3)
+      doAssert a == [1, 4, 3, 2, 5, 6]
   var x = first
   var y = last
   while x < y:
@@ -45,11 +61,20 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     inc(x)
 
 proc reverse*[T](a: var openArray[T]) =
-  ## reverses the array `a`.
+  ## reverses the contents of the container ``a``.
+  runnableExamples:
+      var a = [1, 2, 3, 4, 5, 6]
+      a.reverse()
+      doAssert  a == [6, 5, 4, 3, 2, 1]
   reverse(a, 0, max(0, a.high))
 
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
-  ## returns the reverse of the array `a[first..last]`.
+  ## returns the reverse of the slice ``a[first..last]``.
+  runnableExamples:
+      let
+        a = [1, 2, 3, 4, 5, 6]
+        b = reversed(a, 1, 3)
+      doAssert b == @[4, 3, 2]
   assert last >= first-1
   var i = last - first
   var x = first.int
@@ -60,41 +85,83 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
     inc(x)
 
 proc reversed*[T](a: openArray[T]): seq[T] =
-  ## returns the reverse of the array `a`.
+  ## returns the reverse of the container ``a``.
+  runnableExamples:
+      let
+        a = [1, 2, 3, 4, 5, 6]
+        b = reversed(a)
+      doAssert b == @[6, 5, 4, 3, 2, 1]
   reversed(a, 0, a.high)
 
-proc binarySearch*[T](a: openArray[T], key: T): int =
-  ## binary search for `key` in `a`. Returns -1 if not found.
-  var b = len(a)
-  while result < b:
-    var mid = (result + b) div 2
-    if a[mid] < key: result = mid + 1
-    else: b = mid
-  if result >= len(a) or a[result] != key: result = -1
+proc binarySearch*[T, K](a: openArray[T], key: K,
+              cmp: proc (x: T, y: K): int {.closure.}): int =
+  ## Binary search for ``key`` in ``a``. Returns -1 if not found.
+  ##
+  ## ``cmp`` is the comparator function to use, the expected return values are
+  ## the same as that of system.cmp.
+  if a.len == 0:
+    return -1
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int =
-  ## ``a.len`` must be a power of 2 for this to work.
-  var step = a.len div 2
-  while step > 0:
-    if a[result or step] <= key:
-      result = result or step
-    step = step shr 1
-  if a[result] != key: result = -1
+  let len = a.len
+
+  if len == 1:
+    if cmp(a[0], key) == 0:
+      return 0
+    else:
+      return -1
+
+  if (len and (len - 1)) == 0:
+    # when `len` is a power of 2, a faster shr can be used.
+    var step = len shr 1
+    var cmpRes: int
+    while step > 0:
+      let i = result or step
+      cmpRes = cmp(a[i], key)
+      if cmpRes == 0:
+        return i
+
+      if cmpRes < 1:
+        result = i
+      step = step shr 1
+    if cmp(a[result], key) != 0: result = -1
+  else:
+    var b = len
+    var cmpRes: int
+    while result < b:
+      var mid = (result + b) shr 1
+      cmpRes = cmp(a[mid], key)
+      if cmpRes == 0:
+        return mid
+
+      if cmpRes < 0:
+        result = mid + 1
+      else:
+        b = mid
+    if result >= len or cmp(a[result], key) != 0: result = -1
+
+proc binarySearch*[T](a: openArray[T], key: T): int =
+  ## Binary search for ``key`` in ``a``. Returns -1 if not found.
+  binarySearch(a, key, cmp[T])
+
+proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
+  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
+  binarySearch(a, key, cmp[T])
 
 const
   onlySafeCode = true
 
 proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## same as binarySearch except that if key is not in `a` then this
-  ## returns the location where `key` would be if it were. In other
-  ## words if you have a sorted sequence and you call
-  ## insert(thing, elm, lowerBound(thing, elm))
+  ## returns a position to the first element in the ``a`` that is greater than
+  ## ``key``, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
+  ## ``insert(thing, elm, lowerBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## `cmp` is the comparator function to use, the expected return values are
-  ## the same as that of system.cmp.
+  ## The first version uses ``cmp`` to compare the elements.
+  ## The expected return values are the same as that of ``system.cmp``.
+  ## The second version uses the default comparison function ``cmp``.
   ##
-  ## example::
+  ## .. code-block:: nim
   ##
   ##   var arr = @[1,2,3,5,6,7,8,9]
   ##   arr.insert(4, arr.lowerBound(4))
@@ -103,7 +170,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   var count = a.high - a.low + 1
   var step, pos: int
   while count != 0:
-    step = count div 2
+    step = count shr 1
     pos = result + step
     if cmp(a[pos], key) < 0:
       result = pos + 1
@@ -112,6 +179,36 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
+
+proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
+  ## returns a position to the first element in the ``a`` that is not less
+  ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
+  ## ``insert(thing, elm, upperBound(thing, elm))``
+  ## the sequence will still be sorted.
+  ##
+  ## The first version uses ``cmp`` to compare the elements. The expected
+  ## return values are the same as that of ``system.cmp``.
+  ## The second version uses the default comparison function ``cmp``.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   var arr = @[1,2,3,4,6,7,8,9]
+  ##   arr.insert(5, arr.upperBound(4))
+  ##   # after running the above arr is `[1,2,3,4,5,6,7,8,9]`
+  result = a.low
+  var count = a.high - a.low + 1
+  var step, pos: int
+  while count != 0:
+    step = count shr 1
+    pos = result + step
+    if cmp(a[pos], key) <= 0:
+      result = pos + 1
+      count -= step + 1
+    else:
+      count = step
+
+proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
 
 template `<-` (a, b) =
   when false:
@@ -160,7 +257,7 @@ proc merge[T](a, b: var openArray[T], lo, m, hi: int,
   else:
     if k < j: copyMem(addr(a[k]), addr(b[i]), sizeof(T)*(j-k))
 
-proc sort*[T](a: var openArray[T],
+func sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
@@ -168,9 +265,9 @@ proc sort*[T](a: var openArray[T],
   ## be O(n log n).
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of
-  ## length ``a.len div 2``. Currently Nim does not support a
-  ## sensible default argument for ``cmp``, so you have to provide one
-  ## of your own. However, the ``system.cmp`` procs can be used:
+  ## length ``a.len div 2``. If you do not wish to provide your own
+  ## ``cmp``, you may use ``system.cmp`` or instead call the overloaded
+  ## version of ``sort``, which uses ``system.cmp``.
   ##
   ## .. code-block:: nim
   ##
@@ -200,13 +297,27 @@ proc sort*[T](a: var openArray[T],
       dec(m, s*2)
     s = s*2
 
+proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, system.cmp[T], order)
+  ## Shortcut version of ``sort`` that uses ``system.cmp[T]`` as the comparison function.
+
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
-  ## returns `a` sorted by `cmp` in the specified `order`.
+  ## returns ``a`` sorted by ``cmp`` in the specified ``order``.
+  runnableExamples:
+      let
+        a = [2, 3, 1, 5, 4]
+        b = sorted(a, system.cmp)
+        c = sorted(a, system.cmp, Descending)
+      doAssert b == @[1, 2, 3, 4, 5]
+      doAssert c == @[5, 4, 3, 2, 1]
   result = newSeq[T](a.len)
   for i in 0 .. a.high:
     result[i] = a[i]
   sort(result, cmp, order)
+
+proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
+  ## Shortcut version of ``sorted`` that uses ``system.cmp[T]`` as the comparison function.
+  sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
@@ -241,16 +352,20 @@ template sortedByIt*(seq1, op: untyped): untyped =
     result = cmp(a, b))
   result
 
-proc isSorted*[T](a: openarray[T],
+func isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
-  ## Checks to see whether `a` is already sorted in `order`
-  ## using `cmp` for the comparison. Parameters identical
-  ## to `sort`
+  ## checks to see whether ``a`` is already sorted in ``order``
+  ## using ``cmp`` for the comparison. Parameters identical
+  ## to ``sort``.
   result = true
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
       return false
+
+proc isSorted*[T](a: openarray[T], order = SortOrder.Ascending): bool =
+  ## Shortcut version of ``isSorted`` that uses ``system.cmp[T]`` as the comparison function.
+  isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## produces the Cartesian product of the array. Warning: complexity
@@ -286,7 +401,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     indexes[index] -= 1
 
 proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
-  ## Calculates the next lexicographic permutation, directly modifying ``x``.
+  ## calculates the next lexicographic permutation, directly modifying ``x``.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
   ##
@@ -315,8 +430,8 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   result = true
 
 proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
-  ## Calculates the previous lexicographic permutation, directly modifying
-  ## ``x``.  The result is whether a permutation happened, otherwise we have
+  ## calculates the previous lexicographic permutation, directly modifying
+  ## ``x``. The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
   ##
   ## .. code-block:: nim
@@ -359,10 +474,11 @@ when isMainModule:
   var srt1 = [1,2,3,4,4,4,4,5]
   var srt2 = ["iello","hello"]
   var srt3 = [1.0,1.0,1.0]
-  var srt4: seq[int] = @[]
+  var srt4: seq[int]
   assert srt1.isSorted(cmp) == true
   assert srt2.isSorted(cmp) == false
   assert srt3.isSorted(cmp) == true
+  assert srt4.isSorted(cmp) == true
   var srtseq = newSeq[int]()
   assert srtseq.isSorted(cmp) == true
   # Tests for reversed
@@ -391,7 +507,7 @@ proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
 
   swap(arg[mFirst], arg[next])
   mFirst += 1
-  next  += 1
+  next += 1
   if mFirst == mMiddle:
     mMiddle = next
 
@@ -425,48 +541,56 @@ proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int =
-  ## Performs a left rotation on a range of elements. If you want to rotate right, use a negative ``dist``.
-  ## Specifically, ``rotateLeft`` rotates the elements at ``slice`` by ``dist`` positions.
-  ## The element at index ``slice.a + dist`` will be at index ``slice.a``.
-  ## The element at index ``slice.b`` will be at ``slice.a + dist -1``.
-  ## The element at index ``slice.a`` will be at ``slice.b + 1 - dist``.
-  ## The element at index ``slice.a + dist - 1`` will be at ``slice.b``.
-  #
-  ## Elements outsize of ``slice`` will be left unchanged.
+proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int {.discardable.} =
+  ## performs a left rotation on a range of elements. If you want to rotate
+  ## right, use a negative ``dist``. Specifically, ``rotateLeft`` rotates
+  ## the elements at ``slice`` by ``dist`` positions.
+  ##
+  ## | The element at index ``slice.a + dist`` will be at index ``slice.a``.
+  ## | The element at index ``slice.b`` will be at ``slice.a + dist -1``.
+  ## | The element at index ``slice.a`` will be at ``slice.b + 1 - dist``.
+  ## | The element at index ``slice.a + dist - 1`` will be at ``slice.b``.
+  ##
+  ## Elements outside of ``slice`` will be left unchanged.
   ## The time complexity is linear to ``slice.b - slice.a + 1``.
   ##
   ## ``slice``
-  ##   the indices of the element range that should be rotated.
+  ##   The indices of the element range that should be rotated.
   ##
   ## ``dist``
-  ##   the distance in amount of elements that the data should be rotated. Can be negative, can be any number.
+  ##   The distance in amount of elements that the data should be rotated.
+  ##   Can be negative, can be any number.
   ##
   ## .. code-block:: nim
-  ##     var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  ##     list.rotateLeft(1 .. 8, 3)
-  ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+  ##
+  ##   var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##   list.rotateLeft(1 .. 8, 3)
+  ##   doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
 
-proc rotateLeft*[T](arg: var openarray[T]; dist: int): int =
-  ## default arguments for slice, so that this procedure operates on the entire
+proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
+  ## Default arguments for slice, so that this procedure operates on the entire
   ## ``arg``, and not just on a part of it.
+  runnableExamples:
+      var a = [1, 2, 3, 4, 5]
+      a.rotateLeft(2)
+      doAssert a == [3, 4, 5, 1, 2]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
 
 proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq[T] =
-  ## same as ``rotateLeft``, just with the difference that it does
-  ## not modify the argument. It creates a new ``seq`` instead
+  ## Same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead.
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
 
 proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
-  ## same as ``rotateLeft``, just with the difference that it does
-  ## not modify the argument. It creates a new ``seq`` instead
+  ## Same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead.
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotatedInternal(0, distLeft, arg.len)
@@ -494,3 +618,45 @@ when isMainModule:
   doAssert s4 == "xxxefgabcdxxx"
   doAssert s5.rotateLeft(3 ..< 10, 11) == 6
   doAssert s5 == "xxxefgabcdxxx"
+
+  block product:
+    doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
+    doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
+    doAssert product(@[@[1,2]]) == @[@[1,2]], "a simple case of one element"
+    doAssert product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]], "two elements"
+    doAssert product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]], "three elements"
+    doAssert product(@[@[1,2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
+
+  block lowerBound:
+    doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
+    doAssert lowerBound([1,2,3,10], 11) == 4
+
+  block upperBound:
+    doAssert upperBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert upperBound([1,2,2,3], 3, system.cmp[int]) == 4
+    doAssert upperBound([1,2,3,5], 3) == 3
+
+  block fillEmptySeq:
+    var s = newSeq[int]()
+    s.fill(0)
+
+  block testBinarySearch:
+    var noData: seq[int]
+    doAssert binarySearch(noData, 7) == -1
+    let oneData = @[1]
+    doAssert binarySearch(oneData, 1) == 0
+    doAssert binarySearch(onedata, 7) == -1
+    let someData = @[1,3,4,7]
+    doAssert binarySearch(someData, 1) == 0
+    doAssert binarySearch(somedata, 7) == 3
+    doAssert binarySearch(someData, -1) == -1
+    doAssert binarySearch(someData, 5) == -1
+    doAssert binarySearch(someData, 13) == -1
+    let moreData = @[1,3,5,7,4711]
+    doAssert binarySearch(moreData, -1) == -1
+    doAssert binarySearch(moreData,  1) == 0
+    doAssert binarySearch(moreData,  5) == 2
+    doAssert binarySearch(moreData,  6) == -1
+    doAssert binarySearch(moreData,  4711) == 4
+    doAssert binarySearch(moreData,  4712) == -1

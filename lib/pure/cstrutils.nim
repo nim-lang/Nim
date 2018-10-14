@@ -45,8 +45,10 @@ proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
 
 proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
   rtl, extern: "csuCmpIgnoreStyle".} =
-  ## Compares two strings normalized (i.e. case and
-  ## underscores do not matter). Returns:
+  ## Semantically the same as ``cmp(normalize($a), normalize($b))``. It
+  ## is just optimized to not allocate temporary strings.  This should
+  ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
+  ## for that.  Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b

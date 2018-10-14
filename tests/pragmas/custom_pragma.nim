@@ -2,4 +2,4 @@
 
 template serializationKey*(s: string) {.pragma.}
 template defaultValue*(V: typed) {.pragma.}
-template alternativeKey*(s: string = nil, V: typed) {.pragma.}
+template alternativeKey*(s: string = "", V: typed) {.pragma.}

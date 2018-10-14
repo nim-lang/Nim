@@ -11,14 +11,15 @@
 
 import
   strutils, options, ast, astalgo, msgs, os, idents, wordrecg, renderer,
-  rodread
+  lineinfos
 
 type
-  TemplCtx {.pure, final.} = object
+  TemplCtx = object
     owner, genSymOwner: PSym
     instLines: bool   # use the instantiation lines numbers
     mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
                       # new symbol
+    config: ConfigRef
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -42,7 +43,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam:
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
-        internalAssert sfGenSym in s.flags or s.kind == skType
+        internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, false)
@@ -59,11 +60,16 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
 
-proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
+const
+  errWrongNumberOfArguments = "wrong number of arguments"
+  errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
+  errTemplateInstantiationTooNested = "template instantiation too nested"
+
+proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode =
   # if the template has zero arguments, it can be called without ``()``
   # `n` is then a nkSym or something similar
   var totalParams = case n.kind
-    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: n.len-1
+    of nkCallKinds: n.len-1
     else: 0
 
   var
@@ -82,10 +88,10 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   if givenRegularParams < 0: givenRegularParams = 0
 
   if totalParams > expectedRegularParams + genericParams:
-    globalError(n.info, errWrongNumberOfArguments)
+    globalError(conf, n.info, errWrongNumberOfArguments)
 
   if totalParams < genericParams:
-    globalError(n.info, errMissingGenericParamsForTemplate,
+    globalError(conf, n.info, errMissingGenericParamsForTemplate %
                 n.renderTree)
 
   result = newNodeI(nkArgList, n.info)
@@ -97,8 +103,8 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   for i in givenRegularParams+1 .. expectedRegularParams:
     let default = s.typ.n.sons[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
-      localError(n.info, errWrongNumberOfArguments)
-      addSon(result, ast.emptyNode)
+      localError(conf, n.info, errWrongNumberOfArguments)
+      addSon(result, newNodeI(nkEmpty, n.info))
     else:
       addSon(result, default.copyTree)
 
@@ -106,8 +112,8 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   for i in 1 .. genericParams:
     result.addSon n.sons[givenRegularParams + i]
 
-var evalTemplateCounter* = 0
-  # to prevent endless recursion in templates instantiation
+# to prevent endless recursion in template instantiation
+const evalTemplateLimit* = 1000
 
 proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:
@@ -131,17 +137,19 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.add res
     result.typ = res.typ
 
-proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
-  inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
-    globalError(n.info, errTemplateInstantiationTooNested)
+proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
+                   conf: ConfigRef; fromHlo=false): PNode =
+  inc(conf.evalTemplateCounter)
+  if conf.evalTemplateCounter > evalTemplateLimit:
+    globalError(conf, n.info, errTemplateInstantiationTooNested)
     result = n
 
   # replace each param by the corresponding node:
-  var args = evalTemplateArgs(n, tmpl, fromHlo)
+  var args = evalTemplateArgs(n, tmpl, conf, fromHlo)
   var ctx: TemplCtx
   ctx.owner = tmpl
   ctx.genSymOwner = genSymOwner
+  ctx.config = conf
   initIdTable(ctx.mapping)
 
   let body = tmpl.getBody
@@ -150,7 +158,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     evalTemplateAux(body, args, ctx, result)
     if result.len == 1: result = result.sons[0]
     else:
-      localError(result.info, errIllFormedAstX,
+      localError(conf, result.info, "illformed AST: " &
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
@@ -161,5 +169,5 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
-  dec(evalTemplateCounter)
+  dec(conf.evalTemplateCounter)
 

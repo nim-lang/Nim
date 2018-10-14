@@ -43,8 +43,8 @@ type
     mwUnsupportedField
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
-                       arg: string) {.nimcall.} ## what to do in case of an error
-  FindFileHandler* = proc (filename: string): string {.nimcall.}
+                       arg: string) {.closure.} ## what to do in case of an error
+  FindFileHandler* = proc (filename: string): string {.closure.}
 
 const
   messages: array[MsgKind, string] = [
@@ -363,6 +363,13 @@ proc addNodes(n: PRstNode): string =
   addNodesAux(n, result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+  template special(s) =
+    if b:
+      add(r, '-')
+      b = false
+    add(r, s)
+
+  if n == nil: return
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
       case n.text[i]
@@ -372,7 +379,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
           b = false
         if len(r) == 0: add(r, 'Z')
         add(r, n.text[i])
-      of 'a'..'z':
+      of 'a'..'z', '\128'..'\255':
         if b:
           add(r, '-')
           b = false
@@ -382,8 +389,27 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
           add(r, '-')
           b = false
         add(r, chr(ord(n.text[i]) - ord('A') + ord('a')))
+      of '$': special "dollar"
+      of '%': special "percent"
+      of '&': special "amp"
+      of '^': special "roof"
+      of '!': special "emark"
+      of '?': special "qmark"
+      of '*': special "star"
+      of '+': special "plus"
+      of '-': special "minus"
+      of '/': special "slash"
+      of '\\': special "backslash"
+      of '=': special "eq"
+      of '<': special "lt"
+      of '>': special "gt"
+      of '~': special "tilde"
+      of ':': special "colon"
+      of '.': special "dot"
+      of '@': special "at"
+      of '|': special "bar"
       else:
-        if (len(r) > 0): b = true
+        if len(r) > 0: b = true
   else:
     for i in countup(0, len(n) - 1): rstnodeToRefnameAux(n.sons[i], r, b)
 
@@ -853,7 +879,6 @@ type
   DirKind = enum             # must be ordered alphabetically!
     dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
     dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
-{.deprecated: [TDirKind: DirKind].}
 
 const
   DirIds: array[0..12, string] = ["", "author", "authors", "code",
@@ -1114,7 +1139,6 @@ proc parseHeadline(p: var RstParser): PRstNode =
 
 type
   IntSeq = seq[int]
-{.deprecated: [TIntSeq: IntSeq].}
 
 proc tokEnd(p: RstParser): int =
   result = p.tok[p.idx].col + len(p.tok[p.idx].symbol) - 1
@@ -1388,7 +1412,7 @@ proc parseSectionWrapper(p: var RstParser): PRstNode =
     result = result.sons[0]
 
 proc `$`(t: Token): string =
-  result = $t.kind & ' ' & (if isNil(t.symbol): "NIL" else: t.symbol)
+  result = $t.kind & ' ' & t.symbol
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
@@ -1408,8 +1432,6 @@ type
     hasArg, hasOptions, argIsFile, argIsWord
   DirFlags = set[DirFlag]
   SectionParser = proc (p: var RstParser): PRstNode {.nimcall.}
-{.deprecated: [TDirFlag: DirFlag, TDirFlags: DirFlags,
-              TSectionParser: SectionParser].}
 
 proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.

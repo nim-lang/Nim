@@ -1,9 +1,9 @@
 discard """
 targets: "cpp"
-output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest"
+output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest\n[0, 0, 20, 0]\n4"
 """
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 
 template <int N, class T>
 struct GenericIntType {
@@ -26,6 +26,8 @@ type
   GenericIntType {.importcpp: "GenericIntType<'0, '1>".} [N: static[int]; T] = object
     data: array[N, T]
 
+  GenericIntTypeAlt {.importcpp: "GenericIntType".} [N: static[int]; T] = object
+
   GenericTType {.importcpp: "GenericTType<'0>".} [T] = object
     field: T
 
@@ -40,6 +42,7 @@ var
   c = GenericTType[float]()
   d = SimpleStruct(field: 15)
   e = GenericTType[string](field: "test")
+  f = GenericIntTypeAlt[4, int8]()
 
 a.data[2] = 10
 b.field = 5
@@ -51,3 +54,10 @@ echo c.field
 echo d.field
 echo e.field
 
+proc plus(a, b: GenInt4): GenInt4 =
+  for i in 0 ..< result.data.len:
+    result.data[i] = a.data[i] + b.data[i]
+
+echo plus(a, a).data
+
+echo sizeof(f)
