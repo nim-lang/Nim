@@ -174,43 +174,6 @@ proc makeRangeF(typ: PType, first, last: BiggestFloat; g: ModuleGraph): PType =
   result.n = n
   addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
 
-proc evalIs(n: PNode, lhs: PSym, g: ModuleGraph): PNode =
-  # XXX: This should use the standard isOpImpl
-  internalAssert g.config,
-    n.sonsLen == 3 and
-    lhs.typ != nil and
-    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
-
-  var
-    res = false
-    t1 = lhs.typ
-    t2 = n[2].typ
-
-  if t1.kind == tyTypeDesc and t2.kind != tyTypeDesc:
-    t1 = t1.base
-
-  if n[2].kind in {nkStrLit..nkTripleStrLit}:
-    case n[2].strVal.normalize
-    of "closure":
-      let t = skipTypes(t1, abstractRange)
-      res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator notin t.flags
-    of "iterator":
-      let t = skipTypes(t1, abstractRange)
-      res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator in t.flags
-    else:
-      res = false
-  else:
-    # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
-    let t2 = n[2].typ
-    res = sameType(t1, t2)
-
-  result = newIntNode(nkIntLit, ord(res))
-  result.typ = n.typ
-
 proc fitLiteral(c: ConfigRef, n: PNode): PNode =
   # Trim the literal value in order to make it fit in the destination type
   if n == nil:
@@ -673,9 +636,9 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mConStrStr:
         result = foldConStrStr(m, n, g)
       of mIs:
-        let lhs = getConstExpr(m, n[1], g)
-        if lhs != nil and lhs.kind == nkSym:
-          result = evalIs(n, lhs.sym, g)
+        # The only kind of mIs node that comes here is one depending on some
+        # generic parameter and that's (hopefully) handled at instantiation time
+        discard
       else:
         result = magicCall(m, n, g)
     except OverflowError:
