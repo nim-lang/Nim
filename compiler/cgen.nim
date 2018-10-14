@@ -540,7 +540,7 @@ proc isGetProcAddr(lib: PLib): bool =
   result = n.kind in nkCallKinds and n.typ != nil and
     n.typ.kind in {tyPointer, tyProc}
 
-proc loadDynamicLib(m: BModule, lib: PLib) =
+proc loadDynamicLibImpl(m: BModule, lib: PLib) =
   assert(lib != nil)
   if not lib.generated:
     lib.generated = true
@@ -581,6 +581,16 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
            [tmp, rdLoc(dest)])
 
   if lib.name == nil: internalError(m.config, "loadDynamicLib")
+
+var loadDynamicLibGuard {.threadvar.}: int
+
+proc loadDynamicLib(m: BModule, lib: PLib) =
+  if loadDynamicLibGuard != 0:
+    internalError(m.config, "loadDynamicLib should not be re-entrant; " &
+      "see https://github.com/nim-lang/Nim/issues/9123")
+  loadDynamicLibGuard.inc
+  loadDynamicLibImpl(m, lib)
+  loadDynamicLibGuard.dec
 
 proc mangleDynLibProc(sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
