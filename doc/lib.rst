@@ -229,9 +229,6 @@ Math libraries
 Internet Protocols and Support
 ------------------------------
 
-* `cgi <cgi.html>`_
-  This module implements helpers for CGI applications.
-
 * `scgi <scgi.html>`_
   This module implements helpers for SCGI applications.
 

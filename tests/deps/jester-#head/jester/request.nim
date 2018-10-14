@@ -1,6 +1,6 @@
-import uri, cgi, tables, logging, strutils, re, options
+import uri, logging, strutils, re, options, strtabs
 
-import jester/private/utils
+import private/utils
 
 when useHttpBeast:
   import httpbeast except Settings
@@ -17,7 +17,7 @@ else:
 type
   Request* = object
     req: NativeRequest
-    patternParams: Option[Table[string, string]]
+    patternParams: Option[StringTableRef]
     reMatches: array[MaxSubpatterns, string]
     settings*: Settings
 
@@ -77,12 +77,12 @@ proc ip*(req: Request): string =
   if headers.hasKey("x-forwarded-for"):
     result = headers["x-forwarded-for"]
 
-proc params*(req: Request): Table[string, string] =
+proc params*(req: Request): StringTableRef =
   ## Parameters from the pattern and the query string.
   if req.patternParams.isSome():
     result = req.patternParams.get()
   else:
-    result = initTable[string, string]()
+    result = newStringTable()
 
   when useHttpBeast:
     let query = req.req.path.get("").parseUri().query
@@ -90,7 +90,7 @@ proc params*(req: Request): Table[string, string] =
     let query = req.req.url.query
 
   try:
-    for key, val in cgi.decodeData(query):
+    for key, val in uri.decodeData(query):
       result[key] = val
   except CgiError:
     logging.warn("Incorrect query. Got: $1" % [query])
@@ -177,7 +177,7 @@ proc getNativeReq*(req: Request): NativeRequest =
   req.req
 
 #[ Only to be used by our route macro. ]#
-proc setPatternParams*(req: var Request, p: Table[string, string]) =
+proc setPatternParams*(req: var Request, p: StringTableRef) =
   req.patternParams = some(p)
 
 proc setReMatches*(req: var Request, r: array[MaxSubpatterns, string]) =

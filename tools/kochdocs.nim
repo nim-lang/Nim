@@ -147,7 +147,6 @@ lib/pure/parsecsv.nim
 lib/pure/parsesql.nim
 lib/pure/streams.nim
 lib/pure/terminal.nim
-lib/pure/cgi.nim
 lib/pure/unicode.nim
 lib/pure/strmisc.nim
 lib/pure/htmlgen.nim

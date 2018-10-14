@@ -1,7 +1,6 @@
 # Copyright (C) 2012 Dominik Picheta
 # MIT License - Look at license.txt for details.
-import parseutils, strtabs, strutils, tables, net, mimetypes, asyncdispatch, os
-from cgi import decodeUrl
+import parseutils, strtabs, strutils, tables, net, mimetypes, asyncdispatch, os, uri
 
 const
   useHttpBeast* = false # not defined(windows) and not defined(useStdLib)
@@ -20,7 +19,7 @@ type
 
   JesterError* = object of Exception
 
-proc parseUrlQuery*(query: string, result: var Table[string, string])
+proc parseUrlQuery*(query: string, result: var StringTableRef)
     {.deprecated: "use stdlib".} =
   var i = 0
   i = query.skip("?")

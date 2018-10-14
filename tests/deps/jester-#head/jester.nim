@@ -8,8 +8,6 @@ import net, strtabs, re, tables, parseutils, os, strutils, uri,
 import jester/private/[errorpages, utils]
 import jester/[request, patterns]
 
-from cgi import decodeData, decodeUrl, CgiError
-
 export request
 export strtabs
 export tables
