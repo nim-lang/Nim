@@ -216,6 +216,7 @@ proc isLastRead(n: PNode; c: var Con): bool =
   let s = n.sym
   var pcs: seq[int] = @[instr+1]
   var takenGotos: IntSet
+  var takenForks = initIntSet()
   while pcs.len > 0:
     var pc = pcs.pop
 
@@ -251,7 +252,7 @@ proc isLastRead(n: PNode; c: var Con): bool =
           inc pc
       of fork:
         # we follow the next instruction but push the dest onto our "work" stack:
-        if not takenGotos.containsOrIncl(pc):
+        if not takenForks.containsOrIncl(pc):
           pcs.add pc + c.g[pc].dest
         inc pc
   #echo c.graph.config $ n.info, " last read here!"

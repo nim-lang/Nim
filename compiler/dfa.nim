@@ -53,8 +53,9 @@ type
 
   Con = object
     code: ControlFlowGraph
-    inCall: int
+    inCall, inTryStmt: int
     blocks: seq[TBlock]
+    tryStmtFixups: seq[TPosition]
 
 proc debugInfo(info: TLineInfo): string =
   result = $info.line #info.toFilename & ":" & $info.line
@@ -225,8 +226,17 @@ proc genCase(c: var Con; n: PNode) =
 
 proc genTry(c: var Con; n: PNode) =
   var endings: seq[TPosition] = @[]
+  inc c.inTryStmt
+  var newFixups: seq[TPosition]
+  swap(newFixups, c.tryStmtFixups)
+
   let elsePos = c.forkI(n)
   c.gen(n.sons[0])
+  dec c.inTryStmt
+  for f in newFixups:
+    c.patch(f)
+  swap(newFixups, c.tryStmtFixups)
+
   c.patch(elsePos)
   for i in 1 ..< n.len:
     let it = n.sons[i]
@@ -244,7 +254,10 @@ proc genTry(c: var Con; n: PNode) =
 
 proc genRaise(c: var Con; n: PNode) =
   gen(c, n.sons[0])
-  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+  if c.inTryStmt > 0:
+    c.tryStmtFixups.add c.gotoI(n)
+  else:
+    c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 proc genReturn(c: var Con; n: PNode) =
   if n.sons[0].kind != nkEmpty: gen(c, n.sons[0])
@@ -275,6 +288,9 @@ proc genCall(c: var Con; n: PNode) =
     gen(c, n[i])
     if t != nil and i < t.len and t.sons[i].kind == tyVar:
       genDef(c, n[i])
+  # every call can potentially raise:
+  if c.inTryStmt > 0:
+    c.tryStmtFixups.add c.forkI(n)
   dec c.inCall
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
@@ -340,6 +356,8 @@ proc gen(c: var Con; n: PNode) =
     gen(c, n.sons[1])
   of nkObjDownConv, nkStringToCString, nkCStringToString: gen(c, n.sons[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
+  of nkDefer:
+    doAssert false, "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 proc dfa(code: seq[Instr]; conf: ConfigRef) =

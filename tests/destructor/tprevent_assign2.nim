@@ -1,6 +1,12 @@
 discard """
   errormsg: "'=' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'"
-  line: 44
+
+  cmd: "nim check --hint[Performance]:off $file"
+  nimout: '''
+tprevent_assign2.nim(53, 31) Error: '=' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(52, 13)
+tprevent_assign2.nim(55, 31) Error: '=' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(52, 13)
+tprevent_assign2.nim(66, 29) Error: '=' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'; another read is done here: tprevent_assign2.nim(68, 9)
+'''
 """
 
 type
@@ -19,18 +25,21 @@ proc take2(a, b: sink Foo) =
 
 proc allowThis() =
   var otherTree: Foo
-  for i in 0..3:
-    while true:
-      #if i == 0:
-      otherTree = createTree(44)
-      case i
-      of 0:
-        echo otherTree
-        take2(createTree(34), otherTree)
-      of 1:
-        take2(createTree(34), otherTree)
-      else:
-        discard
+  try:
+    for i in 0..3:
+      while true:
+        #if i == 0:
+        otherTree = createTree(44)
+        case i
+        of 0:
+          echo otherTree
+          take2(createTree(34), otherTree)
+        of 1:
+          take2(createTree(34), otherTree)
+        else:
+          discard
+  finally:
+    discard
 
 proc preventThis() =
   var otherTree: Foo
@@ -46,3 +55,14 @@ proc preventThis() =
         take2(createTree(34), otherTree)
       else:
         discard
+
+proc preventThis2() =
+  var otherTree: Foo
+  try:
+    try:
+      otherTree = createTree(44)
+      echo otherTree
+    finally:
+      take2(createTree(34), otherTree)
+  finally:
+    echo otherTree
