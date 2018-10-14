@@ -489,11 +489,15 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ##
   oldSplit(s, Whitespace, maxsplit)
 
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
 proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace <#splitWhitespace.i,string,int>`_
   ## iterator, but is a proc that returns a sequence of substrings.
-  accumulateResult(splitWhitespace(s, maxsplit))
+  accResult(splitWhitespace(s, maxsplit))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -670,7 +674,7 @@ proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =
   ## The same as the `splitLines <#splitLines.i,string>`_ iterator, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(splitLines(s, keepEol=keepEol))
+  accResult(splitLines(s, keepEol=keepEol))
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
@@ -701,7 +705,7 @@ proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[st
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
-  accumulateResult(split(s, seps, maxsplit))
+  accResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
@@ -710,7 +714,7 @@ proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffec
   runnableExamples:
     doAssert "a,b,c".split(',') == @["a", "b", "c"]
     doAssert "".split(' ') == @[""]
-  accumulateResult(split(s, sep, maxsplit))
+  accResult(split(s, sep, maxsplit))
 
 proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
@@ -727,7 +731,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
     doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
-  accumulateResult(split(s, sep, maxsplit))
+  accResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
@@ -749,7 +753,7 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  accumulateResult(rsplit(s, seps, maxsplit))
+  accResult(rsplit(s, seps, maxsplit))
   result.reverse()
 
 proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
@@ -771,7 +775,7 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  accumulateResult(rsplit(s, sep, maxsplit))
+  accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
 proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
@@ -800,7 +804,7 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
     doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".rsplit("Elon Musk") == @[""]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
-  accumulateResult(rsplit(s, sep, maxsplit))
+  accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
