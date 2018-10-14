@@ -1775,8 +1775,10 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
       if s[i] notin IdentChars: return false
     return true
 
+{.push warning[Deprecated]: off.}
 proc editDistance*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuEditDistance".} =
+  rtl, extern: "nsuEditDistance",
+  deprecated: "use editdistance.editDistanceAscii instead".} =
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
@@ -1862,6 +1864,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       if x > c3: x = c3
       row[p] = x
   result = row[e]
+{.pop.}
 
 # floating point formating:
 when not defined(js):

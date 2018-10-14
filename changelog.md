@@ -7,6 +7,11 @@
   deprecated since it was unclear what these do. Note that the much more
   useful procs that operator on ``char`` or ``Rune`` are not affected.
 
+- `strutils.editDistance` has been deprecated,
+  use `editdistance.editDistance` or `editdistance.editDistanceAscii`
+  instead.
+
+
 #### Breaking changes in the standard library
 
 
@@ -14,6 +19,8 @@
 
 ### Library additions
 
+- There is a new stdlib module `editdistance` as a replacement for the
+  deprecated `strutils.editDistance`.
 
 ### Library changes
 

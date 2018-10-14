@@ -147,6 +147,10 @@ String handling
 * `subexes <subexes.html>`_
   This module implements advanced string substitution operations.
 
+* `editdistance <editdistance>`_
+  This module contains an algorithm to compute the edit distance between two
+  Unicode strings.
+
 
 Generic Operating System Services
 ---------------------------------
