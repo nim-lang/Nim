@@ -112,6 +112,9 @@
 - Added ``macros.copyLineInfo`` to copy lineInfo from other node.
 - Added ``system.ashr`` an arithmetic right shift for integers.
 
+- Added `split`, `splitWhitespace`, `size` procs and iterators
+  to `unicode.nim`.
+
 ### Library changes
 
 - ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
