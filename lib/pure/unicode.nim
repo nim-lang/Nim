@@ -524,6 +524,22 @@ const
     0x3000,  0x3000,  # ideographic space
     0xfeff,  0xfeff]  #
 
+  unicodeSpaces = [
+    Rune 0x0009, # tab
+    Rune 0x000a, # LF
+    Rune 0x000d, # CR
+    Rune 0x0020, # space
+    Rune 0x0085, # next line
+    Rune 0x00a0, # unknown
+    Rune 0x1680, # Ogham space mark
+    Rune 0x2000, # en dash .. zero-width space
+    Rune 0x200e, Rune 0x200f,  # LTR mark .. RTL mark (pattern whitespace)
+    Rune 0x2028, Rune 0x2029,  #  -     0x3000,  0x3000,  #
+    Rune 0x202f, # narrow no-break space
+    Rune 0x205f, # medium mathematical space
+    Rune 0x3000, # ideographic space
+    Rune 0xfeff] # unknown
+
   toupperRanges = [
     0x0061,  0x007a, 468,  # a-z A-Z
     0x00e0,  0x00f6, 468,  # - -
@@ -1736,7 +1752,157 @@ proc lastRune*(s: string; last: int): (Rune, int) =
     fastRuneAt(s, last-L, r, false)
     result = (r, L+1)
 
+proc size*(r: Rune): int {.noSideEffect.} =
+  ## Returns the number of bytes the rune ``r`` takes.
+  let v = r.uint32
+  if v <= 0x007F: result = 1
+  elif v <= 0x07FF: result = 2
+  elif v <= 0xFFFF: result = 3
+  elif v <= 0x1FFFFF: result = 4
+  elif v <= 0x3FFFFFF: result = 5
+  elif v <= 0x7FFFFFFF: result = 6
+  else: result = 1
+
+# --------- Private templates for different split separators -----------
+proc stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return seps.contains(rune)
+
+proc stringHasSep(s: string, index: int, sep: Rune): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return sep == rune
+
+template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+  ## Common code for split procedures
+  var
+    last = 0
+    splits = maxsplit
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and not stringHasSep(s, last, sep):
+        when sep is Rune:
+          inc(last, sepLen)
+        else:
+          inc(last, runeLenAt(s, last))
+      if splits == 0: last = len(s)
+      yield s[first .. (last - 1)]
+      if splits == 0: break
+      dec(splits)
+      when sep is Rune:
+        inc(last, sepLen)
+      else:
+        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+
+iterator split*(s: string, seps: openarray[Rune] = unicodeSpaces,
+  maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a group of separators.
+  ##
+  ## Substrings are separated by a substring containing only `seps`.
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this\lis an\texample"):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...generates this output:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   "example"
+  ##
+  ## And the following code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...produces the same output as the first example. The code:
+  ##
+  ## .. code-block:: nim
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeLine(stdout, number)
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
+  splitCommon(s, seps, maxsplit)
+
+iterator splitWhitespace*(s: string): string =
+  ## Splits a unicode string at whitespace runes
+  splitCommon(s, unicodeSpaces, -1)
+
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "ncuSplitWhitespace".} =
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## iterator, but is a proc that returns a sequence of substrings.
+  accResult(splitWhitespace(s))
+
+iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a single separator.
+  ##
+  ## Substrings are separated by the rune `sep`.
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split(";;this;is;an;;example;;;", ';'):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   ""
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##   ""
+  ##   ""
+  ##
+  splitCommon(s, sep, maxsplit, sep.size)
+
+proc split*(s: string, seps: openarray[Rune] = unicodeSpaces, maxsplit: int = -1): seq[string] {.
+  noSideEffect, rtl, extern: "nucSplitRunes".} =
+  ## The same as the `split iterator <#split.i,string,openarray[Rune]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  accResult(split(s, seps, maxsplit))
+
+proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect,
+  rtl, extern: "nucSplitRune".} =
+  ## The same as the `split iterator <#split.i,string,Rune>`_, but is a proc
+  ## that returns a sequence of substrings.
+  accResult(split(s, sep, maxsplit))
+
 when isMainModule:
+
+  proc asRune(s: static[string]): Rune =
+    ## Compile-time conversion proc for converting string literals to a Rune
+    ## value. Returns the first Rune of the specified string.
+    ##
+    ## Shortcuts code like ``"å".runeAt(0)`` to ``"å".asRune`` and returns a
+    ## compile-time constant.
+    if s.len == 0: Rune(0)
+    else: s.runeAt(0)
+
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
@@ -1865,3 +2031,13 @@ when isMainModule:
   doAssert(runeSubStr(s, -100, 100) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
+
+  block splitTests:
+    let s = " this is an example  "
+    let s2 = ":this;is;an:example;;"
+    let s3 = ":this×is×an:example××"
+    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]

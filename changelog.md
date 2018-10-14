@@ -22,6 +22,9 @@
 - There is a new stdlib module `editdistance` as a replacement for the
   deprecated `strutils.editDistance`.
 
+- Added `split`, `splitWhitespace`, `size` procs and iterators
+  to `unicode.nim`.
+
 ### Library changes
 
 

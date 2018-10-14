@@ -12,17 +12,6 @@
 
 import unicode
 
-proc len(r: Rune): int {.noSideEffect.} =
-  ## Returns the number of bytes the rune ``r`` takes
-  let v = r.uint32
-  if v <= 0x007F: result = 1
-  elif v <= 0x07FF: result = 2
-  elif v <= 0xFFFF: result = 3
-  elif v <= 0x1FFFFF: result = 4
-  elif v <= 0x3FFFFFF: result = 5
-  elif v <= 0x7FFFFFFF: result = 6
-  else: result = 1
-
 proc editDistance*(a, b: string): int {.noSideEffect.} =
   ## Returns the unicode-rune edit distance between ``a`` and ``b``.
   ##
@@ -143,13 +132,13 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
         char2p = i_start
         for j in 0 ..< offset:
           rune_b = b.runeAt(char2p)
-          inc(char2p, rune_b.len)
+          inc(char2p, rune_b.size)
         char2p_i = i + 1
         char2p_prev = char2p
       p = offset
       rune_b = b.runeAt(char2p)
       var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.len)
+      inc(char2p, rune_b.size)
       inc(p)
       x = row[p] + 1
       D = x
@@ -169,7 +158,7 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
       dec(D)
       rune_b = b.runeAt(char2p)
       var c3 = D + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.len)
+      inc(char2p, rune_b.size)
       inc(x)
       if x > c3: x = c3
       D = row[p] + 1
