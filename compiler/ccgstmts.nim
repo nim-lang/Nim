@@ -71,7 +71,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
     else:
       if t.n.sons[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
-      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym, t)]
+      field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym)]
     putLocIntoDest(p, v.loc, field)
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)

@@ -88,6 +88,7 @@ doc/nimsuggest.rst
 doc/nep1.rst
 doc/nims.rst
 doc/contributing.rst
+doc/codeowners.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
@@ -114,6 +115,7 @@ lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
 lib/pure/matchers.nim
+lib/pure/editdistance.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim
@@ -323,7 +325,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(d, "tex"))
 
 proc buildJS() =
-  exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
+  exec(findNim() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
   exec(findNim() & " js " & (docHackDir / "dochack.nim"))
 

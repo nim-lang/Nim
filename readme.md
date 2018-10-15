@@ -102,7 +102,7 @@ within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Contributors
 
-This project exists thanks to all the people who contribute. [Read on to find out how to contribute](#contributing).
+This project exists thanks to all the people who contribute.
 <a href="https://github.com/nim-lang/Nim/graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
 
 ## Contributing
@@ -111,6 +111,7 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 [![Open Source Helpers](https://www.codetriage.com/nim-lang/nim/badges/users.svg)](https://www.codetriage.com/nim-lang/nim)
 
+See [detailed contributing guidelines](https://nim-lang.github.io/Nim/contributing.html).
 We welcome all contributions to Nim regardless of how small or large
 they are. Everything from spelling fixes to new modules to be included in the
 standard library are welcomed and appreciated. Before you start contributing,
@@ -130,7 +131,6 @@ you should familiarize yourself with the following repository structure:
 * ``tests/`` - contains categorized tests for the compiler and standard library.
 * ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
   ``koch``).
-* ``web/`` - [the Nim website][nim-site].
 * ``koch.nim`` - tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
 

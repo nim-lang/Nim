@@ -238,7 +238,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
               var sn = newNode(ckind)
               sn.add cs[i].pnode[0]
               inc i
-              while i < cs.len and cs[i].pnode.kind == ckind :
+              while i < cs.len and cs[i].pnode.kind == ckind:
                 sn.add cs[i].pnode[0]
                 inc i
               res.add sn

@@ -139,7 +139,8 @@ template isImpl(call) =
     if not call(c): return false
 
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr".} =
+  rtl, extern: "nsuIsAlphaAsciiStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -153,7 +154,8 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   isImpl isAlphaAscii
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr".} =
+  rtl, extern: "nsuIsAlphaNumericStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -167,7 +169,8 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   isImpl isAlphaNumeric
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr".} =
+  rtl, extern: "nsuIsDigitStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -180,7 +183,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   isImpl isDigit
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr".} =
+  rtl, extern: "nsuIsSpaceAsciiStr",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -205,7 +209,8 @@ template isCaseImpl(s, charProc, skipNonAlpha) =
         return false
   return if skipNonAlpha: hasAtleastOneAlphaChar else: true
 
-proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
+proc isLowerAscii*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is lower case.
   ##
   ## This checks ASCII characters only.
@@ -225,7 +230,8 @@ proc isLowerAscii*(s: string, skipNonAlpha: bool): bool =
     doAssert isLowerAscii("1fooBar", true) == false
   isCaseImpl(s, isLowerAscii, skipNonAlpha)
 
-proc isUpperAscii*(s: string, skipNonAlpha: bool): bool =
+proc isUpperAscii*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is upper case.
   ##
   ## This checks ASCII characters only.
@@ -398,9 +404,7 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If `trailing` is true, trailing `chars` are stripped.
   ## If both are false, the string is returned unchanged.
   runnableExamples:
-    doAssert strip(" foo\t") == "foo"
-    doAssert strip("1foo2018", leading=false, chars=Digits) == "1foo"
-    doAssert strip(" 2018__foo!", trailing=false, chars=AllChars - Letters) == "foo!"
+    doAssert " vhellov ".strip().strip(trailing = false, chars = {'v'}) == "hellov"
   var
     first = 0
     last = len(s)-1
@@ -562,11 +566,15 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ##
   oldSplit(s, Whitespace, maxsplit)
 
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
 proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace <#splitWhitespace.i,string,int>`_
   ## iterator, but is a proc that returns a sequence of substrings.
-  accumulateResult(splitWhitespace(s, maxsplit))
+  accResult(splitWhitespace(s, maxsplit))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -743,7 +751,7 @@ proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =
   ## The same as the `splitLines <#splitLines.i,string>`_ iterator, but is a
   ## proc that returns a sequence of substrings.
-  accumulateResult(splitLines(s, keepEol=keepEol))
+  accResult(splitLines(s, keepEol=keepEol))
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
@@ -776,7 +784,7 @@ proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[st
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
-  accumulateResult(split(s, seps, maxsplit))
+  accResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
@@ -785,7 +793,7 @@ proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffec
   runnableExamples:
     doAssert "a,b,c".split(',') == @["a", "b", "c"]
     doAssert "".split(' ') == @[""]
-  accumulateResult(split(s, sep, maxsplit))
+  accResult(split(s, sep, maxsplit))
 
 proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitString".} =
@@ -802,7 +810,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
     doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
-  accumulateResult(split(s, sep, maxsplit))
+  accResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
@@ -824,7 +832,7 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  accumulateResult(rsplit(s, seps, maxsplit))
+  accResult(rsplit(s, seps, maxsplit))
   result.reverse()
 
 proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
@@ -846,7 +854,7 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
-  accumulateResult(rsplit(s, sep, maxsplit))
+  accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
 proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
@@ -875,7 +883,7 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
     doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".rsplit("Elon Musk") == @[""]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
-  accumulateResult(rsplit(s, sep, maxsplit))
+  accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
@@ -1575,6 +1583,7 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## Count the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true.
+  doAssert sub.len > 0
   var i = 0
   while true:
     i = s.find(sub, i)
@@ -1592,6 +1601,7 @@ proc count*(s: string, sub: char): int {.noSideEffect,
 proc count*(s: string, subs: set[char]): int {.noSideEffect,
   rtl, extern: "nsuCountCharSet".} =
   ## Count the occurrences of the group of character `subs` in the string `s`.
+  doAssert card(subs) > 0
   for c in s:
     if c in subs: inc result
 
@@ -1871,8 +1881,10 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
       if s[i] notin IdentChars: return false
     return true
 
+{.push warning[Deprecated]: off.}
 proc editDistance*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuEditDistance".} =
+  rtl, extern: "nsuEditDistance",
+  deprecated: "use editdistance.editDistanceAscii instead".} =
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
@@ -1958,6 +1970,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       if x > c3: x = c3
       row[p] = x
   result = row[e]
+{.pop.}
 
 # floating point formating:
 when not defined(js):
@@ -2494,6 +2507,29 @@ proc removePrefix*(s: var string, prefix: string) {.
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
+proc stripLineEnd*(s: var string) =
+  ## Returns ``s`` stripped from one of these suffixes:
+  ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
+  ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
+  runnableExamples:
+    var s = "foo\n\n"
+    s.stripLineEnd
+    doAssert s == "foo\n"
+    s = "foo\r\n"
+    s.stripLineEnd
+    doAssert s == "foo"
+  if s.len > 0:
+    case s[^1]
+    of '\n':
+      if s.len > 1 and s[^2] == '\r':
+        s.setLen s.len-2
+      else:
+        s.setLen s.len-1
+    of '\r', '\v', '\f':
+      s.setLen s.len-1
+    else:
+      discard
+
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
@@ -2613,34 +2649,17 @@ when isMainModule:
     doAssert isAlphaAscii('A')
     doAssert(not isAlphaAscii('$'))
 
-    doAssert isAlphaAscii("Rasp")
-    doAssert isAlphaAscii("Args")
-    doAssert(not isAlphaAscii("$Tomato"))
-
     doAssert isAlphaNumeric('3')
     doAssert isAlphaNumeric('R')
     doAssert(not isAlphaNumeric('!'))
-
-    doAssert isAlphaNumeric("34ABc")
-    doAssert isAlphaNumeric("Rad")
-    doAssert isAlphaNumeric("1234")
-    doAssert(not isAlphaNumeric("@nose"))
 
     doAssert isDigit('3')
     doAssert(not isDigit('a'))
     doAssert(not isDigit('%'))
 
-    doAssert isDigit("12533")
-    doAssert(not isDigit("12.33"))
-    doAssert(not isDigit("A45b"))
-
     doAssert isSpaceAscii('\t')
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
-
-    doAssert isSpaceAscii("\t\l \v\r\f")
-    doAssert isSpaceAscii("       ")
-    doAssert(not isSpaceAscii("ABc   \td"))
 
     doAssert(isNilOrWhitespace(""))
     doAssert(isNilOrWhitespace("       "))
@@ -2654,32 +2673,10 @@ when isMainModule:
     doAssert(not isLowerAscii('&'))
     doAssert(not isLowerAscii(' '))
 
-    doAssert isLowerAscii("abcd", false)
-    doAssert(not isLowerAscii("33aa", false))
-    doAssert(not isLowerAscii("a b", false))
-
-    doAssert(not isLowerAscii("abCD", true))
-    doAssert isLowerAscii("33aa", true)
-    doAssert isLowerAscii("a b", true)
-    doAssert isLowerAscii("1, 2, 3 go!", true)
-    doAssert(not isLowerAscii(" ", true))
-    doAssert(not isLowerAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
-
     doAssert isUpperAscii('A')
     doAssert(not isUpperAscii('b'))
     doAssert(not isUpperAscii('5'))
     doAssert(not isUpperAscii('%'))
-
-    doAssert isUpperAscii("ABC", false)
-    doAssert(not isUpperAscii("A#$", false))
-    doAssert(not isUpperAscii("A B", false))
-
-    doAssert(not isUpperAscii("AAcc", true))
-    doAssert isUpperAscii("A#$", true)
-    doAssert isUpperAscii("A B", true)
-    doAssert isUpperAscii("1, 2, 3 GO!", true)
-    doAssert(not isUpperAscii(" ", true))
-    doAssert(not isUpperAscii("(*&#@(^#$ ", true)) # None of the string chars are alphabets
 
     doAssert rsplit("foo bar", seps=Whitespace) == @["foo", "bar"]
     doAssert rsplit(" foo bar", seps=Whitespace, maxsplit=1) == @[" foo", "bar"]

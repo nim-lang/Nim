@@ -186,7 +186,7 @@ proc sumGeneric(t: PType): int =
   var isvar = 1
   while true:
     case t.kind
-    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct,
+    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
         tyLent:
       t = t.lastSon
@@ -1199,6 +1199,11 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
     else: discard
+  of tyUncheckedArray:
+    if a.kind == tyUncheckedArray:
+      result = typeRel(c, base(f), base(a))
+      if result < isGeneric: result = isNone
+    else: discard
   of tyOpenArray, tyVarargs:
     # varargs[expr] is special too but handled earlier. So we only need to
     # handle varargs[stmt] which is the same as varargs[typed]:
@@ -1362,6 +1367,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       if a.len == 1:
         let pointsTo = a.sons[0].skipTypes(abstractInst)
         if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyUncheckedArray and pointsTo.sons[0].kind == tyChar:
+          result = isConvertible
         elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo.sons[0]) == 0 and
             skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
             pointsTo.sons[1].kind == tyChar:
@@ -2605,4 +2612,3 @@ tests:
 
     yes int, ordinal
     no  string, ordinal
-
