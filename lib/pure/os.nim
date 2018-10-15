@@ -309,6 +309,8 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
   ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
   ## raises OSError in case of an error. Follows symlinks.
+  ##
+  ## To expand tilde ("~") use `expandTilde`:idx:
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -357,6 +359,8 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ##
   ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
   ## Triple dot is not handled.
+  ##
+  ## To expand tilde ("~") use `expandTilde`:idx:
   let isAbs = isAbsolute(path)
   var stack: seq[string] = @[]
   for p in split(path, {DirSep}):
@@ -385,6 +389,11 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
 
 proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS. See `<#normalizePath>`_
+  runnableExamples:
+    when defined(posix):
+      doAssert normalizedPath("/a/b/../../foo") == "/foo"
+    when defined(posix):
+      doAssert normalizedPath("\\a\\b\\..\\..\\foo") == "\\foo"
   result = path
   normalizePath(result)
 
