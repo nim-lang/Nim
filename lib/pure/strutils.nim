@@ -756,6 +756,8 @@ proc countLines*(s: string): int {.noSideEffect,
   ##
   ## In this context, a line is any string seperated by a newline combination.
   ## A line can be an empty string.
+  runnableExamples:
+    assert countLines("First line\l and second line.") == 2
   result = 1
   var i = 0
   while i < s.len:
@@ -882,6 +884,9 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
   ## ``0x`` is generated. `x` is treated as an unsigned value.
+  runnableExamples:
+    assert toHex(1984, 6) == "0007C0"
+    assert toHex(1984, 2) == "C0"
   const
     HexChars = "0123456789ABCDEF"
   var
@@ -895,6 +900,8 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 
 proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
+  runnableExamples:
+    assert toHex(1984) == "00000000000007C0"
   toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
@@ -916,6 +923,9 @@ proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   ##
   ## The resulting string will be minimally `minchars` characters long. This is
   ## achieved by adding leading zeros.
+  runnableExamples:
+    assert intToStr(1984) == "1984"
+    assert intToStr(1984, 6) == "001984" 
   result = $abs(x)
   for i in 1 .. minchars - len(result):
     result = '0' & result
@@ -927,6 +937,8 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  runnableExamples:
+    assert parseInt("-0042") == -42
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -963,6 +975,9 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## Parses a decimal floating point value contained in `s`. If `s` is not
   ## a valid floating point number, `ValueError` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  runnableExamples:
+    assert parseFloat("3.14") == 3.14
+    assert parseFloat("inf") == 1.0/0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
