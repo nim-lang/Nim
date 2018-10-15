@@ -236,7 +236,7 @@ else:
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
-when defined(emscripten):
+when defined(emscripten) or defined(wasm):
   const stackIncreases = true
 elif defined(sparc):
   const stackIncreases = false
@@ -332,21 +332,28 @@ elif stackIncreases:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------
-  var
-    jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
-      # a little hack to get the size of a JmpBuf in the generated C code
-      # in a platform independent way
+  when defined(emscripten) or defined(wasm):
+    var
+      jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
+        # a little hack to get the size of a JmpBuf in the generated C code
+        # in a platform independent way
+
+  template forEachStackSlotAux(gch, gcMark: untyped) {.dirty.} =
+    for stack in gch.stack.items():
+      var max = cast[ByteAddress](gch.stack.bottom)
+      var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
+      while sp >=% max:
+        gcMark(gch, cast[PPointer](sp)[])
+        sp = sp -% sizeof(pointer)
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
-    var registers {.noinit.}: C_JmpBuf
-
-    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      for stack in gch.stack.items():
-        var max = cast[ByteAddress](gch.stack.bottom)
-        var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
-        while sp >=% max:
-          gcMark(gch, cast[PPointer](sp)[])
-          sp = sp -% sizeof(pointer)
+    when defined(emscripten) or defined(wasm):
+      var registers: cint
+      forEachStackSlotAux(gch, gcMark)
+    else:
+      var registers {.noinit.}: C_JmpBuf
+      if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
+        forEachStackSlotAux(gch, gcMark)
 
 else:
   # ---------------------------------------------------------------------------
