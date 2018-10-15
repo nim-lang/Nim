@@ -1382,6 +1382,8 @@ proc abbrev*(s: string, possibilities: openArray[string]): int =
 proc join*(a: openArray[string], sep: string = ""): string {.
   noSideEffect, rtl, extern: "nsuJoinSep".} =
   ## Concatenates all strings in `a` separating them with `sep`.
+  runnableExamples:
+    doAssert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
   if len(a) > 0:
     var L = sep.len * (a.len-1)
     for i in 0..high(a): inc(L, a[i].len)
@@ -1397,6 +1399,8 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
   noSideEffect, rtl.} =
   ## Converts all elements in `a` to strings using `$` and concatenates them
   ## with `sep`.
+  runnableExamples:
+    doAssert join([1, 2, 3], " -> ") == "1 -> 2 -> 3"
   result = ""
   for i, x in a:
     if i > 0:
