@@ -1759,7 +1759,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mIsNil: unaryExpr(p, n, r, "", "($1 === null)")
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
-  of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
@@ -2358,4 +2357,3 @@ proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)
-

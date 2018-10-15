@@ -144,6 +144,9 @@ endif
 ifeq ($(ucpu),aarch64)
   mycpu = arm64
 endif
+ifeq ($(ucpu),riscv64)
+  mycpu = riscv64
+endif
 ifndef mycpu
   $(error unknown processor: $(ucpu))
 endif

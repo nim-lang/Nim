@@ -1,6 +1,7 @@
 discard """
-  output: '''after 3 3
-after 3 3
+  output: '''after 2 2
+after 2 2
+after 2 2
 after 2 2'''
 """
 # bug #9263
@@ -107,6 +108,11 @@ proc test3 =
   #    a = a - b
   b = -b + a
 
+proc test4 =
+  # bug #9294
+  var a = matrix(5, 5, 1.0)
+  a = -a + a
+
 test1()
 info()
 
@@ -114,4 +120,7 @@ test2()
 info()
 
 test3()
+info()
+
+test4()
 info()

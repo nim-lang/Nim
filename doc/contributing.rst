@@ -73,7 +73,7 @@ Possible keys are:
 - file: The file the errormsg was produced at
 - line: The line the errormsg was produced at
 
-For a full spec, see here: ``tests/testament/specs.nim``
+For a full spec, see here: ``testament/specs.nim``
 
 An example for a test:
 
@@ -109,7 +109,7 @@ only want to see the output of failing tests, go for
 
 You can also run only a single category of tests. A category is a subdirectory
 in the ``tests`` directory. There are a couple of special categories; for a
-list of these, see ``tests/testament/categories.nim``, at the bottom.
+list of these, see ``testament/categories.nim``, at the bottom.
 
 ::
 

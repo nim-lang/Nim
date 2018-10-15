@@ -682,12 +682,29 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
   ##
-  ## Limitations: If used within nim VM context ``sizeof`` will only work
-  ## for simple types.
+  ## Limitations: If used for types that are imported from C or C++,
+  ## sizeof should fallback to the ``sizeof`` in the C compiler. The
+  ## result isn't available for the Nim compiler and therefore can't
+  ## be used inside of macros.
   ##
   ## .. code-block:: nim
   ##  sizeof('A') #=> 1
   ##  sizeof(2) #=> 8
+
+when defined(nimHasalignOf):
+  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+
+  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+
+  template offsetOf*[T](t: typedesc[T]; member: untyped): int =
+    var tmp: T
+    offsetOfDotExpr(tmp.member)
+
+  template offsetOf*[T](value: T; member: untyped): int =
+    offsetOfDotExpr(value.member)
+
+  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
@@ -2754,8 +2771,11 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
-template accumulateResult*(iter: untyped) =
+template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
   ## helps to convert an iterator to a proc.
+  ## See also `sequtils.toSeq` which is more hygienic and efficient.
+  ##
+  ## **Deprecated since v0.19.2:** use toSeq instead
   result = @[]
   for x in iter: add(result, x)
 
@@ -3877,7 +3897,7 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
 
 include "system/helpers" # for `lineInfoToString`
 
-template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
+template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
   bind instantiationInfo
   mixin failedAssertImpl
@@ -3886,9 +3906,9 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
     # here, regardless of --excessiveStackTrace
     {.line: instantiationInfo(fullPaths = true).}:
       if not cond:
-        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+        failedAssertImpl(loc & " `" & expr & "` " & msg)
 
-template assert*(cond: bool, msg = "") =
+template assert*(cond: untyped, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
@@ -3897,11 +3917,13 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  assertImpl(cond, msg, compileOption("assertions"))
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, compileOption("assertions"))
 
-template doAssert*(cond: bool, msg = "") =
+template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
-  assertImpl(cond, msg, true)
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -4337,6 +4359,8 @@ when not defined(js):
   proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
   proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
   proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
     magic: "Slice".}

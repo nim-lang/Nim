@@ -364,7 +364,8 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of ``s`` that match ``pattern``.
   ## If it does not match, @[] is returned.
-  accumulateResult(findAll(s, pattern, start))
+  result = @[]
+  for x in findAll(s, pattern, start): result.add x
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -408,7 +409,7 @@ proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   result = matchLen(s, prefix) >= 0
 
 proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
@@ -433,6 +434,7 @@ proc replace*(s: string, sub: Regex, by = ""): string =
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     add(result, by)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -458,6 +460,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -543,7 +546,8 @@ proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
   ## Splits the string ``s`` into a seq of substrings.
   ##
   ## The portion matched by ``sep`` is not returned.
-  accumulateResult(split(s, sep))
+  result = @[]
+  for x in split(s, sep): result.add x
 
 proc escapeRe*(s: string): string =
   ## escapes ``s`` so that it is matched verbatim when used as a regular
@@ -673,4 +677,10 @@ when isMainModule:
     for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
       accum.add($x)
     doAssert(accum == @["a","b","c"])
+
+  block:
+    # bug #9306
+    doAssert replace("bar", re"^", "foo") == "foobar"
+    doAssert replace("foo", re"", "-") == "-foo"
+    doAssert replace("foo", re"$", "bar") == "foobar"
 

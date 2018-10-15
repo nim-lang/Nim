@@ -582,7 +582,8 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mType, mTypeOf,
+    mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
+    mIs, mOf, mAddr, mType, mTypeOf,
     mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
@@ -698,11 +699,6 @@ const
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}
-  # magics that require special semantic checking and
-  # thus cannot be overloaded (also documented in the spec!):
-  SpecialSemMagics* = {
-    mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
@@ -1274,7 +1270,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.kind = kind
   result.owner = owner
   result.size = -1
-  result.align = 2            # default alignment
+  result.align = -1            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
