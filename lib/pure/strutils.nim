@@ -305,7 +305,7 @@ proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
   ## <unicode.html#toUpper>`_ for a version that works for any Unicode
   ## character.
   runnableExamples:
-    doAssert toLowerAscii("FooBar!") == "FOOBAR!"
+    doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
 proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
