@@ -2015,9 +2015,12 @@ proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## used instead. (In other words: *Overwriting* is possible.)
 
 # undocumented:
-proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
+proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
+proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
+proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
