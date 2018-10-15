@@ -75,3 +75,13 @@ block tconsts:
 
   type MyBoolArr = distinct array[3, bool]
   const barr:MyBoolArr = MyBoolArr([true, false, true])
+
+# bug #2760
+
+type
+  DistTup = distinct tuple
+    foo, bar: string
+
+const d: DistTup = DistTup((
+  foo:"FOO", bar:"BAR"
+))

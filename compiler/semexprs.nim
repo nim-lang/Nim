@@ -439,7 +439,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
     for i in countup(0, sonsLen(n) - 1):
       changeType(c, n.sons[i], elemType(newType), check)
   of nkPar, nkTupleConstr:
-    let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink})
+    let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
       globalError(c.config, n.info, "no tuple type for constructor")
