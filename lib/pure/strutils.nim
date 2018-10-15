@@ -1239,6 +1239,8 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## Indents each line in ``s`` by ``count`` amount of ``padding``.
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
+  runnableExamples:
+    doAssert indent("First line\c\l and second line.", 2) == "  First line\n   and second line"
   result = ""
   var i = 0
   for line in s.splitLines():
