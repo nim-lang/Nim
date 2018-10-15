@@ -757,7 +757,7 @@ proc countLines*(s: string): int {.noSideEffect,
   ## In this context, a line is any string seperated by a newline combination.
   ## A line can be an empty string.
   runnableExamples:
-    assert countLines("First line\l and second line.") == 2
+    doAssert countLines("First line\l and second line.") == 2
   result = 1
   var i = 0
   while i < s.len:
@@ -885,8 +885,8 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   ## The resulting string will be exactly `len` characters long. No prefix like
   ## ``0x`` is generated. `x` is treated as an unsigned value.
   runnableExamples:
-    assert toHex(1984, 6) == "0007C0"
-    assert toHex(1984, 2) == "C0"
+    doAssert toHex(1984, 6) == "0007C0"
+    doAssert toHex(1984, 2) == "C0"
   const
     HexChars = "0123456789ABCDEF"
   var
@@ -901,7 +901,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   runnableExamples:
-    assert toHex(1984) == "00000000000007C0"
+    doAssert toHex(1984) == "00000000000007C0"
   toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
@@ -924,8 +924,8 @@ proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   ## The resulting string will be minimally `minchars` characters long. This is
   ## achieved by adding leading zeros.
   runnableExamples:
-    assert intToStr(1984) == "1984"
-    assert intToStr(1984, 6) == "001984" 
+    doAssert intToStr(1984) == "1984"
+    doAssert intToStr(1984, 6) == "001984" 
   result = $abs(x)
   for i in 1 .. minchars - len(result):
     result = '0' & result
@@ -938,7 +938,7 @@ proc parseInt*(s: string): int {.noSideEffect, procvar,
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
-    assert parseInt("-0042") == -42
+    doAssert parseInt("-0042") == -42
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -976,8 +976,8 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## a valid floating point number, `ValueError` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
   runnableExamples:
-    assert parseFloat("3.14") == 3.14
-    assert parseFloat("inf") == 1.0/0
+    dAssert parseFloat("3.14") == 3.14
+    dAssert parseFloat("inf") == 1.0/0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
@@ -1240,7 +1240,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   runnableExamples:
-    doAssert indent("First line\c\l and second line.", 2) == "  First line\n   and second line"
+    doAssert indent("First line\c\l and second line.", 2) == "  First line\l   and second line"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1256,6 +1256,8 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
+  runnableExamples:
+    doAssert unindent("  First line\l   and second line", 3) == "First line\land second line"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1350,14 +1352,22 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
 
 proc allCharsInSet*(s: string, theSet: set[char]): bool =
   ## Returns true iff each character of `s` is in the set `theSet`.
+  runnableExamples:
+    doAssert allCharsInSet("aeea", {'a', 'e'}) == true
+    doAssert allCharsInSet("", {'a', 'e'}) == true
   for c in items(s):
     if c notin theSet: return false
   return true
 
 proc abbrev*(s: string, possibilities: openArray[string]): int =
-  ## Returns the index of the first item in `possibilities` if not ambiguous.
+  ## Returns the index of the first item in ``possibilities`` which starts with ``s``, if not ambiguous.
   ##
   ## Returns -1 if no item has been found and -2 if multiple items match.
+  runnableExamples:
+    doAssert abbrev("fac", ["college", "faculty", "industry"]) == 1
+    doAssert abbrev("foo", ["college", "faculty", "industry"]) == -1 # Not found
+    doAssert abbrev("fac", ["college", "faculty", "faculties"]) == -2 # Ambiguous
+    doAssert abbrev("college", ["college", "colleges", "industry"]) == 0
   result = -1 # none found
   for i in 0..possibilities.len-1:
     if possibilities[i].startsWith(s):
