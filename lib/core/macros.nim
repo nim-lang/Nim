@@ -1434,3 +1434,20 @@ proc getProjectPath*(): string = discard
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
 
+
+macro strJoin*(args: varargs[typed]): untyped =
+  ## same as `$args[0] & ... & $args[^1]` but in lots of cases more
+  ## convenient, to avoid visual noise from lots of operators & and $.
+  ## Also, makes it easier to switch bewtween `echo` and `strJoin`.
+  runnableExamples:
+    doAssert strJoin() == ""
+    ## easier to read than: `$(1+2) & " " & $(3-4)`
+    doAssert strJoin(1+2, " ", 4-3) == "3 1"
+  if args.len > 0:
+    result = newCall(ident"$", args[0])
+    for i in 1..<args.len:
+      # Note: if `bindSym` were used instead of `ident`, it wouldn't be
+      # extensible to user defined `$`
+      result = newTree(nnkInfix, bindSym"&", result, newCall(ident"$", args[i]))
+  else:
+    result = newLit ""
