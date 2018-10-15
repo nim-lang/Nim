@@ -2109,7 +2109,7 @@ when defined(nimNewRoof):
   template dotdotImpl(t) {.dirty.} =
     iterator `..`*(a, b: t): t {.inline.} =
       ## A type specialized version of ``..`` for convenience so that
-      ## mixing integer types work better.
+      ## mixing integer types works better.
       var res = a
       while res <= b:
         yield res
