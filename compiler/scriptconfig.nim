@@ -96,6 +96,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf fileExists:
     setResult(a, os.fileExists(a.getString 0))
 
+  cbconf projectName:
+    setResult(a, conf.projectName)
+  cbconf projectDir:
+    setResult(a, conf.projectPath.string)
+  cbconf projectPath:
+    setResult(a, conf.projectFull.string)
   cbconf thisDir:
     setResult(a, vthisDir)
   cbconf put:

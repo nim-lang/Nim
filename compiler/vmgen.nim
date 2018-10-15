@@ -1080,8 +1080,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, if m == mOf: opcOf else: opcIs, dest, tmp, idx)
     c.freeTemp(tmp)
     c.freeTemp(idx)
-  of mSizeOf:
-    globalError(c.config, n.info, "cannot run in the VM: " & renderTree(n))
   of mHigh:
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n.sons[1])
@@ -1231,6 +1229,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       # produces a value
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
+  of mSizeOf, mAlignOf:
+    globalError(c.config, n.info, "cannot evaluate 'sizeof/alignof' because its type is not defined completely")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   else:

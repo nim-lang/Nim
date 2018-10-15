@@ -98,7 +98,7 @@ type
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
     ntyUnused0, ntyUnused1, ntyUnused2,
     ntyVarargs,
-    ntyUnused,
+    ntyUncheckedArray,
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,

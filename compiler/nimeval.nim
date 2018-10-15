@@ -89,6 +89,13 @@ proc findNimStdLib*(): string =
   except OSError, ValueError:
     return ""
 
+proc findNimStdLibCompileTime*(): string =
+  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## and asserts on error.
+  const sourcePath = currentSourcePath()
+  result = sourcePath.parentDir.parentDir / "lib"
+  doAssert fileExists(result / "system.nim"), "result:" & result
+
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
                         flags: TSandboxFlags = {}): Interpreter =
