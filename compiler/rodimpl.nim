@@ -853,12 +853,10 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
   result = newNodeI(nkStmtList, module.info)
   for row in db.rows(sql"select data from toplevelstmts where module = ? order by position asc",
                         abs module.id):
-
     var b = BlobReader(pos: 0)
     # ensure we can read without index checks:
     b.s = row[0] & '\0'
     result.add decodeNode(g, b, module.info)
-
   db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
   replay(g, module, result)
 
