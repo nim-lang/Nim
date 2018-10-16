@@ -678,6 +678,253 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       if i > 0: result.add " "
       result.add quoteShell(args[i])
 
+proc isSep(c: char): bool {.noSideEffect.} = c in {DirSep, AltSep}
+
+proc cmpCharInPath(a, b: char): bool {.noSideEffect.} =
+  when FileSystemCaseSensitive:
+    let r = a == b:
+  else:
+    let r = toLowerAscii(a) == toLowerAscii(b)
+  return if r: true else: (a.isSep and b.isSep)
+
+proc sameDrive(a, b: string): bool {.noSideEffect.} =
+  when doslikeFileSystem:
+    not (a.len > 1 and a[1] == ':' and isAlphaAscii(a[0]) and b.len > 1 and b[1] == ':' and a[0] != b[0])
+  else:
+    true
+
+proc countDir(path: string; start, last: Natural): int {.noSideEffect.} =
+  if start >= last:
+    return 0
+
+  result = 0
+  if not path[start].isSep:
+    inc(result)
+  for i in (start+1)..<last:
+    if path[i-1].isSep and not path[i].isSep:
+      inc(result)
+
+proc skipDirSep(path: string; start, last: Natural = 0): int {.noSideEffect.} =
+  var p = start
+  while p < last and path[p].isSep:
+    inc(p)
+  return p
+
+proc rSkipDirSep(path: string; start, last: Natural = 0): int {.noSideEffect.} =
+  var p = start
+  while p > last and path[p].isSep:
+    dec(p)
+  return p
+
+proc countParDir(path: string; start, last: Natural): (int, int) {.noSideEffect.} =
+  var p = start
+  var c = 0
+  while p < last:
+    if p <= last - ParDir.len and continuesWith(path, ParDir, p):
+      p += ParDir.len
+      inc(c)
+      p = skipDirSep(path, p, last)
+    else:
+      break
+  return (c, p)
+
+proc getRelativePathFromAbsolute(path, baseDir: string): string {.
+  noSideEffect.} =
+  ## Convert 'path' to a relative path from baseDir.
+  ##
+  ## Both 'path' and 'baseDir' must be absolute paths.
+  ## On DOS like filesystem, when a drive of 'path' is different from 'baseDir',
+  ## this proc just return the 'path' as is because no way to calculate the relative path.
+  ## This proc never read filesystem.
+  ## 'baseDir' is always assumed to be a directory even if that path is actually a file.
+  ##
+
+  assert(isAbsolute(path) and isAbsolute(baseDir))
+
+  if baseDir.len == 0:
+    return path
+
+  if not sameDrive(path, baseDir):
+    return path
+
+  let alast = path.len
+  let blast = rSkipDirSep(baseDir, baseDir.len - 1, 0) + 1
+
+  var pos = 0
+  let m = min(alast, blast)
+  while pos < m:
+    if not cmpCharInPath(path[pos], baseDir[pos]):
+      break
+    inc(pos)
+
+  if (pos == blast and (alast == blast or path[blast].isSep)) or (pos == alast and (blast > alast and baseDir[pos].isSep)):
+    inc(pos)
+  else:
+    while pos != 0 and not path[pos-1].isSep:
+      dec(pos)
+
+  let numUp = countDir(baseDir, pos, blast)
+
+  if numUp == 0 and pos >= alast:
+    return $CurDir
+
+  result = if numUp > 0: ParDir & (DirSep & ParDir).repeat(numUp-1) else: ""
+  if pos < path.len:
+    return result / path.substr(pos)
+
+proc isInRootDir(path: string; last: Natural): bool {.noSideEffect.} =
+  if last == 0 and path[0].isSep:
+    return true
+  when doslikeFileSystem:
+    if last < 3 and path.len > 1 and
+       path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':':
+      return true
+  return false
+
+proc getRelativePathFromRelative(path, baseDir, curDir: string): string {.
+  noSideEffect.} =
+  ## Convert 'path' to a path relative to baseDir.
+  ##
+  ## Both 'path' and 'baseDir' must be relative paths from 'curDir'.
+  ## This proc never read filesystem.
+  ## 'baseDir' is always assumed to be a directory even if that path is actually a file.
+
+  proc skipCurDir(path: string): int {.noSideEffect.} =
+    var p = 0
+    let l = path.len
+    while p < l:
+      if p <= l - ParDir.len and continuesWith(path, ParDir, p):
+        break
+      if path[p] != CurDir:
+        break
+      inc(p)
+      p = skipDirSep(path, p, l)
+    return p
+
+  assert(not (isAbsolute(path) or isAbsolute(baseDir)))
+
+  if baseDir.len == 0:
+    return path
+
+  let alast = path.len
+  let blast = rSkipDirSep(baseDir, baseDir.len - 1, 0) + 1
+
+  let
+    astart = skipCurDir(path)
+    bstart = skipCurDir(baseDir)
+
+  var
+    apos = astart
+    bpos = bstart
+
+  while apos < alast and bpos < blast:
+    if not cmpCharInPath(path[apos], baseDir[bpos]):
+      break;
+    inc(apos)
+    inc(bpos)
+
+  if (bpos == blast and (apos == alast or path[apos].isSep)) or
+     (apos == alast and (bpos == blast or baseDir[bpos].isSep)):
+    inc(apos)
+  else:
+    while apos != astart and not path[apos-1].isSep:
+      dec(apos)
+      dec(bpos)
+
+  var numPar: int
+  (numPar, bpos) = countParDir(baseDir, bpos, blast)
+
+  let numUp = countDir(baseDir, bpos, blast)
+
+  if numPar == 0 and numUp == 0 and apos >= alast:
+    return $CurDir
+
+  result = if numUp > 0: ParDir & (DirSep & ParDir).repeat(numUp-1) else: ""
+
+  if numPar > 0:
+    if curDir.len == 0:
+      raise newException(ValueError, "parameter `curDir` is required to calculate relative path from given paths")
+    var cpos = curDir.len-1
+    for i in countDown(numPar-1, 0):
+      cpos = rSkipDirSep(curDir, cpos)
+      if isInRootDir(curDir, cpos) or curDir[cpos] == CurDir:
+        raise newException(ValueError, "Cannot calculate relative path from given paths")
+      while cpos > 0 and not curDir[cpos].isSep:
+        dec(cpos)
+    if curDir[cpos].isSep:
+      inc(cpos)
+    result = result / curDir.substr(cpos)
+
+  if apos < path.len:
+    return result / path.substr(apos)
+
+proc relativePath*(path, baseDir: string; curDir: string = ""): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Convert `path` to a path relative to baseDir.
+  ##
+  ## `path` and `baseDir` must be absolute paths or relative paths from `curDir`.
+  ## When one of `path` and `baseDir` is relative and other one is absolute, `curDir` must be absolute.
+  ##
+  ## On DOS like filesystem, when a drive of `path` is different from `baseDir`,
+  ## this proc just return the `path` as is because no way to calculate the relative path.
+  ##
+  ## This proc never read filesystem.
+  ## `baseDir` is always assumed to be a directory even if that path is actually a file.
+  runnableExamples:
+    doAssert relativePath("/home/abc".unixToNativePath, "/".unixToNativePath) == "home/abc".unixToNativePath
+    doAssert relativePath("/home/abc".unixToNativePath, "/home/abc/x".unixToNativePath) == "..".unixToNativePath
+    doAssert relativePath("/home/abc/xyz".unixToNativePath, "/home/abc/x".unixToNativePath) == "../xyz".unixToNativePath
+    doAssert relativePath("home/xyz/d".unixToNativePath, "home/xyz".unixToNativePath, "".unixToNativePath) == "d".unixToNativePath
+    doAssert relativePath("abc".unixToNativePath, "xyz".unixToNativePath, "".unixToNativePath) == "../abc".unixToNativePath
+    doAssert relativePath(".".unixToNativePath, "..".unixToNativePath, "/abc".unixToNativePath) == "abc".unixToNativePath
+    doAssert relativePath("xyz/d".unixToNativePath, "/home/xyz".unixToNativePath, "/home".unixToNativePath) == "d".unixToNativePath
+    doAssert relativePath("/home/xyz/d".unixToNativePath, "xyz".unixToNativePath, "/home".unixToNativePath) == "d".unixToNativePath
+    doAssert relativePath("../d".unixToNativePath, "/usr".unixToNativePath, "/home/xyz".unixToNativePath) == "../home/d".unixToNativePath
+
+  proc parentDirPos(path: string; start: Natural): int {.noSideEffect.} =
+    let q = rSkipDirSep(path, start)
+    if isInRootDir(path, q):
+      return -1
+    for i in countdown(q, 0):
+      if path[i].isSep: return i
+    return -1
+
+  proc nParentDirPos(path: string; n: Natural): int {.noSideEffect.} =
+    var p = path.len-1
+    for i in 0..<n:
+      p = parentDirPos(path, p)
+      if p < 0:
+        return p
+    return p
+
+  proc mergePath(head, tail: string): string {.noSideEffect.} =
+    var
+      numPar: int
+      p: int
+    (numPar, p) = countParDir(tail, 0, tail.len)
+    if numPar == 0:
+      return head / tail
+    let q = nParentDirPos(head, numPar)
+    if q < 0:
+      raise newException(ValueError, "Cannot calculate relative path from given paths")
+    return head.substr(0, q) / tail.substr(p)
+
+  let
+    isAbsp = isAbsolute(path)
+    isAbsb = isAbsolute(baseDir)
+  if isAbsp and isAbsb:
+    return getRelativePathFromAbsolute(path, baseDir)
+  elif not (isAbsp or isAbsb):
+    return getRelativePathFromRelative(path, baseDir, curDir)
+
+  if not isAbsolute(curDir):
+    raise newException(ValueError, "Cannot calculate relative path from given paths")
+
+  if isAbsp:
+    return getRelativePathFromAbsolute(path, mergePath(curDir, baseDir))
+  else:
+    return getRelativePathFromAbsolute(mergePath(curDir, path), baseDir)
+
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
   assert quoteShellWindows("aaa\"") == "aaa\\\""
@@ -711,82 +958,3 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
-
-proc isSep(c: char): bool {.noSideEffect.} = c in {DirSep, AltSep}
-
-proc cmpCharInPath(a, b: char): bool {.noSideEffect.} =
-  when FileSystemCaseSensitive:
-    let r = a == b:
-  else:
-    let r = toLowerAscii(a) == toLowerAscii(b)
-  return if r: true else: (a.isSep and b.isSep)
-
-proc sameDrive(a, b: string): bool {.noSideEffect.} =
-  when doslikeFileSystem:
-    not (a.len > 1 and a[1] == ':' and isAlphaAscii(a[0]) and b.len > 1 and b[1] == ':' and a[0] != b[0])
-  else:
-    true
-
-proc countDir(path: string; start, last: Natural): int {.noSideEffect.} =
-  if start >= last:
-    return 0
-
-  result = 0
-  if not path[start].isSep:
-    inc(result)
-  for i in (start+1)..<last:
-    if path[i-1].isSep and not path[i].isSep:
-      inc(result)
-
-proc rSkipDirSep(path: string; start, last: Natural = 0): int {.noSideEffect.} =
-  var p = start
-  while p > last and path[p].isSep:
-    dec(p)
-  return p
-
-proc getRelPathFromAbs*(path, baseDir: string): string {.
-  noSideEffect, rtl, extern: "nos$1".} =
-  ## Convert 'path' to a relative path from baseDir.
-  ##
-  ## Both 'path' and 'baseDir' must be absolute paths.
-  ## On DOS like filesystem, when a drive of 'path' is different from 'baseDir',
-  ## this proc just return the 'path' as is because no way to calculate the relative path.
-  ## This proc never read filesystem.
-  ## 'baseDir' is always assumed to be a directory even if that path is actually a file.
-  ##
-  runnableExamples:
-    doAssert getRelPathFromAbs("/home/abc".unixToNativePath, "/".unixToNativePath) == "home/abc".unixToNativePath
-    doAssert getRelPathFromAbs("/home/abc".unixToNativePath, "/home/abc/x".unixToNativePath) == "../".unixToNativePath
-    doAssert getRelPathFromAbs("/home/abc/xyz".unixToNativePath, "/home/abc/x".unixToNativePath) == "../xyz".unixToNativePath
-
-  assert(isAbsolute(path) and isAbsolute(baseDir))
-
-  if baseDir.len == 0:
-    return path
-
-  if not sameDrive(path, baseDir):
-    return path
-
-  let alast = path.len
-  let blast = rSkipDirSep(baseDir, baseDir.len - 1, 0) + 1
-
-  var pos = 0
-  let m = min(alast, blast)
-  while pos < m:
-    if not cmpCharInPath(path[pos], baseDir[pos]):
-      break
-    inc(pos)
-
-  if pos == blast and (alast == blast or path[blast].isSep):
-    inc(pos)
-  else:
-    while pos != 0 and not path[pos-1].isSep:
-      dec(pos)
-
-  let numUp = countDir(baseDir, pos, blast)
-
-  if numUp == 0 and pos >= alast:
-    return $CurDir
-
-  result = if numUp > 0: (ParDir & DirSep).repeat(numUp) else: ""
-  result.add path.substr(pos)

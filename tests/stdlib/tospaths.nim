@@ -64,15 +64,86 @@ block lastPathPartTest:
     doAssert lastPathPart(r"foo\") == "foo"
 
 block:
-  proc testGetRelPathFromAbs(path, baseDir, res: string): bool {.noSideEffect.} =
-    getRelPathFromAbs(path.unixToNativePath("a"), baseDir.unixToNativePath("a")) == res.unixToNativePath
-  doAssert testGetRelPathFromAbs("/", "/", ".")
-  doAssert testGetRelPathFromAbs("/b", "/a", "../b")
-  doAssert testGetRelPathFromAbs("/ab", "/a", "../ab")
-  doAssert testGetRelPathFromAbs("/a", "/ab", "../a")
-  doAssert testGetRelPathFromAbs("/x/a", "/x/a", ".")
-  doAssert testGetRelPathFromAbs("/x/a", "/x/ab/c", "../../a")
-  doAssert testGetRelPathFromAbs("/x/a/bc", "/x/a", "bc")
-  doAssert testGetRelPathFromAbs("/x/ab", "/x/a/", "../ab")
-  doAssert testGetRelPathFromAbs("/x/ab", "/x/a", "../ab")
-  doAssert testGetRelPathFromAbs("/x/y/z/", "/u/v/w", "../../../x/y/z/")
+  proc testRelativePath(path, baseDir, curDir = "", res: string): bool {.noSideEffect.} =
+    #debugEcho path, ", ", baseDir, ", ", curDir, ", ", res
+    let r =
+      relativePath(
+        path.unixToNativePath("a"),
+        baseDir.unixToNativePath("a"),
+        curDir.unixToNativePath("a"))
+    #debugEcho r
+    return r == res.unixToNativePath
+
+  proc testRelativePathRaise(path, baseDir, curDir = "") {.noSideEffect.} =
+    try:
+      discard testRelativePath(path, baseDir, curDir, "")
+      doAssert false, "Should raise ValueError"
+    except ValueError:
+      discard
+
+  #Absolute path and absolute path
+  doAssert testRelativePath("/", "/", res = ".")
+  doAssert testRelativePath("/b", "/a", res = "../b")
+  doAssert testRelativePath("/ab", "/a", res = "../ab")
+  doAssert testRelativePath("/a", "/ab", res = "../a")
+  doAssert testRelativePath("/x/a", "/x/a", res = ".")
+  doAssert testRelativePath("/x/a", "/x/a/y", res = "..")
+  doAssert testRelativePath("/x/a", "/x/a/y/z", res = "../..")
+  doAssert testRelativePath("/x/a", "/x/ab/c", res = "../../a")
+  doAssert testRelativePath("/x/a/bc", "/x/a", res = "bc")
+  doAssert testRelativePath("/x/a/bc/d", "/x/a", res = "bc/d")
+  doAssert testRelativePath("/x/ab", "/x/a/", res = "../ab")
+  doAssert testRelativePath("/x/ab", "/x/a", res = "../ab")
+  doAssert testRelativePath("/x/y/z/", "/u/v/w", res = "../../../x/y/z/")
+
+  when doslikeFileSystem:
+    doAssert relativePath("a:\\a", "b:\\") == "a:\\a"
+
+  #Relative path and Relative path
+  proc testRelativePathFromRelative(path, baseDir, curDir = "", res: string) =
+    for i in ["", "./"]:
+      for j in ["", "/"]:
+        for k in ["", "./"]:
+          for l in ["", "/"]:
+            for m in ["", "/"]:
+              let r = if path == "." or res == "." or res == "..": res else: res & j
+              doAssert testRelativePath(i & path & j, k & baseDir & l, m & curDir, r)
+
+  testRelativePathFromRelative("a", "a", "", ".")
+  testRelativePathFromRelative("a", "b", "", "../a")
+  testRelativePathFromRelative("a", "ab", "", "../a")
+  testRelativePathFromRelative("ab", "a", "", "../ab")
+  testRelativePathFromRelative("a", "a/b", "", "..")
+  testRelativePathFromRelative("a/b", "a", "", "b")
+  testRelativePathFromRelative("a/a", "ab", "", "../a/a")
+  testRelativePathFromRelative("a/ab", "a/a", "", "../ab")
+  testRelativePathFromRelative("a/a", "a/ab", "", "../a")
+  testRelativePathFromRelative(".", "..", "a", "a")
+  testRelativePathFromRelative("..", "..", "a", ".")
+  testRelativePathFromRelative("../a", "../b", "a", "../a")
+  testRelativePathFromRelative("../c", "b", "a", "../../c")
+  testRelativePathFromRelative("../d", "./", "a", "../d")
+  testRelativePathFromRelative("b", "..", "a", "a/b")
+  testRelativePathFromRelative("b", "../b", "a", "../a/b")
+  testRelativePathFromRelative("b", "../bb", "a", "../a/b")
+  testRelativePathFromRelative("x", "../..", "a/b", "a/b/x")
+
+  testRelativePathRaise("a", "..", "")
+
+  #Relative and absolute
+  doAssert testRelativePath("a", "/a", "/", ".")
+  doAssert testRelativePath("/a", "a", "/", ".")
+  doAssert testRelativePath("/a", "a", "/x", "../../a")
+  doAssert testRelativePath("a", "/a", "/x", "../x/a")
+  doAssert testRelativePath("..", "/a", "/x", "..")
+  doAssert testRelativePath("../a", "/a", "/x", ".")
+  doAssert testRelativePath("/a", "..", "/x", "a")
+  doAssert testRelativePath("/a", "../b", "/x", "../a")
+  doAssert testRelativePath("/a", "../a", "/x", ".")
+  doAssert testRelativePath("/a", "../../", "/x/y", "a")
+
+  testRelativePathRaise("a", "/a", "")
+  testRelativePathRaise("/", "..", "/")
+  testRelativePathRaise("..", "/", "/")
+  testRelativePathRaise("/", "../../", "/x")
+  testRelativePathRaise("../../", "/", "/x")
