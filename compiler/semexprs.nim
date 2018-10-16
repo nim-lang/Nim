@@ -1358,7 +1358,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString, tyUncheckedArray:
+     tyCString:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1):
@@ -1371,6 +1371,17 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
       result.typ = elemType(arr)
     #GlobalError(n.info, errIndexTypesDoNotMatch)
+  of tyUncheckedArray:
+    if n.len != 2: return nil
+    n.sons[0] = makeDeref(n.sons[0])
+    for i in countup(1, sonsLen(n) - 1):
+      n.sons[i] = semExprWithType(c, n.sons[i],
+                                  flags*{efInTypeof, efDetermineType})
+    # index into unchecked array must be some integer type:
+    if n.sons[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
+        {tyInt..tyInt64, tyUInt..tyUInt64}:
+      result = n
+      result.typ = elemType(arr)
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute
