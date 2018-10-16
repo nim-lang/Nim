@@ -31,7 +31,7 @@ type
     inquote: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
-    nested: int
+    inParamList*: int
     doIndentMore*: int
     content: string
     indentStack: seq[int]
@@ -142,7 +142,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.content.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet):
+    if em.lastTok in (splitters + oprSet) or em.inParamList > 0:
       em.indentLevel = tok.indent
     else:
       if tok.indent > em.indentStack[^1]:
