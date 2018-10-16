@@ -633,12 +633,51 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   of 'A'..'F':
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
-  else: discard
+  else:
+    lexMessage(L, errGenerated,
+      "expected a hex digit, but found: " & L.buf[L.bufpos])
 
 proc handleDecChars(L: var TLexer, xi: var int) =
   while L.buf[L.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(L.buf[L.bufpos]) - ord('0'))
     inc(L.bufpos)
+
+proc addUnicodeCodePoint(s: var string, i: int) =
+  # inlined toUTF-8 to avoid unicode and strutils dependencies.
+  let pos = s.len
+  if i <=% 127:
+    s.setLen(pos+1)
+    s[pos+0] = chr(i)
+  elif i <=% 0x07FF:
+    s.setLen(pos+2)
+    s[pos+0] = chr((i shr 6) or 0b110_00000)
+    s[pos+1] = chr((i and ones(6)) or 0b10_0000_00)
+  elif i <=% 0xFFFF:
+    s.setLen(pos+3)
+    s[pos+0] = chr(i shr 12 or 0b1110_0000)
+    s[pos+1] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x001FFFFF:
+    s.setLen(pos+4)
+    s[pos+0] = chr(i shr 18 or 0b1111_0000)
+    s[pos+1] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x03FFFFFF:
+    s.setLen(pos+5)
+    s[pos+0] = chr(i shr 24 or 0b111110_00)
+    s[pos+1] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+4] = chr(i and ones(6) or 0b10_0000_00)
+  elif i <=% 0x7FFFFFFF:
+    s.setLen(pos+6)
+    s[pos+0] = chr(i shr 30 or 0b1111110_0)
+    s[pos+1] = chr(i shr 24 and ones(6) or 0b10_0000_00)
+    s[pos+2] = chr(i shr 18 and ones(6) or 0b10_0000_00)
+    s[pos+3] = chr(i shr 12 and ones(6) or 0b10_0000_00)
+    s[pos+4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
+    s[pos+5] = chr(i and ones(6) or 0b10_0000_00)
 
 proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
@@ -686,29 +725,36 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   of '\\':
     add(tok.literal, '\\')
     inc(L.bufpos)
-  of 'x', 'X', 'u', 'U':
-    var tp = L.buf[L.bufpos]
+  of 'x', 'X':
     inc(L.bufpos)
     var xi = 0
     handleHexChar(L, xi)
     handleHexChar(L, xi)
-    if tp in {'u', 'U'}:
-      handleHexChar(L, xi)
-      handleHexChar(L, xi)
-      # inlined toUTF-8 to avoid unicode and strutils dependencies.
-      if xi <=% 127:
-        add(tok.literal, xi.char )
-      elif xi <=% 0x07FF:
-        add(tok.literal, ((xi shr 6) or 0b110_00000).char )
-        add(tok.literal, ((xi and ones(6)) or 0b10_0000_00).char )
-      elif xi <=% 0xFFFF:
-        add(tok.literal, (xi shr 12 or 0b1110_0000).char )
-        add(tok.literal, (xi shr 6 and ones(6) or 0b10_0000_00).char )
-        add(tok.literal, (xi and ones(6) or 0b10_0000_00).char )
-      else: # value is 0xFFFF
-        add(tok.literal, "\xef\xbf\xbf" )
+    add(tok.literal, chr(xi))
+  of 'u', 'U':
+    if tok.tokType == tkCharLit:
+      lexMessage(L, errGenerated, "\\u not allowed in character literal")
+    inc(L.bufpos)
+    var xi = 0
+    if L.buf[L.bufpos] == '{':
+      inc(L.bufpos)
+      var start = L.bufpos
+      while L.buf[L.bufpos] != '}':
+        handleHexChar(L, xi)
+      if start == L.bufpos:
+        lexMessage(L, errGenerated,
+          "Unicode codepoint cannot be empty")
+      inc(L.bufpos)
+      if xi > 0x10FFFF:
+        let hex = ($L.buf)[start..L.bufpos-2]
+        lexMessage(L, errGenerated,
+          "Unicode codepoint must be lower than 0x10FFFF, but was: " & hex)
     else:
-      add(tok.literal, chr(xi))
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+      handleHexChar(L, xi)
+    addUnicodeCodePoint(tok.literal, xi)
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
       lexMessage(L, warnOctalEscape)
