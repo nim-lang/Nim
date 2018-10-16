@@ -1781,7 +1781,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mIsNil: unaryExpr(p, n, r, "", "($1 === null)")
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
-  of mChr, mArrToSeq:
+  of mChr: gen(p, n.sons[1], r)
+  of mArrToSeq:
     if needsNoCopy(p, n.sons[1]):
       gen(p, n.sons[1], r)
     else:
