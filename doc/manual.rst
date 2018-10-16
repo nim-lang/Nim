@@ -285,6 +285,11 @@ contain the following `escape sequences`:idx:\ :
   ``\e``                   `escape`:idx: `[ESC]`:idx:
   ``\x`` HH                `character with hex value HH`:idx:;
                            exactly two hex digits are allowed
+  ``\u`` HHHH              `unicode codepoint with hex value HHHH`:idx:;
+                           exactly four hex digits are allowed
+  ``\u`` {H+}              `unicode codepoint`:idx:;
+                           all hex digits enclosed in ``{}`` are used for
+                           the codepoint
 ==================         ===================================================
 
 
