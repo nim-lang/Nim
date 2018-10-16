@@ -127,9 +127,9 @@ proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
   ##
   ## This checks ASCII characters only.
   runnableExamples:
-    doAssert isLowerAscii('e') == false
-    doAssert isLowerAscii('E') == true
-    doAssert isLowerAscii('7') == false
+    doAssert isUpperAscii('e') == false
+    doAssert isUpperAscii('E') == true
+    doAssert isUpperAscii('7') == false
   return c in {'A'..'Z'}
 
 template isImpl(call) =
@@ -290,8 +290,8 @@ proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   ## <unicode.html#toUpper>`_ for a version that works for any Unicode
   ## character.
   runnableExamples:
-    doAssert toLowerAscii('a') == 'A'
-    doAssert toLowerAscii('E') == 'E'
+    doAssert toUpperAscii('a') == 'A'
+    doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
     result = chr(ord(c) - (ord('a') - ord('A')))
   else:
@@ -984,8 +984,8 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   ## a valid floating point number, `ValueError` is raised. ``NAN``,
   ## ``INF``, ``-INF`` are also supported (case insensitive comparison).
   runnableExamples:
-    dAssert parseFloat("3.14") == 3.14
-    dAssert parseFloat("inf") == 1.0/0
+    doAssert parseFloat("3.14") == 3.14
+    doAssert parseFloat("inf") == 1.0/0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
@@ -1248,7 +1248,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   runnableExamples:
-    doAssert indent("First line\c\l and second line.", 2) == "  First line\l   and second line"
+    doAssert indent("First line\c\l and second line.", 2) == "  First line\l   and second line."
   result = ""
   var i = 0
   for line in s.splitLines():
