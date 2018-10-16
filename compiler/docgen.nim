@@ -771,13 +771,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
 proc add(d: PDoc; j: JsonNode) =
   if j != nil: d.jArray.add j
 
-proc generateJson*(d: PDoc, n: PNode) =
+proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
   of nkCommentStmt:
-    if startsWith(n.comment, "##"):
-      let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped, "line": %n.info.line.int,
-               "col": %n.info.col }
+    if includeComments:
+      d.add %*{"comment": genComment(d, n)}
+    else:
+      add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
@@ -805,11 +805,11 @@ proc generateJson*(d: PDoc, n: PNode) =
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
     for i in countup(0, sonsLen(n) - 1):
-      generateJson(d, n.sons[i])
+      generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateJson(d, lastSon(n.sons[0]))
+      generateJson(d, lastSon(n.sons[0]), includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -935,8 +935,12 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
+  var modDesc: string
+  for desc in d.modDesc:
+    modDesc &= desc
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
+    "moduleDescription": modDesc,
     "entries": d.jArray}
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
@@ -946,7 +950,9 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
       write(f, $content)
       close(f)
     else:
-      discard "fixme: error report"
+      localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
+                 warnUser, "unable to open file \"" & d.destFile.string &
+                 "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)

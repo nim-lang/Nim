@@ -209,6 +209,9 @@
 
 
 ### Tool changes
+- `jsondoc` now include a `moduleDescription` field with the module
+  description. `jsondoc0` shows comments as it's own objects as shown in the
+  documentation.
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
   ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
