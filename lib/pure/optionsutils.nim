@@ -85,7 +85,7 @@ macro `?.`*(option: untyped, statements: untyped): untyped =
       nnkDotExpr.newTree(opt, newIdentNode("unsafeGet")), firstBarren)
 
   result = quote do:
-    (proc (): auto =
+    (proc (): auto {.inline.} =
       let `opt` = `option`
       if `opt`.isSome:
         when compiles(`injected`) and not compiles(some(`injected`)):
