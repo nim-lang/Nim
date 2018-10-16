@@ -314,3 +314,5 @@ proc f() =
   if c == '\\':
     # escape char
     str &= c
+
+const test = r"C:\Users\-\Desktop\test.txt"

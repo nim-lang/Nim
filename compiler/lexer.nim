@@ -740,11 +740,17 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     result = nimlexbase.handleLF(L, pos)
   else: result = pos
 
-proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
+type
+  StringMode = enum
+    normal,
+    raw,
+    generalized
+
+proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
   var pos = L.bufpos
   var buf = L.buf                 # put `buf` in a register
   var line = L.lineNumber         # save linenumber for better error message
-  tokenBegin(tok, pos)
+  tokenBegin(tok, pos - ord(mode == raw))
   inc pos # skip "
   if buf[pos] == '\"' and buf[pos+1] == '\"':
     tok.tokType = tkTripleStrLit # long string literal:
@@ -784,12 +790,12 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         inc(pos)
   else:
     # ordinary string literal
-    if rawMode: tok.tokType = tkRStrLit
+    if mode != normal: tok.tokType = tkRStrLit
     else: tok.tokType = tkStrLit
     while true:
       var c = buf[pos]
       if c == '\"':
-        if rawMode and buf[pos+1] == '\"':
+        if mode != normal and buf[pos+1] == '\"':
           inc(pos, 2)
           add(tok.literal, '"')
         else:
@@ -800,7 +806,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         tokenEndIgnore(tok, pos)
         lexMessage(L, errGenerated, "closing \" expected")
         break
-      elif (c == '\\') and not rawMode:
+      elif (c == '\\') and mode == normal:
         L.bufpos = pos
         getEscapedChar(L, tok)
         pos = L.bufpos
@@ -1168,7 +1174,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of 'r', 'R':
       if L.buf[L.bufpos + 1] == '\"':
         inc(L.bufpos)
-        getString(L, tok, true)
+        getString(L, tok, raw)
       else:
         getSymbol(L, tok)
     of '(':
@@ -1246,9 +1252,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
     of '\"':
       # check for generalized raw string literal:
-      var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars
-      getString(L, tok, rawMode)
-      if rawMode:
+      let mode = if L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars: generalized else: normal
+      getString(L, tok, mode)
+      if mode == generalized:
         # tkRStrLit -> tkGStrLit
         # tkTripleStrLit -> tkGTripleStrLit
         inc(tok.tokType, 2)
