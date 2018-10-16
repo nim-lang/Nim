@@ -35,6 +35,9 @@
 
 
 ### Tool changes
+- `jsondoc` now include a `moduleDescription` field with the module
+  description. `jsondoc0` shows comments as it's own objects as shown in the
+  documentation.
 
 ### Compiler changes
 
