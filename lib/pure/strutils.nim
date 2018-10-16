@@ -14,7 +14,7 @@
 ## <backends.html#the-javascript-target>`_.
 
 import parseutils
-from math import pow, round, floor, log10
+from math import pow, floor, log10
 from algorithm import reverse
 
 when defined(nimVmExportFixed):
@@ -2141,14 +2141,13 @@ proc formatEng*(f: BiggestFloat,
     result = significand.formatBiggestFloat(ffDecimal, precision, decimalSep='.')
   else:
     # Find the best exponent that's a multiple of 3
-    fexponent = round(floor(log10(absolute)))
-    fexponent = 3.0 * round(floor(fexponent / 3.0))
+    fexponent = floor(log10(absolute))
+    fexponent = 3.0 * floor(fexponent / 3.0)
     # Adjust the significand for the new exponent
     significand /= pow(10.0, fexponent)
 
-    # Round the significand and check whether it has affected
+    # Adjust the significand and check whether it has affected
     # the exponent
-    significand = round(significand, precision)
     absolute = abs(significand)
     if absolute >= 1000.0:
       significand *= 0.001
