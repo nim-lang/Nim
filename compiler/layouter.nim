@@ -52,6 +52,7 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
+  em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
   var f = llStreamOpen(em.config.outFile, fmWrite)
