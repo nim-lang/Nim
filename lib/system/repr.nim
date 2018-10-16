@@ -278,6 +278,8 @@ when not defined(useNimRtl):
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"
       else: add result, reprPointer(cast[PPointer](p)[])
+    of tyUncheckedArray:
+      add result, "[...]"
     else:
       add result, "(invalid data!)"
     inc(cl.recdepth)
