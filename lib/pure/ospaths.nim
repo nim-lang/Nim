@@ -870,14 +870,12 @@ proc relativePath*(path, baseDir: string; curDir: string = ""): string {.
   ##
   ## This proc never read filesystem.
   ## `baseDir` is always assumed to be a directory even if that path is actually a file.
+  ##
+  ## You can find more examples in tests/stdlib/tospaths.nim
   runnableExamples:
-    doAssert relativePath("/home/abc".unixToNativePath, "/".unixToNativePath) == "home/abc".unixToNativePath
     doAssert relativePath("/home/abc".unixToNativePath, "/home/abc/x".unixToNativePath) == "..".unixToNativePath
-    doAssert relativePath("/home/abc/xyz".unixToNativePath, "/home/abc/x".unixToNativePath) == "../xyz".unixToNativePath
-    doAssert relativePath("home/xyz/d".unixToNativePath, "home/xyz".unixToNativePath, "".unixToNativePath) == "d".unixToNativePath
     doAssert relativePath("abc".unixToNativePath, "xyz".unixToNativePath, "".unixToNativePath) == "../abc".unixToNativePath
     doAssert relativePath(".".unixToNativePath, "..".unixToNativePath, "/abc".unixToNativePath) == "abc".unixToNativePath
-    doAssert relativePath("xyz/d".unixToNativePath, "/home/xyz".unixToNativePath, "/home".unixToNativePath) == "d".unixToNativePath
     doAssert relativePath("/home/xyz/d".unixToNativePath, "xyz".unixToNativePath, "/home".unixToNativePath) == "d".unixToNativePath
     doAssert relativePath("../d".unixToNativePath, "/usr".unixToNativePath, "/home/xyz".unixToNativePath) == "../home/d".unixToNativePath
 
