@@ -1114,7 +1114,9 @@ proc skip(L: var TLexer, tok: var TToken) =
         buf = L.buf
       else:
         tokenBegin(tok, pos)
-        while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
+        while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
+          when defined(nimpretty): tok.literal.add buf[pos]
+          inc(pos)
         tokenEndIgnore(tok, pos+1)
         when defined(nimpretty):
           tok.commentOffsetB = L.offsetBase + pos + 1

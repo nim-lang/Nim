@@ -315,9 +315,17 @@ proc f() =
     # escape char
     str &= c
 
-const test = r"C:\Users\-\Desktop\test.txt"
-
 proc getKeyAndData(cursor: int, op: int):
     tuple[key, data: string, success: bool] {.noInit.} =
   var keyVal: string
   var dataVal: string
+
+#!nimpretty off
+  when stuff:
+    echo "so nice"
+    echo "more"
+  else:
+     echo "misaligned"
+#!nimpretty on
+
+const test = r"C:\Users\-\Desktop\test.txt"
