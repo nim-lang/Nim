@@ -31,7 +31,7 @@ type
     inquote: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
-    nested: int
+    keepIndents*: int
     doIndentMore*: int
     content: string
     indentStack: seq[int]
@@ -52,6 +52,7 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
+  em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
   var f = llStreamOpen(em.config.outFile, fmWrite)
@@ -134,6 +135,22 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         for i in 1 .. LineCommentColumn - em.col: wr(" ")
     wr lit
 
+  if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
+    case tok.literal
+    of "#!nimpretty off":
+      inc em.keepIndents
+      wr("\L")
+      em.lastLineNumber = tok.line + 1
+    of "#!nimpretty on":
+      dec em.keepIndents
+      em.lastLineNumber = tok.line
+    wr("\L")
+    #for i in 1 .. tok.indent: wr " "
+    wr tok.literal
+    em.col = 0
+    em.lineSpan = 0
+    return
+
   var preventComment = false
   if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
@@ -142,7 +159,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.content.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet):
+    if em.lastTok in (splitters + oprSet) or em.keepIndents > 0:
       em.indentLevel = tok.indent
     else:
       if tok.indent > em.indentStack[^1]:

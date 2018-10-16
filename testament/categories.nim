@@ -247,8 +247,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
                    "exception/tunhandledexc",
-                   "actiontable/tactiontable", "method/tmultim1",
-                   "method/tmultim3", "method/tmultim4",
+                   "actiontable/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
                    "varres/tvartup", "misc/tints", "misc/tunsignedinc",
                    "async/tjsandnativeasync"]:

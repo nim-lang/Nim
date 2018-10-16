@@ -408,7 +408,7 @@ proc extractFilename*(path: string): string {.
 
 proc lastPathPart*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## like ``extractFilename``, but ignores trailing dir separator; aka: baseName
+  ## like ``extractFilename``, but ignores trailing dir separator; aka: `baseName`:idx:
   ## in some other languages.
   runnableExamples:
     when defined(posix):

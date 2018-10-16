@@ -1,5 +1,5 @@
 
-import future
+import sugar
 
 template tempo(s) =
   s("arg")

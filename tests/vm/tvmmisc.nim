@@ -31,7 +31,7 @@ static:
   assert str == "abc"
 
 # #6086
-import math, sequtils, future
+import math, sequtils, sugar
 
 block:
   proc f: int =
