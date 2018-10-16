@@ -277,8 +277,9 @@ proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
 proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   let s = n.sym
   if illegalCapture(s):
-    localError(g.config, n.info, "illegal capture '$1' of type <$2> which is declared here: $3" %
-      [s.name.s, typeToString(s.typ), g.config$s.info])
+    localError(g.config, n.info,
+      "'$1' is of type <$2> which cannot be captured as it would violate memory safety," %
+      [s.name.s, typeToString(s.typ)] & " declared here: $1" % [g.config$s.info])
   elif owner.typ.callConv notin {ccClosure, ccDefault}:
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
