@@ -31,7 +31,7 @@
 ##
 ## .. code-block:: Nim
 ##     import db_sqlite
-##     let db = open("mytest.db", nil, nil, nil)  # user, password, database name can be nil
+##     let db = open("mytest.db", "", "", "")  # user, password, database name can be empty
 ##     db.close()
 ##
 ## Creating a table
