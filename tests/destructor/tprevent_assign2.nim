@@ -66,3 +66,7 @@ proc preventThis2() =
       take2(createTree(34), otherTree)
   finally:
     echo otherTree
+
+allowThis()
+preventThis()
+preventThis2()
