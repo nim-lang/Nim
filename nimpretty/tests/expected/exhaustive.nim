@@ -325,3 +325,8 @@ proc f() =
     str &= c
 
 const test = r"C:\Users\-\Desktop\test.txt"
+
+proc getKeyAndData(cursor: int; op: int):
+    tuple[key, data: string; success: bool] {.noInit.} =
+  var keyVal: string
+  var dataVal: string

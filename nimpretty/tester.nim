@@ -8,8 +8,15 @@ const
 var
   failures = 0
 
+when defined(develop):
+  const nimp = "bin/nimpretty".addFileExt(ExeExt)
+  if execShellCmd("nim c -o:$# nimpretty/nimpretty.nim" % [nimp]) != 0:
+    quit("FAILURE: compilation of nimpretty failed")
+else:
+  const nimp = "nimpretty"
+
 proc test(infile, outfile: string) =
-  if execShellCmd("nimpretty -o:$2 --backup:off $1" % [infile, outfile]) != 0:
+  if execShellCmd("$# -o:$# --backup:off $#" % [nimp, outfile, infile]) != 0:
     quit("FAILURE")
   let nimFile = splitFile(infile).name
   let expected = dir / "expected" / nimFile & ".nim"
