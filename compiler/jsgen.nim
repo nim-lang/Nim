@@ -911,7 +911,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
         let tmp = p.getTemp(false)
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
       elif b.typ == etyBaseIndex:
-        lineF(p, "$# = $#;$n", [a.res, b.rdLoc])
+        lineF(p, "$# = $#;$n", [a.res, b.address])
       else:
         internalError(p.config, x.info, "genAsgn")
     else:
@@ -1855,7 +1855,10 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   for i in countup(0, sonsLen(n) - 1):
     if i > 0: add(r.res, ", ")
     gen(p, n.sons[i], a)
-    add(r.res, a.res)
+    if a.typ == etyBaseIndex:
+      add(r.res, n.sons[i].sym.loc.r)
+    else:
+      add(r.res, a.res)
   add(r.res, "]")
 
 proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1867,7 +1870,10 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
     var it = n.sons[i]
     if it.kind == nkExprColonExpr: it = it.sons[1]
     gen(p, it, a)
-    addf(r.res, "Field$#: $#", [i.rope, a.res])
+    if a.typ == etyBaseIndex:
+      addf(r.res, "Field$#: $#", [i.rope, a.address])
+    else:
+      addf(r.res, "Field$#: $#", [i.rope, a.res])
   r.res.add("}")
 
 proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1892,7 +1898,10 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     else:
       useMagic(p, "nimCopy")
       a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
-    addf(initList, "$#: $#", [f.loc.r, a.res])
+    if a.typ == etyBaseIndex:
+      addf(initList, "$#: $#", [f.loc.r, a.address])
+    else:
+      addf(initList, "$#: $#", [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
   r.res = ("{$1}") % [initList]
