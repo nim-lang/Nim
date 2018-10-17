@@ -67,7 +67,7 @@ proc center(r: Box): auto =#BoxCenter[r.len, type(r[0].a)] =
   for i in 0 .. r.high:
     when r[0].a is SomeInteger:
       result[i] = (r[i].a + r[i].b) div 2
-    elif r[0].a is SomeReal:
+    elif r[0].a is SomeFloat:
       result[i] = (r[i].a + r[i].b) / 2
     else: assert false
   return result
@@ -81,7 +81,7 @@ proc distance(c1, c2: BoxCenter): auto =
 proc overlap(r1, r2: Box): auto =
   result = type(r1[0].a)(1)
   for i in 0 .. r1.high:
-    result *=  (min(r1[i]. b, r2[i]. b) - max(r1[i]. a, r2[i]. a))
+    result *= (min(r1[i]. b, r2[i]. b) - max(r1[i]. a, r2[i]. a))
     if result <= 0: return 0
 
 proc union(r1, r2: Box): Box =
@@ -278,7 +278,7 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
   for i in i0 .. n.a.high:
     result.a[i - i0] = nbest.a[i]
   n.numEntries = i0 + 1
-  result.numEntries = M  - i0
+  result.numEntries = M - i0
   when n is Node[M, D, RT, LT]:
     for i in 0 ..< result.numEntries:
       result.a[i].n.parent = result
@@ -302,7 +302,7 @@ proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D,
   else:
     n1.a[0] = n.a[s1]
     dec(n.numEntries)
-    if s2 ==  n.numEntries: # important fix
+    if s2 == n.numEntries: # important fix
       s2 = s1
     n.a[s1] = n.a[n.numEntries]
   inc(n1.numEntries)
@@ -651,7 +651,7 @@ when isMainModule:
         assert r.len == r2.len
         assert r.sorted(system.cmp) == r2.sorted(system.cmp)
 
-  test(5500)
+  test(1500)
 
   # 651 lines
 
