@@ -1517,7 +1517,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
                                       tyAlias, tySink})
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
-          x.methods.safeAdd((col,s))
+          x.methods.add((col,s))
     if not foundObj:
       message(c.config, n.info, warnDeprecated, "generic method not attachable to object type")
   else:

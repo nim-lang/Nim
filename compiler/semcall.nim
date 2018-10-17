@@ -105,7 +105,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
       elif errorsEnabled or z.diagnosticsEnabled:
-        errors.safeAdd(CandidateError(
+        errors.add(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
