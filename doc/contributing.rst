@@ -303,8 +303,8 @@ Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests.
 
 .. code-block:: nim
 
-  runnableExamples: assert foo()
-  runnableExamples: doAssert foo()
+  runnableExamples: assert foo() # bad
+  runnableExamples: doAssert foo() # preferred
 
 .. _delegate_printing:
 Delegate printing to caller: return ``string`` instead of calling ``echo``
@@ -313,7 +313,7 @@ including prepending location info, writing to log files, etc).
 
 .. code-block:: nim
 
-  proc foo() = echo "bar"
+  proc foo() = echo "bar" # bad
   proc foo(): string = "bar" # preferred (usually)
 
 .. _use_Option:
@@ -322,7 +322,7 @@ allocation is needed (eg for efficiency).
 
 .. code-block:: nim
 
-  proc foo(a: var Bar): bool
+  proc foo(a: var Bar): bool # bad
   proc foo(): Option[Bar] # preferred
 
 .. _use_doAssert_not_echo:
