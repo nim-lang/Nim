@@ -377,3 +377,11 @@ General commit rules
    separate commits (and the merge on github should not squash these into 1).
 
 .. include:: docstyle.rst
+
+Code reviews
+------------
+
+1. Whenever possible, use github's new 'Suggested change' in code reviews, which
+   saves time explaining the change or applying it; see also
+   https://forum.nim-lang.org/t/4317
+
