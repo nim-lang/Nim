@@ -863,7 +863,7 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkPar, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
 
@@ -882,7 +882,7 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
         arg = arg[1]
       if not needsNoCopy(p, arg):
         return false
-  of nkBracket, nkCurly:
+  of nkBracket:
     for arg in y.sons:
       if not needsNoCopy(p, arg):
         return false
