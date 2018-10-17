@@ -44,10 +44,12 @@ With `include`
 This is currently the official way of using SCF.
 You can name your SCF file with any file extension you want, but the conventional extension is  ``.tmpl``.
 In `main.nim`:
+
 .. code-block:: nim
   include "xmlGen.tmpl"
   
   echo generateXML("John Smith","42")
+
 
 With `import`
 -------------
@@ -68,6 +70,7 @@ Essentially, the SCF file (i.e. `xmlGen.nim`) will become::
   </xml>
 
 Then to use it, in your `main.nim`:
+
 .. code-block:: nim
   import xmlGen
   
