@@ -1,10 +1,12 @@
 discard """
 """
 
-const
-  nmax = 2*1024*1024*1024
+when sizeOf(int) < 8:
+  const nmax = 1'i64*1024*1024*1024
+else:
+  const nmax = 2'i64*1024*1024*1024
 
-proc test(n: int) =
+proc test(n: int64) =
   var a = alloc0(9999)
   var t = cast[ptr UncheckedArray[int8]](alloc(n))
   var b = alloc0(9999)
@@ -18,7 +20,7 @@ proc test(n: int) =
 
 # allocator adds 48 bytes to BigChunk
 # BigChunk allocator edges at 2^n * (1 - s) for s = [1..32]/64
-proc test2(n: int) =
+proc test2(n: int64) =
   let d = n div 256  # cover edges and more
   for i in countdown(128,1):
     for j in [-4096, -64, -49, -48, -47, -32, 0, 4096]:
@@ -28,7 +30,7 @@ proc test2(n: int) =
         #echo b, ": ", getTotalMem(), " ", getOccupiedMem(), " ", getFreeMem()
 
 proc test3 =
-  var n = 1
+  var n = 1'i64
   while n <= nmax:
     test2(n)
     n *= 2

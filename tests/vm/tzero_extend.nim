@@ -13,9 +13,9 @@ proc get_values(): (seq[int8], seq[int16], seq[int32]) =
   result[0] = @[]; result[1] = @[]; result[2] = @[]
 
   for offset in RANGE:
-    let i8 = -(1 shl 9) + offset
-    let i16 = -(1 shl 17) + offset
-    let i32 = -(1 shl 33) + offset
+    let i8 = -(1'i64 shl 9) + offset
+    let i16 = -(1'i64 shl 17) + offset
+    let i32 = -(1'i64 shl 33) + offset
 
     # higher bits are masked. these should be exactly equal to offset.
     result[0].add i8.toU8

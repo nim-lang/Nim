@@ -915,13 +915,13 @@ when not defined(JS):
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
 
-  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  proc toU8*(x: int|int8|int16|int32|int64): int8 {.magic: "ToU8", noSideEffect.}
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
-  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+  proc toU16*(x: int|int16|int32|int64): int16 {.magic: "ToU16", noSideEffect.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
-  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+  proc toU32*(x: int32|int64): int32 {.magic: "ToU32", noSideEffect.}
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
 

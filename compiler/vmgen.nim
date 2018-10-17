@@ -944,11 +944,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
 
-  of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
+  of mShlI: genBinaryABCnarrow(c, n, dest, opcShlInt)
   of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
-  of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
-  of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
-  of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
+  of mBitandI: genBinaryABCnarrow(c, n, dest, opcBitandInt)
+  of mBitorI: genBinaryABCnarrow(c, n, dest, opcBitorInt)
+  of mBitxorI: genBinaryABCnarrow(c, n, dest, opcBitxorInt)
   of mAddU: genBinaryABCnarrowU(c, n, dest, opcAddu)
   of mSubU: genBinaryABCnarrowU(c, n, dest, opcSubu)
   of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
@@ -974,9 +974,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     genNarrow(c, n, dest)
   of mUnaryMinusF64: genUnaryABC(c, n, dest, opcUnaryMinusFloat)
   of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
-  of mBitnotI:
-    genUnaryABC(c, n, dest, opcBitnotInt)
-    genNarrowU(c, n, dest)
+  of mBitnotI: genBinaryABCnarrow(c, n, dest, opcBitnotInt)
   of mToFloat, mToBiggestFloat, mToInt,
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
