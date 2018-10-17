@@ -107,6 +107,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
+  result.passes = @[]
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
