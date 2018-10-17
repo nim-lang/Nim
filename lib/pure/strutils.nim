@@ -2001,13 +2001,23 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## If ``precision == -1``, it tries to format it nicely.
   when defined(js):
     var precision = precision
-    if precision == -1:
-      # use the same default precision as c_sprintf
+    if precision == -1 and format != ffDefault:
+      # for formats `ffDecimal` and `ffScientific`
+      # use the same default precision as c_sprintf.
       precision = 6
     var res: cstring
     case format
     of ffDefault:
-      {.emit: "`res` = `f`.toString();".}
+      if precision < 0:
+        # toString is similar to %g in sprintf
+        {.emit: "`res` = `f`.toString();".}
+      else:
+        if precision == 0:
+          # precision 0 is not allowed in js
+          precision = 1
+        # toPrecision is similar to %.pg in sprintf
+        # where p is the number of significant digits
+        {.emit: "`res` = `f`.toPrecision(`precision`);".}
     of ffDecimal:
       {.emit: "`res` = `f`.toFixed(`precision`);".}
     of ffScientific:
