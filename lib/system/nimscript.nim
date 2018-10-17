@@ -283,7 +283,7 @@ proc projectPath*(): string =
 
 proc thisDir*(): string =
   ## Retrieves the directory of the current ``nims`` script file. Its path is
-  ## obtained via ``currentSourcePath`` (althgouh, currently,
+  ## obtained via ``currentSourcePath`` (although, currently,
   ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
   builtin
 
