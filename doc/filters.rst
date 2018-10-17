@@ -4,7 +4,7 @@ Source Code Filters
 
 .. contents::
 
-A `Source Code Filter` transforms the input character stream to an in-memory
+A `Source Code Filter (SCF)`  transforms the input character stream to an in-memory
 output stream before parsing. A filter can be used to provide templating
 systems or preprocessors.
 
@@ -23,9 +23,55 @@ just like an ordinary procedure call with named or positional arguments. The
 available parameters depend on the invoked filter. Before version 0.12.0 of
 the language ``#!`` was used instead of ``#?``.
 
-**Hint:** With ``--hint[codeBegin]:on```or ``--verbosity:2``
-(or higher) Nim lists the processed code after each filter
-application.
+**Hint:** With ``--hint[codeBegin]:on`` or ``--verbosity:2``
+(or higher) while compiling or `nim check`, Nim lists the processed code after
+each filter application.
+
+Usage
+=====
+
+Currently, there are two slightly different approaches of using SCF. Both of them
+requires you to put SCF code in a separate file with filters specified in the first line. 
+
+The two approaches mainly differ by how you want to import the the SCF file.
+
+**Note:** In the following examples, we will use `generateXML` code shown above
+and call the SCF file `xmlGen.<file-extension>` and the file calling `generateXML` `main.nim`
+
+With `include`
+-------------
+
+This is currently the official way of using SCF.
+You can name your SCF file with any file extension you want, but the conventional extension is  ``.tmpl``.
+In `main.nim`:
+.. code-block:: nim
+  include "xmlGen.tmpl"
+  
+  echo generateXML("John Smith","42")
+
+With `import`
+-------------
+
+**Note:** This is currently not the suggested approach, mainly due to some IDE (e.g. vscode) use `nimpretty` to 
+automatically format `.nim` files, and `nimpretty` is not `intended to format SCF files <https://github.com/nim-lang/Nim/issues/9384>`_.
+
+You have to use the `.nim` file extension for the SCF file. Additionally, you will also have to 
+`export <https://nim-lang.org/docs/manual.html#procedures-export-marker>`_ `generateXML` in your `xmlGen.nim` file. 
+Essentially, the SCF file (i.e. `xmlGen.nim`) will become::
+
+  #? stdtmpl(subsChar = '$', metaChar = '#')
+  #proc generateXML*(name, age: string): string =
+  #  result = ""
+  <xml>
+    <name>$name</name>
+    <age>$age</age>
+  </xml>
+
+Then to use it, in your `main.nim`:
+.. code-block:: nim
+  import xmlGen
+  
+  echo generateXML("John Smith","42")
 
 
 Pipe operator
