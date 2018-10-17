@@ -635,7 +635,8 @@ proc ansiForegroundColorCode*(color: Color): string =
 
 template ansiForegroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
-  (static(fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+  # no usage of `fmt`, see issue #7632
+  (static($fgPrefix & $(rgb.r) & ";" & $(rgb.g) & ";" & $(rgb.b) & "m"))
 
 proc ansiBackgroundColorCode*(color: Color): string =
   let rgb = extractRGB(color)
@@ -643,7 +644,8 @@ proc ansiBackgroundColorCode*(color: Color): string =
 
 template ansiBackgroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
-  (static(fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+  # no usage of `fmt`, see issue #7632
+  (static($bgPrefix & $(rgb.r) & ";" & $(rgb.g) & ";" & $(rgb.b) & "m"))
 
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.
