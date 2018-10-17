@@ -73,7 +73,7 @@ proc main =
   if not fs.isNil:
     let prefix = fs.readStr(2)
     if prefix == "#?":
-      echo "Nimpretty currently doesn't support source code filters"
+      echo "Nothing changed, nimpretty currently doesn't support source code filters"
       fs.close()
       return
     fs.close()
