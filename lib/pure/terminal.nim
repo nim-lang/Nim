@@ -18,7 +18,7 @@
 
 import macros
 import strformat
-from strutils import toLowerAscii
+from strutils import toLowerAscii, `%`
 import colors, tables
 
 when defined(windows):
@@ -636,7 +636,7 @@ proc ansiForegroundColorCode*(color: Color): string =
 template ansiForegroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
   # no usage of `fmt`, see issue #7632
-  (static($fgPrefix & $(rgb.r) & ";" & $(rgb.g) & ";" & $(rgb.b) & "m"))
+  (static("$1$2;$3;$4m" % [$fgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
 proc ansiBackgroundColorCode*(color: Color): string =
   let rgb = extractRGB(color)
@@ -645,7 +645,7 @@ proc ansiBackgroundColorCode*(color: Color): string =
 template ansiBackgroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
   # no usage of `fmt`, see issue #7632
-  (static($bgPrefix & $(rgb.r) & ";" & $(rgb.g) & ";" & $(rgb.b) & "m"))
+  (static("$1$2;$3;$4m" % [$bgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.
