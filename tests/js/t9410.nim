@@ -2,6 +2,7 @@ discard """
   output: '''654 654
 256 256 256
 543 543 543 543
+20 20
 '''
 """
 
@@ -33,3 +34,16 @@ block:
     someref[] = 543
 
     echo someref[], " ", tup1.f[], " ", tup2.f[], " ", someref2[]
+
+block:
+    type Whatever = object
+      i: ref int
+
+    var someref: ref int
+    new(someref)
+    someref[] = 10
+
+    let w = Whatever(i: someref)
+
+    someref[] = 20
+    echo w.i[], " ", someref[]
