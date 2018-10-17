@@ -367,6 +367,13 @@ General commit rules
 
    eg: use ``git pull --rebase origin devel``. This is to avoid messing up
    git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
-   Exceptions should be very rare.
+   Exceptions should be very rare: when rebase gives too many conflicts, simply
+   squash all commits using the script shown in
+   https://github.com/nim-lang/Nim/pull/9356
+
+
+5. Do not mix pure formatting changes (eg whitespace changes, nimpretty) or
+   automated changes (eg nimfix) with other code changes: these should be in
+   separate commits (and the merge on github should not squash these into 1).
 
 .. include:: docstyle.rst
