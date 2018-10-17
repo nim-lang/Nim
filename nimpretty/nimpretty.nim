@@ -12,13 +12,15 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options, pathutils]
+import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
+    pathutils]
 
-import parseopt, strutils, os
+import parseopt, strutils, os, streams
 
 const
   Version = "0.1"
-  Usage = "nimpretty - Nim Pretty Printer Version " & Version & """
+  Usage = "nimpretty - Nim Pretty Printer Version " & Version &
+      """
 
   (c) 2017 Andreas Rumpf
 Usage:
@@ -64,11 +66,21 @@ proc main =
       of "backup": backup = parseBool(val)
       of "output", "o": outfile = val
       else: writeHelp()
-    of cmdEnd: assert(false) # cannot happen
+    of cmdEnd: assert(false)  # cannot happen
   if infile.len == 0:
     quit "[Error] no input file."
+  let fs = newFileStream(infile)
+  if not fs.isNil:
+    let prefix = fs.readStr(2)
+    if prefix == "#?":
+      echo "Nimpretty currently doesn't support source code filters"
+      fs.close()
+      return
+    fs.close()
+  else:
+    quit "[Error] file does not exist."
   if backup:
-    os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
+    os.copyFile(source = infile, dest = changeFileExt(infile, ".nim.backup"))
   if outfile.len == 0: outfile = infile
   prettyPrint(infile, outfile)
 
