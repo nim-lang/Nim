@@ -406,7 +406,7 @@ const
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
-  tc.sons.safeAdd concrete
+  tc.sons.add concrete
   tc.flags.incl tfResolved
 
 # TODO: It would be a good idea to kill the special state of a resolved

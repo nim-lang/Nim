@@ -69,7 +69,7 @@ proc cacheTypeInst*(inst: PType) =
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
-  gt.sym.typeInstCache.safeAdd(inst)
+  gt.sym.typeInstCache.add(inst)
 
 
 type

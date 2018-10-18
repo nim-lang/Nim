@@ -728,7 +728,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
                       else:
                         makeTypeDesc(c, typ)
 
-        typeParams.safeAdd((param, typ))
+        typeParams.add((param, typ))
 
       addDecl(c, param)
 
@@ -757,7 +757,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if collectDiagnostics:
     m.c.config.writelnHook = oldWriteHook
     for msg in diagnostics:
-      m.diagnostics.safeAdd msg
+      m.diagnostics.add msg
       m.diagnosticsEnabled = true
 
   if checkedBody == nil: return nil
@@ -1027,7 +1027,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
       result = typeRel(c, aOrig.base, candidate)
       if result != isNone:
-        c.inferredTypes.safeAdd aOrig
+        c.inferredTypes.add aOrig
         aOrig.sons.add candidate
         result = isEqual
       return
@@ -1727,7 +1727,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     else:
       result = typeRel(c, f.base, a)
       if result != isNone:
-        c.inferredTypes.safeAdd f
+        c.inferredTypes.add f
         f.sons.add a
 
   of tyTypeDesc:

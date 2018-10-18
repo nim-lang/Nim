@@ -616,7 +616,7 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     doAssert b.s[b.pos] == '\20'
     inc(b.pos)
     let y = loadSym(g, decodeVInt(b.s, b.pos), info)
-    result.methods.safeAdd((x, y))
+    result.methods.add((x, y))
   decodeLoc(g, b, result.loc, info)
   while b.s[b.pos] == '^':
     inc(b.pos)
@@ -656,7 +656,7 @@ proc decodeInstantiations(g; b; info: TLineInfo;
     if b.s[b.pos] == '\20':
       inc(b.pos)
       ii.compilesId = decodeVInt(b.s, b.pos)
-    s.safeAdd ii
+    s.add ii
 
 proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   if b.s[b.pos] == '{':
@@ -717,7 +717,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   of skType, skGenericParam:
     while b.s[b.pos] == '\14':
       inc(b.pos)
-      result.typeInstCache.safeAdd loadType(g, decodeVInt(b.s, b.pos), result.info)
+      result.typeInstCache.add loadType(g, decodeVInt(b.s, b.pos), result.info)
   of routineKinds:
     decodeInstantiations(g, b, result.info, result.procInstCache)
     if b.s[b.pos] == '\16':
