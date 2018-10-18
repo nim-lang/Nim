@@ -63,7 +63,7 @@ block lastPathPartTest:
     doAssert lastPathPart(r"foo\bar.txt") == "bar.txt"
     doAssert lastPathPart(r"foo\") == "foo"
 
-block:
+block relativePathTest:
   proc testRelativePath(path, baseDir, curDir = "", res: string): bool {.noSideEffect.} =
     let r =
       relativePath(
