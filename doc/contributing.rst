@@ -376,7 +376,12 @@ General commit rules
    automated changes (eg nimfix) with other code changes: these should be in
    separate commits (and the merge on github should not squash these into 1).
 
-.. include:: docstyle.rst
+
+6. Continuous Integration is by default run on every push in a PR; this clogs
+   the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
+   documentation only changes), add ``[ci skip]`` to your commit message title.
+   This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
 
 Code reviews
 ------------
@@ -384,4 +389,7 @@ Code reviews
 1. Whenever possible, use github's new 'Suggested change' in code reviews, which
    saves time explaining the change or applying it; see also
    https://forum.nim-lang.org/t/4317
+
+.. include:: docstyle.rst
+
 
