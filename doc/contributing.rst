@@ -251,7 +251,7 @@ the first is preferred.
 Best practices
 =============
 
-Note: these are gneral guidelines, not hard rules; there are always exceptions.
+Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
 propagate best practices.
 
@@ -263,14 +263,6 @@ Take advantage of no implicit bool conversion
   doAssert isValid() == true
   doAssert isValid() # preferred
 
-.. _noimplicitbool:
-Reduce parenthesis nesting
-
-.. code-block:: nim
-
-  doAssert (not 1 == 2)
-  doAssert: not 1 == 2  # preferred
-
 .. _immediately_invoked_lambdas:
 Immediately invoked lambdas (https://en.wikipedia.org/wiki/Immediately-invoked_function_expression)
 
@@ -280,8 +272,8 @@ Immediately invoked lambdas (https://en.wikipedia.org/wiki/Immediately-invoked_f
   let a = block:  # preferred
     getFoo()
 
-.. _design_for_ufcs:
-Design with UFCS (method call syntax) chaining in mind
+.. _design_for_mcs:
+Design with method call syntax (UFCS in other languages) chaining in mind
 
 .. code-block:: nim
 
@@ -317,8 +309,8 @@ including prepending location info, writing to log files, etc).
   proc foo(): string = "bar" # preferred (usually)
 
 .. _use_Option:
-Genreally, use Option instead of return bool + var argument, unless stack
-allocation is needed (eg for efficiency).
+[Ongoing debate] Consider using Option instead of return bool + var argument,
+unless stack allocation is needed (eg for efficiency).
 
 .. code-block:: nim
 
