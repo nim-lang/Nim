@@ -1828,7 +1828,6 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
     # What's done below matches the logic in ``matchesAux``
     let constraint = c.converters[i].typ.n[1].sym.constraint
-    # let constraint = src.sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue
     if src.kind in {tyVar, tyLent} and not arg.isLValue:
@@ -1851,7 +1850,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       var param: PNode = nil
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
-      elif s.typ[1].kind in {tyVar, tyLent}:
+      elif src.kind == tyVar:
         # Analyse the converter return type
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.addSon(copyTree(arg))

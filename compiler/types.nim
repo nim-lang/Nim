@@ -397,7 +397,7 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "opt", "sink",
-    "lent", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
+    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -571,7 +571,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < sonsLen(t) - 1: add(result, ", ")
       result.add ']'
     else:
-      result.add " " & typeToString(t.sons[0])
+      result.add typeToString(t.sons[0])
   of tyRange:
     result = "range "
     if t.n != nil and t.n.kind == nkRange:
@@ -1176,6 +1176,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst}: return t
+    elif t.kind == tyLent and kind != skResult: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar, tyLent:
