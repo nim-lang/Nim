@@ -313,7 +313,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
     inc(r.total)
     return
 
-  if getEnv("NIM_COMPILE_TO_CPP", "false") == "true" and target == targetC and expected.targets == {}:
+  if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true" and target == targetC and expected.targets == {}:
     expected.targets.incl(targetCpp)
   elif expected.targets == {}:
     expected.targets.incl(target)
