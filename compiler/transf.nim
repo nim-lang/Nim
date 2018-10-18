@@ -190,9 +190,12 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       var L = sonsLen(it)
       var defs = newTransNode(it.kind, it.info, L)
       for j in countup(0, L-3):
-        let x = freshVar(c, it.sons[j].sym)
-        idNodeTablePut(c.transCon.mapping, it.sons[j].sym, x)
-        defs[j] = x.PTransNode
+        if it[j].kind == nkSym:
+          let x = freshVar(c, it.sons[j].sym)
+          idNodeTablePut(c.transCon.mapping, it.sons[j].sym, x)
+          defs[j] = x.PTransNode
+        else:
+          defs[j] = transform(c, it[j])
       assert(it.sons[L-2].kind == nkEmpty)
       defs[L-2] = newNodeI(nkEmpty, it.info).PTransNode
       defs[L-1] = transform(c, it.sons[L-1])
