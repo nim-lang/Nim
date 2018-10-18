@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, lineinfos,
+  wordrecg, strutils, options, guards, writetracking, lineinfos, semfold,
   modulegraphs
 
 when defined(useDfa):
@@ -48,6 +48,7 @@ type
     tags: PNode # list of tags
     bottom, inTryStmt: int
     owner: PSym
+    owner_module: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
@@ -562,8 +563,10 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
-    let s = n.skipConv
-    if s.kind == nkSym and s.sym.kind in routineKinds:
+    var s = n.skipConv
+    if s.kind == nkCast and s[1].typ.kind == tyProc:
+      s = s[1]
+    if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
       propagateEffects(tracked, n, s.sym)
     elif isNoEffectList(effectList):
       if isForwardedProc(n):
@@ -709,9 +712,13 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:
+    if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+      return 
     # p's effects are ours too:
-    let a = n.sons[0]
+    var a = n.sons[0]
     let op = a.typ
+    if a.kind == nkCast and a[1].typ.kind == tyProc:
+      a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
     # calling getAst(templateOrMacro()). Currently, templates and macros
     # are indistinguishable from normal procs (both have tyProc type) and
@@ -934,6 +941,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
+  t.owner_module = s.getModule
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)

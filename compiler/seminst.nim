@@ -146,9 +146,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
-    b = hloBody(c, b)
-    n.sons[bodyPos] = transformBody(c.graph, c.module, b, result)
-    #echo "code instantiated ", result.name.s
+    result.ast[bodyPos] = hloBody(c, b)
+    trackProc(c.graph, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
     dec c.inGenericInst
 
@@ -377,7 +376,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.safeAdd(entry)
+    fn.procInstCache.add(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)

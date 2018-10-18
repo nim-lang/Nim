@@ -405,6 +405,8 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
+  body.flags.incl nfTransf # do not transform further
+
   var threadLocalBarrier: PSym
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)

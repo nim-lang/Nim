@@ -25,6 +25,8 @@
 - Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
   `strip`, `repeat` procs and iterators to `unicode.nim`.
 
+- Added `or` for `NimNode` in `macros`.
+
 ### Library changes
 
 
@@ -35,6 +37,9 @@
 
 
 ### Tool changes
+- `jsondoc` now include a `moduleDescription` field with the module
+  description. `jsondoc0` shows comments as it's own objects as shown in the
+  documentation.
 
 ### Compiler changes
 
