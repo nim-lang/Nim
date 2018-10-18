@@ -199,17 +199,20 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
       result[i] = defs
 
 proc transformConstSection(c: PTransf, v: PNode): PTransNode =
-  result = newTransNode(v)
-  for i in countup(0, sonsLen(v)-1):
-    var it = v.sons[i]
-    if it.kind == nkCommentStmt:
-      result[i] = PTransNode(it)
-    else:
-      if it.kind != nkConstDef: internalError(c.graph.config, it.info, "transformConstSection")
-      if it.sons[0].kind != nkSym:
-        internalError(c.graph.config, it.info, "transformConstSection")
+  result = PTransNode(v)
+  when false:
+    result = newTransNode(v)
+    for i in countup(0, sonsLen(v)-1):
+      var it = v.sons[i]
+      if it.kind == nkCommentStmt:
+        result[i] = PTransNode(it)
+      else:
+        if it.kind != nkConstDef: internalError(c.graph.config, it.info, "transformConstSection")
+        if it.sons[0].kind != nkSym:
+          debug it.sons[0]
+          internalError(c.graph.config, it.info, "transformConstSection")
 
-      result[i] = PTransNode(it)
+        result[i] = PTransNode(it)
 
 proc hasContinue(n: PNode): bool =
   case n.kind
