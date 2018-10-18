@@ -11,7 +11,8 @@
 
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
-  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos
+  idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
+  transf
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -257,7 +258,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
   result.add makeClosure(g, iter, env, n.info)
-
+  
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.lastSon
@@ -390,7 +391,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if innerProc:
       if s.isIterator: c.somethingToDo = true
       if not c.processed.containsOrIncl(s.id):
-        detectCapturedVars(s.getBody, s, c)
+        let body = transformBody(c.graph, s)
+        detectCapturedVars(body, s, c)
     let ow = s.skipGenericOwner
     if ow == owner:
       if owner.isIterator:
@@ -651,14 +653,17 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        var body = liftCapturedVars(s.getBody, s, d, c)
+        var body = transformBody(d.graph, s)
+        body = liftCapturedVars(body, s, d, c)
         if c.envvars.getOrDefault(s.id).isNil:
-          s.ast.sons[bodyPos] = body
+          s.transformedBody = body
         else:
-          s.ast.sons[bodyPos] = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
+          s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
         c.inContainer = oldInContainer
+
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
+
     elif s.id in d.capturedVars:
       if s.owner != owner:
         result = accessViaEnvParam(d.graph, n, owner)

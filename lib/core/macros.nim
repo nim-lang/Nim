@@ -252,6 +252,10 @@ else: # bootstrapping substitute
     else:
       n.strValOld
 
+when defined(nimSymImplTransform):
+  proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
+    ## for a typed proc returns the AST after transformation pass
+
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
     ## accepts node of kind nnkSym and returns its owner's symbol.

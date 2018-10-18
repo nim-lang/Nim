@@ -660,7 +660,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType, mSymOwner, mUncheckedArray
+    mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -811,7 +811,7 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      #scope*: PScope          # the scope where the proc was defined
+      transformedBody*: PNode  # cached body after transf pass   
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to

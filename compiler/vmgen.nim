@@ -29,7 +29,7 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos
+  trees, intsets, magicsys, options, lowerings, lineinfos, transf
 import platform
 from os import splitFile
 
@@ -1122,6 +1122,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mStaticExec: genBinaryABCD(c, n, dest, opcGorge)
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
+  of mGetImplTransf: genUnaryABC(c, n, dest, opcGetImplTransf)
   of mSymOwner: genUnaryABC(c, n, dest, opcSymOwner)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
   of mNSetChild: genVoidABC(c, n, dest, opcNSetChild)
@@ -2129,7 +2130,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = s.getBody
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

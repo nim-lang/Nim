@@ -1328,8 +1328,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
-      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+      s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+      trackProc(c.graph, s, s.ast[bodyPos])
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -1369,8 +1369,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
-  let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+  s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+  trackProc(c.graph, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1683,10 +1683,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         if lfDynamicLib notin s.loc.flags:
           # no semantic checking for importc:
-          let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+          s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+          trackProc(c.graph, s, s.ast[bodyPos])
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))

@@ -924,6 +924,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcGetImplTransf:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+                        else: 
+                          let ast = a.sym.ast.shallowCopy
+                          for i in 0..<a.sym.ast.len:
+                            ast[i] = a.sym.ast[i]                        
+                          ast[bodyPos] = transformBody(c.graph, a.sym)
+                          ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node

@@ -583,7 +583,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  result = transformStmt(c.graph, c.module, result)
+  trackTopLevelStmt(c.graph, c.module, result)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

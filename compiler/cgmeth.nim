@@ -281,6 +281,7 @@ proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym
     else:
       disp = ret
   nilchecks.add disp
+  nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast.sons[bodyPos] = nilchecks
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =

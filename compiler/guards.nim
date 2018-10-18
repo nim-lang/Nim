@@ -70,7 +70,7 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
       n = n.sons[0]
       inc derefs
     of nkBracketExpr:
-      if isConstExpr(n.sons[1]) or isLet(n.sons[1]):
+      if isConstExpr(n.sons[1]) or isLet(n.sons[1]) or isConstExpr(n.sons[1].skipConv):
         n = n.sons[0]
       else: return
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
