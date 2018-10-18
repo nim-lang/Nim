@@ -179,8 +179,7 @@ proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
 template `or`*(x, y: NimNode): NimNode =
   ## Evaluate ``x`` and when it is not an empty node, return
   ## it. Otherwise evaluate to ``y``. Can be used to chain several
-  ## expressions that evaluates to the first expression that is not
-  ## empty.
+  ## expressions to get the first expression that is not empty.
   ##
   ## .. code-block:: nim
   ##

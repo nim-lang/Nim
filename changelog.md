@@ -25,6 +25,8 @@
 - Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
   `strip`, `repeat` procs and iterators to `unicode.nim`.
 
+- Added `or` for `NimNode` in `macros`.
+
 ### Library changes
 
 
