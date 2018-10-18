@@ -66,7 +66,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
       localError(c.config, n.info, errGenerated, "'continue' cannot have a label")
-  elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0):
+  elif (c.p.nestedLoopCounter <= 0) and ((c.p.nestedBlockCounter <= 0) or n.kind == nkContinueStmt):
     localError(c.config, n.info, errInvalidControlFlowX %
                renderTree(n, {renderNoComments}))
 
