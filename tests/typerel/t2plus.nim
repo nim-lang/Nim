@@ -4,7 +4,7 @@ discard """
 
 {.warning[TypelessParam]: off.}
 
-import future
+import sugar
 
 # bug #3329
 

@@ -58,7 +58,7 @@ type
     tyUInt64,
     tyOptAsRef, tyUnused1, tyUnused2,
     tyVarargsHidden,
-    tyUnusedHidden,
+    tyUncheckedArray,
     tyProxyHidden,
     tyBuiltInTypeClassHidden,
     tyUserTypeClassHidden,

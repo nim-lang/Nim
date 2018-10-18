@@ -532,3 +532,7 @@ block t7818:
 
     doAssert(testOpenArray(@[u.addr, v.addr, w.addr]) == "123")
     doAssert(testOpenArray(@[w.addr, u.addr, v.addr]) == "312")
+
+# regression regarding unchecked array indexing:
+proc foo(x: ptr UncheckedArray[int]; idx: uint64) =
+  echo x[idx]

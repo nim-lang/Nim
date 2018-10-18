@@ -30,7 +30,7 @@ proc map[A, B](x: RandomVar[A], f: proc(a: A): B): ClosureVar[B] =
 
   result.f = inner
 
-import future
+import sugar
 
 proc fakeRandom(): Random =
   result.random = () => 0.5

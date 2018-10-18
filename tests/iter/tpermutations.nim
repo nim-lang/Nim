@@ -1,5 +1,5 @@
 
-import sequtils, future
+import sequtils, sugar
 
 iterator permutations*[T](ys: openarray[T]): tuple[perm: seq[T], sign: int] =
   var
