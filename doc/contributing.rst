@@ -195,6 +195,86 @@ or
 
 the first is preferred.
 
+Best practices
+=============
+
+Note: these are general guidelines, not hard rules; there are always exceptions.
+Code reviews can just point to a specific section here to save time and
+propagate best practices.
+
+.. _noimplicitbool:
+Take advantage of no implicit bool conversion
+
+.. code-block:: nim
+
+  doAssert isValid() == true
+  doAssert isValid() # preferred
+
+.. _immediately_invoked_lambdas:
+Immediately invoked lambdas (https://en.wikipedia.org/wiki/Immediately-invoked_function_expression)
+
+.. code-block:: nim
+
+  let a = (proc (): auto = getFoo())()
+  let a = block:  # preferred
+    getFoo()
+
+.. _design_for_mcs:
+Design with method call syntax (UFCS in other languages) chaining in mind
+
+.. code-block:: nim
+
+  proc foo(cond: bool, lines: seq[string]) # bad
+  proc foo(lines: seq[string], cond: bool) # preferred
+  # can be called as: `getLines().foo(false)`
+
+.. _avoid_quit:
+Use exceptions (including assert / doAssert) instead of ``quit``
+rationale: https://forum.nim-lang.org/t/4089
+
+.. code-block:: nim
+
+  quit() # bad in almost all cases
+  doAssert() # preferred
+
+.. _tests_use_doAssert:
+Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests.
+
+.. code-block:: nim
+
+  runnableExamples: assert foo() # bad
+  runnableExamples: doAssert foo() # preferred
+
+.. _delegate_printing:
+Delegate printing to caller: return ``string`` instead of calling ``echo``
+rationale: it's more flexible (eg allows caller to call custom printing,
+including prepending location info, writing to log files, etc).
+
+.. code-block:: nim
+
+  proc foo() = echo "bar" # bad
+  proc foo(): string = "bar" # preferred (usually)
+
+.. _use_Option:
+[Ongoing debate] Consider using Option instead of return bool + var argument,
+unless stack allocation is needed (eg for efficiency).
+
+.. code-block:: nim
+
+  proc foo(a: var Bar): bool
+  proc foo(): Option[Bar]
+
+.. _use_doAssert_not_echo:
+Tests (including in testament) should always prefer assertions over ``echo``,
+except when that's not possible. It's more precise, easier for readers and
+maintaners to where expected values refer to. See for example
+https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
+
+.. code-block:: nim
+
+  echo foo() # adds a line in testament `discard` block.
+  doAssert foo() == [1, 2] # preferred, except when not possible to do so.
+
 The Git stuff
 =============
 
