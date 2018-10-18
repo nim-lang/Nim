@@ -1357,28 +1357,23 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       arr = arr.base
 
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString:
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
+    tyUncheckedArray:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1):
       n.sons[i] = semExprWithType(c, n.sons[i],
                                   flags*{efInTypeof, efDetermineType})
-    var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(c.graph, n.info, tyInt)
-    var arg = indexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
-    if arg != nil:
-      n.sons[1] = arg
-      result = n
-      result.typ = elemType(arr)
-    #GlobalError(n.info, errIndexTypesDoNotMatch)
-  of tyUncheckedArray:
-    if n.len != 2: return nil
-    n.sons[0] = makeDeref(n.sons[0])
-    for i in countup(1, sonsLen(n) - 1):
-      n.sons[i] = semExprWithType(c, n.sons[i],
-                                  flags*{efInTypeof, efDetermineType})
-    # index into unchecked array must be some integer type:
-    if n.sons[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
+    # Arrays index type is dictated by the range's type
+    if arr.kind == tyArray:
+      var indexType = arr.sons[0]
+      var arg = indexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
+      if arg != nil:
+        n.sons[1] = arg
+        result = n
+        result.typ = elemType(arr)
+    # Other types have a bit more of leeway
+    elif n.sons[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
         {tyInt..tyInt64, tyUInt..tyUInt64}:
       result = n
       result.typ = elemType(arr)
