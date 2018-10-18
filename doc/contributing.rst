@@ -314,8 +314,8 @@ unless stack allocation is needed (eg for efficiency).
 
 .. code-block:: nim
 
-  proc foo(a: var Bar): bool # bad
-  proc foo(): Option[Bar] # preferred
+  proc foo(a: var Bar): bool
+  proc foo(): Option[Bar]
 
 .. _use_doAssert_not_echo:
 Tests (including in testament) should always prefer assertions over ``echo``,
