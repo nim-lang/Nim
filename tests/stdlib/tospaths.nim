@@ -65,14 +65,14 @@ block lastPathPartTest:
 
 block:
   proc testRelativePath(path, baseDir, curDir = "", res: string): bool {.noSideEffect.} =
-    #debugEcho path, ", ", baseDir, ", ", curDir, ", ", res
     let r =
       relativePath(
         path.unixToNativePath("a"),
         baseDir.unixToNativePath("a"),
         curDir.unixToNativePath("a"))
-    #debugEcho r
-    return r == res.unixToNativePath
+    result = (r == res.unixToNativePath)
+    if not result:
+      debugEcho "relativePath(", path, ", ", baseDir, ", ", curDir, ") returned ", r, " not ", res
 
   proc testRelativePathRaise(path, baseDir, curDir = "") {.noSideEffect.} =
     try:
