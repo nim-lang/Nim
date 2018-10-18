@@ -18,9 +18,9 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
-created by the Nim community. These packages are a useful addition to the
-modules in the standard library.
+In addition to the modules in the standard library, third-party packages
+created by the Nim community can be used via `Nimble <#nimble>`_, Nim's
+package manager.
 
 
 Pure libraries
@@ -520,4 +520,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_
+or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.
