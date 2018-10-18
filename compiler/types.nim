@@ -571,7 +571,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < sonsLen(t) - 1: add(result, ", ")
       result.add ']'
     else:
-      result.add typeToString(t.sons[0])
+      result.add " " & typeToString(t.sons[0])
   of tyRange:
     result = "range "
     if t.n != nil and t.n.kind == nkRange:
