@@ -44,20 +44,23 @@ else:
   const useBuiltinSwap = false
 
 when useBuiltinSwap:
+  template swapOpImpl(T: typedesc, op: untyped) =
+    ## We have to use `copyMem` here instead of a simple deference because they
+    ## may point to a unaligned address. A sufficiently smart compiler _should_
+    ## be able to elide them when they're not necessary.
+    var tmp: T
+    copyMem(addr tmp, inp, sizeOf(T))
+    tmp = op(tmp)
+    copyMem(outp, addr tmp, sizeOf(T))
+
   proc swapEndian64*(outp, inp: pointer) {.inline, nosideeffect.}=
-    var i = cast[ptr uint64](inp)
-    var o = cast[ptr uint64](outp)
-    o[] = builtin_bswap64(i[])
+    swapOpImpl(uint64, builtin_bswap64)
 
   proc swapEndian32*(outp, inp: pointer) {.inline, nosideeffect.}=
-    var i = cast[ptr uint32](inp)
-    var o = cast[ptr uint32](outp)
-    o[] = builtin_bswap32(i[])
+    swapOpImpl(uint32, builtin_bswap32)
 
   proc swapEndian16*(outp, inp: pointer) {.inline, nosideeffect.}=
-    var i = cast[ptr uint16](inp)
-    var o = cast[ptr uint16](outp)
-    o[] = builtin_bswap16(i[])
+    swapOpImpl(uint16, builtin_bswap16)
 
 else:
   proc swapEndian64*(outp, inp: pointer) =
