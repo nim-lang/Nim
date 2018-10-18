@@ -377,11 +377,21 @@ General commit rules
    separate commits (and the merge on github should not squash these into 1).
 
 
-6. Continuous Integration is by default run on every push in a PR; this clogs
+Continuous Integration (CI)
+---------------------------
+
+1. Continuous Integration is by default run on every push in a PR; this clogs
    the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
    documentation only changes), add ``[ci skip]`` to your commit message title.
    This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
+
+
+2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+   waiting for CI to be green in that fork (fixing bugs as needed) before
+   opening your PR in original Nim repo, so as to reduce CI congestion. Same
+   applies for updates on a PR: you can test commits on a separate private
+   branch before updating the main PR.
 
 Code reviews
 ------------
