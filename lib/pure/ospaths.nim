@@ -868,6 +868,30 @@ proc relativePath*(path, baseDir: string; curDir: string = ""): string {.
   ## On DOS like filesystem, when a drive of `path` is different from `baseDir`,
   ## this proc just return the `path` as is because no way to calculate the relative path.
   ##
+  ## Following pseudo code looks like Nim explains requirements of parameters.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   if isAbsolute(path) and isAbsolute(baseDir):
+  ##     # `curDir` is ignored
+  ##   else not (isAbsolute(path) or isAbsolute(baseDir)):
+  ##     # Both `path` and `baseDir` must be relative to a same path.
+  ##     # Suppose ".." is only in front of path, not in middle of path.
+  ##     let numParDirsInPath = number of ".." in path
+  ##     let numParDirsInBaseDir = number of ".." in baseDir
+  ##     if numParDirsInBaseDir > numParDirsInPath:
+  ##       # `curDir` can be relative or absolute path.
+  ##       # Both `path` and `baseDir` must be relative paths from `curDir`.
+  ##       # `curDir` must has (numParDirsInBaseDir - numParDirsInPath) directories or raise ValueError.
+  ##     else:
+  ##       # `curDir` is ignored
+  ##   else:
+  ##     # `curDir` must be a absolute path.
+  ##     # `curDir` is used to convert `path` or `base` to a absolute path.
+  ##
+  ## For example, relativePath("a", "b") returns "../a", but relativePath("a", "..") raise exception.
+  ## Because result of relativePath("a", "..") requires the parent directory name of "a".
+  ##
   ## This proc never read filesystem.
   ## `baseDir` is always assumed to be a directory even if that path is actually a file.
   ##
