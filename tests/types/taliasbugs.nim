@@ -156,3 +156,14 @@ when true:
       Foo(i)
 
   var xx = xs.mapIt(asFoo($(it + 5)))
+
+
+block t4674:
+  type
+    FooObj[T] = object
+      v: T
+    Foo1[T] = FooObj[T]
+    Foo2 = FooObj
+    Foo1x = Foo1
+    Foo12x = Foo1 | Foo2
+    Foo2x = Foo2  # Error: illegal recursion in type 'Foo2x'
