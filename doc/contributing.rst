@@ -367,6 +367,39 @@ General commit rules
 
    eg: use ``git pull --rebase origin devel``. This is to avoid messing up
    git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
-   Exceptions should be very rare.
+   Exceptions should be very rare: when rebase gives too many conflicts, simply
+   squash all commits using the script shown in
+   https://github.com/nim-lang/Nim/pull/9356
+
+
+5. Do not mix pure formatting changes (eg whitespace changes, nimpretty) or
+   automated changes (eg nimfix) with other code changes: these should be in
+   separate commits (and the merge on github should not squash these into 1).
+
+
+Continuous Integration (CI)
+---------------------------
+
+1. Continuous Integration is by default run on every push in a PR; this clogs
+   the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
+   documentation only changes), add ``[ci skip]`` to your commit message title.
+   This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
+
+
+2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+   waiting for CI to be green in that fork (fixing bugs as needed) before
+   opening your PR in original Nim repo, so as to reduce CI congestion. Same
+   applies for updates on a PR: you can test commits on a separate private
+   branch before updating the main PR.
+
+Code reviews
+------------
+
+1. Whenever possible, use github's new 'Suggested change' in code reviews, which
+   saves time explaining the change or applying it; see also
+   https://forum.nim-lang.org/t/4317
 
 .. include:: docstyle.rst
+
+
