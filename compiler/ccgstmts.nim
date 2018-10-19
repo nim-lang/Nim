@@ -400,7 +400,6 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
     genStmts(p, it.lastSon)
     endBlock(p)
 
-
 proc genStmtsAux(p: BProc; n: PNode): Rope =
   let topBlock = p.blocks.len-1
   let oldBody = p.blocks[topBlock].sections[cpsStmts]
@@ -444,8 +443,36 @@ proc genComputedGoto(p: BProc; n: PNode) =
 
   let caseStmt = n.sons[casePos]
 
-  for j in 0 .. casePos-1:
-    discard genStmtsAux(p, n.sons[j])
+  let save = p.blocks[^1].sections[cpsStmts]
+  p.blocks[^1].sections[cpsStmts] = nil
+
+  echo p.blocks[^1].sections[cpsLocals]
+
+  for j in 0 ..< casePos:
+    genStmts(p, n.sons[j])
+
+  echo p.blocks[^1].sections[cpsLocals]
+
+  let stmtsBefore = p.blocks[^1].sections[cpsStmts]
+
+  p.blocks[^1].sections[cpsStmts] = nil
+
+  for j in casePos+1 ..< n.sons.len:
+    genStmts(p, n.sons[j])
+
+  echo p.blocks[^1].sections[cpsLocals]
+
+  echo "------------------------------------------------------------"
+
+  let stmtsAfter = p.blocks[^1].sections[cpsStmts]
+
+  p.blocks[^1].sections[cpsStmts] = save & stmtsBefore
+
+
+  echo stmtsBefore
+  echo "case of:..."
+  echo stmtsAfter
+  echo "------------------------------------------------------------"
 
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
@@ -459,18 +486,23 @@ proc genComputedGoto(p: BProc; n: PNode) =
       if it.sons[j].kind == nkRange:
         localError(p.config, it.info, "range notation not available for computed goto")
         return
+
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
+
+
     genStmts(p, it.lastSon)
-    for j in casePos+1 ..< n.len:
-      p.s(cpsStmts).add genStmtsAux(p, n.sons[j])
-    for j in 0 .. casePos-1:
-      p.s(cpsStmts).add genStmtsAux(p, n.sons[j])
+
+    p.blocks[^1].sections[cpsStmts].add stmtsAfter
+    p.blocks[^1].sections[cpsStmts].add stmtsBefore
 
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
     lineF(p, cpsStmts, "goto *$#[$#];$n", [tmp, a.rdLoc])
     endBlock(p)
+
+  p.blocks[^1].sections[cpsStmts].add stmtsAfter
+
 
 proc genWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce
@@ -482,26 +514,26 @@ proc genWhileStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
 
   preserveBreakIdx:
-    p.breakIdx = startBlock(p, "while (1) {$n")
-    p.blocks[p.breakIdx].isLoop = true
-    initLocExpr(p, t.sons[0], a)
-    if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0):
-      let label = assignLabel(p.blocks[p.breakIdx])
-      lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
     var loopBody = t.sons[1]
     if loopBody.stmtsContainPragma(wComputedGoto) and
-        hasComputedGoto in CC[p.config.cCompiler].props:
-      # for closure support weird loop bodies are generated:
+       hasComputedGoto in CC[p.config.cCompiler].props:
+         # for closure support weird loop bodies are generated:
       if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
         loopBody = loopBody.sons[1]
-      genComputedGoto(p, loopBody)
+      genComputedGoto(p, loopBody) # TODO foobar
     else:
+      p.breakIdx = startBlock(p, "while (1) {$n")
+      p.blocks[p.breakIdx].isLoop = true
+      initLocExpr(p, t.sons[0], a)
+      if (t.sons[0].kind != nkIntLit) or (t.sons[0].intVal == 0):
+        let label = assignLabel(p.blocks[p.breakIdx])
+        lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
       genStmts(p, loopBody)
 
-    if optProfiler in p.options:
-      # invoke at loop body exit:
-      linefmt(p, cpsStmts, "#nimProfile();$n")
-    endBlock(p)
+      if optProfiler in p.options:
+        # invoke at loop body exit:
+        linefmt(p, cpsStmts, "#nimProfile();$n")
+      endBlock(p)
 
   dec(p.withinLoop)
 
