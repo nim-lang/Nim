@@ -31,7 +31,7 @@ type
   Complex128* = Complex[float64]
     ## Alias for a pair of 64-bit floats.
   Complex64* = Complex[float32]
-    ## Alias for a pair of 64-bit floats.
+    ## Alias for a pair of 32-bit floats.
 
 
 const
@@ -150,12 +150,12 @@ proc `/` *[T](x, y: Complex[T]): Complex[T] =
     result.re = (x.re + r * x.im) / den
     result.im = (x.im - r * x.re) / den
 
-proc `*` *[T](x: SomeFloat, y: Complex[T]): Complex[T] =
+proc `*` *[T](x: T, y: Complex[T]): Complex[T] =
   ## Add a real number to a complex number
   result.re = x * y.re
   result.im = x * y.im
 
-proc `*` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
+proc `*` *[T](x: Complex[T], y: T): Complex[T] =
   ## Add a complex number to a real number.
   result.re = x.re * y
   result.im = x.im * y
