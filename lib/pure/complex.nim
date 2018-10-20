@@ -253,10 +253,6 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
     result.re = s * cos(r)
     result.im = s * sin(r)
 
-proc `**` *[T](x, y: Complex[T]): Complex[T] =
-  ## Exponentiation operator: ``x`` raised to the power ``y``.
-  pow(x, y)
-
 
 proc sin*[T](z: Complex[T]): Complex[T] =
   ## Returns the sine of ``z``.
