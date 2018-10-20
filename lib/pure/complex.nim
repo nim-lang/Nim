@@ -101,9 +101,11 @@ proc `=~` *[T](x, y: Complex[T]): bool =
   result = (x.re =~ y.re) and (x.im =~ y.im)
 
 proc `=~` *[T](x: T, y: Complex[T]): bool =
+  ## Compare float number ``x`` and complex number ``y`` approximately.
   result = (x =~ y.re) and (y.im =~ 0.0)
 
 proc `=~` *[T](x: Complex[T], y: T): bool =
+  ## Compare complex number ``x`` and float number ``y`` approximately.
   result = (x.re =~ y) and (x.im =~ 0.0)
 
 
@@ -268,6 +270,7 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
     result.im = s * sin(r)
 
 proc pow*[T](x: Complex[T], y: T): Complex[T] =
+  ## Complex number ``x`` raised to the power ``y``.
   pow(x, toComplex(y))
 
 
