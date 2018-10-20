@@ -1,4 +1,3 @@
-
 #
 #
 #            Nim's Runtime Library
@@ -11,13 +10,9 @@
 
 
 
+
 ## This module implements complex numbers.
 ## Complex numbers are currently implemented as generic on a 64-bit or 32-bit float.
-##
-## Converters are defined to implicitly convert ordinary numbers and complex
-## types into complex types. This works normally for 128-bit complex numbers but
-## due to type conversion being non-transitive, dividing integer literals by
-## 64-bit complex numbers and vice versa can cause compilation errors
 
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
@@ -26,7 +21,7 @@
 import math
 
 type
-  Complex*[T] = tuple[re, im: T]
+  Complex*[T: SomeFloat] = tuple[re, im: T]
     ## A complex number, consisting of a real and an imaginary part.
   Complex128* = Complex[float64]
     ## Alias for a pair of 64-bit floats.
@@ -35,25 +30,42 @@ type
 
 
 const
-  im*: Complex128 = (re: 0.0, im: 1.0)
+  im*: Complex[float] = (re: 0.0, im: 1.0)
     ## The imaginary unit. √-1.
 
 
-converter toComplex128*[T: SomeInteger | float64](x: T): Complex128 =
-  ## Convert some number ``x`` to a 128-bit complex number.
-  result.re = x.float64
-  result.im = 0
+proc toComplex*[T: SomeNumber](x: T): auto =
+  ## Convert ``x`` to Complex.
+  when T is SomeInteger:
+    result.re = float(x)
+    result.im = 0.0
+  elif T is float32:
+    var z: Complex[float32]
+    z.re = x
+    z.im = float32(0)
+    result = z
+  elif T is float64:
+    var z: Complex[float64]
+    z.re = x
+    z.im = float64(0)
+    result = z
+
+proc toComplex64*[T: SomeNumber](x: T): Complex64 =
+  ## Convert ``x`` to Complex64.
+  result.re = float32(x)
+  result.im = float32(0)
+
+proc toComplex128*[T: SomeNumber](x: T): Complex128 =
+  ## Convert ``x`` to ``Complex128``.
+  result.re = float64(x)
+  result.im = float64(0)
+
 
 converter toComplex128*[T: Complex](z: T): Complex128 =
   ## Convert some complex number ``z`` to a 128-bit complex number.
   let (re, im) = z
   result.re = re.float64
   result.im = im.float64
-
-converter toComplex64*[T: SomeInteger | float32](x: T): Complex64 =
-  ## Convert some number ``x`` to a 64-bit complex number.
-  result.re = x.float32
-  result.im = 0
 
 converter toComplex64*[T: Complex](z: T): Complex64 =
   ## Convert some complex number ``z`` to a 64-bit complex number.
@@ -88,17 +100,19 @@ proc `=~` *[T](x, y: Complex[T]): bool =
   ## Compare two complex numbers ``x`` and ``y`` approximately.
   result = (x.re =~ y.re) and (x.im =~ y.im)
 
-proc `!=~` *[T](x, y: Complex[T]): bool =
-  ## Return true if two complex numbers ``x`` and ``y`` are not equal
-  result = not (x =~ y)
+proc `=~` *[T](x: T, y: Complex[T]): bool =
+  result = (x =~ y.re) and (y.im =~ 0.0)
+
+proc `=~` *[T](x: Complex[T], y: T): bool =
+  result = (x.re =~ y) and (x.im =~ 0.0)
 
 
-proc `+` *[T](x: SomeFloat, y: Complex[T]): Complex[T] =
-  ## Add a real number to a complex number
+proc `+` *[T](x: T, y: Complex[T]): Complex[T] =
+  ## Add a real number to a complex number.
   result.re = x + y.re
   result.im = y.im
 
-proc `+` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
+proc `+` *[T](x: Complex[T], y: T): Complex[T] =
   ## Add a complex number to a real number.
   result.re = x.re + y
   result.im = x.im
@@ -113,11 +127,11 @@ proc `-` *[T](z: Complex[T]): Complex[T] =
   result.re = -z.re
   result.im = -z.im
 
-proc `-` *[T](x: SomeFloat, y: Complex[T]): Complex[T] =
+proc `-` *[T](x: T, y: Complex[T]): Complex[T] =
   ## Subtract a complex number from a real number.
   x + (-y)
 
-proc `-` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
+proc `-` *[T](x: Complex[T], y: T): Complex[T] =
   ## Subtract a real number from a complex number.
   result.re = x.re - y
   result.im = x.im
@@ -127,12 +141,12 @@ proc `-` *[T](x, y: Complex[T]): Complex[T] =
   result.re = x.re - y.re
   result.im = x.im - y.im
 
-proc `/` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
+proc `/` *[T](x: Complex[T], y: T): Complex[T] =
   ## Divide complex number ``x`` by real number ``y``.
   result.re = x.re / y
   result.im = x.im / y
 
-proc `/` *[T](x: SomeFloat, y: Complex[T]): Complex[T] =
+proc `/` *[T](x: T, y: Complex[T]): Complex[T] =
   ## Divide real number ``x`` by complex number ``y``.
   result = x * inv(y)
 
@@ -151,12 +165,12 @@ proc `/` *[T](x, y: Complex[T]): Complex[T] =
     result.im = (x.im - r * x.re) / den
 
 proc `*` *[T](x: T, y: Complex[T]): Complex[T] =
-  ## Add a real number to a complex number
+  ## Multiply a real number and a complex number.
   result.re = x * y.re
   result.im = x * y.im
 
 proc `*` *[T](x: Complex[T], y: T): Complex[T] =
-  ## Add a complex number to a real number.
+  ## Multiply a complex number with a real number.
   result.re = x.re * y
   result.im = x.im * y
 
@@ -164,6 +178,7 @@ proc `*` *[T](x, y: Complex[T]): Complex[T] =
   ## Multiply ``x`` with ``y``.
   result.re = x.re * y.re - x.im * y.im
   result.im = x.im * y.re + x.re * y.im
+
 
 proc `+=` *[T](x: var Complex[T], y: Complex[T]) =
   ## Add ``y`` to ``x``.
@@ -217,7 +232,6 @@ proc exp*[T](z: Complex[T]): Complex[T] =
   result.re = rho * cos(theta)
   result.im = rho * sin(theta)
 
-
 proc ln*[T](z: Complex[T]): Complex[T] =
   ## Returns the natural log of ``z``.
   result.re = ln(abs(z))
@@ -243,7 +257,7 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
   elif y.re == 1.0 and y.im == 0.0:
     result = x
   elif y.re == -1.0 and y.im == 0.0:
-    result = 1.0/x
+    result = 1.0 / x
   else:
     var
       rho = abs(x)
@@ -252,6 +266,9 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
       r = y.re * theta + y.im * ln(rho)
     result.re = s * cos(r)
     result.im = s * sin(r)
+
+proc pow*[T](x: Complex[T], y: T): Complex[T] =
+  pow(x, toComplex(y))
 
 
 proc sin*[T](z: Complex[T]): Complex[T] =
@@ -278,7 +295,7 @@ proc tan*[T](z: Complex[T]): Complex[T] =
 
 proc arctan*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse tangent of ``z``.
-  result = 0.5*im * (ln(1 - im*z) - ln(1 + im*z))
+  result = 0.5*im * (ln(1.0 - im*z) - ln(1.0 + im*z))
 
 proc cot*[T](z: Complex[T]): Complex[T] =
   ## Returns the cotangent of ``z``.
@@ -286,7 +303,7 @@ proc cot*[T](z: Complex[T]): Complex[T] =
 
 proc arccot*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse cotangent of ``z``.
-  result = 0.5*im * (ln(1 - im/z) - ln(1 + im/z))
+  result = 0.5*im * (ln(1.0 - im/z) - ln(1.0 + im/z))
 
 proc sec*[T](z: Complex[T]): Complex[T] =
   ## Returns the secant of ``z``.
@@ -294,7 +311,7 @@ proc sec*[T](z: Complex[T]): Complex[T] =
 
 proc arcsec*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse secant of ``z``.
-  result = -im * ln(im * sqrt(1 - 1/(z*z)) + 1/z)
+  result = -im * ln(im * sqrt(1.0 - 1.0/(z*z)) + 1.0/z)
 
 proc csc*[T](z: Complex[T]): Complex[T] =
   ## Returns the cosecant of ``z``.
@@ -302,7 +319,7 @@ proc csc*[T](z: Complex[T]): Complex[T] =
 
 proc arccsc*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse cosecant of ``z``.
-  result = -im * ln(sqrt(1 - 1/(z*z)) + im/z)
+  result = -im * ln(sqrt(1.0 - 1.0/(z*z)) + im/z)
 
 
 proc sinh*[T](z: Complex[T]): Complex[T] =
@@ -311,7 +328,7 @@ proc sinh*[T](z: Complex[T]): Complex[T] =
 
 proc arcsinh*[T](z: Complex[T]): Complex[T] =
   ## Returns the inverse hyperbolic sine of ``z``.
-  result = ln(z + sqrt(z*z + 1))
+  result = ln(z + sqrt(z*z + 1.0))
 
 proc cosh*[T](z: Complex[T]): Complex[T] =
   ## Returns the hyperbolic cosine of ``z``.
@@ -363,7 +380,7 @@ proc polar*[T](z: Complex[T]): tuple[r, phi: T] =
   (r: abs(z), phi: phase(z))
 
 proc rect*[T](r, phi: T): Complex[T] =
-  ## Returns the complex number with polar coordinates ``r`` and ``phi``. 
+  ## Returns the complex number with polar coordinates ``r`` and ``phi``.
   ##
   ## | ``result.re = r * cos(phi)``
   ## | ``result.im = r * sin(phi)``
@@ -378,21 +395,22 @@ proc `$`*(z: Complex): string =
 
 
 when isMainModule:
-  var z: Complex128 = (0.0, 0.0)
-  var oo: Complex128 = (1.0, 1.0)
-  var a: Complex128 = (1.0, 2.0)
-  var b: Complex128 = (-1.0, -2.0)
-  var m1: Complex128 = (-1.0, 0.0)
-  var i: Complex128 = (0.0, 1.0)
-  var one: Complex128 = (1.0, 0.0)
-  var tt: Complex128 = (10.0, 20.0)
-  var ipi: Complex128 = (0.0, -PI)
+  var
+    z: Complex128 = (0.0, 0.0)
+    oo: Complex128 = (1.0, 1.0)
+    a: Complex128 = (1.0, 2.0)
+    b: Complex128 = (-1.0, -2.0)
+    m1: Complex128 = (-1.0, 0.0)
+    i: Complex128 = (0.0, 1.0)
+    one: Complex128 = (1.0, 0.0)
+    tt: Complex128 = (10.0, 20.0)
+    ipi: Complex128 = (0.0, -PI)
 
-  doAssert(a/2 =~ (0.5, 1.0))
-
+  doAssert(a/2.0 =~ (0.5, 1.0))
   doAssert(a == a)
   doAssert((a-a) == z)
   doAssert((a+b) == z)
+  doAssert((a+b) =~ 0.0)
   doAssert((a/b) == m1)
   doAssert((1.0/a) == (0.2, -0.4))
   doAssert((a*b) == (3.0, -4.0))
@@ -411,7 +429,9 @@ when isMainModule:
   doAssert(pow(z, z) =~ (1.0, 0.0))
   doAssert(pow(a, one) =~ a)
   doAssert(pow(a, m1) =~ (0.2, -0.4))
-  doAssert(pow(a, 2) !=~ a)
+  doAssert(pow(a, 2.0) =~ (-3.0, 4.0))
+  doAssert(pow(a, 2) =~ (-3.0, 4.0))
+  doAssert(not(pow(a, 2.0) =~ a))
 
   doAssert(ln(a) =~ (0.804718956217050, 1.107148717794090))
   doAssert(log10(a) =~ (0.349485002168009, 0.480828578784234))
@@ -420,25 +440,28 @@ when isMainModule:
   doAssert(sin(a) =~ (3.16577851321617, 1.95960104142161))
   doAssert(cos(a) =~ (2.03272300701967, -3.05189779915180))
   doAssert(tan(a) =~ (0.0338128260798967, 1.0147936161466335))
-  doAssert(cot(a) =~ 1.0/tan(a))
-  doAssert(sec(a) =~ 1.0/cos(a))
-  doAssert(csc(a) =~ 1.0/sin(a))
+  doAssert(cot(a) =~ 1.0 / tan(a))
+  doAssert(sec(a) =~ 1.0 / cos(a))
+  doAssert(csc(a) =~ 1.0 / sin(a))
   doAssert(arcsin(a) =~ (0.427078586392476, 1.528570919480998))
   doAssert(arccos(a) =~ (1.14371774040242, -1.52857091948100))
   doAssert(arctan(a) =~ (1.338972522294494, 0.402359478108525))
+  doAssert(arccot(a) =~ (0.2318238045004031, -0.402359478108525))
+  doAssert(arcsec(a) =~ (1.384478272687081, 0.3965682301123288))
+  doAssert(arccsc(a) =~ (0.1863180541078155, -0.3965682301123291))
 
   doAssert(cosh(a) =~ (-0.642148124715520, 1.068607421382778))
   doAssert(sinh(a) =~ (-0.489056259041294, 1.403119250622040))
   doAssert(tanh(a) =~ (1.1667362572409199, -0.243458201185725))
-  doAssert(sech(a) =~ 1/cosh(a))
-  doAssert(csch(a) =~ 1/sinh(a))
-  doAssert(coth(a) =~ 1/tanh(a))
+  doAssert(sech(a) =~ 1.0 / cosh(a))
+  doAssert(csch(a) =~ 1.0 / sinh(a))
+  doAssert(coth(a) =~ 1.0 / tanh(a))
   doAssert(arccosh(a) =~ (1.528570919480998, 1.14371774040242))
   doAssert(arcsinh(a) =~ (1.469351744368185, 1.06344002357775))
   doAssert(arctanh(a) =~ (0.173286795139986, 1.17809724509617))
-  doAssert(arcsech(a) =~ arccosh(1/a))
-  doAssert(arccsch(a) =~ arcsinh(1/a))
-  doAssert(arccoth(a) =~ arctanh(1/a))
+  doAssert(arcsech(a) =~ arccosh(1.0/a))
+  doAssert(arccsch(a) =~ arcsinh(1.0/a))
+  doAssert(arccoth(a) =~ arctanh(1.0/a))
 
   doAssert(phase(a) == 1.1071487177940904)
   var t = polar(a)
@@ -446,15 +469,17 @@ when isMainModule:
   doAssert(rect(1.0, 2.0) =~ (-0.4161468365471424, 0.9092974268256817))
 
 
-  var i64: Complex64 = (0.0f, 1.0f)
-  var a64: Complex64 = 2.0f*i64 + 1.0.float32
-  var b64: Complex64 = (re: -1.0, im: -2.0)
+  var
+    i64: Complex64 = (0.0f, 1.0f)
+    a64: Complex64 = 2.0f*i64 + 1.0.float32
+    b64: Complex64 = (re: -1.0'f32, im: -2.0'f32)
 
   doAssert(a64 == a64)
   doAssert(a64 == -b64)
-  doAssert(a64 + b64 =~ 0.0f)
-  doAssert(pow(a64, b64) !=~ a64)
+  doAssert(a64 + b64 =~ 0.0'f32)
+  doAssert(not(pow(a64, b64) =~ a64))
   doAssert(pow(a64, 0.5f) =~ sqrt(a64))
+  doAssert(pow(a64, 2) =~ (-3.0'f32, 4.0'f32))
   doAssert(sin(arcsin(b64)) =~ b64)
   doAssert(cosh(arccosh(a64)) =~ a64)
 
