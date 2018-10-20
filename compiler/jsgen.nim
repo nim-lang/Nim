@@ -911,7 +911,12 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
         let tmp = p.getTemp(false)
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
       elif b.typ == etyBaseIndex:
-        lineF(p, "$# = $#;$n", [a.res, b.address])
+        lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
+      elif mapType(p, x.typ) == etyBaseIndex and mapType(p, y.typ) == etyBaseIndex:
+        # ^ this is a quite hacky but some procs (eg genArrayAccess) don't
+        # set r.typ properly, and changing them requires even more fixes
+        # in turn, so...
+        lineF(p, "$1 = $2;$n", [a.res, b.res])
       else:
         internalError(p.config, x.info, "genAsgn")
     else:
@@ -1169,8 +1174,12 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
       if {sfAddrTaken, sfGlobal} * s.flags != {}:
-        r.address = "$1[0]" % [s.loc.r]
-        r.res = "$1[1]" % [s.loc.r]
+        if isIndirect(s):
+          r.address = "$1[0][0]" % [s.loc.r]
+          r.res = "$1[0][1]" % [s.loc.r]
+        else:
+          r.address = "$1[0]" % [s.loc.r]
+          r.res = "$1[1]" % [s.loc.r]
       else:
         r.address = s.loc.r
         r.res = s.loc.r & "_Idx"
@@ -1210,12 +1219,12 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, it, a)
-    r.kind = resExpr
-    if a.typ == etyBaseIndex:
-      r.res = "$1[$2]" % [a.address, a.res]
-    elif it.kind == nkCall:
+    r.kind = a.kind
+    if it.kind in {nkDerefExpr, nkCall}:
       let tmp = p.getTemp
       r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
+    elif a.typ == etyBaseIndex:
+      r.res = "$1[$2]" % [a.address, a.res]
     elif t == etyBaseIndex:
       r.res = "$1[0]" % [a.res]
     else:
@@ -1531,8 +1540,12 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
           lineF(p, varCode & " = $3, $2_Idx = $4;$n",
                    [returnType, v.loc.r, a.address, a.res])
         else:
-          lineF(p, varCode & " = [$3, $4];$n",
-                   [returnType, v.loc.r, a.address, a.res])
+          if isIndirect(v):
+            lineF(p, varCode & " = [[$3, $4]];$n",
+                     [returnType, v.loc.r, a.address, a.res])
+          else:
+            lineF(p, varCode & " = [$3, $4];$n",
+                     [returnType, v.loc.r, a.address, a.res])
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
@@ -1579,7 +1592,12 @@ proc genNew(p: PProc, n: PNode) =
   var a: TCompRes
   gen(p, n.sons[1], a)
   var t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
-  lineF(p, "$1 = $2;$n", [a.res, createVar(p, t, false)])
+  if mapType(t) == etyObject:
+    lineF(p, "$1 = $2;$n", [a.res, createVar(p, t, false)])
+  elif a.typ == etyBaseIndex:
+    lineF(p, "$1 = [$3]; $2 = 0;$n", [a.address, a.res, createVar(p, t, false)])
+  else:
+    lineF(p, "$1 = [[$2], 0];$n", [a.res, createVar(p, t, false)])
 
 proc genNewSeq(p: PProc, n: PNode) =
   var x, y: TCompRes
@@ -1856,7 +1874,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
     if i > 0: add(r.res, ", ")
     gen(p, n.sons[i], a)
     if a.typ == etyBaseIndex:
-      add(r.res, n.sons[i].sym.loc.r)
+      addf(r.res, "[$1, $2]", [a.address, a.res])
     else:
       add(r.res, a.res)
   add(r.res, "]")
@@ -1871,7 +1889,7 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
     if it.kind == nkExprColonExpr: it = it.sons[1]
     gen(p, it, a)
     if a.typ == etyBaseIndex:
-      addf(r.res, "Field$#: $#", [i.rope, a.address])
+      addf(r.res, "Field$#: [$#, $#]", [i.rope, a.address, a.res])
     else:
       addf(r.res, "Field$#: $#", [i.rope, a.res])
   r.res.add("}")
@@ -1899,7 +1917,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
       useMagic(p, "nimCopy")
       a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
     if a.typ == etyBaseIndex:
-      addf(initList, "$#: $#", [f.loc.r, a.address])
+      addf(initList, "$#: [$#, $#]", [f.loc.r, a.address, a.res])
     else:
       addf(initList, "$#: $#", [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)

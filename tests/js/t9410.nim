@@ -1,12 +1,49 @@
 discard """
-  output: '''654 654 654 654
+  output: '''3 3
+4 4 4
+5 5 5 5
+654 654 654 654
 256 256 256 256
-543 543 543 543
+0 543 543 543
 20 20 20
+true 321 321
+ it's a ref! it's a ref!
+@[1, 102, 3]
+
+globals:
+3 3
+4 4 4
+5 5 5 5
+654 654 654 654
+256 256 256 256
+0 543 543 543
+20 20 20
+true 321 321
+ it's a ref! it's a ref!
+@[1, 102, 3]
 '''
 """
 
-block:
+template tests =
+  block:
+    var i = 0
+    i = 2
+
+    var y = i.addr
+    y[] = 3
+    echo i, " ", y[]
+
+    let z = i.addr
+    z[] = 4
+    echo i, " ", y[], " ", z[]
+
+    var hmm = (a: (b: z))
+    var hmmptr = hmm.a.b.addr
+    hmmptr[][] = 5
+
+    echo i, " ", y[], " ", z[], " ", hmmptr[][]
+
+  block:
     var someint = 500
 
     let p: ptr int = someint.addr
@@ -16,7 +53,7 @@ block:
     p[] = 654
     echo p[], " ", tup.f[], " ", tcopy.f[], " ", vtcopy.f[]
 
-block:
+  block:
     var someint = 500
 
     var p: ptr int = someint.addr
@@ -25,7 +62,7 @@ block:
     p[] = 256
     echo someint, " ", p[], " ", arr[0][], " ", arrc[0][]
 
-block:
+  block:
     var someref: ref int
     new(someref)
     var someref2 = someref
@@ -36,9 +73,12 @@ block:
 
     someref[] = 543
 
+    proc passref(r: var ref int): var ref int = r
+    new(passref(someref))
+
     echo someref[], " ", tup1.f[], " ", tup2.f[], " ", someref2[]
 
-block:
+  block:
     type Whatever = object
       i: ref int
 
@@ -51,3 +91,48 @@ block:
 
     someref[] = 20
     echo w.i[], " ", someref[], " ", wcopy.i[]
+
+  block:
+    type Obj = object
+      x, y: int
+
+    var objrefs: seq[ref Obj] = @[(ref Obj)(nil), nil, nil]
+    objrefs[2].new
+    objrefs[2][] = Obj(x: 123, y: 321)
+    objrefs[1] = objrefs[2]
+    echo (objrefs[0] == nil), " ", objrefs[1].y, " ", objrefs[2].y
+
+  block:
+    var refs: seq[ref string] = @[(ref string)(nil), nil, nil]
+    refs[1].new
+    refs[1][] = "it's a ref!"
+    refs[0] = refs[1]
+    refs[2] = refs[1]
+    new(refs[0])
+    echo refs[0][], " ", refs[1][], " ", refs[2][]
+
+  block:
+    proc retaddr(p: var int): var int =
+      p
+
+    proc tfoo(x: var int) =
+      x += 10
+      var y = x.addr
+      y[] += 20
+      retaddr(x) += 30
+      let z = retaddr(x).addr
+      z[] += 40
+
+    var ints = @[1, 2, 3]
+    tfoo(ints[1])
+    echo ints
+
+proc tests_in_proc =
+  tests
+
+# since pointers are handled differently in global/local contexts
+# let's just run all of them twice
+tests_in_proc()
+echo ""
+echo "globals:"
+tests
