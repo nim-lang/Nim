@@ -103,3 +103,7 @@ block t5349:
 
   for line in lines("test.txt"):
     echo line
+
+block t9456:
+  var f: File
+  f.close()
