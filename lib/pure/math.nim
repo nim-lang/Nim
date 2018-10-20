@@ -53,6 +53,21 @@ proc fac*(n: int): int =
   assert(n < factTable.len, $n & " is too large to look up in the table")
   factTable[n]
 
+proc isClose*[T: SomeFloat](x, y: T; rtol = 1e-05, atol = 1e-08): bool {.noSideEffect.} =
+  ## Implements something close to NumPy's isclose on floats
+  ## Compares floating-point numbers based on a combination of
+  ## relative and absolute tolerance
+  result = abs(x - y) <= (atol + rtol * max(abs(x), abs(y)))
+
+proc `=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect.} =
+  ## Compares floating-point numbers with the defaults of isClose
+  result = isClose(x,y)
+
+proc `!=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect.} =
+  ## Returns negation of `=~`
+  result = not (x =~ y)
+
+
 {.push checks:off, line_dir:off, stack_trace:off.}
 
 when defined(Posix):
@@ -361,7 +376,7 @@ when not defined(JS): # C
       ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
-      ## Computes the natural log of the gamma function for ``x``. 
+      ## Computes the natural log of the gamma function for ``x``.
 
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
@@ -694,44 +709,40 @@ when isMainModule and not defined(JS) and not windowsCC89:
   assert(erfc(6.0) < erfc(5.0))
 
 when isMainModule:
-  # Function for approximate comparison of floats
-  proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
-
-  block: # prod
-    doAssert prod([1, 2, 3, 4]) == 24
-    doAssert prod([1.5, 3.4]) == 5.1
-    let x: seq[float] = @[]
-    doAssert prod(x) == 1.0
+  block: # floating point comparison tests for very large and very small numbers
+    doAssert(1e10 =~ (1e10 + 1))
+    doAssert((1/1e10) =~ 1/(1e10 + 1))
 
   block: # round() tests
     # Round to 0 decimal places
-    doAssert round(54.652) ==~ 55.0
-    doAssert round(54.352) ==~ 54.0
-    doAssert round(-54.652) ==~ -55.0
-    doAssert round(-54.352) ==~ -54.0
-    doAssert round(0.0) ==~ 0.0
+    doAssert round(54.652) =~ 55.0
+    doAssert(not (round(54.652) !=~ 55.0))
+    doAssert round(54.352) =~ 54.0
+    doAssert round(-54.652) =~ -55.0
+    doAssert round(-54.352) =~ -54.0
+    doAssert round(0.0) =~ 0.0
     # Round to positive decimal places
-    doAssert round(-547.652, 1) ==~ -547.7
-    doAssert round(547.652, 1) ==~ 547.7
-    doAssert round(-547.652, 2) ==~ -547.65
-    doAssert round(547.652, 2) ==~ 547.65
+    doAssert round(-547.652, 1) =~ -547.7
+    doAssert round(547.652, 1) =~ 547.7
+    doAssert round(-547.652, 2) =~ -547.65
+    doAssert round(547.652, 2) =~ 547.65
     # Round to negative decimal places
-    doAssert round(547.652, -1) ==~ 550.0
-    doAssert round(547.652, -2) ==~ 500.0
-    doAssert round(547.652, -3) ==~ 1000.0
-    doAssert round(547.652, -4) ==~ 0.0
-    doAssert round(-547.652, -1) ==~ -550.0
-    doAssert round(-547.652, -2) ==~ -500.0
-    doAssert round(-547.652, -3) ==~ -1000.0
-    doAssert round(-547.652, -4) ==~ 0.0
+    doAssert round(547.652, -1) =~ 550.0
+    doAssert round(547.652, -2) =~ 500.0
+    doAssert round(547.652, -3) =~ 1000.0
+    doAssert round(547.652, -4) =~ 0.0
+    doAssert round(-547.652, -1) =~ -550.0
+    doAssert round(-547.652, -2) =~ -500.0
+    doAssert round(-547.652, -3) =~ -1000.0
+    doAssert round(-547.652, -4) =~ 0.0
 
   block: # splitDecimal() tests
-    doAssert splitDecimal(54.674).intpart ==~ 54.0
-    doAssert splitDecimal(54.674).floatpart ==~ 0.674
-    doAssert splitDecimal(-693.4356).intpart ==~ -693.0
-    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-    doAssert splitDecimal(0.0).intpart ==~ 0.0
-    doAssert splitDecimal(0.0).floatpart ==~ 0.0
+    doAssert splitDecimal(54.674).intpart =~ 54.0
+    doAssert splitDecimal(54.674).floatpart =~ 0.674
+    doAssert splitDecimal(-693.4356).intpart =~ -693.0
+    doAssert splitDecimal(-693.4356).floatpart =~ -0.4356
+    doAssert splitDecimal(0.0).intpart =~ 0.0
+    doAssert splitDecimal(0.0).floatpart =~ 0.0
 
   block: # trunc tests for vcc
     doAssert(trunc(-1.1) == -1)
@@ -804,8 +815,8 @@ when isMainModule:
     doAssert floorDiv(-8, -3) == 2
     doAssert floorMod(-8, -3) == -2
 
-    doAssert floorMod(8.0, -3.0) ==~ -1.0
-    doAssert floorMod(-8.5, 3.0) ==~ 0.5
+    doAssert floorMod(8.0, -3.0) =~ -1.0
+    doAssert floorMod(-8.5, 3.0) =~ 0.5
 
   block: # log
     doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)
