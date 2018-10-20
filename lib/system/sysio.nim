@@ -130,7 +130,10 @@ else:
 const
   BufSize = 4000
 
-proc close*(f: File) = discard c_fclose(f)
+proc close*(f: File) =
+  if not f.isNil:
+    discard c_fclose(f)
+
 proc readChar(f: File): char =
   let x = c_fgetc(f)
   if x < 0:
