@@ -43,8 +43,9 @@ converter toComplex64*[T: SomeInteger | float32](x: T): Complex64 =
 
 converter toComplex64*[T: Complex](z: T): Complex64 =
   ## Convert some complex number ``z`` to a 64-bit complex number.
-  result.re = z.re.float32
-  result.im = z.im.float32
+  let (re, im) = z
+  result.re = re.float32
+  result.im = im.float32
 
 ## Converters are defined to implicitly convert ordinary numbers and complex
 ## types into complex types. This works normally for 128-bit complex numbers but
