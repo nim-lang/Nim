@@ -6,6 +6,9 @@ discard """
 256 256 256 256
 0 543 543 543
 20 20 20
+true
+false
+1 2 456 456 true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
@@ -18,6 +21,9 @@ globals:
 256 256 256 256
 0 543 543 543
 20 20 20
+true
+false
+1 2 456 456 true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
@@ -91,6 +97,28 @@ template tests =
 
     someref[] = 20
     echo w.i[], " ", someref[], " ", wcopy.i[]
+
+  block:
+    var seqs: ref seq[ref seq[ref int]]
+    new(seqs)
+    seqs[] = newSeq[ref seq[ref int]](1)
+    new(seqs[0])
+    seqs[0][] = newSeq[ref int](0)
+
+    var aref: ref int
+    new aref
+    aref[] = 654
+
+    let arefs = [aref]
+    echo arefs[0] == aref
+    seqs[0][] &= arefs[0]
+    seqs[0][] &= aref
+    seqs[0][0][] = 456
+    let seqs2 = seqs
+    let same = seqs2[0][0] == seqs2[0][1]
+    new(aref)
+    echo arefs[0] == aref
+    echo seqs[].len, " ", seqs[0][].len, " ", seqs[0][0][], " ", seqs[0][1][], " ", same
 
   block:
     type Obj = object
