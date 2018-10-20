@@ -12,8 +12,7 @@
 ## This module implements complex numbers.
 ## Complex numbers are currently implemented as generic on a 64-bit or 32-bit float
 {.push checks:off, line_dir:off, stack_trace:off, debugger:off.}
-# the user does not want to trace a part
-# of the standard library!
+# the user does not want to trace a part of the standard library!
 
 
 import math
@@ -21,8 +20,8 @@ import math
 type
   Complex*[T] = tuple[re, im: T]
   ## a complex number, consisting of a real and an imaginary part
-  Complex128* = tuple[re, im: float64]
-  Complex64* = tuple[re, im: float32]
+  Complex128* = Complex[float64]
+  Complex64* = Complex[float32]
   ## Aliases for pairs of 64-bit floats and 32-bit floats
 {.deprecated: [TComplex: Complex128].}
 
@@ -37,7 +36,7 @@ converter toComplex128*[T: Complex](z: T): Complex128 =
   result.re = re.float64
   result.im = im.float64
 
-converter toComplex64*(x: float32): Complex64 =
+converter toComplex64*[T: SomeInteger | float32](x: T): Complex64 =
   ## Convert some number ``x`` to a 64-bit complex number.
   result.re = x.float32
   result.im = 0
@@ -53,28 +52,28 @@ converter toComplex64*[T: Complex](z: T): Complex64 =
 ## 64-bit complex numbers and vice versa can cause compilation errors
 
 proc abs*[T](z: Complex[T]): T =
-  ## Return the distance from (0,0) to `z`.
+  ## Return the distance from (0,0) to ``z``.
   result = hypot(z.re, z.im)
 
 proc abs2*[T](z: Complex[T]): T =
-  ## Return the squared distance from (0,0) to `z`.
+  ## Return the squared distance from (0,0) to ``z``.
   result = z.re*z.re + z.im*z.im
 
 proc conjugate*[T](z: Complex[T]): Complex[T] =
-  ## Conjugate of complex number `z`.
+  ## Conjugate of complex number ``z``.
   result.re = z.re
   result.im = -z.im
 
 proc inv*[T](z: Complex[T]): Complex[T] =
-  ## Multiplicative inverse of complex number `z`.
+  ## Multiplicative inverse of complex number ``z``.
   conjugate(z)/abs2(z)
 
 proc `==` *[T](x, y: Complex[T]): bool =
-  ## Compare two complex numbers `x` and `y` for equality.
+  ## Compare two complex numbers ``x`` and ``y`` for equality.
   result = x.re == y.re and x.im == y.im
 
 proc `=~` *[T](x, y: Complex[T]): bool =
-  ## Compare two complex numbers `x` and `y` approximately.
+  ## Compare two complex numbers ``x`` and ``y`` approximately.
   result = (x.re =~ y.re) and (x.im =~ y.im)
 
 proc `!=~` *[T](x, y: Complex[T]): bool =
@@ -116,16 +115,16 @@ proc `-` *[T](x, y: Complex[T]): Complex[T] =
   result.im = x.im - y.im
 
 proc `/` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
-  ## Divide complex number `x` by real number `y`.
+  ## Divide complex number ``x`` by real number ``y``.
   result.re = x.re / y
   result.im = x.im / y
 
 proc `/` *[T](x: SomeFloat, y: Complex[T]): Complex[T] =
-  ## Divide real number `x` by complex number `y`.
+  ## Divide real number ``x`` by complex number ``y``.
   result = x * inv(y)
 
 proc `/` *[T](x, y: Complex[T]): Complex[T] =
-  ## Divide `x` by `y`.
+  ## Divide ``x`` by ``y``.
   var
     r, den: T
   if abs(y.re) < abs(y.im):
@@ -150,32 +149,32 @@ proc `*` *[T](x: Complex[T], y: SomeFloat): Complex[T] =
   result.im = x.im * y
 
 proc `*` *[T](x, y: Complex[T]): Complex[T] =
-  ## Multiply `x` with `y`.
+  ## Multiply ``x`` with ``y``.
   result.re = x.re * y.re - x.im * y.im
   result.im = x.im * y.re + x.re * y.im
 
 proc `+=` *[T](x: var Complex[T], y: Complex[T]) =
-  ## Add `y` to `x`.
+  ## Add ``y`` to ``x``.
   x.re += y.re
   x.im += y.im
 
 proc `-=` *[T](x: var Complex[T], y: Complex[T]) =
-  ## Subtract `y` from `x`.
+  ## Subtract ``y`` from ``x``.
   x.re -= y.re
   x.im -= y.im
 
 proc `*=` *[T](x: var Complex[T], y: Complex[T]) =
-  ## Multiply `y` to `x`.
+  ## Multiply ``y`` to ``x``.
   let im = x.im * y.re + x.re * y.im
   x.re = x.re * y.re - x.im * y.im
   x.im = im
 
 proc `/=` *[T](x: var Complex[T], y: Complex[T]) =
-  ## Divide `x` by `y` in place.
+  ## Divide ``x`` by ``y`` in place.
   x = x / y
 
 proc sqrt*[T](z: Complex[T]): Complex[T] =
-  ## Square root for a complex number `z`.
+  ## Square root for a complex number ``z``.
   var x, y, w, r: T
 
   if z.re == 0.0 and z.im == 0.0:
@@ -199,7 +198,7 @@ proc sqrt*[T](z: Complex[T]): Complex[T] =
 
 
 proc exp*[T](z: Complex[T]): Complex[T] =
-  ## e raised to the power `z`.
+  ## e raised to the power ``z``.
   var rho   = exp(z.re)
   var theta = z.im
   result.re = rho*cos(theta)
@@ -207,21 +206,21 @@ proc exp*[T](z: Complex[T]): Complex[T] =
 
 
 proc ln*[T](z: Complex[T]): Complex[T] =
-  ## Returns the natural log of `z`.
+  ## Returns the natural log of ``z``.
   result.re = ln(abs(z))
   result.im = arctan2(z.im,z.re)
 
 proc log10*[T](z: Complex[T]): Complex[T] =
-  ## Returns the log base 10 of `z`.
+  ## Returns the log base 10 of ``z``.
   result = ln(z)/ln(10.0)
 
 proc log2*[T](z: Complex[T]): Complex[T] =
-  ## Returns the log base 2 of `z`.
+  ## Returns the log base 2 of ``z``.
   result = ln(z)/ln(2.0)
 
 
 proc pow*[T](x, y: Complex[T]): Complex[T] =
-  ## `x` raised to the power `y`.
+  ## ``x`` raised to the power ``y``.
   if x.re == 0.0  and  x.im == 0.0:
     if y.re == 0.0  and  y.im == 0.0:
       result.re = 1.0
@@ -242,131 +241,131 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
     result.im = s*sin(r)
 
 proc `**` *[T](x, y: Complex[T]): Complex[T] =
-  ## Exponentiation operator: `x` raised to the power `y`
+  ## Exponentiation operator: ``x`` raised to the power ``y``
   pow(x, y)
 
 proc sin*[T](z: Complex[T]): Complex[T] =
-  ## Returns the sine of `z`.
+  ## Returns the sine of ``z``.
   result.re = sin(z.re)*cosh(z.im)
   result.im = cos(z.re)*sinh(z.im)
 
 proc arcsin*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse sine of `z`.
+  ## Returns the inverse sine of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = -i*ln(i*z + sqrt(1.0-z*z))
 
 proc cos*[T](z: Complex[T]): Complex[T] =
-  ## Returns the cosine of `z`.
+  ## Returns the cosine of ``z``.
   result.re = cos(z.re)*cosh(z.im)
   result.im = -sin(z.re)*sinh(z.im)
 
 proc arccos*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse cosine of `z`.
+  ## Returns the inverse cosine of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = -i*ln(z + sqrt(z*z-1.0))
 
 proc tan*[T](z: Complex[T]): Complex[T] =
-  ## Returns the tangent of `z`.
+  ## Returns the tangent of ``z``.
   result = sin(z)/cos(z)
 
 proc arctan*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse tangent of `z`.
+  ## Returns the inverse tangent of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = 0.5*i*(ln(1-i*z)-ln(1+i*z))
 
 proc cot*[T](z: Complex[T]): Complex[T] =
-  ## Returns the cotangent of `z`.
+  ## Returns the cotangent of ``z``.
   result = cos(z)/sin(z)
 
 proc arccot*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse cotangent of `z`.
+  ## Returns the inverse cotangent of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = 0.5*i*(ln(1-i/z)-ln(1+i/z))
 
 proc sec*[T](z: Complex[T]): Complex[T] =
-  ## Returns the secant of `z`.
+  ## Returns the secant of ``z``.
   result = 1.0/cos(z)
 
 proc arcsec*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse secant of `z`.
+  ## Returns the inverse secant of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = -i*ln(i*sqrt(1-1/(z*z))+1/z)
 
 proc csc*[T](z: Complex[T]): Complex[T] =
-  ## Returns the cosecant of `z`.
+  ## Returns the cosecant of ``z``.
   result = 1.0/sin(z)
 
 proc arccsc*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse cosecant of `z`.
+  ## Returns the inverse cosecant of ``z``.
   let i: Complex[T] = (re: 0.0, im: 1.0)
   result = -i*ln(sqrt(1-1/(z*z))+i/z)
 
 
 proc sinh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic sine of `z`.
+  ## Returns the hyperbolic sine of ``z``.
   result = 0.5*(exp(z)-exp(-z))
 
 proc arcsinh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic sine of `z`.
+  ## Returns the inverse hyperbolic sine of ``z``.
   result = ln(z+sqrt(z*z+1))
 
 proc cosh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic cosine of `z`.
+  ## Returns the hyperbolic cosine of ``z``.
   result = 0.5*(exp(z)+exp(-z))
 
 proc arccosh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic cosine of `z`.
+  ## Returns the inverse hyperbolic cosine of ``z``.
   result = ln(z+sqrt(z*z-1.0))
 
 proc tanh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic tangent of `z`.
+  ## Returns the hyperbolic tangent of ``z``.
   result = sinh(z)/cosh(z)
 
 proc arctanh*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic tangent of `z`.
+  ## Returns the inverse hyperbolic tangent of ``z``.
   result = 0.5*(ln((1.0+z)/(1.0-z)))
 
 proc sech*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic secant of `z`.
+  ## Returns the hyperbolic secant of ``z``.
   result = 2.0/(exp(z)+exp(-z))
 
 proc arcsech*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic secant of `z`.
+  ## Returns the inverse hyperbolic secant of ``z``.
   result = ln(1.0/z+sqrt(1.0/z+1.0)*sqrt(1.0/z-1.0))
 
 proc csch*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic cosecant of `z`.
+  ## Returns the hyperbolic cosecant of ``z``.
   result = 2.0/(exp(z)-exp(-z))
 
 proc arccsch*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic cosecant of `z`.
+  ## Returns the inverse hyperbolic cosecant of ``z``.
   result = ln(1.0/z+sqrt(1.0/(z*z)+1.0))
 
 proc coth*[T](z: Complex[T]): Complex[T] =
-  ## Returns the hyperbolic cotangent of `z`.
+  ## Returns the hyperbolic cotangent of ``z``.
   result = cosh(z)/sinh(z)
 
 proc arccoth*[T](z: Complex[T]): Complex[T] =
-  ## Returns the inverse hyperbolic cotangent of `z`.
+  ## Returns the inverse hyperbolic cotangent of ``z``.
   result = 0.5*(ln(1.0+1.0/z)-ln(1.0-1.0/z))
 
 proc phase*[T](z: Complex[T]): T =
-  ## Returns the phase of `z`.
+  ## Returns the phase of ``z``.
   arctan2(z.im, z.re)
 
 proc polar*[T](z: Complex[T]): tuple[r, phi: T] =
-  ## Returns `z` in polar coordinates.
+  ## Returns ``z`` in polar coordinates.
   (r: abs(z), phi: phase(z))
 
 proc rect*[T](r, phi: T): Complex[T] =
-  ## Returns the complex number with polar coordinates `r` and `phi`.
+  ## Returns the complex number with polar coordinates ``r`` and ``phi``.
   # result.re = r * cos(phi)
   # result.im = r * sin(phi)
   (re: r * cos(phi), im: r * sin(phi))
 
 
 proc `$`*(z: Complex): string =
-  ## Returns `z`'s string representation as ``"(re, im)"``.
+  ## Returns ``z``'s string representation as ``"(re, im)"``.
   result = "(" & $z.re & ", " & $z.im & ")"
 
 {.pop.}
