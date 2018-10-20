@@ -446,12 +446,12 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let save = p.blocks[^1].sections[cpsStmts]
   p.blocks[^1].sections[cpsStmts] = nil
 
-  echo p.blocks[^1].sections[cpsLocals]
+  inc p.splitDecls
 
   for j in 0 ..< casePos:
     genStmts(p, n.sons[j])
 
-  echo p.blocks[^1].sections[cpsLocals]
+  dec p.splitDecls
 
   let stmtsBefore = p.blocks[^1].sections[cpsStmts]
 
@@ -460,19 +460,9 @@ proc genComputedGoto(p: BProc; n: PNode) =
   for j in casePos+1 ..< n.sons.len:
     genStmts(p, n.sons[j])
 
-  echo p.blocks[^1].sections[cpsLocals]
-
-  echo "------------------------------------------------------------"
-
   let stmtsAfter = p.blocks[^1].sections[cpsStmts]
 
   p.blocks[^1].sections[cpsStmts] = save & stmtsBefore
-
-
-  echo stmtsBefore
-  echo "case of:..."
-  echo stmtsAfter
-  echo "------------------------------------------------------------"
 
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
