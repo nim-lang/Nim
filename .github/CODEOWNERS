@@ -1,0 +1,68 @@
+# github CODEOWNERS file
+# syntax: https://help.github.com/articles/about-codeowners/
+# related discussion: [how to increase velocity for merging PRs? - Nim forum](https://forum.nim-lang.org/t/4285)
+#
+# Each line is a file pattern followed by one or more owners.
+# Order is important; the last matching pattern takes the most
+# precedence to determine who will be requested for review for a PR.
+#
+# Note: This list is incomplete, in doubt @dom96 is responsible for the standard
+# library, @araq is responsible for the compiler.
+
+## global
+* @araq
+
+## Compiler
+
+## Standard library
+*async* @dom96
+*strutils* @araq
+*sequtils* @dom96 @araq
+*times* @GULPF
+
+os.nim @dom96 @araq
+ospaths.nim @dom96 @araq
+re.nim @araq
+nre.nim @flaviu
+
+math.nim @krux02 @cooldome
+fenv.nim @krux02 @cooldome
+
+collections @GULPF
+*json*.nim @dom96
+*parseopt* @araq
+
+###################################################
+## informal entries not easily mapped to CODEOWNERS
+
+## Compiler
+
+#Renderer:                       @cooldome, @araq
+#Parsing, Lexing:                @araq
+#Order of passes:                @cooldome
+#Semantic Checking:              @araq
+#Virtual machine:                @jangko @GULPF @araq
+#Sempass2: effects tracking:     @cooldome @araq
+#type system, concepts:          @zahary
+#transf:                         @cooldome @araq
+#semfold constant folding:       @araq
+#template instantiation:         @zahary @araq
+#term rewriting macros:          @cooldome @araq
+#closure interators:             @yglukhov @araq
+#lambda lifting:                 @yglukhov @araq
+#c, cpp codegen:                 @lemonboy @araq
+#js codegen:                     @yglukhov @lemonboy
+#alias analysis:                 @araq
+#dfa, writetracking:             @araq
+#parallel, multithreading:       @araq
+#incremental:                    @araq
+#sizeof computations:            @krux02
+#Exception handling:             @cooldome @araq
+
+## Standard library
+
+# io: @dom96
+# garbage collector: @araq
+# Go garbage collector: @stefantalpalaru
+# coroutines:  @Rokas @Kupstys
+

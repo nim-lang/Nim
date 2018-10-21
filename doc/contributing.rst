@@ -8,7 +8,8 @@ The PR has to be approved (and is often merged too) by one "code owner", either
 by the code owner who is responsible for the subsystem the PR belongs to or by
 two core developers or by Araq.
 
-See `codeowners <codeowners.html>`_ for more details.
+See `CODEOWNERS <https://github.com/nim-lang/Nim/blob/devel/.github/CODEOWNERS>`_
+for more details.
 
 
 Writing tests
