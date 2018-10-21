@@ -228,6 +228,7 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
+  if (`s` === null) return "";
   var len = `s`.length;
   var asciiPart = new Array(len);
   var fcc = String.fromCharCode;
