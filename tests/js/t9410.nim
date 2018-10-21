@@ -6,9 +6,10 @@ discard """
 256 256 256 256
 0 543 543 543
 20 20 20
+0 222 222 true
 true
-false
-1 2 456 456 true
+true
+456 1 2 456 456 true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
@@ -21,9 +22,10 @@ globals:
 256 256 256 256
 0 543 543 543
 20 20 20
+0 222 222 true
 true
-false
-1 2 456 456 true
+true
+456 1 2 456 456 true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
@@ -99,6 +101,21 @@ template tests =
     echo w.i[], " ", someref[], " ", wcopy.i[]
 
   block:
+    var oneseq: ref seq[ref int]
+    new(oneseq)
+    var aref: ref int
+    new(aref)
+    aref[] = 123
+    let arefs = [aref]
+    oneseq[] &= arefs[0]
+    oneseq[] &= aref
+    # oneseq[] &= aref
+    aref[] = 222
+    new(aref)
+    echo aref[], " ", oneseq[0][], " ", oneseq[1][], " ", oneseq[0] == oneseq[1]
+
+
+  block:
     var seqs: ref seq[ref seq[ref int]]
     new(seqs)
     seqs[] = newSeq[ref seq[ref int]](1)
@@ -113,12 +130,11 @@ template tests =
     echo arefs[0] == aref
     seqs[0][] &= arefs[0]
     seqs[0][] &= aref
-    seqs[0][0][] = 456
+    seqs[0][1][] = 456
     let seqs2 = seqs
     let same = seqs2[0][0] == seqs2[0][1]
-    new(aref)
     echo arefs[0] == aref
-    echo seqs[].len, " ", seqs[0][].len, " ", seqs[0][0][], " ", seqs[0][1][], " ", same
+    echo aref[], " ", seqs[].len, " ", seqs[0][].len, " ", seqs[0][0][], " ", seqs[0][1][], " ", same
 
   block:
     type Obj = object

@@ -524,6 +524,32 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
+  of mEqRef, mEqUntracedRef:
+    if mapType(n[1].typ) != etyBaseIndex:
+      arithAux(p, n, r, op)
+    else:
+      var x, y: TCompRes
+      gen(p, n[1], x)
+      gen(p, n[2], y)
+      #let targetBaseIndexLHS = n[1].kind == nkSym and
+      #                        {sfAddrTaken, sfGlobal} * n[1].sym.flags == {}
+      #let targetBaseIndexRHS = n[2].kind == nkSym and
+      #                        {sfAddrTaken, sfGlobal} * n[2].sym.flags == {}
+      r.res = ~"("
+      #debug n[1]
+      const TmpKinds = nkCallKinds + {nkBracketExpr}
+      if n[1].kind in TmpKinds:
+        let tmp = p.getTemp
+        r.res &= "($1 = $2), " % [tmp, x.res]
+        x.res = "$1[1]" % [tmp]
+        x.address = "$1[0]" % [tmp]
+      if n[2].kind in TmpKinds:
+        let tmp = p.getTemp
+        r.res &= "($1 = $2), " % [tmp, y.res]
+        y.res = "$1[1]" % [tmp]
+        y.address = "$1[0]" % [tmp]
+      r.res &= "($# == $# && $# == $#)" % [x.address, y.address, x.res, y.res]
+      r.res &= ")"
   else:
     arithAux(p, n, r, op)
   r.kind = resExpr
@@ -869,7 +895,8 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   result = (y.kind in nodeKindsNeedNoCopy) or
-      (skipTypes(y.typ, abstractInst).kind in {tyRef, tyPtr, tyLent, tyVar})
+      (mapType(y.typ) != etyBaseIndex and
+       skipTypes(y.typ, abstractInst).kind in {tyRef, tyPtr, tyLent, tyVar})
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -1226,7 +1253,10 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
     elif a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif t == etyBaseIndex:
-      r.res = "$1[0]" % [a.res]
+      let tmp = p.getTemp
+      r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
+    #elif t == etyBaseIndex:
+    #  r.res = "$1[0]" % [a.res]
     else:
       internalError(p.config, n.info, "genDeref")
 
@@ -1251,7 +1281,7 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int =
     add(r.res, ", ")
     add(r.res, a.res)
     if emitted != nil: inc emitted[]
-  elif n.typ.kind in {tyVar, tyLent} and n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
+  elif n.typ.kind in {tyVar, tyPtr, tyRef, tyLent} and n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
     # this fixes bug #5608:
     let tmp = getTemp(p)
     add(r.res, "($1 = $2, $1[0]), $1[1]" % [tmp, a.rdLoc])
@@ -1759,6 +1789,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[2], y)
     if needsNoCopy(p, n[2]):
       r.res = "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }" % [x.rdLoc, y.rdLoc]
+    elif (mapType(n[2].typ) == etyBaseIndex and
+          n[2].kind == nkSym):
+      let c = "[$1, $2]" % [y.address, y.res]
+      r.res = "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }" % [x.rdLoc, c]
     else:
       useMagic(p, "nimCopy")
       let c = getTemp(p, defineInLocals=false)
@@ -1911,7 +1945,9 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
 
     let typ = val.typ.skipTypes(abstractInst)
     if (typ.kind in IntegralTypes+{tyCstring, tyRef, tyPtr} and
-          mapType(p, typ) != etyBaseIndex) or needsNoCopy(p, it.sons[1]):
+          mapType(p, typ) != etyBaseIndex) or
+          a.typ == etyBaseIndex or
+          needsNoCopy(p, it.sons[1]):
       discard
     else:
       useMagic(p, "nimCopy")
