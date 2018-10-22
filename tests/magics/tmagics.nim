@@ -43,3 +43,14 @@ block t8693:
   doAssert bar(Foo, Foo)
   doAssert bar(any, Foo)
   doAssert bar(Foo, any) == false
+
+block t9442:
+  var v1: ref char
+  var v2: string
+  var v3: seq[char]
+  GC_ref(v1)
+  GC_unref(v1)
+  GC_ref(v2)
+  GC_unref(v2)
+  GC_ref(v3)
+  GC_unref(v3)

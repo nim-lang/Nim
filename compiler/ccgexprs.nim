@@ -2008,8 +2008,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       frmt = "$1 = $2->len;$n"
     lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
     putIntoDest(p, d, e, tmp.r)
-  of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")
-  of mGCunref: unaryStmt(p, e, d, "#nimGCunref($1);$n")
+  of mGCref: unaryStmt(p, e, d, "if ($1) { #nimGCref($1); }$n")
+  of mGCunref: unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
