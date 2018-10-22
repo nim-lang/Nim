@@ -636,6 +636,8 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   else:
     lexMessage(L, errGenerated,
       "expected a hex digit, but found: " & L.buf[L.bufpos])
+    # Need to progress for `nim check`
+    inc(L.bufpos)
 
 proc handleDecChars(L: var TLexer, xi: var int) =
   while L.buf[L.bufpos] in {'0'..'9'}:
