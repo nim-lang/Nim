@@ -64,5 +64,5 @@ collections @GULPF
 # io: @dom96
 # garbage collector: @araq
 # Go garbage collector: @stefantalpalaru
-# coroutines:  @Rokas @Kupstys
+# coroutines:  @rokups
 
