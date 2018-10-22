@@ -1106,6 +1106,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # type aliases are hard:
         var t = semTypeNode(c, x, nil)
         assert t != nil
+        if a[0].kind in {nkIdent, nkSym} and x.kind in {nkIdent, nkSym}:
+          var u = newTypeS(tyAlias, c)
+          u.rawAddSon t
+          u.sym = s.typ.sym
+          assignType(s.typ, u)
         if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
           if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
             assignType(s.typ, t)
