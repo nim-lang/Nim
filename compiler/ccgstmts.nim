@@ -400,14 +400,6 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
     genStmts(p, it.lastSon)
     endBlock(p)
 
-proc genStmtsAux(p: BProc; n: PNode): Rope =
-  let topBlock = p.blocks.len-1
-  let oldBody = p.blocks[topBlock].sections[cpsStmts]
-  p.blocks[topBlock].sections[cpsStmts] = nil
-  genStmts(p, n)
-  result = p.blocks[topBlock].sections[cpsStmts]
-  p.blocks[topBlock].sections[cpsStmts] = oldBody
-
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
