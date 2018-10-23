@@ -83,28 +83,35 @@ when isMainModule:
 
   var registeredProcs = initTable[string, ptr LongJumpInstruction]()
 
-  proc registerProc*(fnName: string, fn: pointer): pointer {.nimhcr.} =
+  proc registerProc*(name: string, fn: pointer): pointer {.nimhcr.} =
     var jumpTableEntryAddr: ptr LongJumpInstruction
 
-    registeredProcs.withValue(fnName, trampoline):
+    registeredProcs.withValue(name, trampoline):
       jumpTableEntryAddr = trampoline[]
     do:
       let len = jumpTable.len
       jumpTable.setLen(len + 1)
       jumpTableEntryAddr = addr jumpTable[len]
-      registeredProcs[fnName] = jumpTableEntryAddr
+      registeredProcs[name] = jumpTableEntryAddr
 
     writeJump jumpTableEntryAddr, fn
     return jumpTableEntryAddr
 
+  proc getProc*(name: string): pointer {.nimhcr.} =
+    return registeredProcs[name]
+
   var registeredGlobals = initTable[string, pointer]()
 
-  proc registerGlobal*(varName: string, size: Natural): pointer {.nimhcr.} =
-    registeredGlobals.withValue(varName, global):
+  proc registerGlobal*(name: string, size: Natural): pointer {.nimhcr.} =
+    registeredGlobals.withValue(name, global):
       return global[]
     do:
       result = alloc0(size)
-      registeredGlobals[varName] = result
+      registeredGlobals[name] = result
+
+  proc getGlobal*(name: string): pointer {.nimhcr.} =
+    return registeredGlobals[name]
+
 else:
   const
     nimhcrLibname = when defined(windows): "nimhcr.dll"
@@ -113,6 +120,8 @@ else:
 
   {.pragma: nimhcr, importc: nimhcrExports, dynlib: nimhcrLibname.}
 
-  proc registerProc*(fnName: string, fn: pointer): pointer {.nimhcr.}
-  proc registerGlobal*(varName: string, size: Natural): pointer {.nimhcr.}
+  proc registerProc*(name: string, fn: pointer): pointer {.nimhcr.}
+  proc getProc*(name: string): pointer {.nimhcr.}
+  proc registerGlobal*(name: string, size: Natural): pointer {.nimhcr.}
+  proc getGlobal*(name: string): pointer {.nimhcr.}
 
