@@ -378,7 +378,7 @@ proc raiseExceptionAux(e: ref Exception) =
             copyMem(addr(buf[L]), cstring(s), slen)
             inc L, slen
         template add(buf, s) =
-          xadd(buf, s, s.len)           
+          xadd(buf, s, s.len)
         var buf: array[0..2000, char]
         var L = 0
         if e.trace.len != 0:
