@@ -400,6 +400,16 @@ proc genGotoForCase(p: BProc; caseStmt: PNode) =
     genStmts(p, it.lastSon)
     endBlock(p)
 
+
+iterator fieldValuePairs(n: PNode): tuple[memberSym, valueSym: PNode] =
+  assert(n.kind in {nkLetSection, nkVarSection})
+  for identDefs in n:
+    if identDefs.kind == nkIdentDefs:
+      let valueSym = identDefs[^1]
+      for i in 0 ..< identDefs.len-2:
+        let memberSym = identDefs[i]
+        yield((memberSym: memberSym, valueSym: valueSym))
+
 proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
@@ -438,12 +448,8 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let save = p.blocks[^1].sections[cpsStmts]
   p.blocks[^1].sections[cpsStmts] = nil
 
-  inc p.splitDecls
-
   for j in 0 ..< casePos:
     genStmts(p, n.sons[j])
-
-  dec p.splitDecls
 
   let stmtsBefore = p.blocks[^1].sections[cpsStmts]
 
@@ -472,11 +478,26 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
 
-
     genStmts(p, it.lastSon)
 
-    p.blocks[^1].sections[cpsStmts].add stmtsAfter
-    p.blocks[^1].sections[cpsStmts].add stmtsBefore
+    for j in casePos+1 ..< n.sons.len:
+      genStmts(p, n.sons[j])
+
+    for j in 0 ..< casePos:
+      # prevent new local declarations
+      # compile declarations as assignments
+      if n.kind in {nkLetSection, nkVarSection}:
+        let asgn = copyNode(n)
+        asgn.kind = nkAsgn
+        asgn.sons.setLen 2
+        for sym, value in n.fieldValuePairs:
+          echo "assignment for sym: ", sym
+          if value.kind != nkEmpty:
+            asgn.sons[0] = sym
+            asgn.sons[1] = value
+            genStmts(p, asgn)
+      else:
+        genStmts(p, n.sons[j])
 
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
