@@ -224,7 +224,7 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
-  lex.indentAhead = - 1
+  lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
   lex.cache = cache
@@ -1120,6 +1120,7 @@ proc skip(L: var TLexer, tok: var TToken) =
     var hasComment = false
     tok.commentOffsetA = L.offsetBase + pos
     tok.commentOffsetB = tok.commentOffsetA
+    tok.line = -1
   while true:
     case buf[pos]
     of ' ':
@@ -1130,9 +1131,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
-      when defined(nimpretty):
-        # we are not yet in a comment, so update the comment token's line information:
-        if not hasComment: inc tok.line
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -1155,7 +1153,10 @@ proc skip(L: var TLexer, tok: var TToken) =
     of '#':
       # do not skip documentation comment:
       if buf[pos+1] == '#': break
-      when defined(nimpretty): hasComment = true
+      when defined(nimpretty):
+        hasComment = true
+        if tok.line < 0: tok.line = L.lineNumber
+
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
         pos = L.bufpos
