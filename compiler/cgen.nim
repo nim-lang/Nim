@@ -931,6 +931,8 @@ proc genProcAux(m: BModule, prc: PSym) =
     add(generatedProc, returnStmt)
     add(generatedProc, ~"}$N")
   add(m.s[cfsProcs], generatedProc)
+  if optHotCodeReloading in m.config.globalOptions:
+    addf(m.s[cfsTypeInit1], "\t$1 = $2;$n", [prc.loc.r, prc.loc.r & "_actual"])
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
@@ -949,15 +951,17 @@ proc genProcPrototype(m: BModule, sym: PSym) =
       add(m.s[cfsVars], ropecg(m, "extern $1 $2;$n",
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
   elif not containsOrIncl(m.declaredProtos, sym.id):
-    var header = genProcHeader(m, sym)
-    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
-      header = "__declspec(noreturn) " & header
-    if sym.typ.callConv != ccInline and requiresExternC(m, sym):
-      header = "extern \"C\" " & header
-    if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
-      header.add(" __attribute__((naked))")
-    if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
-      header.add(" __attribute__((noreturn))")
+    let asPtr = optHotCodeReloading in m.config.globalOptions
+    var header = genProcHeader(m, sym, asPtr)
+    if not asPtr:
+      if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
+        header = "__declspec(noreturn) " & header
+      if sym.typ.callConv != ccInline and requiresExternC(m, sym):
+        header = "extern \"C\" " & header
+      if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
+        header.add(" __attribute__((naked))")
+      if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
+        header.add(" __attribute__((noreturn))")
     add(m.s[cfsProcHeaders], ropecg(m, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) =
@@ -1001,6 +1005,11 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     useHeader(m, prc)
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
+      # make sure there is a "prototype" in the external module
+      # which will actually become a function pointer
+      if optHotCodeReloading in m.config.globalOptions:
+        useHeader(q, prc)
+        genProcPrototype(q, prc)
       genProcAux(q, prc)
   else:
     fillProcLoc(m, prc.ast[namePos])
@@ -1239,7 +1248,10 @@ proc genMainProc(m: BModule) =
 
   let initStackBottomCall =
     if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
-    else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
+    # special case: call <func>_actual()because <func> is a function pointer when hot code
+    # reloading is on, and <module>DatInit000() hasn't ran yet to initialize all function pointers
+    else: ropecg(m, "\t#initStackBottomWith$1((void *)&inner);$N",
+                 rope((if optHotCodeReloading in m.config.globalOptions: "_actual" else: "")))
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
     m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit])

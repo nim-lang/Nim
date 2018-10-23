@@ -38,7 +38,6 @@ type                          # please make sure we have under 32 options
                               # evaluation
     optPatterns,              # en/disable pattern matching
     optMemTracker,
-    optHotCodeReloading,
     optLaxStrings,
     optNilSeqs,
     optOldAst
@@ -81,6 +80,7 @@ type                          # please make sure we have under 32 options
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
+    optHotCodeReloading
     optDynlibOverrideAll
 
   TGlobalOptions* = set[TGlobalOption]

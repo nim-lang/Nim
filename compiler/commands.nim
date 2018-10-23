@@ -487,8 +487,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if optMemTracker in conf.options: defineSymbol(conf.symbols, "memtracker")
     else: undefSymbol(conf.symbols, "memtracker")
   of "hotcodereloading":
-    processOnOffSwitch(conf, {optHotCodeReloading}, arg, pass, info)
-    if optHotCodeReloading in conf.options: defineSymbol(conf.symbols, "hotcodereloading")
+    processOnOffSwitchG(conf, {optHotCodeReloading}, arg, pass, info)
+    if optHotCodeReloading in conf.globalOptions: defineSymbol(conf.symbols, "hotcodereloading")
     else: undefSymbol(conf.symbols, "hotcodereloading")
   of "oldnewlines":
     case arg.normalize

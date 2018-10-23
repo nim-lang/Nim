@@ -3802,6 +3802,15 @@ template doAssert*(cond: untyped, msg = "") =
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
+when compileOption("rangechecks"):
+  template rangeCheck*(cond) =
+    ## Helper for performing user-defined range checks.
+    ## Such checks will be performed only when the ``rangechecks``
+    ## compile-time option is enabled.
+    if not cond: sysFatal(RangeError, "range check failed")
+else:
+  template rangeCheck*(cond) = discard
+
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0

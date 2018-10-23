@@ -135,12 +135,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
+  var test3 = makeTest("lib/nimrtl.nim", options & rpath, cat)
+  test3.spec.action = actionCompile
+  testSpec c, test3
 
-  when defined(Windows):
-    # windows looks in the dir of the exe (yay!):
-    var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
-  else:
+  # windows looks in the dir of the exe (yay!):
+  when not defined(Windows):
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     const libpathenv = when defined(haiku):
                          "LIBRARY_PATH"
@@ -150,11 +150,15 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
-    var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
-                       cat)
+  for dllName in ["nimrtl", "nimhcr"]:
+    var fullDllName = DynlibFormat % dllName
+    safeCopyFile("lib" / fullDllName, "tests/dll" / fullDllName)
+
+  testSpec r, makeTest("tests/dll/client.nim",
+    options & " -d:useNimRtl --threads:on" & rpath, cat)
+
+  testSpec r, makeTest("tests/dll/nimhcr_usage.nim", options & rpath, cat)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:

@@ -14,7 +14,7 @@
 import sighashes
 from lowerings import createObj
 
-proc genProcHeader(m: BModule, prc: PSym): Rope
+proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -888,7 +888,7 @@ proc finishTypeDescriptions(m: BModule) =
 
 template cgDeclFrmt*(s: PSym): string = s.constraint.strVal
 
-proc genProcHeader(m: BModule, prc: PSym): Rope =
+proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   var
     rettype, params: Rope
   genCLineDir(result, prc.info, m.config)
@@ -905,14 +905,21 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
+  # handle the 2 options for hotcodereloading codegen - function pointer
+  # (instead of forward declaration) or header for function budy with "_actual" postfix
+  let asPtrStr = rope(if asPtr: "_PTR" else: "")
+  var name = prc.loc.r
+  if optHotCodeReloading in m.config.globalOptions and not asPtr:
+    add(name, "_actual")
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
   if prc.constraint.isNil:
-    addf(result, "$1($2, $3)$4",
-         [rope(CallingConvToStr[prc.typ.callConv]), rettype, prc.loc.r,
+    addf(result, "$1$2($3, $4)$5",
+         [rope(CallingConvToStr[prc.typ.callConv]), asPtrStr, rettype, name,
          params])
   else:
-    result = prc.cgDeclFrmt % [rettype, prc.loc.r, params]
+    let asPtrStr = if asPtr: (rope("(*") & name & ")") else: name
+    result = prc.cgDeclFrmt % [rettype, asPtrStr, params]
 
 # ------------------ type info generation -------------------------------------
 
