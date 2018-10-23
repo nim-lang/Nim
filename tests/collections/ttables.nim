@@ -35,6 +35,27 @@ block tcounttable:
 
   echo "And we get here"
 
+block tcounttable_asc_desc:
+  # Test both descending (default) and ascending sort.
+  var
+    tbl_desc = initCountTable[string]()
+    tbl_asc = initCountTable[string]()
+    words = @["three", "three", "three", "two", "two", "one"]
+  for w in words:
+    tbl_desc.inc(w)
+    tbl_asc.inc(w)
+  # sort the tables
+  tbl_desc.sort(true)           # default (descending)
+  tbl_asc.sort(false)
+  # check the orders
+  var n = 3
+  for v in tbl_desc.values:
+    doAssert v == n
+    dec n
+  n = 1
+  for v in tbl_asc.values:
+    doAssert v == n
+    inc n
 
 block thashes:
   # Test with int
