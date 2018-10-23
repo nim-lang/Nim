@@ -525,6 +525,10 @@ proc p(n: PNode; c: var Con): PNode =
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = n
+  of nkDiscardStmt:
+    result = n
+    if n[0].typ != nil and hasDestructor(n[0].typ):
+      result = genDestroy(c, n[0].typ, n[0])
   else:
     result = copyNode(n)
     recurse(n, result)
