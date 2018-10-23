@@ -587,8 +587,9 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
-      lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
-          [e, makeCString(typ.sym.name.s)])
+      lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2, $3, $4, $5);$n",
+          [e, makeCString(typ.sym.name.s), makeCString(p.prc.name.s),
+          makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
   else:
     genLineDir(p, t)
     # reraise the last exception:

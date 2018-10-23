@@ -378,9 +378,11 @@ proc raiseExceptionAux(e: ref Exception) =
             copyMem(addr(buf[L]), cstring(s), slen)
             inc L, slen
         template add(buf, s) =
-          xadd(buf, s, s.len)
+          xadd(buf, s, s.len)           
         var buf: array[0..2000, char]
         var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation      
         add(buf, "Error: unhandled exception: ")
         add(buf, e.msg)
         add(buf, " [")
@@ -394,16 +396,30 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-  if e.name.isNil: e.name = ename
-  when hasSomeStackTrace:
-    if e.trace.len == 0:
-      rawWriteStackTrace(e.trace)
-    elif framePtr != nil:
-      e.trace.add reraisedFrom(reraisedFromBegin)
-      auxWriteStackTrace(framePtr, e.trace)
-      e.trace.add reraisedFrom(reraisedFromEnd)
-  raiseExceptionAux(e)
+when defined(nimRaiseExceptionWithLineInfo):
+  proc raiseException(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
+    if e.name.isNil: e.name = ename
+    when hasSomeStackTrace:
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      elif framePtr != nil:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTrace(framePtr, e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
+    else:
+      e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
+    raiseExceptionAux(e)
+else:
+  proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+    if e.name.isNil: e.name = ename
+    when hasSomeStackTrace:
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      elif framePtr != nil:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTrace(framePtr, e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
+    raiseExceptionAux(e)
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
