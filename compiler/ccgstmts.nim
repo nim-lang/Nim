@@ -443,25 +443,10 @@ proc genComputedGoto(p: BProc; n: PNode) =
   gotoArray.addf("&&TMP$#_};$n", [rope(id+arraySize)])
   line(p, cpsLocals, gotoArray)
 
-  let caseStmt = n.sons[casePos]
-
-  let save = p.blocks[^1].sections[cpsStmts]
-  p.blocks[^1].sections[cpsStmts] = nil
-
   for j in 0 ..< casePos:
     genStmts(p, n.sons[j])
 
-  let stmtsBefore = p.blocks[^1].sections[cpsStmts]
-
-  p.blocks[^1].sections[cpsStmts] = nil
-
-  for j in casePos+1 ..< n.sons.len:
-    genStmts(p, n.sons[j])
-
-  let stmtsAfter = p.blocks[^1].sections[cpsStmts]
-
-  p.blocks[^1].sections[cpsStmts] = save & stmtsBefore
-
+  let caseStmt = n.sons[casePos]
   var a: TLoc
   initLocExpr(p, caseStmt.sons[0], a)
   # first goto:
@@ -486,25 +471,26 @@ proc genComputedGoto(p: BProc; n: PNode) =
     for j in 0 ..< casePos:
       # prevent new local declarations
       # compile declarations as assignments
-      if n.kind in {nkLetSection, nkVarSection}:
-        let asgn = copyNode(n)
+      let it = n.sons[j]
+      if it.kind in {nkLetSection, nkVarSection}:
+        let asgn = copyNode(it)
         asgn.kind = nkAsgn
         asgn.sons.setLen 2
-        for sym, value in n.fieldValuePairs:
-          echo "assignment for sym: ", sym
+        for sym, value in it.fieldValuePairs:
           if value.kind != nkEmpty:
             asgn.sons[0] = sym
             asgn.sons[1] = value
             genStmts(p, asgn)
       else:
-        genStmts(p, n.sons[j])
+        genStmts(p, it)
 
     var a: TLoc
     initLocExpr(p, caseStmt.sons[0], a)
     lineF(p, cpsStmts, "goto *$#[$#];$n", [tmp, a.rdLoc])
     endBlock(p)
 
-  p.blocks[^1].sections[cpsStmts].add stmtsAfter
+  for j in casePos+1 ..< n.sons.len:
+    genStmts(p, n.sons[j])
 
 
 proc genWhileStmt(p: BProc, t: PNode) =
