@@ -1100,7 +1100,7 @@ proc skip(L: var TLexer, tok: var TToken) =
           break
       tok.strongSpaceA = 0
       when defined(nimpretty):
-        if buf[pos] == '#': commentIndent = indent
+        if buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#'):
         tok.indent = indent
         L.currLineIndent = indent
