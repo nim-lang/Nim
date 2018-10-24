@@ -703,17 +703,47 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
     hs = nxts
   return true
 
-proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int) =
-  ## sorts ``t`` according to ``cmp``. This modifies the internal list
-  ## that kept the insertion order, so insertion order is lost after this
-  ## call but key lookup and insertions remain possible after ``sort`` (in
-  ## contrast to the ``sort`` for count tables).
+proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int,
+                order: SortOrder = SortOrder.Ascending) =
+  ## sorts ``t`` according to ``cmp``. Setting ``order`` to ``Descending``
+  ## reverses the direction of comparison. This modifies the internal list that
+  ## kept the insertion order, so insertion order is lost after this call. But
+  ## key lookup and insertions remain possible after ``sort`` (in contrast to
+  ## the ``sort`` for ``CountTable``).
+  runnableExamples:
+      let
+        names = @["Sue", "Wissam", "Fred"]
+        sortedNames = @["Fred", "Sue", "Wissam"]
+      var
+        ordTbl = newOrderedTable[string, int]()
+        i = 0
+      # insert the names, in order
+      for name in names:
+        ordTbl[name] = len(name)
+      # initially, the insertion order is preserved
+      for key in keys(ordTbl):
+        assert key == names[i]
+        inc(i)
+      # re-sort by the key value
+      proc cmpByKey(x, y: tuple[key: string, val: int]): int =
+        cmp(x.key, y.key)
+      sort(ordTbl, cmpByKey)
+      # now the order is different...
+      i = 0
+      for key in keys(ordTbl):
+        assert key == sortedNames[i]
+        inc(i)
+      #...and we can still insert.
+      ordTbl["Jamal"] = 5
+
   var list = t.first
   var
     p, q, e, tail, oldhead: int
     nmerges, psize, qsize, i: int
   if t.counter == 0: return
   var insize = 1
+  # orderFactor reverses the comparison on descending sorts.
+  let orderFactor = (if order == SortOrder.Ascending: 1 else: -1)
   while true:
     p = list; oldhead = list
     list = -1; tail = -1; nmerges = 0
@@ -734,7 +764,7 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x,y: (A, B)): int) =
         elif qsize == 0 or q < 0:
           e = p; p = t.data[p].next; dec(psize)
         elif cmp((t.data[p].key, t.data[p].val),
-                 (t.data[q].key, t.data[q].val)) <= 0:
+                 (t.data[q].key, t.data[q].val)) * orderFactor <= 0:
           e = p; p = t.data[p].next; dec(psize)
         else:
           e = q; q = t.data[q].next; dec(qsize)
@@ -855,12 +885,14 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
   elif isNil(t): result = false
   else: result = s[] == t[]
 
-proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int) =
-  ## sorts ``t`` according to ``cmp``. This modifies the internal list
+proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x,y: (A, B)): int,
+                 order: SortOrder = SortOrder.Ascending)  =
+  ## sorts ``t`` according to ``cmp``. Setting ``order`` to ``Descending``
+  ## reverses the direction of comparison. This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after ``sort`` (in
-  ## contrast to the ``sort`` for count tables).
-  t[].sort(cmp)
+  ## contrast to the ``sort`` for ``CountTable``).
+  t[].sort(cmp, order)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## deletes ``key`` from ordered hash table ``t``. O(n) complexity. Does nothing
@@ -1074,18 +1106,39 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
 
 proc sort*[A](t: var CountTable[A], order: SortOrder = SortOrder.Descending) =
   ## sorts the count table so that the entry with the highest counter comes
-  ## first. Set `order` to ``SortOrder.Ascending`` to reverse the order.
-  ## (Note that ``SortOrder`` is defined in ``algorithm``, and is re-exported by
-  ## ``tables`` for convenience.)
+  ## first. (This is different from the ``sort`` procedure for
+  ## ``OrderedTable``, which sorts "ascending" by default.) Set `order` to
+  ## ``SortOrder.Ascending`` to reverse the order.
   ##
   ## This operation is destructive! You must not modify `t` afterwards! You can
   ## use the iterators `pairs`, `keys`, and `values` to iterate over `t` in the
   ## sorted order.
+  runnableExamples:
+      # sort two tables, in opposite directions.
+      var
+        tblDesc = initCountTable[string]()
+        tblAsc = initCountTable[string]()
+        words = @["three", "three", "three", "two", "two", "one"]
+      for w in words:
+        tblDesc.inc(w)
+        tblAsc.inc(w)
+      # do the sorts
+      tblDesc.sort()           # default (SortOrder.Descending)
+      tblAsc.sort(SortOrder.Ascending)
+      # check the orders
+      var n = 3
+      for v in tblDesc.values:
+        doAssert v == n
+        dec n
+      n = 1
+      for v in tblAsc.values:
+        doAssert v == n
+        inc n
 
   # we use shellsort here; fast enough and simple
   var h = 1
-  # order_factor reverses the comparison on ascending sorts.
-  let order_factor = (if order == SortOrder.Descending: 1 else: -1)
+  # orderFactor reverses the comparison on ascending sorts.
+  let orderFactor = (if order == SortOrder.Descending: 1 else: -1)
   while true:
     h = 3 * h + 1
     if h >= high(t.data): break
@@ -1093,7 +1146,7 @@ proc sort*[A](t: var CountTable[A], order: SortOrder = SortOrder.Descending) =
     h = h div 3
     for i in countup(h, high(t.data)):
       var j = i
-      while cmp(t.data[j-h].val, t.data[j].val) * order_factor <= 0:
+      while cmp(t.data[j-h].val, t.data[j].val) * orderFactor <= 0:
         swap(t.data[j], t.data[j-h])
         j = j-h
         if j < h: break
@@ -1202,12 +1255,16 @@ proc largest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the ``(key, value)`` pair with the largest ``val``. Efficiency: O(n)
   t[].largest
 
-proc sort*[A](t: CountTableRef[A]) =
+proc sort*[A](t: CountTableRef[A], order: SortOrder = SortOrder.Descending) =
   ## sorts the count table so that the entry with the highest counter comes
-  ## first. This is destructive! You must not modify ``t`` afterwards!
-  ## You can use the iterators ``pairs``, ``keys``, and ``values`` to iterate over
-  ## ``t`` in the sorted order.
-  t[].sort
+  ## first. (This is different from the ``sort`` procedure for
+  ## ``OrderedTable``, which sorts "ascending" by default.) Set `order` to
+  ## ``SortOrder.Ascending`` to reverse the order.
+  ##
+  ## This is destructive! You must not modify ``t`` afterwards! You can use the
+  ## iterators ``pairs``, ``keys``, and ``values`` to iterate over ``t`` in the
+  ## sorted order.
+  t[].sort(order)
 
 proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## merges the second table into the first one.

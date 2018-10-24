@@ -38,22 +38,23 @@ block tcounttable:
 block tcounttable_asc_desc:
   # Test both descending (default) and ascending sort.
   var
-    tbl_desc = initCountTable[string]()
-    tbl_asc = initCountTable[string]()
+    # sort() is destructive, so create one table for each test.
+    tblDesc = initCountTable[string]()
+    tblAsc = initCountTable[string]()
     words = @["three", "three", "three", "two", "two", "one"]
   for w in words:
-    tbl_desc.inc(w)
-    tbl_asc.inc(w)
+    tblDesc.inc(w)
+    tblAsc.inc(w)
   # sort the tables
-  tbl_desc.sort()           # default (SortOrder.Descending)
-  tbl_asc.sort(SortOrder.Ascending)
+  tblDesc.sort()           # default (SortOrder.Descending)
+  tblAsc.sort(SortOrder.Ascending)
   # check the orders
   var n = 3
-  for v in tbl_desc.values:
+  for v in tblDesc.values:
     doAssert v == n
     dec n
   n = 1
-  for v in tbl_asc.values:
+  for v in tblAsc.values:
     doAssert v == n
     inc n
 
@@ -326,22 +327,40 @@ block tablesref:
     assert i == j
 
   proc orderedTableSortTest() =
-    var t = newOrderedTable[string, int](2)
-    for key, val in items(data): t[key] = val
-    for key, val in items(data): assert t[key] == val
-    t.sort(proc (x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key))
+    # separate tables for tests in ascending (default) and descending order
+    var tbl = newOrderedTable[string, int](2)
+    var tblDesc = newOrderedTable[string, int](2)
+    for key, val in items(data):
+      tbl[key] = val
+      tblDesc[key] = val
+    for key, val in items(data):
+      assert tbl[key] == val
+      assert tblDesc[key] == val
+    proc comparator(x, y: tuple[key: string, val: int]): int =
+      cmp(x.key, y.key)
+    tbl.sort(comparator)
+    tblDesc.sort(comparator, order=SortOrder.Descending)
     var i = 0
     # `pairs` needs to yield in sorted order:
-    for key, val in pairs(t):
+    for key, val in pairs(tbl):
       doAssert key == sorteddata[i][0]
       doAssert val == sorteddata[i][1]
       inc(i)
+    # now reverse direction and test the 'descending' table
+    dec(i)
+    for key, val in pairs(tblDesc):
+      doAssert key == sorteddata[i][0]
+      doAssert val == sorteddata[i][1]
+      dec(i)
 
     # check that lookup still works:
-    for key, val in pairs(t):
-      doAssert val == t[key]
+    for key, val in pairs(tbl):
+      doAssert val == tbl[key]
+      for key, val in pairs(tblDesc):
+        doAssert val == tblDesc[key]
     # check that insert still works:
-    t["newKeyHere"] = 80
+    tbl["newKeyHere"] = 80
+    tblDesc["newKeyHere"] = 80
 
   block anonZipTest:
     let keys = @['a','b','c']
