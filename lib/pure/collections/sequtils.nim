@@ -673,10 +673,16 @@ template mapIt*(s: typed, op: untyped): untyped =
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt($(4 * it))
   ##   assert strings == @["4", "8", "12", "16"]
-  type outType = type((
-    block:
-      var it{.inject.}: type(items(s));
-      op))
+  when defined(nimHasTypeof):
+    type outType = typeof((
+      block:
+        var it{.inject.}: typeof(items(s), typeOfIter);
+        op), typeOfProc)
+  else:
+    type outType = type((
+      block:
+        var it{.inject.}: type(items(s));
+        op))
   when compiles(s.len):
     block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
 
@@ -1134,6 +1140,14 @@ when isMainModule:
     type X = enum
       A, B
     doAssert mapIt(X, $it) == @["A", "B"]
+
+  block:
+    # bug #9093
+    let inp = "a:b,c:d"
+
+    let outp = inp.split(",").mapIt(it.split(":"))
+    doAssert outp == @[@["a", "b"], @["c", "d"]]
+
 
   when not defined(testing):
     echo "Finished doc tests"
