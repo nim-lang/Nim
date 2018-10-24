@@ -58,12 +58,21 @@ proc process(path: string, doLint = true, doPandoc = true)=
   if doLint:
     if not lintRstOK(path):
       return
-  if doPandoc:
-    let pandoc = "$HOME/Downloads/pandoc-2.3.1/bin/pandoc"
-    let cmd = fmt"{pandoc} {path} -f rst -t markdown -o {path2} --columns=80 --atx-headers"
-    let (output, exitCode) = osproc.execCmdEx(cmd)
-    doAssert exitCode == 0
-    echo output
+
+  if not doPandoc:
+    return
+
+  let pandoc = "$HOME/Downloads/pandoc-2.3.1/bin/pandoc"
+  let cmd = fmt"{pandoc} {path} -f rst -t markdown -o {path2} --columns=80 --atx-headers"
+  let (output, exitCode) = osproc.execCmdEx(cmd)
+  doAssert exitCode == 0
+  echo output
+
+  ## postprocess
+  let code = readFile(path2)
+  let reg = "``` {.sourceCode .nim}".escapeRe
+  let code2 = code.replace(re("(?m)^" & reg), "```nim")
+  writeFile(path2, code2)
 
 proc convertRstToMdNim()=
   let pattern = "doc/*.rst"
