@@ -811,8 +811,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp3)
   elif src_size == dst_size and src.kind in allowedIntegers and
                            dst.kind in {tyFloat, tyFloat32, tyFloat64}:
-
-    let tmp = c.getTemp(n.sons[1].typ)
+    let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if dst.kind == tyFloat32:
       c.gABC(n, opcAsgnFloat32FromInt, dest, tmp)
@@ -821,15 +820,15 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
 
   elif src_size == dst_size and src.kind in {tyFloat, tyFloat32, tyFloat64} and
-                           dst.kind in allowedIntegers:
-              
-    let tmp = c.getTemp(n.sons[1].typ)
+                           dst.kind in allowedIntegers:         
+    let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
       c.gABC(n, opcAsgnIntFromFloat32, dest, tmp)
     else:
       c.gABC(n, opcAsgnIntFromFloat64, dest, tmp)
     c.freeTemp(tmp)
+
   else:
     globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
 
