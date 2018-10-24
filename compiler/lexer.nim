@@ -1092,7 +1092,10 @@ proc skip(L: var TLexer, tok: var TToken) =
           inc(pos)
           inc(indent)
         elif buf[pos] == '#' and buf[pos+1] == '[':
-          when defined(nimpretty): hasComment = true
+          when defined(nimpretty):
+            hasComment = true
+            if tok.line < 0:
+              tok.line = L.lineNumber
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
@@ -1112,7 +1115,6 @@ proc skip(L: var TLexer, tok: var TToken) =
         hasComment = true
         if tok.line < 0:
           tok.line = L.lineNumber
-          #commentIndent = L.currLineIndent # if tok.strongSpaceA == 0: -1 else: tok.strongSpaceA
 
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
