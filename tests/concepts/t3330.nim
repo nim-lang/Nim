@@ -1,5 +1,6 @@
 discard """
 errormsg: "type mismatch: got <Bar[system.int]>"
+disabled: "true"
 nimout: '''
 t3330.nim(63, 4) Error: type mismatch: got <Bar[system.int]>
 but expected one of:
