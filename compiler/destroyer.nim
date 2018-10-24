@@ -268,9 +268,6 @@ proc patchHead(n: PNode) =
       if sfFromGeneric in s.flags:
         excl(s.flags, sfFromGeneric)
         patchHead(s.getBody)
-      if n[1].typ.isNil:
-        # XXX toptree crashes without this workaround. Figure out why.
-        return
       let t = n[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
       template patch(op, field) =
         if s.name.s == op and field != nil and field != s:
@@ -296,6 +293,10 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
       m.add c.graph.config $ c.otherRead.info
   localError(c.graph.config, ri.info, errGenerated, m)
 
+proc makePtrType(c: Con, baseType: PType): PType =
+  result = newType(tyPtr, c.owner)
+  addSonSkipIntLit(result, baseType)
+
 template genOp(opr, opname, ri) =
   let op = opr
   if op == nil:
@@ -304,7 +305,9 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
-  result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
+  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+  addrExp.add(dest)
+  result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})

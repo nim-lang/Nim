@@ -27,6 +27,9 @@
 
 - Added `or` for `NimNode` in `macros`.
 
+- Added `system.typeof` for more control over how `type` expressions
+  can be deduced.
+
 ### Library changes
 
 

@@ -261,6 +261,21 @@ configuration file should contain something like::
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
 
+Cross compilation for Windows
+=============================
+
+To cross compile for Windows from Linux or OSX using the MinGW-w64 toolchain::
+
+  nim c -d:mingw myproject.nim
+
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the cpu arch.
+
+The MinGW-w64 toolchain can be installed as follows::
+
+  Ubuntu: apt install mingw-w64
+  CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
+  OSX: brew install mingw-w64
+
 Cross compilation for Nintendo Switch
 =====================================
 
