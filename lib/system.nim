@@ -2186,7 +2186,7 @@ else:
         inc(res)
 
 
-iterator `||`*[S, T](a: S, b: T, annotation="parallel for"): T {.
+iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
   inline, magic: "OmpParFor", sideEffect.} =
   ## OpenMP parallel loop iterator. Same as `..` but the loop may run in parallel.
   ## `annotation` is an additional annotation for the code generator to use.
