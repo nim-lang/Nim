@@ -588,7 +588,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
       lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2, $3, $4, $5);$n",
-          [e, makeCString(typ.sym.name.s), makeCString(p.prc.name.s),
+          [e, makeCString(typ.sym.name.s), 
+          makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
           makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
   else:
     genLineDir(p, t)
