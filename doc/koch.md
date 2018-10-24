@@ -1,0 +1,72 @@
+# Nim maintenance script
+
+Version
+
+:   
+
+::: {.contents}
+:::
+
+## Introduction
+
+The `koch`{.interpreted-text role="idx"} program is Nim\'s maintenance script.
+It is a replacement for make and shell scripting with the advantage that it is
+much more portable. The word *koch* means *cook* in German. `koch` is used
+mainly to build the Nim compiler, but it can also be used for other tasks. This
+document describes the supported commands and their options.
+
+## Commands
+
+### boot command
+
+The `boot`{.interpreted-text role="idx"} command bootstraps the compiler, and it
+accepts different options:
+
+-d:release
+
+:   By default a debug version is created, passing this option will force a
+    release build, which is much faster and should be preferred unless you are
+    debugging the compiler.
+
+-d:useLinenoise
+
+:   Use the linenoise library for interactive mode (not needed on Windows).
+
+After compilation is finished you will hopefully end up with the nim compiler in
+the `bin` directory. You can add Nim\'s `bin` directory to your `$PATH` or use
+the [install command]() to place it where it will be found.
+
+### csource command
+
+The `csource`{.interpreted-text role="idx"} command builds the C sources for
+installation. It accepts the same options as you would pass to the [boot
+command](#boot-command).
+
+### temp command
+
+The temp command builds the Nim compiler but with a different final name
+(`nim_temp`), so it doesn\'t overwrite your normal compiler. You can use this
+command to test different options, the same you would issue for the [boot
+command](#boot-command).
+
+### test command
+
+The `test`{.interpreted-text role="idx"} command can also be invoked with the
+alias `tests`. This command will compile and run `testament/tester.nim`, which
+is the main driver of Nim\'s test suite. You can pass options to the `test`
+command, they will be forwarded to the tester. See its source code for available
+options.
+
+### web command
+
+The `web`{.interpreted-text role="idx"} command converts the documentation in
+the `doc` directory from rst to HTML. It also repeats the same operation but
+places the result in the `web/upload` which can be used to update the website at
+<https://nim-lang.org>.
+
+By default the documentation will be built in parallel using the number of
+available CPU cores. If any documentation build sub commands fail, they will be
+rerun in serial fashion so that meaninful error output can be gathered for
+inspection. The `--parallelBuild:n` switch or configuration option can be used
+to force a specific number of parallel jobs or run everything serially from the
+start (`n == 1`).
