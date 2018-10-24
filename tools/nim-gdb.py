@@ -209,6 +209,25 @@ class NimStringPrinter:
     else:
      return ""
 
+class NimRopePrinter:
+  pattern = re.compile(r'^tyObject_RopeObj_OFzf0kSiPTcNreUIeJgWVA \*$')
+
+  def __init__(self, val):
+    self.val = val
+
+  def display_hint(self):
+    return 'string'
+
+  def to_string(self):
+    if self.val:
+      left  = NimRopePrinter(self.val["left"]).to_string()
+      data  = NimStringPrinter(self.val["data"]).to_string()
+      right = NimRopePrinter(self.val["right"]).to_string()
+      return left + data + right
+    else:
+      return ""
+
+
 ################################################################################
 
 # proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =

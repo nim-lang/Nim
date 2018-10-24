@@ -1414,6 +1414,20 @@ proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
   fixupTypeOf(c, prev, t)
   result = t.typ
 
+proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
+  openScope(c)
+  var m = BiggestInt 1 # typeOfIter
+  if n.len == 3:
+    let mode = semConstExpr(c, n[2])
+    if mode.kind != nkIntLit:
+      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
+    else:
+      m = mode.intVal
+  let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  closeScope(c)
+  fixupTypeOf(c, prev, t)
+  result = t.typ
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   inc c.inTypeContext
@@ -1494,6 +1508,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeof(c, n[1], prev)
+      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeof:
+        result = semTypeOf2(c, n, prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)

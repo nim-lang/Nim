@@ -84,6 +84,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoNilSeqs2")
   defineSymbol("nimHasUserErrors")
   defineSymbol("nimUncheckedArrayTyp")
+  defineSymbol("nimHasTypeof")
 
   defineSymbol("nimHasNilSeqs")
   for f in low(Feature)..high(Feature):

@@ -1118,6 +1118,7 @@ proc skip(L: var TLexer, tok: var TToken) =
   tok.strongSpaceA = 0
   when defined(nimpretty):
     var hasComment = false
+    var commentIndent = L.currLineIndent
     tok.commentOffsetA = L.offsetBase + pos
     tok.commentOffsetB = tok.commentOffsetA
     tok.line = -1
@@ -1139,13 +1140,18 @@ proc skip(L: var TLexer, tok: var TToken) =
           inc(pos)
           inc(indent)
         elif buf[pos] == '#' and buf[pos+1] == '[':
-          when defined(nimpretty): hasComment = true
+          when defined(nimpretty):
+            hasComment = true
+            if tok.line < 0:
+              tok.line = L.lineNumber
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
         else:
           break
       tok.strongSpaceA = 0
+      when defined(nimpretty):
+        if buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#'):
         tok.indent = indent
         L.currLineIndent = indent
@@ -1155,7 +1161,8 @@ proc skip(L: var TLexer, tok: var TToken) =
       if buf[pos+1] == '#': break
       when defined(nimpretty):
         hasComment = true
-        if tok.line < 0: tok.line = L.lineNumber
+        if tok.line < 0:
+          tok.line = L.lineNumber
 
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
@@ -1177,6 +1184,7 @@ proc skip(L: var TLexer, tok: var TToken) =
     if hasComment:
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
+      tok.indent = commentIndent
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
 

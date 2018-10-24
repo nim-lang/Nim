@@ -180,6 +180,15 @@ else:
     ## Cannot be overloaded.
     discard
 
+when defined(nimHasTypeof):
+  type
+    TypeOfMode* = enum ## Possible modes of `typeof`.
+      typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
+      typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
+  proc typeof*(x: untyped; mode = typeOfIter): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+    ## Builtin 'typeof' operation for accessing the type of an expression. Since version 0.20.0.
+    discard
+
 proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
