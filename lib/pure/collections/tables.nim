@@ -115,6 +115,10 @@
 import
   hashes, math
 
+# selective import from algorithm, we only need SortOrder (for CountTable.sort)
+from algorithm import SortOrder
+export algorithm.SortOrder
+
 include "system/inclrtl"
 
 type
@@ -1068,17 +1072,20 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[maxIdx].key
   result.val = t.data[maxIdx].val
 
-proc sort*[A](t: var CountTable[A], descending: bool = true) =
+proc sort*[A](t: var CountTable[A], order: SortOrder = SortOrder.Descending) =
   ## sorts the count table so that the entry with the highest counter comes
-  ## first. Set `descending` to `false` to reverse the order.
-  ## This is destructive! You must not modify `t` afterwards!
-  ## You can use the iterators `pairs`,  `keys`, and `values` to iterate over
-  ## `t` in the sorted order.
+  ## first. Set `order` to ``SortOrder.Ascending`` to reverse the order.
+  ## (Note that ``SortOrder`` is defined in ``algorithm``, and is re-exported by
+  ## ``tables`` for convenience.)
+  ##
+  ## This operation is destructive! You must not modify `t` afterwards! You can
+  ## use the iterators `pairs`, `keys`, and `values` to iterate over `t` in the
+  ## sorted order.
 
   # we use shellsort here; fast enough and simple
   var h = 1
-  # desc_factor reverses the comparison on ascending sorts.
-  let desc_factor = (if descending: 1 else: -1)
+  # order_factor reverses the comparison on ascending sorts.
+  let order_factor = (if order == SortOrder.Descending: 1 else: -1)
   while true:
     h = 3 * h + 1
     if h >= high(t.data): break
@@ -1086,7 +1093,7 @@ proc sort*[A](t: var CountTable[A], descending: bool = true) =
     h = h div 3
     for i in countup(h, high(t.data)):
       var j = i
-      while cmp(t.data[j-h].val, t.data[j].val) * desc_factor <= 0:
+      while cmp(t.data[j-h].val, t.data[j].val) * order_factor <= 0:
         swap(t.data[j], t.data[j-h])
         j = j-h
         if j < h: break

@@ -45,8 +45,8 @@ block tcounttable_asc_desc:
     tbl_desc.inc(w)
     tbl_asc.inc(w)
   # sort the tables
-  tbl_desc.sort(true)           # default (descending)
-  tbl_asc.sort(false)
+  tbl_desc.sort()           # default (SortOrder.Descending)
+  tbl_asc.sort(SortOrder.Ascending)
   # check the orders
   var n = 3
   for v in tbl_desc.values:
