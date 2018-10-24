@@ -15,12 +15,12 @@ when defined(develop):
 else:
   const nimp = "nimpretty"
 
-proc test(infile, outfile: string) =
-  if execShellCmd("$# -o:$# --backup:off $#" % [nimp, outfile, infile]) != 0:
+proc test(infile, ext: string) =
+  if execShellCmd("$# -o:$# --backup:off $#" % [nimp, infile.changeFileExt(ext), infile]) != 0:
     quit("FAILURE")
   let nimFile = splitFile(infile).name
   let expected = dir / "expected" / nimFile & ".nim"
-  let produced = dir / nimFile & ".pretty"
+  let produced = dir / nimFile.changeFileExt(ext)
   if strip(readFile(expected)) != strip(readFile(produced)):
     echo "FAILURE: files differ: ", nimFile
     discard execShellCmd("diff -uNdr " & expected & " " & produced)
@@ -29,8 +29,12 @@ proc test(infile, outfile: string) =
     echo "SUCCESS: files identical: ", nimFile
 
 for t in walkFiles(dir / "*.nim"):
-  let res = t.changeFileExt("pretty")
-  test(t, res)
-  removeFile(res)
+  test(t, "pretty")
+  # also test that pretty(pretty(x)) == pretty(x)
+  test(t.changeFileExt("pretty"), "pretty2")
+
+  removeFile(t.changeFileExt("pretty"))
+  removeFile(t.changeFileExt("pretty2"))
+
 
 if failures > 0: quit($failures & " failures occurred.")

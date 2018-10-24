@@ -13,3 +13,10 @@ proc funB() =
   # echo "ok2"
 
 fun()
+
+#[
+bug #9483
+]#
+
+proc funE() =
+  echo "ok1"
