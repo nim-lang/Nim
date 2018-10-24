@@ -488,6 +488,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
+    of opcAsgnIntFromFloat32:
+      decodeB(rkFloat)
+      regs[ra].intVal = cast[int32](float32(regs[rb].floatVal))
+    of opcAsgnIntFromFloat64:
+      decodeB(rkFloat)
+      regs[ra].intVal = cast[int64](regs[rb].floatVal)
+    of opcAsgnFloat32FromInt:
+      decodeB(rkInt)
+      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+    of opcAsgnFloat64FromInt:
+      decodeB(rkInt)
+      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
