@@ -10,12 +10,13 @@
 ## Include file that imports all plugins that are active.
 
 import
-  ".." / [pluginsupport, idents, ast], locals, itersgen
+  ".." / [pluginsupport, idents, ast], locals, itersgen, adapt
 
 const
-  plugins: array[2, Plugin] = [
+  plugins: array[3, Plugin] = [
     ("stdlib", "system", "iterToProc", iterToProcImpl),
-    ("stdlib", "system", "locals", semLocals)
+    ("stdlib", "system", "locals", semLocals),
+    ("stdlib", "adapters", "adapt", semAdapt)
   ]
 
 proc getPlugin*(ic: IdentCache; fn: PSym): Transformation =
