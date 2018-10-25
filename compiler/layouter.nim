@@ -55,9 +55,13 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
+  if fileExists(em.config.outFile) and readFile(em.config.outFile.string) == em.content:
+    discard "do nothing, see #9499"
+    return
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)
+    return
   f.llStreamWrite em.content
   llStreamClose(f)
 
