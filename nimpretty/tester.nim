@@ -16,10 +16,19 @@ else:
   const nimp = "nimpretty"
 
 proc test(infile, ext: string) =
-  if execShellCmd("$# -o:$# --backup:off $#" % [nimp, infile.changeFileExt(ext), infile]) != 0:
+  var extraArg = ""
+
+  case infile.splitFile.name:
+    # can hardcode custom options here
+    of "simple4": extraArg = "--indentSpaces:4"
+    else: discard
+
+  let cmd = "$# -o:$# --backup:off $# $#" % [nimp, infile.changeFileExt(ext), extraArg, infile]
+  if execShellCmd(cmd) != 0:
     echo "FAILURE: nimpretty cannot prettify ", infile
     failures += 1
     return
+
   let nimFile = splitFile(infile).name
   let expected = dir / "expected" / nimFile & ".nim"
   let produced = dir / nimFile.changeFileExt(ext)

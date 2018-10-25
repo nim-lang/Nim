@@ -247,7 +247,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure.}
     cppCustomNamespace*: string
-    
+
     when defined(nimpretty):
       nimprettyOpt*: NimprettyOpt
 
