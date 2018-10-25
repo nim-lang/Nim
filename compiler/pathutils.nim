@@ -99,24 +99,26 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
+const canonDirSep = when isMainModule: '/' else: DirSep
+
 proc canon(x: string; result: var string; state: var int) =
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
   for b in dirs(x):
     if (state shr 1 == 0) and isSlash(x, b):
-      result.add DirSep
+      result.add canonDirSep
       state = state or 1
     elif result.len > (state and 1) and isDotDot(x, b):
       var d = result.len
       # f/..
-      while d > (state and 1) and result[d-1] != DirSep:
+      while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
         dec d
       if d > 0: setLen(result, d-1)
     elif isDot(x, b):
       discard "discard the dot"
     elif b[1] >= b[0]:
-      if result.len > 0 and result[^1] != DirSep:
-        result.add DirSep
+      if result.len > 0 and result[^1] notin {DirSep, AltSep}:
+        result.add canonDirSep
       result.add substr(x, b[0], b[1])
     inc state, 2
 
@@ -133,7 +135,7 @@ when FileSystemCaseSensitive:
 else:
   template `!=?`(a, b: char): bool = a != b
 
-proc relativeTo(full, base: string; sep = DirSep): string =
+proc relativeTo(full, base: string; sep = canonDirSep): string =
   if full.len == 0: return ""
   var f, b: PathIter
   var ff = (0, -1)
@@ -207,7 +209,7 @@ when true:
     canon(f.string, result.string, state)
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
-                   sep = DirSep): RelativeFile =
+                   sep = canonDirSep): RelativeFile =
     RelativeFile(relativeTo(fullPath.string, baseFilename.string, sep))
 
   proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
@@ -222,7 +224,7 @@ when true:
 
   proc writeFile*(x: AbsoluteFile; content: string) {.borrow.}
 
-when isMainModule and defined(posix):
+when isMainModule:
   doAssert canon"/foo/../bar" == "/bar"
   doAssert canon"foo/../bar" == "bar"
 
@@ -257,4 +259,4 @@ when isMainModule and defined(posix):
 
 when isMainModule and defined(windows):
   let nasty = string(AbsoluteDir(r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\linkedPkgs\pkgB-#head\../../simplePkgs/pkgB-#head/") / RelativeFile"pkgA/module.nim")
-  doAssert nasty == r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\simplePkgs\pkgB-#head\pkgA\module.nim"
+  doAssert nasty.replace('/', '\\') == r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\simplePkgs\pkgB-#head\pkgA\module.nim"
