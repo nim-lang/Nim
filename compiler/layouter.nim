@@ -41,9 +41,12 @@ type
 proc openEmitter*(em: var Emitter, cache: IdentCache;
                   config: ConfigRef, fileIdx: FileIndex) =
   let fullPath = Absolutefile config.toFullPath(fileIdx)
-  em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
+  if config.nimprettyOpt.indentSpaces > 0:
+    em.indWidth = config.nimprettyOpt.indentSpaces
+  else:
+    em.indWidth = getIndentWidth(fileIdx, llStreamOpen(fullPath, fmRead),
                                cache, config)
-  if em.indWidth == 0: em.indWidth = 2
+    if em.indWidth == 0: em.indWidth = 2
   em.config = config
   em.fid = fileIdx
   em.lastTok = tkInvalid

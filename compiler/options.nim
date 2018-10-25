@@ -161,6 +161,9 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
+  NimprettyOpt* = object
+    indentSpaces*: int ## number of spaces for indents; 0=infer from 1st indent
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -244,6 +247,9 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure.}
     cppCustomNamespace*: string
+    
+    when defined(nimpretty):
+      nimprettyOpt*: NimprettyOpt
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)

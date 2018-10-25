@@ -26,6 +26,7 @@ Usage:
 Options:
   --backup:on|off     create a backup file before overwritting (default: ON)
   --output:file       set the output file (default: overwrite the .nim file)
+  --indentSpaces:n    indents use `n` spaces (default: 0=infer from 1st indent)
   --version           show the version
   --help              show this help
 """
@@ -40,8 +41,7 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
-proc prettyPrint(infile, outfile: string) =
-  var conf = newConfigRef()
+proc prettyPrint(infile, outfile: string, conf: ConfigRef) =
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   conf.outFile = AbsoluteFile outfile
   when defined(nimpretty2):
@@ -51,6 +51,7 @@ proc prettyPrint(infile, outfile: string) =
     renderModule(tree, infile, outfile, {}, fileIdx, conf)
 
 proc main =
+  var conf = newConfigRef()
   var infile, outfile: string
   var backup = true
   for kind, key, val in getopt():
@@ -62,6 +63,7 @@ proc main =
       of "help", "h": writeHelp()
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
+      of "indentspaces": conf.nimprettyOpt.indentSpaces = parseInt(val)
       of "output", "o": outfile = val
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
@@ -70,6 +72,6 @@ proc main =
   if backup:
     os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
   if outfile.len == 0: outfile = infile
-  prettyPrint(infile, outfile)
+  prettyPrint(infile, outfile, conf)
 
 main()
