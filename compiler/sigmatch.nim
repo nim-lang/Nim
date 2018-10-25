@@ -186,7 +186,7 @@ proc sumGeneric(t: PType): int =
   var isvar = 1
   while true:
     case t.kind
-    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct,
+    of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct, tyUncheckedArray,
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
         tyLent:
       t = t.lastSon
@@ -728,7 +728,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
                       else:
                         makeTypeDesc(c, typ)
 
-        typeParams.safeAdd((param, typ))
+        typeParams.add((param, typ))
 
       addDecl(c, param)
 
@@ -757,7 +757,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if collectDiagnostics:
     m.c.config.writelnHook = oldWriteHook
     for msg in diagnostics:
-      m.diagnostics.safeAdd msg
+      m.diagnostics.add msg
       m.diagnosticsEnabled = true
 
   if checkedBody == nil: return nil
@@ -1027,7 +1027,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
       result = typeRel(c, aOrig.base, candidate)
       if result != isNone:
-        c.inferredTypes.safeAdd aOrig
+        c.inferredTypes.add aOrig
         aOrig.sons.add candidate
         result = isEqual
       return
@@ -1199,6 +1199,11 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if lengthOrd(c.c.config, fRange) != lengthOrd(c.c.config, aRange):
           result = isNone
     else: discard
+  of tyUncheckedArray:
+    if a.kind == tyUncheckedArray:
+      result = typeRel(c, base(f), base(a))
+      if result < isGeneric: result = isNone
+    else: discard
   of tyOpenArray, tyVarargs:
     # varargs[expr] is special too but handled earlier. So we only need to
     # handle varargs[stmt] which is the same as varargs[typed]:
@@ -1292,7 +1297,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyDistinct:
     if a.kind == tyDistinct:
       if sameDistinctTypes(f, a): result = isEqual
-      elif f.base.kind == tyAnything: result = isGeneric
+      #elif f.base.kind == tyAnything: result = isGeneric  # issue 4435
       elif c.coerceDistincts: result = typeRel(c, f.base, a)
     elif a.kind == tyNil and f.base.kind in NilableTypes:
       result = f.allowsNil
@@ -1362,6 +1367,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       if a.len == 1:
         let pointsTo = a.sons[0].skipTypes(abstractInst)
         if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyUncheckedArray and pointsTo.sons[0].kind == tyChar:
+          result = isConvertible
         elif pointsTo.kind == tyArray and firstOrd(nil, pointsTo.sons[0]) == 0 and
             skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
             pointsTo.sons[1].kind == tyChar:
@@ -1376,6 +1383,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
+    let origF = f
     var f = if prev == nil: f else: prev
 
     let roota = a.skipGenericAlias
@@ -1433,7 +1441,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
         result = isNone
     else:
-      result = typeRel(c, lastSon(f), a)
+      assert lastSon(origF) != nil
+      result = typeRel(c, lastSon(origF), a)
       if result != isNone and a.kind != tyNil:
         put(c, f, a)
 
@@ -1718,7 +1727,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     else:
       result = typeRel(c, f.base, a)
       if result != isNone:
-        c.inferredTypes.safeAdd f
+        c.inferredTypes.add f
         f.sons.add a
 
   of tyTypeDesc:
@@ -1817,8 +1826,11 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let srca = typeRel(m, src, a)
     if srca notin {isEqual, isGeneric, isSubtype}: continue
 
+    # What's done below matches the logic in ``matchesAux``
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
+      continue
+    if src.kind in {tyVar, tyLent} and not arg.isLValue:
       continue
 
     let destIsGeneric = containsGenericType(dest)
@@ -1832,9 +1844,16 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       s.info = arg.info
       result = newNodeIT(nkHiddenCallConv, arg.info, dest)
       addSon(result, s)
+      # We build the call expression by ourselves in order to avoid passing this
+      # expression trough the semantic check phase once again so let's make sure
+      # it is correct
       var param: PNode = nil
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
+      elif src.kind == tyVar:
+        # Analyse the converter return type
+        param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
+        param.addSon(copyTree(arg))
       else:
         param = copyTree(arg)
       addSon(result, param)
@@ -1909,10 +1928,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:
-        arg.typ = newTypeS(tyStatic, c)
-        arg.typ.sons = @[evaluated.typ]
-        arg.typ.n = evaluated
-        a = arg.typ
+        # Don't build the type in-place because `evaluated` and `arg` may point
+        # to the same object and we'd end up creating recursive types (#9255)
+        let typ = newTypeS(tyStatic, c)
+        typ.sons = @[evaluated.typ]
+        typ.n = evaluated
+        arg.typ = typ
+        a = typ
       else:
         if m.callee.kind == tyGenericBody:
           if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
@@ -2600,4 +2622,3 @@ tests:
 
     yes int, ordinal
     no  string, ordinal
-

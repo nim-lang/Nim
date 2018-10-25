@@ -1,6 +1,5 @@
-import sets
-import hashes
-import algorithm
+import sets, hashes, algorithm
+
 
 block setEquality:
   var

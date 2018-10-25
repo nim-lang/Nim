@@ -221,7 +221,7 @@ proc close*(socket: SocketHandle) =
     discard winlean.closesocket(socket)
   else:
     discard posix.close(socket)
-  # TODO: These values should not be discarded. An EOS should be raised.
+  # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
@@ -456,13 +456,10 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sin6_family.cint == nativeAfInet:
-    result = AF_INET
-  elif name.sin6_family.cint == nativeAfInet6:
-    result = AF_INET6
-  else:
-    raiseOSError(osLastError(), "unknown socket family in getSockFamily")
-
+  try:
+    result = toKnownDomain(name.sin6_family.cint).get()
+  except UnpackError:
+    raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
   ## return the string representation of address within sockAddr
@@ -597,7 +594,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
 proc setBlocking*(s: SocketHandle, blocking: bool) =
   ## Sets blocking mode on socket.
   ##
-  ## Raises EOS on error.
+  ## Raises OSError on error.
   when useWinVersion:
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:

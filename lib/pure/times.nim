@@ -967,11 +967,13 @@ else:
           return ((0 - tm.toAdjUnix).int, false)
         return (0, false)
 
-    var a = unix.CTime
+    # In case of a 32-bit time_t, we fallback to the closest available
+    # timezone information.
+    var a = clamp(unix, low(CTime), high(CTime)).CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:
       let tm = tmPtr[]
-      return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
+      return ((a.int64 - tm.toAdjUnix).int, tm.isdst > 0)
     return (0, false)
 
   proc localZonedTimeFromTime(time: Time): ZonedTime =

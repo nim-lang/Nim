@@ -105,7 +105,7 @@ proc add*(monitor: FSMonitor, target: string,
 proc del*(monitor: FSMonitor, wd: cint) =
   ## Removes watched directory or file as specified by ``wd`` from ``monitor``.
   ##
-  ## If ``wd`` is not a part of ``monitor`` an EOS error is raised.
+  ## If ``wd`` is not a part of ``monitor`` an OSError error is raised.
   if inotifyRmWatch(monitor.fd, wd) < 0:
     raiseOSError(osLastError())
 

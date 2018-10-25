@@ -587,12 +587,12 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
     checkForOverlap(c, t, i, branchIndex)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType)
+                      father: PNode, rectype: PType, hasCaseFields = false)
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
   checkMinSonsLen(n, 2, c.config)
-  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype)
+  semRecordNodeAux(c, n.sons[0], check, pos, a, rectype, hasCaseFields = true)
   if a.sons[0].kind != nkSym:
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
@@ -619,13 +619,13 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       checkSonsLen(b, 1, c.config)
     else: illFormedAst(n, c.config)
     delSon(b, sonsLen(b) - 1)
-    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype)
+    semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != lengthOrd(c.config, a.sons[0].typ):
     localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType) =
+                      father: PNode, rectype: PType, hasCaseFields = false) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -694,7 +694,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.position = pos
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
-         f.loc.r == nil:
+         not hasCaseFields and f.loc.r == nil:
         f.loc.r = rope(f.name.s)
         f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
@@ -963,7 +963,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let liftBody = liftingWalk(paramType.lastSon, true)
     if liftBody != nil:
       result = liftBody
-      result.shouldHaveMeta
+      result.flags.incl tfHasMeta
+      #result.shouldHaveMeta
 
   of tyGenericInvocation:
     for i in 1 ..< paramType.len:
@@ -1413,6 +1414,20 @@ proc semTypeof(c: PContext; n: PNode; prev: PType): PType =
   fixupTypeOf(c, prev, t)
   result = t.typ
 
+proc semTypeof2(c: PContext; n: PNode; prev: PType): PType =
+  openScope(c)
+  var m = BiggestInt 1 # typeOfIter
+  if n.len == 3:
+    let mode = semConstExpr(c, n[2])
+    if mode.kind != nkIntLit:
+      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
+    else:
+      m = mode.intVal
+  let t = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
+  closeScope(c)
+  fixupTypeOf(c, prev, t)
+  result = t.typ
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   inc c.inTypeContext
@@ -1493,6 +1508,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2, c.config)
         result = semTypeof(c, n[1], prev)
+      elif op.s == "typeof" and n[0].kind == nkSym and n[0].sym.magic == mTypeof:
+        result = semTypeOf2(c, n, prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
           result = makeTypeFromExpr(c, n.copyTree)
@@ -1510,6 +1527,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
+    of mUncheckedArray: result = semContainer(c, n, tyUncheckedArray, "uncheckedarray", prev)
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
@@ -1750,6 +1768,8 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mSet:
     setMagicType(c.config, m, tySet, 0)
+  of mUncheckedArray:
+    setMagicType(c.config, m, tyUncheckedArray, 0)
   of mSeq:
     setMagicType(c.config, m, tySequence, 0)
     if c.config.selectedGc == gcDestructors:
@@ -1844,4 +1864,3 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       s.position = result.len
       addSon(result, newSymNode(s))
       if sfGenSym notin s.flags: addDecl(c, s)
-

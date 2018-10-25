@@ -37,10 +37,7 @@ proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
 
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
   result = newFloatNode(nkFloatLit, floatVal)
-  if skipTypes(n.typ, abstractVarRange).kind == tyFloat:
-    result.typ = getFloatLitType(g, result)
-  else:
-    result.typ = n.typ
+  result.typ = n.typ
   result.info = n.info
 
 proc newStrNodeT*(strVal: string, n: PNode; g: ModuleGraph): PNode =
@@ -176,43 +173,6 @@ proc makeRangeF(typ: PType, first, last: BiggestFloat; g: ModuleGraph): PType =
   result = newType(tyRange, typ.owner)
   result.n = n
   addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
-
-proc evalIs(n: PNode, lhs: PSym, g: ModuleGraph): PNode =
-  # XXX: This should use the standard isOpImpl
-  internalAssert g.config,
-    n.sonsLen == 3 and
-    lhs.typ != nil and
-    n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
-
-  var
-    res = false
-    t1 = lhs.typ
-    t2 = n[2].typ
-
-  if t1.kind == tyTypeDesc and t2.kind != tyTypeDesc:
-    t1 = t1.base
-
-  if n[2].kind in {nkStrLit..nkTripleStrLit}:
-    case n[2].strVal.normalize
-    of "closure":
-      let t = skipTypes(t1, abstractRange)
-      res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator notin t.flags
-    of "iterator":
-      let t = skipTypes(t1, abstractRange)
-      res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator in t.flags
-    else:
-      res = false
-  else:
-    # XXX semexprs.isOpImpl is slightly different and requires a context. yay.
-    let t2 = n[2].typ
-    res = sameType(t1, t2)
-
-  result = newIntNode(nkIntLit, ord(res))
-  result.typ = n.typ
 
 proc fitLiteral(c: ConfigRef, n: PNode): PNode =
   # Trim the literal value in order to make it fit in the destination type
@@ -382,7 +342,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
       result = newStrNodeT(s, n, g)
     else:
       result = newStrNodeT(getStrOrChar(a), n, g)
-  of mStrToStr: result = a
+  of mStrToStr: result = newStrNodeT(getStrOrChar(a), n, g)
   of mEnumToStr: result = newStrNodeT(ordinalValToString(a, g), n, g)
   of mArrToSeq:
     result = copyTree(a)
@@ -453,14 +413,15 @@ proc getAppType(n: PNode; g: ModuleGraph): PNode =
     result = newStrNodeT("console", n, g)
 
 proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
-  var err = false
-  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
-    err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
-  else:
-    err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
-  if err:
-    localError(g.config, n.info, "cannot convert " & $value &
-                                     " to " & typeToString(n.typ))
+  if tfUncheckedArray notin n.typ.flags:
+    var err = false
+    if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+      err = value <% firstOrd(g.config, n.typ) or value >% lastOrd(g.config, n.typ, fixedUnsigned=true)
+    else:
+      err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
+    if err:
+      localError(g.config, n.info, "cannot convert " & $value &
+                                      " to " & typeToString(n.typ))
 
 proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   let dstTyp = skipTypes(n.typ, abstractRange)
@@ -649,18 +610,6 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mNone:
         # If it has no sideEffect, it should be evaluated. But not here.
         return
-      of mSizeOf:
-        var a = n.sons[1]
-        if computeSize(g.config, a.typ) < 0:
-          localError(g.config, a.info, "cannot evaluate 'sizeof' because its type is not defined completely")
-          result = nil
-        elif skipTypes(a.typ, typedescInst+{tyRange, tyArray}).kind in
-             IntegralTypes+NilableTypes+{tySet}:
-          #{tyArray,tyObject,tyTuple}:
-          result = newIntNodeT(getSize(g.config, a.typ), n, g)
-        else:
-          result = nil
-          # XXX: size computation for complex types is still wrong
       of mLow:
         result = newIntNodeT(firstOrd(g.config, n.sons[1].typ), n, g)
       of mHigh:
@@ -688,9 +637,9 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mConStrStr:
         result = foldConStrStr(m, n, g)
       of mIs:
-        let lhs = getConstExpr(m, n[1], g)
-        if lhs != nil and lhs.kind == nkSym:
-          result = evalIs(n, lhs.sym, g)
+        # The only kind of mIs node that comes here is one depending on some
+        # generic parameter and that's (hopefully) handled at instantiation time
+        discard
       else:
         result = magicCall(m, n, g)
     except OverflowError:

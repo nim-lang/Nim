@@ -269,8 +269,22 @@ proc nimcacheDir*(): string =
   ## Retrieves the location of 'nimcache'.
   builtin
 
+proc projectName*(): string =
+  ## Retrieves the name of the current project
+  builtin
+
+proc projectDir*(): string =
+  ## Retrieves the absolute directory of the current project
+  builtin
+
+proc projectPath*(): string =
+  ## Retrieves the absolute path of the current project
+  builtin
+
 proc thisDir*(): string =
-  ## Retrieves the location of the current ``nims`` script file.
+  ## Retrieves the directory of the current ``nims`` script file. Its path is
+  ## obtained via ``currentSourcePath`` (although, currently,
+  ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
   builtin
 
 proc cd*(dir: string) {.raises: [OSError].} =

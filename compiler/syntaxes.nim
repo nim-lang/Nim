@@ -72,12 +72,16 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
       i = 0
       inc linenumber
     if i+1 < line.len and line[i] == '#' and line[i+1] == '?':
-      inc(i, 2)
-      while i < line.len and line[i] in Whitespace: inc(i)
-      var q: TParser
-      parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
-      result = parser.parseAll(q)
-      parser.closeParser(q)
+      when defined(nimpretty2):
+        # XXX this is a bit hacky, but oh well...
+        quit "can't nimpretty a source code filter"
+      else:
+        inc(i, 2)
+        while i < line.len and line[i] in Whitespace: inc(i)
+        var q: TParser
+        parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
+        result = parser.parseAll(q)
+        parser.closeParser(q)
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind =

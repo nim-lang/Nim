@@ -105,7 +105,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
       elif errorsEnabled or z.diagnosticsEnabled:
-        errors.safeAdd(CandidateError(
+        errors.add(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
@@ -224,6 +224,7 @@ const
   errButExpected = "but expected one of: "
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
+  errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -261,6 +262,30 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
     notFoundError(c, n, errors)
+
+proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+  if c.compilesContextId > 0:
+    # we avoid running more diagnostic when inside a `compiles(expr)`, to
+    # errors while running diagnostic (see test D20180828T234921), and
+    # also avoid slowdowns in evaluating `compiles(expr)`.
+    discard
+  else:
+    var o: TOverloadIter
+    var sym = initOverloadIter(o, c, f)
+    while sym != nil:
+      proc toHumanStr(kind: TSymKind): string =
+        result = $kind
+        assert result.startsWith "sk"
+        result = result[2..^1].toLowerAscii
+      result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+      sym = nextOverloadIter(o, c, n)
+
+  let ident = considerQuotedIdent(c, f, n).s
+  if nfDotField in n.flags and nfExplicitCall notin n.flags:
+    result = errUndeclaredField % ident & result
+  else:
+    if result.len == 0: result = errUndeclaredRoutine % ident
+    else: result = errBadRoutine % [ident, result]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
@@ -330,10 +355,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
-      else:
-        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
+      if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
+        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -500,14 +523,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         # repeat the overload resolution,
         # this time enabling all the diagnostic output (this should fail again)
         discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      else:
+      elif efNoUndeclared notin flags:
         notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    else:
+    elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =

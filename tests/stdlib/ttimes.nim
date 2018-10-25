@@ -114,7 +114,7 @@ suite "ttimes":
   # Generate tests for multiple timezone files where available
   # Set the TZ env var for each test
   when defined(linux) or defined(macosx):
-    const tz_dir = "/usr/share/zoneinfo"
+    let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
     
     let orig_tz = getEnv("TZ")

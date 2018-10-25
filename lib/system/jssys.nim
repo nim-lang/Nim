@@ -228,6 +228,7 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
 
 proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
   asm """
+  if (`s` === null) return "";
   var len = `s`.length;
   var asciiPart = new Array(len);
   var fcc = String.fromCharCode;
@@ -330,6 +331,8 @@ proc cmp(x, y: string): int =
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   asm """
     if (`a` == `b`) return true;
+    if (`a` === null && `b`.length == 0) return true;
+    if (`b` === null && `a`.length == 0) return true;
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;

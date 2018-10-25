@@ -180,6 +180,15 @@ else:
     ## Cannot be overloaded.
     discard
 
+when defined(nimHasTypeof):
+  type
+    TypeOfMode* = enum ## Possible modes of `typeof`.
+      typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
+      typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
+  proc typeof*(x: untyped; mode = typeOfIter): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+    ## Builtin 'typeof' operation for accessing the type of an expression. Since version 0.20.0.
+    discard
+
 proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
@@ -253,7 +262,13 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
-  UncheckedArray* {.unchecked.}[T] = array[0, T]
+when defined(nimUncheckedArrayTyp):
+  type
+    UncheckedArray*{.magic: "UncheckedArray".}[T]
+    ## Array with no bounds checking
+else:
+  type
+    UncheckedArray*{.unchecked.}[T] = array[0,T]
     ## Array with no bounds checking
 
 when defined(nimHasOpt):
@@ -264,40 +279,97 @@ when defined(nimNewRuntime):
   type lent*{.magic: "BuiltinType".}[T]
 
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
-  ## returns the highest possible index of an array, a sequence, a string or
-  ## the highest possible value of an ordinal value `x`. As a special
+  ## returns the highest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  high(2) #=> 9223372036854775807
+
+proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+  ## returns the highest possible value of an ordinal or enum type.
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  high(int) #=> 9223372036854775807
+
+proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a sequence `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,2,3,4,5,6,7]
+  ##  high(s) #=> 6
+  ##  for i in low(s)..high(s):
+  ##    echo s[i]
+
+proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array `x`.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
   ##  high(arr) #=> 6
-  ##  high(2) #=> 9223372036854775807
-  ##  high(int) #=> 9223372036854775807
+  ##  for i in low(arr)..high(arr):
+  ##    echo arr[i]
 
-proc high*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
-proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
-proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array type.
+  ##
+  ## .. code-block:: nim
+  ##  high(array[7, int]) #=> 6
+
 proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a compatible string `x`.
+  ## This is sometimes an O(n) operation.
+
 proc high*(x: string): int {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of a string `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  high(str) #=> 11
 
 proc low*[T: Ordinal|enum](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible value of an ordinal or enum type.
+  ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  low(int) #=> -9223372036854775808
+
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a sequence `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,2,3,4,5,6,7]
+  ##  low(s) #=> 0
+
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
-proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
-proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
-proc low*(x: string): int {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
-  ## the lowest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
+  ## returns the lowest possible index of an array `x`.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,2,3,4,5,6,7]
   ##  low(arr) #=> 0
+
+proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
   ##  low(2) #=> -9223372036854775808
-  ##  low(int) #=> -9223372036854775808
+
+proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of an array type.
+  ##
+  ## .. code-block:: nim
+  ##  low(array[7, int]) #=> 0
+
+proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a compatible string `x`.
+
+proc low*(x: string): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of a string `x`.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  low(str) #=> 0
 
 proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
@@ -619,12 +691,29 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ## that one never needs to know ``x``'s size. As a special semantic rule,
   ## ``x`` may also be a type identifier (``sizeof(int)`` is valid).
   ##
-  ## Limitations: If used within nim VM context ``sizeof`` will only work
-  ## for simple types.
+  ## Limitations: If used for types that are imported from C or C++,
+  ## sizeof should fallback to the ``sizeof`` in the C compiler. The
+  ## result isn't available for the Nim compiler and therefore can't
+  ## be used inside of macros.
   ##
   ## .. code-block:: nim
   ##  sizeof('A') #=> 1
   ##  sizeof(2) #=> 8
+
+when defined(nimHasalignOf):
+  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+
+  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+
+  template offsetOf*[T](t: typedesc[T]; member: untyped): int =
+    var tmp: T
+    offsetOfDotExpr(tmp.member)
+
+  template offsetOf*[T](value: T; member: untyped): int =
+    offsetOfDotExpr(value.member)
+
+  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
@@ -726,19 +815,42 @@ when not defined(JS) and not defined(gcDestructors):
 
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
+  ## returns the length of an openarray.
+  ##
+  ## .. code-block:: nim
+  ##  var s = [1,1,1,1,1]
+  ##  len(s) #=> 5
+
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+  ## returns the length of a string.
+  ##
+  ## .. code-block:: nim
+  ##  var str = "Hello world!"
+  ##  len(str) #=> 12
+
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
+  ## returns the length of a compatible string. This is sometimes
+  ## an O(n) operation.
+  ##
+  ## .. code-block:: nim
+  ##  var str: cstring = "Hello world!"
+  ##  len(str) #=> 12
+
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
-  ## returns the length of an array, an openarray, a sequence or a string.
-  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
-  ## always an int.
+  ## returns the length of an array or an array type.
+  ## This is roughly the same as ``high(T)-low(T)+1``.
   ##
   ## .. code-block:: nim
   ##  var arr = [1,1,1,1,1]
   ##  len(arr) #=> 5
-  ##  for i in 0..<arr.len:
-  ##    echo arr[i] #=> 1,1,1,1,1
+  ##  len(array[3..8, int]) #=> 6
+
+proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+  ## returns the length of a sequence.
+  ##
+  ## .. code-block:: nim
+  ##  var s = @[1,1,1,1,1]
+  ##  len(s) #=> 5
 
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
@@ -1334,11 +1446,11 @@ const
     ## compiler magic. It is useful to embed testing code in a module.
 
   CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
-    ## is the date of compilation as a string of the form
+    ## is the date (in UTC) of compilation as a string of the form
     ## ``YYYY-MM-DD``. This works thanks to compiler magic.
 
   CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
-    ## is the time of compilation as a string of the form
+    ## is the time (in UTC) of compilation as a string of the form
     ## ``HH:MM:SS``. This works thanks to compiler magic.
 
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
@@ -1674,26 +1786,26 @@ type # these work for most platforms:
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
   magic: "ToInt", noSideEffect, importc: "toInt".}
   ## converts a floating point number `f` into an ``int``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
 proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -1912,9 +2024,12 @@ proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## used instead. (In other words: *Overwriting* is possible.)
 
 # undocumented:
-proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
+proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
+proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
+proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
+  deprecated: "the refcount never was reliable, the GC does not use traditional refcounting".}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
@@ -1932,7 +2047,7 @@ const
   NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 18
+  NimMinor* {.intdefine.}: int = 19
     ## is the minor number of Nim's version.
 
   NimPatch* {.intdefine.}: int = 1
@@ -2029,7 +2144,7 @@ when defined(nimNewRoof):
   template dotdotImpl(t) {.dirty.} =
     iterator `..`*(a, b: t): t {.inline.} =
       ## A type specialized version of ``..`` for convenience so that
-      ## mixing integer types work better.
+      ## mixing integer types works better.
       var res = a
       while res <= b:
         yield res
@@ -2071,10 +2186,14 @@ else:
         inc(res)
 
 
-iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
+iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
   inline, magic: "OmpParFor", sideEffect.} =
-  ## parallel loop iterator. Same as `..` but the loop may run in parallel.
+  ## OpenMP parallel loop iterator. Same as `..` but the loop may run in parallel.
   ## `annotation` is an additional annotation for the code generator to use.
+  ## The default annotation is `parallel for`.
+  ## Please refer to the `OpenMP Syntax Reference<https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf>`_
+  ## for further information.
+  ##
   ## Note that the compiler maps that to
   ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
   ## such isn't aware of the parallelism in your code! Be careful! Later
@@ -2668,8 +2787,11 @@ when not defined(nimscript) and hasAlloc:
       {.warning: "GC_getStatistics is a no-op in JavaScript".}
       ""
 
-template accumulateResult*(iter: untyped) =
+template accumulateResult*(iter: untyped) {.deprecated: "use `sequtils.toSeq` instead (more hygienic, sometimes more efficient)".} =
   ## helps to convert an iterator to a proc.
+  ## See also `sequtils.toSeq` which is more hygienic and efficient.
+  ##
+  ## **Deprecated since v0.19.2:** use toSeq instead
   result = @[]
   for x in iter: add(result, x)
 
@@ -3357,7 +3479,7 @@ when not defined(JS): #and not defined(nimscript):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
-      ## If the file does not exist `EIO` is raised. The trailing newline
+      ## If the file does not exist `IOError` is raised. The trailing newline
       ## character(s) are removed from the iterated lines. Example:
       ##
       ## .. code-block:: nim
@@ -3791,7 +3913,7 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
 
 include "system/helpers" # for `lineInfoToString`
 
-template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
+template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
   bind instantiationInfo
   mixin failedAssertImpl
@@ -3800,9 +3922,9 @@ template assertImpl(cond: bool, msg = "", enabled: static[bool]) =
     # here, regardless of --excessiveStackTrace
     {.line: instantiationInfo(fullPaths = true).}:
       if not cond:
-        failedAssertImpl(loc & " `" & astToStr(cond) & "` " & msg)
+        failedAssertImpl(loc & " `" & expr & "` " & msg)
 
-template assert*(cond: bool, msg = "") =
+template assert*(cond: untyped, msg = "") =
   ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
@@ -3811,11 +3933,13 @@ template assert*(cond: bool, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
-  assertImpl(cond, msg, compileOption("assertions"))
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, compileOption("assertions"))
 
-template doAssert*(cond: bool, msg = "") =
+template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
-  assertImpl(cond, msg, true)
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, true)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.
@@ -4112,8 +4236,16 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
 
 when defined(nimNoNilSeqs2):
   when not compileOption("nilseqs"):
-    proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil); y: string): bool {.error.} = discard
+    when defined(nimHasUserErrors):
+      proc `==`*(x: string; y: type(nil)): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+      proc `==`*(x: type(nil); y: string): bool {.
+          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+        discard
+    else:
+      proc `==`*(x: string; y: type(nil)): bool {.error.} = discard
+      proc `==`*(x: type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -4243,6 +4375,8 @@ when not defined(js):
   proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
   proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
   proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
     magic: "Slice".}

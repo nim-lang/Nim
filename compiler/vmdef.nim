@@ -107,6 +107,7 @@ type
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
+    opcGetImplTransf
 
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
@@ -191,7 +192,7 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
-  TCtx* = object of passes.TPassContext # code gen context
+  TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation

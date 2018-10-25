@@ -32,12 +32,12 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils, transf
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TJSGen = object of TPassContext
+  TJSGen = object of PPassContext
     module: PSym
     graph: ModuleGraph
     config: ConfigRef
@@ -179,7 +179,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence, tyOpt: result = etySeq
-  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
+  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs, tyUncheckedArray:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericParam, tyGenericBody, tyGenericInvocation,
@@ -195,7 +195,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyOptAsRef: doAssert(false, "mapType")
+  of tyOptAsRef: doAssert(false, "mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -615,7 +615,6 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], a)
   moveInto(p, a, r)
   var generalCatchBranchExists = false
-  let dollar = rope("")
   if catchBranchesExist:
     addf(p.body, "--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
         " lastJSError = EXC;$n --excHandler;$n", [])
@@ -631,15 +630,42 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       if i > 1: lineF(p, "}$n", [])
     else:
       var orExpr: Rope = nil
+      var excAlias: PNode = nil
+
       useMagic(p, "isObj")
       for j in countup(0, blen - 2):
-        if n.sons[i].sons[j].kind != nkType:
+        var throwObj: PNode
+        let it = n.sons[i].sons[j]
+
+        if it.isInfixAs():
+          throwObj = it[1]
+          excAlias = it[2]
+          # If this is a ``except exc as sym`` branch there must be no following
+          # nodes
+          doAssert orExpr == nil
+        elif it.kind == nkType:
+          throwObj = it
+        else:
           internalError(p.config, n.info, "genTryStmt")
+
         if orExpr != nil: add(orExpr, "||")
-        addf(orExpr, "isObj($2lastJSError.m_type, $1)",
-             [genTypeInfo(p, n.sons[i].sons[j].typ), dollar])
+        # Generate the correct type checking code depending on whether this is a
+        # NIM-native or a JS-native exception
+        # if isJsObject(throwObj.typ):
+        if isImportedException(throwObj.typ, p.config):
+          addf(orExpr, "lastJSError instanceof $1",
+            [throwObj.typ.sym.loc.r])
+        else:
+          addf(orExpr, "isObj(lastJSError.m_type, $1)",
+               [genTypeInfo(p, throwObj.typ)])
+
       if i > 1: line(p, "else ")
-      lineF(p, "if ($1lastJSError && ($2)) {$n", [dollar, orExpr])
+      lineF(p, "if (lastJSError && ($1)) {$n", [orExpr])
+      # If some branch requires a local alias introduce it here. This is needed
+      # since JS cannot do ``catch x as y``.
+      if excAlias != nil:
+        excAlias.sym.loc.r = mangleName(p.module, excAlias.sym)
+        lineF(p, "var $1 = lastJSError;$n", excAlias.sym.loc.r)
       gen(p, n.sons[i].sons[blen - 1], a)
       moveInto(p, a, r)
       lineF(p, "}$n", [])
@@ -650,7 +676,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "else {\L")
       line(p, "\treraiseException();\L")
       line(p, "}\L")
-    addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
+    lineF(p, "lastJSError = prevJSError;$n")
   line(p, "} finally {\L")
   line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < length and n.sons[i].kind == nkFinally:
@@ -960,13 +986,50 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes)
 
-proc genCheckedFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
-  let m = if n.kind == nkHiddenAddr: n.sons[0] else: n
-  internalAssert p.config, m.kind == nkCheckedFieldExpr
-  genAddr(p, m, r) # XXX
+proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
+  internalAssert p.config, n.kind == nkCheckedFieldExpr
+  # nkDotExpr to access the requested field
+  let accessExpr = n[0]
+  # nkCall to check if the discriminant is valid
+  var checkExpr = n[1]
 
-proc genCheckedFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
-  genFieldAccess(p, n.sons[0], r) # XXX
+  let negCheck = checkExpr[0].sym.magic == mNot
+  if negCheck:
+    checkExpr = checkExpr[^1]
+
+  # Field symbol
+  var field = accessExpr[1].sym
+  internalAssert p.config, field.kind == skField
+  if field.loc.r == nil: field.loc.r = mangleName(p.module, field)
+  # Discriminant symbol
+  let disc = checkExpr[2].sym
+  internalAssert p.config, disc.kind == skField
+  if disc.loc.r == nil: disc.loc.r = mangleName(p.module, disc)
+
+  var setx: TCompRes
+  gen(p, checkExpr[1], setx)
+
+  var obj: TCompRes
+  gen(p, accessExpr[0], obj)
+  # Avoid evaluating the LHS twice (one to read the discriminant and one to read
+  # the field)
+  let tmp = p.getTemp()
+  lineF(p, "var $1 = $2;$n", tmp, obj.res)
+
+  useMagic(p, "raiseFieldError")
+  useMagic(p, "makeNimstrLit")
+  lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
+    setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
+    makeJSString(field.name.s))
+
+  if addrTyp != nil and mapType(p, addrTyp) == etyBaseIndex:
+    r.typ = etyBaseIndex
+    r.res = makeJSString($field.loc.r)
+    r.address = tmp
+  else:
+    r.typ = etyNone
+    r.res = "$1.$2" % [tmp, field.loc.r]
+  r.kind = resExpr
 
 proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -1045,7 +1108,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
     else: internalError(p.config, n.info, "genAddr: 2")
   of nkCheckedFieldExpr:
-    genCheckedFieldAddr(p, n, r)
+    genCheckedFieldOp(p, n[0], n.typ, r)
   of nkDotExpr:
     if mapType(p, n.typ) == etyBaseIndex:
       genFieldAddr(p, n.sons[0], r)
@@ -1696,7 +1759,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mIsNil: unaryExpr(p, n, r, "", "($1 === null)")
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
-  of mSizeOf: r.res = rope(getSize(p.config, n.sons[1].typ))
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
@@ -1959,7 +2021,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  p.nested: genStmt(p, prc.getBody)
+  let transformed_body = transformBody(oldProc.module.graph, prc, cache = false)
+  p.nested: genStmt(p, transformed_body)
 
   var def: Rope
   if not prc.constraint.isNil:
@@ -2114,7 +2177,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkDerefExpr, nkHiddenDeref: genDeref(p, n, r)
   of nkBracketExpr: genArrayAccess(p, n, r)
   of nkDotExpr: genFieldAccess(p, n, r)
-  of nkCheckedFieldExpr: genCheckedFieldAccess(p, n, r)
+  of nkCheckedFieldExpr: genCheckedFieldOp(p, n, nil, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
   of nkCast: genCast(p, n, r)
@@ -2209,7 +2272,8 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  genStmt(p, n)
+  let n_transformed = transformStmt(p.module.graph, p.module.module, n)
+  genStmt(p, n_transformed)
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
 
@@ -2282,6 +2346,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         else: AbsoluteFile(getCurrentDir() / m.config.outFile.string)
       else:
         changeFileExt(completeCFilePath(m.config, AbsoluteFile f), ext)
+    let (outDir, _, _) = splitFile(outfile)
+    if not outDir.isEmpty:
+      createDir(outDir)
     discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(m.config, obj, content, ext)
@@ -2290,4 +2357,3 @@ proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)
-

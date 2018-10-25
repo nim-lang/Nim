@@ -197,7 +197,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyRef, tyOpt:
+      tyPtr, tyRef, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyArray:
     if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
@@ -216,7 +216,8 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if c.c.config.selectedGC == gcDestructors:
       discard considerOverloadedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
-      body.add newSeqCall(c.c, x, y)
+      if c.kind != attachedDestructor:
+        body.add newSeqCall(c.c, x, y)
       let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
@@ -259,7 +260,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef: internalError(c.c.config, "liftBodyAux")
+  of tyOptAsRef: internalError(c.c.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

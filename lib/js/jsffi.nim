@@ -89,6 +89,17 @@ var
   jsFilename* {.importc: "__filename", nodecl.}: cstring
     ## JavaScript's __filename pseudo-variable
 
+# Exceptions
+type
+  JsError* {.importc: "Error".} = object of JsRoot
+    message*: cstring
+  JsEvalError* {.importc: "EvalError".} = object of JsError
+  JsRangeError* {.importc: "RangeError".} = object of JsError
+  JsReferenceError* {.importc: "ReferenceError".} = object of JsError
+  JsSyntaxError* {.importc: "SyntaxError".} = object of JsError
+  JsTypeError* {.importc: "TypeError".} = object of JsError
+  JsURIError* {.importc: "URIError".} = object of JsError
+
 # New
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject

@@ -73,7 +73,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         bb = bb.lastSon
       else:
         break
-    if sameType(aa, bb):
+    if sameType(a.typ.sons[i], b.typ.sons[i]):
       if aa.kind == tyObject and result != Invalid:
         result = Yes
     elif aa.kind == tyObject and bb.kind == tyObject:
@@ -83,7 +83,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
           result = Yes
         else:
           return No
-      elif diff != high(int):
+      elif diff != high(int) and sfFromGeneric notin (a.flags+b.flags):
         result = Invalid
       else:
         return No
@@ -281,6 +281,7 @@ proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym
     else:
       disp = ret
   nilchecks.add disp
+  nilchecks.flags.incl nfTransf # should not be further transformed
   result.ast.sons[bodyPos] = nilchecks
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =

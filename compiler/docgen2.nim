@@ -14,10 +14,10 @@ import
   os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos,
   pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  TGen = object of TPassContext
+  TGen = object of PPassContext
     doc: PDoc
     module: PSym
   PGen = ref TGen
@@ -55,20 +55,26 @@ proc processNodeJson(c: PPassContext, n: PNode): PNode =
   result = n
   var g = PGen(c)
   if shouldProcess(g):
-    generateJson(g.doc, n)
+    generateJson(g.doc, n, false)
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+template myOpenImpl(ext: untyped) {.dirty.} =
   var g: PGen
   new(g)
   g.module = module
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config)
+      graph.cache, graph.config, ext)
   d.hasToc = true
   g.doc = d
   result = g
 
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+  myOpenImpl(HtmlExt)
+
+proc myOpenJson(graph: ModuleGraph; module: PSym): PPassContext =
+  myOpenImpl(JsonExt)
+
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
-const docgen2JsonPass* = makePass(open = myOpen, process = processNodeJson,
+const docgen2JsonPass* = makePass(open = myOpenJson, process = processNodeJson,
                                   close = closeJson)
 
 proc finishDoc2Pass*(project: string) =

@@ -598,14 +598,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
-        if c.config.projectPath.isEmpty:
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
-        else:
-          # XXX this is still suspicous:
-          let dir = toFullPath(c.config, n.info).splitFile.dir
-          let rel = if isAbsolute(x.strVal): relativeTo(AbsoluteFile(x.strVal), c.config.projectPath)
-                    else: RelativeFile(x.strVal)
-          n.info.fileIndex = fileInfoIdx(c.config, AbsoluteDir(dir) / rel)
+        n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:
       localError(c.config, n.info, "tuple expected")
@@ -730,13 +723,13 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     result = newTree(nkCall, n[0], n[1])
-  elif n.kind in nkPragmaCallKinds + {nkIdent}:
+  elif n.kind in nkPragmaCallKinds:
     result = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {efNoUndeclared})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
   else:
@@ -810,9 +803,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
         if not isPowerOfTwo(size) or size <= 0 or size > 8:
-          localError(c.config, it.info, "power of two expected")
+          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
         else:
           sym.typ.size = size
+          # TODO, this is not correct
+          sym.typ.align = int16(size)
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
@@ -954,13 +949,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "warning", s)
         message(c.config, it.info, warnUser, s)
       of wError:
-        if sym != nil and sym.isRoutine:
+        if sym != nil and (sym.isRoutine or sym.kind == skType):
           # This is subtle but correct: the error *statement* is only
           # allowed for top level statements. Seems to be easier than
           # distinguishing properly between
           # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
-          noVal(c, it)
+          if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfError)
+          excl(sym.flags, sfForward)
         else:
           let s = expectStrLit(c, it)
           recordPragma(c, it, "error", s)
@@ -1110,7 +1106,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym.kind in {skField,skProc,skFunc,skConverter,skMethod,skType}:
+    elif sym.kind in {skVar,skLet,skParam,skField,skProc,skFunc,skConverter,skMethod,skType}:
       n.sons[i] = semCustomPragma(c, it)
     else:
       illegalCustomPragma(c, it, sym)

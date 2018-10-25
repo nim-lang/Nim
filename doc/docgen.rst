@@ -117,6 +117,7 @@ Output::
   {
     "orig": "docgen_sample.nim",
     "nimble": "",
+    "moduleDescription": "This module is a sample",
     "entries": [
       {
         "name": "helloWorld",
@@ -131,7 +132,7 @@ Output::
 
 Similarly to the old ``doc`` command the old ``jsondoc`` command has been
 renamed ``jsondoc0``.
- 
+
 The ``jsondoc0`` command::
   nim jsondoc0 sample
 
@@ -158,11 +159,11 @@ Project switch
 --------------
 
 ::
-  nim doc2 --project filename.nim
+  nim doc --project filename.nim
 
 This will recursively generate documentation of all nim modules imported
-into the input module, including system modules. Be careful with this command,
-as it may end up sprinkling html files all over your filesystem!
+into the input module that belong to the Nimble package that ``filename.nim``
+belongs to.
 
 
 Index switch
@@ -222,9 +223,8 @@ Usage::
 Output::
   You're reading it!
 
-The input can be viewed here `docgen.txt <docgen.txt>`_. The ``rst2tex``
-command is invoked identically to ``rst2html``, but outputs a .tex file instead
-of .html.
+The ``rst2tex`` command is invoked identically to ``rst2html``, but outputs
+a .tex file instead of .html.
 
 
 HTML anchor generation
@@ -312,8 +312,7 @@ but can have up to four (additional columns are ignored). The content of these
 columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
-   Nim's rules (eg. \`^\` like in `the actors module
-   <actors.html#^,ptr.TChannel[T]>`_).
+   Nim's rules (eg. \`^\`).
 2. Base filename plus anchor hyper link (eg.
    ``algorithm.html#*,int,SortOrder``).
 3. Optional human readable string to display as hyper link. If the value is not

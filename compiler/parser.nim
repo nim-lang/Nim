@@ -1037,6 +1037,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
   addSon(result, p.emptyNode) # return type
   when defined(nimpretty2):
     inc p.em.doIndentMore
+    inc p.em.keepIndents
   let hasParLe = p.tok.tokType == tkParLe and p.tok.indent < 0
   if hasParLe:
     getTok(p)
@@ -1073,6 +1074,7 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
     result = p.emptyNode
   when defined(nimpretty2):
     dec p.em.doIndentMore
+    dec p.em.keepIndents
 
 proc optPragmas(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)):
@@ -1578,7 +1580,6 @@ proc parseTry(p: var TParser; isExpr: bool): PNode =
     colcom(p, b)
     addSon(b, parseStmt(p))
     addSon(result, b)
-    if b.kind == nkFinally: break
   if b == nil: parMessage(p, "expected 'except'")
 
 proc parseExceptBlock(p: var TParser, kind: TNodeKind): PNode =

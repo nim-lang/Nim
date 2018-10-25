@@ -33,8 +33,6 @@ else:
 import ospaths
 export ospaths
 
-proc c_remove(filename: cstring): cint {.
-  importc: "remove", header: "<stdio.h>".}
 proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 proc c_system(cmd: cstring): cint {.
@@ -89,7 +87,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect].} =
   ## Returns true iff the directory `dir` exists. If `dir` is a file, false
-  ## is returned.
+  ## is returned. Follows symlinks.
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, dir)
@@ -306,15 +304,6 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
     if not root.isAbsolute:
       raise newException(ValueError, "The specified root is not absolute: " & root)
     joinPath(root, path)
-
-when isMainModule:
-  doAssertRaises(ValueError): discard absolutePath("a", "b")
-  doAssert absolutePath("a") == getCurrentDir() / "a"
-  doAssert absolutePath("a", "/b") == "/b" / "a"
-  when defined(Posix):
-    doAssert absolutePath("a", "/b/") == "/b" / "a"
-    doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
-    doAssert absolutePath("/a", "b/") == "/a"
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
@@ -652,7 +641,7 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
          deleteFile(f) != 0:
         result = true
   else:
-    if c_remove(file) != 0'i32 and errno != ENOENT:
+    if unlink(file) != 0'i32 and errno != ENOENT:
       result = false
 
 proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -802,19 +791,15 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-
 when defined(posix):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
     assert(path != "")
-    if stat(path, s) < 0'i32:
-      raiseOSError(osLastError())
-    if S_ISDIR(s.st_mode):
+    if stat(path, s) == 0'i32 and S_ISDIR(s.st_mode):
       result = pcLinkToDir
     else:
       result = pcLinkToFile
-
 
 proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
@@ -1052,7 +1037,7 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions>`_.
   createDir(dest)
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFile(path, dest / noSource)
@@ -1236,7 +1221,7 @@ proc copyDirWithPermissions*(source, dest: string,
       if not ignorePermissionErrors:
         raise
   for kind, path in walkDir(source):
-    var noSource = path.substr(source.len()+1)
+    var noSource = splitPath(path).tail
     case kind
     of pcFile:
       copyFileWithPermissions(path, dest / noSource, ignorePermissionErrors)
@@ -1480,6 +1465,24 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
+when defined(haiku):
+  const
+    PATH_MAX = 1024
+    B_FIND_PATH_IMAGE_PATH = 1000
+
+  proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
+                 pathBuffer: cstring, bufferSize: csize): int32
+                {.importc, header: "<FindDirectory.h>".}
+
+  proc getApplHaiku(): string =
+    result = newString(PATH_MAX)
+
+    if find_path(nil, B_FIND_PATH_IMAGE_PATH, nil, result, PATH_MAX) == 0:
+      let realLen = len(cstring(result))
+      setLen(result, realLen)
+    else:
+      result = ""
+
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
@@ -1534,6 +1537,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
+    elif defined(haiku):
+      result = getApplHaiku()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
@@ -1710,13 +1715,22 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo =
     rawToFormalFileInfo(rawInfo, path, result)
 
 proc isHidden*(path: string): bool =
-  ## Determines whether a given path is hidden or not. Returns false if the
-  ## file doesn't exist. The given path must be accessible from the current
-  ## working directory of the program.
+  ## Determines whether ``path`` is hidden or not, using this
+  ## reference https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory
   ##
-  ## On Windows, a file is hidden if the file's 'hidden' attribute is set.
-  ## On Unix-like systems, a file is hidden if it starts with a '.' (period)
-  ## and is not *just* '.' or '..' ' ."
+  ## On Windows: returns true if it exists and its "hidden" attribute is set.
+  ##
+  ## On posix: returns true if ``lastPathPart(path)`` starts with ``.`` and is
+  ## not ``.`` or ``..``. Note: paths are not normalized to determine `isHidden`.
+  runnableExamples:
+    when defined(posix):
+      doAssert ".foo".isHidden
+      doAssert: not ".foo/bar".isHidden
+      doAssert: not ".".isHidden
+      doAssert: not "..".isHidden
+      doAssert: not "".isHidden
+      doAssert ".foo/".isHidden
+
   when defined(Windows):
     when useWinUnicode:
       wrapUnary(attributes, getFileAttributesW, path)
@@ -1725,14 +1739,8 @@ proc isHidden*(path: string): bool =
     if attributes != -1'i32:
       result = (attributes and FILE_ATTRIBUTE_HIDDEN) != 0'i32
   else:
-    if fileExists(path):
-      let
-        fileName = extractFilename(path)
-        nameLen = len(fileName)
-      if nameLen == 2:
-        result = (fileName[0] == '.') and (fileName[1] != '.')
-      elif nameLen > 2:
-        result = (fileName[0] == '.') and (fileName[3] != '.')
+    let fileName = lastPathPart(path)
+    result = len(fileName) >= 2 and fileName[0] == '.' and fileName != ".."
 
 {.pop.}
 

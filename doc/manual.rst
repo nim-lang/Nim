@@ -285,6 +285,11 @@ contain the following `escape sequences`:idx:\ :
   ``\e``                   `escape`:idx: `[ESC]`:idx:
   ``\x`` HH                `character with hex value HH`:idx:;
                            exactly two hex digits are allowed
+  ``\u`` HHHH              `unicode codepoint with hex value HHHH`:idx:;
+                           exactly four hex digits are allowed
+  ``\u`` {H+}              `unicode codepoint`:idx:;
+                           all hex digits enclosed in ``{}`` are used for
+                           the codepoint
 ==================         ===================================================
 
 
@@ -724,7 +729,7 @@ intXX
   suffix ``'u`` is of this type.
 
 uintXX
-  additional signed integer types of XX bits use this naming scheme
+  additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16 bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
@@ -3037,7 +3042,7 @@ The `case expression` is again very similar to the case statement:
 
 As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
-the last expression as the result value, much like in an `expr` template.
+the last expression as the result value.
 
 Table constructor
 -----------------
@@ -4611,8 +4616,8 @@ The concept types can be parametric just like the regular generic types:
     M.data[m * M.N + n] = v
 
   # Adapt the Matrix type to the concept's requirements
-  template Rows*(M: type Matrix): expr = M.M
-  template Cols*(M: type Matrix): expr = M.N
+  template Rows*(M: type Matrix): int = M.M
+  template Cols*(M: type Matrix): int = M.N
   template ValueType*(M: type Matrix): type = M.T
 
   -------------
@@ -5036,9 +5041,8 @@ an ``immediate`` pragma and then these templates do not take part in
 overloading resolution and the parameters' types are *ignored* by the
 compiler. Explicit immediate templates are now deprecated.
 
-**Note**: For historical reasons ``stmt`` is an alias for ``typed`` and
-``expr`` an alias for ``untyped``, but new code should use the newer,
-clearer names.
+**Note**: For historical reasons ``stmt`` was an alias for ``typed`` and
+``expr`` was an alias for ``untyped``, but they are removed.
 
 
 Passing a code block to a template
@@ -5128,9 +5132,6 @@ also ``varargs[untyped]`` so that not even the number of parameters is fixed:
 
 However, since a template cannot iterate over varargs, this feature is
 generally much more useful for macros.
-
-**Note**: For historical reasons ``varargs[expr]`` is not equivalent
-to ``varargs[untyped]``.
 
 
 Symbol binding in templates
@@ -5592,12 +5593,12 @@ via ``{.experimental: "caseStmtMacros".}``.
 
 ``match`` macros are subject to overload resolution. First the
 ``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then the complete ``case`` statement
-body is passed and the macro is evaluated.
+macro to call. To this macro is then passed the complete ``case``
+statement body and the macro is evaluated.
 
 In other words, the macro needs to transform the full ``case`` statement
 but only the statement's selector expression is used to determine which
-``macro`` to call.
+macro to call.
 
 
 Special Types
@@ -5965,6 +5966,12 @@ curlies is the pattern to match against. The operators ``*``,  ``**``,
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 
+Term rewriting macro are applied recursively, up to a limit. This means that
+if the result of a term rewriting macro is eligible for another rewriting,
+the compiler will try to perform it, and so on, until no more optimizations
+are applicable. To avoid putting the compiler into an infinite loop, there is
+a hard limit on how many times a single term rewriting macro can be applied.
+Once this limit has been passed, the term rewriting macro will be ignored.
 
 Unfortunately optimizations are hard to get right and even the tiny example
 is **wrong**:
@@ -6442,12 +6449,12 @@ avoid ambiguity when there are multiple modules with the same path.
 There are two pseudo directories:
 
 1. ``std``: The ``std`` pseudo directory is the abstract location of Nim's standard
-  library. For example, the syntax ``import std / strutils`` is used to unambiguously
-  refer to the standard library's ``strutils`` module.
+library. For example, the syntax ``import std / strutils`` is used to unambiguously
+refer to the standard library's ``strutils`` module.
 2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to a Nimble
-  package. However, for technical details that lie outside of the scope of this document
-  its semantics are: *Use the search path to look for module name but ignore the standard
-  library locations*. In other words, it is the opposite of ``std``.
+package. However, for technical details that lie outside of the scope of this document
+its semantics are: *Use the search path to look for module name but ignore the standard
+library locations*. In other words, it is the opposite of ``std``.
 
 
 From import statement
@@ -7344,7 +7351,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 
@@ -8003,7 +8010,7 @@ To enable thread support the ``--threads:on`` command line switch needs to
 be used. The ``system`` module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the low level thread API. There are also high level parallelism constructs
-available. See `spawn <#parallel-spawn>`_ for further details.
+available. See `spawn <#parallel-amp-spawn>`_ for further details.
 
 Nim's memory model for threads is quite different than that of other common
 programming languages (C, Pascal, Java): Each thread has its own (garbage

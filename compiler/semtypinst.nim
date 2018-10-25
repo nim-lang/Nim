@@ -30,6 +30,11 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion:
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
+
+  t = typ.skipTypes({tyGenericInst})
+  if t.kind == tyArray and tfUncheckedArray in t.flags:
+    t[0].flags.incl tfUncheckedArray # mark range of unchecked array also unchecked
+
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags:
@@ -69,7 +74,7 @@ proc cacheTypeInst*(inst: PType) =
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
-  gt.sym.typeInstCache.safeAdd(inst)
+  gt.sym.typeInstCache.add(inst)
 
 
 type
@@ -373,12 +378,17 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         else:
           newbody.lastSon.typeInst = result
     cl.c.typesWithOps.add((newbody, result))
-    let methods = skipTypes(bbody, abstractPtrs).methods
-    for col, meth in items(methods):
-      # we instantiate the known methods belonging to that type, this causes
-      # them to be registered and that's enough, so we 'discard' the result.
-      discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
-        attachedAsgn, col)
+    let mm = skipTypes(bbody, abstractPtrs)
+    if tfFromGeneric notin mm.flags:
+      # bug #5479, prevent endless recursions here:
+      incl mm.flags, tfFromGeneric
+      let methods = mm.methods
+      for col, meth in items(methods):
+        # we instantiate the known methods belonging to that type, this causes
+        # them to be registered and that's enough, so we 'discard' the result.
+        discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
+          attachedAsgn, col)
+      excl mm.flags, tfFromGeneric
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really

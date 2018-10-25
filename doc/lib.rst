@@ -18,9 +18,9 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
-created by the Nim community. These packages are a useful addition to the
-modules in the standard library.
+In addition to the modules in the standard library, third-party packages
+created by the Nim community can be used via `Nimble <#nimble>`_, Nim's
+package manager.
 
 
 Pure libraries
@@ -59,7 +59,7 @@ Core
   This module defines compile-time reflection procs for working with types.
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#spawn>`_.
+  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
@@ -147,6 +147,10 @@ String handling
 * `subexes <subexes.html>`_
   This module implements advanced string substitution operations.
 
+* `editdistance <editdistance>`_
+  This module contains an algorithm to compute the edit distance between two
+  Unicode strings.
+
 
 Generic Operating System Services
 ---------------------------------
@@ -183,12 +187,6 @@ Generic Operating System Services
 * `memfiles <memfiles.html>`_
   This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
-
-* `fsmonitor <fsmonitor.html>`_
-  This module implements the ability to monitor a directory/file for changes
-  using Posix's inotify API.
-
-  **Warning:** This module will likely be moved out to a Nimble package soon.
 
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
@@ -238,9 +236,6 @@ Internet Protocols and Support
   This module implements procs for opening URLs with the user's default
   browser.
 
-* `httpserver <httpserver.html>`_
-  This module implements a simple HTTP server.
-
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
@@ -288,11 +283,6 @@ Parsers
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-
-* `parseopt2 <parseopt2.html>`_
-  The ``parseopt2`` module implements a command line option parser. This
-  supports long and short command options with optional values and command line
-  arguments.
 
 * `parsecfg <parsecfg.html>`_
   The ``parsecfg`` module implements a high performance configuration file
@@ -344,12 +334,6 @@ Parsers
 XML Processing
 --------------
 
-* `xmldom <xmldom.html>`_
-  This module implements the XML DOM Level 2.
-
-* `xmldomparser <xmldomparser.html>`_
-  This module parses an XML Document into a XML DOM Document representation.
-
 * `xmltree <xmltree.html>`_
   A simple XML tree. More efficient and simpler than the DOM. It also
   contains a macro for XML/HTML code generation.
@@ -392,10 +376,6 @@ Multimedia support
 
 Miscellaneous
 -------------
-
-* `events <events.html>`_
-  This module implements an event system that is not dependent on external
-  graphical toolkits.
 
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
@@ -538,4 +518,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_
+or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.

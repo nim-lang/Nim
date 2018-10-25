@@ -363,7 +363,9 @@ type
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
     tyOptAsRef, tySink, tyLent,
     tyVarargs,
-    tyUnused,
+    tyUncheckedArray
+      # An array with boundaries [0,+∞]
+
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass
@@ -580,7 +582,8 @@ type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
-    mLow, mHigh, mSizeOf, mTypeTrait, mIs, mOf, mAddr, mType, mTypeOf,
+    mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
+    mIs, mOf, mAddr, mType, mTypeOf,
     mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
@@ -657,7 +660,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException, mBuiltinType, mSymOwner
+    mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -696,11 +699,6 @@ const
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr,
     mCopyStr, mCopyStrLast}
-  # magics that require special semantic checking and
-  # thus cannot be overloaded (also documented in the spec!):
-  SpecialSemMagics* = {
-    mDefined, mDefinedInScope, mCompiles, mLow, mHigh, mSizeOf, mIs, mOf,
-    mShallowCopy, mExpandToAst, mParallel, mSpawn, mAstToStr}
 
 type
   PNode* = ref TNode
@@ -813,7 +811,7 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      #scope*: PScope          # the scope where the proc was defined
+      transformedBody*: PNode  # cached body after transf pass   
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -1272,7 +1270,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.kind = kind
   result.owner = owner
   result.size = -1
-  result.align = 2            # default alignment
+  result.align = -1            # default alignment
   result.id = getID()
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
@@ -1660,6 +1658,11 @@ proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
            s.kind == skProc and sfCompileTime in s.flags
 
+proc isRunnableExamples*(n: PNode): bool =
+  # Templates and generics don't perform symbol lookups.
+  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
+    n.kind == nkIdent and n.ident.s == "runnableExamples"
+
 proc requiredParams*(s: PSym): int =
   # Returns the number of required params (without default values)
   # XXX: Perhaps we can store this in the `offset` field of the
@@ -1711,8 +1714,7 @@ proc toVar*(typ: PType): PType =
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
-  result = typ
-  if typ.kind == tyObject:
+  if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, typ.owner)
     rawAddSon(result, typ)
 
@@ -1720,15 +1722,15 @@ proc toObject*(typ: PType): PType =
   ## If ``typ`` is a tyRef then its immediate son is returned (which in many
   ## cases should be a ``tyObject``).
   ## Otherwise ``typ`` is simply returned as-is.
-  result = typ
-  if result.kind == tyRef:
-    result = result.lastSon
+  let t = typ.skipTypes({tyAlias, tyGenericInst})
+  if t.kind == tyRef: t.lastSon
+  else: typ
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
   assert(t != nil)
 
-  if t.kind != tyObject:
+  if t.kind notin {tyObject, tyGenericInst}:
     return false
 
   var base = t
@@ -1739,13 +1741,14 @@ proc isException*(t: PType): bool =
   return false
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
-  assert(t != nil)
+  assert t != nil
+
   if optNoCppExceptions in conf.globalOptions:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
 
-  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+  if base.sym != nil and {sfCompileToCpp, sfImportc} * base.sym.flags != {}:
     result = true
 
 proc isInfixAs*(n: PNode): bool =
@@ -1776,3 +1779,6 @@ template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
 
 template getBody*(s: PSym): PNode = s.ast[bodyPos]
+
+template detailedInfo*(sym: PSym): string =
+  sym.name.s

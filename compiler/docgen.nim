@@ -112,7 +112,7 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
   declareClosures()
   new(result)
   result.conf = conf
@@ -141,12 +141,33 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef):
   result.id = 100
   result.jArray = newJArray()
   initStrTable result.types
-  result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
-               warnUser, "only 'rst2html' supports the ':test:' attribute")
+  result.onTestSnippet =
+    proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    var d = TDocumentor(gen)
+    var outp: AbsoluteFile
+    if filename.len == 0:
+      inc(d.id)
+      let nameOnly = splitFile(d.filename).name
+      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
+      createDir(subdir)
+      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
+    elif isAbsolute(filename):
+      outp = AbsoluteFile filename
+    else:
+      # Nim's convention: every path is relative to the file it was written in:
+      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
+    # Include the current file if we're parsing a nim file
+    let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
+    writeFile(outp, importStmt & content)
+    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+            else: cmd
+    let c2 = c % quoteShell(outp)
+    rawMessage(conf, hintExecuting, c2)
+    if execShellCmd(c2) != status:
+      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
-                                HtmlExt, RelativeDir"htmldocs", false)
+                                outExt, RelativeDir"htmldocs", false)
   result.thisDir = result.destFile.splitFile.dir
 
 proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -304,7 +325,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
           d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
-          [rope changeFileExt(external, "html").string, rope literal,
+          [rope changeFileExt(external, "html"), rope literal,
            rope(esc(d.target, literal))]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
@@ -377,16 +398,11 @@ proc prepareExamples(d: PDoc; n: PNode) =
   runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
   testExample(d, runnableExamples)
 
-proc isRunnableExample(n: PNode): bool =
-  # Templates and generics don't perform symbol lookups.
-  result = n.kind == nkSym and n.sym.magic == mRunnableExamples or
-    n.kind == nkIdent and n.ident.s == "runnableExamples"
-
 proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
   of nkCallKinds:
-    if isRunnableExample(n[0]) and
+    if isRunnableExamples(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
       prepareExamples(d, n)
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
@@ -610,7 +626,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
-    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), d.conf.projectPath, '/')
+    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), AbsoluteDir getCurrentDir(), '/')
     when false:
       let cwd = canonicalizePath(d.conf, getCurrentDir())
       var path = toFullPath(d.conf, n.info)
@@ -711,7 +727,7 @@ proc exportSym(d: PDoc; s: PSym) =
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [rope esc(d.target, changeFileExt(external, "")),
           rope changeFileExt(external, "html")])
-  elif s.owner != nil:
+  elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
       let external = externalDep(d, module)
@@ -765,19 +781,19 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCallKinds:
     var comm: Rope = nil
     getAllRunnableExamples(d, n, comm)
-    if comm > nil: add(d.modDesc, comm)
+    if comm != nil: add(d.modDesc, comm)
   else: discard
 
 proc add(d: PDoc; j: JsonNode) =
   if j != nil: d.jArray.add j
 
-proc generateJson*(d: PDoc, n: PNode) =
+proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
   of nkCommentStmt:
-    if startsWith(n.comment, "##"):
-      let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped, "line": %n.info.line.int,
-               "col": %n.info.col }
+    if includeComments:
+      d.add %*{"comment": genComment(d, n)}
+    else:
+      add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
@@ -805,11 +821,11 @@ proc generateJson*(d: PDoc, n: PNode) =
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
     for i in countup(0, sonsLen(n) - 1):
-      generateJson(d, n.sons[i])
+      generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateJson(d, lastSon(n.sons[0]))
+      generateJson(d, lastSon(n.sons[0]), includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -935,8 +951,12 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
+  var modDesc: string
+  for desc in d.modDesc:
+    modDesc &= desc
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
+    "moduleDescription": modDesc,
     "entries": d.jArray}
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
@@ -946,7 +966,9 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
       write(f, $content)
       close(f)
     else:
-      discard "fixme: error report"
+      localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
+                 warnUser, "unable to open file \"" & d.destFile.string &
+                 "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
@@ -960,28 +982,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf)
-  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
-    var outp: AbsoluteFile
-    if filename.len == 0:
-      inc(d.id)
-      let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
-      createDir(subdir)
-      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
-    elif isAbsolute(filename):
-      outp = AbsoluteFile filename
-    else:
-      # Nim's convention: every path is relative to the file it was written in:
-      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
-    writeFile(outp, content)
-    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
-            else: cmd
-    let c2 = c % quoteShell(outp)
-    rawMessage(conf, hintExecuting, c2)
-    if execShellCmd(c2) != status:
-      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+  var d = newDocumentor(filen, cache, conf, outExt)
 
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
@@ -1002,6 +1003,10 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
+  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
+                          status: int; content: string) =
+    localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
+               warnUser, "the ':test:' attribute is not supported by this backend")
   d.hasToc = true
   generateJson(d, ast)
   let json = d.jArray
@@ -1019,6 +1024,10 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
+  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
+                          status: int; content: string) =
+    localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
+               warnUser, "the ':test:' attribute is not supported by this backend")
   d.hasToc = true
   var
     content: Rope

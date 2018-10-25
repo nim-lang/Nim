@@ -1,5 +1,6 @@
 discard """
 errormsg: "type mismatch: got <Bar[system.int]>"
+disabled: "true"
 nimout: '''
 t3330.nim(63, 4) Error: type mismatch: got <Bar[system.int]>
 but expected one of:
@@ -34,9 +35,9 @@ proc add(x: var string; y: char)
   required type: var string
   but expression 'k' is of type: Alias
 
-t3330.nim(48, 8) template/generic instantiation from here
+t3330.nim(48, 8) template/generic instantiation of `add` from here
 t3330.nim(55, 6) Foo: 'bar.value' cannot be assigned to
-t3330.nim(48, 8) template/generic instantiation from here
+t3330.nim(48, 8) template/generic instantiation of `add` from here
 t3330.nim(56, 6) Foo: 'bar.x' cannot be assigned to
 
 expression: test(bar)'''

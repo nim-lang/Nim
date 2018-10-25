@@ -14,11 +14,11 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils
+  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils, transf
 
 import strutils except `%` # collides with ropes.`%`
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
@@ -567,7 +567,12 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace, optEndb}
       var dest: TLoc
-      initLocExpr(p, lib.path, dest)
+      initLoc(dest, locTemp, lib.path, OnStack)
+      dest.r = getTempName(m)
+      appcg(m, m.s[cfsDynLibInit],"$1 $2;$n",
+           [getTypeDesc(m, lib.path.typ), rdLoc(dest)])
+      expr(p, lib.path, dest)
+
       add(m.s[cfsVars], p.s(cpsLocals))
       add(m.s[cfsDynLibInit], p.s(cpsInit))
       add(m.s[cfsDynLibInit], p.s(cpsStmts))
@@ -697,8 +702,12 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, ls)
   # generate cast assignment:
-  linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
-          rdLoc(env.loc), getTypeDesc(p.module, env.typ))
+  if p.config.selectedGC == gcGo:
+    linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, ($2) ClE_0);$n",
+            addrLoc(p.config, env.loc), getTypeDesc(p.module, env.typ))
+  else:
+    linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
+            rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
 proc containsResult(n: PNode): bool =
   if n.kind == nkSym and n.sym.kind == skResult:
@@ -766,7 +775,13 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       result = InitRequired
   of nkReturnStmt:
     if n.len > 0:
-      result = allPathsAsgnResult(n[0])
+      if n[0].kind == nkEmpty and result != InitSkippable:
+        # This is a bare `return` statement, if `result` was not initialized
+        # anywhere else (or if we're not sure about this) let's require it to be
+        # initialized. This avoids cases like #9286 where this heuristic lead to
+        # wrong code being generated.
+        result = InitRequired
+      else: result = allPathsAsgnResult(n[0])
   of nkIfStmt, nkIfExpr:
     var exhaustive = false
     result = InitSkippable
@@ -830,6 +845,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
+  let procBody = transformBody(m.g.graph, prc, cache = false)
+
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
@@ -837,7 +854,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
-      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(prc.getBody); val != nil):
+      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
         var a: TLoc
         initLocExprSingleUse(p, val, a)
@@ -858,7 +875,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(prc.getBody) == InitSkippable: discard
+      elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
@@ -870,7 +887,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param)
   closureSetup(p, prc)
-  genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
+  genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
   if sfNoReturn in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
@@ -1507,7 +1524,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  genStmts(m.initProc, n)
+  let tranformed_n = transformStmt(m.g.graph, m.module, n)
+  genStmts(m.initProc, tranformed_n)
 
 proc finishModule(m: BModule) =
   var i = 0
@@ -1630,6 +1648,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
   g.config = config
+  let (outDir, _, _) = splitFile(config.outfile)
+  if not outDir.isEmpty:
+    createDir(outDir)
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):

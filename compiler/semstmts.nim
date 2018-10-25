@@ -66,7 +66,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
       localError(c.config, n.info, errGenerated, "'continue' cannot have a label")
-  elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0):
+  elif (c.p.nestedLoopCounter <= 0) and ((c.p.nestedBlockCounter <= 0) or n.kind == nkContinueStmt):
     localError(c.config, n.info, errInvalidControlFlowX %
                renderTree(n, {renderNoComments}))
 
@@ -114,7 +114,7 @@ const
   skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
     nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
-    nkHiddenStdConv}
+    nkHiddenStdConv, nkHiddenDeref}
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
@@ -207,6 +207,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
   typ = commonType(typ, n[0].typ)
 
   var last = sonsLen(n) - 1
+  var catchAllExcepts = 0
+
   for i in countup(1, last):
     let a = n.sons[i]
     checkMinSonsLen(a, 1, c.config)
@@ -227,8 +229,16 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
+      elif a.len == 1:
+          # count number of ``except: body`` blocks
+          inc catchAllExcepts
+
       else:
         # support ``except KeyError, ValueError, ... : body``
+        if catchAllExcepts > 0:
+          # if ``except: body`` already encountered,
+          # cannot be followed by a ``except KeyError, ... : body`` block
+          inc catchAllExcepts
         var is_native, is_imported: bool
         for j in 0..a.len-2:
           let tmp = semExceptBranchType(a[j])
@@ -238,8 +248,17 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         if is_native and is_imported:
           localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
 
-    elif a.kind != nkFinally:
+    elif a.kind == nkFinally:
+      if i != n.len-1:
+        localError(c.config, a.info, "Only one finally is allowed after all other branches")
+
+    else:
       illFormedAst(n, c.config)
+
+    if catchAllExcepts > 1:
+      # if number of ``except: body`` blocks is greater than 1
+      # or more specific exception follows a general except block, it is invalid
+      localError(c.config, a.info, "Only one general except clause is allowed after more specific exceptions")
 
     # last child of an nkExcept/nkFinally branch is a statement:
     a[^1] = semExprBranchScope(c, a[^1])
@@ -495,12 +514,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # keep documentation information:
           b.comment = a.comment
         addSon(b, newSymNode(v))
-        # keep type desc for doc generator, but only if the user explicitly
-        # added it
-        if a.sons[length-2].kind != nkEmpty:
-          addSon(b, newNodeIT(nkType, a.info, typ))
-        else:
-          addSon(b, a.sons[length-2])
+        # keep type desc for doc generator
+        addSon(b, a.sons[length-2])
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
@@ -605,6 +620,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   inc(c.p.nestedLoopCounter)
   openScope(c)
   n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)
+  if efInTypeof notin flags:
+    discardCheck(c, n.sons[length-1], flags)
   closeScope(c)
   dec(c.p.nestedLoopCounter)
 
@@ -806,9 +823,10 @@ proc semRaise(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   if n[0].kind != nkEmpty:
     n[0] = semExprWithType(c, n[0])
-    let typ = n[0].typ
+    var typ = n[0].typ
     if not isImportedException(typ, c.config):
-      if typ.kind != tyRef or typ.lastSon.kind != tyObject:
+      typ = typ.skipTypes({tyAlias, tyGenericInst})
+      if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
       if typ.len > 0 and not isException(typ.lastSon):
         localError(c.config, n.info, "raised object of type $1 does not inherit from Exception",
@@ -1201,13 +1219,6 @@ proc copyExcept(n: PNode, i: int): PNode =
   for j in 0..<n.len:
     if j != i: result.add(n.sons[j])
 
-proc lookupMacro(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
-    result = n.sym
-    if result.kind notin {skMacro, skTemplate}: result = nil
-  else:
-    result = searchInScopes(c, considerQuotedIdent(c, n), {skMacro, skTemplate})
-
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
@@ -1215,39 +1226,53 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   for i in countup(0, n.len-1):
     var it = n.sons[i]
     var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it.sons[0] else: it
-    let m = lookupMacro(c, key)
-    if m == nil:
-      if key.kind == nkIdent and key.ident.id == ord(wDelegator):
-        if considerQuotedIdent(c, prc.sons[namePos]).s == "()":
-          prc.sons[namePos] = newIdentNode(c.cache.idDelegator, prc.info)
-          prc.sons[pragmasPos] = copyExcept(n, i)
-        else:
-          localError(c.config, prc.info, "only a call operator can be a delegator")
+
+    if whichPragma(it) != wInvalid:
+      # Not a custom pragma
       continue
-    elif sfCustomPragma in m.flags:
-      continue # semantic check for custom pragma happens later in semProcAux
+    elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
+      # User-defined pragma
+      continue
 
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
-    var x = newNodeI(nkCall, n.info)
-    x.add(newSymNode(m))
-    prc.sons[pragmasPos] = copyExcept(n, i)
-    if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
-      prc.sons[pragmasPos] = c.graph.emptyNode
+    var x = newNodeI(nkCall, key.info)
+    x.add(key)
 
     if it.kind in nkPragmaCallKinds and it.len > 1:
       # pass pragma arguments to the macro too:
       for i in 1..<it.len:
         x.add(it.sons[i])
+
+    # Drop the pragma from the list, this prevents getting caught in endless
+    # recursion when the nkCall is semanticized
+    prc.sons[pragmasPos] = copyExcept(n, i)
+    if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
+      prc.sons[pragmasPos] = c.graph.emptyNode
+
     x.add(prc)
 
     # recursion assures that this works for multiple macro annotations too:
-    result = semExpr(c, x)
+    var r = semOverloadedCall(c, x, x, {skMacro}, {efNoUndeclared})
+    if r == nil:
+      # Restore the old list of pragmas since we couldn't process this
+      prc.sons[pragmasPos] = n
+      # No matching macro was found but there's always the possibility this may
+      # be a .pragma. template instead
+      continue
+
+    doAssert r.sons[0].kind == nkSym
+    # Expand the macro here
+    result = semMacroExpr(c, r, r, r.sons[0].sym, {})
+
+    doAssert result != nil
+
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
         result[pragmasPos].kind != nkEmpty:
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
+
     return
 
 proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
@@ -1303,8 +1328,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
-      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+      s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+      trackProc(c.graph, s, s.ast[bodyPos])
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -1344,8 +1369,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
-  let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+  s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+  trackProc(c.graph, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1492,7 +1517,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
                                       tyAlias, tySink})
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
-          x.methods.safeAdd((col,s))
+          x.methods.add((col,s))
     if not foundObj:
       message(c.config, n.info, warnDeprecated, "generic method not attachable to object type")
   else:
@@ -1658,10 +1683,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         if lfDynamicLib notin s.loc.flags:
           # no semantic checking for importc:
-          let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+          s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+          trackProc(c.graph, s, s.ast[bodyPos])
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
@@ -1679,7 +1704,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   else:
     if s.kind == skMethod: semMethodPrototype(c, s, n)
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
-    if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:
+    if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       incl(s.flags, sfForward)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)

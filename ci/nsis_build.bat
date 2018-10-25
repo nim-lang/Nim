@@ -1,4 +1,4 @@
-REM - Run the full testsuite;  tests\testament\tester all
+REM - Run the full testsuite;  testament\tester all
 
 REM - Uncomment the list of changes in news.txt
 REM - write a news ticker entry

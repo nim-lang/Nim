@@ -28,10 +28,10 @@ type
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
-    inquote: bool
+    inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
-    nested: int
+    keepIndents*: int
     doIndentMore*: int
     content: string
     indentStack: seq[int]
@@ -52,11 +52,16 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.content = newStringOfCap(16_000)
   em.indentStack = newSeqOfCap[int](30)
   em.indentStack.add 0
+  em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
+  if fileExists(em.config.outFile) and readFile(em.config.outFile.string) == em.content:
+    discard "do nothing, see #9499"
+    return
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)
+    return
   f.llStreamWrite em.content
   llStreamClose(f)
 
@@ -134,6 +139,22 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         for i in 1 .. LineCommentColumn - em.col: wr(" ")
     wr lit
 
+  if tok.tokType == tkComment and tok.literal.startsWith("#!nimpretty"):
+    case tok.literal
+    of "#!nimpretty off":
+      inc em.keepIndents
+      wr("\L")
+      em.lastLineNumber = tok.line + 1
+    of "#!nimpretty on":
+      dec em.keepIndents
+      em.lastLineNumber = tok.line
+    wr("\L")
+    #for i in 1 .. tok.indent: wr " "
+    wr tok.literal
+    em.col = 0
+    em.lineSpan = 0
+    return
+
   var preventComment = false
   if tok.tokType == tkComment and tok.line == em.lastLineNumber and tok.indent >= 0:
     # we have an inline comment so handle it before the indentation token:
@@ -142,7 +163,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     em.fixedUntil = em.content.high
 
   elif tok.indent >= 0:
-    if em.lastTok in (splitters + oprSet):
+    if em.lastTok in (splitters + oprSet) or em.keepIndents > 0:
       em.indentLevel = tok.indent
     else:
       if tok.indent > em.indentStack[^1]:
@@ -171,12 +192,13 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       wr(" ")
     em.fixedUntil = em.content.high
 
+  var lastTokWasTerse = false
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
     elif not em.inquote and not endsInWhite(em) and
-        em.lastTok notin openPars:
+        em.lastTok notin openPars and not em.lastTokWasTerse:
       #and tok.tokType in oprSet
       wr(" ")
 
@@ -212,7 +234,10 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkBracketDotRi,
      tkCurlyDotRi,
      tkParDotRi,
-     tkColonColon, tkDot:
+     tkColonColon:
+    wr(TokTypeToStr[tok.tokType])
+  of tkDot:
+    lastTokWasTerse = true
     wr(TokTypeToStr[tok.tokType])
   of tkEquals:
     if not em.inquote and not em.endsInWhite: wr(" ")
@@ -220,6 +245,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
     if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
+      # bug #9504: remember to not spacify a keyword:
+      lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:
       wr(tok.ident.s)
     else:
@@ -253,6 +280,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr lit
 
   em.lastTok = tok.tokType
+  em.lastTokWasTerse = lastTokWasTerse
   em.lastLineNumber = tok.line + em.lineSpan
   em.lineSpan = 0
 

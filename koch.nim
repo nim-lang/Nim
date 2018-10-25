@@ -41,6 +41,7 @@ Usage:
 Options:
   --help, -h               shows this help and quits
   --latest                 bundle the installers with a bleeding edge Nimble
+  --stable                 bundle the installers with a stable Nimble
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -140,7 +141,7 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler --nilseqs:on " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -271,7 +272,8 @@ proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
+  let defaultCommand = if getEnv("NIM_COMPILE_TO_CPP", "false") == "true": "cpp" else: "c"
+  let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
@@ -379,11 +381,11 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  nimexec "cc --taintMode:on --opt:speed tests/testament/tester"
+  nimexec "cc --taintMode:on --opt:speed testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
-  let tester = quoteShell(getCurrentDir() / "tests/testament/tester".exe)
+  let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
   if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
     exec tester & " html"
@@ -405,13 +407,14 @@ proc temp(args: string) =
       result[1].add " " & quoteShell(args[i])
       inc i
 
-  var output = "compiler" / "nim".exe
-  var finalDest = "bin" / "nim_temp".exe
+  let d = getAppDir()
+  var output = d / "compiler" / "nim".exe
+  var finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
   let nimexec = findNim()
-  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " compiler" / "nim", 125)
+  exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
@@ -509,12 +512,14 @@ proc showHelp() =
 when isMainModule:
   var op = initOptParser()
   var latest = false
+  var stable = false
   while true:
     op.next()
     case op.kind
     of cmdLongOption, cmdShortOption:
       case normalize(op.key)
       of "latest": latest = true
+      of "stable": stable = true
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
@@ -537,9 +542,13 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools()
-      of "nimble": buildNimble(existsDir(".git") or latest)
+      of "nimble":
+        if stable: buildNimble(false)
+        else: buildNimble(existsDir(".git") or latest)
       of "nimsuggest": bundleNimsuggest(buildExe=true)
-      of "tools": buildTools(existsDir(".git") or latest)
+      of "tools":
+        if stable: buildTools(false)
+        else: buildTools(existsDir(".git") or latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       else: showHelp()

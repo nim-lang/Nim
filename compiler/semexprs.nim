@@ -26,7 +26,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
   markUsed(c.config, n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
-  pushInfoContext(c.config, n.info)
+  pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
@@ -158,6 +158,10 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
   srcSize = computeSize(conf, src)
+  if dstSize == -3 or srcSize == -3: # szUnknownSize
+    # The Nim compiler can't detect if it's legal or not.
+    # Just assume the programmer knows what he is doing.
+    return true
   if dstSize < 0:
     result = false
   elif srcSize < 0:
@@ -197,7 +201,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   if targetType.kind == tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
-      return semTypeOf(c, n[1])
+      return semTypeOf(c, n)
     else:
       targetType = targetType.base
   elif targetType.kind == tyStatic:
@@ -308,15 +312,6 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       localError(c.config, n.info, "invalid argument for: " & opToStr[m])
   result = n
 
-proc semSizeof(c: PContext, n: PNode): PNode =
-  if sonsLen(n) != 2:
-    localError(c.config, n.info, errXExpectsTypeOrValue % "sizeof")
-  else:
-    n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-  n.typ = getSysType(c.graph, n.info, tyInt)
-  result = n
-
 proc fixupStaticType(c: PContext, n: PNode) =
   # This proc can be applied to evaluated expressions to assign
   # them a static type.
@@ -408,10 +403,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n[1] = makeTypeSymNode(c, lhsType, n[1].info)
       lhsType = n[1].typ
   else:
-    if lhsType.base.kind == tyNone:
-      # this is a typedesc variable, leave for evals
-      return
-    if lhsType.base.containsGenericType:
+    internalAssert c.config, lhsType.base.kind != tyNone
+    if c.inGenericContext > 0 and lhsType.base.containsGenericType:
       # BUGFIX: don't evaluate this too early: ``T is void``
       return
 
@@ -446,7 +439,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
     for i in countup(0, sonsLen(n) - 1):
       changeType(c, n.sons[i], elemType(newType), check)
   of nkPar, nkTupleConstr:
-    let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink})
+    let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
       globalError(c.config, n.info, "no tuple type for constructor")
@@ -1364,20 +1357,26 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       arr = arr.base
 
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString:
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
+    tyUncheckedArray:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     for i in countup(1, sonsLen(n) - 1):
       n.sons[i] = semExprWithType(c, n.sons[i],
                                   flags*{efInTypeof, efDetermineType})
-    var indexType = if arr.kind == tyArray: arr.sons[0] else: getSysType(c.graph, n.info, tyInt)
-    var arg = indexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
-    if arg != nil:
-      n.sons[1] = arg
+    # Arrays index type is dictated by the range's type
+    if arr.kind == tyArray:
+      var indexType = arr.sons[0]
+      var arg = indexTypesMatch(c, indexType, n.sons[1].typ, n.sons[1])
+      if arg != nil:
+        n.sons[1] = arg
+        result = n
+        result.typ = elemType(arr)
+    # Other types have a bit more of leeway
+    elif n.sons[1].typ.skipTypes(abstractRange-{tyDistinct}).kind in
+        {tyInt..tyInt64, tyUInt..tyUInt64}:
       result = n
       result.typ = elemType(arr)
-    #GlobalError(n.info, errIndexTypesDoNotMatch)
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute
@@ -1958,15 +1957,13 @@ proc setMs(n: PNode, s: PSym): PNode =
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
-  # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
   result = n
   case s.magic # magics that need special treatment
   of mAddr:
     checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], s.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2, c.config)
-    result = semTypeOf(c, n.sons[1])
+    result = semTypeOf(c, n)
   #of mArrGet: result = semArrGet(c, n, flags)
   #of mArrPut: result = semArrPut(c, n, flags)
   #of mAsgn: result = semAsgnOpr(c, n)
@@ -1975,7 +1972,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
   #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
   #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
-  of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s), flags)
   #of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
@@ -2043,6 +2039,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = setMs(n, s)
     else:
       result = c.graph.emptyNode
+  of mOmpParFor:
+    checkMinSonsLen(n, 3, c.config)
+    result = semDirectOp(c, n, flags)
   else:
     result = semDirectOp(c, n, flags)
 

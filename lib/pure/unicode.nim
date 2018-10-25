@@ -524,6 +524,22 @@ const
     0x3000,  0x3000,  # ideographic space
     0xfeff,  0xfeff]  #
 
+  unicodeSpaces = [
+    Rune 0x0009, # tab
+    Rune 0x000a, # LF
+    Rune 0x000d, # CR
+    Rune 0x0020, # space
+    Rune 0x0085, # next line
+    Rune 0x00a0, # unknown
+    Rune 0x1680, # Ogham space mark
+    Rune 0x2000, # en dash .. zero-width space
+    Rune 0x200e, Rune 0x200f,  # LTR mark .. RTL mark (pattern whitespace)
+    Rune 0x2028, Rune 0x2029,  #  -     0x3000,  0x3000,  #
+    Rune 0x202f, # narrow no-break space
+    Rune 0x205f, # medium mathematical space
+    Rune 0x3000, # ideographic space
+    Rune 0xfeff] # unknown
+
   toupperRanges = [
     0x0061,  0x007a, 468,  # a-z A-Z
     0x00e0,  0x00f6, 468,  # - -
@@ -1435,7 +1451,8 @@ template runeCaseCheck(s, runeProc, skipNonAlpha) =
         return false
   return if skipNonAlpha: hasAtleastOneAlphaRune else: true
 
-proc isLower*(s: string, skipNonAlpha: bool): bool =
+proc isLower*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is lower case.
   ##
   ## If ``skipNonAlpha`` is true, returns true if all alphabetical
@@ -1449,7 +1466,8 @@ proc isLower*(s: string, skipNonAlpha: bool): bool =
   ## an empty string.
   runeCaseCheck(s, isLower, skipNonAlpha)
 
-proc isUpper*(s: string, skipNonAlpha: bool): bool =
+proc isUpper*(s: string, skipNonAlpha: bool): bool {.
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## Checks whether ``s`` is upper case.
   ##
   ## If ``skipNonAlpha`` is true, returns true if all alphabetical
@@ -1608,12 +1626,13 @@ proc title*(s: string): string {.noSideEffect, procvar,
     rune.fastToUTF8Copy(result, lastIndex)
 
 proc isTitle*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nuc$1Str".}=
+  rtl, extern: "nuc$1Str",
+  deprecated: "Deprecated since version 0.20 since its semantics are unclear".}=
   ## Checks whether or not `s` is a unicode title.
   ##
   ## Returns true if the first character in each word inside `s`
   ## are upper case and there is at least one character in `s`.
-  if s.len() == 0:
+  if s.len == 0:
     return false
 
   result = true
@@ -1733,7 +1752,272 @@ proc lastRune*(s: string; last: int): (Rune, int) =
     fastRuneAt(s, last-L, r, false)
     result = (r, L+1)
 
+proc size*(r: Rune): int {.noSideEffect.} =
+  ## Returns the number of bytes the rune ``r`` takes.
+  let v = r.uint32
+  if v <= 0x007F: result = 1
+  elif v <= 0x07FF: result = 2
+  elif v <= 0xFFFF: result = 3
+  elif v <= 0x1FFFFF: result = 4
+  elif v <= 0x3FFFFFF: result = 5
+  elif v <= 0x7FFFFFFF: result = 6
+  else: result = 1
+
+# --------- Private templates for different split separators -----------
+proc stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return seps.contains(rune)
+
+proc stringHasSep(s: string, index: int, sep: Rune): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return sep == rune
+
+template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+  ## Common code for split procedures
+  var
+    last = 0
+    splits = maxsplit
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and not stringHasSep(s, last, sep):
+        when sep is Rune:
+          inc(last, sepLen)
+        else:
+          inc(last, runeLenAt(s, last))
+      if splits == 0: last = len(s)
+      yield s[first .. (last - 1)]
+      if splits == 0: break
+      dec(splits)
+      when sep is Rune:
+        inc(last, sepLen)
+      else:
+        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+
+iterator split*(s: string, seps: openarray[Rune] = unicodeSpaces,
+  maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a group of separators.
+  ##
+  ## Substrings are separated by a substring containing only `seps`.
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this\lis an\texample"):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...generates this output:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   "example"
+  ##
+  ## And the following code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...produces the same output as the first example. The code:
+  ##
+  ## .. code-block:: nim
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeLine(stdout, number)
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
+  splitCommon(s, seps, maxsplit)
+
+iterator splitWhitespace*(s: string): string =
+  ## Splits a unicode string at whitespace runes
+  splitCommon(s, unicodeSpaces, -1)
+
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "ncuSplitWhitespace".} =
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## iterator, but is a proc that returns a sequence of substrings.
+  accResult(splitWhitespace(s))
+
+iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a single separator.
+  ##
+  ## Substrings are separated by the rune `sep`.
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split(";;this;is;an;;example;;;", ';'):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   ""
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##   ""
+  ##   ""
+  ##
+  splitCommon(s, sep, maxsplit, sep.size)
+
+proc split*(s: string, seps: openarray[Rune] = unicodeSpaces, maxsplit: int = -1): seq[string] {.
+  noSideEffect, rtl, extern: "nucSplitRunes".} =
+  ## The same as the `split iterator <#split.i,string,openarray[Rune]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  accResult(split(s, seps, maxsplit))
+
+proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect,
+  rtl, extern: "nucSplitRune".} =
+  ## The same as the `split iterator <#split.i,string,Rune>`_, but is a proc
+  ## that returns a sequence of substrings.
+  accResult(split(s, sep, maxsplit))
+
+proc strip*(s: string, leading = true, trailing = true,
+            runes: openarray[Rune] = unicodeSpaces): string {.noSideEffect,
+            rtl, extern: "nucStrip".} =
+  ## Strips leading or trailing `runes` from `s` and returns
+  ## the resulting string.
+  ##
+  ## If `leading` is true, leading `runes` are stripped.
+  ## If `trailing` is true, trailing `runes` are stripped.
+  ## If both are false, the string is returned unchanged.
+  var
+    s_i = 0 ## starting index into string ``s``
+    e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
+  if leading:
+    var
+      i = 0
+      l_i: int ## value of ``s_i`` at the beginning of the iteration
+      rune: Rune
+    while i < len(s):
+      l_i = i
+      fastRuneAt(s, i, rune)
+      s_i = i # Assume to start from next rune
+      if not runes.contains(rune):
+        s_i = l_i # Go back to where the current rune starts
+        break
+  if trailing:
+    var
+      i = e_i
+      l_i: int
+      rune: Rune
+    while i >= 0:
+      l_i = i
+      fastRuneAt(s, l_i, rune)
+      var p_i = i - 1
+      while p_i >= 0:
+        var
+          p_i_end = p_i
+          p_rune: Rune
+        fastRuneAt(s, p_i_end, p_rune)
+        if p_i_end < l_i: break
+        i = p_i
+        rune = p_rune
+        dec(p_i)
+      if not runes.contains(rune):
+        e_i = l_i - 1
+        break
+      dec(i)
+  let newLen = e_i - s_i
+  result = newStringOfCap(newLen)
+  if e_i > s_i:
+    result.add s[s_i .. e_i]
+
+proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
+  rtl, extern: "nucRepeatRune".} =
+  ## Returns a string of `count` Runes `c`.
+  ##
+  ## The returned string will have a rune-length of `count`.
+  let s = $c
+  result = newStringOfCap(count * s.len)
+  for i in 0 ..< count:
+    result.add s
+
+proc align*(s: string, count: Natural, padding = ' '.Rune): string {.
+  noSideEffect, rtl, extern: "nucAlignString".} =
+  ## Aligns a unicode string `s` with `padding`, so that it has a rune-length
+  ## of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added before `s` resulting in
+  ## right alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to left align a string use the `alignLeft
+  ## proc <#alignLeft>`_.
+  runnableExamples:
+     assert align("abc", 4) == " abc"
+     assert align("a", 0) == "a"
+     assert align("1232", 6) == "  1232"
+     assert align("1232", 6, '#'.Rune) == "##1232"
+     assert align("Åge", 5) == "  Åge"
+     assert align("×", 4, '_'.Rune) == "___×"
+
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(padStr.len * count)
+    let spaces = count - sLen
+    for i in 0 ..< spaces: result.add padStr
+    result.add s
+  else:
+    result = s
+
+proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
+    noSideEffect.} =
+  ## Left-Aligns a unicode string `s` with `padding`, so that it has a
+  ## rune-length of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added after `s` resulting in
+  ## left alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to right align a string use the `align
+  ## proc <#align>`_.
+  runnableExamples:
+    assert alignLeft("abc", 4) == "abc "
+    assert alignLeft("a", 0) == "a"
+    assert alignLeft("1232", 6) == "1232  "
+    assert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    assert alignLeft("Åge", 5) == "Åge  "
+    assert alignLeft("×", 4, '_'.Rune) == "×___"
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(s.len + (count - sLen) * padStr.len)
+    result.add s
+    for i in sLen ..< count:
+      result.add padStr
+  else:
+    result = s
+
+
 when isMainModule:
+
+  proc asRune(s: static[string]): Rune =
+    ## Compile-time conversion proc for converting string literals to a Rune
+    ## value. Returns the first Rune of the specified string.
+    ##
+    ## Shortcuts code like ``"å".runeAt(0)`` to ``"å".asRune`` and returns a
+    ## compile-time constant.
+    if s.len == 0: Rune(0)
+    else: s.runeAt(0)
+
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
@@ -1764,12 +2048,6 @@ when isMainModule:
   doAssert capitalize("foo") == "Foo"
   doAssert capitalize("") == ""
 
-  doAssert isTitle("Foo")
-  doAssert(not isTitle("Foo bar"))
-  doAssert(not isTitle("αlpha Βeta"))
-  doAssert(isTitle("Αlpha Βeta Γamma"))
-  doAssert(not isTitle("fFoo"))
-
   doAssert swapCase("FooBar") == "fOObAR"
   doAssert swapCase(" ") == " "
   doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
@@ -1797,37 +2075,7 @@ when isMainModule:
 
   doAssert(not isLower(' '.Rune))
 
-  doAssert isLower("a", false)
-  doAssert isLower("γ", true)
-  doAssert(not isLower("Γ", false))
-  doAssert(not isLower("4", true))
-  doAssert(not isLower("", false))
-  doAssert isLower("abcdγ", false)
-  doAssert(not isLower("33aaΓ", false))
-  doAssert(not isLower("a b", false))
-
-  doAssert(not isLower("abCDΓ", true))
-  doAssert isLower("a b", true)
-  doAssert isLower("1, 2, 3 go!", true)
-  doAssert(not isLower(" ", true))
-  doAssert(not isLower("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
-
   doAssert(not isUpper(' '.Rune))
-
-  doAssert isUpper("Γ", false)
-  doAssert(not isUpper("α", false))
-  doAssert(not isUpper("", false))
-  doAssert isUpper("ΑΒΓ", false)
-  doAssert(not isUpper("A#$β", false))
-  doAssert(not isUpper("A B", false))
-
-  doAssert(not isUpper("b", true))
-  doAssert(not isUpper("✓", true))
-  doAssert(not isUpper("AAccβ", true))
-  doAssert isUpper("A B", true)
-  doAssert isUpper("1, 2, 3 GO!", true)
-  doAssert(not isUpper(" ", true))
-  doAssert(not isUpper("(*&#@(^#$✓ ", true)) # None of the string runes are alphabets
 
   doAssert toUpper("Γ") == "Γ"
   doAssert toUpper("b") == "B"
@@ -1898,3 +2146,47 @@ when isMainModule:
   doAssert(runeSubStr(s, -100, 100) == "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
+
+  block splitTests:
+    let s = " this is an example  "
+    let s2 = ":this;is;an:example;;"
+    let s3 = ":this×is×an:example××"
+    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+
+  block stripTests:
+    doAssert(strip("  foofoofoo  ") == "foofoofoo")
+    doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
+
+    block:
+      let stripTestRunes = ['b'.Rune, 'a'.Rune, 'r'.Rune]
+      doAssert(strip("barfoofoofoobar", runes = stripTestRunes) == "foofoofoo")
+    doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
+    doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
+
+    block:
+      let stripTestRunes = ["«".asRune, "»".asRune]
+      doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
+    doAssert(strip("copyright©", leading = false, runes = ["©".asRune]) == "copyright")
+    doAssert(strip("¿Question?", trailing = false, runes = ["¿".asRune]) == "Question?")
+    doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
+    doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
+
+  block repeatTests:
+    doAssert repeat('c'.Rune, 5) == "ccccc"
+    doAssert repeat("×".asRune, 5) == "×××××"
+
+  block alignTests:
+    doAssert align("abc", 4) == " abc"
+    doAssert align("a", 0) == "a"
+    doAssert align("1232", 6) == "  1232"
+    doAssert align("1232", 6, '#'.Rune) == "##1232"
+    doAssert align("1232", 6, "×".asRune) == "××1232"
+    doAssert alignLeft("abc", 4) == "abc "
+    doAssert alignLeft("a", 0) == "a"
+    doAssert alignLeft("1232", 6) == "1232  "
+    doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    doAssert alignLeft("1232", 6, "×".asRune) == "1232××"

@@ -627,7 +627,8 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
-  if optForceFullMake notin conf.globalOptions and not externalFileChanged(conf, c):
+  if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
+      not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
   conf.toCompile.add(c)
 
