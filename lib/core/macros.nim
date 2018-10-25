@@ -732,14 +732,17 @@ proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated
   for i in countdown(L-3, 0):
     result = newCall(theProc, x[i], result)
 
-proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false) {.benign.} =
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
-    res.add("\n")
-    for i in 0 .. level-1:
-      if isLisp:
-        res.add " "
-      else:
-        res.add "  "
+    if indented:
+      res.add("\n")
+      if level > 1:
+        for i in 1 .. level-1:
+          if isLisp:
+            res.add " "
+          else:
+            res.add "  "
+    res.add(" ")
 
   if isLisp:
     res.add("(")
@@ -758,7 +761,7 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false) {.beni
     assert false
   else:
     for j in 0 .. n.len-1:
-      n[j].treeTraverse(res, level+1, isLisp)
+      n[j].treeTraverse(res, level+1, isLisp, indented)
 
   if isLisp:
     res.add(")")
@@ -767,13 +770,13 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
-  n.treeTraverse(result, isLisp = false)
+  n.treeTraverse(result, isLisp = false, indented = true)
 
-proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
+proc lispRepr*(n: NimNode; indented = false): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to a human-readable lisp-like string.
   ##
   ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
-  n.treeTraverse(result, isLisp = true)
+  n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to the code required to generate that AST.
@@ -845,7 +848,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ##
   ## Also see ``dumpAstGen`` and ``dumpLisp``.
 
-macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
+macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ## Accepts a block of nim code and prints the parsed abstract syntax
   ## tree using the ``lispRepr`` proc. Printing is done *at compile time*.
   ##
