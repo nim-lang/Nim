@@ -2186,10 +2186,14 @@ else:
         inc(res)
 
 
-iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
+iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
   inline, magic: "OmpParFor", sideEffect.} =
-  ## parallel loop iterator. Same as `..` but the loop may run in parallel.
+  ## OpenMP parallel loop iterator. Same as `..` but the loop may run in parallel.
   ## `annotation` is an additional annotation for the code generator to use.
+  ## The default annotation is `parallel for`.
+  ## Please refer to the `OpenMP Syntax Reference<https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf>`_
+  ## for further information.
+  ##
   ## Note that the compiler maps that to
   ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
   ## such isn't aware of the parallelism in your code! Be careful! Later

@@ -557,7 +557,7 @@ proc genParForStmt(p: BProc, t: PNode) =
     initLocExpr(p, call.sons[1], rangeA)
     initLocExpr(p, call.sons[2], rangeB)
 
-    lineF(p, cpsStmts, "#pragma omp parallel for $4$n" &
+    lineF(p, cpsStmts, "#pragma omp $4$n" &
                         "for ($1 = $2; $1 <= $3; ++$1)",
                         [forLoopVar.loc.rdLoc,
                         rangeA.rdLoc, rangeB.rdLoc,
