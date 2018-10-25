@@ -121,7 +121,7 @@ proc startProcess*(command: string,
   ## invocation if possible as it leads to non portable software.
   ##
   ## Return value: The newly created process object. Nil is never returned,
-  ## but ``EOS`` is raised in case of an error.
+  ## but ``OSError`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[ProcessOption] = {
                poStdErrToStdOut, poUsePath}): Process {.

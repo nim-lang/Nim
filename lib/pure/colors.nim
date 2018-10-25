@@ -377,7 +377,7 @@ proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
 
 proc parseColor*(name: string): Color =
   ## parses `name` to a color value. If no valid color could be
-  ## parsed ``EInvalidValue`` is raised. Case insensitive.
+  ## parsed ``ValueError`` is raised. Case insensitive.
   if name[0] == '#':
     result = Color(parseHexInt(name))
   else:

@@ -180,7 +180,7 @@ proc asyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
                   protocol: Protocol = IPPROTO_TCP,
                   buffered = true): AsyncSocket =
   ## Initialises an AsyncSocket object. If a socket cannot be initialised
-  ## EOS is raised.
+  ## OSError is raised.
   result = newAsyncSocket()
   result.socket = socket(domain, typ, protocol, buffered)
   result.proto = protocol
@@ -476,7 +476,7 @@ proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
   ## if this function can only retrieve some data; it will save this data and
   ## add it to the result when a full line is retrieved.
   ##
-  ## Unlike ``sockets.recvLine`` this function will raise an EOS or ESSL
+  ## Unlike ``sockets.recvLine`` this function will raise an OSError or SslError
   ## exception if an error occurs.
   ##
   ## **Deprecated since version 0.9.2**: This function has been deprecated in
@@ -512,7 +512,7 @@ proc readLine*(s: AsyncSocket, line: var TaintedString): bool =
   ## retrieved or the socket has been disconnected in which case ``line`` will
   ## be set to "".
   ##
-  ## This function will raise an EOS exception when a socket error occurs.
+  ## This function will raise an OSError exception when a socket error occurs.
   setLen(line.string, 0)
   var dataReceived = "".TaintedString
   var ret = s.socket.readLineAsync(dataReceived)

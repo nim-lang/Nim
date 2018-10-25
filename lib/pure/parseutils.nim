@@ -267,7 +267,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
-  ## `EOverflow` is raised if an overflow occurs.
+  ## `OverflowError` is raised if an overflow occurs.
   var res: BiggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
