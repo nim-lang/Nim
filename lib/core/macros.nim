@@ -776,23 +776,9 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   n.treeTraverse(result, isLisp = true)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
-  ## Convert the AST `n` to the code required to generate that AST. So for example
+  ## Convert the AST ``n`` to the code required to generate that AST.
   ##
-  ## .. code-block:: nim
-  ##   astGenRepr:
-  ##     echo "Hello world"
-  ##
-  ## Would output:
-  ##
-  ## .. code-block:: nim
-  ##   nnkStmtList.newTree(
-  ##     nnkCommand.newTree(
-  ##       newIdentNode("echo"),
-  ##       newLit("Hello world")
-  ##     )
-  ##   )
-  ##
-  ## See also `repr`, `treeRepr`, and `lispRepr`.
+  ## See also ``repr``, ``treeRepr``, and ``lispRepr``.
 
   const
     NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
@@ -846,7 +832,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## For example:
   ##
   ## .. code-block:: nim
-  ##    dumpLisp:
+  ##    dumpTree:
   ##      echo "Hello, World!"
   ##
   ## Outputs:
@@ -857,7 +843,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ##        Ident "echo"
   ##        StrLit "Hello, World!"
   ##
-  ## Also see ``dumpLisp``.
+  ## Also see ``dumpAstGen`` and ``dumpLisp``.
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
@@ -881,16 +867,32 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ##      (Ident "echo")
   ##      (StrLit "Hello, World!")))
   ##
-  ## Also see ``dumpTree``.
+  ## Also see ``dumpAstGen`` and ``dumpTree``.
 
 macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `astGenRepr` function. Printing is done *at compile time*.
+  ## tree using the ``astGenRepr`` proc. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to write macros quicker by writing example
   ## outputs and then copying the snippets into the macro for modification.
   ##
-  ## See `dumpTree`.
+  ## For example:
+  ##
+  ## .. code-block:: nim
+  ##    dumpAstGen:
+  ##      echo "Hello, World!"
+  ##
+  ## Outputs:
+  ##
+  ## .. code-block:: nim
+  ##    nnkStmtList.newTree(
+  ##      nnkCommand.newTree(
+  ##        newIdentNode("echo"),
+  ##        newLit("Hello, World!")
+  ##      )
+  ##    )
+  ##
+  ## Also see ``dumpTree`` and ``dumpLisp``.
 
 macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
   ## Deprecated. Use `dumpTree` instead.
