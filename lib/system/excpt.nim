@@ -396,31 +396,22 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-when defined(nimRaiseExceptionWithLineInfo):
-  proc raiseException(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
-    if e.name.isNil: e.name = ename
-    when hasSomeStackTrace:
-      if e.trace.len == 0:
-        rawWriteStackTrace(e.trace)
-      elif framePtr != nil:
-        e.trace.add reraisedFrom(reraisedFromBegin)
-        auxWriteStackTrace(framePtr, e.trace)
-        e.trace.add reraisedFrom(reraisedFromEnd)
-    else:
-      if procname != nil and filename != nil:
-        e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
-    raiseExceptionAux(e)
-else:
-  proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-    if e.name.isNil: e.name = ename
-    when hasSomeStackTrace:
-      if e.trace.len == 0:
-        rawWriteStackTrace(e.trace)
-      elif framePtr != nil:
-        e.trace.add reraisedFrom(reraisedFromBegin)
-        auxWriteStackTrace(framePtr, e.trace)
-        e.trace.add reraisedFrom(reraisedFromEnd)
-    raiseExceptionAux(e)
+proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
+  if e.name.isNil: e.name = ename
+  when hasSomeStackTrace:
+    if e.trace.len == 0:
+      rawWriteStackTrace(e.trace)
+    elif framePtr != nil:
+      e.trace.add reraisedFrom(reraisedFromBegin)
+      auxWriteStackTrace(framePtr, e.trace)
+      e.trace.add reraisedFrom(reraisedFromEnd)
+  else:
+    if procname != nil and filename != nil:
+      e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
+  raiseExceptionAux(e)
+
+proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+  raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
