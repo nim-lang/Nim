@@ -736,13 +736,13 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
   if level > 0:
     if indented:
       res.add("\n")
-      if level > 1:
-        for i in 1 .. level-1:
-          if isLisp:
-            res.add " "
-          else:
-            res.add "  "
-    res.add(" ")
+      for i in 0 .. level-1:
+        if isLisp:
+          res.add(" ")          # dumpLisp indentation
+        else:
+          res.add("  ")         # dumpTree indentation
+    else:
+      res.add(" ")
 
   if isLisp:
     res.add("(")
