@@ -732,63 +732,48 @@ proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated
   for i in countdown(L-3, 0):
     result = newCall(theProc, x[i], result)
 
-proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
-  ## Convert the AST `n` to a human-readable tree-like string.
-  ##
-  ## See also `repr`, `lispRepr`, and `astGenRepr`.
-
-  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
-    for i in 0..level-1: res.add "  "
-    res.add(($n.kind).substr(3))
-
-    case n.kind
-    of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
-    of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
-    of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
-    of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
-      res.add(" " & $n.strVal.newLit.repr)
-    of nnkNone: assert false
-    else:
-      for j in 0..n.len-1:
-        res.add "\n"
-        traverse(res, level + 1, n[j])
-
-  result = ""
-  traverse(result, 0, n)
-
-proc lispRepr*(n: NimNode; level = 0): string {.compileTime, benign.} =
-  ## Convert the AST ``n`` to a human-readable lisp-like string.
-  ##
-  ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
-
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false) {.benign.} =
   if level > 0:
-    result = "\n"
+    res.add("\n")
     for i in 0 .. level-1:
-      result.add(" ")
-  result.add("(")
-  result.add(($n.kind).substr(3))
+      if isLisp:
+        res.add " "
+      else:
+        res.add "  "
+
+  if isLisp:
+    res.add("(")
+  res.add(($n.kind).substr(3))
 
   case n.kind
   of nnkEmpty, nnkNilLit:
     discard # same as nil node in this representation
   of nnkCharLit .. nnkInt64Lit:
-    result.add(" ")
-    result.add($n.intVal)
+    res.add(" " & $n.intVal)
   of nnkFloatLit .. nnkFloat64Lit:
-    result.add(" ")
-    result.add($n.floatVal)
-  of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkident, nnkSym:
-    result.add(" ")
-    result.add(n.strVal.newLit.repr)
+    res.add(" " & $n.floatVal)
+  of nnkStrLit .. nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+    res.add(" " & $n.strVal.newLit.repr)
   of nnkNone:
     assert false
   else:
-    if n.len > 0:
-      result.add(lispRepr(n[0], level+1))
-      for j in 1 .. n.len-1:
-        result.add(lispRepr(n[j], level+1))
+    for j in 0 .. n.len-1:
+      n[j].treeTraverse(res, level+1, isLisp)
 
-  result.add(")")
+  if isLisp:
+    res.add(")")
+
+proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
+  ## Convert the AST `n` to a human-readable tree-like string.
+  ##
+  ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  n.treeTraverse(result, isLisp = false)
+
+proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
+  ## Convert the AST ``n`` to a human-readable lisp-like string.
+  ##
+  ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
+  n.treeTraverse(result, isLisp = true)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to the code required to generate that AST. So for example
