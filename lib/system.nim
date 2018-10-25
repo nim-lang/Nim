@@ -1786,26 +1786,26 @@ type # these work for most platforms:
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
   magic: "ToInt", noSideEffect, importc: "toInt".}
   ## converts a floating point number `f` into an ``int``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
 proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -3475,7 +3475,7 @@ when not defined(JS): #and not defined(nimscript):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
-      ## If the file does not exist `EIO` is raised. The trailing newline
+      ## If the file does not exist `IOError` is raised. The trailing newline
       ## character(s) are removed from the iterated lines. Example:
       ##
       ## .. code-block:: nim

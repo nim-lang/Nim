@@ -254,12 +254,12 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   close(p)
 
 proc load*[T](s: Stream, data: var T) =
-  ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
+  ## loads `data` from the stream `s`. Raises `IOError` in case of an error.
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
 proc store*[T](s: Stream, data: T) =
-  ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
+  ## stores `data` into the stream `s`. Raises `IOError` in case of an error.
   var stored = initIntSet()
   var d: T
   shallowCopy(d, data)
