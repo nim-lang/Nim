@@ -201,7 +201,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   if targetType.kind == tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
-      return semTypeOf(c, n[1])
+      return semTypeOf(c, n)
     else:
       targetType = targetType.base
   elif targetType.kind == tyStatic:
@@ -1963,8 +1963,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], s.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2, c.config)
-    result = semTypeOf(c, n.sons[1])
+    result = semTypeOf(c, n)
   #of mArrGet: result = semArrGet(c, n, flags)
   #of mArrPut: result = semArrPut(c, n, flags)
   #of mAsgn: result = semAsgnOpr(c, n)
