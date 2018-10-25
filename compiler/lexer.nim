@@ -1096,6 +1096,7 @@ proc skip(L: var TLexer, tok: var TToken) =
             hasComment = true
             if tok.line < 0:
               tok.line = L.lineNumber
+              commentIndent = indent
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
