@@ -111,15 +111,16 @@ proc softLinebreak(em: var Emitter, lit: string) =
       for i in 1..em.indentLevel+moreIndent(em): wr(" ")
     else:
       # search backwards for a good split position:
-      for a in em.altSplitPos:
+      for a in mitems(em.altSplitPos):
         if a > em.fixedUntil:
           var spaces = 0
           while a+spaces < em.content.len and em.content[a+spaces] == ' ':
             inc spaces
           if spaces > 0: delete(em.content, a, a+spaces-1)
-          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
+          let ws = "\L" & repeat(' ', em.indentLevel+moreIndent(em))
           em.content.insert(ws, a)
+          a = -1
           break
 
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
@@ -256,8 +257,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
       if not isUnary(tok):
-        wr(" ")
         rememberSplit(splitBinary)
+        wr(" ")
   of tkAccent:
     if not em.inquote and endsInAlpha(em): wr(" ")
     wr(TokTypeToStr[tok.tokType])
