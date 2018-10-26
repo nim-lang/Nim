@@ -129,7 +129,7 @@ to use prefix instead of postfix operators.
 ``+E``           One or more
 ``?E``           Zero or One
 ``E{n,m}``       From ``n`` up to ``m`` times ``E``
-``~Ε``           Not predicate
+``~E``           Not predicate
 ``a ^* b``       Shortcut for ``?(a *(b a))``. Usually used for separators.
 ``a ^* b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
 ``'a'``          Matches a single character
