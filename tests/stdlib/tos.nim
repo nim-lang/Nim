@@ -226,6 +226,8 @@ block normalizedPath:
       doAssert normalizedPath("\\a\\\\\\b") == "\\a\\b"
       doAssert normalizedPath("\\a\\b\\c\\..") == "\\a\\b"
       doAssert normalizedPath("\\a\\b\\c\\..\\") == "\\a\\b"
+      doAssert normalizedPath("C:\\a\\b") == "C:\\a\\b"
+      doAssert normalizedPath("C:\\a\\b\\..\\") == "C:\\a"
 
 block isHidden:
   when defined(posix):
