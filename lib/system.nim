@@ -3783,12 +3783,10 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
+proc gorge*(command: string, input = "", cache = ""): string {.compileTime.} = discard
   ## This is an alias for `staticExec <#staticExec>`_.
 
-proc staticExec*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
+proc staticExec*(command: string, input = "", cache = ""): string {.compileTime.} = discard
   ## Executes an external process at compile-time.
   ## if `input` is not an empty string, it will be passed as a standard input
   ## to the executed program.
@@ -3811,7 +3809,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
 
 proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
-                                                              exitCode: int] =
+                                                              exitCode: int] {.compileTime.} =
   ## Same as `gorge` but also returns the precious exit code.
   discard
 
