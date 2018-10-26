@@ -377,7 +377,10 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
       stack.add(p)
 
   if isAbs:
-    path = DirSep & join(stack, $DirSep)
+    when defined(doslikeFileSystem):
+      path = join(stack, $DirSep) # Absolute dos-like paths start with a drive letter
+    else:
+      path = DirSep & join(stack, $DirSep)
   elif stack.len > 0:
     path = join(stack, $DirSep)
   else:
