@@ -32,6 +32,9 @@
 
 ### Library changes
 
+- The string output of `macros.lispRepr` proc has been tweaked
+  slightly. The `dumpLisp` macro in this module now outputs an
+  indented proper Lisp, devoid of commas.
 
 ### Language additions
 
