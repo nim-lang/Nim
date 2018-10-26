@@ -13,6 +13,15 @@ true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
+tbar
+tbar
+tqux
+tqux
+tseq
+@[1, 102, 26, 999]
+123
+tqux
+124
 
 globals:
 3 3
@@ -29,6 +38,15 @@ true
 true 321 321
  it's a ref! it's a ref!
 @[1, 102, 3]
+tbar
+tbar
+tqux
+tqux
+tseq
+@[1, 102, 26, 999]
+123
+tqux
+124
 '''
 """
 
@@ -170,6 +188,40 @@ template tests =
     var ints = @[1, 2, 3]
     tfoo(ints[1])
     echo ints
+
+    proc tbar(x: var int): var int =
+      echo "tbar"
+      x
+
+    tbar(ints[2]) += 10
+    tbar(ints[2]) *= 2
+
+    proc tqux(x: var int): ptr int =
+      echo "tqux"
+      x.addr
+
+    discard tqux(ints[2]) == tqux(ints[2])
+
+    proc tseq(x: var seq[int]): var seq[int] =
+      echo "tseq"
+      x
+
+    tseq(ints) &= 999
+
+    echo ints
+    proc resetInts(): int =
+      ints = @[0, 0, 0]
+      1
+
+    proc incr(x: var int; b: int): var int =
+      x = x + b
+      x
+
+    var q = 0
+    var qp = q.addr
+    qp[] += 123
+    echo q
+    echo resetInts() + incr(q, tqux(ints[2])[])
 
 proc tests_in_proc =
   tests

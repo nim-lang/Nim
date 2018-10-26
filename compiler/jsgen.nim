@@ -528,26 +528,20 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     if mapType(n[1].typ) != etyBaseIndex:
       arithAux(p, n, r, op)
     else:
+      proc maybeMakeTemp(n: PNode; z, r: var TCompRes) =
+        if n.kind in nkCallKinds + {nkBracketExpr}:
+          let tmp = p.getTemp
+          r.res &= "($1 = $2), " % [tmp, z.res]
+          z.res = "$1[1]" % [tmp]
+          z.address = "$1[0]" % [tmp]
+
       var x, y: TCompRes
       gen(p, n[1], x)
       gen(p, n[2], y)
-      #let targetBaseIndexLHS = n[1].kind == nkSym and
-      #                        {sfAddrTaken, sfGlobal} * n[1].sym.flags == {}
-      #let targetBaseIndexRHS = n[2].kind == nkSym and
-      #                        {sfAddrTaken, sfGlobal} * n[2].sym.flags == {}
+
       r.res = ~"("
-      #debug n[1]
-      const TmpKinds = nkCallKinds + {nkBracketExpr}
-      if n[1].kind in TmpKinds:
-        let tmp = p.getTemp
-        r.res &= "($1 = $2), " % [tmp, x.res]
-        x.res = "$1[1]" % [tmp]
-        x.address = "$1[0]" % [tmp]
-      if n[2].kind in TmpKinds:
-        let tmp = p.getTemp
-        r.res &= "($1 = $2), " % [tmp, y.res]
-        y.res = "$1[1]" % [tmp]
-        y.address = "$1[0]" % [tmp]
+      maybeMakeTemp(n[1], x, r)
+      maybeMakeTemp(n[2], y, r)
       r.res &= "($# == $# && $# == $#)" % [x.address, y.address, x.res, y.res]
       r.res &= ")"
   else:
@@ -1249,14 +1243,14 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = a.kind
     if it.kind in {nkDerefExpr, nkCall}:
       let tmp = p.getTemp
+      r.address = tmp # hack for mInc, mDec impl
       r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
     elif a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif t == etyBaseIndex:
       let tmp = p.getTemp
+      r.address = tmp # hack for mInc, mDec impl
       r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
-    #elif t == etyBaseIndex:
-    #  r.res = "$1[0]" % [a.res]
     else:
       internalError(p.config, n.info, "genDeref")
 
@@ -1824,12 +1818,26 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       binaryUintExpr(p, n, r, "+", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
+      elif n[1].kind in {nkDerefExpr, nkHiddenDeref} and n[1][0].kind != nkSym:
+        var x, y: TCompRes
+        gen(p, n.sons[1], x)
+        gen(p, n.sons[2], y)
+        useMagic(p, "addInt")
+        r.res = "($1, $2[0][$2[1]] = addInt($2[0][$2[1]], $3))" % [x.res, x.address, y.rdLoc]
+        r.kind = resExpr
       else: binaryExpr(p, n, r, "addInt", "$1 = addInt($1, $2)")
   of ast.mDec:
     if n[1].typ.skipTypes(abstractRange).kind in tyUInt .. tyUInt64:
       binaryUintExpr(p, n, r, "-", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
+      elif n[1].kind in {nkDerefExpr, nkHiddenDeref} and n[1][0].kind != nkSym:
+        var x, y: TCompRes
+        gen(p, n.sons[1], x)
+        gen(p, n.sons[2], y)
+        useMagic(p, "subInt")
+        r.res = "($1, $2[0][$2[1]] = subInt($2[0][$2[1]], $3))" % [x.res, x.address, y.rdLoc]
+        r.kind = resExpr
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
     binaryExpr(p, n, r, "", "$1.length = $2")
