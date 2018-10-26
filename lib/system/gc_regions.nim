@@ -390,13 +390,15 @@ proc GC_disableMarkAndSweep() = discard
 proc GC_getStatistics(): string = return ""
 
 proc getOccupiedMem(): int =
-  result = tlRegion.totalSize - tlRegion.remaining# return memory used 
+  # Return the currently occupied memory as an integer.
+  result = tlRegion.totalSize - tlRegion.remaining
 proc getFreeMem(): int = tlRegion.remaining
 proc getTotalMem(): int =
   result = tlRegion.totalSize
 
 proc getOccupiedMem*(r: MemRegion): int =
-  result = r.totalSize - r.remaining# return memory used
+  # Return the currently occupied memory as an integer.
+  result = r.totalSize - r.remaining
 proc getFreeMem*(r: MemRegion): int = r.remaining
 proc getTotalMem*(r: MemRegion): int =
   result = r.totalSize
