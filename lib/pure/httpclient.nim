@@ -1172,7 +1172,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   let requestUrl = parseUri(url)
   
   if requestUrl.scheme == "":
-    raise newException(ValueError,"No url scheme supplied. Perhaps you meant http://")
+    raise newException(ValueError, "No uri scheme supplied.")
 
   await newConnection(client, requestUrl)
 
