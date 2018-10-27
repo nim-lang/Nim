@@ -5,7 +5,7 @@ var
   inp: File
   line: string
 
-if open(inp, "tests/dummy.txt"):
+if open(inp, "tests/misc/treadln.nim"):
   while not endOfFile(inp):
     line = readLine(inp)
     echo("#" & line & "#")
