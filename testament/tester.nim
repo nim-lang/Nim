@@ -436,7 +436,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
 when defined(windows):
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["coro.nim", "fsmonitor.nim"]
+    disabledFiles = ["coro.nim"]
 else:
   const
     # array of modules disabled from compilation test of stdlib.
