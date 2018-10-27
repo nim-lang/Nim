@@ -35,6 +35,8 @@
 
 ### Language additions
 
+- Vm suport for float32<->int32 and float64<->int64 casts was added.
+
 
 ### Language changes
 
