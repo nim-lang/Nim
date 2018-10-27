@@ -207,8 +207,12 @@ template tests =
       x
 
     tseq(ints) &= 999
-
     echo ints
+
+    var rawints = @[555]
+    rawints &= 666
+    echo rawints
+
     proc resetInts(): int =
       ints = @[0, 0, 0]
       1
