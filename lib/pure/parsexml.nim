@@ -187,6 +187,7 @@ type
   XmlParseOption* = enum  ## options for the XML parser
     reportWhitespace,      ## report whitespace
     reportComments         ## report comments
+    allowUnquotedAttribs   ## allow unquoted attribute values (for HTML)
 
   XmlParser* = object of BaseLexer ## the parser object.
     a, b, c: string
@@ -669,6 +670,17 @@ proc parseAttribute(my: var XmlParser) =
             pendingSpace = false
           add(my.b, buf[pos])
           inc(pos)
+  elif allowUnquotedAttribs in my.options:
+    const disallowedChars = "\"'`=<>\0\t\L\F\f "
+    while (let c = buf[pos]; c notin disallowedChars):
+      if c == '&':
+        my.bufpos = pos
+        parseEntity(my, my.b)
+        my.kind = xmlAttribute # parseEntity overwrites my.kind!
+        pos = my.bufpos
+      else:
+        add(my.b, c)
+        inc(pos)
   else:
     markError(my, errQuoteExpected)
     # error corrections: guess what was meant
