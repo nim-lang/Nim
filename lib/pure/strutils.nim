@@ -394,6 +394,8 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc i
     inc j
 
+{.pop.}
+
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
@@ -2416,8 +2418,6 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   ## auto stringification.
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, a)
-
-{.pop.}
 
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
