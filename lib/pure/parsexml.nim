@@ -180,6 +180,7 @@ type
     errEqExpected,           ## ``=`` expected
     errQuoteExpected,        ## ``"`` or ``'`` expected
     errEndOfCommentExpected  ## ``-->`` expected
+    errAttributeValueExpected ## non-empty attribute value expecteds
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
@@ -208,7 +209,8 @@ const
     "'>' expected",
     "'=' expected",
     "'\"' or \"'\" expected",
-    "'-->' expected"
+    "'-->' expected",
+    "attribute value expected"
   ]
 
 proc open*(my: var XmlParser, input: Stream, filename: string,
@@ -672,6 +674,7 @@ proc parseAttribute(my: var XmlParser) =
           inc(pos)
   elif allowUnquotedAttribs in my.options:
     const disallowedChars = "\"'`=<>\0\t\L\F\f "
+    let startPos = pos
     while (let c = buf[pos]; c notin disallowedChars):
       if c == '&':
         my.bufpos = pos
@@ -681,6 +684,8 @@ proc parseAttribute(my: var XmlParser) =
       else:
         add(my.b, c)
         inc(pos)
+    if pos == startPos:
+      markError(my, errAttributeValueExpected)
   else:
     markError(my, errQuoteExpected)
     # error corrections: guess what was meant
