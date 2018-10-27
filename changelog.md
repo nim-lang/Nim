@@ -149,25 +149,8 @@
 
 ### Language additions
 
-- Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
-- ``func`` is now an alias for ``proc {.noSideEffect.}``.
-- In order to make ``for`` loops and iterators more flexible to use Nim now
-  supports so called "for-loop macros". See
-  the [manual](manual.html#macros-for-loop-macros) for more details.
-  This feature enables a Python-like generic ``enumerate`` implementation.
+- Vm suport for float32<->int32 and float64<->int64 casts was added.
 
-- Case statements can now be rewritten via macros. See the [manual](manual.html#macros-case-statement-macros) for more information.
-  This feature enables custom pattern matchers.
-
-
-- the `typedesc` special type has been renamed to just `type`.
-- `static` and `type` are now also modifiers similar to `ref` and `ptr`.
-  They denote the special types `static[T]` and `type[T]`.
-- Forcing compile-time evaluation with `static` now supports specifying
-  the desired target type (as a concrete type or as a type class)
-- The `type` operator now supports checking that the supplied expression
-  matches an expected type constraint.
 
 ### Language changes
 
