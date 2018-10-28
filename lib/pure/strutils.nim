@@ -901,7 +901,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   runnableExamples:
-    doAssert toHex(1984) == "00000000000007C0"
+    doAssert toHex(1984'i64) == "00000000000007C0"
   toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
