@@ -183,3 +183,21 @@ test(Vec4[float32]):
 # bug #4862
 static:
   discard typedesc[(int, int)].getTypeImpl
+
+# custom pragmas
+template myAttr() {.pragma.}
+template myAttr2() {.pragma.}
+template myAttr3() {.pragma.}
+template serializationKey(key: string) {.pragma.}
+
+type
+  MyObj = object {.packed,myAttr,serializationKey: "one".}
+    myField {.myAttr2,serializationKey: "two".}: int
+    myField2 {.myAttr3,serializationKey: "three".}: float
+
+# field pragmas not currently supported
+test(MyObj):
+  type
+    _ = object {.packed,myAttr,serializationKey: "one".}
+      myField: int
+      myField2: float
