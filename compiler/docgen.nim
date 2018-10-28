@@ -873,7 +873,7 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skTemp..skTemplate, string] = [
-    "Exports", "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+    "Exports", "Dependencies", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
@@ -907,7 +907,7 @@ proc genOutFile(d: PDoc): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+    title = extractFilename(changeFileExt(d.filename, ""))
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
