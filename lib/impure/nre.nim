@@ -470,7 +470,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
   # plus 1 because we need the ceiling, not the floor
-  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]]((vecsize div 2) + 1)
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]]((vecsize + 1) div 2)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1
