@@ -65,6 +65,7 @@ const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
 proc execProcess*(command: string,
+                  workingDir: string = "",
                   args: openArray[string] = [],
                   env: StringTableRef = nil,
                   options: set[ProcessOption] = {poStdErrToStdOut,
@@ -350,12 +351,13 @@ proc select*(readfds: var seq[Process], timeout = 500): int
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
+                   workingDir: string = "",
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
                                                    poEvalCommand}): TaintedString =
-    var p = startProcess(command, args=args, env=env, options=options)
+    var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
