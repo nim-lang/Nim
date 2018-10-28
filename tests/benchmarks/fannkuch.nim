@@ -1,31 +1,31 @@
 import os
 import strutils
 
-proc fannkuch (n: int): int =
+proc fannkuch(n: int): int =
     var
         count: seq[int]
         maxFlips = 0
-        m        = n-1
-        r        = n
-        check    = 0
+        m = n-1
+        r = n
+        check = 0
         perm1: seq[int]
-        perm:  seq[int]
+        perm: seq[int]
 
-    newSeq (count, n+1)
-    newSeq (perm1, n)
-    newSeq (perm, n)
+    newSeq(count, n+1)
+    newSeq(perm1, n)
+    newSeq(perm, n)
     for i in 0 .. n-1:
         count[i] = i+1
         perm1[i] = i
         perm[i]  = i
     count[n] = n+1
 
-    while True:
+    while true:
         if check < 30:
-            for i in items (perm1):
-                write (stdout, $(i+1))
-            echo ("")
-            inc (check)
+            for i in items(perm1):
+                write(stdout, $(i+1))
+            echo("")
+            inc(check)
 
         while r != 1:
             count[r-1] = r
@@ -40,8 +40,8 @@ proc fannkuch (n: int): int =
             var k = perm[0]
             while k != 0:
                 for i in 0 .. (k div 2):
-                    swap (perm[i], perm[k-i])
-                inc (flipsCount)
+                    swap(perm[i], perm[k-i])
+                inc(flipsCount)
                 k = perm[0]
 
             if flipsCount > maxFlips:
@@ -59,11 +59,11 @@ proc fannkuch (n: int): int =
                     perm1[i] = perm1[i+1]
                 perm1[r] = tmp
 
-                dec (count[r])
+                dec(count[r])
                 if count[r] > 0:
                     break makePerm
-                inc (r)
+                inc(r)
             return maxFlips
 
 var n = 10
-echo ("Pfannkuchen(" & $n & ") = " & $fannkuch (n))
+echo("Pfannkuchen(" & $n & ") = " & $fannkuch(n))
