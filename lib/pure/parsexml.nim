@@ -673,7 +673,8 @@ proc parseAttribute(my: var XmlParser) =
           add(my.b, buf[pos])
           inc(pos)
   elif allowUnquotedAttribs in my.options:
-    const disallowedChars = "\"'`=<>\0\t\L\F\f "
+    const disallowedChars = {'"', '\'', '`', '=', '<', '>', ' ',
+                             '\0', '\t', '\L', '\F', '\f'}
     let startPos = pos
     while (let c = buf[pos]; c notin disallowedChars):
       if c == '&':
