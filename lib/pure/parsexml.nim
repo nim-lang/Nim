@@ -180,7 +180,7 @@ type
     errEqExpected,           ## ``=`` expected
     errQuoteExpected,        ## ``"`` or ``'`` expected
     errEndOfCommentExpected  ## ``-->`` expected
-    errAttributeValueExpected ## non-empty attribute value expecteds
+    errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
