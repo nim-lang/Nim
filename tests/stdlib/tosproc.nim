@@ -8,7 +8,8 @@ import os, osproc
 
 block execProcessTest:
   let dir = parentDir(currentSourcePath())
-  doAssert execCmd("nim c " & quoteShell(dir / "osproctest.nim")) == 0
+  let (outp, err) = execCmdEx("nim c " & quoteShell(dir / "osproctest.nim"))
+  doAssert err == 0
   let exePath = dir / addFileExt("osproctest", ExeExt)
   let outStr1 = execProcess(exePath, workingDir=dir, args=["foo", "b A r"], options={})
   doAssert outStr1 == dir & "\nfoo\nb A r\n"
