@@ -381,6 +381,8 @@ proc raiseExceptionAux(e: ref Exception) =
           xadd(buf, s, s.len)
         var buf: array[0..2000, char]
         var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation      
         add(buf, "Error: unhandled exception: ")
         add(buf, e.msg)
         add(buf, " [")
@@ -394,7 +396,7 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.len == 0:
@@ -403,7 +405,13 @@ proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
       e.trace.add reraisedFrom(reraisedFromBegin)
       auxWriteStackTrace(framePtr, e.trace)
       e.trace.add reraisedFrom(reraisedFromEnd)
+  else:
+    if procname != nil and filename != nil:
+      e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
+
+proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+  raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:

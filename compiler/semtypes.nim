@@ -1527,7 +1527,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
-    of mUncheckedArray: result = semContainer(c, n, tyUncheckedArray, "uncheckedarray", prev)
+    of mUncheckedArray: result = semContainer(c, n, tyUncheckedArray, "UncheckedArray", prev)
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
