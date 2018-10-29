@@ -108,6 +108,29 @@ proc classify*(x: float): FloatClass =
   return fcNormal
   # XXX: fcSubnormal is not detected!
 
+proc isClose*(x, y: float; rtol = 1e-5, atol = 1e-8): bool {.noSideEffect.} =
+  ## Checks if two floating point numbers are within a tolerance.
+  ## Similar to numpy.isclose().
+  ##
+  ## The relative difference (``rtol * abs(b)``) and the absolute difference
+  ## ``atol`` are added together to compare against the absolute difference
+  ## between ``x`` and ``y``.
+  ##
+  ## This is *not* symmetric, so ``isClose(x, y)`` might be different from
+  ## ``isClose(y, x)``.
+  ## The default ``atol`` is not appropriate for comparing numbers
+  ## that are much smaller than one.
+  ##
+  ## .. code-block:: nim
+  ##  doAssert isClose(1.0000, 0.9999) == false
+  ##  doAssert isClose(1.0000, 0.99999) == true
+  ##  doAssert isClose(1e7, 1.00001e7) == true
+  abs(x - y) <= (atol + rtol * abs(y))
+
+proc `=~`*(x, y: float): bool {.noSideEffect.} =
+  ## A shorthand for ``isClose(x, y)`` with the default ``rtol`` and ``atol``.
+  isClose(x, y)
+
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
   ## Zero and negative numbers are not a power of two.
@@ -732,9 +755,6 @@ when isMainModule and not defined(JS) and not windowsCC89:
   assert(erfc(6.0) < erfc(5.0))
 
 when isMainModule:
-  # Function for approximate comparison of floats
-  proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
-
   block: # prod
     doAssert prod([1, 2, 3, 4]) == 24
     doAssert prod([1.5, 3.4]) == 5.1
@@ -743,33 +763,33 @@ when isMainModule:
 
   block: # round() tests
     # Round to 0 decimal places
-    doAssert round(54.652) ==~ 55.0
-    doAssert round(54.352) ==~ 54.0
-    doAssert round(-54.652) ==~ -55.0
-    doAssert round(-54.352) ==~ -54.0
-    doAssert round(0.0) ==~ 0.0
+    doAssert round(54.652) =~ 55.0
+    doAssert round(54.352) =~ 54.0
+    doAssert round(-54.652) =~ -55.0
+    doAssert round(-54.352) =~ -54.0
+    doAssert round(0.0) =~ 0.0
     # Round to positive decimal places
-    doAssert round(-547.652, 1) ==~ -547.7
-    doAssert round(547.652, 1) ==~ 547.7
-    doAssert round(-547.652, 2) ==~ -547.65
-    doAssert round(547.652, 2) ==~ 547.65
+    doAssert round(-547.652, 1) =~ -547.7
+    doAssert round(547.652, 1) =~ 547.7
+    doAssert round(-547.652, 2) =~ -547.65
+    doAssert round(547.652, 2) =~ 547.65
     # Round to negative decimal places
-    doAssert round(547.652, -1) ==~ 550.0
-    doAssert round(547.652, -2) ==~ 500.0
-    doAssert round(547.652, -3) ==~ 1000.0
-    doAssert round(547.652, -4) ==~ 0.0
-    doAssert round(-547.652, -1) ==~ -550.0
-    doAssert round(-547.652, -2) ==~ -500.0
-    doAssert round(-547.652, -3) ==~ -1000.0
-    doAssert round(-547.652, -4) ==~ 0.0
+    doAssert round(547.652, -1) =~ 550.0
+    doAssert round(547.652, -2) =~ 500.0
+    doAssert round(547.652, -3) =~ 1000.0
+    doAssert round(547.652, -4) =~ 0.0
+    doAssert round(-547.652, -1) =~ -550.0
+    doAssert round(-547.652, -2) =~ -500.0
+    doAssert round(-547.652, -3) =~ -1000.0
+    doAssert round(-547.652, -4) =~ 0.0
 
   block: # splitDecimal() tests
-    doAssert splitDecimal(54.674).intpart ==~ 54.0
-    doAssert splitDecimal(54.674).floatpart ==~ 0.674
-    doAssert splitDecimal(-693.4356).intpart ==~ -693.0
-    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-    doAssert splitDecimal(0.0).intpart ==~ 0.0
-    doAssert splitDecimal(0.0).floatpart ==~ 0.0
+    doAssert splitDecimal(54.674).intpart =~ 54.0
+    doAssert splitDecimal(54.674).floatpart =~ 0.674
+    doAssert splitDecimal(-693.4356).intpart =~ -693.0
+    doAssert splitDecimal(-693.4356).floatpart =~ -0.4356
+    doAssert splitDecimal(0.0).intpart =~ 0.0
+    doAssert splitDecimal(0.0).floatpart =~ 0.0
 
   block: # trunc tests for vcc
     doAssert(trunc(-1.1) == -1)
@@ -842,8 +862,8 @@ when isMainModule:
     doAssert floorDiv(-8, -3) == 2
     doAssert floorMod(-8, -3) == -2
 
-    doAssert floorMod(8.0, -3.0) ==~ -1.0
-    doAssert floorMod(-8.5, 3.0) ==~ 0.5
+    doAssert floorMod(8.0, -3.0) =~ -1.0
+    doAssert floorMod(-8.5, 3.0) =~ 0.5
 
   block: # log
     doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)
