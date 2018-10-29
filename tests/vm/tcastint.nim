@@ -113,8 +113,55 @@ proc test() =
     doAssert(not compiles(cast[uint32](I8)))
     doAssert(not compiles(cast[uint64](I8)))
 
+
+proc test_float_cast =
+
+  const
+    exp_bias = 1023'i64
+    exp_shift = 52
+    exp_mask = 0x7ff'i64 shl exp_shift
+    mantissa_mask = 0xfffffffffffff'i64
+
+  let f = 8.0
+  let fx = cast[int64](f)
+  let exponent = ((fx and exp_mask) shr exp_shift) - exp_bias
+  let mantissa = fx and mantissa_mask
+  doAssert(exponent == 3, $exponent)
+  doAssert(mantissa == 0, $mantissa)
+
+  # construct 2^N float, where N is integer
+  let x = -2'i64 
+  let xx = (x + exp_bias) shl exp_shift
+  let xf = cast[float](xx)
+  doAssert(xf == 0.25, $xf)
+
+proc test_float32_cast =
+
+  const
+    exp_bias = 127'i32
+    exp_shift = 23
+    exp_mask = 0x7f800000'i32
+    mantissa_mask = 0x007ffff'i32
+
+  let f = -0.5'f32
+  let fx = cast[int32](f)
+  let exponent = ((fx and exp_mask) shr exp_shift) - exp_bias
+  let mantissa = fx and mantissa_mask
+  doAssert(exponent == -1, $exponent)
+  doAssert(mantissa == 0, $mantissa)
+
+  # construct 2^N float32 where N is integer
+  let x = 4'i32  
+  let xx = (x + exp_bias) shl exp_shift
+  let xf = cast[float32](xx)
+  doAssert(xf == 16.0'f32, $xf)
+
 test()
+test_float_cast()
+test_float32_cast()
 static:
   test()
+  test_float_cast()
+  test_float32_cast()
 
 echo "OK"

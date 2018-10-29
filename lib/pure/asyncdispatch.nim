@@ -145,7 +145,9 @@ export asyncfutures, asyncstreams
 ##
 ## Futures should **never** be discarded. This is because they may contain
 ## errors. If you do not care for the result of a Future then you should
-## use the ``asyncCheck`` procedure instead of the ``discard`` keyword.
+## use the ``asyncCheck`` procedure instead of the ``discard`` keyword. Note
+## however that this does not wait for completion, and you should use
+## ``waitFor`` for that purpose.
 ##
 ## Examples
 ## --------

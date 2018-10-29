@@ -1163,6 +1163,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
+  
+  if requestUrl.scheme == "":
+    raise newException(ValueError, "No uri scheme supplied.")
 
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:
