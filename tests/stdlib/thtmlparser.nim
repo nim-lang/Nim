@@ -92,6 +92,8 @@ block t6154:
         <p something=  &#9;foo&#9;bar&#178; foo  =bloo></p>
         <p class="foo2" id="bar2"></p>
         <p wrong= ></p>
+        <p data-foo data-bar="correct!" enabled  ></p>
+        <p quux whatever></p>
       </body>
   </html>
   """
@@ -100,7 +102,7 @@ block t6154:
   let html = parseHtml(newStringStream(foo), "statichtml", errors=errors)
   doAssert "statichtml(11, 18) Error: attribute value expected" in errors
   let ps = html.findAll("p")
-  doAssert ps.len == 5
+  doAssert ps.len == 7
 
   doAssert ps[0].attrsLen == 2
   doAssert ps[0].attr("class") == "foo"
@@ -123,3 +125,14 @@ block t6154:
 
   doAssert ps[4].attrsLen == 1
   doAssert ps[4].attr("wrong") == ""
+
+  doAssert ps[5].attrsLen == 3
+  doAssert ps[5].attr("data-foo") == ""
+  doAssert ps[5].attr("data-bar") == "correct!"
+  doAssert ps[5].attr("enabled") == ""
+  doassert ps[5].len == 0
+
+  doAssert ps[6].attrsLen == 2
+  doAssert ps[6].attr("quux") == ""
+  doAssert ps[6].attr("whatever") == ""
+  doassert ps[6].len == 0
