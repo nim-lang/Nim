@@ -322,7 +322,14 @@ proc semGenericStmt(c: PContext, n: PNode,
       n.sons[i] = semGenericStmtScope(c, n.sons[i], flags, ctx)
   of nkWhenStmt:
     for i in countup(0, sonsLen(n)-1):
-      n.sons[i] = semGenericStmt(c, n.sons[i], flags+{withinMixin}, ctx)
+      # bug #8603: conditions of 'when' statements are not
+      # in a 'mixin' context:
+      let it = n[i]
+      if it.kind in {nkElifExpr, nkElifBranch}:
+        n.sons[i].sons[0] = semGenericStmt(c, it[0], flags, ctx)
+        n.sons[i].sons[1] = semGenericStmt(c, it[1], flags+{withinMixin}, ctx)
+      else:
+        n.sons[i] = semGenericStmt(c, it, flags+{withinMixin}, ctx)
   of nkWhileStmt:
     openScope(c)
     for i in countup(0, sonsLen(n)-1):

@@ -203,23 +203,6 @@ proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
 
-proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``.
-
-proc new*(T: typedesc): auto =
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value.
-  ##
-  ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``.
-  when (T is ref):
-    var r: T
-  else:
-    var r: ref T
-  new(r)
-  return r
-
 const ThisIsSystem = true
 
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
@@ -1331,6 +1314,23 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
+proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it in ``a``.
+
+proc new*(T: typedesc): auto =
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it as result value.
+  ##
+  ## When ``T`` is a ref type then the resulting type will be ``T``,
+  ## otherwise it will be ``ref T``.
+  when (T is ref):
+    var r: T
+  else:
+    var r: ref T
+  new(r)
+  return r
+
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
@@ -2090,6 +2090,8 @@ when not defined(nimscript) and hasAlloc:
       ## returns the number of bytes on the shared heap that are owned by the
       ## process. This is only available when threads are enabled.
 
+proc `|`*(a, b: typedesc): typedesc = discard
+
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
@@ -2639,6 +2641,16 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c < 0: return true
     if c > 0: return false
   return false
+
+proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+  ## Special compile-time procedure that checks whether `x` can be compiled
+  ## without any semantic error.
+  ## This can be used to check whether a type supports some operation:
+  ##
+  ## .. code-block:: Nim
+  ##   when compiles(3 + 4):
+  ##     echo "'+' for integers is available"
+  discard
 
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
@@ -4050,16 +4062,6 @@ when hasAlloc:
     while j < item.len:
       x[j+i] = item[j]
       inc(j)
-
-proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
-  ## Special compile-time procedure that checks whether `x` can be compiled
-  ## without any semantic error.
-  ## This can be used to check whether a type supports some operation:
-  ##
-  ## .. code-block:: Nim
-  ##   when compiles(3 + 4):
-  ##     echo "'+' for integers is available"
-  discard
 
 when declared(initDebugger):
   initDebugger()
