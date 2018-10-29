@@ -150,11 +150,8 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       {.emit: "console.log(`cln`);".}
     else:
       try:
-        if level in {lvlError, lvlFatal, lvlWarn}:
-          writeLine(stderr, ln)
-        else:
-          writeLine(stdout, ln)
-        if level in {lvlError, lvlFatal, lvlWarn}: flushFile(stderr)
+        writeLine(stderr, ln)
+        if level in {lvlError, lvlFatal}: flushFile(stderr)
       except IOError:
         discard
 
