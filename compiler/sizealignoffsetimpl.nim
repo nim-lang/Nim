@@ -122,7 +122,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
     let size = n.sym.typ.size
     let align = n.sym.typ.align
     result.align = align
-    if initialOffset == szUnknownSize:
+    if initialOffset == szUnknownSize or size == szUnknownSize:
       n.sym.offset = szUnknownSize
       result.offset = szUnknownSize
     else:
