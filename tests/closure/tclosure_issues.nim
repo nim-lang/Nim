@@ -1,5 +1,4 @@
 discard """
-  file: "tissues.nim"
   output: '''true'''
 """
 
