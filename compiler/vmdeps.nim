@@ -100,7 +100,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyEmpty: result = atomicType("empty", mNone)
   of tyUncheckedArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    result.add atomicType("uncheckedArray", mUncheckedArray)
+    result.add atomicType("UncheckedArray", mUncheckedArray)
     result.add mapTypeToAst(t.sons[0], info)
   of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)

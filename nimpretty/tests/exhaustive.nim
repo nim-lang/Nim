@@ -329,3 +329,31 @@ proc getKeyAndData(cursor: int, op: int):
 #!nimpretty on
 
 const test = r"C:\Users\-\Desktop\test.txt"
+
+proc abcdef*[T:not (tuple|object|string|cstring|char|ref|ptr|array|seq|distinct)]() =
+  # bug #9504
+  type T2 = a.type
+  discard
+
+proc fun() =
+  #[
+  this one here
+  ]#
+  discard
+
+proc fun2() =
+  ##[
+  foobar
+  ]##
+  discard
+
+#[
+foobar
+]#
+
+proc fun3() =
+  discard
+
+##[
+foobar
+]##

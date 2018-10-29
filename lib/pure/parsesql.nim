@@ -566,7 +566,6 @@ type
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
 
-
 {.deprecated: [EInvalidSql: SqlParseError, PSqlNode: SqlNode,
     TSqlNode: SqlNodeObj, TSqlParser: SqlParser, TSqlNodeKind: SqlNodeKind].}
 
@@ -591,6 +590,7 @@ proc len*(n: SqlNode): int =
     result = n.sons.len
 
 proc `[]`*(n: SqlNode; i: int): SqlNode = n.sons[i]
+proc `[]`*(n: SqlNode; i: BackwardsIndex): SqlNode = n.sons[n.len - int(i)]
 
 proc add*(father, n: SqlNode) =
   add(father.sons, n)
@@ -674,7 +674,7 @@ proc getPrecedence(p: SqlParser): int =
     result = 5
   elif isOpr(p, "=") or isOpr(p, "<") or isOpr(p, ">") or isOpr(p, ">=") or
        isOpr(p, "<=") or isOpr(p, "<>") or isOpr(p, "!=") or isKeyw(p, "is") or
-       isKeyw(p, "like"):
+       isKeyw(p, "like") or isKeyw(p, "in"):
     result = 4
   elif isKeyw(p, "and"):
     result = 3
@@ -717,7 +717,10 @@ proc identOrLiteral(p: var SqlParser): SqlNode =
   of tkParLe:
     getTok(p)
     result = newNode(nkPrGroup)
-    result.add(parseExpr(p))
+    while true:
+      result.add(parseExpr(p))
+      if p.tok.kind != tkComma: break
+      getTok(p)
     eat(p, tkParRi)
   else:
     if p.tok.literal == "*":
@@ -1464,6 +1467,22 @@ proc renderSQL*(n: SqlNode, upperCase=false): string =
 proc `$`*(n: SqlNode): string =
   ## an alias for `renderSQL`.
   renderSQL(n)
+
+proc treeReprAux(s: SqlNode, level: int, result: var string) =
+  result.add('\n')
+  for i in 0 ..< level: result.add("  ")
+
+  result.add($s.kind)
+  if s.kind in LiteralNodes:
+    result.add(' ')
+    result.add(s.strVal)
+  else:
+    for son in s.sons:
+      treeReprAux(son, level + 1, result)
+
+proc treeRepr*(s: SqlNode): string =
+  result = newStringOfCap(128)
+  treeReprAux(s, 0, result)
 
 when not defined(js):
   import streams

@@ -528,7 +528,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
   of tyUncheckedArray:
-    result = "uncheckedArray[" & typeToString(t.sons[0]) & ']'
+    result = "UncheckedArray[" & typeToString(t.sons[0]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOpt:

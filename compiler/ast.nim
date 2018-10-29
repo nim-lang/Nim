@@ -811,7 +811,7 @@ type
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      transformedBody*: PNode  # cached body after transf pass   
+      transformedBody*: PNode  # cached body after transf pass
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -1734,7 +1734,7 @@ proc isException*(t: PType): bool =
     return false
 
   var base = t
-  while base != nil:
+  while base != nil and base.kind in {tyRef, tyObject, tyGenericInst}:
     if base.sym != nil and base.sym.magic == mException:
       return true
     base = base.lastSon

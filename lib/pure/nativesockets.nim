@@ -221,7 +221,7 @@ proc close*(socket: SocketHandle) =
     discard winlean.closesocket(socket)
   else:
     discard posix.close(socket)
-  # TODO: These values should not be discarded. An EOS should be raised.
+  # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
@@ -594,7 +594,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
 proc setBlocking*(s: SocketHandle, blocking: bool) =
   ## Sets blocking mode on socket.
   ##
-  ## Raises EOS on error.
+  ## Raises OSError on error.
   when useWinVersion:
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:

@@ -1,8 +1,9 @@
 discard """
   nimout: '''
-  found 'a' of kind 'var''''
+  found 'a' of kind 'var'
+  '''
   file: "tnoop.nim"
-  line: 12
+  line: 13
   errormsg: "attempting to call routine: 'a'"
 """
 

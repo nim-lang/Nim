@@ -599,7 +599,7 @@ proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} 
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
   ##
-  ## Raises an EOS error upon failure.
+  ## Raises an OSError error upon failure.
   if listen(socket.fd, backlog) < 0'i32: raiseOSError(osLastError())
 
 proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.

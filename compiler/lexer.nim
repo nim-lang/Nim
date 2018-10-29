@@ -224,7 +224,7 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
-  lex.indentAhead = - 1
+  lex.indentAhead = -1
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
   lex.cache = cache
@@ -636,6 +636,8 @@ proc handleHexChar(L: var TLexer, xi: var int) =
   else:
     lexMessage(L, errGenerated,
       "expected a hex digit, but found: " & L.buf[L.bufpos])
+    # Need to progress for `nim check`
+    inc(L.bufpos)
 
 proc handleDecChars(L: var TLexer, xi: var int) =
   while L.buf[L.bufpos] in {'0'..'9'}:
@@ -1116,8 +1118,10 @@ proc skip(L: var TLexer, tok: var TToken) =
   tok.strongSpaceA = 0
   when defined(nimpretty):
     var hasComment = false
+    var commentIndent = L.currLineIndent
     tok.commentOffsetA = L.offsetBase + pos
     tok.commentOffsetB = tok.commentOffsetA
+    tok.line = -1
   while true:
     case buf[pos]
     of ' ':
@@ -1128,9 +1132,6 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
-      when defined(nimpretty):
-        # we are not yet in a comment, so update the comment token's line information:
-        if not hasComment: inc tok.line
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -1139,13 +1140,19 @@ proc skip(L: var TLexer, tok: var TToken) =
           inc(pos)
           inc(indent)
         elif buf[pos] == '#' and buf[pos+1] == '[':
-          when defined(nimpretty): hasComment = true
+          when defined(nimpretty):
+            hasComment = true
+            if tok.line < 0:
+              tok.line = L.lineNumber
+              commentIndent = indent
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
         else:
           break
       tok.strongSpaceA = 0
+      when defined(nimpretty):
+        if buf[pos] == '#' and tok.line < 0: commentIndent = indent
       if buf[pos] > ' ' and (buf[pos] != '#' or buf[pos+1] == '#'):
         tok.indent = indent
         L.currLineIndent = indent
@@ -1153,7 +1160,11 @@ proc skip(L: var TLexer, tok: var TToken) =
     of '#':
       # do not skip documentation comment:
       if buf[pos+1] == '#': break
-      when defined(nimpretty): hasComment = true
+      when defined(nimpretty):
+        hasComment = true
+        if tok.line < 0:
+          tok.line = L.lineNumber
+
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
         pos = L.bufpos
@@ -1174,6 +1185,7 @@ proc skip(L: var TLexer, tok: var TToken) =
     if hasComment:
       tok.commentOffsetB = L.offsetBase + pos - 1
       tok.tokType = tkComment
+      tok.indent = commentIndent
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
 
