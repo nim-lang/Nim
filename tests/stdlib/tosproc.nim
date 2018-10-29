@@ -20,4 +20,4 @@ block execProcessTest:
   doAssert outStr2 == absolutePath(testDir) & "\nx yz\n"
 
   removeDir(testDir)
-  tryRemoveFile(exePath)
+  removeFile(exePath)
