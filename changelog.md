@@ -23,6 +23,19 @@
 
 #### Breaking changes in the compiler
 
+- The compiler now implements the "generic symbol prepass" for `when` statements
+  in generics, see bug #8603. This means that code like this does not compile
+  anymore:
+
+```nim
+proc enumToString*(enums: openArray[enum]): string =
+  # typo: 'e' instead 'enums'
+  when e.low.ord >= 0 and e.high.ord < 256:
+    result = newString(enums.len)
+  else:
+    result = newString(enums.len * 2)
+```
+
 ### Library additions
 
 - There is a new stdlib module `editdistance` as a replacement for the
