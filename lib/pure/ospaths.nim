@@ -14,10 +14,11 @@ include "system/inclrtl"
 
 import strutils
 
-when defined(windows):
-  import winlean
-elif defined(posix):
-  import posix
+when not defined(nimscript):
+  when defined(windows):
+    import winlean
+  elif defined(posix):
+    import posix
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
@@ -167,49 +168,52 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
-  ## Returns the `current working directory`:idx:.
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getCurrentDirectoryW(bufsize, res)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
+when not defined(nimscript):
+  proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+    ## Returns the `current working directory`:idx:.
+    # when defined(nimscript):
+      # doAssert false # TODO: make error pragma usable here
+    when defined(windows):
+      var bufsize = MAX_PATH.int32
+      when useWinUnicode:
+        var res = newWideCString("", bufsize)
+        while true:
+          var L = getCurrentDirectoryW(bufsize, res)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            res = newWideCString("", L)
+            bufsize = L
+          else:
+            result = res$L
+            break
+      else:
+        result = newString(bufsize)
+        while true:
+          var L = getCurrentDirectoryA(bufsize, result)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            result = newString(L)
+            bufsize = L
+          else:
+            setLen(result, L)
+            break
     else:
+      var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        var L = getCurrentDirectoryA(bufsize, result)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
+        if getcwd(result, bufsize) != nil:
+          setLen(result, c_strlen(result))
           break
-  else:
-    var bufsize = 1024 # should be enough
-    result = newString(bufsize)
-    while true:
-      if getcwd(result, bufsize) != nil:
-        setLen(result, c_strlen(result))
-        break
-      else:
-        let err = osLastError()
-        if err.int32 == ERANGE:
-          bufsize = bufsize shl 1
-          doAssert(bufsize >= 0)
-          result = newString(bufsize)
         else:
-          raiseOSError(osLastError())
+          let err = osLastError()
+          if err.int32 == ERANGE:
+            bufsize = bufsize shl 1
+            doAssert(bufsize >= 0)
+            result = newString(bufsize)
+          else:
+            raiseOSError(osLastError())
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -543,6 +547,58 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '$'
   elif defined(posix):
     result = path[0] == '/'
+
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
+  ## if `path` is absolute, return it, ignoring `root`
+  runnableExamples:
+    doAssert absolutePath("a") == getCurrentDir() / "a"
+  if isAbsolute(path): path
+  else:
+    if not root.isAbsolute:
+      raise newException(ValueError, "The specified root is not absolute: " & root)
+    joinPath(root, path)
+
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path.
+  ##
+  ## Consecutive directory separators are collapsed, including an initial double slash.
+  ##
+  ## On relative paths, double dot (..) sequences are collapsed if possible.
+  ## On absolute paths they are always collapsed.
+  ##
+  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ## Triple dot is not handled.
+  let isAbs = isAbsolute(path)
+  var stack: seq[string] = @[]
+  for p in split(path, {DirSep}):
+    case p
+    of "", ".":
+      continue
+    of "..":
+      if stack.len == 0:
+        if isAbs:
+          discard  # collapse all double dots on absoluta paths
+        else:
+          stack.add(p)
+      elif stack[^1] == "..":
+        stack.add(p)
+      else:
+        discard stack.pop()
+    else:
+      stack.add(p)
+
+  if isAbs:
+    path = DirSep & join(stack, $DirSep)
+  elif stack.len > 0:
+    path = join(stack, $DirSep)
+  else:
+    path = "."
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+  ## Returns a normalized path for the current OS. See `<#normalizePath>`_
+  result = path
+  normalizePath(result)
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =

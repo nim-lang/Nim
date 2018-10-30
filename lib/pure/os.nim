@@ -248,17 +248,6 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
-proc absolutePath*(path: string, root = getCurrentDir()): string =
-  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
-  ## if `path` is absolute, return it, ignoring `root`
-  runnableExamples:
-    doAssert absolutePath("a") == getCurrentDir() / "a"
-  if isAbsolute(path): path
-  else:
-    if not root.isAbsolute:
-      raise newException(ValueError, "The specified root is not absolute: " & root)
-    joinPath(root, path)
-
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect].} =
   ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
@@ -300,47 +289,6 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     else:
       result = $r
       c_free(cast[pointer](r))
-
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
-  ## Normalize a path.
-  ##
-  ## Consecutive directory separators are collapsed, including an initial double slash.
-  ##
-  ## On relative paths, double dot (..) sequences are collapsed if possible.
-  ## On absolute paths they are always collapsed.
-  ##
-  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
-  ## Triple dot is not handled.
-  let isAbs = isAbsolute(path)
-  var stack: seq[string] = @[]
-  for p in split(path, {DirSep}):
-    case p
-    of "", ".":
-      continue
-    of "..":
-      if stack.len == 0:
-        if isAbs:
-          discard  # collapse all double dots on absoluta paths
-        else:
-          stack.add(p)
-      elif stack[^1] == "..":
-        stack.add(p)
-      else:
-        discard stack.pop()
-    else:
-      stack.add(p)
-
-  if isAbs:
-    path = DirSep & join(stack, $DirSep)
-  elif stack.len > 0:
-    path = join(stack, $DirSep)
-  else:
-    path = "."
-
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
-  ## Returns a normalized path for the current OS. See `<#normalizePath>`_
-  result = path
-  normalizePath(result)
 
 when defined(Windows):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
