@@ -252,7 +252,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   result = genComment(d, n).rope
   if result == nil:
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
-                  nkObjectTy, nkRefTy, nkPtrTy}:
+                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in countup(0, len(n)-1):
         result = genRecCommentAux(d, n.sons[i])
