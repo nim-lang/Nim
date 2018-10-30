@@ -8,7 +8,7 @@
 
 
 from pcre import nil
-import nre.private.util
+import nre/private/util
 import tables
 from strutils import `%`
 from math import ceil
