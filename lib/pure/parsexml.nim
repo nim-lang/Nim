@@ -189,6 +189,7 @@ type
     reportWhitespace,      ## report whitespace
     reportComments         ## report comments
     allowUnquotedAttribs   ## allow unquoted attribute values (for HTML)
+    allowEmptyAttribs      ## allow empty attributes (without explicit value)
 
   XmlParser* = object of BaseLexer ## the parser object.
     a, b, c: string
@@ -621,10 +622,15 @@ proc parseAttribute(my: var XmlParser) =
   if my.a.len == 0:
     markError(my, errGtExpected)
     return
+
+  let startPos = my.bufpos
   parseWhitespace(my, skip=true)
   if my.buf[my.bufpos] != '=':
-    markError(my, errEqExpected)
+    if allowEmptyAttribs notin my.options or
+        (my.buf[my.bufpos] != '>' and my.bufpos == startPos):
+      markError(my, errEqExpected)
     return
+
   inc(my.bufpos)
   parseWhitespace(my, skip=true)
 
