@@ -37,8 +37,6 @@ proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 proc c_system(cmd: cstring): cint {.
   importc: "system", header: "<stdlib.h>".}
-proc c_strlen(a: cstring): cint {.
-  importc: "strlen", header: "<string.h>", noSideEffect.}
 proc c_free(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 
@@ -237,50 +235,6 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
       result = getLastModificationTime(a) > getLastModificationTime(b)
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
-
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
-  ## Returns the `current working directory`:idx:.
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getCurrentDirectoryW(bufsize, res)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
-    else:
-      result = newString(bufsize)
-      while true:
-        var L = getCurrentDirectoryA(bufsize, result)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
-  else:
-    var bufsize = 1024 # should be enough
-    result = newString(bufsize)
-    while true:
-      if getcwd(result, bufsize) != nil:
-        setLen(result, c_strlen(result))
-        break
-      else:
-        let err = osLastError()
-        if err.int32 == ERANGE:
-          bufsize = bufsize shl 1
-          doAssert(bufsize >= 0)
-          result = newString(bufsize)
-        else:
-          raiseOSError(osLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [].} =
   ## Sets the `current working directory`:idx:; `OSError` is raised if

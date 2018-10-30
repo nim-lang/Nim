@@ -14,6 +14,11 @@ include "system/inclrtl"
 
 import strutils
 
+when defined(windows):
+  import winlean
+elif defined(posix):
+  import posix
+
 type
   ReadEnvEffect* = object of ReadIOEffect   ## effect that denotes a read
                                             ## from an environment variable
@@ -29,8 +34,13 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
+include "includes/oserr" # requires OSErrorCode
+
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
+
+proc c_strlen(a: cstring): cint {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
 
 when defined(Nimdoc): # only for proper documentation:
   const
@@ -156,6 +166,50 @@ const
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
+
+proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+  ## Returns the `current working directory`:idx:.
+  when defined(windows):
+    var bufsize = MAX_PATH.int32
+    when useWinUnicode:
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getCurrentDirectoryW(bufsize, res)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
+    else:
+      result = newString(bufsize)
+      while true:
+        var L = getCurrentDirectoryA(bufsize, result)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
+  else:
+    var bufsize = 1024 # should be enough
+    result = newString(bufsize)
+    while true:
+      if getcwd(result, bufsize) != nil:
+        setLen(result, c_strlen(result))
+        break
+      else:
+        let err = osLastError()
+        if err.int32 == ERANGE:
+          bufsize = bufsize shl 1
+          doAssert(bufsize >= 0)
+          result = newString(bufsize)
+        else:
+          raiseOSError(osLastError())
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -548,7 +602,6 @@ proc unixToNativePath*(path: string, drive=""): string {.
         add result, path[i]
         inc(i)
 
-include "includes/oserr"
 when not defined(nimscript):
   include "includes/osenv"
 
