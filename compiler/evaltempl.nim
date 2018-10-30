@@ -17,6 +17,7 @@ type
   TemplCtx = object
     owner, genSymOwner: PSym
     instLines: bool   # use the instantiation lines numbers
+    isDeclarative: bool
     mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
                       # new symbol
     config: ConfigRef
@@ -54,11 +55,30 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       result.add copyNode(c, templ, actual)
   of nkNone..nkIdent, nkType..nkNilLit: # atom
     result.add copyNode(c, templ, actual)
+  of nkCommentStmt:
+    # for the documentation generator we don't keep documentation comments
+    # in the AST that would confuse it (bug #9432), but only if we are not in a
+    # "declarative" context (bug #9235).
+    if c.isDeclarative:
+      var res = copyNode(c, templ, actual)
+      for i in countup(0, sonsLen(templ) - 1):
+        evalTemplateAux(templ.sons[i], actual, c, res)
+      result.add res
+    else:
+      result.add newNodeI(nkEmpty, templ.info)
   else:
+    var isDeclarative = false
+    if templ.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                      nkMacroDef, nkTemplateDef, nkConverterDef, nkTypeSection,
+                      nkVarSection, nkLetSection, nkConstSection} and
+        not c.isDeclarative:
+      c.isDeclarative = true
+      isDeclarative = true
     var res = copyNode(c, templ, actual)
     for i in countup(0, sonsLen(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
+    if isDeclarative: c.isDeclarative = false
 
 const
   errWrongNumberOfArguments = "wrong number of arguments"
