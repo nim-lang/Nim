@@ -318,7 +318,6 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
   suggestSym(c.config, n.info, result, c.graph.usageSym)
-  styleCheckDef(c.config, result)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
@@ -359,6 +358,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
       let typ = semTypeNode(c, a.sons[length-2], nil)
       for j in countup(0, length-3):
         let v = semIdentDef(c, a.sons[j], skParam)
+        styleCheckDef(c.config, v)
         v.typ = typ
         strTableIncl(c.signatures, v)
     else:
@@ -489,6 +489,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, a)
         continue
       var v = semIdentDef(c, a.sons[j], symkind)
+      styleCheckDef(c.config, v)
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addInterfaceDecl(c, v)
       when oKeepVariableNames:
@@ -542,6 +543,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind != nkConstDef: illFormedAst(a, c.config)
     checkSonsLen(a, 3, c.config)
     var v = semIdentDef(c, a.sons[0], skConst)
+    styleCheckDef(c.config, v)
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
 
@@ -873,6 +875,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         let typsym = pkg.tab.strTableGet(typName)
         if typsym.isNil:
           s = semIdentDef(c, name[1], skType)
+          styleCheckDef(c.config, s)
           s.typ = newTypeS(tyObject, c)
           s.typ.sym = s
           s.flags.incl sfForward
@@ -886,6 +889,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
           s = typsym
     else:
       s = semIdentDef(c, name, skType)
+      styleCheckDef(c.config, s)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
       if name.kind == nkPragmaExpr:
@@ -1616,6 +1620,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
       implicitPragmas(c, s, n, validPragmas)
+    styleCheckDef(c.config, s)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
@@ -1628,6 +1633,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
           ("'" & proto.name.s & "' from " & c.config$proto.info))
+    styleCheckDef(c.config, s)
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     excl(proto.flags, sfForward)
