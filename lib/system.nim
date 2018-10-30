@@ -555,7 +555,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    raise_id: uint # set when exception is raised
+    raiseId: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
@@ -1318,16 +1318,16 @@ proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
 
-proc new*(T: typedesc): auto =
+proc new*(t: typedesc): auto =
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it as result value.
   ##
   ## When ``T`` is a ref type then the resulting type will be ``T``,
   ## otherwise it will be ``ref T``.
-  when (T is ref):
-    var r: T
+  when (t is ref):
+    var r: t
   else:
-    var r: ref T
+    var r: ref t
   new(r)
   return r
 
@@ -1813,14 +1813,14 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   ## rounds `f` if it does not contain an integer value. If the conversion
   ## fails (because `f` is infinite for example), `ValueError` is raised.
 
-proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
   ## procedures can be registered. They are executed on a last-in, first-out
   ## basis (that is, the last function registered is the first to be executed).
-  ## ``addQuitProc`` raises an EOutOfIndex exception if ``QuitProc`` cannot be
+  ## ``addQuitProc`` raises an EOutOfIndex exception if ``quitProc`` cannot be
   ## registered.
 
 # Support for addQuitProc() is done by Ansi C's facilities here.
@@ -3004,8 +3004,8 @@ else:
 {.pop.}
 
 when not defined(JS):
-  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+  proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+  proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -3029,7 +3029,7 @@ template likely*(val: bool): bool =
     when defined(JS):
       val
     else:
-      likely_proc(val)
+      likelyProc(val)
 
 template unlikely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be false.
@@ -3053,7 +3053,7 @@ template unlikely*(val: bool): bool =
     when defined(JS):
       val
     else:
-      unlikely_proc(val)
+      unlikelyProc(val)
 
 type
   FileSeekPos* = enum ## Position relative to which seek should happen
