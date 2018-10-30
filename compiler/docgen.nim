@@ -723,7 +723,6 @@ proc exportSym(d: PDoc; s: PSym) =
             rope changeFileExt(external, "html")])
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
-  if orig.info.fileIndex != n.info.fileIndex: return
   case n.kind
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
