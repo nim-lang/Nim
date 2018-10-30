@@ -875,14 +875,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   discard pop(p.nestedTryStmts)
 
   if t[^1].kind == nkFinally:
-    if catchAllPresent:
-      genSimpleBlock(p, t[^1][0])
-    else:
+    # c++ does not have finally, therefore code needs to be generated twice
+    if not catchAllPresent:
       # finally requires catch all presence
       startBlock(p, "catch (...) {$n")
-      genSimpleBlock(p, t[^1][0])
+      genStmts(p, t[^1][0])
       line(p, cpsStmts, ~"throw;$n")
       endBlock(p)
+
+    genSimpleBlock(p, t[^1][0])
 
 proc genTry(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
