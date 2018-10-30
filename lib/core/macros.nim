@@ -1087,10 +1087,18 @@ proc name*(someProc: NimNode): NimNode {.compileTime.} =
   someProc.expectRoutine
   result = someProc[0]
   if result.kind == nnkPostfix:
-    result = result[1]
+    if result[1].kind == nnkAccQuoted:
+      result = result[1][0]
+    else:
+      result = result[1]
+  elif result.kind == nnkAccQuoted:
+    result = result[0]
+
 proc `name=`*(someProc: NimNode; val: NimNode) {.compileTime.} =
   someProc.expectRoutine
-  someProc[0] = val
+  if someProc[0].kind == nnkPostfix:
+    someProc[0][1] = val
+  else: someProc[0] = val
 
 proc params*(someProc: NimNode): NimNode {.compileTime.} =
   someProc.expectRoutine
