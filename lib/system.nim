@@ -2994,7 +2994,7 @@ when defined(nimnomagic64):
     ## returns the absolute value of `x`. If `x` is ``low(x)`` (that
     ## is -MININT for its type), an overflow exception is thrown (if overflow
     ## checking is turned on).
-    if x < 0: -x else: x
+    result = if x < 0: -x else: x
 else:
   proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.} =
     ## returns the absolute value of `x`. If `x` is ``low(x)`` (that
