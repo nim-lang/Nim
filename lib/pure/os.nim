@@ -384,7 +384,8 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
     path = "."
 
 proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
-  ## Returns a normalized path for the current OS. See `normalizePath() <#normalizePath%2Cstring>`_
+  ## Returns a normalized path for the current OS.
+  ## See `normalizePath() <#normalizePath%2Cstring>`_
   result = path
   normalizePath(result)
 
@@ -566,8 +567,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## If this fails, `OSError` is raised. On the Windows platform this proc will
   ## copy the source file's attributes into dest. On other platforms you need
   ## to use `getFilePermissions() <#getFilePermissions%2Cstring>`_ and
-  ## `setFilePermissions() <#setFilePermissions%2Cstring%2Cset%5BFilePermission%5D>`_ to copy them by hand (or use
-  ## the convenience `copyFileWithPermissions() <#copyFileWithPermissions%2Cstring%2Cstring>`_
+  ## `setFilePermissions()
+  ## <#setFilePermissions%2Cstring%2Cset%5BFilePermission%5D>`_
+  ## to copy them by hand (or use the convenience `copyFileWithPermissions()
+  ## <#copyFileWithPermissions%2Cstring%2Cstring>`_
   ## proc), otherwise `dest` will inherit the default permissions of a newly
   ## created file for the user. If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
@@ -1034,7 +1037,8 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   ## copy the attributes from `source` into `dest`. On other platforms created
   ## files and directories will inherit the default permissions of a newly
   ## created file/directory for the user. To preserve attributes recursively on
-  ## these platforms use `copyDirWithPermissions() <#copyDirWithPermissions%2Cstring%2Cstring>`_.
+  ## these platforms use
+  ## `copyDirWithPermissions() <#copyDirWithPermissions%2Cstring%2Cstring>`_.
   createDir(dest)
   for kind, path in walkDir(source):
     var noSource = splitPath(path).tail
@@ -1180,9 +1184,11 @@ proc copyFileWithPermissions*(source, dest: string,
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
   ## This is a wrapper proc around `copyFile() <#copyFile%2Cstring%2Cstring>`_,
-  ## `getFilePermissions() <#getFilePermissions%2Cstring>`_ and `setFilePermissions()
-  ## <#setFilePermissions%2Cstring%2Cset%5BFilePermission%5D>`_ on non Windows platform. On Windows this proc is
-  ## just a wrapper for `copyFile() <#copyFile%2Cstring%2Cstring>`_ since that proc already
+  ## `getFilePermissions() <#getFilePermissions%2Cstring>`_ and
+  ## `setFilePermissions()
+  ## <#setFilePermissions%2Cstring%2Cset%5BFilePermission%5D>`_
+  ## on non Windows platform. On Windows this proc is just a wrapper for
+  ## `copyFile() <#copyFile%2Cstring%2Cstring>`_ since that proc already
   ## copies attributes.
   ##
   ## On non Windows systems permissions are copied after the file itself has
@@ -1204,9 +1210,11 @@ proc copyDirWithPermissions*(source, dest: string,
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
   ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir()
-  ## <#copyDir%2Cstring%2Cstring>`_ and `copyFileWithPermissions() <#copyFileWithPermissions%2Cstring%2Cstring>`_
+  ## <#copyDir%2Cstring%2Cstring>`_ and
+  ## `copyFileWithPermissions() <#copyFileWithPermissions%2Cstring%2Cstring>`_
   ## on non Windows platforms. On Windows this proc is just a wrapper for
-  ## `copyDir() <#copyDir%2Cstring%2Cstring>`_ since that proc already copies attributes.
+  ## `copyDir() <#copyDir%2Cstring%2Cstring>`_ since that proc already
+  ## copies attributes.
   ##
   ## On non Windows systems permissions are copied after the file or directory
   ## itself has been copied, which won't happen atomically and could lead to a
@@ -1281,9 +1289,9 @@ when defined(nimdoc):
     ##
     ## Unlike `argc`:idx: in C, if your binary was called without parameters this
     ## will return zero.
-    ## You can query each individual paramater with `paramStr() <#paramStr%2Cint>`_
-    ## or retrieve all of them in one go with `commandLineParams()
-    ## <#commandLineParams%2C>`_.
+    ## You can query each individual paramater with `paramStr()
+    ## <#paramStr%2Cint>`_ or retrieve all of them in one go with
+    ## `commandLineParams() <#commandLineParams%2C>`_.
     ##
     ## **Availability**: When generating a dynamic library (see --app:lib) on
     ## Posix this proc is not defined.
@@ -1385,7 +1393,8 @@ when declared(paramCount) or defined(nimdoc):
     ##
     ## **Availability**: On Posix there is no portable way to get the command
     ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared%2Cuntyped>`_.
+    ## can test for its availability with `declared()
+    ## <system.html#declared%2Cuntyped>`_.
     ## Example:
     ##
     ## .. code-block:: nim
