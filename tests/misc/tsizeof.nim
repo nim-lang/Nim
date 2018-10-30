@@ -350,5 +350,19 @@ testinstance:
 
   main()
 
+{.emit: """/*TYPESECTION*/
+typedef struct{
+  float a; float b;
+} Foo;
+""".}
+
+type
+  Foo {.importc.} = object
+
+  Bar = object
+    b: byte
+    foo: Foo
+
+assert sizeof(Bar) == 12
 
 echo "OK"
