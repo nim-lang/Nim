@@ -59,11 +59,11 @@ proc isClose*[T: SomeFloat](x, y: T; rtol = 1e-05, atol = 1e-08): bool {.noSideE
   ## relative and absolute tolerance
   result = abs(x - y) <= (atol + rtol * max(abs(x), abs(y)))
 
-proc `=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect.} =
+proc `=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect, deprecated: "Use a custom approximation scheme".} =
   ## Compares floating-point numbers with the defaults of isClose
   result = isClose(x,y)
 
-proc `!=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect.} =
+proc `!=~`*[T: SomeFloat](x, y: T): bool {.noSideEffect, deprecated: "Use a custom approximation scheme".} =
   ## Returns negation of `=~`
   result = not (x =~ y)
 
