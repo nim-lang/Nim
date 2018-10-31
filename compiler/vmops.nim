@@ -105,7 +105,11 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
-  wrap2f_math(`mod`)
+  wrap2f_math(fmod)
+  
+  proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
+  registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
 
   when defined(nimcore):
     wrap2s(getEnv, ospathsop)
