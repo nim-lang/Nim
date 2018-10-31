@@ -11,7 +11,7 @@
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, mod
+  floor, ceil, `mod`
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
 
