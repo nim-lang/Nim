@@ -1402,6 +1402,8 @@ proc customPragmaNode(n: NimNode): NimNode =
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
+    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
     else:
       return typ.getImpl()[0][1]
 
