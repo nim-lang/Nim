@@ -2614,7 +2614,7 @@ when isMainModule:
     doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
 
     doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
-    doAssert "oo".replace("", "abc") == "abcoabcoabc"
+    doAssert "oo".replace("", "abc") == "oo"
 
     type MyEnum = enum enA, enB, enC, enuD, enE
     doAssert parseEnum[MyEnum]("enu_D") == enuD

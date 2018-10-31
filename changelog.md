@@ -55,6 +55,8 @@ proc enumToString*(enums: openArray[enum]): string =
   slightly. The `dumpLisp` macro in this module now outputs an
   indented proper Lisp, devoid of commas.
 
+- In `strutils` empty strings now no longer matched as substrings anymore.
+
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
