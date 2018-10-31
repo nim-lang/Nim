@@ -509,7 +509,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
          # for closure support weird loop bodies are generated:
       if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
         loopBody = loopBody.sons[1]
-      genComputedGoto(p, loopBody) # TODO foobar
+      genComputedGoto(p, loopBody)
     else:
       p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
@@ -874,14 +874,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   discard pop(p.nestedTryStmts)
 
-  if not catchAllPresent and t[^1].kind == nkFinally:
-    # finally requires catch all presence
-    startBlock(p, "catch (...) {$n")
-    genSimpleBlock(p, t[^1][0])
-    line(p, cpsStmts, ~"throw;$n")
-    endBlock(p)
-
   if t[^1].kind == nkFinally:
+    # c++ does not have finally, therefore code needs to be generated twice
+    if not catchAllPresent:
+      # finally requires catch all presence
+      startBlock(p, "catch (...) {$n")
+      genStmts(p, t[^1][0])
+      line(p, cpsStmts, ~"throw;$n")
+      endBlock(p)
+
     genSimpleBlock(p, t[^1][0])
 
 proc genTry(p: BProc, t: PNode, d: var TLoc) =

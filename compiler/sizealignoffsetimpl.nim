@@ -1,3 +1,12 @@
+#
+#
+#           The Nim Compiler
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+## code owner: Arne Döring
+## e-mail: arne.doering@gmx.net
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)

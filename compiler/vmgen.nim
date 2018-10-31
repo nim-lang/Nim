@@ -182,7 +182,10 @@ const
   HighRegisterPressure = 40
 
 proc bestEffort(c: PCtx): TLineInfo =
-  (if c.prc == nil: c.module.info else: c.prc.sym.info)
+  if c.prc != nil and c.prc.sym != nil:
+    c.prc.sym.info
+  else:
+    c.module.info
 
 proc getTemp(cc: PCtx; tt: PType): TRegister =
   let typ = tt.skipTypesOrNil({tyStatic})

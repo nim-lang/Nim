@@ -149,8 +149,8 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
   ## in `s`.
   runnableExamples:
     doAssert isAlphaAscii("fooBar") == true
-    doAssert isAlphaAscii("fooBar1") == false 
-    doAssert isAlphaAscii("foo Bar") == false 
+    doAssert isAlphaAscii("fooBar1") == false
+    doAssert isAlphaAscii("foo Bar") == false
   isImpl isAlphaAscii
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
@@ -164,7 +164,7 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
   ## in `s`.
   runnableExamples:
     doAssert isAlphaNumeric("fooBar") == true
-    doAssert isAlphaNumeric("fooBar") == true 
+    doAssert isAlphaNumeric("fooBar") == true
     doAssert isAlphaNumeric("foo Bar") == false
   isImpl isAlphaNumeric
 
@@ -179,7 +179,7 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
   ## in `s`.
   runnableExamples:
     doAssert isDigit("1908") == true
-    doAssert isDigit("fooBar1") == false 
+    doAssert isDigit("fooBar1") == false
   isImpl isDigit
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
@@ -191,7 +191,7 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   ## characters and there is at least one character in `s`.
   runnableExamples:
     doAssert isSpaceAscii("   ") == true
-    doAssert isSpaceAscii("") == false 
+    doAssert isSpaceAscii("") == false
   isImpl isSpaceAscii
 
 template isCaseImpl(s, charProc, skipNonAlpha) =
@@ -420,7 +420,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
   ## The resulting string may not have a leading zero. Its length is always
   ## exactly 3.
   runnableExamples:
-    doAssert toOctal('!') == "041" 
+    doAssert toOctal('!') == "041"
   result = newString(3)
   var val = ord(c)
   for i in countdown(2, 0):
@@ -933,7 +933,7 @@ proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   ## achieved by adding leading zeros.
   runnableExamples:
     doAssert intToStr(1984) == "1984"
-    doAssert intToStr(1984, 6) == "001984" 
+    doAssert intToStr(1984, 6) == "001984"
   result = $abs(x)
   for i in 1 .. minchars - len(result):
     result = '0' & result
@@ -1525,6 +1525,8 @@ proc rfind*(s, sub: string, start: int = -1): int {.noSideEffect.} =
   ## backwards to 0.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  if sub.len == 0:
+    return -1
   let realStart = if start == -1: s.len else: start
   for i in countdown(realStart-sub.len, 0):
     for j in 0..sub.len-1:
@@ -1632,11 +1634,7 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   result = ""
   let subLen = sub.len
   if subLen == 0:
-    for c in s:
-      add result, by
-      add result, c
-    add result, by
-    return
+    result = s
   elif subLen == 1:
     # when the pattern is a single char, we use a faster
     # char-based search that doesn't need a skip table:
@@ -1691,21 +1689,22 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   initSkipTable(a, sub)
   var i = 0
   let last = s.high
-  let sublen = max(sub.len, 1)
-  while true:
-    var j = find(a, s, sub, i, last)
-    if j < 0: break
-    # word boundary?
-    if (j == 0 or s[j-1] notin wordChars) and
-        (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
-      add result, substr(s, i, j - 1)
-      add result, by
-      i = j + sublen
-    else:
-      add result, substr(s, i, j)
-      i = j + 1
-  # copy the rest:
-  add result, substr(s, i)
+  let sublen = sub.len
+  if sublen > 0:
+    while true:
+      var j = find(a, s, sub, i, last)
+      if j < 0: break
+      # word boundary?
+      if (j == 0 or s[j-1] notin wordChars) and
+          (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
+        add result, substr(s, i, j - 1)
+        add result, by
+        i = j + sublen
+      else:
+        add result, substr(s, i, j)
+        i = j + 1
+    # copy the rest:
+    add result, substr(s, i)
 
 proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
   ## Same as replace, but specialized for doing multiple replacements in a single
@@ -1722,15 +1721,18 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {
   result = newStringOfCap(s.len)
   var i = 0
   var fastChk: set[char] = {}
-  for tup in replacements: fastChk.incl(tup[0][0]) # Include first character of all replacements
+  for sub, by in replacements.items:
+    if sub.len > 0:
+      # Include first character of all replacements
+      fastChk.incl sub[0]
   while i < s.len:
     block sIteration:
       # Assume most chars in s are not candidates for any replacement operation
       if s[i] in fastChk:
-        for tup in replacements:
-          if s.continuesWith(tup[0], i):
-            add result, tup[1]
-            inc(i, tup[0].len)
+        for sub, by in replacements.items:
+          if sub.len > 0 and s.continuesWith(sub, i):
+            add result, by
+            inc(i, sub.len)
             break sIteration
       # No matching replacement found
       # copy current character from s
@@ -2612,7 +2614,7 @@ when isMainModule:
     doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
 
     doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
-    doAssert "oo".replace("", "abc") == "abcoabcoabc"
+    doAssert "oo".replace("", "abc") == "oo"
 
     type MyEnum = enum enA, enB, enC, enuD, enE
     doAssert parseEnum[MyEnum]("enu_D") == enuD
