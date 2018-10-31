@@ -1868,7 +1868,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   # This adds a call to newIdentNode("result") as the first argument to the template call
-  quotes[1] = newNode(nkCall, n.info, @[newIdentNode(getIdent("newIdentNode"), n.info), newStrNode(nkStrLit, "result")])
+  quotes[1] = newNode(nkCall, n.info, @[newIdentNode(getIdent(c.cache, "newIdentNode"), n.info), newStrNode(nkStrLit, "result")])
   result = newNode(nkCall, n.info, @[
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
     newNode(nkCall, n.info, quotes)])
