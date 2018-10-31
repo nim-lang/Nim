@@ -105,7 +105,7 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
-  wrap2f_math(mod)
+  wrap2f_math(`mod`)
 
   when defined(nimcore):
     wrap2s(getEnv, ospathsop)
