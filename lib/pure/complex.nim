@@ -96,15 +96,18 @@ proc `==` *[T](x, y: Complex[T]): bool =
   ## Compare two complex numbers ``x`` and ``y`` for equality.
   result = x.re == y.re and x.im == y.im
 
-proc `=~` *[T](x, y: Complex[T]): bool =
+proc `=~` *[T](x, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
+  ## **Deprecated since version 0.19.1**
   ## Compare two complex numbers ``x`` and ``y`` approximately.
   result = (x.re =~ y.re) and (x.im =~ y.im)
 
-proc `=~` *[T](x: T, y: Complex[T]): bool =
+proc `=~` *[T](x: T, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
+  ## **Deprecated since version 0.19.1**
   ## Compare float number ``x`` and complex number ``y`` approximately.
   result = (x =~ y.re) and (y.im =~ 0.0)
 
-proc `=~` *[T](x: Complex[T], y: T): bool =
+proc `=~` *[T](x: Complex[T], y: T): bool {.deprecated: "Use a custom approximation scheme".} =
+  ## **Deprecated since version 0.19.1**
   ## Compare complex number ``x`` and float number ``y`` approximately.
   result = (x.re =~ y) and (x.im =~ 0.0)
 
