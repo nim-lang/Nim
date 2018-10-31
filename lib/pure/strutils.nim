@@ -1730,7 +1730,7 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {
       # Assume most chars in s are not candidates for any replacement operation
       if s[i] in fastChk:
         for sub, by in replacements.items:
-          if sub.len > 0 and s.continuesWith(sub[0], i):
+          if sub.len > 0 and s.continuesWith(sub, i):
             add result, by
             inc(i, sub.len)
             break sIteration
