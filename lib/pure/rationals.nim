@@ -279,7 +279,7 @@ proc hash*[T](x: Rational[T]): Hash =
   h = h !& hash(copy.den)
   result = !$h
 
-when isMainModule:
+when true:
   var
     z = Rational[int](num: 0, den: 1)
     o = initRational(num=1, den=1)

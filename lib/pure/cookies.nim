@@ -60,7 +60,7 @@ proc setCookie*(key, value: string, expires: DateTime|Time,
                    format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)
 
-when isMainModule:
+when true:
   let expire = fromUnix(0) + 1.seconds
 
   let cookies = [

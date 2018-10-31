@@ -2058,7 +2058,7 @@ proc escapePeg*(s: string): string =
       result.add(c)
   if inQuote: result.add('\'')
 
-when isMainModule:
+when true:
   assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
   assert match("(a b c)", peg"'(' @ ')'")
   assert match("W_HI_Le", peg"\y 'while'")

@@ -200,7 +200,8 @@ proc `$`*[T](self: Option[T]): string =
   else:
     result = "None[" & name(T) & "]"
 
-when isMainModule:
+# when true:
+when false:
   import unittest, sequtils
 
   suite "options":

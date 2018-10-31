@@ -940,7 +940,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
     g = nxg
   result = compared == s.counter
 
-when isMainModule and not defined(release):
+when true and not defined(release):
   proc testModule() =
     ## Internal micro test to validate docstrings and such.
     block isValidTest:

@@ -196,7 +196,7 @@ when not defined(nimscript):
 
 {.pop.}
 
-when isMainModule:
+when true:
   proc main =
     var occur: array[1000, int]
 

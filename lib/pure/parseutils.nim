@@ -446,7 +446,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
       break
     i = j
 
-when isMainModule:
+when true:
   import sequtils
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),

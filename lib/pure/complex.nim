@@ -379,7 +379,7 @@ proc `$`*(z: Complex): string =
 {.pop.}
 
 
-when isMainModule:
+when true:
   var z = (0.0, 0.0)
   var oo = (1.0,1.0)
   var a = (1.0, 2.0)

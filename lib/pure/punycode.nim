@@ -168,7 +168,7 @@ proc decode*(encoded: string): string {.raises: [PunyError].}  =
     insert(result, $Rune(n), i)
     inc i
 
-when isMainModule:
+when true:
   assert(decode(encode("", "bücher")) == "bücher")
   assert(decode(encode("münchen")) == "münchen")
   assert encode("xn--", "münchen") == "xn--mnchen-3ya"

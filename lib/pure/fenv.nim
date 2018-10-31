@@ -182,7 +182,7 @@ template epsilon*(T : typedesc[float64]): float64 = DBL_EPSILON
   ## 1.0 that can be represented in a 64-bit floating-point type.
 
 
-when isMainModule:
+when true:
   func is_significant(x: float): bool = 
     if x > minimumPositiveValue(float) and x < maximumPositiveValue(float): true
     else: false

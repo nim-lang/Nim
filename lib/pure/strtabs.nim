@@ -254,7 +254,7 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
       result.add(val)
     result.add("}")
 
-when isMainModule:
+when true:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
   assert x["k"] == "v"
   assert x["11"] == "22"

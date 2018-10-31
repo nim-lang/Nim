@@ -61,7 +61,7 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   ## ("", "", `s`) if `sep` is not found
   return partition(s, sep, right = true)
 
-when isMainModule:
+when true:
   doAssert expandTabs("\t", 4) == "    "
   doAssert expandTabs("\tfoo\t", 4) == "    foo "
   doAssert expandTabs("\tfoo\tbar", 4) == "    foo bar"

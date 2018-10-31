@@ -320,7 +320,7 @@ proc `+=`*(a: var RunningRegress, b: RunningRegress) =
 {.pop.}
 {.pop.}
 
-when isMainModule:
+when true:
   proc clean(x: float): float =
     result = round(1.0e8*x).float * 1.0e-8
 

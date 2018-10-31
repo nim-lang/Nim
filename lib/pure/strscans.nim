@@ -627,7 +627,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     echo repr result
 
 
-when isMainModule:
+when true:
   proc twoDigits(input: string; x: var int; start: int): int =
     if start+1 < input.len and input[start] == '0' and input[start+1] == '0':
       result = 2

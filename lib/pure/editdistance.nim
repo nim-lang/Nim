@@ -264,7 +264,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   result = row[e]
 
 
-when isMainModule:
+when true:
   doAssert editDistance("", "") == 0
   doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
   doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia

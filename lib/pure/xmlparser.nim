@@ -146,7 +146,8 @@ proc loadXml*(path: string): XmlNode =
   result = loadXml(path, errors)
   if errors.len > 0: raiseInvalidXml(errors)
 
-when isMainModule:
+# when true:
+when false:
   when not defined(testing):
     import os
 

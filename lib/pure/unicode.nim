@@ -2007,7 +2007,7 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
     result = s
 
 
-when isMainModule:
+when true:
 
   proc asRune(s: static[string]): Rune =
     ## Compile-time conversion proc for converting string literals to a Rune

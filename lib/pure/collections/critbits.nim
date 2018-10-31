@@ -336,7 +336,7 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
-when isMainModule:
+when true:
   import sequtils
 
   var r: CritBitTree[void]

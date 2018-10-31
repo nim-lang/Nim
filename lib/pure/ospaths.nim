@@ -678,7 +678,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       if i > 0: result.add " "
       result.add quoteShell(args[i])
 
-when isMainModule:
+when true:
   assert quoteShellWindows("aaa") == "aaa"
   assert quoteShellWindows("aaa\"") == "aaa\\\""
   assert quoteShellWindows("") == "\"\""

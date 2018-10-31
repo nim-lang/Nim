@@ -379,7 +379,7 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
-when isMainModule:
+when true:
   block:
     const test1 = "abc\L+def xyz"
     doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"

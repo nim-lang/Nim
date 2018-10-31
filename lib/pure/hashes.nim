@@ -254,7 +254,7 @@ proc hash*[A](x: set[A]): Hash =
   for it in items(x): result = result !& hash(it)
   result = !$result
 
-when isMainModule:
+when true:
   doAssert( hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13) )
   doAssert( hash("aa bb aaaa1234") == hash(cstring("aa bb aaaa1234")) )
   doAssert( hashIgnoreCase("aa bb aaaa1234") == hash("aa bb aaaa1234") )

@@ -1215,7 +1215,7 @@ proc merge*[A](s, t: CountTableRef[A]) =
   ## merges the second table into the first one.
   s[].merge(t[])
 
-when isMainModule:
+when true:
   type
     Person = object
       firstName, lastName: string

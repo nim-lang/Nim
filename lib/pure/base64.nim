@@ -155,7 +155,7 @@ proc decode*(s: string): string =
     if i > 1 and s[i-2] == '=': dec(r)
   setLen(result, r)
 
-when isMainModule:
+when true:
   assert encode("leasure.") == "bGVhc3VyZS4="
   assert encode("easure.") == "ZWFzdXJlLg=="
   assert encode("asure.") == "YXN1cmUu"

@@ -719,7 +719,7 @@ proc lcm*[T](x, y: T): T =
   ##  echo lcm(24, 30) # 120
   x div gcd(x, y) * y
 
-when isMainModule and not defined(JS) and not windowsCC89:
+when true and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
@@ -731,7 +731,7 @@ when isMainModule and not defined(JS) and not windowsCC89:
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
 
-when isMainModule:
+when true:
   # Function for approximate comparison of floats
   proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
 

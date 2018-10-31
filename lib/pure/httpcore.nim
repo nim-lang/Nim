@@ -305,7 +305,7 @@ proc is5xx*(code: HttpCode): bool =
 proc `$`*(httpMethod: HttpMethod): string =
   return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
-when isMainModule:
+when true:
   var test = newHttpHeaders()
   test["Connection"] = @["Upgrade", "Close"]
   doAssert test["Connection", 0] == "Upgrade"

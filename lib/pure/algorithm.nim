@@ -459,7 +459,7 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
 
   result = true
 
-when isMainModule:
+when true:
   # Tests for lowerBound
   var arr = @[1,2,3,5,6,7,8,9]
   assert arr.lowerBound(0) == 0
@@ -595,7 +595,7 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotatedInternal(0, distLeft, arg.len)
 
-when isMainModule:
+when true:
   var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   let list2 = list.rotatedLeft(1 ..< 9, 3)
   let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]

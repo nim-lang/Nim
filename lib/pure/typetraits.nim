@@ -63,5 +63,5 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
 
 
-when isMainModule:
+when true:
   doAssert $type(42) == "int"

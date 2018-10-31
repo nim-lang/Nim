@@ -577,7 +577,7 @@ proc format*(value: string; specifier: string; res: var string) =
       setLen(value, runeOffset(value, spec.precision))
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-when isMainModule:
+when false:
   template check(actual, expected: string) =
     doAssert actual == expected
 

@@ -61,7 +61,7 @@ proc parseInt*(s: string, value: var int, validRange: HSlice[int, int]) {.
     discard
   if x in validRange: value = x
 
-when isMainModule:
+when true:
   doAssert "wuseldusel@codehome.com".validEmailAddress
 
 {.pop.}

@@ -785,7 +785,7 @@ macro mapLiterals*(constructor, op: untyped;
   ## works for nested tuples of arrays of sets etc.
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
-when isMainModule:
+when false:
   import strutils
 
   # helper for testing double substitution side effects which are handled
@@ -1145,7 +1145,8 @@ when isMainModule:
     # bug #9093
     let inp = "a:b,c:d"
 
-    let outp = inp.split(",").mapIt(it.split(":"))
+    # let outp = inp.split(",").mapIt(it.split(":"))
+    let outp = strutils.split(inp, ",").mapIt(it.split(":"))
     doAssert outp == @[@["a", "b"], @["c", "d"]]
 
 

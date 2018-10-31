@@ -2529,7 +2529,7 @@ proc stripLineEnd*(s: var string) =
     else:
       discard
 
-when isMainModule:
+when true:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
     when not defined(js):

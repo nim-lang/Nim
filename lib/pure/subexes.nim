@@ -347,7 +347,7 @@ proc format*(formatstr: Subex, a: varargs[string, `$`]): string {.noSideEffect,
 
 {.pop.}
 
-when isMainModule:
+when true:
   from strutils import replace
 
   proc `%`(formatstr: string, a: openarray[string]): string =

@@ -397,6 +397,6 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   newSeq(result, 0)
   findAll(n, tag, result)
 
-when isMainModule:
+when true:
   assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
     $(<>a(href="http://nim-lang.org", newText("Nim rules.")))

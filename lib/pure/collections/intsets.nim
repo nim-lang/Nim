@@ -357,7 +357,7 @@ proc empty*(s: IntSet): bool {.inline, deprecated.} =
   ## worked reliably and so is deprecated.
   result = s.counter == 0
 
-when isMainModule:
+when true:
   import sequtils, algorithm
 
   var x = initIntSet()

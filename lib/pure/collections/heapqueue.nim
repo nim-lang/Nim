@@ -111,7 +111,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
     siftup(heap, 0)
   return item
 
-when isMainModule:
+when true:
   proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
     var tmp = h
     result = @[]

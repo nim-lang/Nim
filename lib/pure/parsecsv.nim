@@ -231,7 +231,7 @@ when not defined(testing) and isMainModule:
       echo "##", val, "##"
   close(x)
 
-when isMainModule:
+when true:
   import os
   import strutils
   block: # Tests for reading the header row

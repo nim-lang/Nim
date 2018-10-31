@@ -1543,7 +1543,7 @@ when false:
 # { "json": 5 }
 # To get that we shall use, obj["json"]
 
-when isMainModule:
+when true:
   # Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""

@@ -67,7 +67,7 @@ proc unidecode*(s: string): string =
     if c <=% 127: add(result, chr(c))
     elif c <% translationTable.len: add(result, translationTable[c-128])
 
-when isMainModule:
+when true:
   #loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
   doAssert unidecode("Äußerst") == "Ausserst"
   doAssert unidecode("北京") == "Bei Jing "

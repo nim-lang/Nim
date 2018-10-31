@@ -214,7 +214,7 @@ proc `$`*[T](deq: Deque[T]): string =
     result.addQuoted(x)
   result.add("]")
 
-when isMainModule:
+when true:
   var deq = initDeque[int](1)
   deq.addLast(4)
   deq.addFirst(9)

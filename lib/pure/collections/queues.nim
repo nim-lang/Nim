@@ -182,7 +182,7 @@ proc `$`*[T](q: Queue[T]): string =
     result.add($x)
   result.add("]")
 
-when isMainModule:
+when true:
   var q = initQueue[int](1)
   q.add(123)
   q.add(9)

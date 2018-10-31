@@ -235,7 +235,7 @@ proc `==`*(D1, D2: MD5Digest): bool =
     if D1[i] != D2[i]: return false
   return true
 
-when isMainModule:
+when true:
   assert(getMD5("Franz jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
     "a3cca2b2aa1e3b5b3b5aad99a8529074")
   assert(getMD5("Frank jagt im komplett verwahrlosten Taxi quer durch Bayern") ==
