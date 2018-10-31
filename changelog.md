@@ -147,6 +147,8 @@
 - The ``accept`` socket procedure defined in the ``net`` module can now accept
   a nil socket.
 
+- In `strutils` empty strings now no longer matched as substrings anymore.
+
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
