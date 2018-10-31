@@ -897,7 +897,7 @@ proc genOutFile(d: PDoc): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+    title = extractFilename(changeFileExt(d.filename, ""))
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
