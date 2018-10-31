@@ -72,7 +72,7 @@ conversions are visible in the tree as calls, templates will be
 expanded and probably most importantly, nodes have type information.
 Typed arguments can have the type ``typed`` in the arguments list.
 But all other types, such as ``int``, ``float`` or ``MyObjectType``
-are typed arguments as well, and the will be passed to the macro as a
+are typed arguments as well, and they will be passed to the macro as a
 syntax tree.
 
 Static Arguments
@@ -108,7 +108,7 @@ The Syntax Tree
 
 In order to build a Nim syntax tree one needs to know how Nim source
 code is represented as a syntax tree, and how such a tree needs to
-look like so the the Nim compiler will understand it. The nodes of the
+look like so that the Nim compiler will understand it. The nodes of the
 Nim syntax tree are documented in the `macros <macros.html>`_ module.
 But a probably more interesting and interactive way to explore the Nim
 syntax tree is with ``macros.treeRepr``, it converts a syntax tree
@@ -125,7 +125,7 @@ if the argument is in the correct form.  Not every type of wrong input
 needs to be caught here, but anything that could cause a crash during
 macro evaluation should be caught and create a nice error message.
 ``macros.expectKind`` and ``macros.expectLen`` are a good start.  If
-the the checks need to be a more complex, arbitrary error messages can
+the checks need to be more complex, arbitrary error messages can
 be created with the ``macros.error`` proc.
 
 Generating Code
@@ -133,7 +133,7 @@ Generating Code
 
 There are two ways to generate the code. Either by creating the syntax
 tree with expressions that contain a lot of calls to ``newTree`` and
-``newLit``, or with ``quote do:`` expressions. The offers the best low
+``newLit``, or with ``quote do:`` expressions. This offers the best low
 level control for the syntax tree generation, but the second option is
 much less verbose.  If you choose to create the syntax tree with calls
 to ``newTree`` and ``newLit`` the macro ``marcos.dumpAstGen`` can help
@@ -212,7 +212,7 @@ used to get this output.
   if not (a != b):
     raise newException(AssertionError, $a & " != " & $b)
 
-With Power comes responsibility
+With Power Comes Responsibility
 -------------------------------
 
 Macros are very powerful. A good advice is to use them as little as
