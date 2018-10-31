@@ -85,18 +85,17 @@ proc `==` *[T](x, y: Complex[T]): bool =
 proc `=~` *[T](x, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
   ## **Deprecated since version 0.19.1**
   ## Compare two complex numbers ``x`` and ``y`` approximately.
-  result = (x.re =~ y.re) and (x.im =~ y.im)
+  result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6
 
 proc `=~` *[T](x: T, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
   ## **Deprecated since version 0.19.1**
   ## Compare float number ``x`` and complex number ``y`` approximately.
-  result = (x =~ y.re) and (y.im =~ 0.0)
+  result = abs(x-y.re) < 1e-6 and abs(y.im) < 1e-6
 
 proc `=~` *[T](x: Complex[T], y: T): bool {.deprecated: "Use a custom approximation scheme".} =
   ## **Deprecated since version 0.19.1**
   ## Compare complex number ``x`` and float number ``y`` approximately.
-  result = (x.re =~ y) and (x.im =~ 0.0)
-
+  result = abs(x.re-y) < 1e-6 and abs(x.im) < 1e-6
 
 proc `+` *[T](x: T, y: Complex[T]): Complex[T] =
   ## Add a real number to a complex number.
@@ -473,7 +472,7 @@ when isMainModule:
   doAssert(sin(arcsin(b64)) =~ b64)
   doAssert(cosh(arccosh(a64)) =~ a64)
 
-  doAssert(phase(a64) =~ 1.107149f)
+  doAssert(phase(a64) - 1.107149f < 1e-6)
   var t64 = polar(a64)
   doAssert(rect(t64.r, t64.phi) =~ a64)
   doAssert(rect(1.0f, 2.0f) =~ complex(-0.4161468f, 0.90929742f))
