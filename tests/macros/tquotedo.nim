@@ -7,3 +7,11 @@ macro mac(): untyped =
 
 mac()
 echo test()
+
+macro foobar(arg: untyped): untyped =
+  result = arg
+  result.add quote do:
+    `result`
+
+foobar:
+  echo "Hallo Welt"
