@@ -220,7 +220,7 @@ possible, but as much as necessary. Macros can change the semantics of
 expressions, making the code incomprehensible for anybody who does not
 know exactly what the macro does with it.  So whenever a macro is not
 necessary and the same logic can be implemented using templates or
-generics, it is probably better to not use a macro.  And when a macro
+generics, it is probably better not to use a macro.  And when a macro
 is used for something, the macro should better have a well written
 documentation.  And for all the people who write only perfectly self
 explaining code, for macros the implementation is not documentation
