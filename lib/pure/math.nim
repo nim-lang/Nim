@@ -479,7 +479,8 @@ when not defined(JS): # C
     ##  (-6.5 mod -2.5) == -1.5
 
 else: # JS
-  proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
+  proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
+  proc hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
   proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
