@@ -1308,15 +1308,13 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var tmp: TLoc
   var r: Rope
   if useTemp:
-    getTemp(p, t, tmp)
+    getTemp(p, t, tmp, not isRef)
     r = rdLoc(tmp)
     if isRef:
       rawGenNew(p, tmp, nil)
       t = t.lastSon.skipTypes(abstractInst)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
-    else:
-      constructLoc(p, tmp)
   else:
     resetLoc(p, d)
     r = rdLoc(d)

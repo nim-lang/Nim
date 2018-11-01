@@ -340,10 +340,11 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", rdLoc(loc),
       getTypeDesc(p.module, typ))
   else:
+    # don't zero temporary values for performance if we can avoid it
     if not isTemp or containsGarbageCollectedRef(loc.t):
-      # don't use nimZeroMem for temporary values for performance if we can
-      # avoid it:
-      if not isImportedCppType(typ):
+      # Only zero in plain C. In C++ variables are value-initialized
+      # in `assignLocalVar`
+      if not isImportedCppType(typ) and not p.module.compileToCpp:
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 addrLoc(p.config, loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -363,7 +364,15 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+
+  # Value initialize locals in C++. In C they are zeroed in `initLocalVar`
+  var decl = result.r
+  if p.module.compileToCpp and isComplexValueType(t) and
+    (needsInit or containsGarbageCollectedRef(t)):
+    decl = decl & "{}"
+
+  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), decl)
+
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -406,6 +415,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   result = getTypeDesc(p.module, s.typ)
+
   if s.constraint.isNil:
     if sfRegister in s.flags: add(result, " register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
@@ -416,12 +426,20 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   else:
     result = s.cgDeclFrmt % [result, s.loc.r]
 
-proc assignLocalVar(p: BProc, n: PNode) =
+proc assignLocalVar(p: BProc, n: PNode, valueInit = false) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in p.config.options: "" else: "\L"
-  let decl = localVarDecl(p, n) & ";" & nl
+  var decl = localVarDecl(p, n)
+
+  # Value initialize locals in C++. In C they are zeroed in `initLocalVar`
+  if p.module.compileToCpp and (sfNoInit notin n.sym.flags) and
+    isComplexValueType(n.sym.typ):
+    decl = decl & "{}"
+
+  decl = decl & ";" & nl
+
   line(p, cpsLocals, decl)
   localDebugInfo(p, n.sym)
 
@@ -862,7 +880,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         linefmt(p, cpsStmts, "$1 = $2;$n", decl, rdLoc(a))
       else:
         # declare the result symbol:
-        assignLocalVar(p, resNode)
+        assignLocalVar(p, resNode, valueInit = true)
         assert(res.loc.r != nil)
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", rdLoc(res.loc))
