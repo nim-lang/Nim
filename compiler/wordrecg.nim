@@ -69,7 +69,7 @@ type
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
     wPartial, wExplain, wLiftLocals,
 
-    wAuto, wBool, wCatch, wChar, wClass,
+    wAuto, wBool, wCatch, wChar, wClass, wCompl
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
     wExplicit, wExtern, wFalse, wFloat, wFriend,
     wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
@@ -156,7 +156,7 @@ const
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     "guard", "locks", "partial", "explain", "liftlocals",
 
-    "auto", "bool", "catch", "char", "class",
+    "auto", "bool", "catch", "char", "class", "compl",
     "const_cast", "default", "delete", "double",
     "dynamic_cast", "explicit", "extern", "false",
     "float", "friend", "goto", "int", "long", "mutable",
