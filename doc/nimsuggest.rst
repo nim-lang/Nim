@@ -163,5 +163,5 @@ tab characters (``\t``). The values of each column are:
 
    Also, you won't find raw ``\n`` characters breaking the one
    answer per line format. Instead you will need to parse sequences
-   in the form ``\xHH``, where *HH* is a hexadecimal value (e.g.
-   newlines generate the sequence ``\x0A``).
+   in the form ``\\xHH``, where *HH* is a hexadecimal value (e.g.
+   newlines generate the sequence ``\\x0A``).
