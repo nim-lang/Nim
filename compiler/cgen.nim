@@ -326,8 +326,12 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
-      linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-              addrLoc(p.config, loc), getTypeDesc(p.module, loc.t))
+      let typeName = getTypeDesc(p.module, loc.t)
+      if p.module.compileToCpp:
+        linefmt(p, cpsStmts, "$1 = $2{};$n", rdLoc(loc), typeName)
+      else:
+        linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+                addrLoc(p.config, loc), typeName)
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
