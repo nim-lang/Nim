@@ -1963,12 +1963,12 @@ proc align*(s: string, count: Natural, padding = ' '.Rune): string {.
   ## returned unchanged. If you need to left align a string use the `alignLeft
   ## proc <#alignLeft>`_.
   runnableExamples:
-     assert align("abc", 4) == " abc"
-     assert align("a", 0) == "a"
-     assert align("1232", 6) == "  1232"
-     assert align("1232", 6, '#'.Rune) == "##1232"
-     assert align("Åge", 5) == "  Åge"
-     assert align("×", 4, '_'.Rune) == "___×"
+    assert align("abc", 4) == " abc"
+    assert align("a", 0) == "a"
+    assert align("1232", 6) == "  1232"
+    assert align("1232", 6, '#'.Rune) == "##1232"
+    assert align("Åge", 5) == "  Åge"
+    assert align("×", 4, '_'.Rune) == "___×"
 
   let sLen = s.runeLen
   if sLen < count:
