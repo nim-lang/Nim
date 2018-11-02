@@ -492,7 +492,7 @@ proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
     result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
-    deprecated: "use 'shortenDir(ConfigRef, AbsoluteFile)' instead".} =
+    deprecated: "use 'relativeTo' instead".} =
   ## returns the interesting part of a dir
   var prefix = conf.projectPath.string & DirSep
   if startsWith(dir, prefix):
@@ -501,16 +501,6 @@ proc shortenDir*(conf: ConfigRef; dir: string): string {.
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
-
-proc shortenDir*(conf: ConfigRef; dir: AbsoluteFile): RelativeFile =
-  ## returns the interesting part of a dir
-  var prefix = conf.projectPath.string & DirSep
-  if startsWith(dir.string, prefix):
-    return RelativeFile substr(dir.string, len(prefix))
-  prefix = getPrefixDir(conf).string & DirSep
-  if startsWith(dir.string, prefix):
-    return RelativeFile substr(dir.string, len(prefix))
-  result = RelativeFile dir
 
 proc removeTrailingDirSep*(path: string): string =
   if (len(path) > 0) and (path[len(path) - 1] == DirSep):
