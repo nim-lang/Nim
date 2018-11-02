@@ -201,3 +201,14 @@ test(MyObj):
     _ = object {.packed,myAttr,serializationKey: "one".}
       myField: int
       myField2: float
+
+block t9600:
+  type
+    Apple = ref object of RootObj
+
+  macro mixer(x: typed): untyped =
+    let w = getType(x)
+    let v = getTypeImpl(w[1])
+
+  var z: Apple
+  mixer(z)
