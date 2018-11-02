@@ -26,7 +26,7 @@ macro make_test_type(idents: varargs[untyped]): untyped =
   )
 
 make_test_type(
-  auto, bool, catch, char, class, const_cast, default, delete, double,
+  auto, bool, catch, char, class, compl, const_cast, default, delete, double,
   dynamic_cast, explicit, extern, false, float, friend, goto, int, long,
   mutable, namespace, new, operator, private, protected, public, register,
   reinterpret_cast, restrict, short, signed, sizeof, static_cast, struct, switch,
