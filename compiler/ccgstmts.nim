@@ -280,6 +280,8 @@ proc genSingleVar(p: BProc, a: PNode) =
       # generate better code here: 'Foo f = x;'
       genLineDir(p, a)
       let decl = localVarDecl(p, vn)
+      # XXX this cannot work with precise stacks
+      # and only affects importcpp'ed types.
       var tmp: TLoc
       if value.kind in nkCallKinds and value[0].kind == nkSym and
            sfConstructor in value[0].sym.flags:
@@ -609,7 +611,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
       lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
-          [e, makeCString(typ.sym.name.s), 
+          [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
           makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
   else:
@@ -815,6 +817,11 @@ proc genRestoreFrameAfterException(p: BProc) =
       p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
       p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
     linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n")
+  if preciseStackRoots(p.module) > 0 and p.prolog != nil:
+    # This check here might not be entirely correct, what if we only detect later
+    # that temporaries or variables with GC'ed memory were used? To do this properly
+    # we require a pre- or postprocessing step.
+    linefmt(p, cpsStmts, "#nimRootsLen = GR_;")
 
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:

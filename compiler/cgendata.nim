@@ -91,8 +91,8 @@ type
     splitDecls*: int          # > 0 if we are in some context for C++ that
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
-    gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: Rope        # the struct {} we put the GC markers into
+    gcFrameLen*: Natural      # for the GC stack marking
+    prolog*: Rope
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
@@ -120,7 +120,7 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
-
+    nimPreciseStackRoots*: int # generate precise stack roots
     nimtv*: Rope            # Nim thread vars; the struct body
     nimtvDeps*: seq[PType]  # type deps: every module needs whole struct
     nimtvDeclared*: IntSet  # so that every var/field exists only once

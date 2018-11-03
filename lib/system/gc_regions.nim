@@ -83,8 +83,13 @@ type
     typ: PNimType
     region: ptr MemRegion
 
+const nimPreciseStackRoots {.core.} = 5000 ## \
+  ## tell the code generator we need precise stack roots
+
 var
   tlRegion {.threadVar.}: MemRegion
+  nimRootsLen: {.threadVar, core.}: int
+  nimRoots {.threadVar, core.}: array[nimPreciseStackRoots, pointer]
 #  tempStrRegion {.threadVar.}: MemRegion  # not yet used
 
 template withRegion*(r: MemRegion; body: untyped) =

@@ -252,6 +252,7 @@ proc dataField(p: BProc): Rope =
 
 include ccgliterals
 include ccgtypes
+include ccg_precise_stacks
 
 # ------------------------------ Manager of temporaries ------------------
 
@@ -363,7 +364,10 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
+  if preciseStackRoots(p.module) > 0 and containsGarbageCollectedRef(t):
+    declarePreciseStackRoot(p, t, result.r)
+  else:
+    linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -378,14 +382,6 @@ proc getIntTemp(p: BProc, result: var TLoc) =
   result.storage = OnStack
   result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo(), tyInt)
   result.flags = {}
-
-proc initGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
-
-proc deinitGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0:
-    result = ropecg(p.module,
-                    "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n")
 
 proc localDebugInfo(p: BProc, s: PSym) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
@@ -1055,7 +1051,7 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if conf.cppCustomNamespace.len > 0: 
+  if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
