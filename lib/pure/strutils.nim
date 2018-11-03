@@ -1262,6 +1262,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
 proc unindent*(s: string, count: Natural, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   runnableExamples:
