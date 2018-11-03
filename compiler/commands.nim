@@ -739,6 +739,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
     else: localError(conf, info, errOffHintsError % arg)
+  of "showallmismatches":
+    processOnOffSwitchG(conf, {optShowAllMismatches}, arg, pass, info)
   of "cppcompiletonamespace":
     if arg.len > 0:
       conf.cppCustomNamespace = arg

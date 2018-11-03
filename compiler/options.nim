@@ -74,6 +74,7 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
+    optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths

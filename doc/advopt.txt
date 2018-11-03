@@ -29,6 +29,9 @@ Advanced options:
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
                             https://nim-lang.org/docs/nep1.html
+  --showAllMismatches:on|off
+                            show all mismatching candidates in overloading
+                            resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module

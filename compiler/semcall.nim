@@ -166,20 +166,22 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
-  when false:
-    # we pretend procs are attached to the type of the first
-    # argument in order to remove plenty of candidates. This is
-    # comparable to what C# does and C# is doing fine.
-    var filterOnlyFirst = false
+  # we pretend procs are attached to the type of the first
+  # argument in order to remove plenty of candidates. This is
+  # comparable to what C# does and C# is doing fine.
+  var filterOnlyFirst = false
+  if optShowAllMismatches notin c.config.globalOptions:
     for err in errors:
       if err.firstMismatch > 1:
         filterOnlyFirst = true
         break
 
   var candidates = ""
+  var skipped = 0
   for err in errors:
-    when false:
-      if filterOnlyFirst and err.firstMismatch == 1: continue
+    if filterOnlyFirst and err.firstMismatch == 1:
+      inc skipped
+      continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -216,7 +218,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                       "' is immutable\n")
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
-
+  if skipped > 0:
+    candidates.add($skipped & " other mismatching symbols have been " &
+        " suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const
