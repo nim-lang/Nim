@@ -1621,8 +1621,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = prev
   of nkSym:
     let s = getGenSym(c, n.sym)
-    if s.kind == skType and s.typ != nil or
-      s.kind == skParam and s.typ.kind == tyTypeDesc:
+    if s.typ != nil and (s.kind == skType or s.typ.kind == tyTypeDesc):
       var t =
         if s.kind == skType:
           s.typ
