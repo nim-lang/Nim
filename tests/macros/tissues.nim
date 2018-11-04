@@ -1,8 +1,5 @@
 discard """
   msg: '''
-proc init(foo129050: int; bar129052: typedesc[int]): int =
-  foo129050
-
 IntLit 5
 proc (x: int): string => typeDesc[proc[string, int]]
 proc (x: int): void => typeDesc[proc[void, int]]
@@ -36,7 +33,7 @@ test
 import macros, parseutils
 
 
-block t7723:
+when false:
   macro foo1(): untyped =
     result = newStmtList()
     result.add quote do:
