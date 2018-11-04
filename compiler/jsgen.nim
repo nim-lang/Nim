@@ -68,7 +68,7 @@ type
     address: Rope           # address of an (address, index)-tuple
     tmp: Rope               # tmp var which stores the result of the
                             # address to prevent multiple evals,
-                            # might be nil (see `maybeGetTemp`)
+                            # might be nil (see `maybeMakeTemp`)
 
   TBlock = object
     id: int                  # the ID of the label; positive means that it
@@ -849,6 +849,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
           # A fat pointer is disguised as an array
           r.res = r.address
           r.address = nil
+          r.typ = etyNone
         elif r.typ == etyBaseIndex:
           # Deference first
           r.res = "$1[$2]" % [r.address, r.res]
@@ -924,14 +925,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
   var xtyp = mapType(p, x.typ)
 
-  if x.kind == nkHiddenDeref and x.sons[0].kind == nkCall and xtyp != etyObject:
-    gen(p, x.sons[0], a)
-    let tmp = p.getTemp(false)
-    lineF(p, "var $1 = $2;$n", [tmp, a.rdLoc])
-    a.res = "$1[0][$1[1]]" % [tmp]
-  else:
-    gen(p, x, a)
-
+  gen(p, x, a)
   genLineDir(p, y)
   gen(p, y, b)
 
@@ -1559,12 +1553,12 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     createObjInitList(p, t, initIntSet(), initList)
     result = ("{$1}") % [initList]
     if indirect: result = "[$1]" % [result]
-  of tyVar, tyPtr, tyLent, tyRef:
+  of tyVar, tyPtr, tyLent, tyRef, tyPointer:
     if mapType(p, t) == etyBaseIndex:
       result = putToSeq("[null, 0]", indirect)
     else:
       result = putToSeq("null", indirect)
-  of tySequence, tyOpt, tyString, tyCString, tyPointer, tyProc:
+  of tySequence, tyOpt, tyString, tyCString, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -1844,11 +1838,11 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
-    if needsNoCopy(p, n[2]):
-      r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, y.rdLoc, tmp]
-    elif (mapType(n[2].typ) == etyBaseIndex):
+    if mapType(n[2].typ) == etyBaseIndex:
       let c = "[$1, $2]" % [y.address, y.res]
       r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, c, tmp]
+    elif needsNoCopy(p, n[2]):
+      r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, y.rdLoc, tmp]
     else:
       useMagic(p, "nimCopy")
       let c = getTemp(p, defineInLocals=false)
