@@ -158,7 +158,7 @@ when true:
   var xx = xs.mapIt(asFoo($(it + 5)))
 
 
-block t4674:
+when false:
   type
     FooObj[T] = object
       v: T
