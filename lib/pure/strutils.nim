@@ -2513,6 +2513,7 @@ proc stripLineEnd*(s: var string) =
   ## Returns ``s`` stripped from one of these suffixes:
   ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
   ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
+  ## aka: `chomp`:idx:
   runnableExamples:
     var s = "foo\n\n"
     s.stripLineEnd
