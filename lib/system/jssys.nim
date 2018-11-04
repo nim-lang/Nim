@@ -331,6 +331,8 @@ proc cmp(x, y: string): int =
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
   asm """
     if (`a` == `b`) return true;
+    if (`a` === null && `b`.length == 0) return true;
+    if (`b` === null && `a`.length == 0) return true;
     if ((!`a`) || (!`b`)) return false;
     var alen = `a`.length;
     if (alen != `b`.length) return false;
@@ -517,8 +519,11 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
     """
   of nkList:
-    for i in 0..n.len-1:
-      nimCopyAux(dest, src, n.sons[i])
+    asm """
+    for (var i = 0; i < `n`.sons.length; i++) {
+      nimCopyAux(`dest`, `src`, `n`.sons[i]);
+    }
+    """
   of nkCase:
     asm """
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
