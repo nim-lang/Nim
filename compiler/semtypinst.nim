@@ -30,11 +30,6 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion:
     localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
-
-  t = typ.skipTypes({tyGenericInst})
-  if t.kind == tyArray and tfUncheckedArray in t.flags:
-    t[0].flags.incl tfUncheckedArray # mark range of unchecked array also unchecked
-
   when false:
     if t.kind == tyObject and t.sons[0] != nil:
       if t.sons[0].kind != tyObject or tfFinal in t.sons[0].flags:

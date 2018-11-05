@@ -200,7 +200,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyRef, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
   of tyArray:
-    if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
+    if tfHasAsgn in t.flags:
       let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
