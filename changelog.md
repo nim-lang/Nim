@@ -18,6 +18,9 @@
   the change is transparent, if you used annotations you will have to prefix
   your previous annotations with `parallel for`.
 
+- The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
+
+
 #### Breaking changes in the standard library
 
 
