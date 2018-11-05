@@ -66,21 +66,6 @@ proc `==` *[T](x, y: Complex[T]): bool =
   ## Compare two complex numbers ``x`` and ``y`` for equality.
   result = x.re == y.re and x.im == y.im
 
-proc `=~` *[T](x, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
-  ## **Deprecated since version 0.19.1**
-  ## Compare two complex numbers ``x`` and ``y`` approximately.
-  result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6
-
-proc `=~` *[T](x: T, y: Complex[T]): bool {.deprecated: "Use a custom approximation scheme".} =
-  ## **Deprecated since version 0.19.1**
-  ## Compare float number ``x`` and complex number ``y`` approximately.
-  result = abs(x-y.re) < 1e-6 and abs(y.im) < 1e-6
-
-proc `=~` *[T](x: Complex[T], y: T): bool {.deprecated: "Use a custom approximation scheme".} =
-  ## **Deprecated since version 0.19.1**
-  ## Compare complex number ``x`` and float number ``y`` approximately.
-  result = abs(x.re-y) < 1e-6 and abs(x.im) < 1e-6
-
 proc `+` *[T](x: T, y: Complex[T]): Complex[T] =
   ## Add a real number to a complex number.
   result.re = x + y.re
@@ -368,6 +353,12 @@ proc `$`*(z: Complex): string =
 
 
 when isMainModule:
+  proc `=~`[T](x, y: Complex[T]): bool =
+    result = abs(x.re-y.re) < 1e-6 and abs(x.im-y.im) < 1e-6
+
+  proc `=~`[T](x: Complex[T], y: T): bool =
+    result = abs(x.re-y) < 1e-6 and abs(x.im) < 1e-6
+
   var
     z: Complex64   = complex(0.0, 0.0)
     oo: Complex64  = complex(1.0, 1.0)
