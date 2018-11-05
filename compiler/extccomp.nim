@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils
+  lineinfos, std / sha1, streams, pathutils, sequtils
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -662,7 +662,26 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
       add(script, compileCmd)
       add(script, "\n")
 
-proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): string =
+proc getLinkTarget(conf: ConfigRef; projectfile: AbsoluteFile,
+                   forceDynLib: bool = false): tuple[exefile: string, builddll: string] =
+  var exefile, builddll: string
+  if optGenDynLib in conf.globalOptions or forceDynLib:
+    exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
+    builddll = CC[conf.cCompiler].buildDll
+  else:
+    exefile = splitFile(projectfile).name & platform.OS[conf.target.targetOS].exeExt
+    builddll = ""
+  if not conf.outFile.isEmpty:
+    exefile = conf.outFile.string.expandTilde
+    if not exefile.isAbsolute():
+      exefile = getCurrentDir() / exefile
+  if not noAbsolutePaths(conf):
+    if not exefile.isAbsolute():
+      exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
+  return (exefile, builddll)
+
+proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
+                objfiles: string, forceDynLib: bool = false): string =
   if optGenStaticLib in conf.globalOptions:
     var libname: string
     if not conf.outFile.isEmpty:
@@ -684,20 +703,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
                      CC[conf.cCompiler].buildGui
                    else:
                      ""
-    var exefile, builddll: string
-    if optGenDynLib in conf.globalOptions:
-      exefile = platform.OS[conf.target.targetOS].dllFrmt % splitFile(projectfile).name
-      builddll = CC[conf.cCompiler].buildDll
-    else:
-      exefile = splitFile(projectfile).name & platform.OS[conf.target.targetOS].exeExt
-      builddll = ""
-    if not conf.outFile.isEmpty:
-      exefile = conf.outFile.string.expandTilde
-      if not exefile.isAbsolute():
-        exefile = getCurrentDir() / exefile
-    if not noAbsolutePaths(conf):
-      if not exefile.isAbsolute():
-        exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
+    var (exefile, builddll) = getLinkTarget(conf, projectfile, forceDynLib)
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
@@ -824,20 +830,55 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
       add(objfiles, ' ')
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
-    for x in conf.toCompile:
-      let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(objFile))
 
-    linkCmd = getLinkCmd(conf, projectfile, objfiles)
-    if optCompileOnly notin conf.globalOptions:
-      if defined(windows) and linkCmd.len > 8_000:
-        # Windows's command line limit is about 8K (don't laugh...) so C compilers on
-        # Windows support a feature where the command line can be passed via ``@linkcmd``
-        # to them.
-        linkViaResponseFile(conf, linkCmd)
-      else:
-        execLinkCmd(conf, linkCmd)
+    proc getObjFilePath(conf: ConfigRef, f: CFile): string =
+      return if noAbsolutePaths(conf): f.obj.extractFilename else: f.obj.string
+
+    if conf.hcrOn: # lets assume that optCompileOnly isn't on
+      cmds = @[]
+      let mainFileIdx = conf.toCompile.len - 1
+      for idx, x in conf.toCompile:
+        # don't relink each of the many binaries (one for each source file) if the nim code is
+        # cached because that would take too much time for small changes - the only downside to
+        # this is that if an external-to-link file changes the final target wouldn't be relinked
+        if x.flags.contains(CfileFlag.Cached): continue
+        # we pass each object file as if it is the project file - a .dll will be created for each such
+        # object file in the nimcache directory, and only in the case of the main project file will
+        # there be probably an executable (if the project is such) which will be copied out of the nimcache
+        let objFile = getObjFilePath(conf, x).AbsoluteFile
+        add(cmds, getLinkCmd(conf, objFile, objfiles & " " & quoteShell(objFile.string), idx != mainFileIdx))
+      # execute link commands in parallel - output will be a bit different
+      # if it fails than that from execLinkCmd() but that doesn't matter
+      prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
+      execCmdsInParallel(conf, cmds, prettyCb)
+      # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
+      if not conf.toCompile[mainFileIdx].flags.contains(CfileFlag.Cached):
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx]).AbsoluteFile
+        var (src, _) = getLinkTarget(conf, mainObjFile)
+        var (dst, _) = getLinkTarget(conf, projectfile)
+        #try:
+        copyFile(src, dst)
+        #except OSError:
+        #  # not a problem if the main file isn't copied while the program is running
+        #  # (assuming that it is) - it shouldn't be reloadable anyway since most
+        #  # probably a function from this binary is part of the callstack at the point
+        #  # where performCodeReload() has been called (since it is the entry point)
+        #  echo "[IGNORED OSError] hopefully the file copy failed because the HCR functionality is being used as intended!"
+    else:
+      for x in conf.toCompile:
+        let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
+        add(objfiles, ' ')
+        add(objfiles, quoteShell(objFile))
+
+      linkCmd = getLinkCmd(conf, projectfile, objfiles)
+      if optCompileOnly notin conf.globalOptions:
+        if defined(windows) and linkCmd.len > 8_000:
+          # Windows's command line limit is about 8K (don't laugh...) so C compilers on
+          # Windows support a feature where the command line can be passed via ``@linkcmd``
+          # to them.
+          linkViaResponseFile(conf, linkCmd)
+        else:
+          execLinkCmd(conf, linkCmd)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:

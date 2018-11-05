@@ -18,15 +18,29 @@ const
 proc registerGcRoot(p: BProc, v: PSym) =
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
+
+    if(p.hcrOn and sfSystemModule in getModule(v).flags):
+      # The call to nimRegisterGlobalMarker or nimRegisterThreadLocalMarker which
+      # will be inserted right after this will need these globals initialized
+      let globalsToInitBeforeAnything = [
+        "globalMarkersLen",
+        "globalMarkers",
+        "threadLocalMarkersLen",
+        "threadLocalMarkers"]
+      for curr in globalsToInitBeforeAnything:
+        appcg(p.module, p.module.initProc.procSec(cpsLocals),
+          "\tregisterGlobal($2, \"$1\", sizeof((*$1)), (void**)&$1);$n",
+          rope(curr), getModuleDllPath(p.module.g, v))
+
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v, v.info)
     if sfThread in v.flags:
       appcg(p.module, p.module.initProc.procSec(cpsInit),
-        "#nimRegisterThreadLocalMarker($1);$n", [prc])
+        "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [prc])
     else:
       appcg(p.module, p.module.initProc.procSec(cpsInit),
-        "#nimRegisterGlobalMarker($1);$n", [prc])
+        "$n\t#nimRegisterGlobalMarker($1);$n$n", [prc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
@@ -302,6 +316,30 @@ proc genSingleVar(p: BProc, a: PNode) =
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
+  # If the var is in a block (perhaps of a control flow statement like if (not loops!)) -
+  # just register the so called "global" so it can be used later on - otherwise the
+  # closing and reopening of if (nim_hcr_do_init) blocks would be messed up, and
+  # this code should already be inside of such if (nim_hcr_do_init) block anyway
+  # In the case of loops - such a line is already inserted earlier because the variable needs
+  # to be "registered" ("created") before it is reset in assignGlobalVar() with resetLoc()
+  var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
+  if forHcr and targetProc.blocks.len != 1:
+    lineCg(targetProc, cpsStmts, "registerGlobal($3, \"$1\", sizeof($2), (void**)&$1);$n",
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module.g, v))
+    forHcr = false
+  
+  # we close and reopen the global if (nim_hcr_do_init) blocks in the main Init function
+  # for the module so we can have globals and top-level code be interleaved and still
+  # be able to re-run it but without the top level code - just the init of globals
+  if forHcr:
+    lineCg(targetProc, cpsStmts, "} if (registerGlobal($3, \"$1\", sizeof($2), (void**)&$1))",
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module.g, v))
+    startBlock(targetProc)
+  defer:
+    if forHcr:
+      endBlock(targetProc)
+      lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init) {$n")
+  
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
     loadInto(targetProc, a.sons[0], a.sons[2], v.loc)

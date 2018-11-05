@@ -82,7 +82,9 @@ proc commandCompileToC(graph: ModuleGraph) =
   if conf.cmd != cmdRun:
     let proj = changeFileExt(conf.projectFull, "")
     extccomp.callCCompiler(conf, proj)
-    extccomp.writeJsonBuildInstructions(conf, proj)
+    # for now we do not support writing out a .json file with the build instructions when HCR is on
+    if not conf.hcrOn:
+      extccomp.writeJsonBuildInstructions(conf, proj)
     if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
 

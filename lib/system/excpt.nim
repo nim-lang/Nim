@@ -20,9 +20,9 @@ var
 proc c_fwrite(buf: pointer, size, n: csize, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
-proc rawWrite(f: CFilePtr, s: string|cstring) =
+proc rawWrite(f: CFilePtr, s: cstring) {.compilerproc, nonreloadable.} =
   # we cannot throw an exception here!
-  discard c_fwrite(cstring(s), 1, s.len, f)
+  discard c_fwrite(s, 1, s.len, f)
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)

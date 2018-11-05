@@ -125,7 +125,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
   if str == nil: toNimStr(str, 0)
   else: toNimStr(str, str.len)
 
-proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, inline.} =
+proc nimToCStringConv(s: NimStringV2): cstring {.compilerProc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
   else: result = cstring(unsafeAddr s.p.data)
 

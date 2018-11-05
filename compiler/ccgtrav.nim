@@ -166,7 +166,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
 
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  var sLoc = s.loc.r
+  var sLoc = rdLoc(s.loc)
   result = getTempName(m)
 
   if sfThread in s.flags and emulatedThreadVars(m.config):

@@ -261,7 +261,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       for i in 0..<t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
     if CoType notin flags:
-      if tfNoSideEffect in t.flags: c &= ".noSideEffect"
+      # purity of functions doesn't have to affect the mangling
+      # (which is in fact problematic for HCR - someone could have
+      # cached a pointer to another function which changes its
+      # purity and suddenly the cached pointer is a danglign ref)
+      #if tfNoSideEffect in t.flags: c &= ".noSideEffect"
       if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:

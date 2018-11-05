@@ -417,7 +417,9 @@ when not defined(niminheritable):
   {.pragma: inheritable.}
 when not defined(nimunion):
   {.pragma: unchecked.}
-
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
+  
 # comparison operators:
 proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
   ## Checks whether values within the *same enum* have the same underlying value
@@ -1590,7 +1592,7 @@ when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
-  var programResult* {.exportc: "nim_program_result".}: int
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## modify this variable to specify the exit code of the program
     ## under normal circumstances. When the program is terminated
     ## prematurely using ``quit``, this value is ignored.
@@ -4260,3 +4262,6 @@ export widestrs
 
 import system/io
 export io
+
+when not defined(createNimHcr):
+  include nimhcr

@@ -253,6 +253,8 @@ type
                                 severity: Severity) {.closure.}
     cppCustomNamespace*: string
 
+proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
+
 template depConfigFields*(fn) {.dirty.} =
   fn(target)
   fn(options)
@@ -429,9 +431,6 @@ const
   DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
 
 const oKeepVariableNames* = true
-
-template compilingLib*(conf: ConfigRef): bool =
-  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse

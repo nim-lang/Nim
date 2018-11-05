@@ -73,8 +73,7 @@ inline_proc implementation #3 40
 '''
 """
 
-import
-  macros, nimhcr
+import macros
 
 macro carryOutTests(callingConv: untyped): untyped =
   let
@@ -89,11 +88,11 @@ macro carryOutTests(callingConv: untyped): untyped =
 
   result = quote do:
     var `g1`: pointer = nil
-    if registerGlobal(`globalName`, sizeof(int), `g1`):
+    if registerGlobal("dummy_module", `globalName`, sizeof(int), addr `g1`):
       cast[ptr int](`g1`)[] = 10
 
     var `g2`: pointer = nil
-    if registerGlobal(`globalName`, sizeof(int), `g2`):
+    if registerGlobal("dummy_module", `globalName`, sizeof(int), addr `g2`):
       cast[ptr int](`g2`)[] = 20
 
     doAssert `g1` == `g2` and cast[ptr int](`g1`)[] == 10
@@ -105,14 +104,14 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #1 ", x
       return x + 1
 
-    let fp1 = cast[F](registerProc(`procName`, `p1`))
+    let fp1 = cast[F](registerProc("dummy_module", `procName`, `p1`))
     echo fp1(10)
 
     proc `p2`(x: int): int {.placeholder.} =
       echo `procName`, " implementation #2 ", x
       return x + 2
 
-    let fp2 = cast[F](registerProc(`procName`, `p2`))
+    let fp2 = cast[F](registerProc("dummy_module", `procName`, `p2`))
     echo fp1(20)
     echo fp2(20)
 
@@ -120,12 +119,12 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #3 ", x
       return x + 3
 
-    let fp3 = cast[F](registerProc(`procName`, `p3`))
+    let fp3 = cast[F](registerProc("dummy_module", `procName`, `p3`))
     echo fp1(30)
     echo fp2(30)
     echo fp3(30)
 
-    let fp4 = cast[F](getProc(`procName`))
+    let fp4 = cast[F](getProc("dummy_module", `procName`))
     echo fp4(40)
 
   proc replacePlaceholderPragmas(n: NimNode) =
@@ -137,6 +136,8 @@ macro carryOutTests(callingConv: untyped): untyped =
 
   replacePlaceholderPragmas result
   # echo result.treeRepr
+
+addDummyModule("dummy_module")
 
 carryOutTests fastcall
 carryOutTests cdecl

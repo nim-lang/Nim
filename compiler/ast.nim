@@ -227,7 +227,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 33 flags!
+  TSymFlag* = enum    # already 34 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -276,6 +276,8 @@ type
                       # the calling side of the macro, not from the
                       # implementation.
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfNonReloadable   # symbol will be left as-is when hot code reloading is on -
+                      # meaning that it won't be renamed and/or changed in any way
 
   TSymFlags* = set[TSymFlag]
 
@@ -854,7 +856,7 @@ type
     offset*: int              # offset of record field
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
-                              # reference to another object to safe space)
+                              # reference to another object to save space)
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems

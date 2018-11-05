@@ -13,8 +13,8 @@ type
   LibHandle = pointer       # private type
   ProcAddr = pointer        # library loading and loading of procs:
 
-proc nimLoadLibrary(path: string): LibHandle {.compilerproc.}
-proc nimUnloadLibrary(lib: LibHandle) {.compilerproc.}
-proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc.}
+proc nimLoadLibrary(path: string): LibHandle {.compilerproc, nonReloadable.}
+proc nimUnloadLibrary(lib: LibHandle) {.compilerproc, nonReloadable.}
+proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.compilerproc, nonReloadable.}
 
-proc nimLoadLibraryError(path: string) {.compilerproc, noinline.}
+proc nimLoadLibraryError(path: string) {.compilerproc, nonReloadable, noinline.}
