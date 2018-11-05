@@ -180,6 +180,7 @@ type
     errEqExpected,           ## ``=`` expected
     errQuoteExpected,        ## ``"`` or ``'`` expected
     errEndOfCommentExpected  ## ``-->`` expected
+    errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
@@ -187,6 +188,8 @@ type
   XmlParseOption* = enum  ## options for the XML parser
     reportWhitespace,      ## report whitespace
     reportComments         ## report comments
+    allowUnquotedAttribs   ## allow unquoted attribute values (for HTML)
+    allowEmptyAttribs      ## allow empty attributes (without explicit value)
 
   XmlParser* = object of BaseLexer ## the parser object.
     a, b, c: string
@@ -207,7 +210,8 @@ const
     "'>' expected",
     "'=' expected",
     "'\"' or \"'\" expected",
-    "'-->' expected"
+    "'-->' expected",
+    "attribute value expected"
   ]
 
 proc open*(my: var XmlParser, input: Stream, filename: string,
@@ -618,10 +622,15 @@ proc parseAttribute(my: var XmlParser) =
   if my.a.len == 0:
     markError(my, errGtExpected)
     return
+
+  let startPos = my.bufpos
   parseWhitespace(my, skip=true)
   if my.buf[my.bufpos] != '=':
-    markError(my, errEqExpected)
+    if allowEmptyAttribs notin my.options or
+        (my.buf[my.bufpos] != '>' and my.bufpos == startPos):
+      markError(my, errEqExpected)
     return
+
   inc(my.bufpos)
   parseWhitespace(my, skip=true)
 
@@ -669,6 +678,21 @@ proc parseAttribute(my: var XmlParser) =
             pendingSpace = false
           add(my.b, buf[pos])
           inc(pos)
+  elif allowUnquotedAttribs in my.options:
+    const disallowedChars = {'"', '\'', '`', '=', '<', '>', ' ',
+                             '\0', '\t', '\L', '\F', '\f'}
+    let startPos = pos
+    while (let c = buf[pos]; c notin disallowedChars):
+      if c == '&':
+        my.bufpos = pos
+        parseEntity(my, my.b)
+        my.kind = xmlAttribute # parseEntity overwrites my.kind!
+        pos = my.bufpos
+      else:
+        add(my.b, c)
+        inc(pos)
+    if pos == startPos:
+      markError(my, errAttributeValueExpected)
   else:
     markError(my, errQuoteExpected)
     # error corrections: guess what was meant

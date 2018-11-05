@@ -35,3 +35,13 @@ try:
 except:
   echo "caught"
 
+
+# issue 5549
+
+var strs: seq[string] = @[]
+
+try:
+  discard
+finally:
+  for foobar in strs:
+    discard

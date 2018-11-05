@@ -28,7 +28,7 @@ type
     config: ConfigRef
     fid: FileIndex
     lastTok: TTokType
-    inquote: bool
+    inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth: int
     keepIndents*: int
@@ -55,9 +55,13 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
+  if fileExists(em.config.outFile) and readFile(em.config.outFile.string) == em.content:
+    discard "do nothing, see #9499"
+    return
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)
+    return
   f.llStreamWrite em.content
   llStreamClose(f)
 
@@ -107,15 +111,16 @@ proc softLinebreak(em: var Emitter, lit: string) =
       for i in 1..em.indentLevel+moreIndent(em): wr(" ")
     else:
       # search backwards for a good split position:
-      for a in em.altSplitPos:
+      for a in mitems(em.altSplitPos):
         if a > em.fixedUntil:
           var spaces = 0
           while a+spaces < em.content.len and em.content[a+spaces] == ' ':
             inc spaces
           if spaces > 0: delete(em.content, a, a+spaces-1)
-          let ws = "\L" & repeat(' ',em.indentLevel+moreIndent(em))
           em.col = em.content.len - a
+          let ws = "\L" & repeat(' ', em.indentLevel+moreIndent(em))
           em.content.insert(ws, a)
+          a = -1
           break
 
 proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
@@ -188,12 +193,13 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       wr(" ")
     em.fixedUntil = em.content.high
 
+  var lastTokWasTerse = false
   case tok.tokType
   of tokKeywordLow..tokKeywordHigh:
     if endsInAlpha(em):
       wr(" ")
     elif not em.inquote and not endsInWhite(em) and
-        em.lastTok notin openPars:
+        em.lastTok notin openPars and not em.lastTokWasTerse:
       #and tok.tokType in oprSet
       wr(" ")
 
@@ -229,7 +235,10 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
      tkBracketDotRi,
      tkCurlyDotRi,
      tkParDotRi,
-     tkColonColon, tkDot:
+     tkColonColon:
+    wr(TokTypeToStr[tok.tokType])
+  of tkDot:
+    lastTokWasTerse = true
     wr(TokTypeToStr[tok.tokType])
   of tkEquals:
     if not em.inquote and not em.endsInWhite: wr(" ")
@@ -237,6 +246,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     if not em.inquote: wr(" ")
   of tkOpr, tkDotDot:
     if tok.strongSpaceA == 0 and tok.strongSpaceB == 0:
+      # bug #9504: remember to not spacify a keyword:
+      lastTokWasTerse = true
       # if not surrounded by whitespace, don't produce any whitespace either:
       wr(tok.ident.s)
     else:
@@ -246,8 +257,8 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         tok.strongSpaceB == 0 and tok.strongSpaceA > 0
 
       if not isUnary(tok):
-        wr(" ")
         rememberSplit(splitBinary)
+        wr(" ")
   of tkAccent:
     if not em.inquote and endsInAlpha(em): wr(" ")
     wr(TokTypeToStr[tok.tokType])
@@ -270,6 +281,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
     wr lit
 
   em.lastTok = tok.tokType
+  em.lastTokWasTerse = lastTokWasTerse
   em.lastLineNumber = tok.line + em.lineSpan
   em.lineSpan = 0
 

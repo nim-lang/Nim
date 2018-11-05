@@ -334,7 +334,14 @@ The Git stuff
 General commit rules
 --------------------
 
-1. All changes introduced by the commit (diff lines) must be related to the
+1. Bugfixes that should be backported to the latest stable release should
+   contain the string ``[backport]`` in the commit message! There will be an
+   outmated process relying on these. However, bugfixes also have the inherent
+   risk of causing regressions which are worse for a "stable, bugfixes-only"
+   branch, so in doubt, leave out the ``[backport]``. Standard library bugfixes
+   are less critical than compiler bugfixes.
+
+2. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
 
    If you change something unrelated to the subject parts of the file, because
@@ -344,7 +351,7 @@ General commit rules
    *Tip:* Never commit everything as is using ``git commit -a``, but review
    carefully your changes with ``git add -p``.
 
-2. Changes should not introduce any trailing whitespace.
+3. Changes should not introduce any trailing whitespace.
 
    Always check your changes for whitespace errors using ``git diff --check``
    or add following ``pre-commit`` hook:
@@ -354,7 +361,7 @@ General commit rules
       #!/bin/sh
       git diff --check --cached || exit $?
 
-3. Describe your commit and use your common sense.
+4. Describe your commit and use your common sense.
 
    Example Commit messages: ``Fixes #123; refs #124``
 
@@ -362,11 +369,44 @@ General commit rules
    close it when the PR is committed), wheres issue ``#124`` is referenced
    (eg: partially fixed) and won't close the issue when committed.
 
-4. Commits should be always be rebased against devel (so a fast forward
+5. Commits should be always be rebased against devel (so a fast forward
    merge can happen)
 
    eg: use ``git pull --rebase origin devel``. This is to avoid messing up
    git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
-   Exceptions should be very rare.
+   Exceptions should be very rare: when rebase gives too many conflicts, simply
+   squash all commits using the script shown in
+   https://github.com/nim-lang/Nim/pull/9356
+
+
+6. Do not mix pure formatting changes (eg whitespace changes, nimpretty) or
+   automated changes (eg nimfix) with other code changes: these should be in
+   separate commits (and the merge on github should not squash these into 1).
+
+
+Continuous Integration (CI)
+---------------------------
+
+1. Continuous Integration is by default run on every push in a PR; this clogs
+   the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
+   documentation only changes), add ``[ci skip]`` to your commit message title.
+   This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
+
+
+2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+   waiting for CI to be green in that fork (fixing bugs as needed) before
+   opening your PR in original Nim repo, so as to reduce CI congestion. Same
+   applies for updates on a PR: you can test commits on a separate private
+   branch before updating the main PR.
+
+Code reviews
+------------
+
+1. Whenever possible, use github's new 'Suggested change' in code reviews, which
+   saves time explaining the change or applying it; see also
+   https://forum.nim-lang.org/t/4317
 
 .. include:: docstyle.rst
+
+

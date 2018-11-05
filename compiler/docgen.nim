@@ -247,17 +247,29 @@ proc genComment(d: PDoc, n: PNode): string =
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
-proc genRecComment(d: PDoc, n: PNode): Rope =
+proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
+    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
+                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn}:
+      # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in countup(0, len(n)-1):
-        result = genRecComment(d, n.sons[i])
+        result = genRecCommentAux(d, n.sons[i])
         if result != nil: return
   else:
     when defined(nimNoNilSeqs): n.comment = ""
     else: n.comment = nil
+
+proc genRecComment(d: PDoc, n: PNode): Rope =
+  if n == nil: return nil
+  result = genComment(d, n).rope
+  if result == nil:
+    if n.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                  nkMacroDef, nkTemplateDef, nkConverterDef}:
+      result = genRecCommentAux(d, n[bodyPos])
+    else:
+      result = genRecCommentAux(d, n)
 
 proc getPlainDocstring(n: PNode): string =
   ## Gets the plain text docstring of a node non destructively.
@@ -428,27 +440,6 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   getAllRunnableExamplesRec(d, n, n, dest)
-
-when false:
-  proc findDocComment(n: PNode): PNode =
-    if n == nil: return nil
-    if not isNil(n.comment) and startsWith(n.comment, "##"): return n
-    for i in countup(0, safeLen(n)-1):
-      result = findDocComment(n.sons[i])
-      if result != nil: return
-
-  proc extractDocComment*(s: PSym, d: PDoc): string =
-    let n = findDocComment(s.ast)
-    result = ""
-    if not n.isNil:
-      if not d.isNil:
-        var dummyHasToc: bool
-        renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
-                                     toLinenumber(n.info), toColumn(n.info),
-                                     dummyHasToc, d.options + {roSkipPounds}),
-                       result)
-      else:
-        result = n.comment.substr(2).replace("\n##", "\n").strip
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -739,7 +730,6 @@ proc exportSym(d: PDoc; s: PSym) =
             rope changeFileExt(external, "html")])
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
-  if orig.info.fileIndex != n.info.fileIndex: return
   case n.kind
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
@@ -907,7 +897,7 @@ proc genOutFile(d: PDoc): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+    title = extractFilename(changeFileExt(d.filename, ""))
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"

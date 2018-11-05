@@ -180,6 +180,15 @@ else:
     ## Cannot be overloaded.
     discard
 
+when defined(nimHasTypeof):
+  type
+    TypeOfMode* = enum ## Possible modes of `typeof`.
+      typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
+      typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
+  proc typeof*(x: untyped; mode = typeOfIter): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+    ## Builtin 'typeof' operation for accessing the type of an expression. Since version 0.20.0.
+    discard
+
 proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.
 
@@ -193,23 +202,6 @@ proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
   ## ``y`` will not even be evaluated.
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
-
-proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``.
-
-proc new*(T: typedesc): auto =
-  ## creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it as result value.
-  ##
-  ## When ``T`` is a ref type then the resulting type will be ``T``,
-  ## otherwise it will be ``ref T``.
-  when (T is ref):
-    var r: T
-  else:
-    var r: ref T
-  new(r)
-  return r
 
 const ThisIsSystem = true
 
@@ -563,7 +555,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    raise_id: uint # set when exception is raised
+    raiseId: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
@@ -992,10 +984,13 @@ proc `div`*(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
-  ##   1 div 2 == 0
-  ##   2 div 2 == 1
-  ##   3 div 2 == 1
-  ##   7 div 5 == 1
+  ##   ( 1 div  2) ==  0
+  ##   ( 2 div  2) ==  1
+  ##   ( 3 div  2) ==  1
+  ##   ( 7 div  3) ==  2
+  ##   (-7 div  3) == -2
+  ##   ( 7 div -3) == -2
+  ##   (-7 div -3) ==  2
 
 when defined(nimnomagic64):
   proc `div`*(x, y: int64): int64 {.magic: "DivI", noSideEffect.}
@@ -1011,7 +1006,10 @@ proc `mod`*(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
   ## ``x - (x div y) * y``.
   ##
   ## .. code-block:: Nim
-  ##   (7 mod 5) == 2
+  ##   ( 7 mod  5) ==  2
+  ##   (-7 mod  5) == -2
+  ##   ( 7 mod -5) ==  2
+  ##   (-7 mod -5) == -2
 
 when defined(nimnomagic64):
   proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
@@ -1315,6 +1313,23 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##   assert(test[string]("xyz") == 0)
 template `isnot`*(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
+
+proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it in ``a``.
+
+proc new*(t: typedesc): auto =
+  ## creates a new object of type ``T`` and returns a safe (traced)
+  ## reference to it as result value.
+  ##
+  ## When ``T`` is a ref type then the resulting type will be ``T``,
+  ## otherwise it will be ``ref T``.
+  when (t is ref):
+    var r: t
+  else:
+    var r: ref t
+  new(r)
+  return r
 
 proc `of`*[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of`*[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
@@ -1777,35 +1792,35 @@ type # these work for most platforms:
 proc toFloat*(i: int): float {.
   magic: "ToFloat", noSideEffect, importc: "toFloat".}
   ## converts an integer `i` into a ``float``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
   ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
-  ## fails, `EInvalidValue` is raised. However, on most platforms the
+  ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
   magic: "ToInt", noSideEffect, importc: "toInt".}
   ## converts a floating point number `f` into an ``int``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `EInvalidValue` is raised.
+  ## fails (because `f` is infinite for example), `ValueError` is raised.
 
-proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
   ## procedures can be registered. They are executed on a last-in, first-out
   ## basis (that is, the last function registered is the first to be executed).
-  ## ``addQuitProc`` raises an EOutOfIndex exception if ``QuitProc`` cannot be
+  ## ``addQuitProc`` raises an EOutOfIndex exception if ``quitProc`` cannot be
   ## registered.
 
 # Support for addQuitProc() is done by Ansi C's facilities here.
@@ -2041,7 +2056,7 @@ const
   NimMinor* {.intdefine.}: int = 19
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 9
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2074,6 +2089,8 @@ when not defined(nimscript) and hasAlloc:
     proc getTotalSharedMem*(): int {.rtl.}
       ## returns the number of bytes on the shared heap that are owned by the
       ## process. This is only available when threads are enabled.
+
+proc `|`*(a, b: typedesc): typedesc = discard
 
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
@@ -2177,10 +2194,14 @@ else:
         inc(res)
 
 
-iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
+iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
   inline, magic: "OmpParFor", sideEffect.} =
-  ## parallel loop iterator. Same as `..` but the loop may run in parallel.
+  ## OpenMP parallel loop iterator. Same as `..` but the loop may run in parallel.
   ## `annotation` is an additional annotation for the code generator to use.
+  ## The default annotation is `parallel for`.
+  ## Please refer to the `OpenMP Syntax Reference<https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf>`_
+  ## for further information.
+  ##
   ## Note that the compiler maps that to
   ## the ``#pragma omp parallel for`` construct of `OpenMP`:idx: and as
   ## such isn't aware of the parallelism in your code! Be careful! Later
@@ -2621,6 +2642,16 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
+proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+  ## Special compile-time procedure that checks whether `x` can be compiled
+  ## without any semantic error.
+  ## This can be used to check whether a type supports some operation:
+  ##
+  ## .. code-block:: Nim
+  ##   when compiles(3 + 4):
+  ##     echo "'+' for integers is available"
+  discard
+
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
@@ -2963,7 +2994,7 @@ when defined(nimnomagic64):
     ## returns the absolute value of `x`. If `x` is ``low(x)`` (that
     ## is -MININT for its type), an overflow exception is thrown (if overflow
     ## checking is turned on).
-    if x < 0: -x else: x
+    result = if x < 0: -x else: x
 else:
   proc abs*(x: int64): int64 {.magic: "AbsI64", noSideEffect.} =
     ## returns the absolute value of `x`. If `x` is ``low(x)`` (that
@@ -2973,8 +3004,8 @@ else:
 {.pop.}
 
 when not defined(JS):
-  proc likely_proc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
-  proc unlikely_proc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
+  proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
+  proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -2998,7 +3029,7 @@ template likely*(val: bool): bool =
     when defined(JS):
       val
     else:
-      likely_proc(val)
+      likelyProc(val)
 
 template unlikely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be false.
@@ -3022,7 +3053,7 @@ template unlikely*(val: bool): bool =
     when defined(JS):
       val
     else:
-      unlikely_proc(val)
+      unlikelyProc(val)
 
 type
   FileSeekPos* = enum ## Position relative to which seek should happen
@@ -3466,7 +3497,7 @@ when not defined(JS): #and not defined(nimscript):
     iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
-      ## If the file does not exist `EIO` is raised. The trailing newline
+      ## If the file does not exist `IOError` is raised. The trailing newline
       ## character(s) are removed from the iterated lines. Example:
       ##
       ## .. code-block:: nim
@@ -4031,16 +4062,6 @@ when hasAlloc:
     while j < item.len:
       x[j+i] = item[j]
       inc(j)
-
-proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
-  ## Special compile-time procedure that checks whether `x` can be compiled
-  ## without any semantic error.
-  ## This can be used to check whether a type supports some operation:
-  ##
-  ## .. code-block:: Nim
-  ##   when compiles(3 + 4):
-  ##     echo "'+' for integers is available"
-  discard
 
 when declared(initDebugger):
   initDebugger()

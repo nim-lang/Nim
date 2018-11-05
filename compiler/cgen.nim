@@ -444,20 +444,21 @@ proc assignGlobalVar(p: BProc, n: PNode) =
     return
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return
-  if sfThread in s.flags:
-    declareThreadVar(p.module, s, sfImportc in s.flags)
-  else:
-    var decl: Rope = nil
-    var td = getTypeDesc(p.module, s.loc.t)
-    if s.constraint.isNil:
-      if sfImportc in s.flags: add(decl, "extern ")
-      add(decl, td)
-      if sfRegister in s.flags: add(decl, " register")
-      if sfVolatile in s.flags: add(decl, " volatile")
-      addf(decl, " $1;$n", [s.loc.r])
+  if not containsOrIncl(p.module.declaredThings, s.id):
+    if sfThread in s.flags:
+      declareThreadVar(p.module, s, sfImportc in s.flags)
     else:
-      decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
-    add(p.module.s[cfsVars], decl)
+      var decl: Rope = nil
+      var td = getTypeDesc(p.module, s.loc.t)
+      if s.constraint.isNil:
+        if sfImportc in s.flags: add(decl, "extern ")
+        add(decl, td)
+        if sfRegister in s.flags: add(decl, " register")
+        if sfVolatile in s.flags: add(decl, " volatile")
+        addf(decl, " $1;$n", [s.loc.r])
+      else:
+        decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
+      add(p.module.s[cfsVars], decl)
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
@@ -1036,7 +1037,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
   let sym = n.sym
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, n, mangleName(m, sym), OnHeap)
-  if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
+  if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
   if sym.owner.id != m.module.id:
     # else we already have the symbol generated!
@@ -1055,7 +1056,7 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if conf.cppCustomNamespace.len > 0: 
+  if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")

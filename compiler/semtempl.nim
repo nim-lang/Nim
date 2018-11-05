@@ -706,28 +706,26 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       elif templToExpand(s):
         return semPatternBody(c, semTemplateExpr(c.c, n, s, {efNoSemCheck}))
 
-    if n.kind == nkInfix and n.sons[0].kind == nkIdent:
+    if n.kind == nkInfix and (let id = considerQuotedIdent(c.c, n[0]); id != nil):
       # we interpret `*` and `|` only as pattern operators if they occur in
       # infix notation, so that '`*`(a, b)' can be used for verbatim matching:
-      let opr = n.sons[0]
-      if opr.ident.s == "*" or opr.ident.s == "**":
+      if id.s == "*" or id.s == "**":
         result = newNodeI(nkPattern, n.info, n.len)
-        result.sons[0] = opr
+        result.sons[0] = newIdentNode(id, n.info)
         result.sons[1] = semPatternBody(c, n.sons[1])
         result.sons[2] = expectParam(c, n.sons[2])
         return
-      elif opr.ident.s == "|":
+      elif id.s == "|":
         result = newNodeI(nkPattern, n.info, n.len)
-        result.sons[0] = opr
+        result.sons[0] = newIdentNode(id, n.info)
         result.sons[1] = semPatternBody(c, n.sons[1])
         result.sons[2] = semPatternBody(c, n.sons[2])
         return
 
-    if n.kind == nkPrefix and n.sons[0].kind == nkIdent:
-      let opr = n.sons[0]
-      if opr.ident.s == "~":
+    if n.kind == nkPrefix and (let id = considerQuotedIdent(c.c, n[0]); id != nil):
+      if id.s == "~":
         result = newNodeI(nkPattern, n.info, n.len)
-        result.sons[0] = opr
+        result.sons[0] = newIdentNode(id, n.info)
         result.sons[1] = semPatternBody(c, n.sons[1])
         return
 

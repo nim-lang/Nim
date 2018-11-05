@@ -145,7 +145,7 @@ else:
     else:
       dec gTicker
 
-  proc hook(st: StackTrace) {.nimcall locks: 0.} =
+  proc hook(st: StackTrace) {.nimcall, locks: 0.} =
     #echo "profiling! ", interval
     if interval == 0:
       hookAux(st, 1)

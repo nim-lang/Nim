@@ -302,7 +302,7 @@ proc getCurrentEncoding*(): string =
 
 proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
-  ## Raises `EIO` if it cannot fulfill the request.
+  ## Raises `IOError` if it cannot fulfill the request.
   when not defined(windows):
     result = iconvOpen(destEncoding, srcEncoding)
     if result == nil:

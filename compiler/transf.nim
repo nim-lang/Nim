@@ -242,25 +242,17 @@ proc newLabel(c: PTransf, n: PNode): PSym =
   result = newSym(skLabel, nil, getCurrOwner(c), n.info)
   result.name = getIdent(c.graph.cache, genPrefix & $result.id)
 
-proc freshLabels(c: PTransf, n: PNode; symMap: var TIdTable) =
-  if n.kind in {nkBlockStmt, nkBlockExpr}:
-    if n.sons[0].kind == nkSym:
-      let x = newLabel(c, n[0])
-      idTablePut(symMap, n[0].sym, x)
-      n.sons[0].sym = x
-  if n.kind == nkSym and n.sym.kind == skLabel:
-    let x = PSym(idTableGet(symMap, n.sym))
-    if x != nil: n.sym = x
-  else:
-    for i in 0 ..< safeLen(n): freshLabels(c, n.sons[i], symMap)
-
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
-  var labl: PSym
-  if n.sons[0].kind != nkEmpty:
-    # already named block? -> Push symbol on the stack:
-    labl = n.sons[0].sym
+  var labl: PSym 
+  if c.inlining > 0:
+    labl = newLabel(c, n[0])
+    idNodeTablePut(c.transCon.mapping, n[0].sym, newSymNode(labl))
   else:
-    labl = newLabel(c, n)
+    labl =
+      if n.sons[0].kind != nkEmpty:
+        n.sons[0].sym  # already named block? -> Push symbol on the stack
+      else:
+        newLabel(c, n)
   c.breakSyms.add(labl)
   result = transformSons(c, n)
   discard c.breakSyms.pop
@@ -301,22 +293,10 @@ proc transformWhile(c: PTransf; n: PNode): PTransNode =
     discard c.breakSyms.pop
 
 proc transformBreak(c: PTransf, n: PNode): PTransNode =
-  if n.sons[0].kind != nkEmpty or c.inlining > 0:
-    result = n.PTransNode
-    when false:
-      let lablCopy = idNodeTableGet(c.transCon.mapping, n.sons[0].sym)
-      if lablCopy.isNil:
-        result = n.PTransNode
-      else:
-        result = newTransNode(n.kind, n.info, 1)
-        result[0] = lablCopy.PTransNode
-  elif c.breakSyms.len > 0:
-    # this check can fail for 'nim check'
+  result = transformSons(c, n)
+  if n.sons[0].kind == nkEmpty and c.breakSyms.len > 0:
     let labl = c.breakSyms[c.breakSyms.high]
-    result = transformSons(c, n)
     result[0] = newSymNode(labl).PTransNode
-  else:
-    result = n.PTransNode
 
 proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
   case n.kind
@@ -631,13 +611,8 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
       add(stmtList, newAsgnStmt(c, nkFastAsgn, temp, arg.PTransNode))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, iter).copyTree
+  let body = transformBody(c.graph, iter)
   pushInfoContext(c.graph.config, n.info)
-  # XXX optimize this somehow. But the check "c.inlining" is not correct:
-  var symMap: TIdTable
-  initIdTable symMap
-  freshLabels(c, body, symMap)
-
   inc(c.inlining)
   add(stmtList, transform(c, body))
   #findWrongOwners(c, stmtList.pnode)

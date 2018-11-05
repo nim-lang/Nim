@@ -54,9 +54,11 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
 
 proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
   ## Analyse the known dependency graph.
-  if g.config.symbolFiles in {disabledSf, writeOnlySf} or
-     g.incr.configChanged:
-    return getID()
+  if g.config.symbolFiles == disabledSf: return getID()
+  when false:
+    if g.config.symbolFiles in {disabledSf, writeOnlySf} or
+      g.incr.configChanged:
+      return getID()
   let module = g.incr.db.getRow(
     sql"select id, fullHash, nimid from modules where fullpath = ?", string fullpath)
   let currentFullhash = hashFileCached(g.config, fileIdx, fullpath)
@@ -70,7 +72,7 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): i
       # not changed, so use the cached AST:
       doAssert(result != 0)
       var cycleCheck = initIntSet()
-      if not needsRecompile(g, fileIdx, fullpath, cycleCheck):
+      if not needsRecompile(g, fileIdx, fullpath, cycleCheck) and not g.incr.configChanged:
         echo "cached successfully! ", string fullpath
         return -result
     db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])

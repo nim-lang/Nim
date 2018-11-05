@@ -129,7 +129,7 @@ to use prefix instead of postfix operators.
 ``+E``           One or more
 ``?E``           Zero or One
 ``E{n,m}``       From ``n`` up to ``m`` times ``E``
-``~Ε``           Not predicate
+``~E``           Not predicate
 ``a ^* b``       Shortcut for ``?(a *(b a))``. Usually used for separators.
 ``a ^* b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
 ``'a'``          Matches a single character
@@ -456,10 +456,11 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
 
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
-  idx < input.len and input[idx] == c
+  ## EOF is matched as ``'\0'``.
+  (idx < input.len and input[idx] == c) or (idx == input.len and c == '\0')
 
 template atom*(input: string; idx: int; s: set[char]): bool =
-  idx < input.len and input[idx] in s
+  (idx < input.len and input[idx] in s) or (idx == input.len and '\0' in s)
 
 template hasNxt*(input: string; idx: int): bool = idx < input.len
 

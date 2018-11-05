@@ -339,7 +339,8 @@ proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on ``future`` which raises an exception if the future
   ## finished with an error.
   ##
-  ## This should be used instead of ``discard`` to discard void futures.
+  ## This should be used instead of ``discard`` to discard void futures,
+  ## or use ``waitFor`` if you need to wait for the future's completion.
   assert(not future.isNil, "Future is nil")
   future.callback =
     proc () =

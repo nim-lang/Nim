@@ -1,3 +1,12 @@
+#
+#
+#           The Nim Compiler
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+## code owner: Arne Döring
+## e-mail: arne.doering@gmx.net
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
@@ -122,7 +131,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
     let size = n.sym.typ.size
     let align = n.sym.typ.align
     result.align = align
-    if initialOffset == szUnknownSize:
+    if initialOffset == szUnknownSize or size == szUnknownSize:
       n.sym.offset = szUnknownSize
       result.offset = szUnknownSize
     else:

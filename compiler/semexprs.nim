@@ -201,7 +201,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   if targetType.kind == tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
-      return semTypeOf(c, n[1])
+      return semTypeOf(c, n)
     else:
       targetType = targetType.base
   elif targetType.kind == tyStatic:
@@ -1811,6 +1811,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
     ids.add n
     return
 
+
   if n.kind == nkPrefix:
     checkSonsLen(n, 2, c.config)
     if n[0].kind == nkIdent:
@@ -1821,6 +1822,9 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
         n.sons[0] = newIdentNode(getIdent(c.cache, examinedOp.substr(op.len)), n.info)
   elif n.kind == nkAccQuoted and op == "``":
     returnQuote n[0]
+  elif n.kind == nkIdent:
+    if n.ident.s == "result":
+      n = ids[0]
 
   for i in 0 ..< n.safeLen:
     processQuotations(c, n.sons[i], op, quotes, ids)
@@ -1832,15 +1836,18 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   var
     quotedBlock = n[^1]
     op = if n.len == 3: expectString(c, n[1]) else: "``"
-    quotes = newSeq[PNode](1)
+    quotes = newSeq[PNode](2)
       # the quotes will be added to a nkCall statement
-      # leave some room for the callee symbol
-    ids = newSeq[PNode]()
+      # leave some room for the callee symbol and the result symbol
+    ids = newSeq[PNode](1)
       # this will store the generated param names
+      # leave some room for the result symbol
 
   if quotedBlock.kind != nkStmtList:
     localError(c.config, n.info, errXExpected, "block")
 
+  # This adds a default first field to pass the result symbol
+  ids[0] = newAnonSym(c, skParam, n.info).newSymNode
   processQuotations(c, quotedBlock, op, quotes, ids)
 
   var dummyTemplate = newProcNode(
@@ -1859,6 +1866,8 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
   var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
+  # This adds a call to newIdentNode("result") as the first argument to the template call
+  quotes[1] = newNode(nkCall, n.info, @[newIdentNode(getIdent(c.cache, "newIdentNode"), n.info), newStrNode(nkStrLit, "result")])
   result = newNode(nkCall, n.info, @[
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
     newNode(nkCall, n.info, quotes)])
@@ -1963,8 +1972,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], s.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2, c.config)
-    result = semTypeOf(c, n.sons[1])
+    result = semTypeOf(c, n)
   #of mArrGet: result = semArrGet(c, n, flags)
   #of mArrPut: result = semArrPut(c, n, flags)
   #of mAsgn: result = semAsgnOpr(c, n)
@@ -2042,11 +2050,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = c.graph.emptyNode
   of mOmpParFor:
     checkMinSonsLen(n, 3, c.config)
-    if n.sonsLen == 4:
-      let annotationStr = getConstExpr(c.module, semExpr(c, n[^1]), c.graph)
-      if annotationStr == nil or annotationStr.kind notin nkStrKinds:
-        localError(c.config, result[^1].info,
-          "The annotation string for `||` must be known at compile time")
     result = semDirectOp(c, n, flags)
   else:
     result = semDirectOp(c, n, flags)

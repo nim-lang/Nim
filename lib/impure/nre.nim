@@ -8,7 +8,7 @@
 
 
 from pcre import nil
-import nre.private.util
+import nre/private/util
 import tables
 from strutils import `%`
 from math import ceil
@@ -469,7 +469,8 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]](ceil(vecsize / 2).int)
+  # plus 1 because we need the ceiling, not the floor
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]]((vecsize + 1) div 2)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1

@@ -2014,7 +2014,8 @@ proc parseHtml*(s: Stream, filename: string,
   ## Parses the XML from stream `s` and returns a ``XmlNode``. Every
   ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
-  open(x, s, filename, {reportComments, reportWhitespace})
+  open(x, s, filename, {reportComments, reportWhitespace, allowUnquotedAttribs,
+    allowEmptyAttribs})
   next(x)
   # skip the DOCTYPE:
   if x.kind == xmlSpecial: next(x)

@@ -21,34 +21,34 @@ proc random(): int32 =
 var n = 9999999
 
 var data: seq[int32]
-newSeq (data, n)
+newSeq(data, n)
 for i in 0 .. data.high():
     data[i] = random()
 
 
-proc `$` (d: seq[int32]): string =
+proc `$`(d: seq[int32]): string =
     result = "[ "
-    for i in items (d):
-        result.addSep (", ", 2)
-        result.add ($(i and 0xFFFF_FFFF'i64))
-    result.add (" ]")
+    for i in items(d):
+        result.addSep(", ", 2)
+        result.add($(i and 0xFFFF_FFFF'i64))
+    result.add(" ]")
 
 # Sort the data
-proc sort (start, stop: int) =
+proc sort(start, stop: int) =
     if stop <= start+1:
         return
 
     var j = start
     for i in start..stop-2:
         if data[i] <% data[stop-1]:
-            swap (data[i], data[j])
-            inc (j)
-    swap (data[j], data[stop-1])
+            swap(data[i], data[j])
+            inc(j)
+    swap(data[j], data[stop-1])
 
-    sort (start, j)
-    sort (j+1, stop)
+    sort(start, j)
+    sort(j+1, stop)
 
-sort (0, data.len)
-echo (data[n div 2 - 1] and 0xFFFF_FFFF'i64, ", ",
-      data[n div 2] and 0xFFFF_FFFF'i64, ", ",
-      data[n div 2 + 1] and 0xFFFF_FFFF'i64)
+sort(0, data.len)
+echo(data[n div 2 - 1] and 0xFFFF_FFFF'i64, ", ",
+     data[n div 2] and 0xFFFF_FFFF'i64, ", ",
+     data[n div 2 + 1] and 0xFFFF_FFFF'i64)

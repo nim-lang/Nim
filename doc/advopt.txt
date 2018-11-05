@@ -25,6 +25,13 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --styleCheck:off|hint|error
+                            produce hints or errors for Nim identifiers that
+                            do not adhere to Nim's official style guide
+                            https://nim-lang.org/docs/nep1.html
+  --showAllMismatches:on|off
+                            show all mismatching candidates in overloading
+                            resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module

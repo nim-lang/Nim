@@ -182,7 +182,10 @@ const
   HighRegisterPressure = 40
 
 proc bestEffort(c: PCtx): TLineInfo =
-  (if c.prc == nil: c.module.info else: c.prc.sym.info)
+  if c.prc != nil and c.prc.sym != nil:
+    c.prc.sym.info
+  else:
+    c.module.info
 
 proc getTemp(cc: PCtx; tt: PType): TRegister =
   let typ = tt.skipTypesOrNil({tyStatic})
@@ -769,18 +772,18 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.gABC(n, opcCard, dest, tmp)
   c.freeTemp(tmp)
 
-proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
+proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
   var signedIntegers = {tyInt8..tyInt32}
   var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
   let src_size = getSize(c.config, src)
-
+  let dst_size = getSize(c.config, dst) 
   if c.config.target.intSize < 8:
     signedIntegers.incl(tyInt)
     unsignedIntegers.incl(tyUInt)
-  if src_size == getSize(c.config, dst) and src.kind in allowedIntegers and
+  if src_size == dst_size and src.kind in allowedIntegers and
                                  dst.kind in allowedIntegers:
     let tmp = c.genx(n.sons[1])
     var tmp2 = c.getTemp(n.sons[1].typ)
@@ -809,8 +812,28 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
     c.freeTemp(tmp2)
     c.freeTemp(tmp3)
+  elif src_size == dst_size and src.kind in allowedIntegers and
+                           dst.kind in {tyFloat, tyFloat32, tyFloat64}:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    if dst.kind == tyFloat32:
+      c.gABC(n, opcAsgnFloat32FromInt, dest, tmp)
+    else:
+      c.gABC(n, opcAsgnFloat64FromInt, dest, tmp)
+    c.freeTemp(tmp)
+
+  elif src_size == dst_size and src.kind in {tyFloat, tyFloat32, tyFloat64} and
+                           dst.kind in allowedIntegers:         
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    if src.kind == tyFloat32:
+      c.gABC(n, opcAsgnIntFromFloat32, dest, tmp)
+    else:
+      c.gABC(n, opcAsgnIntFromFloat64, dest, tmp)
+    c.freeTemp(tmp)
+
   else:
-    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers of same size")
+    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
@@ -2008,7 +2031,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if allowCast in c.features:
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
-      genIntCast(c, n, dest)
+      genCastIntFloat(c, n, dest)
   of nkTypeOfExpr:
     genTypeLit(c, n.typ, dest)
   of nkComesFrom:

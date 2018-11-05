@@ -60,7 +60,7 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
-  raise_counter {.threadvar.}: uint
+  raiseCounter {.threadvar.}: uint
 
   gcFramePtr {.threadvar.}: GcFrame
 
@@ -122,12 +122,12 @@ proc popCurrentException {.compilerRtl, inl.} =
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raise_id == id:
+  if currException.raiseId == id:
     currException = currException.up
   else:
     var cur = currException.up
     var prev = currException
-    while cur != nil and cur.raise_id != id:
+    while cur != nil and cur.raiseId != id:
       prev = cur
       cur = cur.up
     if cur == nil:
@@ -345,10 +345,10 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
-      raise_counter.inc
-      if raise_counter == 0:
-        raise_counter.inc # skip zero at overflow
-      e.raise_id = raise_counter
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
       {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:
@@ -381,6 +381,8 @@ proc raiseExceptionAux(e: ref Exception) =
           xadd(buf, s, s.len)
         var buf: array[0..2000, char]
         var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation
         add(buf, "Error: unhandled exception: ")
         add(buf, e.msg)
         add(buf, " [")
@@ -394,7 +396,7 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.len == 0:
@@ -403,7 +405,13 @@ proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
       e.trace.add reraisedFrom(reraisedFromBegin)
       auxWriteStackTrace(framePtr, e.trace)
       e.trace.add reraisedFrom(reraisedFromEnd)
+  else:
+    if procname != nil and filename != nil:
+      e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
+
+proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+  raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
