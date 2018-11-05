@@ -14,10 +14,10 @@ Introduction
   "With Great Power Comes Great Responsibility." -- Spider Man
 
 This document is a tutorial for the macros of the *Nim* programming
-language.  A macro enables to formulate and distribute Nim syntax tree
-transformations as a normal library.  The arguments of a macro are
+language. A macro enables to formulate and distribute Nim syntax tree
+transformations as a normal library. The arguments of a macro are
 passed a syntax tree, and its job is it to create another syntax tree
-for the compiler.  The way this works in Nim is, whenever the compiler
+for the compiler. The way this works in Nim is, whenever the compiler
 encounters a call expression to a macro, The compiler evaluates the
 macro at compile time with the syntax tree from the invocation, and
 then it replacing the call to the macro by the result of the macro.
@@ -39,9 +39,9 @@ Macro Arguments
 ---------------
 
 There are two ways to pass arguments to a macro, either typed or
-untyped. And the argument types have two faces.  One face is used for
+untyped. And the argument types have two faces. One face is used for
 the overload resolution, and the other face is used for the semantic
-checking of the macro implementation.  For example
+checking of the macro implementation. For example
 ``macro foo(arg: int)`` will be called in an expression ``foo(x)``, if
 ``x`` is of type int, but for the semantic checking of the macro
 itself, ``arg`` has the type ``NimNode``, not ``int`` as you might
@@ -55,11 +55,11 @@ Untyped macro arguments are passed to the macro before they are
 semantically checked. This means the syntax tree that is passed down
 to the macro does not need to make sense for Nim yet, the only
 limitation for the syntax in an untyped macro argument is, it needs to
-be parseable by the Nim parser.  The semantic of this syntax is
+be parseable by the Nim parser. The semantic of this syntax is
 entirely up to the macro implementation. In this case the macro is
 responsible to implement its own semantic checking on the
 argument. The upside for untyped arguments is, the syntax tree is
-quite predictable and less complex than for typed arguments.  Untyped
+quite predictable and less complex than for typed arguments. Untyped
 arguments have the type ``untyped`` in arguments list.
 
 Typed Arguments
@@ -84,6 +84,16 @@ in the expression ``foo(x)``, ``x`` needs to be an integer constant,
 but in the macro body ``arg`` is just like a normal parameter of type
 ``int``.
 
+.. code-block:: nim
+
+  import macros
+
+  macro myMacro(arg: static[int]): untyped =
+    echo arg # just an int (7), not ``NimNode``
+
+  myMacro(1 + 2 * 3)
+
+
 Code blocks as arguments
 ------------------------
 
@@ -102,7 +112,6 @@ For macros this way of calling is useful for example to implement an
 embedded domain specific language. Syntax trees of arbitrary
 complexity can be passed to macros with this notation.
 
-
 The Syntax Tree
 ---------------
 
@@ -112,44 +121,107 @@ look like so that the Nim compiler will understand it. The nodes of the
 Nim syntax tree are documented in the `macros <macros.html>`_ module.
 But a probably more interesting and interactive way to explore the Nim
 syntax tree is with ``macros.treeRepr``, it converts a syntax tree
-into a multi line string for printing on the console.  It can be used
+into a multi line string for printing on the console. It can be used
 to explore how the argument expressions are represented in tree form
-and for debug printing of generated syntax tree.
+and for debug printing of generated syntax tree. ``dumpTree`` is a
+predefined macro that just prints its argument in tree representation,
+but does nothing else. Here is an example of such a tree representation:
 
+.. code-block:: nim
+    :test: "nim c $1"
+
+  dumpTree:
+    var mt: MyType = MyType(a:123.456, b:"abcdef")
+
+  # output:
+  #   StmtList
+  #     VarSection
+  #       IdentDefs
+  #         Ident "mt"
+  #         Ident "MyType"
+  #         ObjConstr
+  #           Ident "MyType"
+  #           ExprColonExpr
+  #             Ident "a"
+  #             FloatLit 123.456
+  #           ExprColonExpr
+  #             Ident "b"
+  #             StrLit "abcdef"
 
 Custom sematic checking
 -----------------------
 
-The first thing that a macro should do with it's arguments is to check
-if the argument is in the correct form.  Not every type of wrong input
+The first thing that a macro should do with its arguments is to check
+if the argument is in the correct form. Not every type of wrong input
 needs to be caught here, but anything that could cause a crash during
 macro evaluation should be caught and create a nice error message.
-``macros.expectKind`` and ``macros.expectLen`` are a good start.  If
+``macros.expectKind`` and ``macros.expectLen`` are a good start. If
 the checks need to be more complex, arbitrary error messages can
 be created with the ``macros.error`` proc.
+
+.. codeBlock:: nim
+    :test: "nim c $1"
+
+  macro myAssert(arg: untyped): untyped =
+    arg.expectKind nnkInfix
 
 Generating Code
 ---------------
 
 There are two ways to generate the code. Either by creating the syntax
 tree with expressions that contain a lot of calls to ``newTree`` and
-``newLit``, or with ``quote do:`` expressions. This offers the best low
-level control for the syntax tree generation, but the second option is
-much less verbose.  If you choose to create the syntax tree with calls
-to ``newTree`` and ``newLit`` the macro ``marcos.dumpAstGen`` can help
-you with the verbosity. ``quote do:`` allows you to write the code
-that you want to generate literally, backticks are used to insert code
-from ``NimNode`` symbols into the generated expression. This means
-that you can't use backticks within ``quote do:`` for anything else.
+``newLit``, or with ``quote do:`` expressions. The first option offers
+the best low level control for the syntax tree generation, but the
+second option is much less verbose. If you choose to create the syntax
+tree with calls to ``newTree`` and ``newLit`` the macro
+``marcos.dumpAstGen`` can help you with the verbosity. ``quote do:``
+allows you to write the code that you want to generate literally,
+backticks are used to insert code from ``NimNode`` symbols into the
+generated expression. This means that you can't use backticks within
+``quote do:`` for anything else than injecting symbols.  Make sure to
+inject only symbols of type ``NimNode`` into the generated syntax
+tree. You can use ``newLit`` to convert arbitrary values into
+expressions trees of type ``NimNode`` so that it is safe to inject
+them into the tree.
+
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  import macros
+
+  type
+    MyType = object
+      a: float
+      b: string
+
+  macro myMacro(arg: untyped): untyped =
+    var mt: MyType = MyType(a:123.456, b:"abcdef")
+
+    # ...
+
+    let mtLit = newLit(mt)
+
+    result = quote do:
+      echo `arg`
+      echo `mtLit`
+
+  myMacro("Hallo")
+
+The call to ``myMacro`` will generate the following code:
+
+.. code-block:: nim
+  echo "Hallo"
+  echo MyType(a: 123.456'f64, b: "abcdef")
 
 
 Building your first macro
 -------------------------
 
 To give a footstart to writing macros we will show now how to
-implement the ``myDebug`` macro mentioned earlier.  The first thing to
+implement the ``myDebug`` macro mentioned earlier. The first thing to
 do is to build a simple example of the macro usage, and then just
-print the argument.  This way it is possible to get an idea of a
+print the argument. This way it is possible to get an idea of a
 correct argument should be look like.
 
 .. code-block:: nim
@@ -218,20 +290,20 @@ With Power Comes Responsibility
 Macros are very powerful. A good advice is to use them as little as
 possible, but as much as necessary. Macros can change the semantics of
 expressions, making the code incomprehensible for anybody who does not
-know exactly what the macro does with it.  So whenever a macro is not
+know exactly what the macro does with it. So whenever a macro is not
 necessary and the same logic can be implemented using templates or
-generics, it is probably better not to use a macro.  And when a macro
+generics, it is probably better not to use a macro. And when a macro
 is used for something, the macro should better have a well written
-documentation.  And for all the people who write only perfectly self
-explaining code, for macros the implementation is not documentation
-enough.
+documentation. For all the people who claim to write only perfectly
+self-explanatory code: when it comes to macros, the implementation is
+not enough for documentation.
 
 Limitations
 -----------
 
 Since macros are evaluated in the compiler in the NimVM, macros share
 all the limitations of the NimVM. They have to be implemented in pure Nim
-code.  Macros can start external processes on the shell, but they
+code. Macros can start external processes on the shell, but they
 cannot call C functions except from those that are built in the
 compiler.
 
@@ -248,11 +320,11 @@ Strformat
 ---------
 
 In the Nim standard library, the ``strformat`` library provides a
-macro that parses a string literal at compile time.  Parsing a string
+macro that parses a string literal at compile time. Parsing a string
 in a macro like here is generally not recommended. The parsed AST
 cannot have type information, and parsing implemented on the VM is
-generally not very fast.  Working on AST nodes is almost always the
-recommended way.  But still ``strformat`` is a good example for a
+generally not very fast. Working on AST nodes is almost always the
+recommended way. But still ``strformat`` is a good example for a
 practical use case for a macro that is slightly more complex that the
 ``assert`` macro.
 
@@ -262,7 +334,7 @@ Ast Pattern Matching
 --------------------
 
 Ast Pattern Matching is a macro library to aid in writing complex
-macros.  This can be seen as a good example of how to repurpose the
+macros. This can be seen as a good example of how to repurpose the
 Nim syntax tree with new semantics.
 
 _Ast Pattern Matching: https://github.com/krux02/ast-pattern-matching
