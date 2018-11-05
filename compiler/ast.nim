@@ -568,9 +568,6 @@ const
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
-  tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
-    # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
-    # deprecated and this mess can be cleaned up.
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 

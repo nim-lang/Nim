@@ -2232,8 +2232,6 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   stream.lineOffset = line
 
   var parser: TParser
-  # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
-  # spaces...
   parser.lex.errorHandler = errorHandler
   openParser(parser, AbsoluteFile filename, stream, cache, config)
 
