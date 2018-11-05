@@ -45,22 +45,6 @@ template im*(arg: typedesc[float64]): Complex64 = complex[float64](0, 1)
 template im*(arg : float32): Complex32 = complex[float32](0, arg)
 template im*(arg : float64): Complex64 = complex[float64](0, arg)
 
-proc toComplex*[T: SomeNumber](x: T): auto =
-  ## Convert ``x`` to Complex.
-  when T is SomeInteger:
-    result.re = float(x)
-    result.im = 0.0
-  elif T is float32:
-    var z: Complex[float32]
-    z.re = x
-    z.im = float32(0)
-    result = z
-  elif T is float64:
-    var z: Complex[float64]
-    z.re = x
-    z.im = float64(0)
-    result = z
-
 proc abs*[T](z: Complex[T]): T =
   ## Return the distance from (0,0) to ``z``.
   result = hypot(z.re, z.im)
@@ -259,7 +243,7 @@ proc pow*[T](x, y: Complex[T]): Complex[T] =
 
 proc pow*[T](x: Complex[T], y: T): Complex[T] =
   ## Complex number ``x`` raised to the power ``y``.
-  pow(x, toComplex(y))
+  pow(x, complex[T](y))
 
 
 proc sin*[T](z: Complex[T]): Complex[T] =
