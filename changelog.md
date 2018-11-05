@@ -19,6 +19,7 @@
   your previous annotations with `parallel for`.
 
 - The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
+- The undocumented ``#? strongSpaces`` parsing mode has been removed.
 
 
 #### Breaking changes in the standard library

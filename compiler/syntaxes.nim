@@ -17,10 +17,10 @@ type
   TFilterKind* = enum
     filtNone, filtTemplate, filtReplace, filtStrip
   TParserKind* = enum
-    skinStandard, skinStrongSpaces, skinEndX
+    skinStandard, skinEndX
 
 const
-  parserNames*: array[TParserKind, string] = ["standard", "strongspaces",
+  parserNames*: array[TParserKind, string] = ["standard",
                                               "endx"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
                                               "strip"]
@@ -34,14 +34,14 @@ template config(p: TParsers): ConfigRef = p.parser.lex.config
 
 proc parseAll*(p: var TParsers): PNode =
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard:
     result = parser.parseAll(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard:
     result = parser.parseTopLevelStmt(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
@@ -153,9 +153,7 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
   else: s = inputstream
   case p.skin
   of skinStandard, skinEndX:
-    parser.openParser(p.parser, fileIdx, s, cache, config, false)
-  of skinStrongSpaces:
-    parser.openParser(p.parser, fileIdx, s, cache, config, true)
+    parser.openParser(p.parser, fileIdx, s, cache, config)
 
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)
