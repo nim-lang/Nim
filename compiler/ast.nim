@@ -565,7 +565,6 @@ const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
-  tfUncheckedArray* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles

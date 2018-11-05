@@ -872,7 +872,7 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var ty = skipTypes(a.t, abstractVarRange + abstractPtrs + tyUserTypeClasses)
   var first = intLiteral(firstOrd(p.config, ty))
   # emit range check:
-  if optBoundsCheck in p.options and tfUncheckedArray notin ty.flags:
+  if optBoundsCheck in p.options and ty.kind != tyUncheckedArray:
     if not isConstExpr(y):
       # semantic pass has already checked for const index expressions
       if firstOrd(p.config, ty) == 0:
@@ -909,11 +909,10 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
       rdLoc(a), rdLoc(b), rdLoc(arr))
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
-    if tfUncheckedArray notin ty.flags:
-      linefmt(p, cpsStmts,
-        "if ($2-$1 != -1 && " &
-        "($2-$1 < -1 || $1 < $3 || $1 > $4 || $2 < $3 || $2 > $4)) #raiseIndexError();$n",
-        rdCharLoc(a), rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty)))
+    linefmt(p, cpsStmts,
+      "if ($2-$1 != -1 && " &
+      "($2-$1 < -1 || $1 < $3 || $1 > $4 || $2 < $3 || $2 > $4)) #raiseIndexError();$n",
+      rdCharLoc(a), rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty)))
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &

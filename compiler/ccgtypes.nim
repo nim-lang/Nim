@@ -492,7 +492,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
-      if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
+      if fieldType.kind == tyUncheckedArray:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
       elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:

@@ -1019,8 +1019,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: incl(sym.typ.flags, tfIncompleteStruct)
       of wUnchecked:
         noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfUncheckedArray)
+        if sym.typ == nil or sym.typ.kind notin {tyArray, tyUncheckedArray}:
+          invalidPragma(c, it)
+        else:
+          sym.typ.kind = tyUncheckedArray
       of wUnion:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
