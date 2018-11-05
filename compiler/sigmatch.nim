@@ -1210,9 +1210,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon)
-      if tfOldSchoolExprStmt in f.sons[0].flags:
-        if f.sons[0].kind == tyExpr: return
-      elif f.sons[0].kind == tyStmt: return
+      if f.sons[0].kind == tyStmt: return
 
     template matchArrayOrSeq(aBase: PType) =
       let ff = f.base
@@ -1758,7 +1756,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         result = isNone
 
   of tyStmt:
-    if aOrig != nil and tfOldSchoolExprStmt notin f.flags:
+    if aOrig != nil:
       put(c, f, aOrig)
     result = isGeneric
 
@@ -2215,8 +2213,7 @@ proc incrIndexType(t: PType) =
   inc t.sons[0].n.sons[1].intVal
 
 template isVarargsUntyped(x): untyped =
-  x.kind == tyVarargs and x.sons[0].kind == tyExpr and
-    tfOldSchoolExprStmt notin x.sons[0].flags
+  x.kind == tyVarargs and x.sons[0].kind == tyExpr
 
 proc matchesAux(c: PContext, n, nOrig: PNode,
                 m: var TCandidate, marker: var IntSet) =

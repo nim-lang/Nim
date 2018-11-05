@@ -1744,10 +1744,8 @@ proc processMagicType(c: PContext, m: PSym) =
       setMagicType(c.config, m, tyAnything, 0)
     else:
       setMagicType(c.config, m, tyExpr, 0)
-      if m.name.s == "expr": m.typ.flags.incl tfOldSchoolExprStmt
   of mStmt:
     setMagicType(c.config, m, tyStmt, 0)
-    if m.name.s == "stmt": m.typ.flags.incl tfOldSchoolExprStmt
   of mTypeDesc, mType:
     setMagicType(c.config, m, tyTypeDesc, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
