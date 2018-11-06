@@ -20,7 +20,7 @@ passed a syntax tree, and its job is it to create another syntax tree
 for the compiler. The way this works in Nim is, whenever the compiler
 encounters a call expression to a macro, The compiler evaluates the
 macro at compile time with the syntax tree from the invocation, and
-then it replacing the call to the macro by the result of the macro.
+then it replaces the call to the macro by the result of the macro.
 
 Examples of things that can be implemented in macros:
 
