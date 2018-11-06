@@ -2026,9 +2026,9 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       var offset = 0
       case pattern
       of z:
-        offset = takeInt(1..2) * -3600
+        offset = takeInt(1..2) * 3600
       of zz:
-        offset = takeInt(2..2) * -3600
+        offset = takeInt(2..2) * 3600
       of zzz:
         offset.inc takeInt(2..2) * 3600
         if input[i] != ':':
