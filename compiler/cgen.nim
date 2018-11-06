@@ -1407,49 +1407,6 @@ proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
     arr[i] = Rope(nil)
 
-proc resetModule*(m: BModule) =
-  # between two compilations in CAAS mode, we can throw
-  # away all the data that was written to disk
-  m.headerFiles = @[]
-  m.declaredProtos = initIntSet()
-  m.forwTypeCache = initTable[SigHash, Rope]()
-  m.initProc = newProc(nil, m)
-  m.initProc.options = initProcOptions(m)
-  m.preInitProc = newPreInitProc(m)
-  initNodeTable(m.dataCache)
-  m.typeStack = @[]
-  m.forwardedProcs = @[]
-  m.typeNodesName = getTempName(m)
-  m.nimTypesName = getTempName(m)
-  if sfSystemModule in m.module.flags:
-    incl m.flags, preventStackTrace
-  else:
-    excl m.flags, preventStackTrace
-  nullify m.s
-  m.typeNodes = 0
-  m.nimTypes = 0
-  nullify m.extensionLoaders
-
-  # indicate that this is now cached module
-  # the cache will be invalidated by nullifying gModules
-  #m.fromCache = true
-  m.g = nil
-
-  # we keep only the "merge info" information for the module
-  # and the properties that can't change:
-  # m.filename
-  # m.cfilename
-  # m.isHeaderFile
-  # m.module ?
-  # m.typeCache
-  # m.declaredThings
-  # m.typeInfoMarker
-  # m.labels
-  # m.FrameDeclared
-
-proc resetCgenModules*(g: BModuleList) =
-  for m in cgenModules(g): resetModule(m)
-
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
