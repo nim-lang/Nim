@@ -776,6 +776,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endswith(".nims"):
       config.command = "e"
+      incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
