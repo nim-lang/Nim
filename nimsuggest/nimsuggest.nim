@@ -32,13 +32,15 @@ const DummyEof = "!EOF!"
 const Usage = """
 Nimsuggest - Tool to give every editor IDE like capabilities for Nim
 Usage:
-  nimsuggest [options] projectfile.nim
+  nimsuggest [options] [projectfile.nim]
 
 Options:
   --port:PORT             port, by default 6000
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
                           stdout instead of using sockets
+  --autoupdatedMainFile:mainfile <mainfile> will be auto-updated by nimsuggest
+                          when an unknown file is encountered
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
@@ -61,6 +63,22 @@ type
     sev: Severity
   CachedMsgs = seq[CachedMsg]
 
+type SuggestData = object
+  graph: ModuleGraph
+  cachedMsgs: CachedMsgs
+
+proc newSuggestData(graph: ModuleGraph): SuggestData =
+  result = SuggestData(graph: graph)
+
+proc recompileFullProject(graph: ModuleGraph) =
+  #echo "recompiling full project"
+  resetSystemArtifacts(graph)
+  graph.vm = nil
+  graph.resetAllModules()
+  GC_fullcollect()
+  compileProject(graph)
+  #echo GC_getStatistics()
+
 var
   gPort = 6000.Port
   gAddress = ""
@@ -68,6 +86,7 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
   gRefresh: bool
+  gAutorefresh: bool  # whether to autorefresh the provided main file
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -88,10 +107,13 @@ proc myLog(s: string) =
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col\n" &
-         "type 'quit' to quit\n" &
-         "type 'debug' to toggle debug mode on/off\n" &
-         "type 'terse' to toggle terse mode on/off"
+  Help = """
+usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col
+type 'help' for this help
+type 'quit' to quit
+type 'refresh' to recompile main module
+type 'debug' to toggle debug mode on/off
+type 'terse' to toggle terse mode on/off"""
 
 type
   EUnexpectedCommand = object of Exception
@@ -186,7 +208,17 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
-    graph.compileProject()
+    if gAutorefresh:
+      var contents = readFile conf.projectName
+      # TODO: add blurb about auto-generated file
+      contents.add "\n" & "import "
+      contents.addQuoted file.string
+      contents.add "\n"
+      writeFile conf.projectName, contents
+      recompileFullProject(graph)
+    else:
+      graph.compileProject()
+
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
@@ -381,7 +413,22 @@ proc replEpc(x: ThreadParams) {.thread.} =
                          "unexpected call: " & epcAPI
       quit errMessage
 
-proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
+proc doRefresh(suggestData: SuggestData) =
+  var suggestData = suggestData
+  var cachedMsgs = suggestData.cachedMsgs.addr
+  let graph = suggestData.graph
+  let conf = graph.config
+  conf.ideCmd = ideChk
+  conf.writelnHook = proc (s: string) = echo s
+  suggestData.cachedMsgs.setLen 0
+  conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+    cachedMsgs[].add(CachedMsg(info: info, msg: msg, sev: sev))
+  conf.suggestionResultHook = proc (s: Suggest) = discard
+  recompileFullProject(graph)
+
+proc execCmd(cmd: string; suggestData: SuggestData) =
+  let graph = suggestData.graph
+  let cachedMsgs = suggestData.cachedMsgs
   let conf = graph.config
 
   template sentinel() =
@@ -413,6 +460,10 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   of "chk": conf.ideCmd = ideChk
   of "highlight": conf.ideCmd = ideHighlight
   of "outline": conf.ideCmd = ideOutline
+  of "refresh":
+    doRefresh(suggestData)
+    sentinel()
+    return
   of "quit":
     sentinel()
     quit()
@@ -440,15 +491,6 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
     execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
   sentinel()
 
-proc recompileFullProject(graph: ModuleGraph) =
-  #echo "recompiling full project"
-  resetSystemArtifacts(graph)
-  graph.vm = nil
-  graph.resetAllModules()
-  GC_fullcollect()
-  compileProject(graph)
-  #echo GC_getStatistics()
-
 proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
   if gLogging:
@@ -465,27 +507,21 @@ proc mainThread(graph: ModuleGraph) =
   conf.suggestionResultHook = sugResultHook
   graph.doStopCompile = proc (): bool = requests.peek() > 0
   var idle = 0
-  var cachedMsgs: CachedMsgs = @[]
+  var suggestData = newSuggestData(graph)
   while true:
     let (hasData, req) = requests.tryRecv()
     if hasData:
       conf.writelnHook = wrHook
       conf.suggestionResultHook = sugResultHook
-      execCmd(req, graph, cachedMsgs)
+      execCmd(req, suggestData)
       idle = 0
     else:
+      # TODO: use async (eg via asyncnet) to avoid delay
       os.sleep 250
       idle += 1
     if idle == 20 and gRefresh:
       # we use some nimsuggest activity to enable a lazy recompile:
-      conf.ideCmd = ideChk
-      conf.writelnHook = proc (s: string) = discard
-      cachedMsgs.setLen 0
-      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
-        cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
-      conf.suggestionResultHook = proc (s: Suggest) = discard
-      recompileFullProject(graph)
-
+      doRefresh(suggestData)
 var
   inputThread: Thread[ThreadParams]
 
@@ -565,6 +601,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         gEmitEof = true
         gRefresh = false
       of "log": gLogging = true
+      of "autoupdatedmainfile":
+        doAssert p.val.len > 0
+        gAutorefresh = true
+        conf.projectName = p.val
       of "refresh":
         if p.val.len > 0:
           gRefresh = parseBool(p.val)
@@ -574,6 +614,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         conf.suggestMaxResults = parseInt(p.val)
       else: processSwitch(pass, p, conf)
     of cmdArgument:
+      doAssert not gAutorefresh
       let a = unixToNativePath(p.key)
       if dirExists(a) and not fileExists(a.addFileExt("nim")):
         conf.projectName = findProjectNimFile(conf, a)
