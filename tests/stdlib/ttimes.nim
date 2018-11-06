@@ -84,6 +84,15 @@ template runTimezoneTests() =
     # formatting timezone as 'Z' for UTC
     parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
         "2001-01-12T22:04:05Z", 11)
+  # timezone offset formats
+  parseTest("2001-01-12T15:04:05 +7", "yyyy-MM-dd'T'HH:mm:ss z",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07", "yyyy-MM-dd'T'HH:mm:ss zz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:00", "yyyy-MM-dd'T'HH:mm:ss zzz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:30:59", "yyyy-MM-dd'T'HH:mm:ss zzzz",
+      "2001-01-12T07:33:06Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 
