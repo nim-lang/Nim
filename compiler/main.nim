@@ -265,6 +265,7 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
+    incl conf.globalOptions, optWasNimscript
     commandEval(graph, mainCommandArg(conf))
   of "nop", "help":
     # prevent the "success" message:
