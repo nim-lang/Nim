@@ -11,7 +11,7 @@ Nim Tutorial (Part III)
 Introduction
 ============
 
-  "With Great Power Comes Great Responsibility." -- Spider Man
+  "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
 
 This document is a tutorial for the macros of the *Nim* programming
 language. A macro enables to formulate and distribute Nim syntax tree
