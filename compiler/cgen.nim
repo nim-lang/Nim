@@ -42,8 +42,7 @@ when options.hasTinyCBackend:
 # implementation
 
 proc addForwardedProc(m: BModule, prc: PSym) =
-  m.forwardedProcs.add(prc)
-  inc(m.g.forwardedProcsCounter)
+  m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
@@ -1391,7 +1390,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.preInitProc = newPreInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
-  result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
@@ -1484,20 +1482,6 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   # XXX replicate this logic!
   let tranformed_n = transformStmt(m.g.graph, m.module, n)
   genStmts(m.initProc, tranformed_n)
-
-proc finishModule(m: BModule) =
-  var i = 0
-  while i <= high(m.forwardedProcs):
-    # Note: ``genProc`` may add to ``m.forwardedProcs``, so we cannot use
-    # a ``for`` loop here
-    var prc = m.forwardedProcs[i]
-    if sfForward in prc.flags:
-      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
-    genProcNoForward(m, prc)
-    inc(i)
-  assert(m.g.forwardedProcsCounter >= i)
-  dec(m.g.forwardedProcsCounter, i)
-  setLen(m.forwardedProcs, 0)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true
@@ -1594,11 +1578,24 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.g, m.module)
 
   if sfMainModule in m.module.flags:
-    if m.g.forwardedProcsCounter == 0:
+    if m.g.forwardedProcs.len == 0:
       incl m.flags, objHasKidsValid
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
     genMainProc(m)
+
+proc genForwardedProcs(g: BModuleList) =
+  # Forward declared proc:s lack bodies when first encountered, so they're given
+  # a second pass here
+  # Note: ``genProcNoForward`` may add to ``forwardedProcs``
+  while g.forwardedProcs.len > 0:
+    let
+      prc = g.forwardedProcs.pop()
+      m = g.modules[prc.position]
+    if sfForward in prc.flags:
+      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
+
+    genProcNoForward(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
@@ -1609,10 +1606,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let (outDir, _, _) = splitFile(config.outfile)
   if not outDir.isEmpty:
     createDir(outDir)
-  if g.generatedHeader != nil: finishModule(g.generatedHeader)
-  while g.forwardedProcsCounter > 0:
-    for m in cgenModules(g):
-      finishModule(m)
+
+  genForwardedProcs(g)
+
   for m in cgenModules(g):
     m.writeModule(pending=true)
   writeMapping(config, g.mapping)
