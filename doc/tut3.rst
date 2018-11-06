@@ -31,7 +31,7 @@ the assertion fails. ``myAssert(a == b)`` that converts to
  * A debug macro that prints the value and the name of the symbol.
 ``myDebugEcho(a)`` that converts to ``echo "a: ", a``
 
- * Symbolic differenciation of an expression.
+ * Symbolic differentiation of an expression.
 ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)``  that converts to
 ``3*a*pow(x,2) + 2*a*x + c``
 
