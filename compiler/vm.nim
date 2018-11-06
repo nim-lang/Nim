@@ -503,7 +503,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAsgnFloat64FromInt:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))      
+      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
@@ -945,10 +945,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let a = regs[rb].node
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else: 
+                        else:
                           let ast = a.sym.ast.shallowCopy
                           for i in 0..<a.sym.ast.len:
-                            ast[i] = a.sym.ast[i]                        
+                            ast[i] = a.sym.ast[i]
                           ast[bodyPos] = transformBody(c.graph, a.sym)
                           ast.copyTree()
     of opcSymOwner:
@@ -1822,7 +1822,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       "NimScript: attempt to call non-routine: " & sym.name.s)
 
 proc evalStmt*(c: PCtx, n: PNode) =
-  let n = transformExpr(c.graph, c.module, n)
+  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
@@ -1830,7 +1830,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
-  let n = transformExpr(c.graph, c.module, n)
+  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
@@ -1877,7 +1877,7 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
-  let n = transformExpr(g, module, n)
+  let n = transformExpr(g, module, n, noDestructors = true)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode

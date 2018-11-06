@@ -779,7 +779,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
   let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
   let src_size = getSize(c.config, src)
-  let dst_size = getSize(c.config, dst) 
+  let dst_size = getSize(c.config, dst)
   if c.config.target.intSize < 8:
     signedIntegers.incl(tyInt)
     unsignedIntegers.incl(tyUInt)
@@ -823,7 +823,7 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.freeTemp(tmp)
 
   elif src_size == dst_size and src.kind in {tyFloat, tyFloat32, tyFloat64} and
-                           dst.kind in allowedIntegers:         
+                           dst.kind in allowedIntegers:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     if src.kind == tyFloat32:
@@ -2153,7 +2153,8 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast.sons[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s),
+                             noDestructors = true)
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
