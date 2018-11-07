@@ -252,7 +252,23 @@ proc dataField(p: BProc): Rope =
   else:
     result = rope"->data"
 
-include ccgliterals
+# ------------------------------ String version -------------------------
+
+template detectVersion(field, corename) =
+  if m.g.field == 0:
+    let core = getCompilerProc(m.g.graph, corename)
+    if core == nil or core.kind != skConst:
+      m.g.field = 1
+    else:
+      m.g.field = int ast.getInt(core.ast)
+  result = m.g.field
+
+proc detectStrVersion(m: BModule): int =
+  detectVersion(strVersion, "nimStrVersion")
+
+proc detectSeqVersion(m: BModule): int =
+  detectVersion(seqVersion, "nimSeqVersion")
+
 include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
@@ -507,8 +523,6 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
   result.flags.incl lfSingleUse
   expr(p, e, result)
-
-include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
