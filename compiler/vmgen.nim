@@ -1088,13 +1088,14 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mEcho:
     unused(c, n, dest)
     let n = n[1].skipConv
-    let x = c.getTempRange(n.len, slotTempUnknown)
-    internalAssert c.config, n.kind == nkBracket
-    for i in 0..<n.len:
-      var r: TRegister = x+i
-      c.gen(n.sons[i], r)
-    c.gABC(n, opcEcho, x, n.len)
-    c.freeTempRange(x, n.len)
+    if n.kind == nkBracket:
+      # can happen for nim check, see bug #9609
+      let x = c.getTempRange(n.len, slotTempUnknown)
+      for i in 0..<n.len:
+        var r: TRegister = x+i
+        c.gen(n.sons[i], r)
+      c.gABC(n, opcEcho, x, n.len)
+      c.freeTempRange(x, n.len)
   of mAppendStrCh:
     unused(c, n, dest)
     genBinaryStmtVar(c, n, opcAddStrCh)
