@@ -490,7 +490,10 @@ proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
     for x in walkFiles(result.string):
       return AbsoluteFile x
   else:
-    result = AbsoluteFile path.string.expandFilename
+    try:
+      result = AbsoluteFile path.string.expandFilename
+    except OSError:
+      result = AbsoluteFile""
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =

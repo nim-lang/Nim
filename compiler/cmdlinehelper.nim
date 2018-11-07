@@ -32,9 +32,8 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
     conf.projectPath = AbsoluteDir getCurrentDir()
     conf.projectIsStdin = true
   elif conf.projectName != "":
-    try:
-      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
-    except OSError:
+    conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
+    if conf.projectFull.isEmpty:
       conf.projectFull = AbsoluteFile conf.projectName
     let p = splitFile(conf.projectFull)
     let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
