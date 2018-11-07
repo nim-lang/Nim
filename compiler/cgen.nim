@@ -1591,7 +1591,8 @@ proc genForwardedProcs(g: BModuleList) =
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
-      m = g.modules[prc.position]
+      ms = getModule(prc)
+      m = g.modules[ms.position]
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
