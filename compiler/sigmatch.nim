@@ -15,7 +15,7 @@ import
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos
 
-when defined(booting) or defined(nimsuggest):
+when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
   import docgen
 
 type

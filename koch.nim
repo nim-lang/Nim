@@ -51,6 +51,9 @@ Boot options:
   -d:release               produce a release version of the compiler
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
+  -d:leanCompiler          produce a compiler without JS codegen or
+                           documentation generator in order to use less RAM
+                           for bootstrapping
 
 Commands for core developers:
   docs [options]           generates the full documentation

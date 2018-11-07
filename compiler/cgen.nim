@@ -14,7 +14,10 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils, transf
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf
+
+when not defined(leanCompiler):
+  import semparallel
 
 import strutils except `%` # collides with ropes.`%`
 
