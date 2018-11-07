@@ -123,11 +123,17 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
     callbacks.function = function
     assert callbacks.next == nil
   else:
-    let newNext = new(ref CallbackList)
-    newNext.function = callbacks.function
-    newNext.next = callbacks.next
-    callbacks.next = newNext
-    callbacks.function = function
+    let newCallback = new(ref CallbackList)
+    newCallback.function = function
+    newCallback.next = nil
+
+    if callbacks.next == nil:
+      callbacks.next = newCallback
+    else:
+      var last = callbacks.next
+      while last.next != nil:
+        last = last.next
+      last.next = newCallback
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
