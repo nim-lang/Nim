@@ -45,7 +45,7 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optDeadCodeElimUnused,    # deprecated, always on
+    optWasNimscript,
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library

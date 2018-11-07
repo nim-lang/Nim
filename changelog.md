@@ -12,11 +12,16 @@
   instead.
 
 - The OpenMP parallel iterator \``||`\` now supports any `#pragma omp directives`
-  and not just `#pragma omp parallel for`. See [OpenMP documentation](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf).
+  and not just `#pragma omp parallel for`. See
+  [OpenMP documentation](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf).
 
   The default annotation is `parallel for`, if you used OpenMP without annotation
   the change is transparent, if you used annotations you will have to prefix
   your previous annotations with `parallel for`.
+
+- The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
+- The undocumented ``#? strongSpaces`` parsing mode has been removed.
+
 
 #### Breaking changes in the standard library
 

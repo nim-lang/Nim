@@ -8,8 +8,10 @@
 #
 
 
-import typetraits
+# import typetraits
 # strs already imported allocators for us.
+
+proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type

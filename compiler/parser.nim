@@ -37,8 +37,7 @@ type
   TParser* = object            # A TParser object represents a file that
                                # is being parsed
     currInd: int               # current indentation level
-    firstTok, strongSpaces: bool # Has the first token been read?
-                                 # Is strongSpaces on?
+    firstTok: bool             # Has the first token been read?
     hasProgress: bool          # some while loop requires progress ensurance
     lex*: TLexer               # The lexer that is used for parsing
     tok*: TToken               # The current token
@@ -102,8 +101,7 @@ proc getTok(p: var TParser) =
       emitTok(p.em, p.lex, p.tok)
 
 proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
-                 cache: IdentCache; config: ConfigRef;
-                 strongSpaces=false) =
+                 cache: IdentCache; config: ConfigRef) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##
   initToken(p.tok)
@@ -112,13 +110,11 @@ proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
     openEmitter(p.em, cache, config, fileIdx)
   getTok(p)                   # read the first token
   p.firstTok = true
-  p.strongSpaces = strongSpaces
   p.emptyNode = newNode(nkEmpty)
 
 proc openParser*(p: var TParser, filename: AbsoluteFile, inputStream: PLLStream,
-                 cache: IdentCache; config: ConfigRef;
-                 strongSpaces=false) =
-  openParser(p, fileInfoIdx(config, filename), inputStream, cache, config, strongSpaces)
+                 cache: IdentCache; config: ConfigRef) =
+  openParser(p, fileInfoIdx(config, filename), inputStream, cache, config)
 
 proc closeParser(p: var TParser) =
   ## Close a parser, freeing up its resources.
@@ -798,7 +794,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
                     limit: int, mode: TPrimaryMode): PNode =
   result = headNode
   # expand while operators have priorities higher than 'limit'
-  var opPrec = getPrecedence(p.tok, p.strongSpaces)
+  var opPrec = getPrecedence(p.tok, false)
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
   # the operator itself must not start on a new line:
   # progress guaranteed
@@ -815,7 +811,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
     addSon(a, result)
     addSon(a, b)
     result = a
-    opPrec = getPrecedence(p.tok, p.strongSpaces)
+    opPrec = getPrecedence(p.tok, false)
 
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
@@ -2236,10 +2232,8 @@ proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
   stream.lineOffset = line
 
   var parser: TParser
-  # XXX for now the builtin 'parseStmt/Expr' functions do not know about strong
-  # spaces...
   parser.lex.errorHandler = errorHandler
-  openParser(parser, AbsoluteFile filename, stream, cache, config, false)
+  openParser(parser, AbsoluteFile filename, stream, cache, config)
 
   result = parser.parseAll
   closeParser(parser)

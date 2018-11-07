@@ -1231,6 +1231,37 @@ so that the builtin ``echo`` proc does what is expected:
   # prints "@[1, 2, 3]" and not "123"
 
 
+Unchecked arrays
+----------------
+The ``UncheckedArray[T]`` type is a special kind of ``array`` where its bounds
+are not checked. This is often useful to implement customized flexibly sized
+arrays. Additionally an unchecked array is translated into a C array of
+undetermined size:
+
+.. code-block:: nim
+  type
+    MySeq = object
+      len, cap: int
+      data: UncheckedArray[int]
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
+
+
+
 Tuples and object types
 -----------------------
 A variable of a tuple or object type is a heterogeneous storage
@@ -7896,36 +7927,6 @@ defined, and it should not be used with GC'ed memory (ref's).
 
 **Future directions**: Using GC'ed memory in packed pragma will result in
 compile-time error. Usage with inheritance should be defined and documented.
-
-Unchecked pragma
-----------------
-The ``unchecked`` pragma can be used to mark a named array as ``unchecked``
-meaning its bounds are not checked. This is often useful to
-implement customized flexibly sized arrays. Additionally an unchecked array is
-translated into a C array of undetermined size:
-
-.. code-block:: nim
-  type
-    ArrayPart{.unchecked.} = array[0, int]
-    MySeq = object
-      len, cap: int
-      data: ArrayPart
-
-Produces roughly this C code:
-
-.. code-block:: C
-  typedef struct {
-    NI len;
-    NI cap;
-    NI data[];
-  } MySeq;
-
-The base type of the unchecked array may not contain any GC'ed memory but this
-is currently not checked.
-
-**Future directions**: GC'ed memory should be allowed in unchecked arrays and
-there should be an explicit annotation of how the GC is to determine the
-runtime size of the array.
 
 
 Dynlib pragma for import

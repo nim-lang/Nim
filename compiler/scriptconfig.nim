@@ -123,6 +123,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf setCommand:
     conf.command = a.getString 0
     let arg = a.getString 1
+    incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
       conf.projectName = arg
       let path =
