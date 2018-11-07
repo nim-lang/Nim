@@ -514,6 +514,9 @@ are used for other notational purposes.
 ``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
 
+The ``not`` keyword is always a unary operator, ``a not b`` is parsed
+as ``a(not b)``, not as ``(a) not (b)``.
+
 
 Other tokens
 ------------

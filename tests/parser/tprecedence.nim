@@ -19,3 +19,8 @@ proc foo[S, T](x: S, y: T): T = x & y
 proc bar[T](x: T): T = x
 
 echo "def".foo[:string, string]("abc"), " ", 4.bar[:int]
+
+# bug #9574
+proc isFalse(a: int): bool = false
+
+assert not isFalse(3)
