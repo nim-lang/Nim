@@ -328,7 +328,7 @@ recommended way. But still ``strformat`` is a good example for a
 practical use case for a macro that is slightly more complex that the
 ``assert`` macro.
 
-_Strformat:https://github.com/nim-lang/Nim/blob/devel/lib/pure/strformat.nim#L280
+`Strformat <https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280>`_
 
 Ast Pattern Matching
 --------------------
@@ -337,7 +337,7 @@ Ast Pattern Matching is a macro library to aid in writing complex
 macros. This can be seen as a good example of how to repurpose the
 Nim syntax tree with new semantics.
 
-_Ast Pattern Matching: https://github.com/krux02/ast-pattern-matching
+`Ast Pattern Matching <https://github.com/krux02/ast-pattern-matching>`_
 
 OpenGL Sandbox
 --------------
@@ -346,4 +346,4 @@ This project has a working Nim to GLSL compiler written entirely in
 macros. It scans recursively though all used function symbols to
 compile them so that cross library functions can be executed on the GPU.
 
-_OpenGL Sandbox: https://github.com/krux02/opengl-sandbox
+`OpenGL Sandbox <https://github.com/krux02/opengl-sandbox>`_
