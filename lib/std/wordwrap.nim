@@ -3,6 +3,10 @@ import unicode
 proc wordWrap*(s: string, maxLineWidth = 80,
                splitLongWords = true,
                newLine = "\n"): string  =
+  ## This function breaks all words that reach over `maxLineWidth`
+  ## measured in number of runes. When `splitLongWords` is `true`
+  ## words that are longer than `maxLineWidth` are splitted. Multiple spaces and newlines are converted to a single space. All
+  ## whitespace is treated equally. Non-breaking whitespace is ignored.
 
   var currentWordLength: int = 0
   var currentWord: string = newStringOfCap(32)
