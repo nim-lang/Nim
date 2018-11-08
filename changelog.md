@@ -41,6 +41,8 @@ proc enumToString*(enums: openArray[enum]): string =
     result = newString(enums.len * 2)
 ```
 
+- ``discard x`` is now illegal when `x` is a function symbol.
+
 ### Library additions
 
 - There is a new stdlib module `editdistance` as a replacement for the
