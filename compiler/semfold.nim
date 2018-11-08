@@ -267,12 +267,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
-    if getFloat(b) == 0.0:
-      if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n, g)
-      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n, g)
-      else: result = newFloatNodeT(Inf, n, g)
-    else:
-      result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
+    result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
   of mMaxF64:
     if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(a), n, g)
     else: result = newFloatNodeT(getFloat(b), n, g)
