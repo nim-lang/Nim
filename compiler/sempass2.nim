@@ -9,8 +9,11 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, lineinfos, semfold,
+  wordrecg, strutils, options, guards, lineinfos, semfold,
   modulegraphs
+
+when not defined(leanCompiler):
+  import writetracking
 
 when defined(useDfa):
   import dfa
@@ -713,7 +716,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n.sons[i])
   of nkCallKinds:
     if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
-      return 
+      return
     # p's effects are ours too:
     var a = n.sons[0]
     let op = a.typ

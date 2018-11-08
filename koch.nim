@@ -51,6 +51,9 @@ Boot options:
   -d:release               produce a release version of the compiler
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
+  -d:leanCompiler          produce a compiler without JS codegen or
+                           documentation generator in order to use less RAM
+                           for bootstrapping
 
 Commands for core developers:
   docs [options]           generates the full documentation
@@ -141,12 +144,12 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler --nilseqs:on -d:release " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath --nilseqs:on -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
   if buildExe:
-    nimexec("c --noNimblePath -d:release -p:compiler nimsuggest/nimsuggest.nim")
+    nimexec("c --noNimblePath -d:release nimsuggest/nimsuggest.nim")
     copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
     removeFile("nimsuggest/nimsuggest".exe)
 
@@ -195,7 +198,7 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(latest: bool) =
-  nimexec "c --noNimblePath -p:compiler -d:release -o:" & ("bin/nimsuggest".exe) &
+  nimexec "c --noNimblePath -d:release -o:" & ("bin/nimsuggest".exe) &
       " nimsuggest/nimsuggest.nim"
 
   nimexec "c -d:release -o:" & ("bin/nimgrep".exe) & " tools/nimgrep.nim"

@@ -21,7 +21,7 @@ import math
 
 type
   Complex*[T: SomeFloat] = object
-    re, im: T
+    re*, im*: T
     ## A complex number, consisting of a real and an imaginary part.
   Complex64* = Complex[float64]
     ## Alias for a pair of 64-bit floats.

@@ -282,7 +282,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #|
 #| prefixOperator = operator
 #|
-#| optInd = COMMENT?
+#| optInd = COMMENT? IND?
 #| optPar = (IND{>} | IND{=})?
 #|
 #| simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?

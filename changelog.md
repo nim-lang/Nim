@@ -21,6 +21,8 @@
 
 - The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
 - The undocumented ``#? strongSpaces`` parsing mode has been removed.
+- The `not` operator is now always a unary operator, this means that code like
+  ``assert not isFalse(3)`` compiles.
 
 
 #### Breaking changes in the standard library

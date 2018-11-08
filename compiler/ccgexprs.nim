@@ -2030,8 +2030,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let n = lowerings.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
     expr(p, n, d)
   of mParallel:
-    let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
-    expr(p, n, d)
+    when defined(leanCompiler):
+      quit "compiler built without support for the 'parallel' statement"
+    else:
+      let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
+      expr(p, n, d)
   of mDeepCopy:
     var a, b: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
