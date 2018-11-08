@@ -38,15 +38,15 @@ the assertion fails. ``myAssert(a == b)`` that converts to
 Macro Arguments
 ---------------
 
-There are two ways to pass arguments to a macro, either typed or
-untyped. And the argument types have two faces. One face is used for
+The types of macro arguments  have two faces. One face is used for
 the overload resolution, and the other face is used for the semantic
 checking of the macro implementation. For example
 ``macro foo(arg: int)`` will be called in an expression ``foo(x)``, if
 ``x`` is of type int, but for the semantic checking of the macro
-itself, ``arg`` has the type ``NimNode``, not ``int`` as you might
+implementation, ``arg`` has the type ``NimNode``, not ``int`` as you might
 expect, because ``x`` will be passed as a symbol (``NimNode``), not as
-an integer.
+an integer. There are two ways to pass arguments to a macro, either typed or
+untyped.
 
 Untyped Arguments
 -----------------
