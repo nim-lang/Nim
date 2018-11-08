@@ -10,7 +10,7 @@ import times as bar3 except convert
 import definitions as baz
 
 discard foo.v
-discard bar.now
-discard bar2.now
-discard bar3.now
+discard bar.now()
+discard bar2.now()
+discard bar3.now()
 discard baz.v
