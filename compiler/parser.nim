@@ -702,8 +702,11 @@ proc namedParams(p: var TParser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
-proc commandParam(p: var TParser, isFirstParam: var bool): PNode =
-  result = parseExpr(p)
+proc commandParam(p: var TParser, isFirstParam: var bool; mode: TPrimaryMode): PNode =
+  if mode == pmTypeDesc:
+    result = simpleExpr(p, mode)
+  else:
+    result = parseExpr(p)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, result)
   elif p.tok.tokType == tkEquals and not isFirstParam:
@@ -776,7 +779,7 @@ proc primarySuffix(p: var TParser, r: PNode,
         when true:
           # progress NOT guaranteed
           p.hasProgress = false
-          addSon result, commandParam(p, isFirstParam)
+          addSon result, commandParam(p, isFirstParam, mode)
           if not p.hasProgress: break
         else:
           while p.tok.tokType != tkEof:
@@ -1366,12 +1369,12 @@ proc parseExprStmt(p: var TParser): PNode =
       while true:
         getTok(p)
         optInd(p, result)
-        addSon(result, commandParam(p, isFirstParam))
+        addSon(result, commandParam(p, isFirstParam, pmNormal))
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
       result = newNode(nkCommand, a.info, @[a])
       while true:
-        addSon(result, commandParam(p, isFirstParam))
+        addSon(result, commandParam(p, isFirstParam, pmNormal))
         if p.tok.tokType != tkComma: break
         getTok(p)
         optInd(p, result)
