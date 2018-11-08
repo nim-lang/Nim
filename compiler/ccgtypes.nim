@@ -146,8 +146,6 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     return mapType(conf, typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
      tyTypeDesc, tyAlias, tySink, tyInferred:
-    if typ.sons.len == 0:
-      internalError(conf, "typ has no last son")
     result = mapType(conf, lastSon(typ))
   of tyEnum:
     if firstOrd(conf, typ) < 0:

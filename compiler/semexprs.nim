@@ -1540,7 +1540,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   var le = a.typ
   if le == nil:
     localError(c.config, a.info, "expression has no type")
-  if (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
+  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
         isAssignable(c, a) == arNone) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
