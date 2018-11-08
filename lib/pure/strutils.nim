@@ -1211,7 +1211,8 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                splitLongWords = true,
                seps: set[char] = Whitespace,
                newLine = "\n"): string {.
-               noSideEffect, rtl, extern: "nsuWordWrap".} =
+               noSideEffect, rtl, extern: "nsuWordWrap",
+               deprecated: "use wrapWords in std/wordwrap instead".} =
   ## Word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
