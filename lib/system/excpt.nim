@@ -478,15 +478,13 @@ when defined(cpp) and appType != "lib" and
     # Remove ourself as a handler, reinstalling the default handler.
     setTerminate(nil)
 
-    let ex = getCurrentException()
-    let trace = ex.getStackTrace()
     when defined(genode):
       # stderr not available by default, use the LOG session
-      echo trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
+      echo currException.trace & "Error: unhandled exception: " & 
+              currException.msg & " [" & $currException.name & "]\n"
     else:
-      stderr.write trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
+      stderr.write currException.trace & "Error: unhandled exception: " & 
+              currException.msg & " [" & $currException.name & "]\n"
     quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
