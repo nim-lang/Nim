@@ -1260,7 +1260,7 @@ proc binaryNot(p: var TParser; a: PNode): PNode =
     getTok(p)
     optInd(p, notOpr)
     let b = parseExpr(p)
-    result = newNodeP(nkCommand, p)
+    result = newNodeP(nkInfix, p)
     result.add notOpr
     result.add a
     result.add b
