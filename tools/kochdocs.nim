@@ -115,7 +115,8 @@ lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
 lib/pure/matchers.nim
-lib/pure/editdistance.nim
+lib/std/editdistance.nim
+lib/std/wordwrap.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim
