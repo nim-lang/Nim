@@ -1254,14 +1254,29 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     if mode != pmSkipSuffix:
       result = primarySuffix(p, result, baseInd, mode)
 
+proc binaryNot(p: var TParser; a: PNode): PNode =
+  if p.tok.tokType == tkNot:
+    let notOpr = newIdentNodeP(p.tok.ident, p)
+    getTok(p)
+    optInd(p, notOpr)
+    let b = parseExpr(p)
+    result = newNodeP(nkCommand, p)
+    result.add notOpr
+    result.add a
+    result.add b
+  else:
+    result = a
+
 proc parseTypeDesc(p: var TParser): PNode =
-  #| typeDesc = simpleExpr
+  #| typeDesc = simpleExpr ('not' expr)?
   result = simpleExpr(p, pmTypeDesc)
+  result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var TParser): PNode =
-  #| typeDefAux = simpleExpr
+  #| typeDefAux = simpleExpr ('not' expr)?
   #|            | 'concept' typeClass
   result = simpleExpr(p, pmTypeDef)
+  result = binaryNot(p, result)
 
 proc makeCall(n: PNode): PNode =
   ## Creates a call if the given node isn't already a call.
