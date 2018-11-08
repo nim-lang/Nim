@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module contains an algorithm to wordwrap a Unicode string.
+
 import strutils, unicode
 
 proc olen(s: string): int =
