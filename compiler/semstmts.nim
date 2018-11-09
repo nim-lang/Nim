@@ -1546,7 +1546,12 @@ proc activate(c: PContext, n: PNode) =
 
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.typ.sons[0] != nil and not isInlineIterator(s):
-    addResult(c, s.typ.sons[0], n.info, s.kind)
+    let resultType =
+      if s.kind == skMacro:
+        sysTypeFromName(c.graph, n.info, "NimNode")
+      else:
+        s.typ.sons[0]
+    addResult(c, resultType, n.info, s.kind)
     addResultNode(c, n)
 
 proc canonType(c: PContext, t: PType): PType =
