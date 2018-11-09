@@ -1,5 +1,8 @@
 discard """
-  output: "Got: 'nnkCall' hi"
+  output: '''Got: 'nnkCall' hi
+{a}
+{b}
+{a, b}'''
 """
 
 import
@@ -27,3 +30,22 @@ var str: string
 outterMacro(str):
   "hellow"
 echo str
+
+type E = enum a b
+macro enumerators1(): set[E] = newLit({a})
+
+macro enumerators2(): set[E] =
+  return newLit({b})
+
+macro enumerators3(): set[E] =
+  result = newLit({E.low .. E.high})
+
+var myEnums: set[E]
+
+
+myEnums = enumerators1()
+echo myEnums
+myEnums = enumerators2()
+echo myEnums
+myEnums = enumerators3()
+echo myEnums
