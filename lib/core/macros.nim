@@ -701,7 +701,6 @@ proc newLit*(arg: enum): NimNode {.compileTime.} =
     arg.type.getTypeInst[1],
     newLit(int(arg))
   )
-  echo result.treeRepr
 
 proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
   result = nnkCurly.newTree
