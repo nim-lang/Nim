@@ -375,8 +375,9 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
   proc cb[X](fut: Future[X]) =
-    if fut.failed: retFuture.fail(fut.error)
-    if not retFuture.finished: retFuture.complete()
+    if not retFuture.finished:
+      if fut.failed: retFuture.fail(fut.error)
+      else: retFuture.complete()
   fut1.callback = cb[T]
   fut2.callback = cb[Y]
   return retFuture
