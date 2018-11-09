@@ -711,7 +711,7 @@ when not defined(nimscript):
     importc: "free", header: "<stdlib.h>".}
 
 
-when defined(windows):
+when defined(windows) and not defined(nimscript):
   when useWinUnicode:
     template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
@@ -1064,7 +1064,7 @@ proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noN
   result = path
   normalizePath(result)
 
-when defined(Windows):
+when defined(Windows) and not defined(nimscript):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
@@ -1287,7 +1287,7 @@ when not declared(ENOENT) and not defined(Windows):
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
-when defined(Windows):
+when defined(Windows) and not defined(nimscript):
   when useWinUnicode:
     template deleteFile(file: untyped): untyped  = deleteFileW(file)
     template setFileAttributes(file, attrs: untyped): untyped =
@@ -1380,7 +1380,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
     result = c_system(command)
 
 # Templates for filtering directories and files
-when defined(windows):
+when defined(windows) and not defined(nimscript):
   template isDir(f: WIN32_FIND_DATA): bool =
     (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   template isFile(f: WIN32_FIND_DATA): bool =
@@ -1999,6 +1999,13 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
+elif defined(nintendoswitch) or defined(nimscript):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
+
 elif defined(windows):
   # Since we support GUI applications with Nim, we sometimes generate
   # a WinMain entry proc. But a WinMain proc has no access to the parsed
@@ -2024,13 +2031,6 @@ elif defined(windows):
       ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
-
-elif defined(nintendoswitch) or defined(nimscript):
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
-
-  proc paramCount*(): int {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
 elif defined(genode):
   proc paramStr*(i: int): TaintedString =
@@ -2109,7 +2109,7 @@ when defined(freebsd) or defined(dragonfly):
         result.setLen(pathLength)
         break
 
-when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
+when not defined(nimscript) and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(256)
     var len = readlink(procPath, result, 256)
@@ -2118,7 +2118,7 @@ when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
       len = readlink(procPath, result, len)
     setLen(result, len)
 
-when not (defined(windows) or defined(macosx)):
+when not (defined(windows) or defined(macosx) or defined(nimscript)):
   proc getApplHeuristic(): string =
     when declared(paramStr):
       result = string(paramStr(0))
