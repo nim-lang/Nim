@@ -112,9 +112,9 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
 
   when defined(nimcore):
-    wrap2s(getEnv, ospathsop)
-    wrap1s(existsEnv, ospathsop)
-    wrap2svoid(putEnv, ospathsop)
+    wrap2s(getEnv, osop)
+    wrap1s(existsEnv, osop)
+    wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrap2svoid(writeFile, systemop)
