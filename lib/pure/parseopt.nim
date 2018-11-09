@@ -44,7 +44,6 @@ type
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
-    cmd*: string              #  cmd,pos exported so caller can catch "--" as..
     pos*: int                 # ..empty key or subcmd cmdArg & handle specially
     inShortState: bool
     allowWhitespaceAfterColon: bool
@@ -112,15 +111,11 @@ when declared(os.paramCount):
     result.longNoVal = longNoVal
     result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
     if cmdline != "":
-      result.cmd = cmdline
       result.cmds = parseCmdLine(cmdline)
     else:
-      result.cmd = ""
       result.cmds = newSeq[string](paramCount())
       for i in countup(1, paramCount()):
         result.cmds[i-1] = paramStr(i).string
-        result.cmd.add quote(result.cmds[i-1])
-        result.cmd.add ' '
 
     result.kind = cmdEnd
     result.key = TaintedString""
@@ -138,19 +133,14 @@ when declared(os.paramCount):
     result.shortNoVal = shortNoVal
     result.longNoVal = longNoVal
     result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
-    result.cmd = ""
     if cmdline.len != 0:
       result.cmds = newSeq[string](cmdline.len)
       for i in 0..<cmdline.len:
         result.cmds[i] = cmdline[i].string
-        result.cmd.add quote(cmdline[i].string)
-        result.cmd.add ' '
     else:
       result.cmds = newSeq[string](paramCount())
       for i in countup(1, paramCount()):
         result.cmds[i-1] = paramStr(i).string
-        result.cmd.add quote(result.cmds[i-1])
-        result.cmd.add ' '
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
