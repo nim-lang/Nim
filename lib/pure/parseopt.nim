@@ -47,6 +47,7 @@ type
     cmd*: string              #  cmd,pos exported so caller can catch "--" as..
     pos*: int                 # ..empty key or subcmd cmdArg & handle specially
     inShortState: bool
+    allowWhitespaceAfterColon: bool
     shortNoVal: set[char]
     longNoVal: seq[string]
     cmds: seq[string]
@@ -95,7 +96,8 @@ when declared(os.paramCount):
   # access the command line arguments then!
 
   proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
-                      longNoVal: seq[string] = @[]): OptParser =
+                      longNoVal: seq[string] = @[];
+                      allowWhitespaceAfterColon = true): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.  If ``shortNoVal`` is
     ## provided command users do not need to delimit short option keys and
@@ -108,6 +110,7 @@ when declared(os.paramCount):
     result.inShortState = false
     result.shortNoVal = shortNoVal
     result.longNoVal = longNoVal
+    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
     if cmdline != "":
       result.cmd = cmdline
       result.cmds = parseCmdLine(cmdline)
@@ -124,7 +127,8 @@ when declared(os.paramCount):
     result.val = TaintedString""
 
   proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
-                      longNoVal: seq[string] = @[]): OptParser =
+                      longNoVal: seq[string] = @[];
+                      allowWhitespaceAfterColon = true): OptParser =
     ## inits the option parser. If ``cmdline.len == 0``, the real command line
     ## (as provided by the ``OS`` module) is taken. ``shortNoVal`` and
     ## ``longNoVal`` behavior is the same as for ``initOptParser(string,...)``.
@@ -133,6 +137,7 @@ when declared(os.paramCount):
     result.inShortState = false
     result.shortNoVal = shortNoVal
     result.longNoVal = longNoVal
+    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
     result.cmd = ""
     if cmdline.len != 0:
       result.cmds = newSeq[string](cmdline.len)
@@ -210,7 +215,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
-        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
         p.val = TaintedString p.cmds[p.idx].substr(i)

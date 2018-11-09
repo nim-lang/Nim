@@ -72,6 +72,11 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Complex type is now generic and not a tuple anymore.
 
+- The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
+  (default value: true) that can be set to `false` for better Posix
+  interoperability. (Bug #9619.)
+
+
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
