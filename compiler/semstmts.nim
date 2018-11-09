@@ -1189,10 +1189,11 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
   result = n
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
+  # echo "semProcTypeNode of: ", s.name.s
   s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind)
-  if s.kind notin {skMacro, skTemplate}:
-    if s.typ.sons[0] != nil and s.typ.sons[0].kind == tyStmt:
-      localError(c.config, n.info, "invalid return type: 'stmt'")
+  #if s.kind notin {skMacro, skTemplate}:
+  #  if s.typ.sons[0] != nil and s.typ.sons[0].kind == tyStmt:
+  #    localError(c.config, n.info, "invalid return type: 'stmt'")
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) =
   for i in countup(1, sonsLen(n)-1):
@@ -1588,6 +1589,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     gp = newNodeI(nkGenericParams, n.info)
   # process parameters:
   if n.sons[paramsPos].kind != nkEmpty:
+    #echo s.name.s, " -- ", n.sons[paramsPos], " -- ", s.kind
     semParamList(c, n.sons[paramsPos], gp, s)
     if sonsLen(gp) > 0:
       if n.sons[genericParamsPos].kind == nkEmpty:

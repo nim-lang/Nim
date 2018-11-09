@@ -1016,6 +1016,7 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
 
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind; isType=false): PType =
+  #echo kind, " -- ", n
   # for historical reasons (code grows) this is invoked for parameter
   # lists too and then 'isType' is false.
   checkMinSonsLen(n, 1, c.config)
@@ -1043,7 +1044,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       hasDefault = a.sons[length-1].kind != nkEmpty
 
     if hasType:
+      #echo a.sons[length-2].kind
       typ = semParamType(c, a.sons[length-2], constraint)
+      if kind == skProc:
+        if typ.kind == tyExpr:
+          localError(c.config, a.sons[length-2].info, "'untyped' parameter not allowed in proc declaration")
+        if typ.kind == tyStmt:
+          localError(c.config, a.sons[length-2].info, "'typed' parameter not allowed in proc declaration")
 
     if hasDefault:
       def = a[^1]
@@ -1123,8 +1130,17 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
+        if kind != skProc:
+          localError(c.config, n.info, "return type auto is only allowed in procedures")
+
         r = newTypeS(tyExpr, c)
-      elif r.kind != tyExpr:
+      elif r.kind in {tyExpr, tyStmt}:
+        if kind == skProc:
+          if r.kind == tyStmt:
+            localError(c.config, n.info, "illegal proc return type: 'typed'")
+          if r.kind == tyExpr:
+            localError(c.config, n.info, "illegal proc return type: 'untyped'")
+      else:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
                                      n.sons[0].info)
