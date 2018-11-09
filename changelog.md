@@ -70,6 +70,11 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Complex type is now generic and not a tuple anymore.
 
+- The `ospaths` module is now deprecated, use `os` instead. Note that
+  `os` is available in a NimScript environment but unsupported
+  operations produce a compile-time error.
+
+
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
