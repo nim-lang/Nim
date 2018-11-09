@@ -17,17 +17,17 @@
 include "system/inclrtl"
 
 import
-  strutils, times
+  strutils
 
-when defined(windows):
-  import winlean
+when defined(nimscript):
+  discard
+elif defined(windows):
+  import winlean, times
 elif defined(posix):
-  import posix
+  import posix, times
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
-elif defined(nimscript):
-  discard
 else:
   {.error: "OS module not ported to your operating system!".}
 
@@ -793,7 +793,7 @@ proc dirExists*(dir: string): bool {.inline, noNimScript.} =
   ## Synonym for existsDir
   existsDir(dir)
 
-when not defined(windows):
+when not defined(windows) and not defined(nimscript):
   proc checkSymlink(path: string): bool =
     var rawInfo: Stat
     if lstat(path, rawInfo) < 0'i32: result = false
@@ -853,6 +853,10 @@ proc findExe*(exe: string, followSymlinks: bool = true;
               break
         return x
   result = ""
+
+when defined(nimscript):
+  const times = "fake const"
+  template Time(x: untyped): untyped = string
 
 proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1", noNimScript.} =
   ## Returns the `file`'s last modification time.
@@ -965,16 +969,17 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
-proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
-  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
-  ## if `path` is absolute, return it, ignoring `root`
-  runnableExamples:
-    doAssert absolutePath("a") == getCurrentDir() / "a"
-  if isAbsolute(path): path
-  else:
-    if not root.isAbsolute:
-      raise newException(ValueError, "The specified root is not absolute: " & root)
-    joinPath(root, path)
+when not defined(nimscript):
+  proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
+    ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
+    ## if `path` is absolute, return it, ignoring `root`
+    runnableExamples:
+      doAssert absolutePath("a") == getCurrentDir() / "a"
+    if isAbsolute(path): path
+    else:
+      if not root.isAbsolute:
+        raise newException(ValueError, "The specified root is not absolute: " & root)
+      joinPath(root, path)
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect], noNimScript.} =
@@ -1462,7 +1467,7 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-when defined(posix):
+when defined(posix) and not defined(nimscript):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
@@ -1503,7 +1508,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     for k, v in items(staticWalkDir(dir, relative)):
       yield (k, v)
   else:
-    when defined(windows):
+    when defined(nimscript):
+      for k, v in items(staticWalkDir(dir, relative)):
+        yield (k, v)
+    elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
       if h != -1:
@@ -1591,7 +1599,7 @@ iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
       if k in yieldFilter:
         yield p
 
-proc rawRemoveDir(dir: string) =
+proc rawRemoveDir(dir: string) {.noNimScript.} =
   when defined(windows):
     when useWinUnicode:
       wrapUnary(res, removeDirectoryW, dir)
@@ -2017,7 +2025,7 @@ elif defined(windows):
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
-elif defined(nintendoswitch):
+elif defined(nintendoswitch) or defined(nimscript):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
@@ -2245,7 +2253,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError())
 
-when defined(Windows):
+when defined(Windows) or defined(nimscript):
   type
     DeviceId* = int32
     FileId* = int64
