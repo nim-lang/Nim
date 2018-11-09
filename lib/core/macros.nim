@@ -696,6 +696,16 @@ proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
     ),
     bracket
   )
+proc newLit*(arg: enum): NimNode {.compileTime.} =
+  result = newCall(
+    arg.type.getTypeInst[1],
+    newLit(int(arg))
+  )
+
+proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
+  result = nnkCurly.newTree
+  for x in s:
+    result.add newLit(x)
 
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
