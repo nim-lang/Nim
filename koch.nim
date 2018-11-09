@@ -79,6 +79,8 @@ template withDir(dir, body) =
   finally:
     setCurrentdir(old)
 
+setCurrentDir(getAppDir())
+
 proc tryExec(cmd: string): bool =
   echo(cmd)
   result = execShellCmd(cmd) == 0

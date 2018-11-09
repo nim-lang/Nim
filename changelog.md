@@ -43,6 +43,8 @@ proc enumToString*(enums: openArray[enum]): string =
     result = newString(enums.len * 2)
 ```
 
+- ``discard x`` is now illegal when `x` is a function symbol.
+
 ### Library additions
 
 - There is a new stdlib module `std/editdistance` as a replacement for the
@@ -73,6 +75,10 @@ proc enumToString*(enums: openArray[enum]): string =
 - The `ospaths` module is now deprecated, use `os` instead. Note that
   `os` is available in a NimScript environment but unsupported
   operations produce a compile-time error.
+
+- The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
+  (default value: true) that can be set to `false` for better Posix
+  interoperability. (Bug #9619.)
 
 
 ### Language additions
