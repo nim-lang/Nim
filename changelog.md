@@ -88,6 +88,11 @@ proc enumToString*(enums: openArray[enum]): string =
 
 ### Language changes
 
+- The standard extension for SCF (source code filters) files was changed from
+  ``.tmpl`` to ``.nimf``,
+  it's more recognizable and allows tools like github to recognize it as Nim,
+  see [#9647](https://github.com/nim-lang/Nim/issues/9647).
+  The previous extension will continue to work.
 
 ### Tool changes
 - `jsondoc` now include a `moduleDescription` field with the module
