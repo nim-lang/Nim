@@ -213,6 +213,10 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   result = ""
   fastToUTF8Copy(c, result, 0, false)
 
+proc add*(s: var string; c: Rune) =
+  let pos = s.len
+  fastToUTF8Copy(c, s, pos, false)
+
 proc `$`*(rune: Rune): string =
   ## Converts a Rune to a string
   rune.toUTF8
@@ -220,7 +224,8 @@ proc `$`*(rune: Rune): string =
 proc `$`*(runes: seq[Rune]): string =
   ## Converts a sequence of Runes to a string
   result = ""
-  for rune in runes: result.add(rune.toUTF8)
+  for rune in runes:
+    result.add rune
 
 proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## Returns the byte position of unicode character

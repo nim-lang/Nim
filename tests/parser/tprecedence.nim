@@ -1,7 +1,8 @@
 discard """
   output: '''holla
 true
-defabc 4'''
+defabc 4
+0'''
 """
 
 # Test top level semicolon works properly:
@@ -24,3 +25,18 @@ echo "def".foo[:string, string]("abc"), " ", 4.bar[:int]
 proc isFalse(a: int): bool = false
 
 assert not isFalse(3)
+
+# bug #9633
+
+type
+  MyField = object
+    b: seq[string]
+
+  MyObject = object
+    f: MyField
+
+proc getX(x: MyObject): lent MyField {.inline.} =
+  x.f
+
+let a = MyObject()
+echo a.getX.b.len

@@ -2041,11 +2041,11 @@ proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect,
 
 
 const
-  Inf* {.magic: "Inf".} = 1.0 / 0.0
+  Inf* = 0x7FF0000000000000'f64
     ## contains the IEEE floating point value of positive infinity.
-  NegInf* {.magic: "NegInf".} = -Inf
+  NegInf* = 0xFFF0000000000000'f64
     ## contains the IEEE floating point value of negative infinity.
-  NaN* {.magic: "NaN".} = 0.0 / 0.0
+  NaN* = 0x7FF7FFFFFFFFFFFF'f64
     ## contains an IEEE floating point value of *Not A Number*. Note
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure

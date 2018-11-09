@@ -43,10 +43,15 @@ proc enumToString*(enums: openArray[enum]): string =
     result = newString(enums.len * 2)
 ```
 
+- ``discard x`` is now illegal when `x` is a function symbol.
+
 ### Library additions
 
-- There is a new stdlib module `editdistance` as a replacement for the
+- There is a new stdlib module `std/editdistance` as a replacement for the
   deprecated `strutils.editDistance`.
+
+- There is a new stdlib module `std/wordwrap` as a replacement for the
+  deprecated `strutils.wordwrap`.
 
 - Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
   `strip`, `repeat` procs and iterators to `unicode.nim`.
