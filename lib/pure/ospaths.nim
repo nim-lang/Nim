@@ -17,6 +17,5 @@ export ReadEnvEffect, WriteEnvEffect, ReadDirEffect, WriteDirEffect, OSErrorCode
   tailDir, isRootDir, parentDirs, `/../`, searchExtPos, splitFile, extractFilename,
   lastPathPart, changeFileExt, addFileExt, cmpPaths, isAbsolute, unixToNativePath,
   `==`, `$`, osErrorMsg, raiseOSError, osLastError, getEnv, existsEnv, putEnv,
-  envPairs,
   getHomeDir, getConfigDir, getTempDir, expandTilde, quoteShellWindows,
   quoteShellPosix, quoteShell, quoteShellCommand
