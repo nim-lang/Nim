@@ -3,6 +3,7 @@ import strtabs, os, osproc, streams, strutils
 const
   comSpecEnvKey = "ComSpec"
   vsComnToolsEnvKeys = [
+    "VS150COMNTOOLS",
     "VS140COMNTOOLS",
     "VS130COMNTOOLS",
     "VS120COMNTOOLS",
