@@ -72,6 +72,10 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Complex type is now generic and not a tuple anymore.
 
+- The `ospaths` module is now deprecated, use `os` instead. Note that
+  `os` is available in a NimScript environment but unsupported
+  operations produce a compile-time error.
+
 - The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
   (default value: true) that can be set to `false` for better Posix
   interoperability. (Bug #9619.)

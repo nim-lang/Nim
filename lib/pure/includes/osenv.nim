@@ -1,7 +1,7 @@
 ## Include file that implements 'getEnv' and friends. Do not import it!
 
-when not declared(ospaths):
-  {.error: "This is an include file for ospaths.nim!".}
+when not declared(os):
+  {.error: "This is an include file for os.nim!".}
 
 proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}

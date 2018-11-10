@@ -32,7 +32,7 @@ proc listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   builtin
 
-proc removeDir(dir: string){.
+proc removeDir(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin

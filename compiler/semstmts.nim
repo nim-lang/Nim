@@ -1670,7 +1670,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       localError(c.config, n.info, "the overloaded " & s.name.s &
         " operator has to be enabled with {.experimental: \"callOperator\".}")
 
-  if n.sons[bodyPos].kind != nkEmpty:
+  if n.sons[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:
       localError(c.config, n.sons[bodyPos].info, errImplOfXNotAllowed % s.name.s)
