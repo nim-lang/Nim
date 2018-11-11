@@ -480,10 +480,10 @@ when defined(cpp) and appType != "lib" and
 
     when defined(genode):
       # stderr not available by default, use the LOG session
-      echo currException.trace & "Error: unhandled exception: " & 
+      echo currException.getStackTrace() & "Error: unhandled exception: " & 
               currException.msg & " [" & $currException.name & "]\n"
     else:
-      stderr.write currException.trace & "Error: unhandled exception: " & 
+      stderr.write currException.getStackTrace() & "Error: unhandled exception: " & 
               currException.msg & " [" & $currException.name & "]\n"
     quit 1
 
