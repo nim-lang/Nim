@@ -867,8 +867,8 @@ when isMainModule:
       epsilon /= 2.0
     let data = @[1.0, epsilon, -epsilon]
     assert sumKbn(data) == 1.0
-    assert sumPairs(tc0) != 1.0 # known to fail
-    # assert (1.0 + epsilon) - epsilon != 1.0
+    assert sumPairs(data) != 1.0 # known to fail
+    assert (1.0 + epsilon) - epsilon != 1.0
 
     var tc1: seq[float]
     for n in 1 .. 1000:
@@ -880,4 +880,4 @@ when isMainModule:
     for n in 1 .. 1000:
       tc2.add pow(-1.0, n.float) / n.float
     assert sumKbn(tc2) == -0.6926474305598203
-    assert sumPairs(tc2) == -0.69264743055982025
+    assert sumPairs(tc2) == -0.6926474305598204
