@@ -160,14 +160,18 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)
 
-proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
-  var
-    p: TParsers
-    f: File
+proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
+                   config: ConfigRef): bool =
+  var f: File
   let filename = toFullPathConsiderDirty(config, fileIdx)
   if not open(f, filename.string):
     rawMessage(config, errGenerated, "cannot open file: " & filename.string)
-    return
+    return false
   openParsers(p, fileIdx, llStreamOpen(f), cache, config)
-  result = parseAll(p)
-  closeParsers(p)
+  result = true
+
+proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
+  var p: TParsers
+  if setupParsers(p, fileIdx, cache, config):
+    result = parseAll(p)
+    closeParsers(p)

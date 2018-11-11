@@ -46,7 +46,7 @@ type
     inSemiStmtList*: int
     emptyNode: PNode
     when defined(nimpretty2):
-      em: Emitter
+      em*: Emitter
 
   SymbolMode = enum
     smNormal, smAllowNil, smAfterDot
