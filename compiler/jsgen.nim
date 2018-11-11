@@ -66,9 +66,12 @@ type
     res: Rope               # result part; index if this is an
                              # (address, index)-tuple
     address: Rope           # address of an (address, index)-tuple
-    tmp: Rope               # tmp var which stores the result of the
-                            # address to prevent multiple evals,
-                            # might be nil (see `maybeMakeTemp`)
+    tmpLoc: Rope            # tmp var which stores the (address, index)
+                            # pair to prevent multiple evals.
+                            # the tmp is initialized upon evaling the
+                            # address.
+                            # might be nil.
+                            # (see `maybeMakeTemp`)
 
   TBlock = object
     id: int                  # the ID of the label; positive means that it
@@ -134,7 +137,7 @@ proc newGlobals(): PGlobals =
 proc initCompRes(r: var TCompRes) =
   r.address = nil
   r.res = nil
-  r.tmp = nil
+  r.tmpLoc = nil
   r.typ = etyNone
   r.kind = resNone
 
@@ -462,14 +465,16 @@ proc maybeMakeTemp(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
   var
     a = x.rdLoc
     b = a
-  if x.tmp != nil: # if we have tmp just use it
-    b = "$1[0][$1[1]]" % [x.tmp]
-    (a: a, tmp: b)
-  elif needsTemp(p, n):
-    let tmp = p.getTemp
-    b = tmp
-    a = "($1 = $2, $1)" % [tmp, a]
-    (a: a, tmp: b)
+  if needsTemp(p, n):
+    # if we have tmp just use it
+    if x.tmpLoc != nil and (mapType(n.typ) == etyBaseIndex or n.kind in {nkHiddenDeref, nkDerefExpr}):
+      b = "$1[0][$1[1]]" % [x.tmpLoc]
+      (a: a, tmp: b)
+    else:
+      let tmp = p.getTemp
+      b = tmp
+      a = "($1 = $2, $1)" % [tmp, a]
+      (a: a, tmp: b)
   else:
     (a: a, tmp: b)
 
@@ -1024,7 +1029,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
         let tmp = p.getTemp
         r.address = "($1 = $2, $1)[0]" % [tmp, r.res]
         r.res = "$1[1]" % [tmp]
-        r.tmp = tmp
+        r.tmpLoc = tmp
       else:
         r.address = "$1[0]" % [r.res]
         r.res = "$1[1]" % [r.res]
@@ -1128,7 +1133,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
       let tmp = p.getTemp
       r.address = "($1 = $2, $1)[0]" % [tmp, r.rdLoc]
       r.res = "$1[1]" % [tmp]
-      r.tmp = tmp
+      r.tmpLoc = tmp
     else:
       let x = r.rdLoc
       r.address = "$1[0]" % [x]
@@ -1286,10 +1291,10 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
       let tmp = p.getTemp
       r.address = "($1 = $2, $1)[0]" % [tmp, a.rdLoc]
       r.res = "$1[1]" % [tmp]
-      r.tmp = tmp
+      r.tmpLoc = tmp
     elif a.typ == etyBaseIndex:
-      if a.tmp != nil:
-        r.tmp = a.tmp
+      if a.tmpLoc != nil:
+        r.tmpLoc = a.tmpLoc
       r.res = a.rdLoc
     else:
       internalError(p.config, n.info, "genDeref")
@@ -1445,7 +1450,7 @@ proc genCall(p: PProc, n: PNode, r: var TCompRes) =
       let tmp = p.getTemp
       r.address = "($1 = $2, $1)[0]" % [tmp, r.rdLoc]
       r.res = "$1[1]" % [tmp]
-      r.tmp = tmp
+      r.tmpLoc = tmp
       r.typ = t
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
@@ -1696,20 +1701,20 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1].concat(" % [a.res])
   else:
-    r.res.add("($1).concat(" % [a.res])
+    r.res.add("($1 || []).concat(" % [a.res])
 
   for i in countup(2, sonsLen(n) - 2):
     gen(p, n.sons[i], a)
     if skipTypes(n.sons[i].typ, abstractVarRange).kind == tyChar:
       r.res.add("[$1]," % [a.res])
     else:
-      r.res.add("$1," % [a.res])
+      r.res.add("$1 || []," % [a.res])
 
   gen(p, n.sons[sonsLen(n) - 1], a)
   if skipTypes(n.sons[sonsLen(n) - 1].typ, abstractVarRange).kind == tyChar:
     r.res.add("[$1])" % [a.res])
   else:
-    r.res.add("$1)" % [a.res])
+    r.res.add("$1 || [])" % [a.res])
 
 proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
   # we map mArray to PHP's array constructor, a mild hack:
@@ -1794,11 +1799,11 @@ proc genReset(p: PProc, n: PNode) =
   var x: TCompRes
   useMagic(p, "genericReset")
   gen(p, n.sons[1], x)
-  let (a, tmp) = maybeMakeTemp(p, n[1], x)
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    lineF(p, "$1 = genericReset($3, $2);$n", [x.res,
+    let (a, tmp) = maybeMakeTemp(p, n[1], x)
+    lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n.sons[1].typ), tmp])
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
@@ -1888,15 +1893,17 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "", "$1.length = $2")
+    binaryExpr(p, n, r, "mnewString", "($1 === null ? $3 = mnewString($2) : $3.length = $2)")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
     let t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
-    r.res = """if ($1.length < $2) { for (var i=$4.length;i<$2;++i) $4.push($3); }
-               else { $4.length = $2; }""" % [a, y.rdLoc, createVar(p, t, false), tmp]
+    let (b, tmp2) = maybeMakeTemp(p, n[2], y)
+    r.res = """if ($1 === null) $4 = [];
+               if ($4.length < $2) { for (var i=$4.length;i<$5;++i) $4.push($3); }
+               else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
   of mLtSet: binaryExpr(p, n, r, "SetLt", "SetLt($1, $2)")

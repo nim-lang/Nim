@@ -274,6 +274,22 @@ template tests =
     doAssert high(stringtest(somestr)) == 6
     doAssert calls == 5
 
+    var somestr2: string
+    stringtest(somestr2).setLen(stringtest(somestr).len)
+    doAssert calls == 7
+    doAssert somestr2.len == somestr.len
+
+    var somestr3: string
+    doAssert (somestr3 & "foo") == "foo"
+
+    block:
+      var a, b, c, d: string
+      d = a & b & c
+      doAssert d == ""
+      d = stringtest(a) & stringtest(b) & stringtest(c)
+      doAssert calls == 10
+      doAssert d == ""
+
   block: # seqs
     var calls = 0
     proc seqtest(s: var seq[int]): var seq[int] =
@@ -298,6 +314,18 @@ template tests =
     # genArrayAddr
     doAssert seqtest(someseq)[2] == 3
     doAssert calls == 6
+
+    seqtest(someseq).setLen(seqtest(someseq).len)
+    doAssert calls == 8
+
+    var somenilseq: seq[int]
+    seqtest(somenilseq).setLen(3)
+    doAssert calls == 9
+    doAssert somenilseq[1] == 0
+
+    someseq = @[1, 2, 3]
+    doAssert (seqtest(someseq) & seqtest(someseq)) == @[1, 2, 3, 1, 2, 3]
+
 
   block: # mInc, mDec
     var calls = 0
