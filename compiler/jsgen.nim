@@ -917,14 +917,36 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkTupleConstr, nkObjConstr, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
-  result = (y.kind in nodeKindsNeedNoCopy) or
-      (mapType(y.typ) != etyBaseIndex and
-       skipTypes(y.typ, abstractInst).kind in {tyRef, tyPtr, tyLent, tyVar})
+  # if the node is a literal object constructor we have to recursively
+  # check the expressions passed into it
+  case y.kind
+  of nkObjConstr:
+    for arg in y.sons[1..^1]:
+      if not needsNoCopy(p, arg[1]):
+        return false
+  of nkTupleConstr:
+    for arg in y.sons:
+      var arg = arg
+      if arg.kind == nkExprColonExpr:
+        arg = arg[1]
+      if not needsNoCopy(p, arg):
+        return false
+  of nkBracket:
+    for arg in y.sons:
+      if not needsNoCopy(p, arg):
+        return false
+  of nodeKindsNeedNoCopy:
+    return true
+  else:
+    return (mapType(y.typ) != etyBaseIndex and
+            (skipTypes(y.typ, abstractInst).kind in
+             {tyRef, tyPtr, tyLent, tyVar, tyCString} + IntegralTypes))
+  return true
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -1872,7 +1894,15 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "($# === null && $# === 0)" % [x.address, x.res]
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
-  of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
+  of mChr: gen(p, n.sons[1], r)
+  of mArrToSeq:
+    if needsNoCopy(p, n.sons[1]):
+      gen(p, n.sons[1], r)
+    else:
+      var x: TCompRes
+      gen(p, n.sons[1], x)
+      useMagic(p, "nimCopy")
+      r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
