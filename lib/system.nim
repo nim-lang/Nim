@@ -2245,10 +2245,10 @@ proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
 proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
   if y <= x: x else: y
 
-proc min*[T](x, y: T): T =
+proc min*[T](x, y: T): T {.inline.}=
   if x <= y: x else: y
 
-proc max*[T](x, y: T): T =
+proc max*[T](x, y: T): T {.inline.}=
   if y <= x: x else: y
 {.pop.}
 
