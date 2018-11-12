@@ -1206,6 +1206,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
         r = newTypeS(tyExpr, c)
+      elif r.kind == tyStatic:
+        # type allowed should forbid this type
+        discard
       else:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
