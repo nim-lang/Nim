@@ -357,3 +357,6 @@ proc fun3() =
 ##[
 foobar
 ]##
+
+# bug #9673
+discard `* `(1, 2)
