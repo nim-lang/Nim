@@ -640,6 +640,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
 
     return
   for i in countup(1, sonsLen(n) - 1):
+    let n = if n.kind == nkHiddenDeref: n[0] else: n
     if n.sons[i].kind == nkHiddenCallConv:
       # we need to recurse explicitly here as converters can create nested
       # calls and then they wouldn't be analysed otherwise
