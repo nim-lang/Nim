@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 # Covariance is not type safe:
 
 type
@@ -14,4 +18,3 @@ proc bp(x: var TB) = x.b[high(x.b)] = -1
 var f = cast[proc (x: var TA) {.nimcall.}](bp)
 var a: TA
 f(a) # bp expects a TB, but gets a TA
-

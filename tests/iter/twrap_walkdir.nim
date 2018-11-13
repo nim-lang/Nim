@@ -1,5 +1,6 @@
-
-
+discard """
+action: compile
+"""
 
 import os
 

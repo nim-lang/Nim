@@ -1,3 +1,11 @@
+discard """
+output: '''
+123
+Hallo Welt
+Hallo Welt
+'''
+"""
+
 import macros
 
 macro mac(): untyped =

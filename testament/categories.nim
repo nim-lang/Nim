@@ -531,6 +531,7 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   else:
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
+      echo name
       testSpec r, makeTest(name, options, cat)
       inc testsRun
     if testsRun == 0:

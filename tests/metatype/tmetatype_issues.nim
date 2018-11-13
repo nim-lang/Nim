@@ -1,4 +1,15 @@
-
+discard """
+output:'''
+void
+(Field0: "string", Field1: "string")
+1 mod 7
+@[2, 2, 2, 2, 2]
+impl 2 called
+asd
+Foo
+Bar
+'''
+"""
 
 import typetraits, macros
 
@@ -145,6 +156,3 @@ block t3338:
   var t2 = Bar[int32]()
   t2.add()
   doAssert t2.x == 5
-
-
-

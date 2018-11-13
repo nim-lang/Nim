@@ -63,5 +63,3 @@ when defined(ssl):
 
   assert msgCount == swarmSize * messagesToSend
   echo msgCount
-
-
