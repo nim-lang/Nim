@@ -1,3 +1,11 @@
+discard """
+output: '''
+3
+25
+40
+50
+'''
+"""
 
 import threadpool, os
 

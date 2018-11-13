@@ -1,3 +1,16 @@
+discard """
+output: '''
+testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest2!test3?hi
+what's
+your
+name
+hi
+what's
+your
+name
+'''
+"""
+
 # Test the new iterators
 
 iterator xrange(fromm, to: int, step = 1): int =

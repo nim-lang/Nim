@@ -1,5 +1,6 @@
 discard """
   ccodeCheck: "\\i @'deepCopy(' .*"
+  action: compile
 """
 
 # bug #2286

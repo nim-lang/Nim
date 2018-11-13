@@ -1,3 +1,13 @@
+discard """
+output: '''
+312
+1000000
+1000000
+500000
+0
+'''
+"""
+
 import strutils
 
 type

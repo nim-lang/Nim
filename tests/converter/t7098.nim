@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 type
   Byte* = uint8
   Bytes* = seq[Byte]
