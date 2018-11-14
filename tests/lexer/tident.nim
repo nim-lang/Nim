@@ -1,3 +1,16 @@
+discard """
+output: '''
+Length correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+'''
+"""
 
 type
   TIdObj* = object of RootObj
@@ -19,4 +32,3 @@ proc myNewString(L: int): string {.inline.} =
       echo("Wrong")
 
 var s = myNewString(8)
-

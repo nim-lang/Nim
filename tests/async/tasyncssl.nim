@@ -3,7 +3,12 @@ discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
   output: "500"
   disabled: "windows"
+  target: c
+  action: compile
 """
+
+# XXX, deactivated
+
 import asyncdispatch, asyncnet, net, strutils, os
 
 when defined(ssl):

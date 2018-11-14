@@ -358,7 +358,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
                     reExeNotFound)
         continue
 
-      let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
+      let exeCmd = nodejs & " " & quoteShell(exeFile)
       var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
 
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used

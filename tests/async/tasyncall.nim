@@ -2,7 +2,7 @@ discard """
   file: "tasyncall.nim"
   exitcode: 0
 """
-import times, sequtils, unittest
+import times, sequtils
 import asyncdispatch
 
 const

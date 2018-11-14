@@ -1,3 +1,7 @@
+discard """
+disabled: true
+"""
+
 import os
 
 proc getDllName: string =
@@ -12,5 +16,3 @@ proc myImport2(s: int) {.cdecl, importc, dynlib: getDllName().}
 
 myImport("test2")
 myImport2(12)
-
-

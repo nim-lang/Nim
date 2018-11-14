@@ -1,3 +1,10 @@
+discard """
+outputsub: '''
+Simple tree node allocation worked!
+Simple cycle allocation worked!
+'''
+"""
+
 # Test the implementation of the new operator
 # and the code generation for gc walkers
 # (and the garbage collector):

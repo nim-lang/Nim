@@ -1,3 +1,10 @@
+discard """
+output: '''
+1
+1
+'''
+"""
+
 # Test the discardable pragma
 
 proc p(x, y: int): int {.discardable.} =

@@ -1,3 +1,11 @@
+discard """
+output: '''
+1
+yay
+12
+'''
+"""
+
 
 template withOpenFile(f: untyped, filename: string, mode: FileMode,
                       actions: untyped): untyped =

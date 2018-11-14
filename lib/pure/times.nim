@@ -840,6 +840,11 @@ proc `$`*(zone: Timezone): string =
 
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two ``Timezone``'s are considered equal if their name is equal.
+  if system.`==`(zone1, zone2):
+    return true
+  if zone1.isNil or zone2.isNil:
+    return false
+
   runnableExamples:
     doAssert local() == local()
     doAssert local() != utc()
@@ -1810,7 +1815,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   of UUUU:
       result.add $dt.year
   of z, zz, zzz, zzzz:
-    if dt.timezone.name == "Etc/UTC":
+    if dt.timezone != nil and dt.timezone.name == "Etc/UTC":
       result.add 'Z'
     else:
       result.add  if -dt.utcOffset >= 0: '+' else: '-'
