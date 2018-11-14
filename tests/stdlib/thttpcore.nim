@@ -1,3 +1,6 @@
+discard """
+output: "[Suite] httpcore"
+"""
 
 import unittest
 

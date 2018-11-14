@@ -7,6 +7,6 @@ const
   relRes = slurp"./tslurp.nim"
   absRes = slurp(getScriptDir() / "tslurp.nim")
 
-echo relRes
-echo absRes
-
+doAssert relRes.len > 200
+doAssert absRes.len > 200
+doAssert relRes == absRes

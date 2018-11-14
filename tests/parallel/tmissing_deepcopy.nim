@@ -1,5 +1,5 @@
 discard """
-  ccodeCheck: "\\i @'deepCopy(' .*"
+  ccodeCheck: "@'genericDeepCopy(' .*"
   action: compile
 """
 

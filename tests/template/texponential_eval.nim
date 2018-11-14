@@ -1,13 +1,17 @@
 # bug #1940
 
 discard """
-  nimout: '''===
+nimout: '''
+===
 merge (A) with (B)
 merge (A B) with (C)
 merge (A B C) with (D)
 merge (A B C D) with (E)
 merge (A B C D E) with (F)
-==='''
+===
+'''
+
+output: "A B C D E F"
 """
 
 type SqlStmt = tuple

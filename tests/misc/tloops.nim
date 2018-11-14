@@ -1,3 +1,10 @@
+discard """
+output: '''
+Hello!(x: 1, y: 2, z: 3)
+(x: 1.0, y: 2.0)
+'''
+"""
+
 # Test nested loops and some other things
 
 proc andTest() =
@@ -84,4 +91,3 @@ proc main[T]() =
   echo myType2
 
 main[int]()
-

@@ -1,3 +1,10 @@
+discard """
+output: '''
+This exe: /home/arne/proj/nim/Nim/tests/misc/tcmdline
+Number of parameters: 0
+tests/misc/tcmdline
+'''
+"""
 # Test the command line
 
 import

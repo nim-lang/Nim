@@ -1,11 +1,6 @@
 discard """
+sortoutput: true
 output: '''
-Hello 1
-Hello 2
-Hello 3
-Hello 4
-Hello 5
-Hello 6
 0
 1
 2
@@ -16,6 +11,12 @@ Hello 6
 7
 8
 9
+Hello 1
+Hello 2
+Hello 3
+Hello 4
+Hello 5
+Hello 6
 '''
 """
 

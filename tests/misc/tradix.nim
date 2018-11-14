@@ -1,3 +1,28 @@
+discard """
+output: '''
+false
+false
+false
+false
+false
+false
+false
+false
+false
+false
+128
+1
+2
+3
+4
+255
+17
+45
+19000
+4294967288
+'''
+"""
+
 # implements and tests an efficient radix tree
 
 ## another method to store an efficient array of pointers:
