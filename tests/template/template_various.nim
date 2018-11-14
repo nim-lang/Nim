@@ -180,7 +180,7 @@ block symchoicefield:
 
 
 import os, times
-include "sunset.tmpl"
+include "sunset.nimf"
 block ttempl:
   const
     tabs = [["home", "index"],

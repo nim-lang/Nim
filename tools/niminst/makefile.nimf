@@ -1,7 +1,7 @@
 #? stdtmpl(subsChar='?') | standard
 #proc generateMakefile(c: ConfigData): string =
 #  result = "# Generated from niminst\n" &
-#           "# Template is in tools/niminst/makefile.tmpl\n" &
+#           "# Template is in tools/niminst/makefile.nimf\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
 CC ??= gcc
