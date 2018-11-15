@@ -31,13 +31,16 @@ Usage
 =====
 
 First, put your SCF code in a separate file with filters specified in the first line. 
-**Note:** You can name your SCF file with any file extension you want, but the conventional extension is ``.tmpl``.
+**Note:** You can name your SCF file with any file extension you want, but the
+conventional extension is ``.nimf``
+(it used to be ``.tmpl`` but that was too generic, for example preventing github to
+recognize it as Nim source file).
 
-If we use `generateXML` code shown above and call the SCF file `xmlGen.tmpl`
+If we use `generateXML` code shown above and call the SCF file `xmlGen.nimf`
 In your `main.nim`:
 
 .. code-block:: nim
-  include "xmlGen.tmpl"
+  include "xmlGen.nimf"
   
   echo generateXML("John Smith","42")
 
