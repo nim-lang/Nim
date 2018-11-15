@@ -157,25 +157,6 @@ else:
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
   proc len(stack: var GcStack): int = 1
 
-proc stackSize(stack: ptr GcStack): int {.noinline.} =
-  when nimCoroutines:
-    var pos = stack.pos
-  else:
-    var pos {.volatile.}: pointer
-    pos = addr(pos)
-
-  if pos != nil:
-    when defined(stackIncreases):
-      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
-    else:
-      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
-  else:
-    result = 0
-
-proc stackSize(): int {.noinline.} =
-  for stack in gch.stack.items():
-    result = result + stack.stackSize()
-
 when nimCoroutines:
   proc setPosition(stack: ptr GcStack, position: pointer) =
     stack.pos = position
@@ -245,6 +226,25 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
   const stackIncreases = true
 else:
   const stackIncreases = false
+
+proc stackSize(stack: ptr GcStack): int {.noinline.} =
+  when nimCoroutines:
+    var pos = stack.pos
+  else:
+    var pos {.volatile.}: pointer
+    pos = addr(pos)
+
+  if pos != nil:
+    when stackIncreases:
+      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+    else:
+      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+  else:
+    result = 0
+
+proc stackSize(): int {.noinline.} =
+  for stack in gch.stack.items():
+    result = result + stack.stackSize()
 
 {.push stack_trace: off.}
 when nimCoroutines:
