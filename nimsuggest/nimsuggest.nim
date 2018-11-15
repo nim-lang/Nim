@@ -614,4 +614,104 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   discard self.loadConfigsAndRunMainCommand(cache, conf)
 
-handleCmdline(newIdentCache(), newConfigRef())
+when isMainModule:
+  handleCmdline(newIdentCache(), newConfigRef())
+else:
+  export Suggest
+  export IdeCmd
+  export AbsoluteFile
+  type NimSuggest* = ref object
+    graph: ModuleGraph
+    idle: int
+    cachedMsgs: CachedMsgs
+
+  proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
+    var retval: ModuleGraph
+    proc mockCommand(graph: ModuleGraph) =
+      retval = graph
+      let conf = graph.config
+      clearPasses(graph)
+      registerPass graph, verbosePass
+      registerPass graph, semPass
+      conf.cmd = cmdIdeTools
+      wantMainModule(conf)
+
+      if not fileExists(conf.projectFull):
+        quit "cannot find file: " & conf.projectFull.string
+
+      add(conf.searchPaths, conf.libpath)
+
+      # do not stop after the first error:
+      conf.errorMax = high(int)
+      # do not print errors, but log them
+      conf.writelnHook = proc (s: string) = log(s)
+      conf.structuredErrorHook = nil
+
+      # compile the project before showing any input so that we already
+      # can answer questions right away:
+      compileProject(graph)
+
+
+    proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
+      conf.suggestVersion = 0
+      let a = unixToNativePath(project)
+      if dirExists(a) and not fileExists(a.addFileExt("nim")):
+        conf.projectName = findProjectNimFile(conf, a)
+        # don't make it worse, report the error the old way:
+        if conf.projectName.len == 0: conf.projectName = a
+      else:
+        conf.projectName = a
+          # if processArgument(pass, p, argsCount): break
+    let
+      cache = newIdentCache()
+      conf = newConfigRef()
+      self = NimProg(
+        suggestMode: true,
+        processCmdLine: mockCmdLine,
+        mainCommand: mockCommand
+      )
+    self.initDefinesProg(conf, "nimsuggest")
+
+    self.processCmdLineAndProjectPath(conf)
+
+    if gMode != mstdin:
+      conf.writelnHook = proc (msg: string) = discard
+    # Find Nim's prefix dir.
+    if nimPath == "":
+      let binaryPath = findExe("nim")
+      if binaryPath == "":
+        raise newException(IOError,
+            "Cannot find Nim standard library: Nim compiler not in PATH")
+      conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
+      if not dirExists(conf.prefixDir / RelativeDir"lib"):
+        conf.prefixDir = AbsoluteDir""
+    else:
+      conf.prefixDir = AbsoluteDir nimPath
+
+    #msgs.writelnHook = proc (line: string) = log(line)
+    myLog("START " & conf.projectFull.string)
+
+    discard self.loadConfigsAndRunMainCommand(cache, conf)
+    if gLogging:
+      for it in conf.searchPaths:
+        log(it.string)
+
+    retval.doStopCompile = proc (): bool = false
+    return NimSuggest(graph: retval, idle: 0, cachedMsgs: @[])
+
+  proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int): seq[Suggest] =
+    var retval: seq[Suggest] = @[]
+    let conf = nimsuggest.graph.config
+    conf.ideCmd = cmd
+    conf.writelnHook = proc (line: string) =
+      retval.add(Suggest(section: ideMsg, doc: line))
+    conf.suggestionResultHook = proc (s: Suggest) =
+      retval.add(s)
+    echo conf.ideCmd
+    if conf.ideCmd == ideKnown:
+      retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
+    else:
+      if conf.ideCmd == ideChk:
+        for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
+      execute(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
+    return retval
