@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs
 
 when (defined(booting) or defined(nimsuggest)) and not defined(leanCompiler):
   import docgen
@@ -1855,8 +1855,14 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       else:
         param = copyTree(arg)
       addSon(result, param)
+
+      if dest.kind in {tyVar, tyLent}:
+        dest.flags.incl tfVarIsPtr
+        result = newDeref(result)
+
       inc(m.convMatches)
-      m.genericConverter = srca == isGeneric or destIsGeneric
+      if m.genericConverter == false:
+        m.genericConverter = srca == isGeneric or destIsGeneric
       return result
 
 proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
