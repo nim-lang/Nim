@@ -1201,7 +1201,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcOf:
       decodeBC(rkInt)
       let typ = c.types[regs[rc].intVal.int]
-      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) >= 0)
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) <= 0)
     of opcIs:
       decodeBC(rkInt)
       let t1 = regs[rb].node.typ.skipTypes({tyTypeDesc})
