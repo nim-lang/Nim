@@ -21,6 +21,7 @@ import compiler / [options, commands, modules, sem,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
   idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper,
+  nimeval,
   pathutils]
 
 when defined(windows):
@@ -599,14 +600,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   if gMode != mstdin:
     conf.writelnHook = proc (msg: string) = discard
-  # Find Nim's prefix dir.
-  let binaryPath = findExe("nim")
-  if binaryPath == "":
-    raise newException(IOError,
-        "Cannot find Nim standard library: Nim compiler not in PATH")
-  conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
-  if not dirExists(conf.prefixDir / RelativeDir"lib"):
-    conf.prefixDir = AbsoluteDir""
+
+  conf.prefixDir = AbsoluteDir(findNimRootCompileTime())
 
   #msgs.writelnHook = proc (line: string) = log(line)
   myLog("START " & conf.projectFull.string)

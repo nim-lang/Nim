@@ -89,11 +89,16 @@ proc findNimStdLib*(): string =
   except OSError, ValueError:
     return ""
 
+proc findNimRootCompileTime*(): string =
+  ## returns Nim path (that contains koch.nim)
+  const sourcePath = currentSourcePath()
+  result = sourcePath.parentDir.parentDir
+  doAssert fileExists(result / "koch.nim"), "result:" & result
+
 proc findNimStdLibCompileTime*(): string =
   ## Same as ``findNimStdLib`` but uses source files used at compile time,
   ## and asserts on error.
-  const sourcePath = currentSourcePath()
-  result = sourcePath.parentDir.parentDir / "lib"
+  result = findNimRootCompileTime() / "lib"
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
