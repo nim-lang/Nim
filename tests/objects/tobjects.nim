@@ -1,3 +1,12 @@
+discard """
+action: run
+input: '''
+Andreas
+Rumpf
+'''
+outputsub: "Hallo Meister!"
+"""
+
 type
   TBase = object of RootObj
     x, y: int

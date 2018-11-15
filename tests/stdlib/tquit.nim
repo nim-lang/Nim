@@ -1,3 +1,9 @@
+discard """
+output: '''
+just exiting...
+'''
+"""
+
 # Test the new beforeQuit variable:
 
 proc myExit() {.noconv.} =

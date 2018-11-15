@@ -1,9 +1,5 @@
 discard """
-output: '''
-1
-yay
-12
-'''
+action: compile
 """
 
 

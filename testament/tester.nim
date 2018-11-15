@@ -74,6 +74,33 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc execCmdEx2*(command: string, options: set[ProcessOption], input: string): tuple[
+                output: TaintedString,
+                exitCode: int] {.tags:
+                [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+  var p = startProcess(command, options=options + {poEvalCommand})
+  var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  let instream = inputStream(p)
+  instream.write(input)
+  close instream
+
+  result = (TaintedString"", -1)
+  var line = newStringOfCap(120).TaintedString
+  while true:
+    if outp.readLine(line):
+      result[0].string.add(line.string)
+      result[0].string.add("\n")
+    else:
+      result[1] = peekExitCode(p)
+      if result[1] != -1: break
+  close(p)
+
+
+
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
   let hashInput = options & $target
@@ -359,7 +386,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
         continue
 
       let exeCmd = nodejs & " " & quoteShell(exeFile)
-      var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+      var (buf, exitCode) = execCmdEx2(exeCmd, options = {poStdErrToStdOut}, input = expected.input)
 
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
