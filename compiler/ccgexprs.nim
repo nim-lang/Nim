@@ -1580,8 +1580,17 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
+proc makePtrType(baseType: PType): PType =
+  result = newType(tyPtr, baseType.owner)
+  addSonSkipIntLit(result, baseType)
+
+proc makeAddr(n: PNode): PNode =
+  result = newTree(nkHiddenAddr, n)
+  result.typ = makePtrType(n.typ)
+
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if p.config.selectedGc == gcDestructors:
+    e.sons[1] = makeAddr(e[1])
     genCall(p, e, d)
     return
   var a, b, call: TLoc
@@ -1963,6 +1972,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem:
     if p.config.selectedGc == gcDestructors:
+      e.sons[1] = makeAddr(e[1])
       genCall(p, e, d)
     else:
       genSeqElemAppend(p, e, d)

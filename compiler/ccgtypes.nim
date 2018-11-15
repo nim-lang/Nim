@@ -1213,8 +1213,8 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       let x = fakeClosureType(m, t.owner)
       genTupleInfo(m, x, x, result, info)
   of tySequence:
+    genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC != gcDestructors:
-      genTypeInfoAux(m, t, t, result, info)
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])

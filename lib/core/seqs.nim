@@ -125,7 +125,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
 
-  xu.p = prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T))
+  xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
     x.data[i] = value
