@@ -18,12 +18,16 @@
 ## overridden locally.
 ##
 ## Compiled test files return the number of failed test as exit code, while
-## ``nim c -r <testfile.nim>`` exits with 0 or 1
 ##
-## Running a single test
-## =====================
+## .. code::
+##   nim c -r testfile.nim
 ##
-## Specify the test name as a command line argument.
+## exits with 0 or 1.
+##
+## Running individual tests
+## ========================
+##
+## Specify the test names as command line arguments.
 ##
 ## .. code::
 ##
@@ -38,7 +42,7 @@
 ##
 ## .. code::
 ##
-##   nim c -r test "my test name::"
+##   nim c -r test "my suite name::"
 ##
 ## Selecting tests by pattern
 ## ==========================
@@ -56,6 +60,43 @@
 ##   nim c -r test "auth*::" "crypto::hashing*"
 ##   # Run suites starting with 'bug #' and standalone tests starting with '#'
 ##   nim c -r test 'bug #*::' '::#*'
+##
+## Running tests in parallel
+## =========================
+##
+## To enable the threadpool-based test parallelisation, "--threads:on" needs to
+## be passed to the compiler, along with "-d:nimtestParallel" or the
+## NIMTEST_PARALLEL environment variable:
+##
+## .. code::
+##
+##   nim c -r --threads:on -d:nimtestParallel testfile.nim
+##   # or
+##   NIMTEST_PARALLEL=1 nim c -r --threads:on testfile.nim
+##
+## Since output formatters are kept in a threadvar, they need to be initialised
+## for each thread in the thread pool. This means that customisation can only be
+## done in a suite's "setup" section, which will run before each test in that
+## suite - hence the need to clear existing formatters before adding new ones:
+##
+## .. code:: nim
+##
+##  suite "custom formatter":
+##    setup:
+##      clearOutputFormatters()
+##      addOutputFormatter(newConsoleOutputFormatter(PRINT_FAILURES, colorOutput=false))
+##
+##    # if you need to revert back to the default after the suite
+##    teardown:
+##      clearOutputFormatters()
+##
+## There are some implicit barriers where we wait for all the spawned jobs to
+## complete: before and after each test suite and at the main thread's exit.
+##
+## The suite-related barriers are there to avoid mixing test output, but they
+## also affect which groups of tests can be run in parallel, so keep them in
+## mind when deciding how many tests to place in different suites (or between
+## suites).
 ##
 ## Example
 ## -------
@@ -96,6 +137,40 @@ when declared(stdout):
 
 when not defined(ECMAScript):
   import terminal
+
+when declared(stdout):
+  const paralleliseTests* = existsEnv("NIMTEST_PARALLEL") or defined(nimtestParallel)
+    ## Whether parallel test running was enabled (set at compile time).
+    ## This constant might be useful in custom output formatters.
+else:
+  const paralleliseTests* = false
+
+when paralleliseTests:
+  import threadpool, locks
+
+  # repeatedly calling sync() without waiting for results - on procs that don't
+  # return any - doesn't work properly (probably due to gSomeReady getting its
+  # counter increased back to the pre-call value) so we're stuck with these
+  # dummy flowvars
+  # (`flowVars` will be initialized in each child thread, when using nested tests, by the compiler)
+  var flowVars {.threadvar.}: seq[FlowVarBase]
+  proc repeatableSync() =
+    sync()
+    for flowVar in flowVars:
+      blockUntil(flowVar)
+    flowVars = @[]
+
+  # make sure all the spawned tests are done before exiting
+  # (this will be the last sync, so no need for repeatability)
+  let mainThreadID = getThreadId()
+  proc quitProc() {.noconv.} =
+    # "require" can exit from a worker thread and syncing in there would block
+    if getThreadId() == mainThreadID:
+      sync()
+  addQuitProc(quitProc)
+
+  var outputLock: Lock # used by testEnded() to avoid mixed test outputs
+  initLock(outputLock)
 
 type
   TestStatus* = enum ## The status of a test when it is done.
@@ -155,7 +230,7 @@ var
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
-  disabledParamFiltering {.threadvar.}: bool
+  disabledParamFiltering: bool
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -172,6 +247,9 @@ method testEnded*(formatter: OutputFormatter, testResult: TestResult) {.base, gc
   discard
 method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
   discard
+
+proc clearOutputFormatters*() =
+  formatters = @[]
 
 proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
@@ -396,15 +474,29 @@ proc ensureInitialized() =
       for i in 1 .. paramCount():
         testsFilters.incl(paramStr(i))
 
-# These two procs are added as workarounds for
-# https://github.com/nim-lang/Nim/issues/5549
+proc suiteStarted(name: string) =
+  when paralleliseTests:
+    repeatableSync() # wait for any independent tests from the threadpool before starting the suite
+  for formatter in formatters:
+    formatter.suiteStarted(name)
+
 proc suiteEnded() =
+  when paralleliseTests:
+    repeatableSync() # wait for a suite's tests from the threadpool before moving on to the next suite
   for formatter in formatters:
     formatter.suiteEnded()
 
+proc testStarted(name: string) =
+  for formatter in formatters:
+    formatter.testStarted(name)
+
 proc testEnded(testResult: TestResult) =
   for formatter in formatters:
-    formatter.testEnded(testResult)
+    when paralleliseTests:
+      withLock outputLock:
+        formatter.testEnded(testResult)
+    else:
+      formatter.testEnded(testResult)
 
 template suite*(name, body) {.dirty.} =
   ## Declare a test suite identified by `name` with optional ``setup``
@@ -435,7 +527,7 @@ template suite*(name, body) {.dirty.} =
   ##  [Suite] test suite for addition
   ##    [OK] 2 + 2 = 4
   ##    [OK] (2 + -2) != 4
-  bind formatters, ensureInitialized, suiteEnded
+  bind formatters, ensureInitialized, suiteStarted, suiteEnded
 
   block:
     template setup(setupBody: untyped) {.dirty, used.} =
@@ -450,15 +542,14 @@ template suite*(name, body) {.dirty.} =
 
     ensureInitialized()
     try:
-      for formatter in formatters:
-        formatter.suiteStarted(name)
+      suiteStarted(name)
       body
     finally:
       suiteEnded()
 
 template exceptionTypeName(e: typed): string = $e.name
 
-template test*(name, body) {.dirty.} =
+template test*(name, body) =
   ## Define a single test case identified by `name`.
   ##
   ## .. code-block:: nim
@@ -472,41 +563,59 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testStarted, testEnded, exceptionTypeName
 
-  ensureInitialized()
+  # `gensym` can't be in here because it's not a first-class pragma
+  when paralleliseTests:
+    {.pragma: testrunner, gcsafe.}
+  else:
+    {.pragma: testrunner.}
 
-  if shouldRun(when declared(testSuiteName): testSuiteName else: "", name):
-    checkpoints = @[]
-    var testStatusIMPL {.inject.} = OK
+  proc runTest(testSuiteName: string): int {.gensym, testrunner.} =
+    # when running tests in parallel, the only place we can use
+    # addOutputFormatter() is in a suite's setup(), so we need to run it before
+    # ensureInitialized()
+    when declared(testSetupIMPLFlag):
+      testSetupIMPL()
 
-    for formatter in formatters:
-      formatter.testStarted(name)
+    ensureInitialized()
 
-    try:
-      when declared(testSetupIMPLFlag): testSetupIMPL()
-      when declared(testTeardownIMPLFlag):
-        defer: testTeardownIMPL()
-      body
-
-    except:
-      when not defined(js):
-        let e = getCurrentException()
-        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
-        checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-        var stackTrace {.inject.} = e.getStackTrace()
-      fail()
-
-    finally:
-      if testStatusIMPL == FAILED:
-        programResult += 1
-      let testResult = TestResult(
-        suiteName: when declared(testSuiteName): testSuiteName else: "",
-        testName: name,
-        status: testStatusIMPL
-      )
-      testEnded(testResult)
+    if shouldRun(testSuiteName, name):
       checkpoints = @[]
+      var testStatusIMPL {.inject.} = OK
+
+      testStarted(name)
+
+      try:
+        body
+      except:
+        when not defined(js):
+          let e = getCurrentException()
+          let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+          checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
+          var stackTrace {.inject.} = e.getStackTrace()
+        fail()
+
+      finally:
+        if testStatusIMPL == FAILED:
+          programResult += 1
+        let testResult = TestResult(
+          suiteName: testSuiteName,
+          testName: name,
+          status: testStatusIMPL
+        )
+        testEnded(testResult)
+        checkpoints = @[]
+        # when running tests in parallel, "formatters" manipulation may occur in
+        # teardown(), so it needs to be after testEnded()
+        when declared(testTeardownIMPLFlag):
+          testTeardownIMPL()
+
+  let optionalTestSuiteName = when declared(testSuiteName): testSuiteName else: ""
+  when paralleliseTests:
+    flowVars.add(spawn runTest(optionalTestSuiteName))
+  else:
+    discard runTest(optionalTestSuiteName)
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
@@ -552,7 +661,12 @@ template fail* =
       formatter.failureOccurred(checkpoints, "")
 
   when not defined(ECMAScript):
-    if abortOnError: quit(programResult)
+    if abortOnError:
+      when declared(testStatusIMPL):
+        # this wasn't incremented yet, because it's normally incremented in the
+        # "test" template, but we're exiting earlier here
+        programResult += 1
+      quit(programResult)
 
   checkpoints = @[]
 
