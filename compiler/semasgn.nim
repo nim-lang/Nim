@@ -81,8 +81,8 @@ proc genAddr(c: PContext; x: PNode): PNode =
     addSon(result, x)
 
 proc newAsgnCall(c: PContext; op: PSym; x, y: PNode): PNode =
-  if sfError in op.flags:
-    localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
+  #if sfError in op.flags:
+  #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
   result = newNodeI(nkCall, x.info)
   result.add newSymNode(op)
   result.add genAddr(c, x)
@@ -121,7 +121,10 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       op = field
       if op == nil:
         op = liftBody(c.c, t, c.kind, c.info)
-    markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
+    if sfError in op.flags:
+      incl c.fn.flags, sfError
+    else:
+      markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
     onUse(c.info, op)
     body.add newAsgnCall(c.c, op, x, y)
     result = true
