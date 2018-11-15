@@ -305,8 +305,14 @@ proc semOf(c: PContext, n: PNode): PNode =
         result.info = n.info
         result.typ = getSysType(c.graph, n.info, tyBool)
         return result
-      elif diff == high(int) and commonSuperclass(a, b) == nil:
-        localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+      elif diff == high(int):
+        if commonSuperclass(a, b) == nil:
+          localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+        else:
+          message(c.config, n.info, hintConditionAlwaysFalse, renderTree(n))
+          result = newIntNode(nkIntLit, 0)
+          result.info = n.info
+          result.typ = getSysType(c.graph, n.info, tyBool)
   else:
     localError(c.config, n.info, "'of' takes 2 arguments")
   n.typ = getSysType(c.graph, n.info, tyBool)
