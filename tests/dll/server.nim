@@ -1,4 +1,5 @@
 discard """
+action: compile
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl --app:lib $options $file"
 """
 
@@ -25,10 +26,3 @@ proc newOp(k: TNodeKind, a, b: PNode): PNode {.exportc: "newOp", dynlib.} =
 
 proc buildTree(x: int): PNode {.exportc: "buildTree", dynlib.} =
   result = newOp(nkMul, newOp(nkAdd, newLit(x), newLit(x)), newLit(x))
-
-when false:
-  # Test the GC:
-  for i in 0..100_000:
-    discard buildTree(2)
-
-  echo "Done"

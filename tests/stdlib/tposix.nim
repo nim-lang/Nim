@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 # Test Posix interface
 
 when not defined(windows):
@@ -13,4 +17,3 @@ when not defined(windows):
   writeLine(stdout, u.nodename)
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
-

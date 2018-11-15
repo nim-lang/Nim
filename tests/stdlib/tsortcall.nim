@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 import algorithm
 import unittest
 
@@ -40,7 +44,7 @@ suite "test sort, sorted, and isSorted procs":
   test "test the shortcut versions with descending sort order":
     check(not unSortedIntSeq.isSorted(SortOrder.Descending))
     check sorted(unSortedIntSeq, SortOrder.Descending) == reversed sortedIntSeq
-    check sorted(unSortedIntSeq).isSorted(SortOrder.Descending)
+    check sorted(unSortedIntSeq).isSorted(SortOrder.Ascending)
 
     unSortedIntSeq.sort(SortOrder.Descending)
     check unSortedIntSeq == reversed sortedIntSeq

@@ -2,6 +2,7 @@ discard """
   file: "texitcode.nim"
   output: ""
 """
+
 import osproc, os
 
 const filename = when defined(Windows): "tafalse.exe" else: "tafalse"

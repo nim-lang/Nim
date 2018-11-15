@@ -1,3 +1,14 @@
+discard """
+output: '''
+to stdout
+to stdout
+to stderr
+to stderr
+to stdout
+to stdout
+'''
+"""
+
 # This file is prefixed with an "a", because other tests
 # depend on it and it must be compiled first.
 stdout.writeLine("to stdout")

@@ -48,6 +48,7 @@ type
   TSpec* = object
     action*: TTestAction
     file*, cmd*: string
+    input*: string
     outp*: string
     line*, column*: int
     tfile*: string
@@ -144,6 +145,8 @@ proc parseSpec*(filename: string): TSpec =
     of "output":
       result.action = actionRun
       result.outp = e.value
+    of "input":
+      result.input = e.value
     of "outputsub":
       result.action = actionRun
       result.outp = e.value
