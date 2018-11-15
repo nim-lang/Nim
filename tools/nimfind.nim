@@ -77,6 +77,7 @@ proc createDb(db: DbConn) =
     foreign key (nimid) references syms(nimid)
   );
   """)
+  db.exec sql"create index if not exists UsagesIx on usages(file, line);"
 
 proc toDbFileId*(db: DbConn; conf: ConfigRef; fileIdx: FileIndex): int =
   if fileIdx == FileIndex(-1): return -1
@@ -166,8 +167,10 @@ proc mainCommand(graph: ModuleGraph) =
     add(conf.searchPaths, conf.libpath)
     # do not stop after the first error:
     conf.errorMax = high(int)
-    compileProject(graph)
-    close(FinderRef(graph.backend).db)
+    try:
+      compileProject(graph)
+    finally:
+      close(FinderRef(graph.backend).db)
   performSearch(conf, dbfile)
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
@@ -194,7 +197,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         if conf.projectName.len == 0: conf.projectName = info[0]
         try:
           conf.m.trackPos = newLineInfo(conf, AbsoluteFile info[0],
-                                        parseInt(info[1]), parseInt(info[2]))
+                                        parseInt(info[1]), parseInt(info[2])-1)
         except ValueError:
           quit "invalid command line"
       else:
