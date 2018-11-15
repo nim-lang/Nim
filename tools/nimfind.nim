@@ -72,6 +72,7 @@ proc createDb(db: DbConn) =
     nimid integer not null,
     line integer not null,
     col integer not null,
+    colB integer not null,
     file integer not null,
     foreign key (file) references filenames(id),
     foreign key (nimid) references syms(nimid)
@@ -108,8 +109,8 @@ proc writeDefResolveForward(graph: ModuleGraph; s: PSym; info: TLineInfo) =
 
 proc writeUsage(graph: ModuleGraph; s: PSym; info: TLineInfo) =
   let f = FinderRef(graph.backend)
-  f.db.exec(sql"""insert into usages(nimid, line, col, file) values (?, ?, ?, ?)""",
-    s.id, info.line, info.col,
+  f.db.exec(sql"""insert into usages(nimid, line, col, colB, file) values (?, ?, ?, ?, ?)""",
+    s.id, info.line, info.col, info.col + s.name.s.len - 1,
     toDbFileId(f.db, graph.config, info.fileIndex))
 
 proc performSearch(conf: ConfigRef; dbfile: AbsoluteFile) =
@@ -117,22 +118,27 @@ proc performSearch(conf: ConfigRef; dbfile: AbsoluteFile) =
                 database="nim")
   let pos = conf.m.trackPos
   let fid = toDbFileId(db, conf, pos.fileIndex)
-  var row = db.getRow(sql"""select max(col) from usages where line = ? and file = ? and ? >= col""",
+  let known = toFullPath(conf, pos.fileIndex)
+  let nimids = db.getRow(sql"""select distinct nimid from usages where line = ? and file = ? and ? between col and colB""",
       pos.line, fid, pos.col)
-  if row.len > 0:
-    let known = toFullPath(conf, pos.fileIndex)
-    let nimid = db.getRow(sql"""select nimid from usages where line = ? and file = ? and col = ?""",
-        pos.line, fid, row[0])
+  if nimids.len > 0:
+    var idSet = ""
+    for id in nimids:
+      if idSet.len > 0: idSet.add ", "
+      idSet.add id
+    var outputLater = ""
     for r in db.rows(sql"""select line, col, filenames.fullpath from usages
-                           inner join filenames on filenames.id = file
-                           where nimid = ?""", nimid):
+                          inner join filenames on filenames.id = file
+                          where nimid in (?)""", idSet):
       let line = parseInt(r[0])
       let col = parseInt(r[1])
       let file = r[2]
       if file == known and line == pos.line.int:
-        discard "don't output the line we already know"
+        # output the line we already know last:
+        outputLater.add file & ":" & $line & ":" & $(col+1) & "\n"
       else:
         echo file, ":", line, ":", col+1
+    if outputLater.len > 0: stdout.write outputLater
   close(db)
 
 proc setupDb(g: ModuleGraph; dbfile: AbsoluteFile) =

@@ -64,6 +64,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, n.info)
     markUsed(c.config, n.info, s, c.graph.usageSym)
+    onUse(n.info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -75,6 +76,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       if a.kind != skModule:
         incl(a.flags, sfUsed)
         addSon(result, newSymNode(a, n.info))
+        onUse(n.info, a)
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
