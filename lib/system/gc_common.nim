@@ -157,27 +157,6 @@ else:
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
   proc len(stack: var GcStack): int = 1
 
-when nimCoroutines:
-  proc setPosition(stack: ptr GcStack, position: pointer) =
-    stack.pos = position
-    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
-
-  proc setPosition(stack: var GcStack, position: pointer) =
-    setPosition(addr(stack), position)
-
-  proc getActiveStack(gch: var GcHeap): ptr GcStack =
-    return gch.activeStack
-
-  proc isActiveStack(stack: ptr GcStack): bool =
-    return gch.activeStack == stack
-else:
-  # Stack positions do not need to be tracked if coroutines are not used.
-  proc setPosition(stack: ptr GcStack, position: pointer) = discard
-  proc setPosition(stack: var GcStack, position: pointer) = discard
-  # There is just one stack - main stack of the thread. It is active always.
-  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
-  proc isActiveStack(stack: ptr GcStack): bool = true
-
 when declared(threadType):
   proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
@@ -245,6 +224,27 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
 proc stackSize(): int {.noinline.} =
   for stack in gch.stack.items():
     result = result + stack.stackSize()
+
+when nimCoroutines:
+  proc setPosition(stack: ptr GcStack, position: pointer) =
+    stack.pos = position
+    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
+
+  proc setPosition(stack: var GcStack, position: pointer) =
+    setPosition(addr(stack), position)
+
+  proc getActiveStack(gch: var GcHeap): ptr GcStack =
+    return gch.activeStack
+
+  proc isActiveStack(stack: ptr GcStack): bool =
+    return gch.activeStack == stack
+else:
+  # Stack positions do not need to be tracked if coroutines are not used.
+  proc setPosition(stack: ptr GcStack, position: pointer) = discard
+  proc setPosition(stack: var GcStack, position: pointer) = discard
+  # There is just one stack - main stack of the thread. It is active always.
+  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
+  proc isActiveStack(stack: ptr GcStack): bool = true
 
 {.push stack_trace: off.}
 when nimCoroutines:
