@@ -635,7 +635,8 @@ proc handleHexChar(L: var TLexer, xi: var int) =
     inc(L.bufpos)
   else:
     lexMessage(L, errGenerated,
-      "expected a hex digit, but found: " & L.buf[L.bufpos])
+      "expected a hex digit, but found: " & L.buf[L.bufpos] &
+        " ; maybe prepend with 0")
     # Need to progress for `nim check`
     inc(L.bufpos)
 
