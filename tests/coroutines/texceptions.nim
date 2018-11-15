@@ -1,3 +1,7 @@
+discard """
+  target: "c"
+"""
+
 import coro
 var
   stackCheckValue = 1100220033

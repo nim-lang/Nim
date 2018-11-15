@@ -1,6 +1,7 @@
 discard """
   output: '''1 [2, 3, 4, 7]
 [0, 0]'''
+  target: "c"
 """
 
 # Nim RTree and R*Tree implementation
@@ -81,13 +82,13 @@ proc distance(c1, c2: BoxCenter): auto =
 proc overlap(r1, r2: Box): auto =
   result = type(r1[0].a)(1)
   for i in 0 .. r1.high:
-    result *= (min(r1[i]. b, r2[i]. b) - max(r1[i]. a, r2[i]. a))
+    result *= (min(r1[i].b, r2[i].b) - max(r1[i].a, r2[i].a))
     if result <= 0: return 0
 
 proc union(r1, r2: Box): Box =
   for i in 0 .. r1.high:
-    result[i]. a = min(r1[i]. a, r2[i]. a)
-    result[i]. b = max(r1[i]. b, r2[i]. b)
+    result[i].a = min(r1[i].a, r2[i].a)
+    result[i].b = max(r1[i].b, r2[i].b)
 
 proc intersect(r1, r2: Box): bool =
   for i in 0 .. r1.high:
@@ -98,12 +99,12 @@ proc intersect(r1, r2: Box): bool =
 proc area(r: Box): auto = #type(r[0].a) =
   result = type(r[0].a)(1)
   for i in 0 .. r.high:
-    result *= r[i]. b - r[i]. a
+    result *= r[i].b - r[i].a
 
 proc margin(r: Box): auto = #type(r[0].a) =
   result = type(r[0].a)(0)
   for i in 0 .. r.high:
-    result += r[i]. b - r[i]. a
+    result += r[i].b - r[i].a
 
 # how much enlargement does r1 need to include r2
 proc enlargement(r1, r2: Box): auto =
@@ -238,12 +239,12 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
   for d2 in 0 ..< 2 * D:
     let d = d2 div 2
     if d2 mod 2 == 0:
-      sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(x.b[d].a, y.b[d].a))
+      sortPlus(n.a, lx, proc (x, y: NL): int = cmp(x.b[d].a, y.b[d].a))
     else:
-      sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(x.b[d].b, y.b[d].b))
+      sortPlus(n.a, lx, proc (x, y: NL): int = cmp(x.b[d].b, y.b[d].b))
     for i in t.m - 1 .. n.a.high - t.m + 1:
       var b = lx.b
-      for j in 0 ..< i: # we can precalculate union() for range 0 .. t.m - 1, but that seems to give no real benefit. Maybe for very large M?
+      for j in 0 ..< i: # we can precalculate union() for range 0 .. t.m - 1, but that seems to give no real benefit.Maybe for very large M?
         #echo "x",j
         b = union(n.a[j].b, b)
       var m = margin(b)
@@ -446,7 +447,7 @@ proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, R
   while p.a[i].n != n:
     inc(i)
   let c = center(p.a[i].b)
-  sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(distance(center(x.b), c), distance(center(y.b), c)))
+  sortPlus(n.a, lx, proc (x, y: NL): int = cmp(distance(center(x.b), c), distance(center(y.b), c)))
   n.numEntries = M - t.p
   swap(n.a[n.numEntries], lx)
   inc n.numEntries
