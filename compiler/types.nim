@@ -1086,8 +1086,8 @@ proc inheritanceDiff*(a, b: PType): int =
   # | returns: +x iff `a` is the x'th direct subclass of `b`
   # | returns: `maxint` iff `a` and `b` are not compatible at all
   if a == b or a.kind == tyError or b.kind == tyError: return 0
-  assert a.kind == tyObject
-  assert b.kind == tyObject
+  assert a.kind in {tyObject} + skipPtrs
+  assert b.kind in {tyObject} + skipPtrs
   var x = a
   result = 0
   while x != nil:
