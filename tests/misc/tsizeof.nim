@@ -48,7 +48,7 @@ macro testOffsetOf(a,b1,b2: untyped): untyped =
       c_offset   = c_offsetof(`a`,`b1`)
       nim_offset = offsetof(`a`,`b2`)
     if c_offset != nim_offset:
-      echo `typeName`, ".", `member`, " offset: ", c_offset, " != ", nim_offset
+      echo `typeName`, ".", `member`, " offsetError, C: ", c_offset, " nim: ", nim_offset
 
 template testOffsetOf(a,b: untyped): untyped =
   testOffsetOf(a,b,b)
@@ -101,21 +101,6 @@ macro testAlign(arg:untyped):untyped =
     if cAlign != nimAlign:
       echo `prefix`, cAlign, " != ", nimAlign
 
-testAlign(pointer)
-testAlign(int)
-testAlign(uint)
-testAlign(int8)
-testAlign(int16)
-testAlign(int32)
-testAlign(int64)
-testAlign(uint8)
-testAlign(uint16)
-testAlign(uint32)
-testAlign(uint64)
-testAlign(float)
-testAlign(float32)
-testAlign(float64)
-
 type
   MyEnum {.pure.} = enum
     ValueA
@@ -142,14 +127,6 @@ type
     ValueA
     ValueB
 
-testAlign(MyEnum)
-testAlign(OtherEnum)
-testAlign(Enum1)
-testAlign(Enum2)
-testAlign(Enum4)
-testAlign(Enum8)
-
-
 template testinstance(body: untyped): untyped =
   block:
     {.pragma: objectconfig.}
@@ -158,6 +135,32 @@ template testinstance(body: untyped): untyped =
   block:
     {.pragma: objectconfig, packed.}
     body
+
+
+proc testPrimitiveTypes(): void =
+  testAlign(pointer)
+  testAlign(int)
+  testAlign(uint)
+  testAlign(int8)
+  testAlign(int16)
+  testAlign(int32)
+  testAlign(int64)
+  testAlign(uint8)
+  testAlign(uint16)
+  testAlign(uint32)
+  testAlign(uint64)
+  testAlign(float)
+  testAlign(float32)
+  testAlign(float64)
+
+  testAlign(MyEnum)
+  testAlign(OtherEnum)
+  testAlign(Enum1)
+  testAlign(Enum2)
+  testAlign(Enum4)
+  testAlign(Enum8)
+
+testPrimitiveTypes()
 
 testinstance:
   type
@@ -274,8 +277,6 @@ testinstance:
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
-  testAlign(SimpleAlignment)
-
   proc main(): void =
     var t : TrivialType
     var a : SimpleAlignment
@@ -286,6 +287,7 @@ testinstance:
     var f : PaddingAfterBranch
     var g : RecursiveStuff
     var ro : RootObj
+
     var
       e1: Enum1
       e2: Enum2
@@ -294,6 +296,8 @@ testinstance:
     var
       eoa: EnumObjectA
       eob: EnumObjectB
+
+    testAlign(SimpleAlignment)
 
     testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
 
@@ -322,11 +326,11 @@ testinstance:
 
     testOffsetOf(Foobar, c)
 
-    testOffsetOf(Bazing, a)
-
-    testOffsetOf(InheritanceA, a)
-    testOffsetOf(InheritanceB, b)
-    testOffsetOf(InheritanceC, c)
+    when not defined(cpp):
+      testOffsetOf(Bazing, a)
+      testOffsetOf(InheritanceA, a)
+      testOffsetOf(InheritanceB, b)
+      testOffsetOf(InheritanceC, c)
 
     testOffsetOf(EnumObjectA, a)
     testOffsetOf(EnumObjectA, b)
