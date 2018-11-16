@@ -274,13 +274,11 @@ when defined(nimHasSymOwnerInMacro):
     ## result is also mnde of kind nnkSym if owner exists otherwise
     ## nnkNilLit is returned
 
-
 when defined(nimHasInstanceOfInMacro):
   proc isInstanceOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsIntanceOf", noSideEffect.}
     ## check if proc symbol is instance of the generic proc symbol
     ## useful to check proc symbols against generic symbols 
-    ## returned by `bindSym` 
-
+    ## returned by `bindSym`
  
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
