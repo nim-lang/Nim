@@ -959,7 +959,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                         else: newSymNode(a.sym.skipGenericOwner)
         regs[ra].node.flags.incl nfIsRef
       else:
-        stackTrace(c, tos, pc, "node is not a symbol")
+        stackTrace(c, tos, pc, "node is not a symbol")#
+    of opcSymIsInstanceOf:
+      decodeBC(rkInt)
+      let a = regs[rb].node
+      let b = regs[rc].node
+      if a.kind == nkSym and a.sym.kind in skProcKinds and 
+         b.kind == nkSym and b.sym.kind in skProcKinds:
+        regs[ra].intVal =
+          if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
+          else: 0
+      else:    
+        stackTrace(c, tos, pc, "node is not a proc symbol") 
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
