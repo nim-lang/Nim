@@ -52,6 +52,8 @@ type
                              # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
                              # be instantiated
+    converterRetType*: PType # converter can turn let into var and var into let
+                             # used to check mutability differences          
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
@@ -116,6 +118,7 @@ proc initCandidateAux(ctx: PContext,
   c.call = nil
   c.baseTypeMatch = false
   c.genericConverter = false
+  c.converterRetType = nil
   c.inheritancePenalty = 0
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
@@ -1815,6 +1818,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
+  m.converterRetType = nil
   for i in countup(0, len(c.converters) - 1):
     var src = c.converters[i].typ.sons[1]
     var dest = c.converters[i].typ.sons[0]
@@ -1835,7 +1839,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     if destIsGeneric:
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
-    if fdest in {isEqual, isGeneric}:
+    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind == tyVar):
       markUsed(c.config, arg.info, c.converters[i], c.graph.usageSym)
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
@@ -1861,6 +1865,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
 
       inc(m.convMatches)
+      m.converterRetType = dest
       if m.genericConverter == false:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
@@ -2232,7 +2237,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
     if formal.typ.kind == tyVar:
-      if not n.isLValue:
+      if m.converterRetType != nil and m.converterRetType.kind != tyVar and 
+         not n.isLValue:
         m.state = csNoMatch
         m.mutabilityProblem = uint8(f-1)
         return
