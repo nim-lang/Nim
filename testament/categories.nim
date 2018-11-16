@@ -97,11 +97,10 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl --threads:on", cat)
-  testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
-
+  testNoSpec c, makeTest("lib/nimrtl.nim",
+    options & " --app:lib -d:createNimRtl --threads:on", cat, actionCompile)
+  testNoSpec c, makeTest("tests/dll/server.nim",
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat, actionCompile)
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
