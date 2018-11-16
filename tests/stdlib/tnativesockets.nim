@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 import nativesockets, unittest
 
 suite "nativesockets":
@@ -5,4 +9,3 @@ suite "nativesockets":
     let hostname = getHostname()
     check hostname.len > 0
     check hostname.len < 64
-
