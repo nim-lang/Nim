@@ -61,6 +61,10 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `system.typeof` for more control over how `type` expressions
   can be deduced.
 
+- Added `macros.isInstanceOf` for checking if the proc symbol is instance of
+  generic proc symbol.
+
+
 ### Library changes
 
 - The string output of `macros.lispRepr` proc has been tweaked
