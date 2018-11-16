@@ -102,9 +102,9 @@ block tsets2:
 
 block tsets3:
   let
-    s1: TSet[int] = toSet([1, 2, 4, 8, 16])
-    s2: TSet[int] = toSet([1, 2, 3, 5, 8])
-    s3: TSet[int] = toSet([3, 5, 7])
+    s1: HashSet[int] = toSet([1, 2, 4, 8, 16])
+    s2: HashSet[int] = toSet([1, 2, 3, 5, 8])
+    s3: HashSet[int] = toSet([3, 5, 7])
 
   block union:
     let
