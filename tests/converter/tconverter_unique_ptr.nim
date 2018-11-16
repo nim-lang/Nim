@@ -115,7 +115,8 @@ doAssert: pu2[0] == 2.0
 ## Bugs #9735 and #9736 
 type
   ConstPtr*[T] = object
-    ## non copyable pointer to object T, exclusive ownership of the object is assumed
+    ## This pointer makes it impossible to change underlying value
+    ## as it returns only `lent T`
     val: ptr T
 
 proc `=destroy`*[T](p: var ConstPtr[T]) =
