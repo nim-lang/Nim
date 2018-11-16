@@ -159,7 +159,7 @@ macro evaluation should be caught and create a nice error message.
 the checks need to be more complex, arbitrary error messages can
 be created with the ``macros.error`` proc.
 
-.. codeBlock:: nim
+.. code-block:: nim
     :test: "nim c $1"
 
   macro myAssert(arg: untyped): untyped =
