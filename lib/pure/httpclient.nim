@@ -848,8 +848,6 @@ proc newHttpClient*(userAgent = defUserAgent,
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
 
-{.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
-
 proc newAsyncHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(),
     proxy: Proxy = nil): AsyncHttpClient =
@@ -1163,7 +1161,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
-  
+
   if requestUrl.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 

@@ -300,8 +300,6 @@ proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) =
 type
   Subex* = distinct string ## string that contains a substitution expression
 
-{.deprecated: [TSubex: Subex].}
-
 proc subex*(s: string): Subex =
   ## constructs a *substitution expression* from `s`. Currently this performs
   ## no syntax checking but this may change in later versions.

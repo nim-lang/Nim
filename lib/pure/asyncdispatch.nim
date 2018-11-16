@@ -244,8 +244,6 @@ when defined(windows) or defined(nimdoc):
     AsyncEvent* = ptr AsyncEventImpl
 
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
-  {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
-                TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
@@ -1080,7 +1078,6 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
-  {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}

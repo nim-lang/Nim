@@ -22,8 +22,6 @@ type
     scheme, username, password,
     hostname, port, path, query, anchor: string]
 
-{.deprecated: [TUrl: Url].}
-
 proc parseUrl*(url: string): Url {.deprecated.} =
   var i = 0
 

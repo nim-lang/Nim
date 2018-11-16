@@ -18,8 +18,6 @@ type
   Rune* = distinct RuneImpl   ## type that can hold any Unicode character
   Rune16* = distinct int16 ## 16 bit Unicode character
 
-{.deprecated: [TRune: Rune, TRune16: Rune16].}
-
 proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
 proc `<%`*(a, b: Rune): bool = return int(a) <% int(b)
 proc `==`*(a, b: Rune): bool = return int(a) == int(b)

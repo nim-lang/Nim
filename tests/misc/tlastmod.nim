@@ -5,7 +5,7 @@ import
 
 proc main() =
   var
-    a, b: TTime
+    a, b: Time
   a = getLastModificationTime(paramStr(1))
   b = getLastModificationTime(paramStr(2))
   writeLine(stdout, $a)

@@ -147,11 +147,6 @@ type
     SockIdle, SockConnecting, SockConnected, SockListening, SockClosed,
     SockUDPBound
 
-{.deprecated: [TDelegate: DelegateObj, PDelegate: Delegate,
-  TInfo: SocketStatus, PAsyncSocket: AsyncSocket, TAsyncSocket: AsyncSocketObj,
-  TDispatcher: DispatcherObj, PDispatcher: Dispatcher,
-  ].}
-
 
 proc newDelegate*(): Delegate =
   ## Creates a new delegate.

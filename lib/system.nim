@@ -106,8 +106,6 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
 
-{.deprecated: [SomeReal: SomeFloat].}
-
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
@@ -4038,8 +4036,6 @@ type
 
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## represents a Nim AST node. Macros operate on this type.
-
-{.deprecated: [PNimrodNode: NimNode].}
 
 when false:
   template eval*(blk: typed): typed =

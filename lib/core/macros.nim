@@ -418,8 +418,6 @@ type
                          ## if not ambiguous (this cannot be achieved with
                          ## any other means in the language currently)
 
-{.deprecated: [TBindSymRule: BindSymRule].}
-
 proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## creates a node that binds `ident` to a symbol node. The bound symbol

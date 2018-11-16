@@ -21,7 +21,6 @@ type
   SecureSocket* = object
     ssl: SslPtr
     bio: BIO
-{.deprecated: [TSecureSocket: SecureSocket].}
 
 proc connect*(sock: var SecureSocket, address: string,
     port: int): int =

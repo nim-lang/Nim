@@ -39,8 +39,6 @@ type
     data: KeyValuePairSeq[A]
     counter: int
 
-{.deprecated: [TSet: HashSet].}
-
 template default[T](t: typedesc[T]): T =
   ## Used by clear methods to get a default value.
   var v: T
@@ -630,8 +628,6 @@ type
     ## <#initOrderedSet>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
-
-{.deprecated: [TOrderedSet: OrderedSet].}
 
 proc clear*[A](s: var OrderedSet[A]) =
   ## Clears the OrderedSet back to an empty state, without shrinking

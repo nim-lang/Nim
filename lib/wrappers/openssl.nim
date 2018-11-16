@@ -83,8 +83,6 @@ type
 
   pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
 
-{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
-
 const
   SSL_SENT_SHUTDOWN* = 1
   SSL_RECEIVED_SHUTDOWN* = 2
