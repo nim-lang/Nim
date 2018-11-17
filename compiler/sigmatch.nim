@@ -2237,8 +2237,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         m.state = csNoMatch
         return
     if formal.typ.kind == tyVar:
-      if m.converterRetType != nil and m.converterRetType.kind != tyVar and 
-         not n.isLValue:
+      if m.converterRetType != nil:
+        if m.converterRetType.kind != tyVar:
+          m.state = csNoMatch
+          m.mutabilityProblem = uint8(f-1)
+          return  
+      elif not n.isLValue:
         m.state = csNoMatch
         m.mutabilityProblem = uint8(f-1)
         return
