@@ -1818,7 +1818,6 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
                    arg: PNode): PNode =
   result = nil
-  m.converterRetType = nil
   for i in countup(0, len(c.converters) - 1):
     var src = c.converters[i].typ.sons[1]
     var dest = c.converters[i].typ.sons[0]
@@ -1917,6 +1916,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     a = a
     c = m.c
 
+  m.converterRetType = nil
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
