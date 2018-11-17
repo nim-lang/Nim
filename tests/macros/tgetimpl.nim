@@ -57,7 +57,7 @@ macro check_gen_proc(ex: typed): (bool, bool) =
     if not is_equal:
       is_equal = ex[0] == child
     if not is_instance_of:
-      is_instance_of = isInstanceOf(ex[0], child)
+      is_instance_of = isGenericProcInstanceOf(ex[0], child)
          
   result = nnkTupleConstr.newTree(newLit(is_equal), newLit(is_instance_of))
 

@@ -275,7 +275,7 @@ when defined(nimHasSymOwnerInMacro):
     ## nnkNilLit is returned
 
 when defined(nimHasInstanceOfInMacro):
-  proc isInstanceOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsIntanceOf", noSideEffect.}
+  proc isGenericProcInstanceOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsIntanceOf", noSideEffect.}
     ## check if proc symbol is instance of the generic proc symbol
     ## useful to check proc symbols against generic symbols 
     ## returned by `bindSym`
