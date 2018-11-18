@@ -440,4 +440,19 @@ block:
 
   test(it, 1, 2, 5)
 
+block: #9694 - yield in ObjConstr
+  type Foo = object
+    a, b: int
+
+  template yieldAndNum: int =
+    yield 1
+    2
+
+  iterator it(): int {.closure.} =
+    let a = Foo(a: 5, b: yieldAndNum())
+    checkpoint(a.b)
+
+  test(it, 1, 2)
+
 echo "ok"
+
