@@ -1934,8 +1934,6 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noNim
       copyDir(source, dest)
       removeDir(source)
 
-#include ospaths
-
 proc expandSymlink*(symlinkPath: string): string {.noNimScript.} =
   ## Returns a string representing the path to which the symbolic link points.
   ##
