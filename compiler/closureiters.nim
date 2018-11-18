@@ -462,10 +462,17 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result.typ = n.typ
 
       for i in 0 ..< n.len:
-        if n[i].kind == nkStmtListExpr:
+        case n[i].kind
+        of nkExprColonExpr:
+          if n[i][1].kind == nkStmtListExpr:
+            let (st, ex) = exprToStmtList(n[i][1])
+            result.add(st)
+            n[i][1] = ex
+        of nkStmtListExpr:
           let (st, ex) = exprToStmtList(n[i])
           result.add(st)
           n[i] = ex
+        else: discard
       result.add(n)
 
   of nkIfStmt, nkIfExpr:
