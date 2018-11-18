@@ -657,7 +657,7 @@ type
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsIntanceOf
+    mSymIsInstantiationOf
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const

@@ -960,7 +960,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")#
-    of opcSymIsInstanceOf:
+    of opcSymIsInstantiationOf:
       decodeBC(rkInt)
       let a = regs[rb].node
       let b = regs[rc].node

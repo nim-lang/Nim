@@ -148,7 +148,7 @@ type
     opcMarshalLoad, opcMarshalStore,
     opcToNarrowInt,
     opcSymOwner,
-    opcSymIsInstanceOf
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym
