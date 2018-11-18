@@ -108,8 +108,8 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(j)
   setLen(result, j)
 
-proc cgiError(msg: string) {.noreturn.} =
-  ## raises an ECgi exception with message `msg`.
+proc cgiError*(msg: string) {.noreturn.} =
+  ## raises an CgiError with message `msg`.
   var e: ref CgiError
   new(e)
   e.msg = msg
