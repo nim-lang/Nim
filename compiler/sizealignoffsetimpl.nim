@@ -318,16 +318,24 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     var headerAlign: int16
     if typ.sons[0] != nil:
       # compute header size
-      var st = typ.sons[0]
-      while st.kind in skipPtrs:
-        st = st.sons[^1]
-      computeSizeAlign(conf, st)
-      if st.size == szIllegalRecursion:
-        typ.size = st.size
-        typ.align = st.align
-        return
-      headerSize = st.size
-      headerAlign = st.align
+
+      if conf.cmd == cmdCompileToCpp:
+        # if the target is C++ the members of this type are written
+        # into the padding byets at the end of the parent type. At the
+        # moment it is not supported to calculate that.
+        headerSize = szUnknownSize
+        headerAlign = szUncomputedSize
+      else:
+        var st = typ.sons[0]
+        while st.kind in skipPtrs:
+          st = st.sons[^1]
+        computeSizeAlign(conf, st)
+        if st.size == szIllegalRecursion:
+          typ.size = st.size
+          typ.align = st.align
+          return
+        headerSize = st.size
+        headerAlign = st.align
     elif isObjectWithTypeFieldPredicate(typ):
       # this branch is taken for RootObj
       headerSize = conf.target.intSize
