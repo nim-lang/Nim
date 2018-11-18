@@ -462,10 +462,17 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result.typ = n.typ
 
       for i in 0 ..< n.len:
-        if n[i].kind == nkStmtListExpr:
+        case n[i].kind
+        of nkExprColonExpr:
+          if n[i][1].kind == nkStmtListExpr:
+            let (st, ex) = exprToStmtList(n[i][1])
+            result.add(st)
+            n[i][1] = ex
+        of nkStmtListExpr:
           let (st, ex) = exprToStmtList(n[i])
           result.add(st)
           n[i] = ex
+        else: discard
       result.add(n)
 
   of nkIfStmt, nkIfExpr:
@@ -852,15 +859,8 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
       discard
 
     of nkStmtList, nkStmtListExpr:
-      assert(isEmptyType(n.typ), "nkStmtListExpr not lowered")
-
       result = addGotoOut(result, gotoOut)
       for i in 0 ..< n.len:
-        if n[i].hasYieldsInExpressions:
-          # Lower nkStmtListExpr nodes inside `n[i]` first
-          var ns = false
-          n[i] = ctx.lowerStmtListExprs(n[i], ns)
-
         if n[i].hasYields:
           # Create a new split
           let go = newNodeI(nkGotoState, n[i].info)
@@ -1294,10 +1294,16 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn)
 
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
-  let n = n.toStmtList
+  var n = n.toStmtList
 
   discard ctx.newState(n, nil)
   let gotoOut = newTree(nkGotoState, g.newIntLit(n.info, -1))
+
+  var ns = false
+  n = ctx.lowerStmtListExprs(n, ns)
+
+  if n.hasYieldsInExpressions():
+    internalError(ctx.g.config, "yield in expr not lowered")
 
   # Splitting transformation
   discard ctx.transformClosureIteratorBody(n, gotoOut)
