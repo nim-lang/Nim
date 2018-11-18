@@ -2437,7 +2437,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # See tests/run/tcnstseq3 for an example that would fail otherwise.
       genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
-    var ex = n[0]
+    let ex = n[0]
     if ex.kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
