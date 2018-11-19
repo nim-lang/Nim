@@ -105,7 +105,7 @@ doc/manual/var_t_return.rst
   doc = """
 lib/system.nim
 lib/system/nimscript.nim
-lib/depreceated/pure/ospaths.nim
+lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim
 lib/core/macros.nim
