@@ -67,6 +67,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       graph.config.mainPackageId = result.owner.id
 
     result.id = getModuleId(graph, fileIdx, AbsoluteFile toFullPath(graph.config, fileIdx))
+    registerModule(graph, result)
     discard processModule(graph, result,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
@@ -128,6 +129,7 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
   result.id = getID()
+  registerModule(graph, result)
 
 proc makeModule*(graph: ModuleGraph; filename: string): PSym =
   result = makeModule(graph, AbsoluteFile filename)

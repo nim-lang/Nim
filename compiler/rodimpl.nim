@@ -752,6 +752,9 @@ proc loadSym(g; id: int; info: TLineInfo): PSym =
   result = loadSymFromBlob(g, b, info)
   doAssert id == result.id, "symbol ID is not consistent!"
 
+proc registerModule*(g; module: PSym) =
+  g.incr.r.syms.add(abs module.id, module)
+
 proc loadModuleSymTab(g; module: PSym) =
   ## goal: fill  module.tab
   g.incr.r.syms.add(module.id, module)
@@ -868,6 +871,7 @@ proc setupModuleCache*(g: ModuleGraph) =
   let dbfile = getNimcacheDir(g.config) / RelativeFile"rodfiles.db"
   if g.config.symbolFiles == writeOnlySf:
     removeFile(dbfile)
+  createDir getNimcacheDir(g.config)
   if not fileExists(dbfile):
     db = open(connection=string dbfile, user="nim", password="",
               database="nim")
