@@ -41,6 +41,8 @@ Options:
                           stdout instead of using sockets
   --epc                   use emacs epc mode
   --debug                 enable debug output
+  --partialRecompilation  [experimental] partial recompilation to enable
+                          speedy handling of yet unknown files; sometimes crashes
   --log                   enable verbose logging to nimsuggest.log file
   --v1                    use version 1 of the protocol; for backwards compatibility
   --refresh               perform automatic refreshes to keep the analysis precise
@@ -68,6 +70,7 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
   gRefresh: bool
+  gPartialRecompilation: bool
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -186,7 +189,10 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
-    graph.compileProject(dirtyIdx)
+    if gPartialRecompilation:
+      graph.compileProject(dirtyIdx)
+    else:
+      graph.compileProject()
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
@@ -195,7 +201,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
     if conf.ideCmd != ideMod:
-      if isKnownFile:
+      if not gPartialRecompilation or isKnownFile:
         graph.compileProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
@@ -566,6 +572,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         gEmitEof = true
         gRefresh = false
       of "log": gLogging = true
+      of "partialrecompilation":
+        gPartialRecompilation = true
       of "refresh":
         if p.val.len > 0:
           gRefresh = parseBool(p.val)
