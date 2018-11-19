@@ -298,9 +298,6 @@ type
   TimeIntervalParts* = array[TimeUnit, int] # Array of Duration parts starts
   TimesMutableTypes = DateTime | Time | Duration | TimeInterval
 
-{.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
-    TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
-
 const
   secondsInMin = 60
   secondsInHour = 60*60

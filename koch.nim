@@ -117,10 +117,11 @@ proc bundleNimbleSrc(latest: bool) =
 
 proc bundleNimbleExe(latest: bool) =
   bundleNimbleSrc(latest)
-  # now compile Nimble and copy it to $nim/bin for the installer.ini
-  # to pick it up:
-  nimexec("c -d:release --nilseqs:on dist/nimble/src/nimble.nim")
-  copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
+  # installer.ini expects it under $nim/bin
+  nimCompile("dist/nimble/src/nimble.nim", options = "-d:release --nilseqs:on")
+
+proc buildNimfind() =
+  nimCompile("tools/nimfind.nim", options = "-d:release")
 
 proc buildNimble(latest: bool) =
   # old installations created nim/nimblepkg/*.nim files. We remove these
@@ -146,33 +147,28 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath --nilseqs:on -d:release " & installDir / "src/nimble.nim")
-  copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
+  nimCompile(installDir / "src/nimble.nim", options = "--noNimblePath --nilseqs:on -d:release")
 
-proc bundleNimsuggest(buildExe: bool) =
-  if buildExe:
-    nimexec("c --noNimblePath -d:release nimsuggest/nimsuggest.nim")
-    copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
-    removeFile("nimsuggest/nimsuggest".exe)
+proc bundleNimsuggest() =
+  nimCompile("nimsuggest/nimsuggest.nim", options = "-d:release")
 
 proc buildVccTool() =
-  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimCompile("tools/vccenv/vccexe.nim")
 
 proc bundleWinTools() =
-  nimexec("c tools/finish.nim")
-  copyExe("tools/finish".exe, "finish".exe)
-  removeFile("tools/finish".exe)
+  # TODO: consider building under `bin` instead of `.`
+  nimCompile("tools/finish.nim", outputDir = "")
+
   buildVccTool()
-  nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
-  nimexec("c -o:bin/nimgrep.exe tools/nimgrep.nim")
+  nimCompile("tools/nimgrab.nim", options = "-d:ssl")
+  nimCompile("tools/nimgrep.nim")
   when false:
     # not yet a tool worth including
-    nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
-            r"--path:..\ui tools\downloader.nim")
+    nimCompile(r"tools\downloader.nim", options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui")
 
 proc zip(latest: bool; args: string) =
   bundleNimbleExe(latest)
-  bundleNimsuggest(true)
+  bundleNimsuggest()
   bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
@@ -189,7 +185,8 @@ proc ensureCleanGit() =
 proc xz(latest: bool; args: string) =
   ensureCleanGit()
   bundleNimbleSrc(latest)
-  bundleNimsuggest(false)
+  when false:
+    bundleNimsuggest()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
@@ -200,19 +197,16 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(latest: bool) =
-  nimexec "c --noNimblePath -d:release -o:" & ("bin/nimsuggest".exe) &
-      " nimsuggest/nimsuggest.nim"
-
-  nimexec "c -d:release -o:" & ("bin/nimgrep".exe) & " tools/nimgrep.nim"
+  bundleNimsuggest()
+  nimCompile("tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
-
-  nimexec "c -o:" & ("bin/nimpretty".exe) & " nimpretty/nimpretty.nim"
-
+  nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
   buildNimble(latest)
+  buildNimfind()
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
-  bundleNimsuggest(true)
+  bundleNimsuggest()
   bundleWinTools()
   # make sure we have generated the niminst executables:
   buildTool("tools/niminst/niminst", args)
@@ -550,7 +544,7 @@ when isMainModule:
       of "nimble":
         if stable: buildNimble(false)
         else: buildNimble(existsDir(".git") or latest)
-      of "nimsuggest": bundleNimsuggest(buildExe=true)
+      of "nimsuggest": bundleNimsuggest()
       of "tools":
         if stable: buildTools(false)
         else: buildTools(existsDir(".git") or latest)

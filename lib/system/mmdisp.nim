@@ -37,7 +37,6 @@ type
   ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
-{.deprecated: [TByteArray: ByteArray].}
 
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:

@@ -481,9 +481,6 @@ type
     styleHidden,         ## hidden text
     styleStrikethrough   ## strikethrough
 
-{.deprecated: [TStyle: Style].}
-{.deprecated: [styleUnknown: styleItalic].}
-
 when not defined(windows):
   var
     gFG {.threadvar.}: int
@@ -555,9 +552,6 @@ type
     bgWhite,               ## white
     bg8Bit,                ## 256-color (not supported, see ``enableTrueColors`` instead.)
     bgDefault              ## default terminal background color
-
-{.deprecated: [TForegroundColor: ForegroundColor,
-               TBackgroundColor: BackgroundColor].}
 
 when defined(windows):
   var defaultForegroundColor, defaultBackgroundColor: int16 = 0xFFFF'i16 # Default to an invalid value 0xFFFF

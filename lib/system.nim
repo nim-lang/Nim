@@ -106,8 +106,6 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
 
-{.deprecated: [SomeReal: SomeFloat].}
-
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
@@ -2253,10 +2251,10 @@ proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
 proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
   if y <= x: x else: y
 
-proc min*[T](x, y: T): T =
+proc min*[T](x, y: T): T {.inline.}=
   if x <= y: x else: y
 
-proc max*[T](x, y: T): T =
+proc max*[T](x, y: T): T {.inline.}=
   if y <= x: x else: y
 {.pop.}
 
@@ -4038,8 +4036,6 @@ type
 
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## represents a Nim AST node. Macros operate on this type.
-
-{.deprecated: [PNimrodNode: NimNode].}
 
 when false:
   template eval*(blk: typed): typed =

@@ -138,6 +138,7 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
+  let n = if n.kind == nkHiddenDeref: n[0] else: n
   if n.kind == nkHiddenCallConv and n.len > 1:
     result = $n[0] & "(" & result & ")"
   elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
@@ -394,6 +395,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
+  let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:
     let s = a.sons[0].sym
     if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
@@ -454,7 +456,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
-  styleCheckUse(n.sons[0].info, finalCallee)
+  onUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
@@ -562,7 +564,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   markUsed(c.config, n.info, s, c.graph.usageSym)
-  styleCheckUse(n.info, s)
+  onUse(n.info, s)
   result = newSymNode(newInst, n.info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =

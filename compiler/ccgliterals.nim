@@ -69,7 +69,7 @@ proc genStringLiteralV2(m: BModule; n: PNode): Rope =
     addf(m.s[cfsData], "static const NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
           [result, rope(len(n.strVal)), pureLit])
   else:
-    result = m.tmpBase & rope(id)
+    result = m.tmpBase & rope(id+1)
 
 proc genStringLiteralV2Const(m: BModule; n: PNode): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)

@@ -3,6 +3,8 @@
 when not declared(os):
   {.error: "This is an include file for os.nim!".}
 
+from parseutils import skipIgnoreCase
+
 proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}
 proc c_putenv(env: cstring): cint {.
@@ -91,7 +93,10 @@ proc findEnvVar(key: string): int =
   getEnvVarsC()
   var temp = key & '='
   for i in 0..high(environment):
-    if startsWith(environment[i], temp): return i
+    when defined(windows):
+      if skipIgnoreCase(environment[i], temp) == len(temp): return i
+    else:
+      if startsWith(environment[i], temp): return i
   return -1
 
 proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =

@@ -100,7 +100,6 @@ else:
   include posix_other
 
 # There used to be this name in posix.nim a long time ago, not sure why!
-{.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =

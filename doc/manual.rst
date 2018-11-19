@@ -2383,7 +2383,8 @@ Automatic self insertions
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
 or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
-statement pragma. This pragma is active for the rest of the module:
+statement pragma (instead of ``self`` any other identifier can be used too).
+This pragma is active for the rest of the module:
 
 .. code-block:: nim
   type
@@ -2397,10 +2398,6 @@ statement pragma. This pragma is active for the rest of the module:
     result = parentField + childField
     # is rewritten to:
     # result = self.parentField + self.childField
-
-Instead of ``self`` any other identifier can be used too, but
-``{.this: self.}`` will become the default directive for the whole language
-eventually.
 
 In addition to fields, routine applications are also rewritten, but only
 if no other interpretation of the call is possible:

@@ -18,7 +18,7 @@ import
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, pluginsupport, plugins/active, rod, lineinfos
 
-from modulegraphs import ModuleGraph, PPassContext
+from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -450,7 +450,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   markUsed(c.config, n.info, sym, c.graph.usageSym)
-  styleCheckUse(n.info, sym)
+  onUse(n.info, sym)
   if sym == c.p.owner:
     globalError(c.config, n.info, "recursive dependency: '$1'" % sym.name.s)
 

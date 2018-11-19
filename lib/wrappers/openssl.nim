@@ -38,7 +38,7 @@ when useWinVersion:
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
 
   when defined(macosx):
     const
@@ -82,8 +82,6 @@ type
   des_key_schedule* = array[1..16, des_ks_struct]
 
   pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
-
-{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const
   SSL_SENT_SHUTDOWN* = 1

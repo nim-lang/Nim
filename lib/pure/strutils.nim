@@ -1987,8 +1987,6 @@ type
     ffDecimal,         ## use decimal floating point notation
     ffScientific       ## use scientific notation (using ``e`` character)
 
-{.deprecated: [TFloatFormat: FloatFormatMode].}
-
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[-1..32] = 16;
                          decimalSep = '.'): string {.

@@ -566,9 +566,6 @@ type
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
 
-{.deprecated: [EInvalidSql: SqlParseError, PSqlNode: SqlNode,
-    TSqlNode: SqlNodeObj, TSqlParser: SqlParser, TSqlNodeKind: SqlNodeKind].}
-
 proc newNode*(k: SqlNodeKind): SqlNode =
   new(result)
   result.kind = k

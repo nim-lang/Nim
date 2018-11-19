@@ -108,11 +108,6 @@ type
   ReplyError* = object of IOError
   FTPError* = object of IOError
 
-{.deprecated: [
-  TFTPClient: FTPClientObj, TFTPJob: FTPJob, PAsyncFTPClient: AsyncFTPClient,
-  TAsyncFTPClient: AsyncFTPClientObj, TFTPEvent: FTPEvent,
-  EInvalidReply: ReplyError, EFTP: FTPError
-].}
 
 const multiLineLimit = 10000
 

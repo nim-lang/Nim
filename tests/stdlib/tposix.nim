@@ -5,7 +5,7 @@ when not defined(windows):
   import posix
 
   var
-    u: Tutsname
+    u: Utsname
 
   discard uname(u)
 

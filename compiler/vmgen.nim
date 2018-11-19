@@ -1098,7 +1098,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     var tmp = c.genx(n.sons[1])
     var idx = c.getTemp(getSysType(c.graph, n.info, tyInt))
     var typ = n.sons[2].typ
-    if m == mOf: typ = typ.skipTypes(abstractPtrs-{tyTypeDesc})
+    if m == mOf: typ = typ.skipTypes(abstractPtrs)
     c.gABx(n, opcLdImmInt, idx, c.genType(typ))
     c.gABC(n, if m == mOf: opcOf else: opcIs, dest, tmp, idx)
     c.freeTemp(tmp)

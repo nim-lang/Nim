@@ -23,7 +23,6 @@ type
     lines*: array[0..MaxTraceLen-1, cstring]
     files*: array[0..MaxTraceLen-1, cstring]
   ProfilerHook* = proc (st: StackTrace) {.nimcall.}
-{.deprecated: [TStackTrace: StackTrace, TProfilerHook: ProfilerHook].}
 
 proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 

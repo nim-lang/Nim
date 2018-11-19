@@ -70,9 +70,6 @@ when defined(ssl):
     SSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
-  {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
-     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
-     TSSLAcceptResult: SSLAcceptResult].}
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
@@ -146,12 +143,6 @@ type
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
   TimeoutError* = object of Exception
-
-{.deprecated: [TSocket: Socket, TType: SockType, TPort: Port, TDomain: Domain,
-    TProtocol: Protocol, TServent: Servent, THostent: Hostent,
-    TSOBool: SOBool, TRecvLineResult: RecvLineResult,
-    TReadLineResult: ReadLineResult, ETimeout: TimeoutError,
-    TSocketImpl: SocketImpl].}
 
 when defined(booting):
   let invalidSocket*: Socket = nil ## invalid socket

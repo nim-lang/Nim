@@ -83,8 +83,6 @@ when not defined(js):
   template `rawType=`(x: var Any, p: PNimType) =
     x.rawTypePtr = cast[pointer](p)
 
-{.deprecated: [TAny: Any, TAnyKind: AnyKind].}
-
 when defined(gogc):
   const GenericSeqSize = (3 * sizeof(int))
 else:

@@ -101,8 +101,6 @@ type
                                                     ## used to get a row's
                                                     ## column text on demand
 
-{.deprecated: [TRow: Row, TSqlQuery: SqlQuery, TDbConn: DbConn].}
-
 var
   buf: array[0..4096, char]
 

@@ -64,6 +64,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, n.info)
     markUsed(c.config, n.info, s, c.graph.usageSym)
+    onUse(n.info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -75,6 +76,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       if a.kind != skModule:
         incl(a.flags, sfUsed)
         addSon(result, newSymNode(a, n.info))
+        onUse(n.info, a)
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
@@ -160,7 +162,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
   else:
     for i in 0 ..< n.safeLen:
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
@@ -208,19 +210,20 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       # So we need only check the *current* scope.
       let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
       if s != nil and s.owner == c.owner and sfGenSym in s.flags:
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
         replaceIdentBySym(c.c, n, newSymNode(s, n.info))
       elif not (n.kind == nkSym and sfGenSym in n.sym.flags):
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
+        onDef(n.info, local)
         replaceIdentBySym(c.c, n, newSymNode(local, n.info))
     else:
       replaceIdentBySym(c.c, n, ident)
 
 proc semTemplSymbol(c: PContext, n: PNode, s: PSym): PNode =
   incl(s.flags, sfUsed)
-  # we do not call styleCheckUse here, as the identifier is not really
+  # we do not call onUse here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
   case s.kind
   of skUnknown:
@@ -245,7 +248,7 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and (s.kind == skParam or sfGenSym in s.flags):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
   else:
     for i in countup(0, safeLen(n) - 1):
       result.sons[i] = semRoutineInTemplName(c, n.sons[i])
@@ -261,6 +264,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       s.ast = n
       addPrelimDecl(c.c, s)
       styleCheckDef(c.c.config, n.info, s)
+      onDef(n.info, s)
       n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
     else:
       n.sons[namePos] = ident
@@ -314,7 +318,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam:
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
       elif contains(c.toBind, s.id):
         result = symChoice(c.c, n, s, scClosed)
       elif contains(c.toMixin, s.name.id):
@@ -324,7 +328,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         # var yz: T
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
       else:
         result = semTemplSymbol(c.c, n, s)
   of nkBind:
@@ -382,6 +386,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         let s = newGenSym(skLabel, n.sons[0], c)
         addPrelimDecl(c.c, s)
         styleCheckDef(c.c.config, s)
+        onDef(n[0].info, s)
         n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
@@ -505,7 +510,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       if s.owner == c.owner and s.kind == skParam and
           n.kind == nkAccQuoted and n.len == 1:
         incl(s.flags, sfUsed)
-        styleCheckUse(n.info, s)
+        onUse(n.info, s)
         return newSymNode(s, n.info)
       elif contains(c.toBind, s.id):
         return symChoice(c.c, n, s, scClosed)
@@ -553,6 +558,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
   styleCheckDef(c.config, s)
+  onDef(n[0].info, s)
   # check parameter list:
   #s.scope = c.currentScope
   pushOwner(c, s)
@@ -635,7 +641,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     # semtypes.addParamOrResult). Within the pattern we have to ensure
     # to use the param with the proper type though:
     incl(s.flags, sfUsed)
-    styleCheckUse(n.info, s)
+    onUse(n.info, s)
     let x = c.owner.typ.n.sons[s.position+1].sym
     assert x.name == s.name
     result = newSymNode(x, n.info)

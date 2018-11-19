@@ -122,6 +122,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
     styleCheckDef(c.config, e)
+    onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
       else: importPureEnumField(c, e)
@@ -377,7 +378,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
       markUsed(c.config, n.info, result, c.graph.usageSym)
-      styleCheckUse(n.info, result)
+      onUse(n.info, result)
 
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
@@ -466,6 +467,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
       styleCheckDef(c.config, a.sons[j].info, field)
+      onDef(field.info, field)
   if result.n.len == 0: result.n = nil
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -688,7 +690,6 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                      else: rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      styleCheckDef(c.config, n.sons[i].info, f)
       suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
@@ -703,6 +704,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       if a.kind == nkEmpty: addSon(father, newSymNode(f))
       else: addSon(a, newSymNode(f))
       styleCheckDef(c.config, f)
+      onDef(f.info, f)
     if a.kind != nkEmpty: addSon(father, a)
   of nkSym:
     # This branch only valid during generic object
@@ -988,7 +990,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericParam:
     markUsed(c.config, info, paramType.sym, c.graph.usageSym)
-    styleCheckUse(info, paramType.sym)
+    onUse(info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
@@ -1110,6 +1112,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
       styleCheckDef(c.config, a.sons[j].info, arg)
+      onDef(a[j].info, arg)
 
   var r: PType
   if n.sons[0].kind != nkEmpty:
@@ -1637,7 +1640,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         assignType(prev, t)
         result = prev
       markUsed(c.config, n.info, n.sym, c.graph.usageSym)
-      styleCheckUse(n.info, n.sym)
+      onUse(n.info, n.sym)
     else:
       if s.kind != skError: localError(c.config, n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)

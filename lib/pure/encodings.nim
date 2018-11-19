@@ -213,7 +213,6 @@ when defined(windows):
         maxCharSize: int32
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
-    {.deprecated: [TCpInfo: CpInfo].}
 
     proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
