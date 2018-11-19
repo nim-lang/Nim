@@ -10,14 +10,16 @@ type
   TMyArray2 = array[1..3, int32]
   TMyArray3 = array[TMyEnum, float64]
 
+var failed = false
+
 const
   mysize1 = sizeof(TMyArray1)
   mysize2 = sizeof(TMyArray2)
   mysize3 = sizeof(TMyArray3)
 
-assert mysize1 == 3
-assert mysize2 == 12
-assert mysize3 == 32
+doAssert mysize1 == 3
+doAssert mysize2 == 12
+doAssert mysize3 == 32
 
 import macros, typetraits
 
@@ -38,6 +40,7 @@ macro testSizeAlignOf(args: varargs[untyped]): untyped =
         if nim_align != c_align:
           msg.add  " align(get, expected): " & $nim_align & " != " & $c_align
         echo msg
+        failed = true
 
 
 macro testOffsetOf(a,b1,b2: untyped): untyped =
@@ -49,6 +52,7 @@ macro testOffsetOf(a,b1,b2: untyped): untyped =
       nim_offset = offsetof(`a`,`b2`)
     if c_offset != nim_offset:
       echo `typeName`, ".", `member`, " offsetError, C: ", c_offset, " nim: ", nim_offset
+      failed = true
 
 template testOffsetOf(a,b: untyped): untyped =
   testOffsetOf(a,b,b)
@@ -100,6 +104,16 @@ macro testAlign(arg:untyped):untyped =
     let nimAlign = alignof(`arg`)
     if cAlign != nimAlign:
       echo `prefix`, cAlign, " != ", nimAlign
+      failed = true
+
+macro testSize(arg:untyped):untyped =
+  let prefix = newLit(arg.lineinfo & "  sizeof " & arg.repr & " ")
+  result = quote do:
+    let cSize = c_sizeof(`arg`)
+    let nimSize = sizeof(`arg`)
+    if cSize != nimSize:
+      echo `prefix`, cSize, " != ", nimSize
+      failed = true
 
 type
   MyEnum {.pure.} = enum
@@ -297,9 +311,19 @@ testinstance:
       eoa: EnumObjectA
       eob: EnumObjectB
 
+
     testAlign(SimpleAlignment)
 
     testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+
+    when not defined(cpp):
+      type
+        WithBitsize {.objectconfig.} = object
+          bitfieldA {.bitsize: 16.}: uint32
+          bitfieldB {.bitsize: 16.}: uint32
+
+      var wbs: WithBitsize
+      testSize(wbs)
 
     testOffsetOf(TrivialType, x)
     testOffsetOf(TrivialType, y)
@@ -308,6 +332,7 @@ testinstance:
     testOffsetOf(SimpleAlignment, a)
     testOffsetOf(SimpleAlignment, b)
     testOffsetOf(SimpleAlignment, c)
+
     testOffsetOf(AlignAtEnd, a)
     testOffsetOf(AlignAtEnd, b)
     testOffsetOf(AlignAtEnd, c)
@@ -369,4 +394,7 @@ type
 
 assert sizeof(Bar) == 12
 
-echo "OK"
+if failed:
+  quit("FAIL")
+else:
+  echo "OK"

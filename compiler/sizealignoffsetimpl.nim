@@ -127,9 +127,14 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
       result.offset = align(offset, result.align)
 
   of nkSym:
-    computeSizeAlign(conf, n.sym.typ)
-    let size = n.sym.typ.size
-    let align = n.sym.typ.align
+    var size = szUnknownSize
+    var align = szUnknownSize
+
+    if n.sym.bitsize == 0: # 0 represents bitsize not set
+      computeSizeAlign(conf, n.sym.typ)
+      size = n.sym.typ.size.int
+      align = n.sym.typ.align.int
+
     result.align = align
     if initialOffset == szUnknownSize or size == szUnknownSize:
       n.sym.offset = szUnknownSize
