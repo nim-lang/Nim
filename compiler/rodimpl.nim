@@ -768,7 +768,8 @@ proc loadModuleSymTab(g; module: PSym) =
       b.s.add '\0'
       s = loadSymFromBlob(g, b, module.info)
     assert s != nil
-    strTableAdd(module.tab, s)
+    if s.kind != skField:
+      strTableAdd(module.tab, s)
   if sfSystemModule in module.flags:
     g.systemModule = module
 
