@@ -128,7 +128,6 @@ predefined macro that just prints its argument in tree representation,
 but does nothing else. Here is an example of such a tree representation:
 
 .. code-block:: nim
-    :test: "nim c $1"
 
   dumpTree:
     var mt: MyType = MyType(a:123.456, b:"abcdef")
@@ -160,7 +159,6 @@ the checks need to be more complex, arbitrary error messages can
 be created with the ``macros.error`` proc.
 
 .. code-block:: nim
-    :test: "nim c $1"
 
   macro myAssert(arg: untyped): untyped =
     arg.expectKind nnkInfix
