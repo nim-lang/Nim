@@ -27,7 +27,7 @@ suite "captures":
 
     let ex2 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
     check(ex2.captures["foo"] == "foo")
-    check(ex2.captures["bar"] == "")
+    check(ex2.captures["bar"] == nil)
 
   test "named capture bounds":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
@@ -41,7 +41,7 @@ suite "captures":
 
   test "named capture table":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.toTable == {"foo" : "foo", "bar" : ""}.toTable())
+    check(ex1.captures.toTable == {"foo" : "foo", "bar" : nil}.toTable())
     check(ex1.captureBounds.toTable == {"foo" : some(0..2), "bar" : none(Slice[int])}.toTable())
     check(ex1.captures.toTable("") == {"foo" : "foo", "bar" : ""}.toTable())
 
@@ -50,7 +50,7 @@ suite "captures":
 
   test "capture sequence":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.toSeq == @["foo", ""])
+    check(ex1.captures.toSeq == @["foo", nil])
     check(ex1.captureBounds.toSeq == @[some(0..2), none(Slice[int])])
     check(ex1.captures.toSeq("") == @["foo", ""])
 

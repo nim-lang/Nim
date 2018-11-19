@@ -289,7 +289,7 @@ proc `[]`*(pattern: Captures, i: int): string =
     let bounds = bounds.get
     return pattern.str.substr(bounds.a, bounds.b)
   else:
-    return ""
+    return nil
 
 proc match*(pattern: RegexMatch): string =
   return pattern.captures[-1]
@@ -313,9 +313,9 @@ template toTableImpl(cond: untyped) {.dirty.} =
     else:
       result[key] = nextVal
 
-proc toTable*(pattern: Captures, default: string = ""): Table[string, string] =
+proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
   result = initTable[string, string]()
-  toTableImpl(nextVal.len == 0)
+  toTableImpl(nextVal == nil)
 
 proc toTable*(pattern: CaptureBounds, default = none(HSlice[int, int])):
     Table[string, Option[HSlice[int, int]]] =
@@ -334,13 +334,13 @@ template itemsImpl(cond: untyped) {.dirty.} =
 iterator items*(pattern: CaptureBounds, default = none(HSlice[int, int])): Option[HSlice[int, int]] =
   itemsImpl(nextVal.isNone)
 
-iterator items*(pattern: Captures, default: string = ""): string =
-  itemsImpl(nextVal.len == 0)
+iterator items*(pattern: Captures, default: string = nil): string =
+  itemsImpl(nextVal == nil)
 
 proc toSeq*(pattern: CaptureBounds, default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
   accumulateResult(pattern.items(default))
 
-proc toSeq*(pattern: Captures, default: string = ""): seq[string] =
+proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
   accumulateResult(pattern.items(default))
 
 proc `$`*(pattern: RegexMatch): string =
