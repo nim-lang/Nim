@@ -1,9 +1,5 @@
 discard """
-output: '''
-This exe: /home/arne/proj/nim/Nim/tests/misc/tcmdline
-Number of parameters: 0
-tests/misc/tcmdline
-'''
+outputsub: "Number of parameters: 0"
 """
 # Test the command line
 
