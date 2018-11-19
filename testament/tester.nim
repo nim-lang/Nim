@@ -74,11 +74,11 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2*(command: string, options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2*(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
-  var p = startProcess(command, options=options + {poEvalCommand})
+  var p = startProcess(command, args=args, options=options)
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -385,8 +385,16 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
                     reExeNotFound)
         continue
 
-      let exeCmd = nodejs & " " & quoteShell(exeFile)
-      var (buf, exitCode) = execCmdEx2(exeCmd, options = {poStdErrToStdOut}, input = expected.input)
+
+      var exeCmd: string
+      var args: seq[string]
+      if isJsTarget:
+        exeCmd = nodejs
+        args.add exeFile
+      else:
+        exeCmd = exeFile
+
+      var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
 
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
