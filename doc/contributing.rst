@@ -22,7 +22,7 @@ There are 3 types of tests:
 2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
-3. testament tests, eg: tests/stdlib/tospaths.nim (only used for Nim repo).
+3. testament tests, eg: tests/stdlib/tos.nim (only used for Nim repo).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -30,7 +30,7 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-If you change the stdlib (anything under ``lib/``, eg ``lib/pure/ospaths.nim``),
+If you change the stdlib (anything under ``lib/``, eg ``lib/pure/os.nim``),
 put a test in the file you changed. Add the tests under a ``when isMainModule:``
 condition so they only get executed when the tester is building the
 file. Each test should be in a separate ``block:`` statement, such that
@@ -53,7 +53,7 @@ Sample test:
       doAssert: not 1 == 2
 
 Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
-eg ``tests/stdlib/tospaths.nim``; this allows additional features such as custom
+eg ``tests/stdlib/tos.nim``; this allows additional features such as custom
 compiler flags; for more details see below.
 
 Compiler
@@ -197,7 +197,7 @@ as well as ``testament`` and guarantee they stay in sync.
 
      result = a & "Bar"
 
-See `parentDir <https://nim-lang.github.io/Nim/ospaths.html#parentDir%2Cstring>`_
+See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
 example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
