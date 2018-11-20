@@ -1,9 +1,9 @@
 discard """
 output: '''
-3
-25
-40
-50
+100
+200
+300
+400
 '''
 """
 
@@ -20,4 +20,4 @@ proc sleepsort(nums: openArray[int]) =
       spawn single(nums[i])
       i += 1
 
-sleepsort([50,3,40,25])
+sleepsort([400,100,300,200])
