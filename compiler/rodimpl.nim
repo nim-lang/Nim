@@ -321,6 +321,9 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
       result.add('\16')
       encodeVInt(s.gcUnsafetyReason.id, result)
       pushSym(w, s.gcUnsafetyReason)
+    if s.transformedBody != nil:
+      result.add('\24')
+      encodeNode(g, s.info, s.transformedBody, result)
   of skModule, skPackage:
     encodeInstantiations(g, s.usedGenerics, result)
     # we don't serialize:
@@ -725,6 +728,9 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     if b.s[b.pos] == '\16':
       inc(b.pos)
       result.gcUnsafetyReason = loadSym(g, decodeVInt(b.s, b.pos), result.info)
+    if b.s[b.pos] == '\24':
+      inc b.pos
+      result.transformedBody = decodeNode(g, b, result.info)
   of skModule, skPackage:
     decodeInstantiations(g, b, result.info, result.usedGenerics)
   of skLet, skVar, skField, skForVar:
