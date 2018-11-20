@@ -959,7 +959,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                         else: newSymNode(a.sym.skipGenericOwner)
         regs[ra].node.flags.incl nfIsRef
       else:
-        stackTrace(c, tos, pc, "node is not a symbol")#
+        stackTrace(c, tos, pc, "node is not a symbol")
     of opcSymIsInstantiationOf:
       decodeBC(rkInt)
       let a = regs[rb].node
