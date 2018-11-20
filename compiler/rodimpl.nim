@@ -847,8 +847,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         internalAssert g.config, false
   of nkImportStmt:
     for x in n:
-      internalAssert g.config, x.kind == nkStrLit
-      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, AbsoluteFile n[0].strVal))
+      internalAssert g.config, x.kind == nkSym
+      let modpath = AbsoluteFile toFullPath(g.config, x.sym.info)
+      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, modpath))
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
@@ -883,6 +884,10 @@ proc setupModuleCache*(g: ModuleGraph) =
               database="nim")
     let oldConfig = db.getValue(sql"select config from config")
     g.incr.configChanged = oldConfig != encodeConfig(g)
+    # ensure the filename IDs stay consistent:
+    for row in db.rows(sql"select fullpath, nimid from filenames order by nimid"):
+      let id = fileInfoIdx(g.config, AbsoluteFile row[0])
+      doAssert id.int == parseInt(row[1])
   db.exec(sql"pragma journal_mode=off")
   # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")
