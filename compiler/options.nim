@@ -402,7 +402,8 @@ proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc,
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  conf.symbolFiles in {v2Sf, writeOnlySf}
+  false
+#  conf.symbolFiles in {v2Sf, writeOnlySf}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions

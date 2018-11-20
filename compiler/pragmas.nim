@@ -1062,6 +1062,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.bitsize = expectIntLit(c, it)
+          if sym.bitsize <= 0:
+            localError(c.config, it.info, "bitsize needs to be positive")
       of wGuard:
         if sym == nil or sym.kind notin {skVar, skLet, skField}:
           invalidPragma(c, it)

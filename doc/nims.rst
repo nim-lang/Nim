@@ -31,7 +31,7 @@ available. So the stdlib modules using ``importc`` cannot be used with
 Nim's VM. However, at least the following modules are available:
 
 * `macros <macros.html>`_
-* `ospaths <ospaths.html>`_
+* `os <os.html>`_
 * `strutils <strutils.html>`_
 * `math <math.html>`_
 * `distros <distros.html>`_

@@ -159,6 +159,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
   rawMessage(conf, hintConf, scriptName.string)
+  let oldSymbolFiles = conf.symbolFiles
+  conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
@@ -184,3 +186,4 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.symbolFiles = oldSymbolFiles

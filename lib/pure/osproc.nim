@@ -15,7 +15,6 @@ include "system/inclrtl"
 import
   strutils, os, strtabs, streams, cpuinfo
 
-#from ospaths import quoteShell, quoteShellWindows, quoteShellPosix
 export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):

@@ -21,9 +21,6 @@ template mathop(op) {.dirty.} =
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
 
-template ospathsop(op) {.dirty.} =
-  registerCallback(c, "stdlib.ospaths." & astToStr(op), `op Wrapper`)
-
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
 
