@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import asyncdispatch, times
 
 import jester
