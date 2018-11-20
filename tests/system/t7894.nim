@@ -1,6 +1,9 @@
 discard """
 disabled: "travis"
+disabled: "appveyor"
 """
+
+# CI integration servers are out of memory for this test
 
 const size = 250000000
 
@@ -16,8 +19,6 @@ proc main() =
 
   for x in saved:
     #echo x.len
-    echo x.len
     doAssert x.len == size
-
 
 main()

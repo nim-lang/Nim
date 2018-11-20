@@ -1,3 +1,10 @@
+discard """
+disabled: "appveyor"
+"""
+
+# If your os is windows and this test fails for you locally, please
+# check what is going wrong.
+
 import os
 
 template getScriptDir(): string =
