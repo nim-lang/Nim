@@ -195,7 +195,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
@@ -465,6 +465,7 @@ proc testExec(r: var TResults, test: TTest) =
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
               env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
+  echo "makeTest: ", test
   result = TTest(cat: cat, name: test, options: options,
                  action: action, startTime: epochTime())
 

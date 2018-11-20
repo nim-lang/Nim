@@ -24,6 +24,7 @@ type
     actionCompile = "compile"
     actionReject = "reject"
     actionRunNoSpec = "runNoSpec"
+
   TResultEnum* = enum
     reNimcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
@@ -39,6 +40,7 @@ type
     reBuildFailed       # package building failed
     reIgnored,          # test is ignored
     reSuccess           # test was successful
+
   TTarget* = enum
     targetC = "C"
     targetCpp = "C++"
