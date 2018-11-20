@@ -108,6 +108,7 @@ proc isFloatLit*(t: PType): bool {.inline.} =
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
   # TODO: merge with getSymRepr
+  assert sym != nil
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
     result.add '('

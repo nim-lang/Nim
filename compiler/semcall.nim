@@ -227,7 +227,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 const
   errTypeMismatch = "type mismatch: got <"
   errButExpected = "but expected one of: "
-  errUndeclaredField = "undeclared field v1: '$1'"
+  errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
   errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
@@ -287,7 +287,14 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
 
   let ident = considerQuotedIdent(c, f, n).s
   if nfDotField in n.flags and nfExplicitCall notin n.flags:
-    let typeStr = getProcHeader(c.config, n.sons[1].typ.sym)
+    let sym = n.sons[1].typ.sym
+    var typeStr = ""
+    if sym == nil:
+      # perhaps we're in a `compiles(foo.bar)` expression
+      # we coudl use: `(c.config $ n.sons[1].info)` to get more context
+      typeStr = "?"
+    else:
+      typeStr = getProcHeader(c.config, sym)
     result = errUndeclaredField % ident & " for type " & typeStr & " " & result
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident
