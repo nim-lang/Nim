@@ -231,7 +231,7 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## returns the special value -1 if it runs out of the string
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   var
     i = 0
@@ -247,7 +247,7 @@ proc runeAtPos*(s: string, pos: int): Rune =
   ## Returns the unicode character at position pos
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
@@ -255,7 +255,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## Returns the unicode character at position pos as UTF8 String
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   let o = runeOffset(s, pos)
   s[o.. (o+runeLenAt(s, o)-1)]
@@ -269,7 +269,7 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
   ## satisfy the request.
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   var
     a = rev.int
