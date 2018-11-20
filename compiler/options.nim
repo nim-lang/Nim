@@ -77,7 +77,8 @@ type                          # please make sure we have under 32 options
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths
+    optListFullPaths          # use full paths in toMsgFilename
+    optForceFullPaths         # force full paths even in toFilename
     optNoNimblePath
     optDynlibOverrideAll
 
