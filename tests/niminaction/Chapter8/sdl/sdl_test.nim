@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import os
 import sdl
 

@@ -1,3 +1,7 @@
+discard """
+outputsub: "All tests finished successfully!"
+"""
+
 import database, os, times
 
 when isMainModule:
