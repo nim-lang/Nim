@@ -108,8 +108,15 @@ proc newMySeq*(size: int, initial_value = 0.0): MySeqNonCopyable =
 proc myfunc(x, y: int): (MySeqNonCopyable, MySeqNonCopyable) =
   result = (newMySeq(x, 1.0), newMySeq(y, 5.0))
 
+proc myfunc2(x, y: int): tuple[a: MySeqNonCopyable, b:int, c:MySeqNonCopyable] =
+  (a: newMySeq(x, 1.0), b:0, c:newMySeq(y, 5.0))
+
 let (seq1, seq2) = myfunc(2, 3)
 doAssert seq1.len == 2
 doAssert seq1[0] == 1.0
 doAssert seq2.len == 3
 doAssert seq2[0] == 5.0
+
+var (seq3, i, _) = myfunc2(2, 3)
+doAssert seq3.len == 2
+doAssert seq3[0] == 1.0
