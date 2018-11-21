@@ -97,8 +97,7 @@ proc setTo(s: var MySeqNonCopyable, val: float) =
   for i in 0..<s.len.int:
     s.data[i] = val
 
-proc newMySeq*(size: int, initial_value = 0.0): MySeqNonCopyable =
-  echo " MySeq destructor is created"
+proc newMySeq*(size: int, initial_value = 0.0): MySeqNonCopyable =#
   result.len = size
   if size > 0:
     result.data = cast[ptr UncheckedArray[float]](createShared(float, size))

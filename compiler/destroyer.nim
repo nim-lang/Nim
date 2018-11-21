@@ -261,6 +261,11 @@ proc isLastRead(n: PNode; c: var Con): bool =
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
+template isUnpackedTuple(s: PSym): bool =
+  ## we move out all elements of unpacked tuples, 
+  ## hence unpacked tuples themselves don't need to be destroyed
+  s.kind == skTemp and s.typ.kind == tyTuple
+
 proc patchHead(n: PNode) =
   if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
     let s = n[0].sym
@@ -435,7 +440,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
-  of nkCallKinds, nkBracketExpr:
+  of nkCallKinds:
     result = genSink(c, dest.typ, dest, ri)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
@@ -446,6 +451,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
     #recurse(ri, ri2)
     result.add ri2
+  of nkBracketExpr:
+    if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
+      # unpacking of tuple: move out the elements 
+      result = genSink(c, dest.typ, dest, ri)
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+    result.add p(ri, c)
   of nkObjConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
@@ -496,7 +508,7 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isUnpackedTuple(it[0].sym):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
