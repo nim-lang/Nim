@@ -496,8 +496,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
-    echo "n ", $n
-    echo "---------------"
     discard "transform; var x = y to  var x; x op y  where op is a move or copy"
     result = newNodeI(nkStmtList, n.info)
 
