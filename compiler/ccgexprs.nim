@@ -173,21 +173,6 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
     # location is on heap
-    # now the writer barrier is inlined for performance:
-    #
-    #    if afSrcIsNotNil in flags:
-    #      UseMagic(p.module, 'nimGCref')
-    #      lineF(p, cpsStmts, 'nimGCref($1);$n', [rdLoc(src)])
-    #    elif afSrcIsNil notin flags:
-    #      UseMagic(p.module, 'nimGCref')
-    #      lineF(p, cpsStmts, 'if ($1) nimGCref($1);$n', [rdLoc(src)])
-    #    if afDestIsNotNil in flags:
-    #      UseMagic(p.module, 'nimGCunref')
-    #      lineF(p, cpsStmts, 'nimGCunref($1);$n', [rdLoc(dest)])
-    #    elif afDestIsNil notin flags:
-    #      UseMagic(p.module, 'nimGCunref')
-    #      lineF(p, cpsStmts, 'if ($1) nimGCunref($1);$n', [rdLoc(dest)])
-    #    lineF(p, cpsStmts, '$1 = $2;$n', [rdLoc(dest), rdLoc(src)])
     if canFormAcycle(dest.t):
       linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
               addrLoc(p.config, dest), rdLoc(src))
@@ -1155,7 +1140,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   getIntTemp(p, tmpL)
   lineCg(p, cpsStmts, "$1 = $2->$3++;$n", tmpL.r, rdLoc(a), lenField(p))
   dest.r = ropecg(p.module, "$1$3[$2]", rdLoc(a), tmpL.r, dataField(p))
-  genAssignment(p, dest, b, {needToCopy, afDestIsNil})
+  genAssignment(p, dest, b, {needToCopy})
   gcUsage(p.config, e)
 
 proc genReset(p: BProc, n: PNode) =
@@ -1394,7 +1379,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       elem.storage = OnHeap # we know that sequences are on the heap
       initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
       arr.r = ropecg(p.module, "$1[$2]", rdLoc(a), intLiteral(i))
-      genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+      genAssignment(p, elem, arr, {needToCopy})
   else:
     var i: TLoc
     getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i)
@@ -1405,7 +1390,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     elem.storage = OnHeap # we know that sequences are on the heap
     initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
     arr.r = ropecg(p.module, "$1[$2]", rdLoc(a), rdLoc(i))
-    genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+    genAssignment(p, elem, arr, {needToCopy})
     lineF(p, cpsStmts, "}$n", [])
 
 
