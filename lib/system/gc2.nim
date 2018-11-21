@@ -228,7 +228,8 @@ template markGrey(x: PCell) =
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
-template asgnRefImpl =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+  # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
   if src != nil:
@@ -237,12 +238,8 @@ template asgnRefImpl =
     markGrey(s)
   dest[] = src
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
-  # the code generator calls this proc!
-  asgnRefImpl()
-
-proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
-  asgnRefImpl()
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+  deprecated: "old compiler compat".} = asgnRef(dest, src)
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef marks 'src' as grey only if dest is not on the

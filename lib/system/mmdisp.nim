@@ -170,8 +170,8 @@ when defined(boehmgc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -326,8 +326,8 @@ elif defined(gogc):
     writebarrierptr(dest, src)
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     writebarrierptr(dest, src)
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    writebarrierptr(dest, src)
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -416,8 +416,8 @@ elif defined(nogc) and defined(useMalloc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -473,8 +473,8 @@ elif defined(nogc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   var allocator {.rtlThreadVar.}: MemRegion
   instantiateForRegion(allocator)

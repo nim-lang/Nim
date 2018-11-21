@@ -172,13 +172,8 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
-    # location is on heap
-    if canFormAcycle(dest.t):
-      linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
-              addrLoc(p.config, dest), rdLoc(src))
-    else:
-      linefmt(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
-              addrLoc(p.config, dest), rdLoc(src))
+    linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
+            addrLoc(p.config, dest), rdLoc(src))
   else:
     linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
             addrLoc(p.config, dest), rdLoc(src))

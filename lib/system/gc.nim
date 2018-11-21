@@ -229,17 +229,8 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   if dest[] != nil: decRef(usrToCell(dest[]))
   dest[] = src
 
-proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
-  # the code generator calls this proc if it is known at compile time that no
-  # cycle is possible.
-  if src != nil:
-    var c = usrToCell(src)
-    ++c.refcount
-  if dest[] != nil:
-    var c = usrToCell(dest[])
-    if --c.refcount:
-      rtlAddZCT(c)
-  dest[] = src
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+  deprecated: "old compiler compat".} = asgnRef(dest, src)
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the

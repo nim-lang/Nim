@@ -339,8 +339,8 @@ proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   dest[] = src
 proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   dest[] = src
-proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-  dest[] = src
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+  deprecated: "old compiler compat".} = asgnRef(dest, src)
 
 proc alloc(size: Natural): pointer =
   result = c_malloc(size)
