@@ -642,7 +642,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "help", "h":
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
-  of "symbolfiles", "incremental":
+  of "symbolfiles": discard "ignore for backwards compat"
+  of "incremental":
     when not defined(nimIncremental):
       localError(conf, info, "the compiler was not built with " &
         "incremental compilation features; bootstrap with " &
@@ -653,7 +654,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "writeonly": conf.symbolFiles = writeOnlySf
     of "readonly": conf.symbolFiles = readOnlySf
     of "v2": conf.symbolFiles = v2Sf
-    else: localError(conf, info, "invalid option for --symbolFiles: " & arg)
+    else: localError(conf, info, "invalid option for --incremental: " & arg)
   of "skipcfg":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optSkipSystemConfigFile)
