@@ -16,6 +16,6 @@ proc `=`(dest: var Foo, src: Foo) =
 
 proc test(): auto =
   var a,b : Foo
-  return (a, b)
+  return (a, b, Foo(boo: 5))
 
-var (a, b) = test()
+var (a, b, _) = test()
