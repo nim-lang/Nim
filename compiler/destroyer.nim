@@ -435,7 +435,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
-  of nkCallKinds:
+  of nkCallKinds, nkBracketExpr:
     result = genSink(c, dest.typ, dest, ri)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
@@ -446,7 +446,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
     #recurse(ri, ri2)
     result.add ri2
-  of nkObjConstr:
+  of nkObjConstr, nkTupleConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 1..<ri.len:
