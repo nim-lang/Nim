@@ -62,9 +62,9 @@ for x in getPony():
 #echo "Pony is dying!"
 
 
-#-------------------------------------------------------
-#--- Move into tuple const and move in tuple unpacking
-#-------------------------------------------------------
+#------------------------------------------------------------
+#-- Move into tuple constructor and move on tuple unpacking
+#------------------------------------------------------------
 
 type
   MySeqNonCopyable* = object
