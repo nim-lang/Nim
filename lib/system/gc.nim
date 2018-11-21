@@ -100,14 +100,6 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-
-template release(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
-
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
@@ -412,7 +404,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "rawNewObj begin")
-  acquire(gch)
   gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
@@ -429,7 +420,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   when logGC: writeCell("new cell", res)
   track("rawNewObj", res, size)
   gcTrace(res, csAllocated)
-  release(gch)
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
@@ -460,7 +450,6 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
-  acquire(gch)
   gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
@@ -476,7 +465,6 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   when logGC: writeCell("new cell", res)
   track("newObjRC1", res, size)
   gcTrace(res, csAllocated)
-  release(gch)
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
@@ -493,7 +481,6 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-  acquire(gch)
   collectCT(gch)
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
@@ -549,7 +536,6 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   else:
     sysAssert(ol.typ != nil, "growObj: 5")
     zeroMem(ol, sizeof(Cell))
-  release(gch)
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
@@ -815,13 +801,11 @@ when withRealTime:
     gch.maxPause = MaxPauseInUs.toNano
 
   proc GC_step(gch: var GcHeap, us: int, strongAdvice: bool) =
-    acquire(gch)
     gch.maxPause = us.toNano
     if (gch.zct.len >= ZctThreshold or (cycleGC and
         getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) or
         strongAdvice:
       collectCTBody(gch)
-    release(gch)
 
   proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
     if stackSize >= 0:
@@ -845,18 +829,12 @@ when withRealTime:
 
 when not defined(useNimRtl):
   proc GC_disable() =
-    when hasThreadSupport and hasSharedHeap:
-      discard atomicInc(gch.recGcLock, 1)
-    else:
-      inc(gch.recGcLock)
+    inc(gch.recGcLock)
   proc GC_enable() =
     if gch.recGcLock <= 0:
       raise newException(AssertionError,
           "API usage error: GC_enable called but GC is already enabled")
-    when hasThreadSupport and hasSharedHeap:
-      discard atomicDec(gch.recGcLock, 1)
-    else:
-      dec(gch.recGcLock)
+    dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) =
     discard
@@ -869,12 +847,10 @@ when not defined(useNimRtl):
     # set to the max value to suppress the cycle detector
 
   proc GC_fullCollect() =
-    acquire(gch)
     var oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch)
     gch.cycleThreshold = oldThreshold
-    release(gch)
 
   proc GC_getStatistics(): string =
     result = "[GC] total memory: " & $(getTotalMem()) & "\n" &

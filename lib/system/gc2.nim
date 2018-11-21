@@ -112,14 +112,6 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-
-template release(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
-
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
 # reachable from them. However, when we are sweeping, they have to
@@ -386,7 +378,6 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   result = newSeq(typ, len)
 
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-  acquire(gch)
   collectCT(gch)
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
@@ -410,7 +401,6 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator
-  release(gch)
   result = cellToUsr(res)
   when defined(memProfiler): nimProfile(newsize-oldsize)
 
@@ -722,16 +712,10 @@ when withRealTime:
 
 when not defined(useNimRtl):
   proc GC_disable() =
-    when hasThreadSupport and hasSharedHeap:
-      discard atomicInc(gch.recGcLock, 1)
-    else:
-      inc(gch.recGcLock)
+    inc(gch.recGcLock)
   proc GC_enable() =
     if gch.recGcLock > 0:
-      when hasThreadSupport and hasSharedHeap:
-        discard atomicDec(gch.recGcLock, 1)
-      else:
-        dec(gch.recGcLock)
+      dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) =
     discard
