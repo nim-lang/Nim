@@ -521,6 +521,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfAll)
   of "niminaction":
     testNimInAction(r, cat, options)
+  of "testament":
+    testTestament(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

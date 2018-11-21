@@ -328,11 +328,6 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
       given.err = reMsgsDiffer
       return
 
-proc makeDeterministic(s: string): string =
-  var x = splitLines(s)
-  sort(x, system.cmp)
-  result = join(x, "\n")
-
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
@@ -350,27 +345,31 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
-proc testSpec(r: var TResults, test: TTest, target = targetC) =
+proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   let tname = test.name.addFileExt(".nim")
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
-    if test.action == actionRun and expected.action == actionCompile:
-      expected.action = actionRun
   else:
     specDefaults expected
     expected.action = actionRunNoSpec
+    expected.outputCheck = ocIgnore # this is default so it is unnecessary
 
   if expected.err == reIgnored:
-    r.addResult(test, target, "", "", reIgnored)
+    # targetC is a lie
+    r.addResult(test, targetC, "", "", reIgnored)
     inc(r.skipped)
     inc(r.total)
     return
 
-  if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true" and target == targetC and expected.targets == {}:
-    expected.targets.incl(targetCpp)
-  elif expected.targets == {}:
-    expected.targets.incl(target)
+  expected.targets.incl targets
+
+  # still no target specified at all
+  if expected.targets == {}:
+    if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
+      expected.targets = {targetCpp}
+    else:
+      expected.targets = {targetC}
 
   for target in expected.targets:
     inc(r.total)
@@ -433,9 +432,13 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1
 
-      let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
-                 else: strip(buf.string)
-      let expectedOut = strip(expected.outp)
+      let bufB =
+        if expected.sortoutput:
+          var x = splitLines(strip(buf.string))
+          sort(x, system.cmp)
+          join(x, "\n")
+        else:
+          strip(buf.string)
 
       if exitCode != expected.exitCode:
         r.addResult(test, target, "exitcode: " & $expected.exitCode,
@@ -443,11 +446,11 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
                           bufB, reExitCodesDiffer)
         continue
 
-      if bufB != expectedOut and expected.action != actionRunNoSpec:
-        if not (expected.substr and expectedOut in bufB):
-          given.err = reOutputsDiffer
-          r.addResult(test, target, expected.outp, bufB, reOutputsDiffer)
-          continue
+      if (expected.outputCheck == ocEqual  and bufB != expected.outp) or
+         (expected.outputCheck == ocSubstr and bufB notin expected.outp):
+        given.err = reOutputsDiffer
+        r.addResult(test, target, expected.outp, bufB, reOutputsDiffer)
+        continue
 
       compilerOutputTests(test, target, given, expected, r)
       continue
@@ -495,11 +498,10 @@ proc testExec(r: var TResults, test: TTest) =
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, targetC, "", given.msg, given.err)
 
-proc makeTest(test, options: string, cat: Category, action = actionCompile,
+proc makeTest(test, options: string, cat: Category,
               env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
-  result = TTest(cat: cat, name: test, options: options,
-                 action: action, startTime: epochTime())
+  result = TTest(cat: cat, name: test, options: options, startTime: epochTime())
 
 when defined(windows):
   const

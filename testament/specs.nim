@@ -25,6 +25,11 @@ type
     actionReject = "reject"
     actionRunNoSpec = "runNoSpec"
 
+  TOutputCheck* = enum
+    ocIgnore = "ignore"
+    ocEqual  = "equal"
+    ocSubstr = "substr"
+
   TResultEnum* = enum
     reNimcCrash,     # nim compiler seems to have crashed
     reMsgsDiffer,       # error messages differ
@@ -51,6 +56,8 @@ type
     action*: TTestAction
     file*, cmd*: string
     input*: string
+    outputCheck*: TOutputCheck
+    sortoutput*: bool
     outp*: string
     line*, column*: int
     tfile*: string
@@ -60,7 +67,6 @@ type
     ccodeCheck*: string
     maxCodeSize*: int
     err*: TResultEnum
-    substr*, sortoutput*: bool
     targets*: set[TTarget]
     nimout*: string
 
@@ -145,14 +151,13 @@ proc parseSpec*(filename: string): TSpec =
     of "tline": discard parseInt(e.value, result.tline)
     of "tcolumn": discard parseInt(e.value, result.tcolumn)
     of "output":
-      result.action = actionRun
-      result.outp = e.value
+      result.outputCheck = ocEqual
+      result.outp = strip(e.value)
     of "input":
       result.input = e.value
     of "outputsub":
-      result.action = actionRun
-      result.outp = e.value
-      result.substr = true
+      result.outputCheck = ocSubstr
+      result.outp = strip(e.value)
     of "sortoutput":
       result.sortoutput = parseCfgBool(e.value)
     of "exitcode":
