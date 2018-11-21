@@ -446,13 +446,24 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
     #recurse(ri, ri2)
     result.add ri2
-  of nkObjConstr, nkTupleConstr:
+  of nkObjConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 1..<ri.len:
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
       ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+    result.add ri2
+  of nkTupleConstr:
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an tuple constructor is consumed,
+      # so these all act like 'sink' parameters:
+      if ri[i].kind == nkExprColonExpr:
+        ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+      else:
+        ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
@@ -473,6 +484,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
+    echo "n ", $n
+    echo "---------------"
     discard "transform; var x = y to  var x; x op y  where op is a move or copy"
     result = newNodeI(nkStmtList, n.info)
 
