@@ -13,40 +13,38 @@ Introduction
 
   "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
 
-This document is a tutorial for the macros of the *Nim* programming
-language. A macro enables to formulate and distribute Nim syntax tree
-transformations as a normal library. The arguments of a macro are
-passed a syntax tree, and its job is it to create another syntax tree
-for the compiler. The way this works in Nim is, whenever the compiler
-encounters a call expression to a macro, The compiler evaluates the
-macro at compile time with the syntax tree from the invocation, and
-then it replaces the call to the macro by the result of the macro.
+This document is a tutorial about Nim's macro system.
+A macro is a function that is executed at compile time and transforms
+a Nim syntax tree into a different tree.
 
 Examples of things that can be implemented in macros:
 
  * An assert macro that prints both sides of a comparison operator, if
-the assertion fails. ``myAssert(a == b)`` that converts to
+the assertion fails. ``myAssert(a == b)`` is converted to
 ``if a != b: quit($a " != " $b)``
 
  * A debug macro that prints the value and the name of the symbol.
-``myDebugEcho(a)`` that converts to ``echo "a: ", a``
+``myDebugEcho(a)`` is converted to ``echo "a: ", a``
 
  * Symbolic differentiation of an expression.
-``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)``  that converts to
+``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)``  is converted to
 ``3*a*pow(x,2) + 2*a*x + c``
+
 
 Macro Arguments
 ---------------
 
-The types of macro arguments  have two faces. One face is used for
-the overload resolution, and the other face is used for the semantic
-checking of the macro implementation. For example
-``macro foo(arg: int)`` will be called in an expression ``foo(x)``, if
-``x`` is of type int, but for the semantic checking of the macro
-implementation, ``arg`` has the type ``NimNode``, not ``int`` as you might
-expect, because ``x`` will be passed as a symbol (``NimNode``), not as
-an integer. There are two ways to pass arguments to a macro, either typed or
-untyped.
+The types of macro arguments have two faces. One face is used for
+the overload resolution, and the other face is used within the macro
+body. For example, if ``macro foo(arg: int)`` is called in an
+expression ``foo(x)``, ``x`` has to be of a type compatible to int, but
+*within* the macro's body ``arg`` has the type ``NimNode``, not ``int``!
+Why it is done this way will become obvious later, when we have seen
+concrete examples.
+
+There are two ways to pass arguments to a macro, an argument can be
+either ``typed`` or ``untyped``.
+
 
 Untyped Arguments
 -----------------
@@ -54,26 +52,33 @@ Untyped Arguments
 Untyped macro arguments are passed to the macro before they are
 semantically checked. This means the syntax tree that is passed down
 to the macro does not need to make sense for Nim yet, the only
-limitation for the syntax in an untyped macro argument is, it needs to
-be parseable by the Nim parser. The semantic of this syntax is
-entirely up to the macro implementation. In this case the macro is
-responsible to implement its own semantic checking on the
-argument. The upside for untyped arguments is, the syntax tree is
-quite predictable and less complex than for typed arguments. Untyped
-arguments have the type ``untyped`` in arguments list.
+limitation is that it needs to be parseable. Usually the macro does
+not check the argument either but uses it in the transformation's
+result somehow. The result of a macro expansion is always checked
+by the compiler, so apart from weird error messages nothing bad
+can happen.
+
+The downside for an ``untyped`` argument is that these do not play
+well with Nim's overloading resolution.
+
+The upside for untyped arguments is that the syntax tree is
+quite predictable and less complex compared to its ``typed``
+counterpart.
+
 
 Typed Arguments
 ---------------
 
 For typed arguments, the semantic checker runs on the argument and
 does transformations on it, before it is passed to the macro. Here
-identifier nodes will already be resolved as symbols, implicit type
-conversions are visible in the tree as calls, templates will be
+identifier nodes are resolved as symbols, implicit type
+conversions are visible in the tree as calls, templates are
 expanded and probably most importantly, nodes have type information.
 Typed arguments can have the type ``typed`` in the arguments list.
 But all other types, such as ``int``, ``float`` or ``MyObjectType``
-are typed arguments as well, and they will be passed to the macro as a
+are typed arguments as well, and they are passed to the macro as a
 syntax tree.
+
 
 Static Arguments
 ----------------
@@ -97,7 +102,7 @@ but in the macro body ``arg`` is just like a normal parameter of type
 Code blocks as arguments
 ------------------------
 
-In Nim it is possible to pass the last argument of a call expression in a
+It is possible to pass the last argument of a call expression in a
 separate code block with indentation. For example the following code
 example is a valid (but not a recommended) way to call ``echo``:
 
@@ -108,9 +113,9 @@ example is a valid (but not a recommended) way to call ``echo``:
     let b = "ld!"
     a & b
 
-For macros this way of calling is useful for example to implement an
-embedded domain specific language. Syntax trees of arbitrary
+For macros this way of calling is very useful; syntax trees of arbitrary
 complexity can be passed to macros with this notation.
+
 
 The Syntax Tree
 ---------------
@@ -119,7 +124,7 @@ In order to build a Nim syntax tree one needs to know how Nim source
 code is represented as a syntax tree, and how such a tree needs to
 look like so that the Nim compiler will understand it. The nodes of the
 Nim syntax tree are documented in the `macros <macros.html>`_ module.
-But a probably more interesting and interactive way to explore the Nim
+But a more interactive way to explore the Nim
 syntax tree is with ``macros.treeRepr``, it converts a syntax tree
 into a multi line string for printing on the console. It can be used
 to explore how the argument expressions are represented in tree form
@@ -147,6 +152,7 @@ but does nothing else. Here is an example of such a tree representation:
   #             Ident "b"
   #             StrLit "abcdef"
 
+
 Custom sematic checking
 -----------------------
 
@@ -162,6 +168,7 @@ be created with the ``macros.error`` proc.
 
   macro myAssert(arg: untyped): untyped =
     arg.expectKind nnkInfix
+
 
 Generating Code
 ---------------
