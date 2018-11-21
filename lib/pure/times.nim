@@ -745,8 +745,7 @@ proc abs*(a: Duration): Duration =
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
-  ## Converts a broken-down time structure to
-  ## calendar time representation.
+  ## Converts a ``DateTime`` to a ``Time`` representing the same point in time.
   let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
   seconds.inc dt.hour * secondsInHour
@@ -1047,7 +1046,7 @@ proc local*(t: Time): DateTime =
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
-  ## Gets the current time as a ``Time`` with nanosecond resolution.
+  ## Gets the current time as a ``Time`` with up to nanosecond resolution.
   when defined(JS):
     let millis = newDate().getTime()
     let seconds = convert(Milliseconds, Seconds, millis)
@@ -1141,16 +1140,16 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   result = ti1 + (-ti2)
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current date as a string of the format ``YYYY-MM-DD``.
-  var ti = now()
-  result = $ti.year & '-' & intToStr(ord(ti.month), 2) &
-    '-' & intToStr(ti.monthday, 2)
+  ## Gets the current local date as a string of the format ``YYYY-MM-DD``.
+  var dt = now()
+  result = $dt.year & '-' & intToStr(ord(dt.month), 2) &
+    '-' & intToStr(dt.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current clock time as a string of the format ``HH:MM:SS``.
-  var ti = now()
-  result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
-    ':' & intToStr(ti.second, 2)
+  ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
+  var dt = now()
+  result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
+    ':' & intToStr(dt.second, 2)
 
 proc toParts* (ti: TimeInterval): TimeIntervalParts =
   ## Converts a `TimeInterval` into an array consisting of its time units,
@@ -1382,7 +1381,6 @@ proc `==`*(a, b: DateTime): bool =
   ## Returns true if ``a == b``, that is if both dates represent the same point in time.
   return a.toTime == b.toTime
 
-
 proc isStaticInterval(interval: TimeInterval): bool =
   interval.years == 0 and interval.months == 0 and
     interval.days == 0 and interval.weeks == 0
@@ -1397,28 +1395,20 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
     hours = interval.hours)
 
 proc between*(startDt, endDt: DateTime): TimeInterval =
-  ## Evaluate difference between two dates in ``TimeInterval`` format, so, it
-  ## will be relative.
+  ## Gives the difference between ``startDt`` and ``endDt`` as a
+  ## ``TimeInterval``.
   ##
-  ## **Warning:** It's not recommended to use ``between`` for ``DateTime's`` in
-  ## different ``TimeZone's``.
-  ## ``a + between(a, b) == b`` is only guaranteed when ``a`` and ``b`` are in UTC.
+  ## **Warning:** This proc currently gives very few guarantees about the
+  ## result. ``a + between(a, b) == b`` is **not** true in general
+  ## (it's always true when UTC is used however). Neither is it guaranteed that
+  ## all components in the result will have the same sign. The behavior of this
+  ## proc might change in the future.
   runnableExamples:
-    var a = initDateTime(year = 2018, month = Month(3), monthday = 25,
-                     hour = 0, minute = 59, second = 59, nanosecond = 1,
-                     zone = utc()).local
-    var b = initDateTime(year = 2018, month = Month(3), monthday = 25,
-                     hour = 1, minute =  1, second =  1, nanosecond = 0,
-                     zone = utc()).local
-    doAssert between(a, b) == initTimeInterval(
-      nanoseconds=999, milliseconds=999, microseconds=999, seconds=1, minutes=1)
-
-    a = parse("2018-01-09T00:00:00+00:00", "yyyy-MM-dd'T'HH:mm:sszzz", utc())
-    b = parse("2018-01-10T23:00:00-02:00", "yyyy-MM-dd'T'HH:mm:sszzz")
-    doAssert between(a, b) == initTimeInterval(hours=1, days=2)
-    ## Though, here correct answer should be 1 day 25 hours (cause this day in
-    ## this tz is actually 26 hours). That's why operating different TZ is
-    ## discouraged
+    var a = initDateTime(25, mMar, 2015, 12, 0, 0, utc())
+    var b = initDateTime(1, mApr, 2017, 15, 0, 15, utc())
+    var ti = initTimeInterval(years = 2, days = 7, hours = 3, seconds = 15)
+    doAssert between(a, b) == ti
+    doAssert between(a, b) == -between(b, a)
 
   var startDt = startDt.utc()
   var endDt = endDt.utc()
@@ -1546,7 +1536,6 @@ proc `*=`*[T: TimesMutableTypes, U](a: var T, b: U) =
     var dur = initDuration(seconds = 1)
     dur *= 5
     doAssert dur == initDuration(seconds = 5)
-
   a = a * b
 
 #

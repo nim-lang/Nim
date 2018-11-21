@@ -321,6 +321,9 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
       result.add('\16')
       encodeVInt(s.gcUnsafetyReason.id, result)
       pushSym(w, s.gcUnsafetyReason)
+    if s.transformedBody != nil:
+      result.add('\24')
+      encodeNode(g, s.info, s.transformedBody, result)
   of skModule, skPackage:
     encodeInstantiations(g, s.usedGenerics, result)
     # we don't serialize:
@@ -725,6 +728,9 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     if b.s[b.pos] == '\16':
       inc(b.pos)
       result.gcUnsafetyReason = loadSym(g, decodeVInt(b.s, b.pos), result.info)
+    if b.s[b.pos] == '\24':
+      inc b.pos
+      result.transformedBody = decodeNode(g, b, result.info)
   of skModule, skPackage:
     decodeInstantiations(g, b, result.info, result.usedGenerics)
   of skLet, skVar, skField, skForVar:
@@ -847,8 +853,9 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
         internalAssert g.config, false
   of nkImportStmt:
     for x in n:
-      internalAssert g.config, x.kind == nkStrLit
-      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, AbsoluteFile n[0].strVal))
+      internalAssert g.config, x.kind == nkSym
+      let modpath = AbsoluteFile toFullPath(g.config, x.sym.info)
+      let imported = g.importModuleCallback(g, module, fileInfoIdx(g.config, modpath))
       internalAssert g.config, imported.id < 0
   of nkStmtList, nkStmtListExpr:
     for x in n: replay(g, module, x)
@@ -883,6 +890,10 @@ proc setupModuleCache*(g: ModuleGraph) =
               database="nim")
     let oldConfig = db.getValue(sql"select config from config")
     g.incr.configChanged = oldConfig != encodeConfig(g)
+    # ensure the filename IDs stay consistent:
+    for row in db.rows(sql"select fullpath, nimid from filenames order by nimid"):
+      let id = fileInfoIdx(g.config, AbsoluteFile row[0])
+      doAssert id.int == parseInt(row[1])
   db.exec(sql"pragma journal_mode=off")
   # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")

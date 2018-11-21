@@ -186,7 +186,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
-    graph.compileProject()
+    graph.compileProject(dirtyIdx)
   if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
       dirtyfile.isEmpty:
     discard "no need to recompile anything"
@@ -195,7 +195,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
     if conf.ideCmd != ideMod:
-      graph.compileProject(modIdx)
+      if isKnownFile:
+        graph.compileProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:

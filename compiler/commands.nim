@@ -643,6 +643,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles", "incremental":
+    when not defined(nimIncremental):
+      localError(conf, info, "the compiler was not built with " &
+        "incremental compilation features; bootstrap with " &
+        "-d:nimIncremental to enable")
     case arg.normalize
     of "on": conf.symbolFiles = v2Sf
     of "off": conf.symbolFiles = disabledSf

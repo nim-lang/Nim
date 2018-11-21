@@ -42,10 +42,11 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     let sonType = n.sons[0].typ
+    let sonKind = n.sons[0].kind
     if isEmptyType(sonType) or sonType.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
       localError(c.config, n.info, errInvalidDiscard)
-    if sonType.kind == tyProc:
-      # tyProc is disallowed to prevent ``discard foo`` to pass, when ``discard foo()`` is meant.
+    if sonType.kind == tyProc and sonKind notin nkCallKinds:
+      # tyProc is disallowed to prevent ``discard foo`` to be valid, when ``discard foo()`` is meant.
       localError(c.config, n.info, "illegal discard proc, did you mean: " & $n[0] & "()")
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
