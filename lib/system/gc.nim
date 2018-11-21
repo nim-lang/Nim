@@ -177,15 +177,6 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-when hasThreadSupport and hasSharedHeap:
-  template `--`(x: untyped): untyped = atomicDec(x, rcIncrement) <% rcIncrement
-  template `++`(x: untyped) = discard atomicInc(x, rcIncrement)
-else:
-  template `--`(x: untyped): untyped =
-    dec(x, rcIncrement)
-    x <% rcIncrement
-  template `++`(x: untyped) = inc(x, rcIncrement)
-
 proc incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
@@ -194,28 +185,19 @@ proc incRef(c: PCell) {.inline.} =
 
 proc nimGCref(p: pointer) {.compilerProc.} =
   # we keep it from being collected by pretending it's not even allocated:
-  add(gch.additionalRoots, usrToCell(p))
-  incRef(usrToCell(p))
-
-proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
-  # we MUST access gch as a global here, because this crosses DLL boundaries!
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
+  let c = usrToCell(p)
+  add(gch.additionalRoots, c)
+  incRef(c)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
   addZCT(gch.zct, c)
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
 
 proc decRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
   gcAssert(c.refcount >=% rcIncrement, "decRef")
-  if --c.refcount:
+  c.refcount = c.refcount -% rcIncrement
+  if c.refcount <% rcIncrement:
     rtlAddZCT(c)
 
 proc nimGCunref(p: pointer) {.compilerProc.} =
@@ -239,19 +221,9 @@ template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
       if gch.decStack.d[i] == c:
         sysAssert(false, msg)
 
-proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
-  ## adds 'p' to the cycle candidate set for the cycle collector. It is
-  ## necessary if you used the 'acyclic' pragma for optimization
-  ## purposes and need to break cycles manually.
-  rtlAddCycleRoot(usrToCell(cast[pointer](p)))
-
 proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
-  var c = usrToCell(p)
-  gcAssert(isAllocatedPtr(gch.region, c), "nimGCunrefNoCycle: isAllocatedPtr")
-  if --c.refcount:
-    rtlAddZCT(c)
-    sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
+  decRef(usrToCell(p))
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
 proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
@@ -665,11 +637,9 @@ proc doOperation(p: pointer, op: WalkOp) =
     #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
-    #c.refcount = c.refcount -% rcIncrement
     when logGC: writeCell("decref (from doOperation)", c)
     track("waZctDecref", p, 0)
     decRef(c)
-    #if c.refcount <% rcIncrement: addZCT(gch.zct, c)
   of waPush:
     add(gch.tempStack, c)
   of waMarkGlobal:
@@ -707,13 +677,13 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
     var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
     if objStart != nil:
       # mark the cell:
-      objStart.refcount = objStart.refcount +% rcIncrement
+      incRef(objStart)
       add(gch.decStack, objStart)
     when false:
       if isAllocatedPtr(gch.region, cell):
         sysAssert false, "allocated pointer but not interior?"
         # mark the cell:
-        cell.refcount = cell.refcount +% rcIncrement
+        incRef(cell)
         add(gch.decStack, cell)
   sysAssert(allocInv(gch.region), "gcMark end")
 
@@ -787,11 +757,6 @@ proc unmarkStackAndRegisters(gch: var GcHeap) =
   for i in 0..gch.decStack.len-1:
     sysAssert isAllocatedPtr(gch.region, d[i]), "unmarkStackAndRegisters"
     decRef(d[i])
-    #var c = d[i]
-    # XXX no need for an atomic dec here:
-    #if --c.refcount:
-    #  addZCT(gch.zct, c)
-    #sysAssert c.typ != nil, "unmarkStackAndRegisters 2"
   gch.decStack.len = 0
 
 proc collectCTBody(gch: var GcHeap) =

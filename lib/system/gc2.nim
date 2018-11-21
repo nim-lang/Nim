@@ -204,10 +204,6 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
-  # we MUST access gch as a global here, because this crosses DLL boundaries!
-  discard
-
 proc nimGCref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
   markAsEscaped(cell)
@@ -239,12 +235,6 @@ template markGrey(x: PCell) =
       sysAssert(false, "wtf")
     x.setColor(rcGrey)
     add(gch.greyStack, x)
-
-proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
-  ## adds 'p' to the cycle candidate set for the cycle collector. It is
-  ## necessary if you used the 'acyclic' pragma for optimization
-  ## purposes and need to break cycles manually.
-  discard
 
 template asgnRefImpl =
   gcAssert(not isOnStack(dest), "asgnRef")
