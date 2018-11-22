@@ -768,7 +768,6 @@ type
     flags*: TLocFlags         # location's flags
     lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
-    dup*: Rope                # duplicated location for precise stack scans
 
   # ---------------- end of backend information ------------------------------
 
