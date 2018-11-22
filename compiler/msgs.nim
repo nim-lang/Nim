@@ -190,7 +190,7 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
     result = "???"
-    return  
+    return
   let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
   let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
   if optListFullPaths in conf.globalOptions:
