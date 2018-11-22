@@ -74,7 +74,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2*(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =

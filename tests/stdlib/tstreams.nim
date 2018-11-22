@@ -7,6 +7,7 @@ fs is: nil
 
 threw exception
 '''
+disabled: "windows"
 """
 
 
