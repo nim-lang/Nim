@@ -3974,6 +3974,8 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## purposes.
   when not defined(JS) and not defined(nimscript) and not defined(gcDestructors):
     var s = cast[PGenericSeq](s)
+    if s == nil:
+      s = cast[PGenericSeq](newString(0))
     # string literals cannot become 'shallow':
     if (s.reserved and strlitFlag) == 0:
       s.reserved = s.reserved or seqShallowFlag
