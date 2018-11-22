@@ -73,23 +73,6 @@ iterator dirs(x: string): (int, int) =
   var it: PathIter
   while hasNext(it, x): yield next(it, x)
 
-when false:
-  iterator dirs(x: string): (int, int) =
-    var i = 0
-    var first = true
-    while i < x.len:
-      let prev = i
-      if first and x[i] in {DirSep, AltSep}:
-        # absolute path:
-        inc i
-      else:
-        while i < x.len and x[i] notin {DirSep, AltSep}: inc i
-      if i > prev:
-        yield (prev, i-1)
-      first = false
-      # skip all separators:
-      while i < x.len and x[i] in {DirSep, AltSep}: inc i
-
 proc isDot(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] == '.'
 

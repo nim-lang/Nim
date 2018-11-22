@@ -70,6 +70,7 @@ doc/manual.rst
 doc/lib.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
@@ -82,6 +83,7 @@ doc/lib.rst
 doc/manual.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
 doc/overview.rst
 doc/filters.rst

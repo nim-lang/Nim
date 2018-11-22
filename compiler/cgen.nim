@@ -294,7 +294,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 
 type
   TAssignmentFlag = enum
-    needToCopy, afDestIsNil, afDestIsNotNil, afSrcIsNil, afSrcIsNotNil
+    needToCopy
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
@@ -313,7 +313,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
-      genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+      genRefAssign(p, loc, nilLoc, {})
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
