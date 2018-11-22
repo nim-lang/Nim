@@ -14,6 +14,8 @@ import
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, compiler/nodejs, times, sets, md5
 
+var useColors = true
+
 const
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -32,6 +34,8 @@ Options:
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
+  --directory:dir           Change to directory dir before reading the tests or doing anything else.
+  --colors:on|off           turn messagescoloring on|off
 """ % resultsFile
 
 type
@@ -191,6 +195,17 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
+
+
+
+
+template maybeStyledEcho(args: varargs[untyped]): untyped =
+  if useColors:
+    styledEcho(arg)
+  else:
+
+
+
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
@@ -324,7 +339,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
-  #echo "TESTING ", tname
+  echo "TESTING ", tname
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -362,6 +377,12 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.cmd, test.name, test.options,
                                target)
+
+      # echo "expected.cmd: ", expected.cmd
+      # echo "nimout: ", given.nimout
+      # echo "outp:   ", given.outp
+      # echo "msg:    ", given.msg
+      # echo "err:    ", given.err
 
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
@@ -494,6 +515,7 @@ proc main() =
 
   var targetsStr = ""
 
+
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
@@ -505,7 +527,17 @@ proc main() =
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
     of "nim": compilerPrefix = p.val.string
-    else: quit Usage
+    of "directory":
+      setCurrentDir(p.val.string)
+    of "colors":
+      if p.val.string == "on"
+        useColors = true
+      elif p.val.string == "off":
+        useColors = false
+      else:
+        quit Usage
+    else:
+      quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
   var action = p.key.string.normalize
