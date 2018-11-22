@@ -17,13 +17,6 @@
 const
   NilLibHandle: LibHandle = nil
 
-proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc rawWrite(f: File, s: string|cstring) =
-  # we cannot throw an exception here!
-  discard c_fwrite(cstring(s), 1, s.len, f)
-
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
   stderr.rawWrite("could not load: ")
