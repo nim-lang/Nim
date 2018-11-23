@@ -465,7 +465,6 @@ proc testExec(r: var TResults, test: TTest) =
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
               env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
-  echo "makeTest: ", test
   result = TTest(cat: cat, name: test, options: options,
                  action: action, startTime: epochTime())
 
