@@ -366,13 +366,7 @@ proc storeType(g: ModuleGraph; t: PType) =
   db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
     t.id, mid, buf)
 
-proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
-  if g.config.symbolFiles == disabledSf: return
-  var buf = newStringOfCap(160)
-  encodeNode(g, module.info, n, buf)
-  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
-    abs(module.id), module.offset, buf)
-  inc module.offset
+proc transitiveClosure(g: ModuleGraph) =
   var i = 0
   while true:
     if i > 10_000:
@@ -391,8 +385,24 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
       break
     inc i
 
+proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
+  if g.config.symbolFiles == disabledSf: return
+  var buf = newStringOfCap(160)
+  encodeNode(g, module.info, n, buf)
+  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
+    abs(module.id), module.offset, buf)
+  inc module.offset
+  transitiveClosure(g)
+
 proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
   storeNode(g, module, n)
+
+proc storeFilename(g: ModuleGraph; fullpath: AbsoluteFile; fileIdx: FileIndex) =
+  let id = db.getValue(sql"select id from filenames where fullpath = ?", fullpath.string)
+  if id.len == 0:
+    let fullhash = hashFileCached(g.config, fileIdx, fullpath)
+    db.exec(sql"insert into filenames(nimid, fullpath, fullhash) values (?, ?, ?)",
+        int(fileIdx), fullpath.string, fullhash)
 
 proc storeRemaining*(g: ModuleGraph; module: PSym) =
   if g.config.symbolFiles == disabledSf: return
@@ -403,6 +413,13 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
     else:
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
+  transitiveClosure(g)
+  var nimid = 0
+  for x in items(g.config.m.fileInfos):
+    # don't store the "command line" entry:
+    if nimid != 0:
+      storeFilename(g, x.fullPath, FileIndex(nimid))
+    inc nimid
 
 # ---------------- decoder -----------------------------------
 
@@ -880,20 +897,22 @@ proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == writeOnlySf:
     removeFile(dbfile)
   createDir getNimcacheDir(g.config)
+  let ec = encodeConfig(g)
   if not fileExists(dbfile):
     db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     createDb(db)
-    db.exec(sql"insert into config(config) values (?)", encodeConfig(g))
+    db.exec(sql"insert into config(config) values (?)", ec)
   else:
     db = open(connection=string dbfile, user="nim", password="",
               database="nim")
     let oldConfig = db.getValue(sql"select config from config")
-    g.incr.configChanged = oldConfig != encodeConfig(g)
+    g.incr.configChanged = oldConfig != ec
     # ensure the filename IDs stay consistent:
     for row in db.rows(sql"select fullpath, nimid from filenames order by nimid"):
       let id = fileInfoIdx(g.config, AbsoluteFile row[0])
       doAssert id.int == parseInt(row[1])
+    db.exec(sql"update config set config = ?", ec)
   db.exec(sql"pragma journal_mode=off")
   # This MUST be turned off, otherwise it's way too slow even for testing purposes:
   db.exec(sql"pragma SYNCHRONOUS=off")

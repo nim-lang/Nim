@@ -100,7 +100,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
     if s.kind != skModule:
       if s.kind != skEnumField:
         if s.kind notin ExportableSymKinds:
-          internalError(c.config, s.info, "importAllSymbols: " & $s.kind)
+          internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
         if exceptSet.isNil or s.name.id notin exceptSet:
           rawImportSymbol(c, s)
     s = nextIter(i, fromMod.tab)

@@ -261,6 +261,11 @@ proc isLastRead(n: PNode; c: var Con): bool =
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
+template isUnpackedTuple(s: PSym): bool =
+  ## we move out all elements of unpacked tuples, 
+  ## hence unpacked tuples themselves don't need to be destroyed
+  s.kind == skTemp and s.typ.kind == tyTuple
+
 proc patchHead(n: PNode) =
   if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
     let s = n[0].sym
@@ -446,6 +451,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
     #recurse(ri, ri2)
     result.add ri2
+  of nkBracketExpr:
+    if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
+      # unpacking of tuple: move out the elements 
+      result = genSink(c, dest.typ, dest, ri)
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+    result.add p(ri, c)
   of nkObjConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
@@ -453,6 +465,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
       ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+    result.add ri2
+  of nkTupleConstr:
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an tuple constructor is consumed,
+      # so these all act like 'sink' parameters:
+      if ri[i].kind == nkExprColonExpr:
+        ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+      else:
+        ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
@@ -483,7 +506,7 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isUnpackedTuple(it[0].sym):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
