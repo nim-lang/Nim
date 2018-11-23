@@ -3,7 +3,7 @@ output: '''10
 10
 
 1'''
-msg: '''
+nimout: '''
 K=string V=int
 K=int64 V=string
 K=int V=int

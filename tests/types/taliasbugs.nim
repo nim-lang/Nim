@@ -1,5 +1,5 @@
 discard """
-  msg: '''true
+  nimout: '''true
 true
 true
 true

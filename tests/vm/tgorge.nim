@@ -1,5 +1,5 @@
 discard """
-disabled: "appveyor"
+disabled: "windows"
 """
 
 # If your os is windows and this test fails for you locally, please

@@ -1,5 +1,5 @@
 discard """
-  msg: '''Hello fred , managed by sally
+  nimout: '''Hello fred , managed by sally
 Hello sally , managed by bob'''
 """
 # bug #3973

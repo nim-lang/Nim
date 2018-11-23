@@ -1,5 +1,4 @@
 discard """
-  file: "tissues.nim"
   output: '''
 20.0 USD
 Printable

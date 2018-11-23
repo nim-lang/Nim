@@ -1,5 +1,5 @@
 discard """
-disabled: "appveyor"
+disabled: "windows"
 """
 
 # appveyor is "out of memory"

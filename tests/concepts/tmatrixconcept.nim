@@ -1,6 +1,6 @@
 discard """
 output: "0\n0\n0"
-msg: '''
+nimout: '''
 R=3 C=3 TE=9 FF=14 FC=20 T=int
 R=3 C=3 T=int
 '''

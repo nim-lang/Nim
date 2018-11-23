@@ -1,9 +1,14 @@
 discard """
-  msg: '''
-range[0 .. 100]
-array[0 .. 100, int]
-10
-test
+  nimout: '''
+Infix
+  Ident "=>"
+  Call
+    Ident "name"
+    Ident "a"
+    ExprColonExpr
+      Ident "b"
+      Ident "cint"
+  NilLit
 '''
 
   output: '''
