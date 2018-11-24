@@ -218,7 +218,7 @@ when defineSsl:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
       let length = len(data)
       if length > 0:
-        let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
+        let ret = bioWrite(socket.bioIn, addr data[0], length.cint)
         if ret < 0:
           raiseSSLError()
       elif length == 0:

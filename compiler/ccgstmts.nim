@@ -307,11 +307,13 @@ proc genSingleVar(p: BProc, a: PNode) =
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty
+  var v: TLoc
+  initLocExpr(p, a.sons[0], v)
+  genLineDir(p, a)
   if immediateAsgn:
-    var v: TLoc
-    initLocExpr(p, a.sons[0], v)
-    genLineDir(p, a)
     loadInto(p, a.sons[0], a.sons[2], v)
+  else:
+    constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
   for it in n.sons:
