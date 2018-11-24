@@ -51,9 +51,7 @@ type
                              # of error or wildcard (unknown) types.
                              # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
-                             # be instantiated
-    converterRetType*: PType # converter can turn let into var and var into let
-                             # used to check mutability differences          
+                             # be instantiated         
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
@@ -118,7 +116,6 @@ proc initCandidateAux(ctx: PContext,
   c.call = nil
   c.baseTypeMatch = false
   c.genericConverter = false
-  c.converterRetType = nil
   c.inheritancePenalty = 0
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PType) =
@@ -1864,7 +1861,6 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         result = newDeref(result)
 
       inc(m.convMatches)
-      m.converterRetType = dest
       if m.genericConverter == false:
         m.genericConverter = srca == isGeneric or destIsGeneric
       return result
@@ -1916,7 +1912,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     a = a
     c = m.c
 
-  m.converterRetType = nil
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -2236,9 +2231,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         m.state = csNoMatch
         return
+    
     if formal.typ.kind == tyVar:
-      if m.converterRetType != nil:
-        if m.converterRetType.kind != tyVar:
+      let arg_converter = if arg.kind == nkHiddenDeref: arg[0] else: arg
+      if arg_converter.kind == nkHiddenCallConv:
+        if arg_converter.typ.kind != tyVar:
           m.state = csNoMatch
           m.mutabilityProblem = uint8(f-1)
           return  
@@ -2253,6 +2250,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         else: 0
     # iterates over the actual given arguments
     a = 1
+    arg: PNode # current prepared argument
 
   m.state = csMatch # until proven otherwise
   m.call = newNodeI(n.kind, n.info)
@@ -2307,7 +2305,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       m.typedescMatched = false
       n.sons[a].sons[1] = prepareOperand(c, formal.typ, n.sons[a].sons[1])
       n.sons[a].typ = n.sons[a].sons[1].typ
-      var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
+      arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                 n.sons[a].sons[1], n.sons[a].sons[1])
       if arg == nil:
         m.state = csNoMatch
@@ -2344,7 +2342,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.typedescMatched = false
           incl(marker, formal.position)
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-          var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
+          arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if arg != nil and m.baseTypeMatch and container != nil:
             addSon(container, arg)
@@ -2378,7 +2376,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           m.baseTypeMatch = false
           m.typedescMatched = false
           n.sons[a] = prepareOperand(c, formal.typ, n.sons[a])
-          var arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
+          arg = paramTypesMatch(m, formal.typ, n.sons[a].typ,
                                     n.sons[a], nOrig.sons[a])
           if arg == nil:
             m.state = csNoMatch
