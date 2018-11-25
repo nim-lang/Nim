@@ -241,14 +241,13 @@ proc useVar(a: PEffects, n: PNode) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
       s.magic != mNimVm:
     if s.guard != nil: guardGlobal(a, n, s.guard)
-    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
-        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-      #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
-      markGcUnsafe(a, s)
+    if s.kind == skVar:
+      # does not apply to the read-only skLet
       markSideEffect(a, s)
-    else:
-      markSideEffect(a, s)
-
+      if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
+          (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem) and s.guard == nil:
+        # guarded global vars are GC safe, so we exclude them
+        markGcUnsafe(a, s)
 
 type
   TIntersection = seq[tuple[id, count: int]] # a simple count table

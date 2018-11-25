@@ -8038,9 +8038,13 @@ indirectly; so the ``thread`` pragma implies ``procvar``.
 GC safety
 ---------
 
-We call a proc ``p`` `GC safe`:idx: when it doesn't access any global variable
-that contains GC'ed memory (``string``, ``seq``, ``ref`` or a closure) either
+We call a proc ``p`` `GC safe`:idx: when it doesn't access global variables
+that contain GC'ed memory (``string``, ``seq``, ``ref`` or a closure) either
 directly or indirectly through a call to a GC unsafe proc.
+
+An exception is made for access to `let variables
+<#statements-and-expressions-let-statement>`_ and `guarded variables
+<#guards-and-locks>`_ which is considered GC safe.
 
 The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
 otherwise this property is inferred by the compiler. Note that ``noSideEffect``
