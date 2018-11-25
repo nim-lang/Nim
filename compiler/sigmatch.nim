@@ -51,7 +51,7 @@ type
                              # of error or wildcard (unknown) types.
                              # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
-                             # be instantiated         
+                             # be instantiated
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
