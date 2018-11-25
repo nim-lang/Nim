@@ -1,6 +1,6 @@
 discard """
   output: '''abc
-64 == 64'''
+16 == 16'''
 """
 
 type
@@ -19,13 +19,13 @@ echo a.x
 # bug #9794
 ##########################################
 type
-  m256 {.importc: "__m256" , header: "immintrin.h".} = object
+  imported_double {.importc: "double".} = object
 
   Pod = object
-    v* : m256
+    v* : imported_double
     seed*: int32
 
-  Pod2 = tuple[v: m256, seed: int32]
+  Pod2 = tuple[v: imported_double, seed: int32]
 
 proc test() =
   echo sizeof(Pod), " == ",sizeof(Pod2)
