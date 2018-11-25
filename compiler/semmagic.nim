@@ -346,7 +346,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result.info = n.info
       result.typ = n.typ
     else:
-      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
       result = n
   of mAlignOf:
     result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))

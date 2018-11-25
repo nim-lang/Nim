@@ -51,7 +51,7 @@ type
                              # of error or wildcard (unknown) types.
                              # this is used to prevent instantiations.
     genericConverter*: bool  # true if a generic converter needs to
-                             # be instantiated
+                             # be instantiated         
     coerceDistincts*: bool   # this is an explicit coercion that can strip away
                              # a distrinct type
     typedescMatched*: bool
@@ -432,7 +432,7 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
     else: result = isNone
 
 proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
- if fGenericOrigin != nil and last.kind == tyGenericInst and
+  if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
    for i in countup(1, sonsLen(fGenericOrigin) - 1):
      let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
@@ -1034,8 +1034,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
 
   template doBind: bool = trDontBind notin flags
 
-  # var and static arguments match regular modifier-free types
-  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent}), c.calleeSym)
+  # var, sink and static arguments match regular modifier-free types
+  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent, tySink}), c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
@@ -1045,7 +1045,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     return typeRel(c, f, lastSon(aOrig))
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar, tyLent}).kind notin {
+      skipTypes(f, {tyVar, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
