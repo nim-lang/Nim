@@ -75,7 +75,7 @@ proc getFileDir(filename: string): string =
     result = getCurrentDir() / result
 
 proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   var p = startProcess(command, args=args, options=options)
@@ -88,8 +88,8 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
   instream.write(input)
   close instream
 
-  result = (TaintedString"", -1)
-  var line = newStringOfCap(120).TaintedString
+  result = ("", -1)
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
       result[0].string.add(line.string)
@@ -121,7 +121,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
-  while outp.readLine(x.TaintedString) or running(p):
+  while outp.readLine(x) or running(p):
     result.nimout.add(x & "\n")
     if x =~ pegOfInterest:
       # `err` should contain the last error/warning message
@@ -168,7 +168,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.file = ""
   result.outp = ""
   result.line = -1
-  while outp.readLine(x.TaintedString) or running(p):
+  while outp.readLine(x) or running(p):
     result.nimout.add(x & "\n")
   close(p)
   if p.peekExitCode == 0:

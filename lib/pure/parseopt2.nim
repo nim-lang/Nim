@@ -37,7 +37,7 @@ type
     pos: int
     remainingShortOptions: string
     kind*: CmdLineKind        ## the detected command line token
-    key*, val*: TaintedString ## key and value pair; ``key`` is the option
+    key*, val*: string        ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
@@ -89,7 +89,7 @@ proc nextOption(p: var OptParser, token: string, allowEmpty: bool) =
 proc next(p: var OptParser) =
   if p.remainingShortOptions.len != 0:
     p.kind = cmdShortOption
-    p.key = TaintedString(p.remainingShortOptions[0..0])
+    p.key = p.remainingShortOptions[0..0]
     p.val = ""
     p.remainingShortOptions = p.remainingShortOptions[1..p.remainingShortOptions.len-1]
     return
@@ -112,13 +112,13 @@ proc next(p: var OptParser) =
     p.key = token
     p.val = ""
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1", deprecated.} =
+proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo2$1", deprecated.} =
   ## Returns part of command line string that has not been parsed yet.
   ## Do not use - does not correctly handle whitespace.
   return p.cmd[p.pos..p.cmd.len-1].join(" ")
 
 type
-  GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]
+  GetoptResult* = tuple[kind: CmdLineKind, key, val: string]
 
 iterator getopt*(p: var OptParser): GetoptResult =
   ## This is an convenience iterator for iterating over the given OptParser object.

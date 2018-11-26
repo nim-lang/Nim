@@ -1233,7 +1233,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
+proc readLine*(socket: Socket, line: var string, timeout = -1,
                flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
@@ -1290,7 +1290,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
-               maxLength = MaxLineLength): TaintedString =
+               maxLength = MaxLineLength): string =
   ## Reads a line of data from ``socket``.
   ##
   ## If a full line is read ``\r\L`` is not

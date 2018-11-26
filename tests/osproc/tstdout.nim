@@ -21,7 +21,7 @@ var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
 let outputStream = p.outputStream
 var x = newStringOfCap(120)
 var output = ""
-while outputStream.readLine(x.TaintedString):
+while outputStream.readLine(x):
   output.add(x & "\n")
 
 echo "--------------------------------------"

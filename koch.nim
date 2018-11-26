@@ -378,9 +378,7 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  # we compile the tester with taintMode:on to have a basic
-  # taint mode test :-)
-  nimexec "cc --taintMode:on --opt:speed testament/tester"
+  nimexec "cc --opt:speed testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"

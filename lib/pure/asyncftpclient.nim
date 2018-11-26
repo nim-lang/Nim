@@ -90,7 +90,7 @@ type
 
 const multiLineLimit = 10000
 
-proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+proc expectReply(ftp: AsyncFtpClient): Future[String] {.async.} =
   result = await ftp.csock.recvLine()
   var count = 0
   while result[3] == '-':
@@ -101,7 +101,7 @@ proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
     if count >= multiLineLimit:
       raise newException(ReplyError, "Reached maximum multi-line reply count.")
 
-proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
+proc send*(ftp: AsyncFtpClient, m: string): Future[String] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ##
@@ -109,7 +109,7 @@ proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
   await ftp.csock.send(m & "\c\L")
   return await ftp.expectReply()
 
-proc assertReply(received: TaintedString, expected: varargs[string]) =
+proc assertReply(received: String, expected: varargs[string]) =
   for i in items(expected):
     if received.string.startsWith(i): return
   raise newException(ReplyError,
@@ -119,8 +119,7 @@ proc assertReply(received: TaintedString, expected: varargs[string]) =
 proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
   ftp.dsock = newAsyncSocket()
-
-  var pasvMsg = (await ftp.send("PASV")).string.strip.TaintedString
+  var pasvMsg = (await ftp.send("PASV")).string.strip
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
@@ -152,11 +151,11 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   if ftp.pass != "":
     assertReply(await(ftp.send("PASS " & ftp.pass)), "230")
 
-proc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+proc pwd*(ftp: AsyncFtpClient): Future[String] {.async.} =
   ## Returns the current working directory.
   let wd = await ftp.send("PWD")
   assertReply wd, "257"
-  return wd.string.captureBetween('"').TaintedString # "
+  return wd.string.captureBetween('"') # "
 
 proc cd*(ftp: AsyncFtpClient, dir: string) {.async.} =
   ## Changes the current directory on the remote FTP server to ``dir``.
@@ -204,7 +203,7 @@ proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
   if not recursive:
     assertReply(await(ftp.send("MKD " & dir.normalizePathSep)), "257")
   else:
-    var reply = TaintedString""
+    var reply = ""
     var previousDirs = ""
     for p in split(dir, {os.DirSep, os.AltSep}):
       if p != "":

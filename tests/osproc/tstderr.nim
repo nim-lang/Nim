@@ -19,7 +19,7 @@ try:
   let stderrStream = p.errorStream
   var x = newStringOfCap(120)
   var output = ""
-  while stderrStream.readLine(x.TaintedString):
+  while stderrStream.readLine(x):
     output.add(x & "\n")
 
   echo "--------------------------------------"

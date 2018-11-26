@@ -137,7 +137,7 @@ type
 
     handleTask*: proc (s: AsyncSocket) {.closure, gcsafe.}
 
-    lineBuffer: TaintedString ## Temporary storage for ``readLine``
+    lineBuffer: string ## Temporary storage for ``readLine``
     sendBuffer: string ## Temporary storage for ``send``
     sslNeedAccept: bool
     proto: Protocol
@@ -168,7 +168,7 @@ proc newAsyncSocket(): AsyncSocket =
   result.handleAccept = (proc (s: AsyncSocket) = discard)
   result.handleTask = (proc (s: AsyncSocket) = discard)
 
-  result.lineBuffer = "".TaintedString
+  result.lineBuffer = ""
   result.sendBuffer = ""
 
 proc asyncSocket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
@@ -376,7 +376,7 @@ proc acceptAddr*(server: AsyncSocket, client: var AsyncSocket,
   # deleg.open is set in ``toDelegate``.
 
   client.socket = c
-  client.lineBuffer = "".TaintedString
+  client.lineBuffer = ""
   client.sendBuffer = ""
   client.info = SockConnected
 
@@ -465,7 +465,7 @@ proc delHandleWrite*(s: AsyncSocket) =
   s.handleWrite = nil
 
 {.push warning[deprecated]: off.}
-proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
+proc recvLine*(s: AsyncSocket, line: var string): bool {.deprecated.} =
   ## Behaves similar to ``sockets.recvLine``, however it handles non-blocking
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
@@ -477,7 +477,7 @@ proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
   ## **Deprecated since version 0.9.2**: This function has been deprecated in
   ## favour of readLine.
   setLen(line.string, 0)
-  var dataReceived = "".TaintedString
+  var dataReceived = ""
   var ret = s.socket.recvLineAsync(dataReceived)
   case ret
   of RecvFullLine:
@@ -486,7 +486,7 @@ proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
       setLen(s.lineBuffer.string, 0)
     string(line).add(dataReceived.string)
     if string(line) == "":
-      line = "\c\L".TaintedString
+      line = "\c\L"
     result = true
   of RecvPartialLine:
     string(s.lineBuffer).add(dataReceived.string)
@@ -498,7 +498,7 @@ proc recvLine*(s: AsyncSocket, line: var TaintedString): bool {.deprecated.} =
     result = false
 {.pop.}
 
-proc readLine*(s: AsyncSocket, line: var TaintedString): bool =
+proc readLine*(s: AsyncSocket, line: var string): bool =
   ## Behaves similar to ``sockets.readLine``, however it handles non-blocking
   ## sockets properly. This function guarantees that ``line`` is a full line,
   ## if this function can only retrieve some data; it will save this data and
@@ -509,7 +509,7 @@ proc readLine*(s: AsyncSocket, line: var TaintedString): bool =
   ##
   ## This function will raise an OSError exception when a socket error occurs.
   setLen(line.string, 0)
-  var dataReceived = "".TaintedString
+  var dataReceived = ""
   var ret = s.socket.readLineAsync(dataReceived)
   case ret
   of ReadFullLine:
@@ -518,7 +518,7 @@ proc readLine*(s: AsyncSocket, line: var TaintedString): bool =
       setLen(s.lineBuffer.string, 0)
     string(line).add(dataReceived.string)
     if string(line) == "":
-      line = "\c\L".TaintedString
+      line = "\c\L"
     result = true
   of ReadPartialLine:
     string(s.lineBuffer).add(dataReceived.string)

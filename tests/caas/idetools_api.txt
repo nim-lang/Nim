@@ -30,7 +30,7 @@ def\tskParam\t$MODULE.test_iterators.filename\tstring
 > idetools --track:$TESTNIM,6,5 --def $SILENT
 def\tskVar\t$MODULE.test_enums.o\tTFile
 > idetools --track:$TESTNIM,12,34 --def $SILENT
-def\tskLet\t$MODULE.test_iterators.input\tTaintedString
+def\tskLet\t$MODULE.test_iterators.input\tstring
 > idetools --track:$TESTNIM,13,35 --def $SILENT
 def\tskForVar\t$MODULE.test_iterators.letter\tTRune
 > idetools --track:$TESTNIM,23,3 --def $SILENT

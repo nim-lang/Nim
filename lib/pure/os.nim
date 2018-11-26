@@ -1973,7 +1973,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexError`
@@ -1998,7 +1998,7 @@ when defined(nimdoc):
     ##     # Do something else!
 
 elif defined(nintendoswitch) or defined(nimscript):
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -2021,17 +2021,17 @@ elif defined(windows):
       ownParsedArgv = true
     result = ownArgv.len-1
 
-  proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
+  proc paramStr*(i: int): string {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
-    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return ownArgv[i]
     raise newException(IndexError, "invalid index")
 
 elif defined(genode):
-  proc paramStr*(i: int): TaintedString =
+  proc paramStr*(i: int): string =
     raise newException(OSError, "paramStr is not implemented on Genode")
 
   proc paramCount*(): int =
@@ -2044,9 +2044,9 @@ elif not defined(createNimRtl) and
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
+    if i < cmdCount and i >= 0: return $cmdLine[i]
     raise newException(IndexError, "invalid index")
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -2054,7 +2054,7 @@ elif not defined(createNimRtl) and
     result = cmdCount-1
 
 when declared(paramCount) or defined(nimdoc):
-  proc commandLineParams*(): seq[TaintedString] =
+  proc commandLineParams*(): seq[string] =
     ## Convenience proc which returns the command line parameters.
     ##
     ## This returns **only** the parameters. If you want to get the application

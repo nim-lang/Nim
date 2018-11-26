@@ -385,7 +385,7 @@ let
 
 proc waitForExitEx(p: Process): int =
   var outp = outputStream(p)
-  var line = newStringOfCap(120).TaintedString
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
       discard

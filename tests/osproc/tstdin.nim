@@ -14,5 +14,5 @@ p.inputStream.flush()
 
 var line = ""
 
-while p.outputStream.readLine(line.TaintedString):
+while p.outputStream.readLine(line):
   echo line

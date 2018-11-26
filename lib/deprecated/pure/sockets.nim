@@ -1255,7 +1255,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
+proc recvLine*(socket: Socket, line: var string, timeout = -1): bool {.
   tags: [ReadIOEffect, TimeEffect], deprecated.} =
   ## Receive a line of data from ``socket``.
   ##
@@ -1302,7 +1302,7 @@ proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
       return true
     add(line.string, c)
 
-proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
+proc readLine*(socket: Socket, line: var string, timeout = -1) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
   ##
@@ -1344,7 +1344,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
     add(line.string, c)
 
 proc recvLineAsync*(socket: Socket,
-  line: var TaintedString): RecvLineResult {.tags: [ReadIOEffect], deprecated.} =
+  line: var string): RecvLineResult {.tags: [ReadIOEffect], deprecated.} =
   ## Similar to ``recvLine`` but designed for non-blocking sockets.
   ##
   ## The values of the returned enum should be pretty self explanatory:
@@ -1376,7 +1376,7 @@ proc recvLineAsync*(socket: Socket,
     add(line.string, c)
 
 proc readLineAsync*(socket: Socket,
-  line: var TaintedString): ReadLineResult {.tags: [ReadIOEffect].} =
+  line: var string): ReadLineResult {.tags: [ReadIOEffect].} =
   ## Similar to ``recvLine`` but designed for non-blocking sockets.
   ##
   ## The values of the returned enum should be pretty self explanatory:
@@ -1410,7 +1410,7 @@ proc readLineAsync*(socket: Socket,
     elif c == '\L': return ReadFullLine
     add(line.string, c)
 
-proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
+proc recv*(socket: Socket): string {.tags: [ReadIOEffect], deprecated.} =
   ## receives all the available data from the socket.
   ## Socket errors will result in an ``OSError`` error.
   ## If socket is not a connectionless socket and socket is not connected
@@ -1418,7 +1418,7 @@ proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
   ##
   ## **Deprecated since version 0.9.2**: This function is not safe for use.
   const bufSize = 4000
-  result = newStringOfCap(bufSize).TaintedString
+  result = newStringOfCap(bufSize)
   var pos = 0
   while true:
     var bytesRead = recv(socket, addr(string(result)[pos]), bufSize-1)
@@ -1430,7 +1430,7 @@ proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
     inc(pos, bytesRead)
   when false:
     var buf = newString(bufSize)
-    result = TaintedString""
+    result = ""
     while true:
       var bytesRead = recv(socket, cstring(buf), bufSize-1)
       # Error
@@ -1442,7 +1442,7 @@ proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
       if bytesRead != bufSize-1: break
 
 {.push warning[deprecated]: off.}
-proc recvTimeout*(socket: Socket, timeout: int): TaintedString {.
+proc recvTimeout*(socket: Socket, timeout: int): string {.
   tags: [ReadIOEffect], deprecated.} =
   ## overloaded variant to support a ``timeout`` parameter, the ``timeout``
   ## parameter specifies the amount of milliseconds to wait for data on the
@@ -1457,7 +1457,7 @@ proc recvTimeout*(socket: Socket, timeout: int): TaintedString {.
   return socket.recv
 {.pop.}
 
-proc recvAsync*(socket: Socket, s: var TaintedString): bool {.
+proc recvAsync*(socket: Socket, s: var string): bool {.
   tags: [ReadIOEffect], deprecated.} =
   ## receives all the data from a non-blocking socket. If socket is non-blocking
   ## and there are no messages available, `False` will be returned.
@@ -1748,5 +1748,3 @@ proc isBlocking*(socket: Socket): bool = not socket.nonblocking
 when defined(Windows):
   var wsa: WSAData
   if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())
-
-

@@ -254,21 +254,21 @@ proc peekFloat64*(s: Stream): float64 =
   ## peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
   peek(s, result)
 
-proc readStr*(s: Stream, length: int): TaintedString =
+proc readStr*(s: Stream, length: int): string =
   ## reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
-  result = newString(length).TaintedString
+  result = newString(length)
   var L = readData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
-proc peekStr*(s: Stream, length: int): TaintedString =
+proc peekStr*(s: Stream, length: int): string =
   ## peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
-  result = newString(length).TaintedString
+  result = newString(length)
   var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
-proc readLine*(s: Stream, line: var TaintedString): bool =
+proc readLine*(s: Stream, line: var string): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ## A line of text may be delimited by ```LF`` or ``CRLF``.
@@ -288,7 +288,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     line.string.add(c)
   result = true
 
-proc peekLine*(s: Stream, line: var TaintedString): bool =
+proc peekLine*(s: Stream, line: var string): bool =
   ## peeks a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ## A line of text may be delimited by ``CR``, ``LF`` or
@@ -299,10 +299,10 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   defer: setPosition(s, pos)
   result = readLine(s, line)
 
-proc readLine*(s: Stream): TaintedString =
+proc readLine*(s: Stream): string =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
   ## `IOError` if an error occurred.
-  result = TaintedString""
+  result = ""
   if s.atEnd:
     raise newEIO("cannot read from stream")
   while true:
@@ -315,17 +315,17 @@ proc readLine*(s: Stream): TaintedString =
     else:
       result.string.add(c)
 
-proc peekLine*(s: Stream): TaintedString =
+proc peekLine*(s: Stream): string =
   ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises
   ## `IOError` if an error occurred.
   let pos = getPosition(s)
   defer: setPosition(s, pos)
   result = readLine(s)
 
-iterator lines*(s: Stream): TaintedString =
+iterator lines*(s: Stream): string =
   ## Iterates over every line in the stream.
   ## The iteration is based on ``readLine``.
-  var line: TaintedString
+  var line: string
   while s.readLine(line):
     yield line
 

@@ -38,7 +38,7 @@ when isMainModule:
   var sdkVersionArg: string = ""
   var storeArg: bool = false
 
-  var clArgs: seq[TaintedString] = @[]
+  var clArgs: seq[string] = @[]
 
   var wrapperArgs = commandLineParams()
   for wargv in wrapperArgs:

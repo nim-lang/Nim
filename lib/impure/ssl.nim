@@ -55,7 +55,7 @@ proc connect*(sock: var SecureSocket, address: string,
 
   result = SSL_get_verify_result(sock.ssl)
 
-proc recvLine*(sock: SecureSocket, line: var TaintedString): bool =
+proc recvLine*(sock: SecureSocket, line: var string): bool =
   ## Acts in a similar fashion to the `recvLine` in the sockets module.
   ## Returns false when no data is available to be read.
   ## `Line` must be initialized and not nil!
@@ -96,4 +96,3 @@ when not defined(testing) and isMainModule:
   echo s.recvLine(buffer)
   echo buffer
   echo buffer.len
-

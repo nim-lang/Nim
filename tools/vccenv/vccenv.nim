@@ -13,7 +13,7 @@ const
   ]
   vcvarsallRelativePath = joinPath("..", "..", "VC", "vcvarsall")
 
-proc getVsComnToolsPath*(): TaintedString =
+proc getVsComnToolsPath*(): string =
   for vsComnToolsEnvKey in vsComnToolsEnvKeys:
     let vsComnToolsEnvVal = getEnv vsComnToolsEnvKey
     if vsComnToolsEnvVal.len > 0:

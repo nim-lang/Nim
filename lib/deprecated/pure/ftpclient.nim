@@ -132,8 +132,8 @@ template blockingOperation(sock: asyncio.AsyncSocket, body: untyped) =
   body
   sock.setBlocking(false)
 
-proc expectReply[T](ftp: FtpBase[T]): TaintedString =
-  result = TaintedString""
+proc expectReply[T](ftp: FtpBase[T]): string =
+  result = ""
   blockingOperation(ftp.csock):
     when T is Socket:
       ftp.csock.readLine(result)
@@ -142,7 +142,7 @@ proc expectReply[T](ftp: FtpBase[T]): TaintedString =
     var count = 0
     while result[3] == '-':
       ## Multi-line reply.
-      var line = TaintedString""
+      var line = ""
       when T is Socket:
         ftp.csock.readLine(line)
       else:
@@ -152,7 +152,7 @@ proc expectReply[T](ftp: FtpBase[T]): TaintedString =
       if count >= multiLineLimit:
         raise newException(ReplyError, "Reached maximum multi-line reply count.")
 
-proc send*[T](ftp: FtpBase[T], m: string): TaintedString =
+proc send*[T](ftp: FtpBase[T], m: string): string =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ##
@@ -161,13 +161,13 @@ proc send*[T](ftp: FtpBase[T], m: string): TaintedString =
     ftp.csock.send(m & "\c\L")
   return ftp.expectReply()
 
-proc assertReply(received: TaintedString, expected: string) =
+proc assertReply(received, expected: string) =
   if not received.string.startsWith(expected):
     raise newException(ReplyError,
                        "Expected reply '$1' got: $2" % [
                        expected, received.string])
 
-proc assertReply(received: TaintedString, expected: varargs[string]) =
+proc assertReply(received: string, expected: varargs[string]) =
   for i in items(expected):
     if received.string.startsWith(i): return
   raise newException(ReplyError,
@@ -255,7 +255,7 @@ proc pasv[T](ftp: FtpBase[T]) =
   else:
     {.fatal: "Incorrect socket instantiation".}
 
-  var pasvMsg = ftp.send("PASV").string.strip.TaintedString
+  var pasvMsg = ftp.send("PASV").string.strip
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
@@ -315,7 +315,7 @@ proc getLines[T](ftp: FtpBase[T], async: bool = false): bool =
   ## Returns true if the download is complete.
   ## It doesn't if `async` is true, because it doesn't check for 226 then.
   if ftp.dsockConnected:
-    var r = TaintedString""
+    var r = ""
     when T is AsyncSocket:
       if ftp.asyncDSock.readLine(r):
         if r.string == "":
@@ -386,7 +386,7 @@ proc createDir*[T](ftp: FtpBase[T], dir: string, recursive: bool = false) =
   if not recursive:
     assertReply ftp.send("MKD " & dir.normalizePathSep), "257"
   else:
-    var reply = TaintedString""
+    var reply = ""
     var previousDirs = ""
     for p in split(dir, {os.DirSep, os.AltSep}):
       if p != "":
@@ -451,7 +451,7 @@ proc retrText*[T](ftp: FtpBase[T], file: string, async = false): string =
 
 proc getFile[T](ftp: FtpBase[T], async = false): bool =
   if ftp.dsockConnected:
-    var r = "".TaintedString
+    var r = ""
     var bytesRead = 0
     var returned = false
     if async:

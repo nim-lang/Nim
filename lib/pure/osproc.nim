@@ -69,7 +69,7 @@ proc execProcess*(command: string,
                   env: StringTableRef = nil,
                   options: set[ProcessOption] = {poStdErrToStdOut,
                                                   poUsePath,
-                                                  poEvalCommand}): TaintedString {.
+                                                  poEvalCommand}): string {.
                                                   rtl, extern: "nosp$1",
                                                   tags: [ExecIOEffect, ReadIOEffect,
                                                   RootEffect].}
@@ -355,11 +355,11 @@ when not defined(useNimRtl):
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
-                                                   poEvalCommand}): TaintedString =
+                                                   poEvalCommand}): string =
     var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
     var outp = outputStream(p)
-    result = TaintedString""
-    var line = newStringOfCap(120).TaintedString
+    result = ""
+    var line = newStringOfCap(120)
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
@@ -1314,7 +1314,7 @@ elif not defined(useNimRtl):
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}): tuple[
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
@@ -1331,8 +1331,8 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   # blocking.
   close inputStream(p)
 
-  result = (TaintedString"", -1)
-  var line = newStringOfCap(120).TaintedString
+  result = ("", -1)
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
       result[0].string.add(line.string)

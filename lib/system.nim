@@ -1506,7 +1506,6 @@ proc compileOption*(option, arg: string): bool {.
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  taintMode = compileOption("taintmode")
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
@@ -1522,22 +1521,10 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-when taintMode:
-  type TaintedString* = distinct string ## a distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
-                                        ## details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
-
-  proc len*(s: TaintedString): int {.borrow.}
-else:
-  type TaintedString* = string          ## a distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual.html#taint-mode>`_ for
-                                        ## details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
+type
+  TaintedString* {.deprecated.} = string
+    ## Alias for string. Don't use it.
+    ## **Deprecated since version 0.19.9**
 
 when defined(profiler):
   proc nimProfile() {.compilerProc, noinline.}
@@ -3240,13 +3227,13 @@ when not defined(JS): #and not defined(nimscript):
     proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
 
-    proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.}
+    proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.}
       ## Reads all data from the stream `file`.
       ##
       ## Raises an IO exception in case of an error. It is an error if the
       ## current file position is not at the beginning of the file.
 
-    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
+    proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading.
       ##
       ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
@@ -3270,12 +3257,12 @@ when not defined(JS): #and not defined(nimscript):
     proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.}
       ## Writes a value to the file `f`. May throw an IO exception.
 
-    proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
+    proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.}
       ## reads a line of text from the file `f`. May throw an IO exception.
       ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
       ## character(s) are not part of the returned string.
 
-    proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
+    proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
                   benign.}
       ## reads a line of text from the file `f` into `line`. May throw an IO
       ## exception.
@@ -3492,7 +3479,7 @@ when not defined(JS): #and not defined(nimscript):
     include "system/sysio"
 
   when not defined(nimscript) and hostOS != "standalone":
-    iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
+    iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
       ## Iterates over any line in the file named `filename`.
       ##
       ## If the file does not exist `IOError` is raised. The trailing newline
@@ -3508,10 +3495,10 @@ when not defined(JS): #and not defined(nimscript):
       ##     writeFile(filename, buffer)
       var f = open(filename, bufSize=8000)
       defer: close(f)
-      var res = TaintedString(newStringOfCap(80))
+      var res = newStringOfCap(80)
       while f.readLine(res): yield res
 
-    iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
+    iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.
       ##
       ## The trailing newline character(s) are removed from the iterated lines.
@@ -3524,7 +3511,7 @@ when not defined(JS): #and not defined(nimscript):
       ##         if letter == '0':
       ##           result.zeros += 1
       ##       result.lines += 1
-      var res = TaintedString(newStringOfCap(80))
+      var res = newStringOfCap(80)
       while f.readLine(res): yield res
 
   when not defined(nimscript) and hasAlloc:

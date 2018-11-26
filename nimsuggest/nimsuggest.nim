@@ -303,7 +303,7 @@ proc replCmdline(x: ThreadParams) {.thread.} =
 proc replTcp(x: ThreadParams) {.thread.} =
   var server = newSocket()
   server.bindAddr(x.port, x.address)
-  var inp = "".TaintedString
+  var inp = ""
   server.listen()
   while true:
     var stdoutSocket = newSocket()

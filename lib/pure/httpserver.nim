@@ -121,7 +121,7 @@ when false:
       env["REQUEST_METHOD"] = "GET"
       env["QUERY_STRING"] = query
     of reqPost:
-      var buf = TaintedString""
+      var buf = ""
       var dataAvail = false
       while dataAvail:
         dataAvail = recvLine(client, buf) # TODO: This is incorrect.
@@ -152,7 +152,7 @@ when false:
       dealloc(buf)
 
     var outp = process.outputStream
-    var line = newStringOfCap(120).TaintedString
+    var line = newStringOfCap(120)
     while true:
       if outp.readLine(line):
         send(client, line.string)
@@ -164,7 +164,7 @@ when false:
   proc acceptRequest(client: Socket) =
     var cgi = false
     var query = ""
-    var buf = TaintedString""
+    var buf = ""
     discard recvLine(client, buf)
     var path = ""
     var data = buf.string.split()
@@ -532,4 +532,3 @@ when not defined(testing) and isMainModule:
 
     close(s.client)
   close(s)
-

@@ -144,7 +144,7 @@ proc readChar(f: File): char =
 proc flushFile*(f: File) = discard c_fflush(f)
 proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
-proc readLine(f: File, line: var TaintedString): bool =
+proc readLine(f: File, line: var string): bool =
   var pos = 0
 
   # Use the currently reserved space for a first try
@@ -180,8 +180,8 @@ proc readLine(f: File, line: var TaintedString): bool =
     sp = 128 # read in 128 bytes at a time
     line.string.setLen(pos+sp)
 
-proc readLine(f: File): TaintedString =
-  result = TaintedString(newStringOfCap(80))
+proc readLine(f: File): string =
+  result = newStringOfCap(80)
   if not readLine(f, result): raiseEOF()
 
 proc write(f: File, i: int) =
@@ -252,7 +252,7 @@ proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
 
-proc readAll(file: File): TaintedString =
+proc readAll(file: File): string =
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
   when declared(stdin):
@@ -260,9 +260,9 @@ proc readAll(file: File): TaintedString =
   else:
     let len = rawFileSize(file)
   if len > 0:
-    result = readAllFile(file, len).TaintedString
+    result = readAllFile(file, len)
   else:
-    result = readAllBuffer(file).TaintedString
+    result = readAllBuffer(file)
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
@@ -388,11 +388,11 @@ proc getFileSize(f: File): int64 =
   result = getFilePos(f)
   setFilePos(f, oldPos)
 
-proc readFile(filename: string): TaintedString =
+proc readFile(filename: string): string =
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      result = readAll(f)
     finally:
       close(f)
   else:
