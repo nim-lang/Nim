@@ -2161,6 +2161,9 @@ when isMainModule:
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
 
   block stripTests:
+    doAssert(strip("") == "")
+    doAssert(strip(" ") == "")
+    doAssert(strip("y") == "y")
     doAssert(strip("  foofoofoo  ") == "foofoofoo")
     doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
 
