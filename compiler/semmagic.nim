@@ -381,7 +381,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[0].sym.name.s == "=":
       result = semAsgnOpr(c, n)
     else:
-      result = n
+      result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
