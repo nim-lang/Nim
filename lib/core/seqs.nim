@@ -82,7 +82,7 @@ type
     cap: int
     region: Allocator
 
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, noSideEffect.} =
+proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap <= 0:
@@ -96,22 +96,23 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, noSideEffect.} =
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     compilerRtl, noSideEffect.} =
-  if len+addlen <= len:
-    result = p
-  elif p == nil:
-    result = newSeqPayload(len+addlen, elemSize)
-  else:
-    # Note: this means we cannot support things that have internal pointers as
-    # they get reallocated here. This needs to be documented clearly.
-    var p = cast[ptr PayloadBase](p)
-    let region = if p.region == nil: getLocalAllocator() else: p.region
-    let cap = max(resize(p.cap), len+addlen)
-    var q = cast[ptr PayloadBase](region.realloc(region, p,
-      sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
-      sizeof(int) + sizeof(Allocator) + elemSize * cap))
-    q.region = region
-    q.cap = cap
-    result = q
+  {.noSideEffect.}:
+    if len+addlen <= len:
+      result = p
+    elif p == nil:
+      result = newSeqPayload(len+addlen, elemSize)
+    else:
+      # Note: this means we cannot support things that have internal pointers as
+      # they get reallocated here. This needs to be documented clearly.
+      var p = cast[ptr PayloadBase](p)
+      let region = if p.region == nil: getLocalAllocator() else: p.region
+      let cap = max(resize(p.cap), len+addlen)
+      var q = cast[ptr PayloadBase](region.realloc(region, p,
+        sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
+        sizeof(int) + sizeof(Allocator) + elemSize * cap))
+      q.region = region
+      q.cap = cap
+      result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
