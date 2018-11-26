@@ -1259,6 +1259,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     globalError(c.config, n.info, "cannot evaluate 'sizeof/alignof' because its type is not defined completely")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
+  of mDestroy: discard "ignore calls to the default destructor"
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)

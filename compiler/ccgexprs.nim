@@ -2034,6 +2034,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
+  of mDestroy: discard "ignore calls to the default destructor"
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       " 'toOpenArray' is only valid within a call expression")
