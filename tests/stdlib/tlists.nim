@@ -10,7 +10,8 @@ const
 block SinglyLinkedListTest1:
   var L: SinglyLinkedList[int]
   for d in items(data): L.prepend(d)
-  assert($L == "[6, 5, 4, 3, 2, 1]")
+  for d in items(data): L.append(d)
+  assert($L == "[6, 5, 4, 3, 2, 1, 1, 2, 3, 4, 5, 6]")
 
   assert(4 in L)
 
