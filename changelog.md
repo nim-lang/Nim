@@ -89,7 +89,8 @@ proc enumToString*(enums: openArray[enum]): string =
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
-
+- There is a new pragma block `noSideEffect` that works like
+  the `gcsafe` pragma block.
 
 ### Language changes
 

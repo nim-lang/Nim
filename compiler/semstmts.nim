@@ -1860,7 +1860,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
-    of wLocks, wGcSafe:
+    of wLocks, wGcSafe, wNosideeffect:
       result = n
       result.typ = n.sons[1].typ
     of wNoRewrite:
