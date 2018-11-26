@@ -1,3 +1,8 @@
+discard """
+action: compile
+"""
+
+# XXX: it is not actually tested if the effects are inferred
 
 type
   PMenu = ref object

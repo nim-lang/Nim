@@ -1,3 +1,15 @@
+discard """
+sortoutput: true
+output: '''
+(x: 0.0)
+(x: 0.0)
+(x: 0.0)
+test
+test
+test
+'''
+"""
+
 # bug #2257
 import threadpool
 

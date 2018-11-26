@@ -74,6 +74,33 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+                output: TaintedString,
+                exitCode: int] {.tags:
+                [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+  var p = startProcess(command, args=args, options=options)
+  var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  let instream = inputStream(p)
+  instream.write(input)
+  close instream
+
+  result = (TaintedString"", -1)
+  var line = newStringOfCap(120).TaintedString
+  while true:
+    if outp.readLine(line):
+      result[0].string.add(line.string)
+      result[0].string.add("\n")
+    else:
+      result[1] = peekExitCode(p)
+      if result[1] != -1: break
+  close(p)
+
+
+
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
   let hashInput = options & $target
@@ -168,7 +195,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
@@ -358,8 +385,16 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
                     reExeNotFound)
         continue
 
-      let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-      var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+
+      var exeCmd: string
+      var args: seq[string]
+      if isJsTarget:
+        exeCmd = nodejs
+        args.add exeFile
+      else:
+        exeCmd = exeFile
+
+      var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
 
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -469,7 +504,7 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
-    of "nim": compilerPrefix = p.val.string & " "
+    of "nim": compilerPrefix = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage

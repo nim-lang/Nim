@@ -1009,7 +1009,7 @@ proc stateFromGotoState(n: PNode): int =
   assert(n.kind == nkGotoState)
   result = n[0].intVal.int
 
-proc tranformStateAssignments(ctx: var Ctx, n: PNode): PNode =
+proc transformStateAssignments(ctx: var Ctx, n: PNode): PNode =
   # This transforms 3 patterns:
   ########################## 1
   # yield e
@@ -1051,7 +1051,7 @@ proc tranformStateAssignments(ctx: var Ctx, n: PNode): PNode =
       result.add(retStmt)
     else:
       for i in 0 ..< n.len:
-        n[i] = ctx.tranformStateAssignments(n[i])
+        n[i] = ctx.transformStateAssignments(n[i])
 
   of nkSkip:
     discard
@@ -1071,7 +1071,7 @@ proc tranformStateAssignments(ctx: var Ctx, n: PNode): PNode =
 
   else:
     for i in 0 ..< n.len:
-      n[i] = ctx.tranformStateAssignments(n[i])
+      n[i] = ctx.transformStateAssignments(n[i])
 
 proc skipStmtList(ctx: Ctx; n: PNode): PNode =
   result = n
@@ -1220,18 +1220,20 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   # while true:
   #   block :stateLoop:
   #     gotoState :state
+  #     local vars decl (if needed)
   #     body # Might get wrapped in try-except
   let loopBody = newNodeI(nkStmtList, n.info)
   result = newTree(nkWhileStmt, newSymNode(ctx.g.getSysSym(n.info, "true")), loopBody)
   result.info = n.info
 
+  let localVars = newNodeI(nkStmtList, n.info)
   if not ctx.stateVarSym.isNil:
     let varSect = newNodeI(nkVarSection, n.info)
     addVar(varSect, newSymNode(ctx.stateVarSym))
-    loopBody.add(varSect)
+    localVars.add(varSect)
 
     if not ctx.tempVars.isNil:
-      loopBody.add(ctx.tempVars)
+      localVars.add(ctx.tempVars)
 
   let blockStmt = newNodeI(nkBlockStmt, n.info)
   blockStmt.add(newSymNode(ctx.stateLoopLabel))
@@ -1240,7 +1242,7 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   gs.add(ctx.newStateAccess())
   gs.add(ctx.g.newIntLit(n.info, ctx.states.len - 1))
 
-  var blockBody = newTree(nkStmtList, gs, n)
+  var blockBody = newTree(nkStmtList, gs, localVars, n)
   if ctx.hasExceptions:
     blockBody = ctx.wrapIntoTryExcept(blockBody)
 
@@ -1292,7 +1294,6 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
     # should folllow the same logic.
     ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn)
-
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
   var n = n.toStmtList
 
@@ -1320,7 +1321,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
     result.add(s)
     result.add(body)
 
-  result = ctx.tranformStateAssignments(result)
+  result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
 
   # echo "TRANSFORM TO STATES: "

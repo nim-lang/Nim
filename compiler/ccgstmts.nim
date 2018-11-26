@@ -307,11 +307,13 @@ proc genSingleVar(p: BProc, a: PNode) =
 
 proc genClosureVar(p: BProc, a: PNode) =
   var immediateAsgn = a.sons[2].kind != nkEmpty
+  var v: TLoc
+  initLocExpr(p, a.sons[0], v)
+  genLineDir(p, a)
   if immediateAsgn:
-    var v: TLoc
-    initLocExpr(p, a.sons[0], v)
-    genLineDir(p, a)
     loadInto(p, a.sons[0], a.sons[2], v)
+  else:
+    constructLoc(p, v)
 
 proc genVarStmt(p: BProc, n: PNode) =
   for it in n.sons:
@@ -609,7 +611,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:
       lineCg(p, cpsStmts, "#raiseExceptionEx((#Exception*)$1, $2, $3, $4, $5);$n",
-          [e, makeCString(typ.sym.name.s), 
+          [e, makeCString(typ.sym.name.s),
           makeCString(if p.prc != nil: p.prc.name.s else: p.module.module.name.s),
           makeCString(toFileName(p.config, t.info)), rope(toLinenumber(t.info))])
   else:

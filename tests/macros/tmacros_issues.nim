@@ -1,13 +1,10 @@
 discard """
-  msg: '''
-proc init(foo129050: int; bar129052: typedesc[int]): int =
-  foo129050
-
+  nimout: '''
 IntLit 5
 proc (x: int): string => typeDesc[proc[string, int]]
 proc (x: int): void => typeDesc[proc[void, int]]
 proc (x: int) => typeDesc[proc[void, int]]
-x => uncheckedArray[int]
+x => UncheckedArray[int]
 a
 s
 d
@@ -43,8 +40,8 @@ block t7723:
       proc init(foo: int, bar: typedesc[int]): int =
         foo
 
-  expandMacros:
-    foo1()
+  #expandMacros:
+  foo1()
 
   doAssert init(1, int) == 1
 
@@ -144,11 +141,11 @@ block t1140:
       result.parse_template body[1].strVal
 
 
-  proc actual: string = tmpli html"""
+  proc actual: string {.used.} = tmpli html"""
       <p>Test!</p>
       """
 
-  proc another: string = tmpli html"""
+  proc another: string {.used.} = tmpli html"""
       <p>what</p>
       """
 

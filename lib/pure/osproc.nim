@@ -1323,6 +1323,12 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
   var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  close inputStream(p)
+
   result = (TaintedString"", -1)
   var line = newStringOfCap(120).TaintedString
   while true:

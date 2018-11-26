@@ -154,7 +154,7 @@ block:
 # Test JsAssoc .= and .
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 11
     obj.`$!&` = 42
@@ -168,7 +168,7 @@ block:
 # Test JsAssoc .()
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, proc(e: int): int]()
+    let obj = newJsAssoc[cstring, proc(e: int): int]()
     obj.a = proc(e: int): int = e * e
     obj.a(10) == 100
   echo test()
@@ -176,7 +176,7 @@ block:
 # Test JsAssoc []()
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, proc(e: int): int]()
+    let obj = newJsAssoc[cstring, proc(e: int): int]()
     obj.a = proc(e: int): int = e * e
     let call = obj["a"]
     call(10) == 100
@@ -185,7 +185,7 @@ block:
 # Test JsAssoc Iterators
 block:
   proc testPairs(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
@@ -202,7 +202,7 @@ block:
         return false
     working
   proc testItems(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
@@ -211,13 +211,13 @@ block:
       working = working and v in [10, 20, 30]
     working
   proc testKeys(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
     obj.c = 30
     for v in obj.keys:
-      working = working and v in ["a", "b", "c"]
+      working = working and v in [cstring"a", cstring"b", cstring"c"]
     working
   proc test(): bool = testPairs() and testItems() and testKeys()
   echo test()
@@ -226,8 +226,8 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
-    let obj = newJsAssoc[string, int]()
+    var comparison {. importcpp, nodecl .}: JsAssoc[cstring, int]
+    let obj = newJsAssoc[cstring, int]()
     obj.a = 22
     obj.b = 55
     obj.a == comparison.a and obj.b == comparison.b
@@ -237,15 +237,15 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
-    let obj = JsAssoc[string, int]{ a: 22, b: 55 }
+    var comparison {. importcpp, nodecl .}: JsAssoc[cstring, int]
+    let obj = JsAssoc[cstring, int]{ a: 22, b: 55 }
     var working = true
     working = working and
       compiles(JsAssoc[int, int]{ 1: 22, 2: 55 })
     working = working and
       comparison.a == obj.a and comparison.b == obj.b
     working = working and
-      not compiles(JsAssoc[string, int]{ a: "test" })
+      not compiles(JsAssoc[cstring, int]{ a: "test" })
     working
   echo test()
 

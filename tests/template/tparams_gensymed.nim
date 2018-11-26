@@ -1,4 +1,15 @@
-
+discard """
+output: '''
+0
+1
+2
+3
+0
+1
+2
+3
+'''
+"""
 # bug #1915
 
 import macros

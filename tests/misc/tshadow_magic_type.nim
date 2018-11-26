@@ -1,3 +1,10 @@
+discard """
+output: '''
+mylist
+'''
+"""
+
+
 type
   TListItemType* = enum
     RedisNil, RedisString
@@ -15,7 +22,8 @@ proc seq*() =
 
 proc lrange*(key: string): TRedisList =
   var foo: TListItem
-  foo.kind = RedisNil
+  foo.kind = RedisString
+  foo.str = key
   result = @[foo]
 
 when isMainModule:

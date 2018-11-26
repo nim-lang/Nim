@@ -1,5 +1,5 @@
 discard """
-  msg: '''"muhaha"
+  nimout: '''"muhaha"
 proc poo(x, y: int) =
   let y = x
   echo ["poo"]'''

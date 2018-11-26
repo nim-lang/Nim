@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --hints:on --threads:on $options $file"
+  action: compile
 """
 
 type
@@ -36,4 +37,3 @@ when isMainModule:
   echo("test")
   joinThread(thr)
   os.sleep(3000)
-

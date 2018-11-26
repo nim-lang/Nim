@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 #bug #712
 
 import tables

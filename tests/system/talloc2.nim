@@ -1,5 +1,8 @@
 discard """
+disabled: "windows"
 """
+
+# appveyor is "out of memory"
 
 const
   nmax = 2*1024*1024*1024
