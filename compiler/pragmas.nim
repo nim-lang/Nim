@@ -1110,10 +1110,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym.kind in {skVar,skLet,skParam,skField,skProc,skFunc,skConverter,skMethod,skType}:
+    elif sym != nil and sym.kind in {skVar, skLet, skParam, skField, skProc,
+                                     skFunc, skConverter, skMethod, skType}:
       n.sons[i] = semCustomPragma(c, it)
-    else:
+    elif sym != nil:
       illegalCustomPragma(c, it, sym)
+    else:
+      invalidPragma(c, it)
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
