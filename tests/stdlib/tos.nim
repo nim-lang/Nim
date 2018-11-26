@@ -170,6 +170,25 @@ block modificationTime:
     echo getLastModificationTime("a") == tm
   removeFile("a")
 
+block walkDirRec:
+  createDir("walkdir_test/a/b")
+  open("walkdir_test/a/b/file_1", fmWrite).close()
+  open("walkdir_test/a/file_2", fmWrite).close()
+
+  for p in walkDirRec("walkdir_test"):
+    doAssert p.fileExists
+    doAssert p.startsWith("walkdir_test")
+
+  var s: seq[string]
+  for p in walkDirRec("walkdir_test", {pcFile}, {pcDir}, relative=true):
+    s.add(p)
+
+  doAssert s.len == 2
+  doAssert "a" / "b" / "file_1" in s
+  doAssert "a" / "file_2" in s
+
+  removeDir("walkdir_test")
+
 block normalizedPath:
   when defined(posix):
     block relative:
