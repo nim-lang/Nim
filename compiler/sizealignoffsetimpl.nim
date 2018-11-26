@@ -310,9 +310,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     for i in countup(0, sonsLen(typ) - 1):
       let child = typ.sons[i]
       computeSizeAlign(conf, child)
-      if child.size == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
+      if child.size < 0:
+        typ.size = child.size
+        typ.align = child.align
         return
       maxAlign = max(maxAlign, child.align)
       sizeAccum = align(sizeAccum, child.align) + child.size
