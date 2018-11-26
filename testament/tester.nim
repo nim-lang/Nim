@@ -184,27 +184,35 @@ proc initResults: TResults =
   result.skipped = 0
   result.data = ""
 
-#proc readResults(filename: string): TResults = # not used
-#  result = marshal.to[TResults](readFile(filename).string)
+import macros
 
-#proc writeResults(filename: string, r: TResults) = # not used
-#  writeFile(filename, $$r)
+macro ignoreStyleEcho(args: varargs[typed]): untyped =
+  let typForegroundColor = bindSym"ForegroundColor".getType
+  let typBackgroundColor = bindSym"BackgroundColor".getType
+  let typStyle = bindSym"Style".getType
+  let typTerminalCmd = bindSym"TerminalCmd".getType
+  result = newCall(bindSym"echo")
+  for arg in children(args):
+    if arg.kind == nnkNilLit: continue
+    let typ = arg.getType
+    if typ.kind != nnkEnumTy or
+       typ != typForegroundColor and
+       typ != typBackgroundColor and
+       typ != typStyle and
+       typ != typTerminalCmd:
+      result.add(arg)
+
+template maybeStyledEcho(args: varargs[untyped]): untyped =
+  if useColors:
+    styledEcho(args)
+  else:
+    ignoreStyleEcho(args)
+
 
 proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
-
-
-
-
-
-template maybeStyledEcho(args: varargs[untyped]): untyped =
-  if useColors:
-    styledEcho(arg)
-  else:
-
-
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
@@ -220,17 +228,17 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    styledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
   elif success == reIgnored:
-    styledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
+    maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   else:
-    styledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
-    styledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
-    styledEcho styleBright, fgRed, "Failure: ", $success
-    styledEcho fgYellow, "Expected:"
-    styledEcho styleBright, expected, "\n"
-    styledEcho fgYellow, "Gotten:"
-    styledEcho styleBright, given, "\n"
+    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
+    maybeStyledEcho styleBright, fgRed, "Failure: ", $success
+    maybeStyledEcho fgYellow, "Expected:"
+    maybeStyledEcho styleBright, expected, "\n"
+    maybeStyledEcho fgYellow, "Gotten:"
+    maybeStyledEcho styleBright, given, "\n"
 
   if existsEnv("APPVEYOR"):
     let (outcome, msg) =
@@ -310,10 +318,15 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let exp = expectedNimout.strip.replace("\C\L", "\L")
-  let giv = given.nimout.strip.replace("\C\L", "\L")
-  if exp notin giv:
-    given.err = reMsgsDiffer
+  let giv = given.nimout.strip
+  var currentPos = 0
+  # Only check that nimout contains all expected lines in that order.
+  # There may be more output in nimout. It is ignored here.
+  for line in expectedNimout.strip.splitLines:
+    currentPos = giv.find(line.strip, currentPos)
+    if currentPos < 0:
+      given.err = reMsgsDiffer
+      return
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
@@ -339,7 +352,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
-  echo "TESTING ", tname
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -458,7 +470,7 @@ proc testC(r: var TResults, test: TTest) =
   # runs C code. Doesn't support any specs, just goes by exit code.
   let tname = test.name.addFileExt(".c")
   inc(r.total)
-  styledEcho "Processing ", fgCyan, extractFilename(tname)
+  maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
   var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, targetC)
   if given.err != reSuccess:
     r.addResult(test, targetC, "", given.msg, given.err)
@@ -530,7 +542,7 @@ proc main() =
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":
-      if p.val.string == "on"
+      if p.val.string == "on":
         useColors = true
       elif p.val.string == "off":
         useColors = false
