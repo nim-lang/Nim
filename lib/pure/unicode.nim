@@ -1935,9 +1935,9 @@ proc strip*(s: string, leading = true, trailing = true,
         e_i = l_i - 1
         break
       dec(i)
-  let newLen = e_i - s_i
+  let newLen = e_i - s_i + 1
   result = newStringOfCap(newLen)
-  if e_i > s_i:
+  if newLen > 0:
     result.add s[s_i .. e_i]
 
 proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
@@ -2191,6 +2191,9 @@ when isMainModule:
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
 
   block stripTests:
+    doAssert(strip("") == "")
+    doAssert(strip(" ") == "")
+    doAssert(strip("y") == "y")
     doAssert(strip("  foofoofoo  ") == "foofoofoo")
     doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
 
