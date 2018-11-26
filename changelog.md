@@ -27,6 +27,7 @@
 
 #### Breaking changes in the standard library
 
+- `osproc.execProcess` now also takes a `workingDir` parameter.
 
 #### Breaking changes in the compiler
 
@@ -61,7 +62,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `system.typeof` for more control over how `type` expressions
   can be deduced.
 
-- Added `macros.isInstantiationOf` for checking if the proc symbol 
+- Added `macros.isInstantiationOf` for checking if the proc symbol
   is instantiation of generic proc symbol.
 
 
