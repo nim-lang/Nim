@@ -172,13 +172,8 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
-    # location is on heap
-    if canFormAcycle(dest.t):
-      linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
-              addrLoc(p.config, dest), rdLoc(src))
-    else:
-      linefmt(p, cpsStmts, "#asgnRefNoCycle((void**) $1, $2);$n",
-              addrLoc(p.config, dest), rdLoc(src))
+    linefmt(p, cpsStmts, "#asgnRef((void**) $1, $2);$n",
+            addrLoc(p.config, dest), rdLoc(src))
   else:
     linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
             addrLoc(p.config, dest), rdLoc(src))
@@ -2039,6 +2034,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mDotDot, mEqCString: genCall(p, e, d)
   of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
+  of mDestroy: discard "ignore calls to the default destructor"
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       " 'toOpenArray' is only valid within a call expression")

@@ -237,9 +237,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     # recursive tuplers are not allowed and should be detected in the frontend
     if base.kind == tyTuple:
       computeSizeAlign(conf, base)
-      if base.size == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
+      if base.size < 0:
+        typ.size = base.size
+        typ.align = base.align
         return
 
     typ.align = int16(conf.target.ptrSize)
@@ -310,9 +310,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     for i in countup(0, sonsLen(typ) - 1):
       let child = typ.sons[i]
       computeSizeAlign(conf, child)
-      if child.size == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
+      if child.size < 0:
+        typ.size = child.size
+        typ.align = child.align
         return
       maxAlign = max(maxAlign, child.align)
       sizeAccum = align(sizeAccum, child.align) + child.size
@@ -379,7 +379,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
 
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
+  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink:
     computeSizeAlign(conf, typ.lastSon)
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align

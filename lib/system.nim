@@ -373,7 +373,7 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
 
   when defined(nimNewRuntime):
-    proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
+    proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
       ## generic `destructor`:idx: implementation that can be overriden.
       discard
     proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =

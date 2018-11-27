@@ -346,7 +346,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result.info = n.info
       result.typ = n.typ
     else:
-      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
       result = n
   of mAlignOf:
     result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
@@ -381,7 +381,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[0].sym.name.s == "=":
       result = semAsgnOpr(c, n)
     else:
-      result = n
+      result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:

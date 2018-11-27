@@ -38,7 +38,7 @@ const
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
-  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNosideeffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
     wWarnings, wHints,
@@ -855,8 +855,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfOverriden
       of wNosideeffect:
         noVal(c, it)
-        incl(sym.flags, sfNoSideEffect)
-        if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
+        if sym != nil:
+          incl(sym.flags, sfNoSideEffect)
+          if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
       of wSideeffect:
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
@@ -1110,10 +1111,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym.kind in {skVar,skLet,skParam,skField,skProc,skFunc,skConverter,skMethod,skType}:
+    elif sym != nil and sym.kind in {skVar, skLet, skParam, skField, skProc,
+                                     skFunc, skConverter, skMethod, skType}:
       n.sons[i] = semCustomPragma(c, it)
-    else:
+    elif sym != nil:
       illegalCustomPragma(c, it, sym)
+    else:
+      invalidPragma(c, it)
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =

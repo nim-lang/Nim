@@ -94,23 +94,25 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl.} =
   else:
     result = nil
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.compilerRtl.} =
-  if len+addlen <= len:
-    result = p
-  elif p == nil:
-    result = newSeqPayload(len+addlen, elemSize)
-  else:
-    # Note: this means we cannot support things that have internal pointers as
-    # they get reallocated here. This needs to be documented clearly.
-    var p = cast[ptr PayloadBase](p)
-    let region = if p.region == nil: getLocalAllocator() else: p.region
-    let cap = max(resize(p.cap), len+addlen)
-    var q = cast[ptr PayloadBase](region.realloc(region, p,
-      sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
-      sizeof(int) + sizeof(Allocator) + elemSize * cap))
-    q.region = region
-    q.cap = cap
-    result = q
+proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
+    compilerRtl, noSideEffect.} =
+  {.noSideEffect.}:
+    if len+addlen <= len:
+      result = p
+    elif p == nil:
+      result = newSeqPayload(len+addlen, elemSize)
+    else:
+      # Note: this means we cannot support things that have internal pointers as
+      # they get reallocated here. This needs to be documented clearly.
+      var p = cast[ptr PayloadBase](p)
+      let region = if p.region == nil: getLocalAllocator() else: p.region
+      let cap = max(resize(p.cap), len+addlen)
+      var q = cast[ptr PayloadBase](region.realloc(region, p,
+        sizeof(int) + sizeof(Allocator) + elemSize * p.cap,
+        sizeof(int) + sizeof(Allocator) + elemSize * cap))
+      q.region = region
+      q.cap = cap
+      result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
@@ -128,7 +130,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
-    x.data[i] = value
+    xu.p.data[i] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
   if newlen < s.len:

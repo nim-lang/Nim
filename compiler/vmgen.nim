@@ -1239,8 +1239,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)
   of mNGenSym: genBinaryABC(c, n, dest, opcGenSym)
-  of mMinI, mMaxI, mAbsF64, mMinF64, mMaxF64, mAbsI,
-     mDotDot:
+  of mMinI, mMaxI, mAbsF64, mMinF64, mMaxF64, mAbsI, mDotDot:
     c.genCall(n, dest)
   of mExpandToAst:
     if n.len != 2:
@@ -1259,6 +1258,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     globalError(c.config, n.info, "cannot evaluate 'sizeof/alignof' because its type is not defined completely")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
+  of mDestroy: discard "ignore calls to the default destructor"
   else:
     # mGCref, mGCunref,
     globalError(c.config, n.info, "cannot generate code for: " & $m)

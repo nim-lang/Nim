@@ -1760,6 +1760,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
   of mChr, mArrToSeq: gen(p, n.sons[1], r)      # nothing to do
+  of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $1.length : 0)")

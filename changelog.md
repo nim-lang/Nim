@@ -27,6 +27,7 @@
 
 #### Breaking changes in the standard library
 
+- `osproc.execProcess` now also takes a `workingDir` parameter.
 
 #### Breaking changes in the compiler
 
@@ -61,7 +62,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `system.typeof` for more control over how `type` expressions
   can be deduced.
 
-- Added `macros.isInstantiationOf` for checking if the proc symbol 
+- Added `macros.isInstantiationOf` for checking if the proc symbol
   is instantiation of generic proc symbol.
 
 
@@ -88,7 +89,8 @@ proc enumToString*(enums: openArray[enum]): string =
 ### Language additions
 
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
-
+- There is a new pragma block `noSideEffect` that works like
+  the `gcsafe` pragma block.
 
 ### Language changes
 

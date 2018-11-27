@@ -85,14 +85,6 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-
-template release(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
-
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
@@ -276,7 +268,6 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
-  acquire(gch)
   gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
@@ -288,7 +279,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
   res.refcount = 0
-  release(gch)
   when withBitvectors: incl(gch.allocated, res)
   when useCellIds:
     inc gch.idGenerator
@@ -333,7 +323,6 @@ when not defined(gcDestructors):
     when defined(memProfiler): nimProfile(size)
 
   proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-    acquire(gch)
     collectCT(gch, newsize + sizeof(Cell))
     var ol = usrToCell(old)
     sysAssert(ol.typ != nil, "growObj: 1")
@@ -353,7 +342,6 @@ when not defined(gcDestructors):
     when useCellIds:
       inc gch.idGenerator
       res.id = gch.idGenerator
-    release(gch)
     result = cellToUsr(res)
     when defined(memProfiler): nimProfile(newsize-oldsize)
 
@@ -503,18 +491,12 @@ proc collectCT(gch: var GcHeap; size: int) =
 
 when not defined(useNimRtl):
   proc GC_disable() =
-    when hasThreadSupport and hasSharedHeap:
-      atomicInc(gch.recGcLock, 1)
-    else:
-      inc(gch.recGcLock)
+    inc(gch.recGcLock)
   proc GC_enable() =
     if gch.recGcLock <= 0:
       raise newException(AssertionError,
           "API usage error: GC_enable called but GC is already enabled")
-    when hasThreadSupport and hasSharedHeap:
-      atomicDec(gch.recGcLock, 1)
-    else:
-      dec(gch.recGcLock)
+    dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) = discard
 
@@ -530,12 +512,10 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    acquire(gch)
     var oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold
-    release(gch)
 
   proc GC_getStatistics(): string =
     result = "[GC] total memory: " & $getTotalMem() & "\n" &

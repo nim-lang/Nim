@@ -6755,6 +6755,16 @@ routines marked as ``noSideEffect``.
   func `+` (x, y: int): int
 
 
+To override the compiler's side effect analysis a ``{.noSideEffect.}``
+pragma block can be used:
+
+.. code-block:: nim
+
+  func f() =
+    {.noSideEffect.}:
+      echo "test"
+
+
 compileTime pragma
 ------------------
 The ``compileTime`` pragma is used to mark a proc or variable to be used at

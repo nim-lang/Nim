@@ -158,7 +158,9 @@ when defined(posix):
 
   type CTime = posix.Time
 
-  var CLOCK_REALTIME {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
+  var
+    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
+    cpuClockId {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: Clockid
 
   proc gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
@@ -1065,7 +1067,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     result = initTime(a.tv_sec.int64, convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
-    discard clock_gettime(CLOCK_REALTIME, ts)
+    discard clock_gettime(realTimeClockId, ts)
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
     var f: FILETIME
@@ -2337,7 +2339,15 @@ when not defined(JS):
           fib.add(fib[^1] + fib[^2])
         echo "CPU time [s] ", cpuTime() - t0
         echo "Fib is [s] ", fib
-      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+      when defined(posix):
+        # 'clocksPerSec' is a compile-time constant, possibly a
+        # rather awful one, so use clock_gettime instead
+        var ts: Timespec
+        discard clock_gettime(cpuClockId, ts)
+        result = toFloat(ts.tv_sec.int) +
+          toFloat(ts.tv_nsec.int) / 1_000_000_000
+      else:
+        result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
     proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time after the UNIX epoch (1970) in seconds. It is a float
