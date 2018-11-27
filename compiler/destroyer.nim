@@ -459,7 +459,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest.typ, dest, ri)
     result.add p(ri, c)
   of nkStmtListExpr:
-    result = newNWdeI(nkStmtList, ri.info)
+    result = newNodeI(nkStmtList, ri.info)
     for i in 0..ri.len-2:
       result.add p(ri[i], c)
     result.add moveOrCopy(dest, ri[^1], c)
