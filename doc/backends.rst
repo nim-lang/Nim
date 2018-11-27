@@ -268,7 +268,7 @@ form the Nim code, then link them into a static binary along your main C
 program::
 
   $ nim c --noMain --noLinking --header:fib.h fib.nim
-  $ gcc -o m -Inimcache -Ipath/to/nim/lib nimcache/*.c maths.c
+  $ gcc -o m -I$HOME/.cache/nim/fib_d -Ipath/to/nim/lib $HOME/.cache/nim/fib_d/*.c maths.c
 
 The first command runs the Nim compiler with three special options to avoid
 generating a ``main()`` function in the generated files, avoid linking the
