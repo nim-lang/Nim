@@ -16,7 +16,7 @@ let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 
 proc cmdTemplate*(): string =
-  compilerPrefix & " $target --lib:lib --hints:on -d:testing --nimblePath:tests/deps $options $file"
+  compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
 
 type
   TTestAction* = enum
