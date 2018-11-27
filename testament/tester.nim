@@ -353,7 +353,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   else:
     specDefaults expected
     expected.action = actionRunNoSpec
-    expected.outputCheck = ocIgnore # this is default so it is unnecessary
 
   if expected.err == reIgnored:
     # targetC is a lie
@@ -498,9 +497,7 @@ proc testExec(r: var TResults, test: TTest) =
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, targetC, "", given.msg, given.err)
 
-proc makeTest(test, options: string, cat: Category,
-              env: string = ""): TTest =
-  # start with 'actionCompile', will be overwritten in the spec:
+proc makeTest(test, options: string, cat: Category, env: string = ""): TTest =
   result = TTest(cat: cat, name: test, options: options, startTime: epochTime())
 
 when defined(windows):
@@ -526,9 +523,7 @@ proc main() =
   backend.open()
   var optPrintResults = false
   var optFailing = false
-
   var targetsStr = ""
-
 
   var p = initOptParser()
   p.next()
@@ -544,16 +539,18 @@ proc main() =
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":
-      if p.val.string == "on":
+      case p.val.string:
+      of "on":
         useColors = true
-      elif p.val.string == "off":
+      of "off":
         useColors = false
       else:
         quit Usage
     else:
       quit Usage
     p.next()
-  if p.kind != cmdArgument: quit Usage
+  if p.kind != cmdArgument:
+    quit Usage
   var action = p.key.string.normalize
   p.next()
   var r = initResults()
