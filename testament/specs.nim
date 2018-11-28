@@ -111,8 +111,9 @@ proc parseTargets*(value: string): set[TTarget] =
 proc parseSpec*(filename: string): TSpec =
   result = defaultSpec()
   result.file = filename
-  var ss = newStringStream(extractSpec(filename))
-  var p {.inject.}: CfgParser
+  let specStr = extractSpec(filename)
+  var ss = newStringStream(specStr)
+  var p: CfgParser
   open(p, ss, filename, 1)
   while true:
     var e = next(p)
@@ -215,3 +216,6 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
+
+  if result.err == reIgnored:
+    echo specStr
