@@ -44,6 +44,7 @@ type
     reBuildFailed       # package building failed
     reIgnored,          # test is ignored
     reSuccess           # test was successful
+    reInvalidSpec       # test had problems to parse the spec
 
   TTarget* = enum
     targetC = "C"
@@ -68,6 +69,7 @@ type
     err*: TResultEnum
     targets*: set[TTarget]
     nimout*: string
+    parseErrors*: string # when the spec definition is invalid, this is not empty.
 
 const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
@@ -108,6 +110,16 @@ proc parseTargets*(value: string): set[TTarget] =
     of "js": result.incl(targetJS)
     else: echo "target ignored: " & v
 
+
+proc addLine(self: var string; a: string) =
+  self.add a
+  self.add "\n"
+
+proc addLine(self: var string; a,b: string) =
+  self.add a
+  self.add b
+  self.add "\n"
+
 proc parseSpec*(filename: string): TSpec =
   result = defaultSpec()
   result.file = filename
@@ -129,7 +141,7 @@ proc parseSpec*(filename: string): TSpec =
         of "reject":
           result.action = actionReject
         else:
-          echo ignoreMsg(p, e)
+          result.parseErrors.addLine "cannot interpret as action: ", e.value
       of "file":
         result.file = e.value
       of "line":
@@ -151,7 +163,10 @@ proc parseSpec*(filename: string): TSpec =
         result.outputCheck = ocSubstr
         result.outp = strip(e.value)
       of "sortoutput":
-        result.sortoutput = parseCfgBool(e.value)
+        try:
+          result.sortoutput  = parseCfgBool(e.value)
+        except:
+          result.parseErrors.addLine getCurrentExceptionMsg()
       of "exitcode":
         discard parseInt(e.value, result.exitCode)
         result.action = actionRun
@@ -185,7 +200,7 @@ proc parseSpec*(filename: string): TSpec =
         of "appveyor":
           if isAppVeyor: result.err = reIgnored
         else:
-          raise newException(ValueError, "cannot interpret as a bool: " & e.value)
+          result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
         if e.value.startsWith("nim "):
           result.cmd = compilerPrefix & e.value[3..^1]
@@ -207,12 +222,18 @@ proc parseSpec*(filename: string): TSpec =
           of "js":
             result.targets.incl(targetJS)
           else:
-            echo ignoreMsg(p, e)
+            result.parseErrors.addLine "cannot interpret as a target: ", e.value
       else:
-        echo ignoreMsg(p, e)
+        result.parseErrors.addLine "invalid key for test spec: ", e.key
 
-    of cfgSectionStart, cfgOption, cfgError:
-      echo ignoreMsg(p, e)
+    of cfgSectionStart:
+      result.parseErrors.addLine "section ignored: ", e.section
+    of cfgOption:
+      result.parseErrors.addLine "command ignored: ", e.key & ": " & e.value
+    of cfgError:
+      result.parseErrors.addLine e.msg
     of cfgEof:
       break
+
+
   close(p)

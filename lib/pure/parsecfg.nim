@@ -386,17 +386,6 @@ proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   result = `%`("$1($2, $3) Warning: $4",
                [c.filename, $getLine(c), $getColumn(c), msg])
 
-proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formatted warning message containing that
-  ## an entry is ignored.
-  case e.kind
-  of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)
-  of cfgKeyValuePair: result = c.warningStr("key ignored: " & e.key)
-  of cfgOption:
-    result = c.warningStr("command ignored: " & e.key & ": " & e.value)
-  of cfgError: result = e.msg
-  of cfgEof: result = ""
-
 proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
     result.kind = kind
