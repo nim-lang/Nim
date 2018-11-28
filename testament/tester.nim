@@ -384,7 +384,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
-        let file = changeFileExt(test.name, "js")
+        let file = test.name.lastPathPart.changeFileExt("js")
         exeFile = nimcacheDir(test.name, test.options, target) / file
       else:
         exeFile = changeFileExt(test.name, ExeExt)
@@ -428,8 +428,8 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
                           bufB, reExitCodesDiffer)
         continue
 
-      if (expected.outputCheck == ocEqual  and bufB != expected.outp) or
-         (expected.outputCheck == ocSubstr and bufB notin expected.outp):
+      if (expected.outputCheck == ocEqual  and expected.outp !=  bufB) or
+         (expected.outputCheck == ocSubstr and expected.outp notin bufB):
         given.err = reOutputsDiffer
         r.addResult(test, target, expected.outp, bufB, reOutputsDiffer)
         continue
