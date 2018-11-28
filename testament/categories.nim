@@ -27,7 +27,7 @@ proc delNimCache(filename, options: string) =
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
     if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
+    testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
 
   # test basic recompilation scheme:
@@ -97,10 +97,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  testNoSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl --threads:on", cat, actionCompile)
-  testNoSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat, actionCompile)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --app:lib -d:createNimRtl --threads:on", cat)
+  test1.spec.action = actionCompile
+  testSpec c, test1
+  var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
+  test2.spec.action = actionCompile
+  testSpec c, test2
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
@@ -120,7 +122,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
-                       cat, actionRun)
+                       cat)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -138,32 +140,32 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithNone(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:none", cat, actionRun)
+                  " --gc:none", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:none", cat, actionRun)
+                  " -d:release --gc:none", cat)
 
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
+    testSpec r, makeTest("tests/gc" / filename, options, cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release", cat, actionRun)
+                  " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat, actionRun)
+                  " -d:release -d:useRealtimeGC", cat)
 
   template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:markAndSweep", cat, actionRun)
+                  " --gc:markAndSweep", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:markAndSweep", cat, actionRun)
+                  " -d:release --gc:markAndSweep", cat)
   template test(filename: untyped) =
     testWithoutBoehm filename
     when not defined(windows) and not defined(android):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:boehm", cat, actionRun)
+                    " --gc:boehm", cat)
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " -d:release --gc:boehm", cat, actionRun)
+                    " -d:release --gc:boehm", cat)
 
   testWithoutBoehm "foreign_thr"
   test "gcemscripten"
@@ -196,17 +198,18 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 
   var c = initResults()
   # According to ioTests, this should compile the file
-  testNoSpec c, makeTest("tests/realtimeGC/shared", options, cat, actionCompile)
-  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat, actionRun)
-  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat, actionRun)
+  testSpec c, makeTest("tests/realtimeGC/shared", options, cat)
+  #        ^- why is this not appended to r? Should this be discarded?
+  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun
+  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat)
 
 # ------------------------- threading tests -----------------------------------
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionRun)
-    testSpec r, makeTest(filename, options & " -d:release", cat, actionRun)
-    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat, actionRun)
+    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " -d:release", cat)
+    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat)
   for t in os.walkFiles("tests/threads/t*.nim"):
     test(t)
 
@@ -235,10 +238,8 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun), targetJS
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun), targetJS
+    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -259,14 +260,14 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 proc testNimInAction(r: var TResults, cat: Category, options: string) =
   let options = options & " --nilseqs:on"
 
-  template test(filename: untyped, action: untyped) =
-    testSpec r, makeTest(filename, options, cat, action)
+  template test(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat)
 
   template testJS(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
+    testSpec r, makeTest(filename, options, cat), {targetJS}
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
+    testSpec r, makeTest(filename, options, cat), {targetCPP}
 
   let tests = [
     "niminaction/Chapter1/various1",
@@ -318,7 +319,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
 
   # Run the tests.
   for testfile in tests:
-    test "tests/" & testfile & ".nim", actionCompile
+    test "tests/" & testfile & ".nim"
 
   let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
   testJS jsFile
@@ -361,14 +362,17 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testNoSpec r, makeTest(test, options, cat)
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  for test in os.walkFiles(pattern):
-    let name = extractFilename(test)
+  for testFile in os.walkFiles(pattern):
+    let name = extractFilename(testFile)
     if name notin disabledFiles:
-      let contents = readFile(test).string
-      if contents.contains("when isMainModule"):
-        testSpec r, makeTest(test, options, cat, actionRunNoSpec)
-      else:
-        testNoSpec r, makeTest(test, options, cat, actionCompile)
+
+
+      let contents = readFile(testFile).string
+
+      var testObj = makeTest(testFile, options, cat)
+      if "when isMainModule" notin contents:
+        testObj.spec.action = actionCompile
+      testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
 type PackageFilter = enum
@@ -472,7 +476,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat), target
+  if existsFile(test): testSpec r, makeTest(test, options, cat), {target}
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =
@@ -521,8 +525,6 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfAll)
   of "niminaction":
     testNimInAction(r, cat, options)
-  of "testament":
-    testTestament(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

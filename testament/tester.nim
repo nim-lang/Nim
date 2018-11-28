@@ -48,7 +48,7 @@ type
     name: string
     cat: Category
     options: string
-    action: TTestAction
+    spec: TSpec
     startTime: float
 
 # ----------------------------------------------------------------------------
@@ -113,7 +113,7 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
   let nimcache = nimcacheDir(filename, options, target)
-  let options = options & " " & ("--nimCache:" & nimcache).quoteShell & extraOptions
+  let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
@@ -222,7 +222,6 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
-                          action = $test.action,
                           result = $success,
                           expected = expected,
                           given = given)
@@ -346,15 +345,10 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
-  let tname = test.name.addFileExt(".nim")
-  var expected: TSpec
-  if test.action != actionRunNoSpec:
-    expected = parseSpec(tname)
-  else:
-    specDefaults expected
-    expected.action = actionRunNoSpec
+  var expected = test.spec
 
   if expected.err == reIgnored:
+    echo expected
     # targetC is a lie
     r.addResult(test, targetC, "", "", reIgnored)
     inc(r.skipped)
@@ -401,10 +395,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
-        let (_, file, _) = splitFile(tname)
-        exeFile = nimcacheDir(test.name, test.options, target) / file & ".js"
+        let file = addFileExt(test.name, "js")
+        exeFile = nimcacheDir(test.name, test.options, target) / file
       else:
-        exeFile = changeFileExt(tname, ExeExt)
+        exeFile = addFileExt(test.name, ExeExt)
 
       if not existsFile(exeFile):
         r.addResult(test, target, expected.outp, "executable not found", reExeNotFound)
@@ -468,7 +462,7 @@ proc testNoSpec(r: var TResults, test: TTest, target = targetC) =
   r.addResult(test, target, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
-proc testC(r: var TResults, test: TTest) =
+proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
   let tname = test.name.addFileExt(".c")
   inc(r.total)
@@ -476,7 +470,7 @@ proc testC(r: var TResults, test: TTest) =
   var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, targetC)
   if given.err != reSuccess:
     r.addResult(test, targetC, "", given.msg, given.err)
-  elif test.action == actionRun:
+  elif action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
     if exitCode != 0: given.err = reExitCodesDiffer
@@ -486,8 +480,7 @@ proc testExec(r: var TResults, test: TTest) =
   # runs executable or script, just goes by exit code
   inc(r.total)
   let (outp, errC) = execCmdEx(test.options.strip())
-  var given: TSpec
-  specDefaults(given)
+  var given: TSpec = defaultSpec()
   if errC == 0:
     given.err = reSuccess
   else:
@@ -497,8 +490,12 @@ proc testExec(r: var TResults, test: TTest) =
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, targetC, "", given.msg, given.err)
 
-proc makeTest(test, options: string, cat: Category, env: string = ""): TTest =
-  result = TTest(cat: cat, name: test, options: options, startTime: epochTime())
+proc makeTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.spec = parseSpec(addFileExt(test, ".nim"))
+  result.startTime = epochTime()
 
 when defined(windows):
   const
@@ -535,7 +532,8 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
-    of "nim": compilerPrefix = p.val.string
+    of "nim":
+      compilerPrefix = p.val.string
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":

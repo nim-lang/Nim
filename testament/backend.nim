@@ -45,8 +45,7 @@ var
   currentCategory: string
   entries: int
 
-proc writeTestResult*(name, category, target,
-                      action, result, expected, given: string) =
+proc writeTestResult*(name, category, target, result, expected, given: string) =
   createDir("testresults")
   if currentCategory != category:
     if currentCategory.len > 0:
@@ -58,7 +57,7 @@ proc writeTestResult*(name, category, target,
     entries = 0
 
   let jentry = %*{"name": name, "category": category, "target": target,
-    "action": action, "result": result, "expected": expected, "given": given,
+    "result": result, "expected": expected, "given": given,
     "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch}
   if entries > 0:
     results.writeLine(",")
