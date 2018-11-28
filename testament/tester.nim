@@ -348,7 +348,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
 
   if expected.err == reIgnored:
-    echo expected
     # targetC is a lie
     r.addResult(test, targetC, "", "", reIgnored)
     inc(r.skipped)
@@ -366,10 +365,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
 
   for target in expected.targets:
     inc(r.total)
-    if target notin targets:
-      r.addResult(test, target, "", "", reIgnored)
-      inc(r.skipped)
-      continue
 
     case expected.action
     of actionCompile:
@@ -382,12 +377,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       var given = callCompiler(expected.cmd, test.name, test.options,
                                target)
 
-      # echo "expected.cmd: ", expected.cmd
-      # echo "nimout: ", given.nimout
-      # echo "outp:   ", given.outp
-      # echo "msg:    ", given.msg
-      # echo "err:    ", given.err
-
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
         continue
@@ -395,10 +384,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
-        let file = addFileExt(test.name, "js")
+        let file = changeFileExt(test.name, "js")
         exeFile = nimcacheDir(test.name, test.options, target) / file
       else:
-        exeFile = addFileExt(test.name, ExeExt)
+        exeFile = changeFileExt(test.name, ExeExt)
 
       if not existsFile(exeFile):
         r.addResult(test, target, expected.outp, "executable not found", reExeNotFound)
