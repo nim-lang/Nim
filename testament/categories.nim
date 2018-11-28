@@ -232,7 +232,7 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  testNoSpec r, makeTest("tools/nimgrep", options & " --debugger:on", cat)
+  testSpec r, makeTest("tools/nimgrep", options & " --debugger:on", cat)
 
 # ------------------------- JS tests ------------------------------------------
 
@@ -355,11 +355,15 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
       if dir.endsWith"named_argument_bug": continue
       let mainfile = findMainFile(dir)
       if mainfile != "":
-        testNoSpec r, makeTest(mainfile, options, cat)
+        var test = makeTest(mainfile, options, cat)
+        test.spec.action = actionCompile
+        testSpec r, test
 
 proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
   for test in os.walkFiles(pattern):
-    testNoSpec r, makeTest(test, options, cat)
+    var test = makeTest(test, options, cat)
+    test.spec.action = actionCompile
+    testSpec r, test
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
   for testFile in os.walkFiles(pattern):

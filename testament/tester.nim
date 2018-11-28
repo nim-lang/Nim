@@ -443,14 +443,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       cmpMsgs(r, expected, given, test, target)
       continue
 
-proc testNoSpec(r: var TResults, test: TTest, target = targetC) =
-  # does not extract the spec because the file is not supposed to have any
-  #let tname = test.name.addFileExt(".nim")
-  inc(r.total)
-  let given = callCompiler(cmdTemplate(), test.name, test.options, target)
-  r.addResult(test, target, "", given.msg, given.err)
-  if given.err == reSuccess: inc(r.passed)
-
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
   let tname = test.name.addFileExt(".c")
