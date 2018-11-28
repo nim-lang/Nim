@@ -204,7 +204,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
-    if result.kind != kind:
+    if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
     if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
