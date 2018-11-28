@@ -166,12 +166,6 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
         ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
   conf.ideCmd = cmd
-  if cmd == ideChk:
-    conf.structuredErrorHook = errorHook
-    conf.writelnHook = myLog
-  else:
-    conf.structuredErrorHook = nil
-    conf.writelnHook = myLog
   if cmd == ideUse and conf.suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
@@ -213,6 +207,12 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   var dirtyfile = AbsoluteFile""
   if len(args) > 3:
     dirtyfile = AbsoluteFile args[3].getStr("")
+  if cmd == ideChk:
+    graph.config.structuredErrorHook = errorHook
+    graph.config.writelnHook = myLog
+  else:
+    graph.config.structuredErrorHook = nil
+    graph.config.writelnHook = myLog
   execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
@@ -438,6 +438,12 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
+    if conf.ideCmd == ideChk:
+      conf.structuredErrorHook = errorHook
+      conf.writelnHook = myLog
+    else:
+      conf.structuredErrorHook = nil
+      conf.writelnHook = myLog
     execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
   sentinel()
 
@@ -707,10 +713,20 @@ else:
       retval.add(Suggest(section: ideMsg, doc: line))
     conf.suggestionResultHook = proc (s: Suggest) =
       retval.add(s)
+    conf.writelnHook = proc (s: string) =
+      stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
     else:
       if conf.ideCmd == ideChk:
         for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
+      if conf.ideCmd == ideChk:
+        conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+          retval.add(Suggest(section: ideChk, filePath: toFullPath(conf, info),
+            line: toLinenumber(info), column: toColumn(info), doc: msg,
+            forth: $sev))
+
+      else:
+        conf.structuredErrorHook = nil
       execute(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
     return retval
