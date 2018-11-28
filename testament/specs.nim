@@ -9,7 +9,6 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-
 var compilerPrefix* = "compiler" / "nim"
 
 let isTravis* = existsEnv("TRAVIS")
@@ -97,32 +96,8 @@ proc extractSpec(filename: string): string =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template parseSpecAux(fillResult: untyped) =
-  var ss = newStringStream(extractSpec(filename))
-  var p {.inject.}: CfgParser
-  open(p, ss, filename, 1)
-  while true:
-    var e {.inject.} = next(p)
-    case e.kind
-    of cfgEof: break
-    of cfgSectionStart, cfgOption, cfgError:
-      echo ignoreMsg(p, e)
-    of cfgKeyValuePair:
-      fillResult
-  close(p)
-
-proc specDefaults*(result: var TSpec) =
-  result.msg = ""
-  result.outp = ""
-  result.nimout = ""
-  result.ccodeCheck = ""
+proc defaultSpec*(): TSpec =
   result.cmd = cmdTemplate()
-  result.line = 0
-  result.column = 0
-  result.tfile = ""
-  result.tline = 0
-  result.tcolumn = 0
-  result.maxCodeSize = 0
 
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
@@ -134,79 +109,109 @@ proc parseTargets*(value: string): set[TTarget] =
     else: echo "target ignored: " & v
 
 proc parseSpec*(filename: string): TSpec =
-  specDefaults(result)
+  result = defaultSpec()
   result.file = filename
-  parseSpecAux:
-    case normalize(e.key)
-    of "action":
-      case e.value.normalize
-      of "compile": result.action = actionCompile
-      of "run": result.action = actionRun
-      of "reject": result.action = actionReject
-      else: echo ignoreMsg(p, e)
-    of "file": result.file = e.value
-    of "line": discard parseInt(e.value, result.line)
-    of "column": discard parseInt(e.value, result.column)
-    of "tfile": result.tfile = e.value
-    of "tline": discard parseInt(e.value, result.tline)
-    of "tcolumn": discard parseInt(e.value, result.tcolumn)
-    of "output":
-      result.outputCheck = ocEqual
-      result.outp = strip(e.value)
-    of "input":
-      result.input = e.value
-    of "outputsub":
-      result.outputCheck = ocSubstr
-      result.outp = strip(e.value)
-    of "sortoutput":
-      result.sortoutput = parseCfgBool(e.value)
-    of "exitcode":
-      discard parseInt(e.value, result.exitCode)
-      result.action = actionRun
-    of "msg":
-      result.msg = e.value
-      if result.action != actionRun:
-        result.action = actionCompile
-    of "errormsg", "errmsg":
-      result.msg = e.value
-      result.action = actionReject
-    of "nimout":
-      result.nimout = e.value
-    of "disabled":
-      case e.value.normalize
-      of "y", "yes", "true", "1", "on": result.err = reIgnored
-      of "n", "no", "false", "0", "off": discard
-      of "win", "windows":
-        when defined(windows): result.err = reIgnored
-      of "linux":
-        when defined(linux): result.err = reIgnored
-      of "bsd":
-        when defined(bsd): result.err = reIgnored
-      of "macosx":
-        when defined(macosx): result.err = reIgnored
-      of "unix":
-        when defined(unix): result.err = reIgnored
-      of "posix":
-        when defined(posix): result.err = reIgnored
-      of "travis":
-        if isTravis: result.err = reIgnored
-      of "appveyor":
-        if isAppVeyor: result.err = reIgnored
+  var ss = newStringStream(extractSpec(filename))
+  var p {.inject.}: CfgParser
+  open(p, ss, filename, 1)
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgKeyValuePair:
+      case normalize(e.key)
+      of "action":
+        case e.value.normalize
+        of "compile":
+          result.action = actionCompile
+        of "run":
+          result.action = actionRun
+        of "reject":
+          result.action = actionReject
+        else:
+          echo ignoreMsg(p, e)
+      of "file":
+        result.file = e.value
+      of "line":
+        discard parseInt(e.value, result.line)
+      of "column":
+        discard parseInt(e.value, result.column)
+      of "tfile":
+        result.tfile = e.value
+      of "tline":
+        discard parseInt(e.value, result.tline)
+      of "tcolumn":
+        discard parseInt(e.value, result.tcolumn)
+      of "output":
+        result.outputCheck = ocEqual
+        result.outp = strip(e.value)
+      of "input":
+        result.input = e.value
+      of "outputsub":
+        result.outputCheck = ocSubstr
+        result.outp = strip(e.value)
+      of "sortoutput":
+        result.sortoutput = parseCfgBool(e.value)
+      of "exitcode":
+        discard parseInt(e.value, result.exitCode)
+        result.action = actionRun
+      of "msg":
+        result.msg = e.value
+        if result.action != actionRun:
+          result.action = actionCompile
+      of "errormsg", "errmsg":
+        result.msg = e.value
+        result.action = actionReject
+      of "nimout":
+        result.nimout = e.value
+      of "disabled":
+        case e.value.normalize
+        of "y", "yes", "true", "1", "on": result.err = reIgnored
+        of "n", "no", "false", "0", "off": discard
+        of "win", "windows":
+          when defined(windows): result.err = reIgnored
+        of "linux":
+          when defined(linux): result.err = reIgnored
+        of "bsd":
+          when defined(bsd): result.err = reIgnored
+        of "macosx":
+          when defined(macosx): result.err = reIgnored
+        of "unix":
+          when defined(unix): result.err = reIgnored
+        of "posix":
+          when defined(posix): result.err = reIgnored
+        of "travis":
+          if isTravis: result.err = reIgnored
+        of "appveyor":
+          if isAppVeyor: result.err = reIgnored
+        else:
+          raise newException(ValueError, "cannot interpret as a bool: " & e.value)
+      of "cmd":
+        if e.value.startsWith("nim "):
+          result.cmd = compilerPrefix & e.value[3..^1]
+        else:
+          result.cmd = e.value
+      of "ccodecheck":
+        result.ccodeCheck = e.value
+      of "maxcodesize":
+        discard parseInt(e.value, result.maxCodeSize)
+      of "target", "targets":
+        for v in e.value.normalize.splitWhitespace:
+          case v
+          of "c":
+            result.targets.incl(targetC)
+          of "cpp", "c++":
+            result.targets.incl(targetCpp)
+          of "objc":
+            result.targets.incl(targetObjC)
+          of "js":
+            result.targets.incl(targetJS)
+          else:
+            echo ignoreMsg(p, e)
       else:
-        raise newException(ValueError, "cannot interpret as a bool: " & e.value)
-    of "cmd":
-      if e.value.startsWith("nim "):
-        result.cmd = compilerPrefix & e.value[3..^1]
-      else:
-        result.cmd = e.value
-    of "ccodecheck": result.ccodeCheck = e.value
-    of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
-    of "target", "targets":
-      for v in e.value.normalize.splitWhitespace:
-        case v
-        of "c": result.targets.incl(targetC)
-        of "cpp", "c++": result.targets.incl(targetCpp)
-        of "objc": result.targets.incl(targetObjC)
-        of "js": result.targets.incl(targetJS)
-        else: echo ignoreMsg(p, e)
-    else: echo ignoreMsg(p, e)
+        echo ignoreMsg(p, e)
+
+    of cfgSectionStart, cfgOption, cfgError:
+      echo ignoreMsg(p, e)
+    of cfgEof:
+      break
+  close(p)
