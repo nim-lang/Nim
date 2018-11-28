@@ -222,6 +222,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
+                          action = $test.spec.action,
                           result = $success,
                           expected = expected,
                           given = given)
