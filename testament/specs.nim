@@ -216,6 +216,3 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
-
-  if result.err == reIgnored:
-    echo specStr
