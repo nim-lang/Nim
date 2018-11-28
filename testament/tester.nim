@@ -347,9 +347,14 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
+  if expected.parseErrors.len > 0:
+    # targetC is a lie, but parameter is required
+    r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
+    inc(r.total)
+    return
 
   if expected.err == reIgnored:
-    # targetC is a lie
+    # targetC is a lie, but parameter is required
     r.addResult(test, targetC, "", "", reIgnored)
     inc(r.skipped)
     inc(r.total)
