@@ -15,6 +15,7 @@ import
   algorithm, compiler/nodejs, times, sets, md5
 
 var useColors = true
+var backendLogging = true
 
 const
   resultsFile = "testresults.html"
@@ -35,7 +36,8 @@ Options:
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
-  --colors:on|off           turn messagescoloring on|off
+  --colors:on|off           Turn messagescoloring on|off.
+  --backendLogging:on|off   Disable or enable backend logging. By default turned on.
 """ % resultsFile
 
 type
@@ -219,13 +221,14 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
-  backend.writeTestResult(name = name,
-                          category = test.cat.string,
-                          target = $target,
-                          action = $test.spec.action,
-                          result = $success,
-                          expected = expected,
-                          given = given)
+  if backendLogging:
+    backend.writeTestResult(name = name,
+                            category = test.cat.string,
+                            target = $target,
+                            action = $test.spec.action,
+                            result = $success,
+                            expected = expected,
+                            given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
@@ -529,6 +532,14 @@ proc main() =
         useColors = true
       of "off":
         useColors = false
+      else:
+        quit Usage
+    of "backendlogging":
+      case p.val.string:
+      of "on":
+        backendLogging = true
+      of "off":
+        backendLogging = false
       else:
         quit Usage
     else:

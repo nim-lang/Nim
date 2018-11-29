@@ -1,5 +1,5 @@
 discard """
-cmd: "testament/tester --directory:testament --colors:off --nim:../compiler/nim category shouldfail"
+cmd: "testament/tester --directory:testament --colors:off --backendLogging:off --nim:../compiler/nim category shouldfail"
 action: compile
 nimout: '''
 FAIL: tccodecheck.nim C
