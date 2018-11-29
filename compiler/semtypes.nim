@@ -1758,28 +1758,28 @@ proc processMagicType(c: PContext, m: PSym) =
   of mVoidType:
     setMagicType(c.config, m, tyVoid, 0)
   of mArray:
-    setMagicType(c.config, m, tyArray, 0)
+    setMagicType(c.config, m, tyArray, szUncomputedSize)
   of mOpenArray:
-    setMagicType(c.config, m, tyOpenArray, 0)
+    setMagicType(c.config, m, tyOpenArray, szUncomputedSize)
   of mVarargs:
-    setMagicType(c.config, m, tyVarargs, 0)
+    setMagicType(c.config, m, tyVarargs, szUncomputedSize)
   of mRange:
-    setMagicType(c.config, m, tyRange, 0)
+    setMagicType(c.config, m, tyRange, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mSet:
-    setMagicType(c.config, m, tySet, 0)
+    setMagicType(c.config, m, tySet, szUncomputedSize)
   of mUncheckedArray:
-    setMagicType(c.config, m, tyUncheckedArray, 0)
+    setMagicType(c.config, m, tyUncheckedArray, szUncomputedSize)
   of mSeq:
-    setMagicType(c.config, m, tySequence, 0)
+    setMagicType(c.config, m, tySequence, szUncomputedSize)
     if c.config.selectedGc == gcDestructors:
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
   of mOpt:
-    setMagicType(c.config, m, tyOpt, 0)
+    setMagicType(c.config, m, tyOpt, szUncomputedSize)
   of mOrdinal:
-    setMagicType(c.config, m, tyOrdinal, 0)
+    setMagicType(c.config, m, tyOrdinal, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
@@ -1787,7 +1787,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mBuiltinType:
     case m.name.s
     of "lent": setMagicType(c.config, m, tyLent, c.config.target.ptrSize)
-    of "sink": setMagicType(c.config, m, tySink, 0)
+    of "sink": setMagicType(c.config, m, tySink, szUncomputedSize)
     else: localError(c.config, m.info, errTypeExpected)
   else: localError(c.config, m.info, errTypeExpected)
 

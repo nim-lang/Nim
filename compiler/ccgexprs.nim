@@ -241,7 +241,7 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # (for objects, etc.):
   if p.config.selectedGC == gcDestructors:
     linefmt(p, cpsStmts,
-        "$1.len = $2.len; $1.p = $2.p;$n",
+        "$1 = $2;$n",
         rdLoc(dest), rdLoc(src))
   elif needToCopy notin flags or
       tfShallow in skipTypes(dest.t, abstractVarRange).flags:
@@ -1339,9 +1339,17 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, tmp)
   elif d.k == locNone:
     getTemp(p, n.typ, d)
-  # generate call to newSeq before adding the elements per hand:
-  genNewSeqAux(p, dest[], intLiteral(sonsLen(n)),
-    optNilSeqs notin p.options and n.len == 0)
+
+  let l = intLiteral(sonsLen(n))
+  if p.config.selectedGC == gcDestructors:
+    let seqtype = n.typ
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+      rdLoc dest[], l, getTypeDesc(p.module, seqtype.lastSon),
+      getSeqPayloadType(p.module, seqtype))
+  else:
+    # generate call to newSeq before adding the elements per hand:
+    genNewSeqAux(p, dest[], l,
+      optNilSeqs notin p.options and n.len == 0)
   for i in countup(0, sonsLen(n) - 1):
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", rdLoc(dest[]), intLiteral(i), dataField(p))
@@ -1364,7 +1372,13 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
   let L = int(lengthOrd(p.config, n.sons[1].typ))
-  genNewSeqAux(p, d, intLiteral(L), optNilSeqs notin p.options and L == 0)
+  if p.config.selectedGC == gcDestructors:
+    let seqtype = n.typ
+    linefmt(p, cpsStmts, "$1.len = $2; $1.p = ($4*) #newSeqPayload($2, sizeof($3));$n",
+      rdLoc d, rope L, getTypeDesc(p.module, seqtype.lastSon),
+      getSeqPayloadType(p.module, seqtype))
+  else:
+    genNewSeqAux(p, d, intLiteral(L), optNilSeqs notin p.options and L == 0)
   initLocExpr(p, n.sons[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
