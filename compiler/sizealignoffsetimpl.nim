@@ -220,7 +220,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.align = int16(conf.target.ptrSize)
 
   of tyString:
-    if tfHasAsgn in typ.flags:
+    if conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
@@ -243,7 +243,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         return
 
     typ.align = int16(conf.target.ptrSize)
-    if typ.kind == tySequence and tfHasAsgn in typ.flags:
+    if typ.kind == tySequence and conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
