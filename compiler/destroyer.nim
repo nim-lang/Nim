@@ -408,7 +408,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   else:
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
-      
+
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   if arg.typ == nil:
     # typ is nil if we are in if/case branch with noreturn
