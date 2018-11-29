@@ -632,7 +632,7 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  when true: # defined(nimDebugDestroys):
+  when false: # defined(nimDebugDestroys):
     echo "injecting into ", n
   var c: Con
   c.owner = owner
@@ -668,7 +668,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  when true:
-    echo "------------------------------------"
-    echo owner.name.s, " transformed to: "
-    echo result
+  when defined(nimDebugDestroys):
+    if true:
+      echo "------------------------------------"
+      echo owner.name.s, " transformed to: "
+      echo result
