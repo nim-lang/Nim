@@ -1,6 +1,6 @@
 discard """
-  line: 8
   errormsg: "type mismatch: got <seq[int]> but expected 'seq[float]'"
+  line: 8
 """
 
 import sequtils

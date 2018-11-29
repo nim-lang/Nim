@@ -1,6 +1,6 @@
 discard """
-  line: 14
   errormsg: "cannot call method eval at compile time"
+  line: 14
 """
 
 type

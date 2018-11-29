@@ -1,5 +1,4 @@
 discard """
-  file: "tparseopt.nim"
   output: '''
 parseopt
 first round

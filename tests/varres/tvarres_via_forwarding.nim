@@ -1,6 +1,6 @@
 discard """
-  line: 10
   errormsg: "'y' escapes its stack frame; context: 'forward(y)'"
+  line: 10
 """
 
 proc forward(x: var int): var int = result = x

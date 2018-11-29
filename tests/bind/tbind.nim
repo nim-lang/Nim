@@ -1,7 +1,5 @@
 discard """
-  file: "tbind.nim"
-  output:
-'''
+output: '''
 3
 1
 1

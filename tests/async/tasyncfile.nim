@@ -1,10 +1,9 @@
 discard """
-  output: '''13
+output: '''
+13
 hello humans!
 13
 '''
-  file: "tasyncfile.nim"
-  exitcode: 0
 """
 import asyncfile, asyncdispatch, os
 

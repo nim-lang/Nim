@@ -1,5 +1,4 @@
 discard """
-  file: "texecps.nim"
   output: ""
 """
 

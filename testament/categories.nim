@@ -299,23 +299,36 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   # edit when making a conscious breaking change, also please try to make your
   # commit message clear and notify me so I can easily compile an errata later.
   const refHashes = @[
-    "51afdfa84b3ca3d810809d6c4e5037ba", "30f07e4cd5eaec981f67868d4e91cfcf",
-    "d14e7c032de36d219c9548066a97e846", "2e40bfd5daadb268268727da91bb4e81",
-    "c5d3853ed0aba04bf6d35ba28a98dca0", "058603145ff92d46c009006b06e5b228",
-    "7b94a029b94ddb7efafddd546c965ff6", "586d74514394e49f2370dfc01dd9e830",
-    "13febc363ed82585f2a60de40ddfefda", "c11a013db35e798f44077bc0763cc86d",
-    "3e32e2c5e9a24bd13375e1cd0467079c", "0b9fe7ba159623d49ae60db18a15037c",
-    "b2dd5293d7f784824bbf9792c6fb51ad", "4c19d8d9026bfe151b31d7007fa3c237",
-    "9415c6a568cfceed08da8378e95b5cd5", "da520038c153f4054cb8cc5faa617714",
-    "e6c6e061b6f77b2475db6fec7abfb7f4", "9a8fe78c588d08018843b64b57409a02",
-    "8b5d28e985c0542163927d253a3e4fc9", "783299b98179cc725f9c46b5e3b5381f",
-    "bc523f9a9921299090bac1af6c958e73", "80f9c3e594a798225046e8a42e990daf"
+    "51afdfa84b3ca3d810809d6c4e5037ba",
+    "30f07e4cd5eaec981f67868d4e91cfcf",
+    "d14e7c032de36d219c9548066a97e846",
+    "b335635562ff26ec0301bdd86356ac0c",
+    "6c4add749fbf50860e2f523f548e6b0e",
+    "76de5833a7cc46f96b006ce51179aeb1",
+    "705eff79844e219b47366bd431658961",
+    "a1e87b881c5eb161553d119be8b52f64",
+    "13febc363ed82585f2a60de40ddfefda",
+    "c11a013db35e798f44077bc0763cc86d",
+    "3e32e2c5e9a24bd13375e1cd0467079c",
+    "0b9fe7ba159623d49ae60db18a15037c",
+    "b2dd5293d7f784824bbf9792c6fb51ad",
+    "4c19d8d9026bfe151b31d7007fa3c237",
+    "9415c6a568cfceed08da8378e95b5cd5",
+    "da520038c153f4054cb8cc5faa617714",
+    "e6c6e061b6f77b2475db6fec7abfb7f4",
+    "9a8fe78c588d08018843b64b57409a02",
+    "8b5d28e985c0542163927d253a3e4fc9",
+    "783299b98179cc725f9c46b5e3b5381f",
+    "bc523f9a9921299090bac1af6c958e73",
+    "80f9c3e594a798225046e8a42e990daf",
   ]
 
   for i, test in tests:
     let filename = "tests" / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
     doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
+
+
 
   # Run the tests.
   for testfile in tests:

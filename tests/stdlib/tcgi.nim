@@ -1,9 +1,3 @@
-discard """
-  action: run
-  file: tcgi.nim
-  output: "[Suite] Test cgi module"
-"""
-
 import unittest
 import cgi, strtabs
 
