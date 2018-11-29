@@ -117,7 +117,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings, tables, modulegraphs,
-  lineinfos
+  lineinfos, parampatterns
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -262,7 +262,7 @@ template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
 template isUnpackedTuple(s: PSym): bool =
-  ## we move out all elements of unpacked tuples, 
+  ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
   s.kind == skTemp and s.typ.kind == tyTuple
 
@@ -402,9 +402,10 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, n.typ, tmp, n)
     m.add p(n, c)
     result.add m
-    message(c.graph.config, n.info, hintPerformance,
-      ("passing '$1' to a sink parameter introduces an implicit copy; " &
-      "use 'move($1)' to prevent it") % $n)
+    if isLValue(n):
+      message(c.graph.config, n.info, hintPerformance,
+        ("passing '$1' to a sink parameter introduces an implicit copy; " &
+        "use 'move($1)' to prevent it") % $n)
   else:
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp

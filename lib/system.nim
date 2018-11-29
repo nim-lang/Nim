@@ -4209,6 +4209,10 @@ when hasAlloc and not defined(nimscript) and not defined(JS) and
     ## for the implementation of ``spawn``.
     discard
 
+  proc deepCopy*[T](y: T): T =
+    ## Convenience wrapper around `deepCopy` overload.
+    deepCopy(result, y)
+
   include "system/deepcopy"
 
 proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
