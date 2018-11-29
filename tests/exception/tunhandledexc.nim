@@ -1,7 +1,6 @@
 discard """
-  file: "tunhandledexc.nim"
   cmd: "nim $target -d:release $options $file"
-  outputsub: '''tunhandledexc.nim(16)    genErrors
+  outputsub: '''tunhandledexc.nim(15)    genErrors
 Error: unhandled exception: bla [ESomeOtherErr]'''
   exitcode: "1"
 """

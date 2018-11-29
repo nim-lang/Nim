@@ -1,7 +1,5 @@
 discard """
-  file: "tarray.nim"
-  output:
-'''
+output: '''
 [4, 5, 6]
 
 [16, 25, 36]

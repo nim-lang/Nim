@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncawait.nim"
   output: "5000"
 """
 import asyncdispatch, nativesockets, net, strutils, os

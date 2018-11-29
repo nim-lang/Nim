@@ -1,7 +1,5 @@
 discard """
-  file: "tasynctry.nim"
-  exitcode: 0
-  output: '''
+output: '''
 Generic except: Test
 Specific except
 Multiple idents in except

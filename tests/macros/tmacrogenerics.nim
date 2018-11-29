@@ -1,5 +1,4 @@
 discard """
-  file: "tmacrogenerics.nim"
   nimout: '''
 instantiation 1 with None and None
 instantiation 2 with None and None

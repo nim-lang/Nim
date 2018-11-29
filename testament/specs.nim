@@ -143,10 +143,16 @@ proc parseSpec*(filename: string): TSpec =
         else:
           result.parseErrors.addLine "cannot interpret as action: ", e.value
       of "file":
+        if result.msg.len == 0 and result.nimout.len == 0:
+          result.parseErrors.addLine "errormsg or msg needs to be specified before file"
         result.file = e.value
       of "line":
+        if result.msg.len == 0 and result.nimout.len == 0:
+          result.parseErrors.addLine "errormsg, msg or nimout needs to be specified before line"
         discard parseInt(e.value, result.line)
       of "column":
+        if result.msg.len == 0 and result.nimout.len == 0:
+          result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
       of "tfile":
         result.tfile = e.value

@@ -1,5 +1,4 @@
 discard """
-  file: "tbintree.nim"
   output: "helloworld99110223"
 """
 type
@@ -103,5 +102,3 @@ when isMainModule:
     stdout.write(y)
 
 #OUT helloworld99110223
-
-

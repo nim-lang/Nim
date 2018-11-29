@@ -1,7 +1,7 @@
 discard """
+  errormsg: "incorrect object construction syntax"
   file: "t5965_1.nim"
   line: 10
-  errormsg: "incorrect object construction syntax"
 """
 
 type Foo = object

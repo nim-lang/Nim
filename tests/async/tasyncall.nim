@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncall.nim"
   exitcode: 0
 """
 import times, sequtils

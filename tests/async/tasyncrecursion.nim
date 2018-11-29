@@ -1,6 +1,5 @@
 discard """
-  file: "tasyncrecursion.nim"
-  output: "50005000"
+output: "50005000"
 """
 import asyncdispatch
 

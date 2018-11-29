@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncssl.nim"
   cmd: "nim $target --hints:on --define:ssl $options $file"
   output: "500"
   disabled: "windows"

@@ -1,5 +1,4 @@
 discard """
-  file: "tstringinterp.nim"
   output: "Hello Alice, 64 | Hello Bob, 10$"
 """
 

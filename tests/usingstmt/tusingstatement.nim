@@ -1,5 +1,4 @@
 discard """
-  file: "tusingstatement.nim"
   output: "Using test.Closing test."
 """
 

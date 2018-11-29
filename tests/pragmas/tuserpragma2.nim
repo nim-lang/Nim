@@ -1,7 +1,7 @@
 discard """
+  errormsg: "can raise an unlisted exception: ref Exception"
   file: "tuserpragma2.nim"
   line: 11
-  errormsg: "can raise an unlisted exception: ref Exception"
 """
 
 # bug #7216

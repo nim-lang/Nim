@@ -1,5 +1,4 @@
 discard """
-  file: "titer2.nim"
   output: "123"
 """
 # Try to break the transformation pass:

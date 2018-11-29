@@ -1,6 +1,5 @@
 
 discard """
-  file: "tconverter_unique_ptr.nim"
   targets: "c cpp"
   output: ""
 """
@@ -34,7 +33,7 @@ proc `=`*(m: var MySeq, m2: MySeq) =
     `=destroy`(m)
 
   m.len = m2.len
-  let bytes = m.len.int * sizeof(float) 
+  let bytes = m.len.int * sizeof(float)
   if bytes > 0:
     m.data = cast[ptr UncheckedArray[float]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)
@@ -59,7 +58,7 @@ proc `[]`*(m: var MySeq; i: MyLen): var float {.inline.} =
 proc `[]=`*(m: var MySeq; i: MyLen, val: float) {.inline.} =
   m.data[i.int] = val
 
-proc setTo(s: var MySeq, val: float) = 
+proc setTo(s: var MySeq, val: float) =
   for i in 0..<s.len.int:
     s.data[i] = val
 
@@ -112,7 +111,7 @@ doAssert pu[0] == 2.0
 doAssert: pu2[0] == 2.0
 
 ##-----------------------------------------------------------------------------------------
-## Bugs #9735 and #9736 
+## Bugs #9735 and #9736
 type
   ConstPtr*[T] = object
     ## This pointer makes it impossible to change underlying value

@@ -1,5 +1,4 @@
 discard """
-  file: "tospaths.nim"
   output: ""
 """
 # test the ospaths module

@@ -1,5 +1,4 @@
 discard """
-  file: "tjsonmacro.nim"
   output: ""
 """
 import json, strutils, options, tables

@@ -1,5 +1,4 @@
 discard """
-  file: "tsugar.nim"
   output: ""
 """
 import sugar
