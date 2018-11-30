@@ -1490,7 +1490,7 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true
   if optForceFullMake notin m.config.globalOptions:
     if not equalsFile(code, cfile.cname):
-      if isDefined(m.config, "nimdiff"):
+      if m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
           copyFile(cfile.cname.string, cfile.cname.string & ".backup")
           echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string

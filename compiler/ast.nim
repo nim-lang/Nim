@@ -898,6 +898,8 @@ type
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
+    uniqueId*: int            # due to a design mistake, we need to keep the real ID here as it
+                              # required by the --incremental:on mode.
 
   TPair* = object
     key*, val*: RootRef
@@ -1268,6 +1270,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.size = -1
   result.align = -1            # default alignment
   result.id = getID()
+  result.uniqueId = result.id
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
@@ -1341,15 +1344,12 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
-proc copySym*(s: PSym, keepId: bool = false): PSym =
+proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
-  if keepId:
-    result.id = s.id
-  else:
-    result.id = getID()
-    when debugIds: registerId(result)
+  result.id = getID()
+  when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic
   if s.kind == skModule:
