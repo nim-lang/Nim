@@ -159,7 +159,7 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
   if m != nil and m.ast != nil:
     result = findNode(m.ast, trackPos)
 
-proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
              graph: ModuleGraph) =
   let conf = graph.config
   myLog("cmd: " & $cmd & ", file: " & file.string &
@@ -198,6 +198,16 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
+proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+             graph: ModuleGraph) =
+  if graph.config.ideCmd == ideChk:
+    graph.config.structuredErrorHook = errorHook
+    graph.config.writelnHook = myLog
+  else:
+    graph.config.structuredErrorHook = nil
+    graph.config.writelnHook = myLog
+  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
+
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
                 graph: ModuleGraph) =
   let
@@ -207,12 +217,6 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
   var dirtyfile = AbsoluteFile""
   if len(args) > 3:
     dirtyfile = AbsoluteFile args[3].getStr("")
-  if cmd == ideChk:
-    graph.config.structuredErrorHook = errorHook
-    graph.config.writelnHook = myLog
-  else:
-    graph.config.structuredErrorHook = nil
-    graph.config.writelnHook = myLog
   execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
@@ -438,12 +442,6 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   else:
     if conf.ideCmd == ideChk:
       for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-    if conf.ideCmd == ideChk:
-      conf.structuredErrorHook = errorHook
-      conf.writelnHook = myLog
-    else:
-      conf.structuredErrorHook = nil
-      conf.writelnHook = myLog
     execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
   sentinel()
 
@@ -728,5 +726,5 @@ else:
 
       else:
         conf.structuredErrorHook = nil
-      execute(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
+      executeNoHooks(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
     return retval
