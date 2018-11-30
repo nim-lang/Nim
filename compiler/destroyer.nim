@@ -482,93 +482,93 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else: moveOrCopy(dest, ri_part, c)
 
   case ri.kind
-    of nkCallKinds:
+  of nkCallKinds:
+    result = genSink(c, dest.typ, dest, ri)
+    # watch out and no not transform 'ri' twice if it's a call:
+    let ri2 = copyNode(ri)
+    let parameters = ri[0].typ
+    let L = if parameters != nil: parameters.len else: 0
+    ri2.add ri[0]
+    for i in 1..<ri.len:
+      ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
+    #recurse(ri, ri2)
+    result.add ri2
+  of nkBracketExpr:
+    if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
+      # unpacking of tuple: move out the elements 
       result = genSink(c, dest.typ, dest, ri)
-      # watch out and no not transform 'ri' twice if it's a call:
-      let ri2 = copyNode(ri)
-      let parameters = ri[0].typ
-      let L = if parameters != nil: parameters.len else: 0
-      ri2.add ri[0]
-      for i in 1..<ri.len:
-        ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
-      #recurse(ri, ri2)
-      result.add ri2
-    of nkBracketExpr:
-      if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
-        # unpacking of tuple: move out the elements 
-        result = genSink(c, dest.typ, dest, ri)
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+    result.add p(ri, c)
+  of nkStmtListExpr:
+    result = newNodeI(nkStmtList, ri.info)
+    for i in 0..ri.len-2:
+      result.add p(ri[i], c)
+    result.add moveOrCopy(dest, ri[^1], c)
+  of nkBlockExpr, nkBlockStmt:
+    result = newNodeI(nkBlockStmt, ri.info)
+    result.add ri[0] ## add label
+    result.add moveOrCopy(dest, ri[1], c)
+  of nkIfExpr, nkIfStmt:
+    result = newNodeI(nkIfStmt, ri.info)
+    for i in 0..<ri.len:
+      var branch = copyNode(ri[i])
+      if ri[i].kind in {nkElifBranch, nkElifExpr}:
+        branch.add p(ri[i][0], c)
+        branch.add moveOrCopyIfTyped(ri[i][1])
       else:
-        result = genCopy(c, dest.typ, dest, ri)
-      result.add p(ri, c)
-    of nkStmtListExpr:
-      result = newNodeI(nkStmtList, ri.info)
-      for i in 0..ri.len-2:
-        result.add p(ri[i], c)
-      result.add moveOrCopy(dest, ri[^1], c)
-    of nkBlockExpr, nkBlockStmt:
-      result = newNodeI(nkBlockStmt, ri.info)
-      result.add ri[0] ## add label
-      result.add moveOrCopy(dest, ri[1], c)
-    of nkIfExpr, nkIfStmt:
-      result = newNodeI(nkIfStmt, ri.info)
-      for i in 0..<ri.len:
-        var branch = copyNode(ri[i])
-        if ri[i].kind in {nkElifBranch, nkElifExpr}:
-          branch.add p(ri[i][0], c)
-          branch.add moveOrCopyIfTyped(ri[i][1])
-        else:
-          branch.add moveOrCopyIfTyped(ri[i][0])
-        result.add branch
-    of nkCaseStmt:
-      result = newNodeI(nkCaseStmt, ri.info)
-      result.add p(ri[0], c)
-      for i in 1..<ri.len:
-        var branch: PNode
-        if ri[i].kind == nkOfbranch:
-          branch = ri[i] # of branch conditions are constants
-          branch[^1] = moveOrCopyIfTyped(ri[i][^1])
-        elif ri[i].kind in {nkElifBranch, nkElifExpr}:
-          branch = copyNode(ri[i])   
-          branch.add p(ri[i][0], c)
-          branch.add moveOrCopyIfTyped(ri[i][1])
-        else:
-          branch = copyNode(ri[i]) 
-          branch.add moveOrCopyIfTyped(ri[i][0])
-        result.add branch
-    of nkObjConstr:
-      result = genSink(c, dest.typ, dest, ri)
-      let ri2 = copyTree(ri)
-      for i in 1..<ri.len:
-        # everything that is passed to an object constructor is consumed,
-        # so these all act like 'sink' parameters:
+        branch.add moveOrCopyIfTyped(ri[i][0])
+      result.add branch
+  of nkCaseStmt:
+    result = newNodeI(nkCaseStmt, ri.info)
+    result.add p(ri[0], c)
+    for i in 1..<ri.len:
+      var branch: PNode
+      if ri[i].kind == nkOfbranch:
+        branch = ri[i] # of branch conditions are constants
+        branch[^1] = moveOrCopyIfTyped(ri[i][^1])
+      elif ri[i].kind in {nkElifBranch, nkElifExpr}:
+        branch = copyNode(ri[i])   
+        branch.add p(ri[i][0], c)
+        branch.add moveOrCopyIfTyped(ri[i][1])
+      else:
+        branch = copyNode(ri[i]) 
+        branch.add moveOrCopyIfTyped(ri[i][0])
+      result.add branch
+  of nkObjConstr:
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 1..<ri.len:
+      # everything that is passed to an object constructor is consumed,
+      # so these all act like 'sink' parameters:
+      ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+    result.add ri2
+  of nkTupleConstr:
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an tuple constructor is consumed,
+      # so these all act like 'sink' parameters:
+      if ri[i].kind == nkExprColonExpr:
         ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
-      result.add ri2
-    of nkTupleConstr:
-      result = genSink(c, dest.typ, dest, ri)
-      let ri2 = copyTree(ri)
-      for i in 0..<ri.len:
-        # everything that is passed to an tuple constructor is consumed,
-        # so these all act like 'sink' parameters:
-        if ri[i].kind == nkExprColonExpr:
-          ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
-        else:
-          ri2[i] = pArg(ri[i], c, isSink = true)
-      result.add ri2
-    of nkSym:
-      if ri.sym.kind != skParam and isLastRead(ri, c):
-        # Rule 3: `=sink`(x, z); wasMoved(z)
-        var snk = genSink(c, dest.typ, dest, ri)
-        snk.add p(ri, c)
-        result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
-      elif isSinkParam(ri.sym):
-        result = genSink(c, dest.typ, dest, ri)
-        result.add destructiveMoveSink(ri, c)
       else:
-        result = genCopy(c, dest.typ, dest, ri)
-        result.add p(ri, c)
+        ri2[i] = pArg(ri[i], c, isSink = true)
+    result.add ri2
+  of nkSym:
+    if ri.sym.kind != skParam and isLastRead(ri, c):
+      # Rule 3: `=sink`(x, z); wasMoved(z)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add p(ri, c)
+      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
+    elif isSinkParam(ri.sym):
+      result = genSink(c, dest.typ, dest, ri)
+      result.add destructiveMoveSink(ri, c)
     else:
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
+  else:
+    result = genCopy(c, dest.typ, dest, ri)
+    result.add p(ri, c)
 
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
