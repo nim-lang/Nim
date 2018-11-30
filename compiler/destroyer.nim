@@ -411,10 +411,12 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result.add tmp
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
-  if arg.typ == nil:
-    # typ is nil if we are in if/case branch with noreturn
-    result = copyTree(arg)
-  elif isSink:
+  template pArgIfTyped(arg_part: PNode): PNode =
+    # typ is nil if we are in if/case expr branch with noreturn
+    if arg_part.typ == nil: copyTree(arg_part)
+    else: pArg(arg_part, c, isSink)
+  
+  if isSink:
     if arg.kind in nkCallKinds:
       # recurse but skip the call expression in order to prevent
       # destructor injections: Rule 5.1 is different from rule 5.4!
@@ -446,9 +448,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
         var branch = copyNode(arg[i])
         if arg[i].kind in {nkElifBranch, nkElifExpr}:   
           branch.add p(arg[i][0], c)
-          branch.add pArg(arg[i][1], c, isSink)
+          branch.add pArgIfTyped(arg[i][1])
         else:
-          branch.add pArg(arg[i][0], c, isSink)
+          branch.add pArgIfTyped(arg[i][0])
         result.add branch
     elif arg.kind == nkCaseStmt:
       result = copyNode(arg)
@@ -457,14 +459,14 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
         var branch: PNode
         if arg[i].kind == nkOfbranch:
           branch = arg[i] # of branch conditions are constants
-          branch[^1] = pArg(arg[i][^1], c, isSink)
+          branch[^1] = pArgIfTyped(arg[i][^1])
         elif arg[i].kind in {nkElifBranch, nkElifExpr}:
           branch = copyNode(arg[i])   
           branch.add p(arg[i][0], c)
-          branch.add pArg(arg[i][1], c, isSink)
+          branch.add pArgIfTyped(arg[i][1])
         else:
           branch = copyNode(arg[i]) 
-          branch.add pArg(arg[i][0], c, isSink)
+          branch.add pArgIfTyped(arg[i][0])
         result.add branch     
     else:
       # an object that is not temporary but passed to a 'sink' parameter
@@ -474,11 +476,12 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     result = p(arg, c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  if ri.typ == nil:
-    # typ is nil if we are in if/case branch with noreturn
-    result = copyTree(ri)
-  else:
-    case ri.kind
+  template moveOrCopyIfTyped(ri_part: PNode): PNode =
+    # typ is nil if we are in if/case expr branch with noreturn
+    if ri_part.typ == nil: copyTree(ri_part)
+    else: moveOrCopy(dest, ri_part, c)
+
+  case ri.kind
     of nkCallKinds:
       result = genSink(c, dest.typ, dest, ri)
       # watch out and no not transform 'ri' twice if it's a call:
@@ -505,18 +508,16 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     of nkBlockExpr, nkBlockStmt:
       result = newNodeI(nkBlockStmt, ri.info)
       result.add ri[0] ## add label
-      for i in 1..ri.len-2:
-        result.add p(ri[i], c)
-      result.add moveOrCopy(dest, ri[^1], c)
+      result.add moveOrCopy(dest, ri[1], c)
     of nkIfExpr, nkIfStmt:
       result = newNodeI(nkIfStmt, ri.info)
       for i in 0..<ri.len:
         var branch = copyNode(ri[i])
         if ri[i].kind in {nkElifBranch, nkElifExpr}:
           branch.add p(ri[i][0], c)
-          branch.add moveOrCopy(dest, ri[i][1], c)
+          branch.add moveOrCopyIfTyped(ri[i][1])
         else:
-          branch.add moveOrCopy(dest, ri[i][0], c)
+          branch.add moveOrCopyIfTyped(ri[i][0])
         result.add branch
     of nkCaseStmt:
       result = newNodeI(nkCaseStmt, ri.info)
@@ -525,14 +526,14 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         var branch: PNode
         if ri[i].kind == nkOfbranch:
           branch = ri[i] # of branch conditions are constants
-          branch[^1] = moveOrCopy(dest, ri[i][^1], c)
+          branch[^1] = moveOrCopyIfTyped(ri[i][^1])
         elif ri[i].kind in {nkElifBranch, nkElifExpr}:
           branch = copyNode(ri[i])   
           branch.add p(ri[i][0], c)
-          branch.add moveOrCopy(dest, ri[i][1], c)
+          branch.add moveOrCopyIfTyped(ri[i][1])
         else:
           branch = copyNode(ri[i]) 
-          branch.add moveOrCopy(dest, ri[i][0], c)
+          branch.add moveOrCopyIfTyped(ri[i][0])
         result.add branch
     of nkObjConstr:
       result = genSink(c, dest.typ, dest, ri)
