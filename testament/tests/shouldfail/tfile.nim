@@ -1,6 +1,6 @@
 discard """
-file: "notthisfile.nim"
 errmsg: "undeclared identifier: 'undefined'"
+file: "notthisfile.nim"
 """
 
 echo undefined
