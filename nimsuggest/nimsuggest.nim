@@ -200,7 +200,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
 
 proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
              graph: ModuleGraph) =
-  if graph.config.ideCmd == ideChk:
+  if cmd == ideChk:
     graph.config.structuredErrorHook = errorHook
     graph.config.writelnHook = myLog
   else:
