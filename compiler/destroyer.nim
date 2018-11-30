@@ -426,7 +426,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add arg[0]
       for i in 1..<arg.len:
         result.add pArg(arg[i], c, i < L and parameters[i].kind == tySink)
-    elif arg.kind in {nkObjConstr, nkTupleConstr, nkCharLit..nkFloat128Lit}:
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkFloat128Lit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
     elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
@@ -535,25 +535,31 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         branch = copyNode(ri[i]) 
         branch.add moveOrCopyIfTyped(ri[i][0])
       result.add branch
+  of nkBracket:
+    # array constructor
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an array constructor is consumed,
+      # so these all act like 'sink' parameters:
+      ri2[i] = pArg(ri[i], c, isSink = true)
+    result = genSink(c, dest.typ, dest, ri2)
   of nkObjConstr:
-    result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 1..<ri.len:
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
-      ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
-    result.add ri2
+      ri2[i][1] = pArg(ri[i][1], c, isSink = true)
+    result = genSink(c, dest.typ, dest, ri2)
   of nkTupleConstr:
-    result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 0..<ri.len:
       # everything that is passed to an tuple constructor is consumed,
       # so these all act like 'sink' parameters:
       if ri[i].kind == nkExprColonExpr:
-        ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+        ri2[i][1] = pArg(ri[i][1], c, isSink = true)
       else:
         ri2[i] = pArg(ri[i], c, isSink = true)
-    result.add ri2
+    result = genSink(c, dest.typ, dest, ri2)
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
