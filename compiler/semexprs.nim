@@ -2039,6 +2039,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mRunnableExamples:
     if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
+        # some of this dead code was moved to `prepareExamples`
         if sfMainModule in c.module.flags:
           let inp = toFullPath(c.config, c.module.info)
           if c.runnableExamples == nil:
