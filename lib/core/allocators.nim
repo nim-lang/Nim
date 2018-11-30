@@ -18,6 +18,8 @@ type
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
     deallocAll*: proc (a: Allocator) {.nimcall.}
     flags*: set[AllocatorFlag]
+    allocCount: int
+    deallocCount: int
 
 var
   localAllocator {.threadvar.}: Allocator
@@ -30,8 +32,10 @@ proc getLocalAllocator*(): Allocator =
     result = addr allocatorStorage
     result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.} =
       result = system.alloc(size)
+      inc a.allocCount
     result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall.} =
       system.dealloc(p)
+      inc a.deallocCount
     result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.} =
       result = system.realloc(p, newSize)
     result.deallocAll = nil
@@ -47,15 +51,6 @@ proc getSharedAllocator*(): Allocator =
 proc setSharedAllocator*(a: Allocator) =
   sharedAllocator = a
 
-when false:
-  proc alloc*(size: int; alignment: int = 8): pointer =
-    let a = getCurrentAllocator()
-    result = a.alloc(a, size, alignment)
-
-  proc dealloc*(p: pointer; size: int) =
-    let a = getCurrentAllocator()
-    a.dealloc(a, p, size)
-
-  proc realloc*(p: pointer; oldSize, newSize: int): pointer =
-    let a = getCurrentAllocator()
-    result = a.realloc(a, p, oldSize, newSize)
+proc allocCounters*(): (int, int) =
+  let a = getLocalAllocator()
+  result = (a.allocCount, a.deallocCount)

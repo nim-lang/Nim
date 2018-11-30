@@ -126,18 +126,19 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
-
-  xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
+  if xu.p == nil or xu.p.cap < newLen:
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
-  if newlen < s.len:
-    shrink(s, newLen)
-  else:
-    var v: T # get the default value of 'v'
-    grow(s, newLen, v)
+  {.noSideEffect.}:
+    if newlen < s.len:
+      shrink(s, newLen)
+    else:
+      var v: T # get the default value of 'v'
+      grow(s, newLen, v)
 
 when false:
   proc resize[T](s: var NimSeqV2[T]) =
