@@ -1780,7 +1780,6 @@ proc semFunc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skFunc, procPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
-  if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result

@@ -81,3 +81,13 @@ method beta(x: Obj) =
 # Simple recursion
 method gamma(x: Obj) {.base.} =
   gamma(x)
+
+# "local" methods
+block:
+  proc makeBar(): Obj1 =
+    type Bar = ref object of Obj1
+    method beta(b: Bar): int =
+      return 3
+    return Bar()
+  doAssert(makeBar().alpha() == 3)
+
