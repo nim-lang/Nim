@@ -11,7 +11,7 @@
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, `mod`, fmod
+  floor, ceil, `mod`
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
 
@@ -102,7 +102,6 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
-  wrap2f_math(fmod)
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
