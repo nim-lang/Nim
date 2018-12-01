@@ -74,42 +74,6 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc random*(max: int): int {.benign, deprecated.} =
-  ## Returns a random number in the range 0..max-1. The sequence of
-  ## random number is always the same, unless `randomize` is called
-  ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. **Deprecated since version 0.18.0**.
-  ## Use ``rand`` instead.
-  while true:
-    let x = next(state)
-    if x < randMax - (randMax mod ui(max)):
-      return int(x mod uint64(max))
-
-proc random*(max: float): float {.benign, deprecated.} =
-  ## Returns a random number in the range 0..<max. The sequence of
-  ## random number is always the same, unless `randomize` is called
-  ## which initializes the random number generator with a "random"
-  ## number, i.e. a tickcount. **Deprecated since version 0.18.0**.
-  ## Use ``rand`` instead.
-  let x = next(state)
-  when defined(JS):
-    result = (float(x) / float(high(uint32))) * max
-  else:
-    let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
-    result = (cast[float](u) - 1.0) * max
-
-proc random*[T](x: HSlice[T, T]): T {.deprecated.} =
-  ## For a slice `a .. b` returns a value in the range `a .. b-1`.
-  ## **Deprecated since version 0.18.0**.
-  ## Use ``rand`` instead.
-  result = T(random(x.b - x.a)) + x.a
-
-proc random*[T](a: openArray[T]): T {.deprecated.} =
-  ## returns a random element from the openarray `a`.
-  ## **Deprecated since version 0.18.0**.
-  ## Use ``rand`` instead.
-  result = a[random(a.low..a.len)]
-
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called

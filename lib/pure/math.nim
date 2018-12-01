@@ -370,12 +370,6 @@ when not defined(JS): # C
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
       ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
-    proc tgamma*(x: float32): float32
-      {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
-    proc tgamma*(x: float64): float64
-      {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
-      ## The gamma function
-      ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
@@ -462,11 +456,6 @@ when not defined(JS): # C
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
-
-  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
-    ## Computes the remainder of ``x`` divided by ``y``.
-    ## **Deprecated since version 0.19.0**: Use the ``mod`` operator instead.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}

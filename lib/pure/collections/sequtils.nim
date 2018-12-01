@@ -239,25 +239,6 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
-                                                              {.deprecated.} =
-  ## Applies `op` to every item in `s` modifying it directly.
-  ##
-  ## Note that this version of ``map`` requires your input and output types to
-  ## be the same, since they are modified in-place.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var a = @["1", "2", "3", "4"]
-  ##   echo repr(a)
-  ##   # --> ["1", "2", "3", "4"]
-  ##   map(a, proc(x: var string) = x &= "42")
-  ##   echo repr(a)
-  ##   # --> ["142", "242", "342", "442"]
-  ## **Deprecated since version 0.12.0:** Use the ``apply`` proc instead.
-  for i in 0 ..< s.len: op(s[i])
-
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
@@ -676,28 +657,6 @@ template foldr*(sequence, operation: untyped): untyped =
       a {.inject.} = s[i]
       b {.inject.} = result
     result = operation
-  result
-
-template mapIt*(s, typ, op: untyped): untyped =
-  ## Convenience template around the ``map`` proc to reduce typing.
-  ##
-  ## The template injects the ``it`` variable which you can use directly in an
-  ## expression. You also need to pass as `typ` the type of the expression,
-  ## since the new returned sequence can have a different type than the
-  ## original.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   let
-  ##     nums = @[1, 2, 3, 4]
-  ##     strings = nums.mapIt(string, $(4 * it))
-  ##   assert strings == @["4", "8", "12", "16"]
-  ## **Deprecated since version 0.12.0:** Use the ``mapIt(seq1, op)``
-  ##   template instead.
-  var result: seq[typ] = @[]
-  for it {.inject.} in items(s):
-    result.add(op)
   result
 
 template mapIt*(s: typed, op: untyped): untyped =

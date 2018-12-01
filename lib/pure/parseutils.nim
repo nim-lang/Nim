@@ -138,18 +138,6 @@ proc parseIdent*(s: string, start = 0): string =
     while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
 
-proc parseToken*(s: string, token: var string, validChars: set[char],
-                 start = 0): int {.inline, deprecated.} =
-  ## parses a token and stores it in ``token``. Returns
-  ## the number of the parsed characters or 0 in case of an error. A token
-  ## consists of the characters in `validChars`.
-  ##
-  ## **Deprecated since version 0.8.12**: Use ``parseWhile`` instead.
-  var i = start
-  while i < s.len and s[i] in validChars: inc(i)
-  result = i-start
-  token = substr(s, start, i-1)
-
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.

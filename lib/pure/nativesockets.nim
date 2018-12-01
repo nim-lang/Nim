@@ -635,29 +635,6 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated: "use selectRead instead".} =
-  ## When a socket in ``readfds`` is ready to be read from then a non-zero
-  ## value will be returned specifying the count of the sockets which can be
-  ## read from. The sockets which can be read from will also be removed
-  ## from ``readfds``.
-  ##
-  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
-  ## an unlimited time.
-  ## **Warning:** This is deprecated since version 0.16.2.
-  ## Use the ``selectRead`` procedure instead.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
-
-  var rd: TFdSet
-  var m = 0
-  createFdSet((rd), readfds, m)
-
-  if timeout != -1:
-    result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
-  else:
-    result = int(select(cint(m+1), addr(rd), nil, nil, nil))
-
-  pruneSocketSet(readfds, (rd))
-
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be

@@ -143,10 +143,6 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
   ## Binary search for ``key`` in ``a``. Returns -1 if not found.
   binarySearch(a, key, cmp[T])
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
-  binarySearch(a, key, cmp[T])
-
 const
   onlySafeCode = true
 

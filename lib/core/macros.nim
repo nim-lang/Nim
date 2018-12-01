@@ -104,7 +104,6 @@ type
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
     ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
-  TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
@@ -114,19 +113,11 @@ type
     nskEnumField, nskForVar, nskLabel,
     nskStub
 
-  TNimSymKinds* {.deprecated.} = set[NimSymKind]
-
 type
   NimIdent* = object of RootObj
     ## represents a Nim identifier in the AST. **Note**: This is only
     ## rarely useful, for identifier construction from a string
     ## use ``ident"abc"``.
-
-  NimSymObj = object # hidden
-  NimSym* {.deprecated.} = ref NimSymObj
-    ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
-    ## *ident*.
-
 
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
@@ -134,25 +125,8 @@ const
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
-  ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``ident`` or ``newIdentNode`` instead.
-
-proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
-  ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.1**; Use ``ident`` or ``newIdentNode`` instead.
-
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated.}
-  ## compares two Nim identifiers
-  ## **Deprecated since version 0.18.1**; Use ``==`` on ``NimNode`` instead.
-
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
-
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
-  ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ```==`(NimNode,NimNode)`` instead.
-
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
@@ -223,28 +197,12 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
-
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
-
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
-
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
   proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
     ## retrieve the implementation of `symbol`. `symbol` can be a
     ## routine or a const.
-
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated.}
-    ## converts a Nim identifier to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
-
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated.}
-    ## converts a Nim symbol to a string
-    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
 
 else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
@@ -349,12 +307,6 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
-
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
-  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
-
 #proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -408,7 +360,7 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
 proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
-  result.ident = i
+  result.strVal = $i
 
 proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## creates an identifier node from `i`. It is simply an alias for
@@ -447,11 +399,6 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
-
-proc callsite*(): NimNode {.magic: "NCallSite", benign,
-  deprecated: "use varargs[untyped] in the macro prototype instead".}
-  ## returns the AST of the invocation expression that invoked this macro.
-  ## **Deprecated since version 0.18.1**.
 
 proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nim code and wraps that
@@ -588,16 +535,6 @@ proc newCall*(theProc: NimNode,
   ## the arguments ``args[0..]``.
   result = newNimNode(nnkCall)
   result.add(theProc)
-  result.add(args)
-
-proc newCall*(theProc: NimIdent,
-              args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
-  ## produces a new call node. `theProc` is the proc that is called with
-  ## the arguments ``args[0..]``.
-  ## **Deprecated since version 0.18.1**; Use ``newCall(string, ...)``,
-  ## or ``newCall(NimNode, ...)`` instead.
-  result = newNimNode(nnkCall)
-  result.add(newIdentNode(theProc))
   result.add(args)
 
 proc newCall*(theProc: string,
@@ -750,13 +687,6 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   result = init
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
-
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
-  var L = x.len
-  result = newCall(theProc, x[L-2], x[L-1])
-  for i in countdown(L-3, 0):
-    result = newCall(theProc, x[i], result)
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
@@ -922,12 +852,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##    )
   ##
   ## Also see ``dumpTree`` and ``dumpLisp``.
-
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated. Use `dumpTree` instead.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated. Use `dumpLisp` instead.
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node
@@ -1252,7 +1176,7 @@ proc basename*(a: NimNode): NimNode =
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: macros.`ident=`(a, toNimIdent val)
+  of nnkIdent: a.strVal = val
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
     quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
@@ -1495,21 +1419,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       return p[1]
 
   error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
-
-
-when not defined(booting):
-  template emit*(e: static[string]): untyped {.deprecated.} =
-    ## accepts a single string argument and treats it as nim code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nim
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: untyped {.gensym.} =
-      result = parseStmt(e)
-    payload()
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)
