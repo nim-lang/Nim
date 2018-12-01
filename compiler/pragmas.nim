@@ -1119,6 +1119,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     else:
       invalidPragma(c, it)
 
+proc mergePragmas(n, pragmas: PNode) =
+  if n[pragmasPos].kind == nkEmpty:
+    n[pragmasPos] = pragmas
+  else:
+    for p in pragmas: n.sons[pragmasPos].add p
+
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
@@ -1127,11 +1133,12 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       if not o.isNil:
         pushInfoContext(c.config, n.info)
         var i = 0
-        while i < o.len():
+        while i < o.len:
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
+        if sym.kind in routineKinds: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, n.info, ".dynlib requires .exportc")
