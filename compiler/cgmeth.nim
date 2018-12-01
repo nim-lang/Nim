@@ -13,7 +13,7 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
   sempass2, strutils, modulegraphs, lineinfos
 
-proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
+proc genNodeConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
   var dest = skipTypes(d, abstractPtrs)
   var source = skipTypes(n.typ, abstractPtrs)
   if (source.kind == tyObject) and (dest.kind == tyObject):
@@ -24,12 +24,12 @@ proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
     elif diff < 0:
       result = newNodeIT(nkObjUpConv, n.info, d)
       addSon(result, n)
-      if downcast: internalError(conf, n.info, "cgmeth.genConv: no upcast allowed")
+      if downcast: internalError(conf, n.info, "cgmeth.genNodeConv: no upcast allowed")
     elif diff > 0:
       result = newNodeIT(nkObjDownConv, n.info, d)
       addSon(result, n)
       if not downcast:
-        internalError(conf, n.info, "cgmeth.genConv: no downcast allowed")
+        internalError(conf, n.info, "cgmeth.genNodeConv: no downcast allowed")
     else:
       result = n
   else:
@@ -50,7 +50,7 @@ proc methodCall*(n: PNode; conf: ConfigRef): PNode =
     result.sons[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
     for i in countup(1, sonsLen(result)-1):
-      result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true, conf)
+      result.sons[i] = genNodeConv(result.sons[i], disp.typ.sons[i], true, conf)
   else:
     localError(conf, n.info, "'" & $result.sons[0] & "' lacks a dispatcher")
 
@@ -262,7 +262,7 @@ proc genDispatcher(g: ModuleGraph; methods: TSymSeq, relevantCols: IntSet): PSym
     let call = newNodeIT(nkCall, base.info, retTyp)
     addSon(call, newSymNode(curr))
     for col in countup(1, paramLen - 1):
-      addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
+      addSon(call, genNodeConv(newSymNode(base.typ.n.sons[col].sym),
                            curr.typ.sons[col], false, g.config))
     var ret: PNode
     if retTyp != nil:

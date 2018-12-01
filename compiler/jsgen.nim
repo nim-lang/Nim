@@ -597,7 +597,7 @@ proc genLineDir(p: PProc, n: PNode) =
   elif hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
-proc genWhileStmt(p: PProc, n: PNode) =
+proc genNodeWhileStmt(p: PProc, n: PNode) =
   var
     cond: TCompRes
   internalAssert p.config, isEmptyType(n.typ)
@@ -736,7 +736,7 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
     genStmt(p, n.sons[i].sons[0])
   line(p, "}\L")
 
-proc genRaiseStmt(p: PProc, n: PNode) =
+proc genNodeRaiseStmt(p: PProc, n: PNode) =
   if n.sons[0].kind != nkEmpty:
     var a: TCompRes
     gen(p, n.sons[0], a)
@@ -798,12 +798,12 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
     else: internalError(p.config, it.info, "jsgen.genCaseStmt")
   lineF(p, "}$n", [])
 
-proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeBlock(p: PProc, n: PNode, r: var TCompRes) =
   inc(p.unique)
   let idx = len(p.blocks)
   if n.sons[0].kind != nkEmpty:
     # named block?
-    if (n.sons[0].kind != nkSym): internalError(p.config, n.info, "genBlock")
+    if (n.sons[0].kind != nkSym): internalError(p.config, n.info, "genNodeBlock")
     var sym = n.sons[0].sym
     sym.loc.k = locOther
     sym.position = idx+1
@@ -815,7 +815,7 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
   setLen(p.blocks, idx)
   lineF(p, "} while(false);$n", [labl.rope])
 
-proc genBreakStmt(p: PProc, n: PNode) =
+proc genNodeBreakStmt(p: PProc, n: PNode) =
   var idx: int
   genLineDir(p, n)
   if n.sons[0].kind != nkEmpty:
@@ -868,7 +868,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
       p.body.add(r.rdLoc)
   p.body.add "\L"
 
-proc genIf(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeIf(p: PProc, n: PNode, r: var TCompRes) =
   var cond, stmt: TCompRes
   var toClose = 0
   if not isEmptyType(n.typ):
@@ -1067,7 +1067,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
     mkTemp(1)
   r.kind = resExpr
 
-proc genAddr(p: PProc, n: PNode, r: var TCompRes)
+proc genNodeAddr(p: PProc, n: PNode, r: var TCompRes)
 
 proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
   internalAssert p.config, n.kind == nkCheckedFieldExpr
@@ -1172,11 +1172,11 @@ template isIndirect(x: PSym): bool =
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
-proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n.sons[0].kind
   of nkSym:
     let s = n.sons[0].sym
-    if s.loc.r == nil: internalError(p.config, n.info, "genAddr: 3")
+    if s.loc.r == nil: internalError(p.config, n.info, "genNodeAddr: 3")
     case s.kind
     of skVar, skLet, skResult:
       r.kind = resExpr
@@ -1198,8 +1198,8 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
       else:
         # 'var openArray' for instance produces an 'addr' but this is harmless:
         gen(p, n.sons[0], r)
-        #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
-    else: internalError(p.config, n.info, "genAddr: 2")
+        #internalError(p.config, n.info, "genNodeAddr: 4 " & renderTree(n))
+    else: internalError(p.config, n.info, "genNodeAddr: 2")
   of nkCheckedFieldExpr:
     genCheckedFieldOp(p, n[0], n.typ, r)
   of nkDotExpr:
@@ -1223,7 +1223,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[0], r)
   of nkHiddenDeref:
     gen(p, n.sons[0].sons[0], r)
-  else: internalError(p.config, n.sons[0].info, "genAddr: " & $n.sons[0].kind)
+  else: internalError(p.config, n.sons[0].info, "genNodeAddr: " & $n.sons[0].kind)
 
 proc thisParam(p: PProc; typ: PType): PType =
   discard
@@ -1299,7 +1299,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     r.res = s.loc.r
   r.kind = resVal
 
-proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeDeref(p: PProc, n: PNode, r: var TCompRes) =
   let it = n.sons[0]
   let t = mapType(p, it.typ)
   if t == etyObject:
@@ -1319,7 +1319,7 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
         r.tmpLoc = a.tmpLoc
       r.res = a.rdLoc
     else:
-      internalError(p.config, n.info, "genDeref")
+      internalError(p.config, n.info, "genNodeDeref")
 
 proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -2023,7 +2023,7 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
       addf(r.res, "Field$#: $#", [i.rope, a.res])
   r.res.add("}")
 
-proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.kind = resExpr
   var initList : Rope
@@ -2055,7 +2055,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   createObjInitList(p, t, fieldIDs, initList)
   r.res = ("{$1}") % [initList]
 
-proc genConv(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeConv(p: PProc, n: PNode, r: var TCompRes) =
   var dest = skipTypes(n.typ, abstractVarRange)
   var src = skipTypes(n.sons[1].typ, abstractVarRange)
   gen(p, n.sons[1], r)
@@ -2075,7 +2075,7 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
 proc upConv(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n.sons[0], r)        # XXX
 
-proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
+proc genNodeChckRange(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   var a, b: TCompRes
   gen(p, n.sons[0], r)
   if optRangeCheck in p.options:
@@ -2109,8 +2109,8 @@ proc convCStrToStr(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "cstrToNimstr($1)" % [r.res]
     r.kind = resExpr
 
-proc genReturnStmt(p: PProc, n: PNode) =
-  if p.procDef == nil: internalError(p.config, n.info, "genReturnStmt")
+proc genNodeReturnStmt(p: PProc, n: PNode) =
+  if p.procDef == nil: internalError(p.config, n.info, "genNodeReturnStmt")
   p.beforeRetNeeded = true
   if n.sons[0].kind != nkEmpty:
     genStmt(p, n.sons[0])
@@ -2230,13 +2230,13 @@ proc genStmt(p: PProc, n: PNode) =
   gen(p, n, r)
   if r.res != nil: lineF(p, "$#;$n", [r.res])
 
-proc genPragma(p: PProc, n: PNode) =
+proc genNodePragma(p: PProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: genAsmOrEmitStmt(p, it.sons[1])
     else: discard
 
-proc genCast(p: PProc, n: PNode, r: var TCompRes) =
+proc genNodeCast(p: PProc, n: PNode, r: var TCompRes) =
   var dest = skipTypes(n.typ, abstractVarRange)
   var src = skipTypes(n.sons[1].typ, abstractVarRange)
   gen(p, n.sons[1], r)
@@ -2338,20 +2338,20 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
   of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
-  of nkObjConstr: genObjConstr(p, n, r)
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, r)
+  of nkObjConstr: genNodeObjConstr(p, n, r)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv: genNodeConv(p, n, r)
   of nkAddr, nkHiddenAddr:
-    genAddr(p, n, r)
-  of nkDerefExpr, nkHiddenDeref: genDeref(p, n, r)
+    genNodeAddr(p, n, r)
+  of nkDerefExpr, nkHiddenDeref: genNodeDeref(p, n, r)
   of nkBracketExpr: genArrayAccess(p, n, r)
   of nkDotExpr: genFieldAccess(p, n, r)
   of nkCheckedFieldExpr: genCheckedFieldOp(p, n, nil, r)
   of nkObjDownConv: gen(p, n.sons[0], r)
   of nkObjUpConv: upConv(p, n, r)
-  of nkCast: genCast(p, n, r)
-  of nkChckRangeF: genRangeChck(p, n, r, "chckRangeF")
-  of nkChckRange64: genRangeChck(p, n, r, "chckRange64")
-  of nkChckRange: genRangeChck(p, n, r, "chckRange")
+  of nkCast: genNodeCast(p, n, r)
+  of nkChckRangeF: genNodeChckRange(p, n, r, "chckRangeF")
+  of nkChckRange64: genNodeChckRange(p, n, r, "chckRange64")
+  of nkChckRange: genNodeChckRange(p, n, r, "chckRange")
   of nkStringToCString: convStrToCStr(p, n, r)
   of nkCStringToString: convCStrToStr(p, n, r)
   of nkEmpty: discard
@@ -2371,19 +2371,19 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genStmt(p, n.sons[i])
     if isExpr:
       gen(p, lastSon(n), r)
-  of nkBlockStmt, nkBlockExpr: genBlock(p, n, r)
-  of nkIfStmt, nkIfExpr: genIf(p, n, r)
+  of nkBlockStmt, nkBlockExpr: genNodeBlock(p, n, r)
+  of nkIfStmt, nkIfExpr: genNodeIf(p, n, r)
   of nkWhen:
     # This is "when nimvm" node
     gen(p, n.sons[1].sons[0], r)
-  of nkWhileStmt: genWhileStmt(p, n)
+  of nkWhileStmt: genNodeWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
   of nkConstSection: discard
   of nkForStmt, nkParForStmt:
     internalError(p.config, n.info, "for statement not eliminated")
   of nkCaseStmt: genCaseJS(p, n, r)
-  of nkReturnStmt: genReturnStmt(p, n)
-  of nkBreakStmt: genBreakStmt(p, n)
+  of nkReturnStmt: genNodeReturnStmt(p, n)
+  of nkBreakStmt: genNodeBreakStmt(p, n)
   of nkAsgn: genAsgn(p, n)
   of nkFastAsgn: genFastAsgn(p, n)
   of nkDiscardStmt:
@@ -2392,11 +2392,11 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n.sons[0], r)
   of nkAsmStmt: genAsmOrEmitStmt(p, n)
   of nkTryStmt: genTry(p, n, r)
-  of nkRaiseStmt: genRaiseStmt(p, n)
+  of nkRaiseStmt: genNodeRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
-  of nkPragma: genPragma(p, n)
+  of nkPragma: genNodePragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:

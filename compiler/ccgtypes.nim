@@ -1240,5 +1240,5 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     genDeepCopyProc(m, origType.deepCopy, result)
   result = "(&".rope & result & ")".rope
 
-proc genTypeSection(m: BModule, n: PNode) =
+proc genNodeTypeSection(m: BModule, n: PNode) =
   discard

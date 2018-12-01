@@ -74,7 +74,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym)]
     putLocIntoDest(p, v.loc, field)
 
-proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
+proc genNodeDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
   if ri.kind in nkCallKinds and (ri.sons[0].kind != nkSym or
@@ -88,7 +88,7 @@ proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
     # However, fixing this properly really requires modelling 'array' as
     # a 'struct' in C to preserve dereferencing semantics completely. Not
     # worth the effort until version 1.0 is out.
-    genDeref(p, ri, a, enforceDeref=true)
+    genNodeDeref(p, ri, a, enforceDeref=true)
   else:
     expr(p, ri, a)
 
@@ -148,7 +148,7 @@ template preserveBreakIdx(body: untyped): untyped =
   body
   p.breakIdx = oldBreakIdx
 
-proc genState(p: BProc, n: PNode) =
+proc genNodeState(p: BProc, n: PNode) =
   internalAssert p.config, n.len == 1
   let n0 = n[0]
   if n0.kind == nkIntLit:
@@ -190,7 +190,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
     for i in countdown(howManyExcepts-1, 0):
       linefmt(p, cpsStmts, "#popCurrentException();$n")
 
-proc genGotoState(p: BProc, n: PNode) =
+proc genNodeGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later
   # will be translated into computed gotos anyway for GCC at least:
   # switch (x.state) {
@@ -214,7 +214,7 @@ proc genGotoState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
-proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
+proc genNodeBreakState(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLoc(d, locExpr, n, OnUnknown)
 
@@ -327,7 +327,7 @@ proc genVarStmt(p: BProc, n: PNode) =
     else:
       genVarTuple(p, it)
 
-proc genIf(p: BProc, n: PNode, d: var TLoc) =
+proc genNodeIf(p: BProc, n: PNode, d: var TLoc) =
   #
   #  { if (!expr1) goto L1;
   #   thenPart }
@@ -371,10 +371,10 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
       startBlock(p)
       expr(p, it.sons[0], d)
       endBlock(p)
-    else: internalError(p.config, n.info, "genIf()")
+    else: internalError(p.config, n.info, "genNodeIf()")
   if sonsLen(n) > 1: fixLabel(p, lend)
 
-proc genReturnStmt(p: BProc, t: PNode) =
+proc genNodeReturnStmt(p: BProc, t: PNode) =
   if nfPreventCg in t.flags: return
   p.beforeRetNeeded = true
   genLineDir(p, t)
@@ -495,7 +495,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
     genStmts(p, n.sons[j])
 
 
-proc genWhileStmt(p: BProc, t: PNode) =
+proc genNodeWhileStmt(p: BProc, t: PNode) =
   # we don't generate labels here as for example GCC would produce
   # significantly worse code
   var
@@ -528,7 +528,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
 
   dec(p.withinLoop)
 
-proc genBlock(p: BProc, n: PNode, d: var TLoc) =
+proc genNodeBlock(p: BProc, n: PNode, d: var TLoc) =
   # bug #4505: allocate the temp in the outer scope
   # so that it can escape the generated {}:
   if not isEmptyType(n.typ) and d.k == locNone:
@@ -544,7 +544,7 @@ proc genBlock(p: BProc, n: PNode, d: var TLoc) =
     expr(p, n.sons[1], d)
     endBlock(p)
 
-proc genParForStmt(p: BProc, t: PNode) =
+proc genNodeParForStmt(p: BProc, t: PNode) =
   assert(sonsLen(t) == 3)
   inc(p.withinLoop)
   genLineDir(p, t)
@@ -572,7 +572,7 @@ proc genParForStmt(p: BProc, t: PNode) =
 
   dec(p.withinLoop)
 
-proc genBreakStmt(p: BProc, t: PNode) =
+proc genNodeBreakStmt(p: BProc, t: PNode) =
   var idx = p.breakIdx
   if t.sons[0].kind != nkEmpty:
     # named break?
@@ -592,7 +592,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc genRaiseStmt(p: BProc, t: PNode) =
+proc genNodeRaiseStmt(p: BProc, t: PNode) =
   if p.module.compileToCpp:
     discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
@@ -652,7 +652,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
       exprBlock(p, t.sons[i].sons[0], d)
   result = lend
 
-proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
+proc genNodeIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
                        rangeFormat, eqFormat: FormatStr,
                        until: int, a: TLoc): TLabel =
   # generate a C-if statement for a Nim case statement
@@ -677,7 +677,7 @@ proc genCaseGeneric(p: BProc, t: PNode, d: var TLoc,
                     rangeFormat, eqFormat: FormatStr) =
   var a: TLoc
   initLocExpr(p, t.sons[0], a)
-  var lend = genIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
+  var lend = genNodeIfForCaseUntil(p, t, d, rangeFormat, eqFormat, sonsLen(t)-1, a)
   fixLabel(p, lend)
 
 proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
@@ -768,7 +768,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   # generate if part (might be empty):
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  var lend = if splitPoint > 0: genIfForCaseUntil(p, n, d,
+  var lend = if splitPoint > 0: genNodeIfForCaseUntil(p, n, d,
                     rangeFormat = "if ($1 >= $2 && $1 <= $3) goto $4;$n",
                     eqFormat = "if ($1 == $2) goto $3;$n",
                     splitPoint, a) else: nil
@@ -794,7 +794,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
     lineF(p, cpsStmts, "}$n", [])
   if lend != nil: fixLabel(p, lend)
 
-proc genCase(p: BProc, t: PNode, d: var TLoc) =
+proc genNodeCaseStmt(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
@@ -1029,7 +1029,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
     res.add("\L")
     result = res.rope
 
-proc genAsmStmt(p: BProc, t: PNode) =
+proc genNodeAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
   var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
@@ -1085,7 +1085,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
         [addrLoc(p.config, a), makeCString(renderTree(n.sons[1])),
         genTypeInfo(p.module, typ, n.info)])
 
-proc genPragma(p: BProc, n: PNode) =
+proc genNodePragma(p: BProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: genEmit(p, it)
@@ -1167,7 +1167,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     var a: TLoc
     discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     if le.kind in {nkDerefExpr, nkHiddenDeref}:
-      genDeref(p, le, a, enforceDeref=true)
+      genNodeDeref(p, le, a, enforceDeref=true)
     else:
       initLocExpr(p, le, a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
