@@ -193,8 +193,6 @@ proc isImportedCppType(t: PType): bool =
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope
-proc needsComplexAssignment(typ: PType): bool =
-  result = containsGarbageCollectedRef(typ)
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
@@ -214,7 +212,7 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
-      result = needsComplexAssignment(t) or
+      result = containsGarbageCollectedRef(t) or
           (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
 

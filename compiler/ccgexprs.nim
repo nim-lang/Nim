@@ -295,7 +295,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
                addrLoc(p.config, dest), rdLoc(src))
   of tyProc:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       # optimize closure assignment:
       let a = optAsgnLoc(dest, dest.t, "ClE_0".rope)
       let b = optAsgnLoc(src, dest.t, "ClE_0".rope)
@@ -304,7 +304,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyTuple:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       if dest.t.len <= 4: genOptAsgnTuple(p, dest, src, flags)
       else: genGenericAsgn(p, dest, src, flags)
     else:
@@ -315,7 +315,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     elif not isObjLackingTypeField(ty):
       genGenericAsgn(p, dest, src, flags)
-    elif needsComplexAssignment(ty):
+    elif containsGarbageCollectedRef(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
         discard getTypeDesc(p.module, ty)
         internalAssert p.config, ty.n != nil
@@ -325,7 +325,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyArray:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
@@ -334,7 +334,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
            addrLoc(p.config, dest), addrLoc(p.config, src),
