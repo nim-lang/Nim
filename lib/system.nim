@@ -3952,6 +3952,11 @@ template assert*(cond: untyped, msg = "") =
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
+template assert*(cond: static untyped, msg = "") =
+  ## overload that makes the assert valid when `cond` known at CT.
+  const expr = astToStr(cond)
+  assertImpl(cond, msg, expr, true)
+
 template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
   const expr = astToStr(cond)
