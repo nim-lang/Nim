@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs
+  modulegraphs, nilcheck
 
 when not defined(leanCompiler):
   import writetracking
@@ -1036,7 +1036,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
+                                                                                                                   
       when false: trackWrites(s, body)
+  if s.kind == skProc:
+    checkNil(s, body, g.config)
 
 proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
