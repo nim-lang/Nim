@@ -158,6 +158,15 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   ## returns `p`'s process ID.
   return p.id
 
+proc processID*(): int =
+  ## return current process ID
+  when defined(windows):
+    proc GetCurrentProcessId(): int32 {.stdcall, dynlib: "kernel32",
+                                        importc: "GetCurrentProcessId".}
+    result = GetCurrentProcessId()
+  else:
+    result = getpid()
+
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   extern: "nosp$1", tags: [].}
   ## waits for the process to finish and returns `p`'s error code.
@@ -1341,3 +1350,4 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
       result[1] = peekExitCode(p)
       if result[1] != -1: break
   close(p)
+
