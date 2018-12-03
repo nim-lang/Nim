@@ -52,7 +52,7 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
       return true
   return false
 
-proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
+proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
   ## Analyse the known dependency graph.
   if g.config.symbolFiles == disabledSf: return getID()
   when false:
@@ -81,6 +81,10 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): i
     db.exec(sql"delete from syms where module = ?", module[0])
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
+
+proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) =
+  let id = getModuleId(g, fileIdx, fullpath)
+  result = (g.incr.r.syms.getOrDefault(abs id), id)
 
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.uniqueId):
