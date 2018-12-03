@@ -1490,6 +1490,13 @@ proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
 template resultTypeIsInferrable(typ: PType): untyped =
   typ.isMetaType and typ.kind != tyTypeDesc
 
+
+proc goodLineInfo(arg: PNode): TLineinfo =
+  if arg.kind == nkStmtListExpr and arg.len > 0:
+    goodLineInfo(arg[^1])
+  else:
+    arg.info
+
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   checkSonsLen(n, 2, c.config)
   var a = n.sons[0]
@@ -1571,7 +1578,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         else:
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
-    n.sons[1] = fitNode(c, le, rhs, n.info)
+    n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
     liftTypeBoundOps(c, lhs.typ, lhs.info)
     #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
 
@@ -2039,6 +2046,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mRunnableExamples:
     if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
+        # some of this dead code was moved to `prepareExamples`
         if sfMainModule in c.module.flags:
           let inp = toFullPath(c.config, c.module.info)
           if c.runnableExamples == nil:

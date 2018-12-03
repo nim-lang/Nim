@@ -47,7 +47,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, false)
+          x = copySym(s)
           x.owner = c.genSymOwner
           idTablePut(c.mapping, s, x)
         result.add newSymNode(x, if c.instLines: actual.info else: templ.info)

@@ -233,7 +233,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
-  result = copySym(s, false)
+  result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner

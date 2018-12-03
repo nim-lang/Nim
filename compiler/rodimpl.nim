@@ -83,7 +83,7 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): i
     db.exec(sql"delete from statics where module = ?", module[0])
 
 proc pushType(w: var Writer, t: PType) =
-  if not containsOrIncl(w.tmarks, t.id):
+  if not containsOrIncl(w.tmarks, t.uniqueId):
     w.tstack.add(t)
 
 proc pushSym(w: var Writer, s: PSym) =
@@ -126,7 +126,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     encodeVInt(cast[int32](f), result)
   if n.typ != nil:
     result.add('^')
-    encodeVInt(n.typ.id, result)
+    encodeVInt(n.typ.uniqueId, result)
     pushType(w, n.typ)
   case n.kind
   of nkCharLit..nkUInt64Lit:
@@ -187,7 +187,10 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   add(result, '[')
   encodeVInt(ord(t.kind), result)
   add(result, '+')
-  encodeVInt(t.id, result)
+  encodeVInt(t.uniqueId, result)
+  if t.id != t.uniqueId:
+    add(result, '+')
+    encodeVInt(t.id, result)
   if t.n != nil:
     encodeNode(g, unknownLineInfo(), t.n, result)
   if t.flags != {}:
@@ -236,12 +239,16 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     encodeVInt(s.id, result)
     pushSym(w, s)
   encodeLoc(g, t.loc, result)
+  if t.typeInst != nil:
+    add(result, '\21')
+    encodeVInt(t.typeInst.uniqueId, result)
+    pushType(w, t.typeInst)
   for i in countup(0, sonsLen(t) - 1):
     if t.sons[i] == nil:
       add(result, "^()")
     else:
       add(result, '^')
-      encodeVInt(t.sons[i].id, result)
+      encodeVInt(t.sons[i].uniqueId, result)
       pushType(w, t.sons[i])
 
 proc encodeLib(g: ModuleGraph, lib: PLib, info: TLineInfo, result: var string) =
@@ -260,7 +267,7 @@ proc encodeInstantiations(g: ModuleGraph; s: seq[PInstantiation];
     pushSym(w, t.sym)
     for tt in t.concreteTypes:
       result.add('\17')
-      encodeVInt(tt.id, result)
+      encodeVInt(tt.uniqueId, result)
       pushType(w, tt)
     result.add('\20')
     encodeVInt(t.compilesId, result)
@@ -278,7 +285,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   encodeStr(s.name.s, result)
   if s.typ != nil:
     result.add('^')
-    encodeVInt(s.typ.id, result)
+    encodeVInt(s.typ.uniqueId, result)
     pushType(w, s.typ)
   result.add('?')
   if s.info.col != -1'i16: encodeVInt(s.info.col, result)
@@ -313,7 +320,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   of skType, skGenericParam:
     for t in s.typeInstCache:
       result.add('\14')
-      encodeVInt(t.id, result)
+      encodeVInt(t.uniqueId, result)
       pushType(w, t)
   of routineKinds:
     encodeInstantiations(g, s.procInstCache, result)
@@ -364,7 +371,7 @@ proc storeType(g: ModuleGraph; t: PType) =
   let m = if t.owner != nil: getModule(t.owner) else: nil
   let mid = if m == nil: 0 else: abs(m.id)
   db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
-    t.id, mid, buf)
+    t.uniqueId, mid, buf)
 
 proc transitiveClosure(g: ModuleGraph) =
   var i = 0
@@ -380,7 +387,7 @@ proc transitiveClosure(g: ModuleGraph) =
       let t = w.tstack.pop()
       storeType(g, t)
       when false:
-        echo "popped type ", typeToString(t), " ", t.id
+        echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
     inc i
@@ -583,13 +590,18 @@ proc loadType(g; id: int; info: TLineInfo): PType =
   result.kind = TTypeKind(decodeVInt(b.s, b.pos))
   if b.s[b.pos] == '+':
     inc(b.pos)
-    result.id = decodeVInt(b.s, b.pos)
-    setId(result.id)
+    result.uniqueId = decodeVInt(b.s, b.pos)
+    setId(result.uniqueId)
     #if debugIds: registerID(result)
   else:
     internalError(g.config, info, "decodeType: no id")
+  if b.s[b.pos] == '+':
+    inc(b.pos)
+    result.id = decodeVInt(b.s, b.pos)
+  else:
+    result.id = result.uniqueId
   # here this also avoids endless recursion for recursive type
-  g.incr.r.types.add(result.id, result)
+  g.incr.r.types.add(result.uniqueId, result)
   if b.s[b.pos] == '(': result.n = decodeNode(g, b, unknownLineInfo())
   if b.s[b.pos] == '$':
     inc(b.pos)
@@ -640,6 +652,10 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     let y = loadSym(g, decodeVInt(b.s, b.pos), info)
     result.methods.add((x, y))
   decodeLoc(g, b, result.loc, info)
+  if b.s[b.pos] == '\21':
+    inc(b.pos)
+    let d = decodeVInt(b.s, b.pos)
+    result.typeInst = loadType(g, d, info)
   while b.s[b.pos] == '^':
     inc(b.pos)
     if b.s[b.pos] == '(':

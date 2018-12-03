@@ -159,19 +159,13 @@ proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
   if m != nil and m.ast != nil:
     result = findNode(m.ast, trackPos)
 
-proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
              graph: ModuleGraph) =
   let conf = graph.config
   myLog("cmd: " & $cmd & ", file: " & file.string &
         ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
   conf.ideCmd = cmd
-  if cmd == ideChk:
-    conf.structuredErrorHook = errorHook
-    conf.writelnHook = myLog
-  else:
-    conf.structuredErrorHook = nil
-    conf.writelnHook = myLog
   if cmd == ideUse and conf.suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
@@ -203,6 +197,16 @@ proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
       listUsages(conf, u)
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
+
+proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+             graph: ModuleGraph) =
+  if cmd == ideChk:
+    graph.config.structuredErrorHook = errorHook
+    graph.config.writelnHook = myLog
+  else:
+    graph.config.structuredErrorHook = nil
+    graph.config.writelnHook = myLog
+  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
 
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
                 graph: ModuleGraph) =
@@ -707,10 +711,20 @@ else:
       retval.add(Suggest(section: ideMsg, doc: line))
     conf.suggestionResultHook = proc (s: Suggest) =
       retval.add(s)
+    conf.writelnHook = proc (s: string) =
+      stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
     else:
       if conf.ideCmd == ideChk:
         for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
-      execute(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
+      if conf.ideCmd == ideChk:
+        conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+          retval.add(Suggest(section: ideChk, filePath: toFullPath(conf, info),
+            line: toLinenumber(info), column: toColumn(info), doc: msg,
+            forth: $sev))
+
+      else:
+        conf.structuredErrorHook = nil
+      executeNoHooks(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
     return retval

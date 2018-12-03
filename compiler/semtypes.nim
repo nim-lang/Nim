@@ -392,7 +392,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           localError(c.config, n.info, errTypeExpected)
           return errorSym(c, n)
         result = result.typ.sym.copySym
-        result.typ = copyType(result.typ, result.typ.owner, true)
+        result.typ = exactReplica(result.typ)
         result.typ.flags.incl tfUnresolved
 
       if result.kind == skGenericParam:
