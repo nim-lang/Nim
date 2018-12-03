@@ -356,7 +356,7 @@ block troofregression:
   echo testStr[testStr.len - 8 .. testStr.len - 1] & "__" & testStr[0 .. testStr.len - pred(rot)]
 
   var
-    instructions = readFile(getAppDir() / "troofregression2.txt").split(',')
+    instructions = readFile(parentDir(currentSourcePath) / "troofregression2.txt").split(',')
     programs = "abcdefghijklmnop"
 
   proc dance(dancers: string): string =
