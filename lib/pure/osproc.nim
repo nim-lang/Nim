@@ -164,7 +164,7 @@ proc processID*(): int =
     type DWORD = uint32
     proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
                                         importc: "GetCurrentProcessId".}
-    result = GetCurrentProcessId()
+    result = GetCurrentProcessId().int
   else:
     result = getpid()
 
