@@ -15,7 +15,7 @@ include "system/inclrtl"
 import
   strutils, os, strtabs, streams, cpuinfo
 
-export quoteShell, quoteShellWindows, quoteShellPosix
+export quoteShell, quoteShellWindows, quoteShellPosix, processID
 
 when defined(windows):
   import winlean
@@ -155,18 +155,8 @@ proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
-  ## returns `p`'s process ID.
+  ## returns `p`'s process ID. See also ``os.processID()``.
   return p.id
-
-proc processID*(): int =
-  ## return current process ID
-  when defined(windows):
-    type DWORD = uint32
-    proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
-                                        importc: "GetCurrentProcessId".}
-    result = GetCurrentProcessId().int
-  else:
-    result = getpid()
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   extern: "nosp$1", tags: [].}
