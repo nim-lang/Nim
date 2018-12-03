@@ -161,7 +161,8 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
 proc processID*(): int =
   ## return current process ID
   when defined(windows):
-    proc GetCurrentProcessId(): int32 {.stdcall, dynlib: "kernel32",
+    type DWORD = uint32
+    proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
                                         importc: "GetCurrentProcessId".}
     result = GetCurrentProcessId()
   else:
