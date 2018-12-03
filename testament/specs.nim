@@ -22,7 +22,6 @@ type
     actionRun = "run"
     actionCompile = "compile"
     actionReject = "reject"
-    actionRunNoSpec = "runNoSpec"
 
   TOutputCheck* = enum
     ocIgnore = "ignore"

@@ -53,8 +53,7 @@ proc main() {.async.} =
 
   # Issue #7347
   block:
-    let appDir = getAppDir()
-    var file = openAsync(appDir & DirSep & "hello.txt")
+    var file = openAsync( parentDir(currentSourcePath) / "hello.txt")
     echo file.getFileSize()
     echo await file.readAll()
     echo file.getFilePos()

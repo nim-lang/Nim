@@ -28,6 +28,7 @@ Command:
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
+  stats                       generate statistics about test cases
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -380,7 +381,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       var given = callCompiler(expected.cmd, test.name, test.options, target,
         extraOptions=" --stdout --hint[Path]:off --hint[Processing]:off")
       compilerOutputTests(test, target, given, expected, r)
-    of actionRun, actionRunNoSpec:
+    of actionRun:
       # In this branch of code "early return" pattern is clearer than deep
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.cmd, test.name, test.options,
@@ -580,6 +581,8 @@ proc main() =
     processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
     generateHtml(resultsFile, optFailing)
+  of "stats":
+    parseAllSpecs()
   else:
     quit Usage
 

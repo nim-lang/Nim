@@ -70,7 +70,8 @@ block:
 # Tests for VM ops
 block:
   static:
-    assert "vm" in getProjectPath()
+    # for joint test, the project path is different
+    assert "vm" in getProjectPath() or "Nim" in getProjectPath()
 
     let b = getEnv("UNSETENVVAR")
     assert b == ""

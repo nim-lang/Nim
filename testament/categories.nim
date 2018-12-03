@@ -553,3 +553,116 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+
+
+const specialCategories = [
+  "async",
+  "debugger",
+  "dll",
+  "examples",
+  "flags",
+  "gc",
+  "io",
+  "js",
+  "lib",
+  "longgc",
+  "manyloc",
+  "nimble-all",
+  "nimble-core",
+  "nimble-extra",
+  "niminaction",
+  "rodfiles",
+  "threads",
+  "untestable"
+]
+
+
+# these tests still have bugs. At some point when the bugs are fixd
+# this should become empty.
+
+# exclude for various reasons
+const specialDisabedTests = [
+  "tests/dir with space/tspace.nim", # can't import dir with spaces.
+  "tests/method/tmultim.nim",        # (77, 8) Error: method is not a base
+  "tests/system/talloc2.nim",        # too much memory
+  "tests/collections/ttables.nim",   # takes too long
+  "tests/system/tparams.nim",        # executes itself with parameters
+  "tests/stdlib/tquit.nim",          # not testing for obvious reasons
+  "tests/system/trealloc.nim",       # out of memory
+  "tests/system/t7894.nim",          # causes out of memory in later tests
+  "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
+]
+
+proc parseAllSpecs(): void =
+  var specs: array[TTestAction, seq[TSpec]]
+  var specialTests = 0
+  var ignoredTests = 0
+  var specsWithCfg: seq[TSpec]
+  var specsWithCustomCmd: seq[TSpec]
+  var specsEarlyExit: seq[TSpec]
+  var specsWithInput: seq[TSpec]
+
+  for file in os.walkFiles("tests/*/t*.nim"):
+
+    let a = find(file, '/') + 1
+    let b = find(file, '/', a)
+    let cat = file[a ..< b]
+
+    if cat in specialCategories:
+      specialTests += 1
+      continue
+
+    if file in specialDisabedTests:
+      # a special ignore here.
+      continue
+
+    let spec = parseSpec(file)
+
+    #echo cat, ": ", file
+    if fileExists(file & ".cfg"):
+      specsWithCfg.add spec
+      continue
+
+    if fileExists(parentDir(file) / "nim.cfg"):
+      specsWithCfg.add spec
+      continue
+
+    if spec.cmd != cmdTemplate():
+      specsWithCustomCmd.add spec
+      continue
+
+    if spec.err == reIgnored:
+      ignoredTests += 1
+      continue
+
+    if spec.exitCode != 0:
+      specsEarlyExit.add spec
+      continue
+
+    if spec.input != "":
+      specsWithInput.add spec
+      continue
+
+    specs[spec.action].add spec
+
+  for action, specs in specs.pairs:
+    echo action, ": ", specs.len
+  echo "specsWithCfg: ", specsWithCfg.len
+  echo "specsWithCustomCmd: ", specsWithCustomCmd.len
+  echo "earlyExit: ", specsEarlyExit.len
+  echo "special: ", specialTests
+  echo "ignored: ", ignoredTests
+  echo "withInput: ", specsWithInput.len
+
+  var megatest: string
+
+  for runSpec in specs[actionRun]:
+    if targetC in runSpec.targets or runSpec.targets == {}:
+      megatest.add "echo \"------------------------------: "
+      megatest.add runSpec.file
+      megatest.add "\"\n"
+      megatest.add "import \""
+      megatest.add runSpec.file
+      megatest.add "\"\n"
+
+  writeFile("megatest.nim", megatest)
