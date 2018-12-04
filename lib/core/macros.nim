@@ -509,7 +509,13 @@ proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
   result = internalParseStmt(s)
   let x = internalErrorFlag()
-  if x.len > 0: raise newException(ValueError, x)
+  if x.len > 0:
+    var msg = "internalError: "
+    msg.addQuoted x
+    msg.add "\ns:\n------\n"
+    msg.add s
+    msg.add "\n------"
+    raise newException(ValueError, msg)
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
