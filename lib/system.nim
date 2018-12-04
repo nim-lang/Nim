@@ -2522,12 +2522,13 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
-    else:
-      proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
-        asm """return `x`"""
 
-    if seqToPtr(x) == seqToPtr(y):
-      return true
+      if seqToPtr(x) == seqToPtr(y):
+        return true
+    else:
+      var sameObject = false
+      asm """`sameObject` = `x` === `y`"""
+      if sameObject: return true
 
   when not defined(nimNoNil):
     if x.isNil or y.isNil:

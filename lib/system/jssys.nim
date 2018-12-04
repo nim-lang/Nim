@@ -519,8 +519,11 @@ proc nimCopyAux(dest, src: JSRef, n: ptr TNimNode) {.compilerproc.} =
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
     """
   of nkList:
-    for i in 0..n.len-1:
-      nimCopyAux(dest, src, n.sons[i])
+    asm """
+    for (var i = 0; i < `n`.sons.length; i++) {
+      nimCopyAux(`dest`, `src`, `n`.sons[i]);
+    }
+    """
   of nkCase:
     asm """
       `dest`[`n`.offset] = nimCopy(`dest`[`n`.offset], `src`[`n`.offset], `n`.typ);
