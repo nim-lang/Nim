@@ -155,7 +155,7 @@ proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
-  ## returns `p`'s process ID. See also ``os.processID()``.
+  ## returns `p`'s process ID. See also ``os.getCurrentProcessId()``.
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,

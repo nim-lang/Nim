@@ -2419,7 +2419,7 @@ proc isHidden*(path: string): bool {.noNimScript.} =
     let fileName = lastPathPart(path)
     result = len(fileName) >= 2 and fileName[0] == '.' and fileName != ".."
 
-proc processID*(): int {.noNimScript.} =
+proc getCurrentProcessId*(): int {.noNimScript.} =
   ## return current process ID. See also ``osproc.processID(p: Process)``.
   when defined(windows):
     proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
