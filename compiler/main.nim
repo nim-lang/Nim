@@ -236,15 +236,6 @@ proc mainCommand*(graph: ModuleGraph) =
       wantMainModule(conf)
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, true)
-  of "ctags":
-    when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
-    else:
-      wantMainModule(conf)
-      conf.cmd = cmdDoc
-      loadConfigs(DocConfig, cache, conf)
-      defineSymbol(conf.symbols, "nimdoc")
-      commandTags(cache, conf)
   of "buildindex":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"

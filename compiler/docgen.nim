@@ -1016,27 +1016,6 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename.string)
 
-proc commandTags*(cache: IdentCache, conf: ConfigRef) =
-  var ast = parseFile(conf.projectMainIdx, cache, conf)
-  if ast == nil: return
-  var d = newDocumentor(conf.projectFull, cache, conf)
-  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
-                          status: int; content: string) =
-    localError(conf, newLineInfo(conf, AbsoluteFile d.filename, -1, -1),
-               warnUser, "the ':test:' attribute is not supported by this backend")
-  d.hasToc = true
-  var
-    content: Rope
-  generateTags(d, ast, content)
-
-  if optStdout in d.conf.globalOptions:
-    writeRope(stdout, content)
-  else:
-    #echo getOutFile(gProjectFull, TagsExt)
-    let filename = getOutFile(conf, RelativeFile conf.projectName, TagsExt)
-    if not writeRope(content, filename):
-      rawMessage(conf, errCannotOpenFile, filename.string)
-
 proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull.string).rope
 
