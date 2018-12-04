@@ -32,13 +32,18 @@ block distinctBase:
 block extractGeneric:
   type Foo[T1, T2]=object
   type Foo2=Foo[float, string]
-  doAssert extractGeneric(Foo[float, string], 1) is string
+  # pending https://github.com/nim-lang/Nim/issues/9855
+  # doAssert extractGeneric(Foo2, -1) is Foo
+  doAssert extractGeneric(Foo2, 0) is float
   doAssert extractGeneric(Foo2, 1) is string
+  doAssert extractGeneric(Foo[float, string], 1) is string
+  # pending https://github.com/nim-lang/Nim/issues/9855
+  # doAssert extractGeneric(Foo[float, string], -1) is Foo
   # workaround for seq[int].T not working,
   # see https://github.com/nim-lang/Nim/issues/8433
   doAssert extractGeneric(seq[int], 0) is int
   doAssert extractGeneric(seq[seq[string]], 0) is seq[string]
-  doAssert: not compiles(extractGeneric(seq[int], 1))
+  doAssert not compiles(extractGeneric(seq[int], 1))
   doAssert extractGeneric(seq[int], -1) is seq
 
   type Foo3[T] = T

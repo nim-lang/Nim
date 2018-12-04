@@ -245,7 +245,8 @@ macro extractGeneric*(T: typedesc, index:static[int]): untyped =
     type Foo[T1, T2]=object
     doAssert extractGeneric(Foo[float, string], 0) is float
     doAssert extractGeneric(Foo[float, string], 1) is string
-    doAssert extractGeneric(Foo[float, string], -1) is Foo
+    # pending https://github.com/nim-lang/Nim/issues/9855
+    # doAssert extractGeneric(Foo[float, string], -1) is Foo
 
   var impl = getTypeImpl(T)
   expectKind(impl, nnkBracketExpr)
