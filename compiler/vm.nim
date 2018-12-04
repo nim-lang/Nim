@@ -1435,34 +1435,40 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         message(c.config, info, warnUser, a.strVal)
       elif instr.opcode == opcNHint:
         message(c.config, info, hintUser, a.strVal)
-    of opcParseExprToAst:
-      decodeB(rkNode)
-      # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
-      var error: string
-      let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
-                              if error.len == 0 and msg <= errMax:
-                                error = formatMsg(conf, info, msg, arg))
-      if error.len > 0:
-        c.errorFlag = error
-      elif sonsLen(ast) != 1:
-        c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
-          "expected expression, but got multiple statements")
-      else:
-        regs[ra].node = ast.sons[0]
-    of opcParseStmtToAst:
+    of opcParseStmtToAst, opcParseExprToAst:
       decodeB(rkNode)
       var error: string
-      let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
+      const implicitFile = "implicit_file_for_parseStmt.nim"
+      let code = regs[rb].node.strVal
+      #[
+      Use indentation with visible symbols (not space) to avoid ambiguities
+      when displaying results. It will show as:
+      main.nim(5, 6) template/generic instantiation of `implicit_file_for_parseStmt.nim:
+      >>var a1 = 1
+      >>a2.inc ` from here
+      ]#
+      let codeContext = implicitFile & ":\n" & code.indent(1, ">>")
+      # `pc-3` is correct here with current implementation of `parseStmt`, so
+      # as to insert a context frame pointing to the 1st col of `parseStmt`.
+      let infoContext = c.debug[pc-3]
+      pushInfoContext(c.config, infoContext, codeContext)
+      let ast = parseString(code, c.cache, c.config,
+                            implicitFile, 0,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
       else:
-        regs[ra].node = ast
+        case instr.opcode
+        of opcParseStmtToAst: regs[ra].node = ast
+        of opcParseExprToAst:
+          if sonsLen(ast) != 1:
+            c.errorFlag = formatMsg(c.config, infoContext, errGenerated,
+              "expected expression, but got multiple statements")
+          else:
+            regs[ra].node = ast.sons[0]
+        else: assert(false)
     of opcQueryErrorFlag:
       createStr regs[ra]
       regs[ra].node.strVal = c.errorFlag
