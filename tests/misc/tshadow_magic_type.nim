@@ -26,7 +26,6 @@ proc lrange*(key: string): TRedisList =
   foo.str = key
   result = @[foo]
 
-when isMainModule:
-  var p = lrange("mylist")
-  for i in items(p):
-    echo(i.str)
+var p = lrange("mylist")
+for i in items(p):
+  echo(i.str)
