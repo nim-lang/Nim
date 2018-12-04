@@ -15,7 +15,7 @@ include "system/inclrtl"
 import
   strutils, os, strtabs, streams, cpuinfo
 
-export quoteShell, quoteShellWindows, quoteShellPosix, processID
+export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):
   import winlean
