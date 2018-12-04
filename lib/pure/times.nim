@@ -22,7 +22,7 @@
     let time = cpuTime()
 
     sleep(100)   # replace this with something to be timed
-    echo "Time taken: ",cpuTime() - time
+    echo "Time taken: ", cpuTime() - time
 
     echo "My formatted time: ", format(now(), "d MMMM yyyy HH:mm")
     echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
