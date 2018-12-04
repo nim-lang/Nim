@@ -168,7 +168,7 @@ proc canMove(p: BProc, n: PNode): bool =
   #  echo n.info, " optimized ", n
   #  result = false
 
-proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
+proc genRefAssign(p: BProc, dest, src: TLoc) =
   if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   elif dest.storage == OnHeap:
@@ -266,12 +266,12 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses + {tyStatic})
   case ty.kind
   of tyRef:
-    genRefAssign(p, dest, src, flags)
+    genRefAssign(p, dest, src)
   of tySequence:
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
     elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
-      genRefAssign(p, dest, src, flags)
+      genRefAssign(p, dest, src)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(p.config, dest), rdLoc(src),
@@ -280,7 +280,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if p.config.selectedGC == gcDestructors:
       genGenericAsgn(p, dest, src, flags)
     elif (needToCopy notin flags and src.storage != OnStatic) or canMove(p, src.lode):
-      genRefAssign(p, dest, src, flags)
+      genRefAssign(p, dest, src)
     else:
       if (dest.storage == OnStack and p.config.selectedGC != gcGo) or not usesWriteBarrier(p.config):
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
@@ -295,16 +295,16 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
         linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
                addrLoc(p.config, dest), rdLoc(src))
   of tyProc:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       # optimize closure assignment:
       let a = optAsgnLoc(dest, dest.t, "ClE_0".rope)
       let b = optAsgnLoc(src, dest.t, "ClE_0".rope)
-      genRefAssign(p, a, b, flags)
+      genRefAssign(p, a, b)
       linefmt(p, cpsStmts, "$1.ClP_0 = $2.ClP_0;$n", rdLoc(dest), rdLoc(src))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyTuple:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       if dest.t.len <= 4: genOptAsgnTuple(p, dest, src, flags)
       else: genGenericAsgn(p, dest, src, flags)
     else:
@@ -315,7 +315,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     elif not isObjLackingTypeField(ty):
       genGenericAsgn(p, dest, src, flags)
-    elif needsComplexAssignment(ty):
+    elif containsGarbageCollectedRef(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
         discard getTypeDesc(p.module, ty)
         internalAssert p.config, ty.n != nil
@@ -325,7 +325,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyArray:
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
@@ -334,7 +334,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
-    if needsComplexAssignment(dest.t):
+    if containsGarbageCollectedRef(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
            addrLoc(p.config, dest), addrLoc(p.config, src),
@@ -1128,7 +1128,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
     genTypeInfo(p.module, seqType, e.info)])
   # emit the write barrier if required, but we can always move here, so
   # use 'genRefAssign' for the seq.
-  genRefAssign(p, a, call, {})
+  genRefAssign(p, a, call)
   #if bt != b.t:
   #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
   initLoc(dest, locExpr, e.sons[2], OnHeap)

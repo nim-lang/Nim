@@ -297,7 +297,7 @@ type
     needToCopy
   TAssignmentFlags = set[TAssignmentFlag]
 
-proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+proc genRefAssign(p: BProc, dest, src: TLoc)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst + tyUserTypeClasses)
@@ -313,7 +313,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
-      genRefAssign(p, loc, nilLoc, {})
+      genRefAssign(p, loc, nilLoc)
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
