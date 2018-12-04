@@ -107,6 +107,6 @@ proc enumToString*(enums: openArray[enum]): string =
 
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.
-- The compiler's command `ctags` has been deprecated.
+- The compiler's command `ctags` has been removed.
 
 ### Bugfixes
