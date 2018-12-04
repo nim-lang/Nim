@@ -106,5 +106,6 @@ proc enumToString*(enums: openArray[enum]): string =
   documentation.
 
 ### Compiler changes
+- The deprecated `fmod` proc is now unavailable on the VM'.
 
 ### Bugfixes
