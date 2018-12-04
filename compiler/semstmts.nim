@@ -1936,7 +1936,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         case n.sons[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
             nkBlockStmt, nkState: discard
-        else: localError(c.config, n.sons[j].info, "unreachable statement after 'return'")
+        else: localError(c.config, n.sons[j].info, "unreachable statement after '{.noReturn.}' proc")
     else: discard
 
   if result.len == 1 and
