@@ -403,6 +403,32 @@ template tests =
 
     doAssert getuninitptr() == nil
 
+  block: # pointer casting
+    var obj = (x: 321, y: 543)
+    var x = 500
+
+    var objptr = obj.addr
+    var xptr = x.addr
+
+    var p1, p2: pointer
+    p1 = cast[pointer](objptr)
+    p2 = cast[pointer](xptr)
+    doAssert p1 != p2
+
+    p1 = cast[pointer](objptr)
+    p2 = cast[pointer](objptr)
+    doAssert p1 == p2
+
+    let objptr2 = cast[type(objptr)](p2)
+    doAssert objptr == objptr2
+
+    p1 = cast[pointer](xptr)
+    p2 = cast[pointer](xptr)
+    doAssert p1 == p2
+
+    let xptr2 = cast[type(xptr)](p2)
+    doAssert xptr == xptr2
+
   when false:
     block: # openarray
           # Error: internal error: genAddr: nkStmtListExpr

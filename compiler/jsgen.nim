@@ -2265,6 +2265,13 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
           of 4: "0xfffffffe"
           else: ""
         r.res = "($1 - ($2 $3))" % [rope minuend, r.res, trimmer]
+  elif (src.kind == tyPtr and mapType(p, src) == etyObject) and dest.kind == tyPointer:
+    r.address = r.res
+    r.res = ~"null"
+    r.typ = etyBaseIndex
+  elif (dest.kind == tyPtr and mapType(p, dest) == etyObject) and src.kind == tyPointer:
+    r.res = r.address
+    r.typ = etyObject
 
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
   r.typ = etyNone
