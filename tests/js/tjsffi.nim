@@ -16,6 +16,7 @@ true
 true
 true
 true
+true
 3
 2
 12
@@ -180,6 +181,17 @@ block:
     obj.a = proc(e: int): int = e * e
     let call = obj["a"]
     call(10) == 100
+  echo test()
+
+# Test JsAssoc distinct
+type
+  A = distinct int
+
+block:
+  proc test(): bool =
+    let obj = newJsAssoc[A, int]()
+    obj[0.A] = 0
+    obj[0.A] == 0
   echo test()
 
 # Test JsAssoc Iterators

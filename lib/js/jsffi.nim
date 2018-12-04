@@ -115,6 +115,13 @@ type
   JsTypeError* {.importc: "TypeError".} = object of JsError
   JsURIError* {.importc: "URIError".} = object of JsError
 
+type
+  DistinctInt = concept a
+    a is distinct
+    a.int
+
+proc toJsKey*[T: DistinctInt](text: cstring, t: type T): T {.importcpp: "parseInt(#)".}
+
 # New
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject
