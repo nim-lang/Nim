@@ -57,7 +57,7 @@ type
     input*: string
     outputCheck*: TOutputCheck
     sortoutput*: bool
-    outp*: string
+    output*: string
     line*, column*: int
     tfile*: string
     tline*, tcolumn*: int
@@ -161,12 +161,12 @@ proc parseSpec*(filename: string): TSpec =
         discard parseInt(e.value, result.tcolumn)
       of "output":
         result.outputCheck = ocEqual
-        result.outp = strip(e.value)
+        result.output = strip(e.value)
       of "input":
         result.input = e.value
       of "outputsub":
         result.outputCheck = ocSubstr
-        result.outp = strip(e.value)
+        result.output = strip(e.value)
       of "sortoutput":
         try:
           result.sortoutput  = parseCfgBool(e.value)

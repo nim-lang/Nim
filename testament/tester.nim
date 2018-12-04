@@ -141,7 +141,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   close(p)
   result.msg = ""
   result.file = ""
-  result.outp = ""
+  result.output = ""
   result.line = 0
   result.column = 0
   result.tfile = ""
@@ -173,7 +173,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.nimout = ""
   result.msg = ""
   result.file = ""
-  result.outp = ""
+  result.output = ""
   result.line = -1
   while outp.readLine(x.TaintedString) or running(p):
     result.nimout.add(x & "\n")
@@ -400,12 +400,12 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         exeFile = changeFileExt(test.name, ExeExt)
 
       if not existsFile(exeFile):
-        r.addResult(test, target, expected.outp, "executable not found", reExeNotFound)
+        r.addResult(test, target, expected.output, "executable not found", reExeNotFound)
         continue
 
       let nodejs = if isJsTarget: findNodeJs() else: ""
       if isJsTarget and nodejs == "":
-        r.addResult(test, target, expected.outp, "nodejs binary not in PATH",
+        r.addResult(test, target, expected.output, "nodejs binary not in PATH",
                     reExeNotFound)
         continue
 
@@ -438,10 +438,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
                           bufB, reExitCodesDiffer)
         continue
 
-      if (expected.outputCheck == ocEqual  and expected.outp !=  bufB) or
-         (expected.outputCheck == ocSubstr and expected.outp notin bufB):
+      if (expected.outputCheck == ocEqual  and expected.output !=  bufB) or
+         (expected.outputCheck == ocSubstr and expected.output notin bufB):
         given.err = reOutputsDiffer
-        r.addResult(test, target, expected.outp, bufB, reOutputsDiffer)
+        r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
         continue
 
       compilerOutputTests(test, target, given, expected, r)
@@ -582,7 +582,7 @@ proc main() =
   of "html":
     generateHtml(resultsFile, optFailing)
   of "stats":
-    parseAllSpecs()
+    runJoinedTest()
   else:
     quit Usage
 

@@ -26,9 +26,11 @@ proc safeReadLine(): TMaybe[string] =
   if r == "": return Nothing[string]()
   else: return Just(r)
 
-when isMainModule:
+proc main() =
   var Test = Just("Test")
   echo(Test.value)
   var mSomething = safeReadLine()
   echo(mSomething.value)
   mSomething = safeReadLine()
+
+main()

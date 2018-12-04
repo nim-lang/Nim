@@ -591,9 +591,10 @@ const specialDisabedTests = [
   "tests/system/trealloc.nim",       # out of memory
   "tests/system/t7894.nim",          # causes out of memory in later tests
   "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
+  "tests/pragmas/tused.nim",         # paths in nimout differ when imported
 ]
 
-proc parseAllSpecs(): void =
+proc runJoinedTest(): void =
   var specs: array[TTestAction, seq[TSpec]]
   var specialTests = 0
   var ignoredTests = 0
@@ -601,6 +602,7 @@ proc parseAllSpecs(): void =
   var specsWithCustomCmd: seq[TSpec]
   var specsEarlyExit: seq[TSpec]
   var specsWithInput: seq[TSpec]
+  var specsNonCtarget: seq[TSpec]
 
   for file in os.walkFiles("tests/*/t*.nim"):
 
@@ -643,6 +645,10 @@ proc parseAllSpecs(): void =
       specsWithInput.add spec
       continue
 
+    if card(spec.targets) > 0 and spec.targets != {targetC}:
+      specsNonCtarget.add spec
+      continue
+
     specs[spec.action].add spec
 
   for action, specs in specs.pairs:
@@ -653,16 +659,52 @@ proc parseAllSpecs(): void =
   echo "special: ", specialTests
   echo "ignored: ", ignoredTests
   echo "withInput: ", specsWithInput.len
+  echo "nonCtarget: ", specsNonCtarget.len
 
   var megatest: string
-
   for runSpec in specs[actionRun]:
-    if targetC in runSpec.targets or runSpec.targets == {}:
-      megatest.add "echo \"------------------------------: "
-      megatest.add runSpec.file
-      megatest.add "\"\n"
-      megatest.add "import \""
-      megatest.add runSpec.file
-      megatest.add "\"\n"
+    megatest.add "import \""
+    megatest.add runSpec.file
+    megatest.add "\"\n"
 
   writeFile("megatest.nim", megatest)
+
+  let args = ["c", "-d:testing", "--gc:boehm", "megatest.nim"]
+  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  if exitCode != 0:
+    quit("megatest compilation failed")
+
+  echo "compilation ok"
+
+  var nimoutOK = true
+  for runSpec in specs[actionRun]:
+    for line in runSpec.nimout.splitLines:
+      if buf.find(line) < 0:
+        echo "could not find: ", line
+        echo runSpec.file
+        nimoutOK = false
+
+  if nimoutOK:
+    echo "nimout OK"
+  else:
+    echo "nimout FAIL"
+
+  (buf, exitCode) = execCmdEx2("./megatest", [], {}, "")
+  if exitCode != 0:
+    quit("megatest execution failed")
+
+  echo "run ok"
+
+  var outputOK = true
+  for runSpec in specs[actionRun]:
+    for line in runSpec.output.splitLines:
+      if buf.find(line) < 0:
+        echo "could not find: ", line
+        echo runSpec.file
+        outputOK = false
+  if outputOK:
+    echo "output OK"
+  else:
+    echo "output FAIL"
+
+  removeFile("megatest.nim")
