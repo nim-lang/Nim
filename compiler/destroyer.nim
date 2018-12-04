@@ -117,7 +117,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings, tables, modulegraphs,
-  lineinfos
+  lineinfos, parampatterns
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -261,6 +261,11 @@ proc isLastRead(n: PNode; c: var Con): bool =
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
+template isUnpackedTuple(s: PSym): bool =
+  ## we move out all elements of unpacked tuples,
+  ## hence unpacked tuples themselves don't need to be destroyed
+  s.kind == skTemp and s.typ.kind == tyTuple
+
 proc patchHead(n: PNode) =
   if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
     let s = n[0].sym
@@ -268,9 +273,6 @@ proc patchHead(n: PNode) =
       if sfFromGeneric in s.flags:
         excl(s.flags, sfFromGeneric)
         patchHead(s.getBody)
-      if n[1].typ.isNil:
-        # XXX toptree crashes without this workaround. Figure out why.
-        return
       let t = n[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
       template patch(op, field) =
         if s.name.s == op and field != nil and field != s:
@@ -296,6 +298,10 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
       m.add c.graph.config $ c.otherRead.info
   localError(c.graph.config, ri.info, errGenerated, m)
 
+proc makePtrType(c: Con, baseType: PType): PType =
+  result = newType(tyPtr, c.owner)
+  addSonSkipIntLit(result, baseType)
+
 template genOp(opr, opname, ri) =
   let op = opr
   if op == nil:
@@ -304,7 +310,9 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
-  result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
+  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+  addrExp.add(dest)
+  result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -394,9 +402,10 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, n.typ, tmp, n)
     m.add p(n, c)
     result.add m
-    message(c.graph.config, n.info, hintPerformance,
-      ("passing '$1' to a sink parameter introduces an implicit copy; " &
-      "use 'move($1)' to prevent it") % $n)
+    if isLValue(n):
+      message(c.graph.config, n.info, hintPerformance,
+        ("passing '$1' to a sink parameter introduces an implicit copy; " &
+        "use 'move($1)' to prevent it") % $n)
   else:
     result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
@@ -443,6 +452,18 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       ri2.add pArg(ri[i], c, i < L and parameters[i].kind == tySink)
     #recurse(ri, ri2)
     result.add ri2
+  of nkBracketExpr:
+    if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
+      # unpacking of tuple: move out the elements
+      result = genSink(c, dest.typ, dest, ri)
+    else:
+      result = genCopy(c, dest.typ, dest, ri)
+    result.add p(ri, c)
+  of nkStmtListExpr:
+    result = newNodeI(nkStmtList, ri.info)
+    for i in 0..ri.len-2:
+      result.add p(ri[i], c)
+    result.add moveOrCopy(dest, ri[^1], c)
   of nkObjConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
@@ -450,6 +471,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
       ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+    result.add ri2
+  of nkTupleConstr:
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an tuple constructor is consumed,
+      # so these all act like 'sink' parameters:
+      if ri[i].kind == nkExprColonExpr:
+        ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+      else:
+        ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
@@ -480,7 +512,7 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isUnpackedTuple(it[0].sym):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym

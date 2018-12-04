@@ -9,7 +9,7 @@ import lists
 import math
 # import marshal
 import options
-import ospaths
+import os
 # import parsecfg
 # import parseopt
 import parseutils

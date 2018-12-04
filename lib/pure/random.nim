@@ -231,4 +231,8 @@ when isMainModule:
       except RangeError:
         discard
 
+
+    # don't use causes integer overflow
+    doAssert compiles(random[int](low(int) .. high(int)))
+
   main()

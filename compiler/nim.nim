@@ -54,7 +54,8 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     of cmdArgument:
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
-    if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
+    if {optRun, optWasNimscript} * config.globalOptions == {} and
+        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =

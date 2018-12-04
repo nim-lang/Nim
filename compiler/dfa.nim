@@ -56,6 +56,7 @@ type
     inCall, inTryStmt: int
     blocks: seq[TBlock]
     tryStmtFixups: seq[TPosition]
+    owner: PSym
 
 proc debugInfo(info: TLineInfo): string =
   result = $info.line #info.toFilename & ":" & $info.line
@@ -259,8 +260,15 @@ proc genRaise(c: var Con; n: PNode) =
   else:
     c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
+proc genImplicitReturn(c: var Con) =
+  if c.owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter} and resultPos < c.owner.ast.len:
+    gen(c, c.owner.ast.sons[resultPos])
+
 proc genReturn(c: var Con; n: PNode) =
-  if n.sons[0].kind != nkEmpty: gen(c, n.sons[0])
+  if n.sons[0].kind != nkEmpty:
+    gen(c, n.sons[0])
+  else:
+    genImplicitReturn(c)
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 const
@@ -461,11 +469,13 @@ proc dfa(code: seq[Instr]; conf: ConfigRef) =
 proc dataflowAnalysis*(s: PSym; body: PNode; conf: ConfigRef) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
+  genImplicitReturn(c)
   when defined(useDfa) and defined(debugDfa): echoCfg(c.code)
   dfa(c.code, conf)
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
-  var c = Con(code: @[], blocks: @[])
+  var c = Con(code: @[], blocks: @[], owner: s)
   gen(c, body)
+  genImplicitReturn(c)
   shallowCopy(result, c.code)

@@ -5,9 +5,9 @@ Constructing Simple CFG...
 Constructing CFG...
 Performing Loop Recognition
 1 Iteration
-Another 50 iterations...
-..................................................
-Found 1 loops (including artificial root node) (50)'''
+Another 5 iterations...
+.....
+Found 1 loops (including artificial root node) (5)'''
 """
 
 # bug #3184
@@ -442,10 +442,10 @@ proc run(self: var LoopTesterApp) =
   var h = newHavlakLoopFinder(self.cfg, newLsg())
   var loops = h.findLoops
 
-  echo "Another 50 iterations..."
+  echo "Another 5 iterations..."
 
   var sum = 0
-  for i in 1..50:
+  for i in 1..5:
     write stdout, "."
     flushFile(stdout)
     var hlf = newHavlakLoopFinder(self.cfg, newLsg())

@@ -90,7 +90,7 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1,
            allowRemap = false): MemFile =
-  ## opens a memory mapped file. If this fails, ``EOS`` is raised.
+  ## opens a memory mapped file. If this fails, ``OSError`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).
@@ -141,7 +141,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
       raiseOSError(errCode)
       # return false
-      #raise newException(EIO, msg)
+      #raise newException(IOError, msg)
 
     template callCreateFile(winApiProc, filename): untyped =
       winApiProc(
@@ -465,7 +465,7 @@ proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
 proc newMemMapFileStream*(filename: string, mode: FileMode = fmRead, fileSize: int = -1):
   MemMapFileStream =
   ## creates a new stream from the file named `filename` with the mode `mode`.
-  ## Raises ## `EOS` if the file cannot be opened. See the `system
+  ## Raises ## `OSError` if the file cannot be opened. See the `system
   ## <system.html>`_ module for a list of available FileMode enums.
   ## ``fileSize`` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).

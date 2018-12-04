@@ -21,8 +21,15 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
   result.typ = makePtrType(c, x.typ)
 
 proc semTypeOf(c: PContext; n: PNode): PNode =
+  var m = BiggestInt 1 # typeOfIter
+  if n.len == 3:
+    let mode = semConstExpr(c, n[2])
+    if mode.kind != nkIntLit:
+      localError(c.config, n.info, "typeof: cannot evaluate 'mode' parameter at compile-time")
+    else:
+      m = mode.intVal
   result = newNodeI(nkTypeOfExpr, n.info)
-  let typExpr = semExprWithType(c, n, {efInTypeof})
+  let typExpr = semExprWithType(c, n[1], if m == 1: {efInTypeof} else: {})
   result.add typExpr
   result.typ = makeTypeDesc(c, typExpr.typ)
 
@@ -299,7 +306,13 @@ proc semOf(c: PContext, n: PNode): PNode =
         result.typ = getSysType(c.graph, n.info, tyBool)
         return result
       elif diff == high(int):
-        localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+        if commonSuperclass(a, b) == nil:
+          localError(c.config, n.info, "'$1' cannot be of this subtype" % typeToString(a))
+        else:
+          message(c.config, n.info, hintConditionAlwaysFalse, renderTree(n))
+          result = newIntNode(nkIntLit, 0)
+          result.info = n.info
+          result.typ = getSysType(c.graph, n.info, tyBool)
   else:
     localError(c.config, n.info, "'of' takes 2 arguments")
   n.typ = getSysType(c.graph, n.info, tyBool)
@@ -320,26 +333,21 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     checkSonsLen(n, 2, c.config)
     result = semAddr(c, n.sons[1], n[0].sym.name.s == "unsafeAddr")
   of mTypeOf:
-    checkSonsLen(n, 2, c.config)
-    result = semTypeOf(c, n.sons[1])
+    result = semTypeOf(c, n)
   of mSizeOf:
-      # TODO there is no proper way to find out if a type cannot be queried for the size.
-      let size = getSize(c.config, n[1].typ)
-      # We just assume here that the type might come from the c backend
-      if size == szUnknownSize:
-        # Forward to the c code generation to emit a `sizeof` in the C code.
-        result = n
-      elif size >= 0:
-        result = newIntNode(nkIntLit, size)
-        result.info = n.info
-        result.typ = n.typ
-      else:
-
-        localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
-
-        result = nil
-
-
+    # TODO there is no proper way to find out if a type cannot be queried for the size.
+    let size = getSize(c.config, n[1].typ)
+    # We just assume here that the type might come from the c backend
+    if size == szUnknownSize:
+      # Forward to the c code generation to emit a `sizeof` in the C code.
+      result = n
+    elif size >= 0:
+      result = newIntNode(nkIntLit, size)
+      result.info = n.info
+      result.typ = n.typ
+    else:
+      localError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely, type: " & n[1].typ.typeToString)
+      result = n
   of mAlignOf:
     result = newIntNode(nkIntLit, getAlign(c.config, n[1].typ))
     result.info = n.info
@@ -373,7 +381,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[0].sym.name.s == "=":
       result = semAsgnOpr(c, n)
     else:
-      result = n
+      result = semShallowCopy(c, n, flags)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:

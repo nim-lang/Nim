@@ -1,5 +1,5 @@
 discard """
-  msg: '''13'''
+  nimout: '''13'''
   output: '''3
 3
 3'''

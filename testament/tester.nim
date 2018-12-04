@@ -14,6 +14,8 @@ import
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, compiler/nodejs, times, sets, md5
 
+var useColors = true
+
 const
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -32,6 +34,8 @@ Options:
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
+  --directory:dir           Change to directory dir before reading the tests or doing anything else.
+  --colors:on|off           turn messagescoloring on|off
 """ % resultsFile
 
 type
@@ -74,6 +78,33 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+                output: TaintedString,
+                exitCode: int] {.tags:
+                [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+  var p = startProcess(command, args=args, options=options)
+  var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  let instream = inputStream(p)
+  instream.write(input)
+  close instream
+
+  result = (TaintedString"", -1)
+  var line = newStringOfCap(120).TaintedString
+  while true:
+    if outp.readLine(line):
+      result[0].string.add(line.string)
+      result[0].string.add("\n")
+    else:
+      result[1] = peekExitCode(p)
+      if result[1] != -1: break
+  close(p)
+
+
+
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
   let hashInput = options & $target
@@ -86,7 +117,7 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
-  var p = startProcess(command=c[0], args=c[1.. ^1],
+  var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var suc = ""
@@ -153,11 +184,30 @@ proc initResults: TResults =
   result.skipped = 0
   result.data = ""
 
-#proc readResults(filename: string): TResults = # not used
-#  result = marshal.to[TResults](readFile(filename).string)
+import macros
 
-#proc writeResults(filename: string, r: TResults) = # not used
-#  writeFile(filename, $$r)
+macro ignoreStyleEcho(args: varargs[typed]): untyped =
+  let typForegroundColor = bindSym"ForegroundColor".getType
+  let typBackgroundColor = bindSym"BackgroundColor".getType
+  let typStyle = bindSym"Style".getType
+  let typTerminalCmd = bindSym"TerminalCmd".getType
+  result = newCall(bindSym"echo")
+  for arg in children(args):
+    if arg.kind == nnkNilLit: continue
+    let typ = arg.getType
+    if typ.kind != nnkEnumTy or
+       typ != typForegroundColor and
+       typ != typBackgroundColor and
+       typ != typStyle and
+       typ != typTerminalCmd:
+      result.add(arg)
+
+template maybeStyledEcho(args: varargs[untyped]): untyped =
+  if useColors:
+    styledEcho(args)
+  else:
+    ignoreStyleEcho(args)
+
 
 proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &
@@ -168,7 +218,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
@@ -178,17 +228,17 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    styledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
   elif success == reIgnored:
-    styledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
+    maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   else:
-    styledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
-    styledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
-    styledEcho styleBright, fgRed, "Failure: ", $success
-    styledEcho fgYellow, "Expected:"
-    styledEcho styleBright, expected, "\n"
-    styledEcho fgYellow, "Gotten:"
-    styledEcho styleBright, given, "\n"
+    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
+    maybeStyledEcho styleBright, fgRed, "Failure: ", $success
+    maybeStyledEcho fgYellow, "Expected:"
+    maybeStyledEcho styleBright, expected, "\n"
+    maybeStyledEcho fgYellow, "Gotten:"
+    maybeStyledEcho styleBright, given, "\n"
 
   if existsEnv("APPVEYOR"):
     let (outcome, msg) =
@@ -268,10 +318,15 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let exp = expectedNimout.strip.replace("\C\L", "\L")
-  let giv = given.nimout.strip.replace("\C\L", "\L")
-  if exp notin giv:
-    given.err = reMsgsDiffer
+  let giv = given.nimout.strip
+  var currentPos = 0
+  # Only check that nimout contains all expected lines in that order.
+  # There may be more output in nimout. It is ignored here.
+  for line in expectedNimout.strip.splitLines:
+    currentPos = giv.find(line.strip, currentPos)
+    if currentPos < 0:
+      given.err = reMsgsDiffer
+      return
 
 proc makeDeterministic(s: string): string =
   var x = splitLines(s)
@@ -297,7 +352,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
-  #echo "TESTING ", tname
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -313,7 +367,9 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
     inc(r.total)
     return
 
-  if expected.targets == {}:
+  if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true" and target == targetC and expected.targets == {}:
+    expected.targets.incl(targetCpp)
+  elif expected.targets == {}:
     expected.targets.incl(target)
 
   for target in expected.targets:
@@ -333,6 +389,12 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.cmd, test.name, test.options,
                                target)
+
+      # echo "expected.cmd: ", expected.cmd
+      # echo "nimout: ", given.nimout
+      # echo "outp:   ", given.outp
+      # echo "msg:    ", given.msg
+      # echo "err:    ", given.err
 
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
@@ -356,8 +418,16 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
                     reExeNotFound)
         continue
 
-      let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-      var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+
+      var exeCmd: string
+      var args: seq[string]
+      if isJsTarget:
+        exeCmd = nodejs
+        args.add exeFile
+      else:
+        exeCmd = exeFile
+
+      var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
 
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -400,7 +470,7 @@ proc testC(r: var TResults, test: TTest) =
   # runs C code. Doesn't support any specs, just goes by exit code.
   let tname = test.name.addFileExt(".c")
   inc(r.total)
-  styledEcho "Processing ", fgCyan, extractFilename(tname)
+  maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
   var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, targetC)
   if given.err != reSuccess:
     r.addResult(test, targetC, "", given.msg, given.err)
@@ -434,7 +504,7 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
 when defined(windows):
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["coro.nim", "fsmonitor.nim"]
+    disabledFiles = ["coro.nim"]
 else:
   const
     # array of modules disabled from compilation test of stdlib.
@@ -457,6 +527,7 @@ proc main() =
 
   var targetsStr = ""
 
+
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
@@ -467,8 +538,18 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
-    of "nim": compilerPrefix = p.val.string & " "
-    else: quit Usage
+    of "nim": compilerPrefix = p.val.string
+    of "directory":
+      setCurrentDir(p.val.string)
+    of "colors":
+      if p.val.string == "on":
+        useColors = true
+      elif p.val.string == "off":
+        useColors = false
+      else:
+        quit Usage
+    else:
+      quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
   var action = p.key.string.normalize

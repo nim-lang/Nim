@@ -12,13 +12,13 @@ let t4 = (v2 mod 2'u64).uint64 # works
 # bug #2550
 
 var x: uint # doesn't work
-echo x mod 2 == 0
+doAssert x mod 2 == 0
 
 var y: uint64 # doesn't work
-echo y mod 2 == 0
+doAssert y mod 2 == 0
 
 var z: uint32 # works
-echo z mod 2 == 0
+doAssert z mod 2 == 0
 
 var a: int # works
-echo a mod 2 == 0
+doAssert a mod 2 == 0

@@ -210,7 +210,7 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
 proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
-  ## If an error occurs EOS will be raised.
+  ## If an error occurs OSError will be raised.
   let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
@@ -221,7 +221,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
                 protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket.
   ##
-  ## If an error occurs EOS will be raised.
+  ## If an error occurs OSError will be raised.
   let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
@@ -229,7 +229,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
 
 proc parseIPv4Address(addressStr: string): IpAddress =
   ## Parses IPv4 adresses
-  ## Raises EInvalidValue on errors
+  ## Raises ValueError on errors
   var
     byteCount = 0
     currentByte:uint16 = 0
@@ -263,7 +263,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
 
 proc parseIPv6Address(addressStr: string): IpAddress =
   ## Parses IPv6 adresses
-  ## Raises EInvalidValue on errors
+  ## Raises ValueError on errors
   result.family = IpAddressFamily.IPv6
   if addressStr.len < 2:
     raise newException(ValueError, "Invalid IP Address")
@@ -384,7 +384,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
 
 proc parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
-  ## Raises EInvalidValue on error
+  ## Raises ValueError on error
   if addressStr.len == 0:
     raise newException(ValueError, "IP Address string is empty")
   if addressStr.contains(':'):
@@ -746,7 +746,7 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
   ##
-  ## Raises an EOS error upon failure.
+  ## Raises an OSError error upon failure.
   if nativesockets.listen(socket.fd, backlog) < 0'i32:
     raiseOSError(osLastError())
 
@@ -777,7 +777,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
   ## of the connecting client.
-  ## This function will raise EOS if an error occurs.
+  ## This function will raise OSError if an error occurs.
   ##
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
@@ -983,7 +983,7 @@ when defined(ssl):
     ## Returns ``False`` whenever the socket is not yet ready for a handshake,
     ## ``True`` whenever handshake completed successfully.
     ##
-    ## A ESSL error is raised on any other errors.
+    ## A SslError error is raised on any other errors.
     ##
     ## **Note:** This procedure is deprecated since version 0.14.0.
     result = true
@@ -1011,7 +1011,7 @@ when defined(ssl):
     ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
     ##
-    ## Throws ESSL if ``socket`` is not an SSL socket.
+    ## Throws SslError if ``socket`` is not an SSL socket.
     if socket.isSSL:
       return not socket.sslNoHandshake
     else:
@@ -1203,7 +1203,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
   ##
   ## When ``""`` is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs.
+  ## This function will throw an OSError exception when an error occurs.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified an ETimeout exception will be raised.
@@ -1244,7 +1244,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
-  ## An EOS exception will be raised in the case of a socket error.
+  ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
@@ -1299,7 +1299,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ##
   ## If the socket is disconnected, the result will be set to ``""``.
   ##
-  ## An EOS exception will be raised in the case of a socket error.
+  ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
@@ -1317,7 +1317,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## Receives data from ``socket``. This function should normally be used with
   ## connection-less sockets (UDP sockets).
   ##
-  ## If an error occurs an EOS exception will be raised. Otherwise the return
+  ## If an error occurs an OSError exception will be raised. Otherwise the return
   ## value will be the length of data received.
   ##
   ## **Warning:** This function does not yet have a buffered implementation,
@@ -1390,7 +1390,7 @@ template `&=`*(socket: Socket; data: typed) =
   send(socket, data)
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
-  ## Safe alternative to ``send``. Does not raise an EOS when an error occurs,
+  ## Safe alternative to ``send``. Does not raise an OSError when an error occurs,
   ## and instead returns ``false`` on failure.
   result = send(socket, cstring(data), data.len) == data.len
 

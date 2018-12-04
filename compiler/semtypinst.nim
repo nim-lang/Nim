@@ -69,7 +69,7 @@ proc cacheTypeInst*(inst: PType) =
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
-  gt.sym.typeInstCache.safeAdd(inst)
+  gt.sym.typeInstCache.add(inst)
 
 
 type
@@ -233,7 +233,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
-  result = copySym(s, false)
+  result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner

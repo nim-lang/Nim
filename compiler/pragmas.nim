@@ -38,7 +38,7 @@ const
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
-  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNosideeffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
     wWarnings, wHints,
@@ -855,8 +855,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         sym.flags.incl sfOverriden
       of wNosideeffect:
         noVal(c, it)
-        incl(sym.flags, sfNoSideEffect)
-        if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
+        if sym != nil:
+          incl(sym.flags, sfNoSideEffect)
+          if sym.typ != nil: incl(sym.typ.flags, tfNoSideEffect)
       of wSideeffect:
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
@@ -949,10 +950,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         recordPragma(c, it, "warning", s)
         message(c.config, it.info, warnUser, s)
       of wError:
-        if sym != nil and (sym.isRoutine or sym.kind == skType):
+        if sym != nil and (sym.isRoutine or sym.kind == skType) and wUsed in validPragmas:
           # This is subtle but correct: the error *statement* is only
-          # allowed for top level statements. Seems to be easier than
-          # distinguishing properly between
+          # allowed when 'wUsed' is not in validPragmas. Here this is the easiest way to
+          # distinguish properly between
           # ``proc p() {.error}`` and ``proc p() = {.error: "msg".}``
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfError)
@@ -1019,8 +1020,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: incl(sym.typ.flags, tfIncompleteStruct)
       of wUnchecked:
         noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfUncheckedArray)
+        if sym.typ == nil or sym.typ.kind notin {tyArray, tyUncheckedArray}:
+          invalidPragma(c, it)
+        else:
+          sym.typ.kind = tyUncheckedArray
       of wUnion:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
@@ -1060,6 +1063,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           invalidPragma(c, it)
         else:
           sym.bitsize = expectIntLit(c, it)
+          if sym.bitsize <= 0:
+            localError(c.config, it.info, "bitsize needs to be positive")
       of wGuard:
         if sym == nil or sym.kind notin {skVar, skLet, skField}:
           invalidPragma(c, it)
@@ -1106,10 +1111,19 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym.kind in {skVar,skLet,skParam,skField,skProc,skFunc,skConverter,skMethod,skType}:
+    elif sym != nil and sym.kind in {skVar, skLet, skParam, skField, skProc,
+                                     skFunc, skConverter, skMethod, skType}:
       n.sons[i] = semCustomPragma(c, it)
-    else:
+    elif sym != nil:
       illegalCustomPragma(c, it, sym)
+    else:
+      invalidPragma(c, it)
+
+proc mergePragmas(n, pragmas: PNode) =
+  if n[pragmasPos].kind == nkEmpty:
+    n[pragmasPos] = pragmas
+  else:
+    for p in pragmas: n.sons[pragmasPos].add p
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
@@ -1119,11 +1133,12 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       if not o.isNil:
         pushInfoContext(c.config, n.info)
         var i = 0
-        while i < o.len():
+        while i < o.len:
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
+        if sym.kind in routineKinds: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, n.info, ".dynlib requires .exportc")

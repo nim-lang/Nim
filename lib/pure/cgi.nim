@@ -147,6 +147,12 @@ proc readData*(allowedMethods: set[RequestMethod] =
   for name, value in decodeData(allowedMethods):
     result[name.string] = value.string
 
+proc readData*(data: string): StringTableRef =
+  ## Read CGI data from a string.
+  result = newStringTable()
+  for name, value in decodeData(data):
+    result[name.string] = value.string
+
 proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
   ## validates data; raises `ECgi` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.

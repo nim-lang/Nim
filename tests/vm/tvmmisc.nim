@@ -1,7 +1,6 @@
 # bug #4462
 import macros
 import os
-import ospaths
 import strutils
 
 block:

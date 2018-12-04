@@ -46,8 +46,6 @@ type
     data: seq[T]
     rd, wr, count, mask: int
 
-{.deprecated: [TQueue: Queue].}
-
 proc initQueue*[T](initialSize: int = 4): Queue[T] =
   ## Create a new queue.
   ## Optionally, the initial capacity can be reserved via `initialSize` as a

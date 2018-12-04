@@ -6,15 +6,17 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-## Nim coroutines implementation supports several context switching methods:
-## ucontext: available on unix and alike (default)
-## setjmp:   available on unix and alike (x86/64 only)
-## Fibers:   available and required on windows.
+## Nim coroutines implementation, supports several context switching methods:
+## --------  ------------
+## ucontext  available on unix and alike (default)
+## setjmp    available on unix and alike (x86/64 only)
+## fibers    available and required on windows.
+## --------  ------------
 ##
-## -d:nimCoroutines              Required to build this module.
-## -d:nimCoroutinesUcontext      Use ucontext backend.
-## -d:nimCoroutinesSetjmp        Use setjmp backend.
-## -d:nimCoroutinesSetjmpBundled Use bundled setjmp implementation.
+## -d:nimCoroutines               Required to build this module.
+## -d:nimCoroutinesUcontext       Use ucontext backend.
+## -d:nimCoroutinesSetjmp         Use setjmp backend.
+## -d:nimCoroutinesSetjmpBundled  Use bundled setjmp implementation.
 
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
@@ -105,7 +107,7 @@ elif coroBackend == CORO_BACKEND_SETJMP:
     # Use setjmp/longjmp implementation provided by the system.
     type
       JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
-    
+
     proc setjmp(ctx: var JmpBuf): int {.importc, header: "<setjmp.h>".}
     proc longjmp(ctx: JmpBuf, ret=1) {.importc, header: "<setjmp.h>".}
 
@@ -241,7 +243,7 @@ proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discarda
   ## Schedule coroutine for execution. It does not run immediately.
   if ctx == nil:
     initialize()
-  
+
   var coro: CoroutinePtr
   when coroBackend == CORO_BACKEND_FIBERS:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
@@ -287,7 +289,7 @@ proc run*() =
     if current.state == CORO_FINISHED:
       var next = ctx.current.prev
       if next == nil:
-        # If first coroutine ends then `prev` is nil even if more coroutines 
+        # If first coroutine ends then `prev` is nil even if more coroutines
         # are to be scheduled.
         next = ctx.current.next
       current.reference.coro = nil

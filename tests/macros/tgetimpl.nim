@@ -1,7 +1,7 @@
 discard """
-  msg: '''"muhaha"
+  nimout: '''"muhaha"
 proc poo(x, y: int) =
-  let y = x 
+  let y = x
   echo ["poo"]'''
 """
 
@@ -16,14 +16,13 @@ proc poo(x, y: int) =
 
 macro m(x: typed): untyped =
   echo repr x.getImpl
-  result = x
 
-discard m foo
-discard m poo
+m(foo)
+m(poo)
 
 #------------
 
-macro checkOwner(x: typed, check_id: static[int]): untyped = 
+macro checkOwner(x: typed, check_id: static[int]): untyped =
   let sym = case check_id:
     of 0: x
     of 1: x.getImpl.body[0][0][0]
@@ -32,11 +31,11 @@ macro checkOwner(x: typed, check_id: static[int]): untyped =
     else: x
   result = newStrLitNode($sym.owner.symKind)
 
-macro isSameOwner(x, y: typed): untyped = 
-  result = 
+macro isSameOwner(x, y: typed): untyped =
+  result =
     if x.owner == y.owner: bindSym"true"
     else: bindSym"false"
-    
+
 
 static:
   doAssert checkOwner(foo, 0) == "nskModule"
@@ -47,3 +46,22 @@ static:
   doAssert isSameOwner(foo, poo)
   doAssert isSameOwner(foo, echo) == false
   doAssert isSameOwner(poo, len) == false
+
+#---------------------------------------------------------------
+
+macro check_gen_proc(ex: typed): (bool, bool) =
+  let lenChoice = bindsym"len"
+  var is_equal = false 
+  var is_instance_of = false 
+  for child in lenChoice:
+    if not is_equal:
+      is_equal = ex[0] == child
+    if not is_instance_of:
+      is_instance_of = isInstantiationOf(ex[0], child)
+         
+  result = nnkTupleConstr.newTree(newLit(is_equal), newLit(is_instance_of))
+
+# check that len(seq[int]) is not equal to bindSym"len", but is instance of it
+let a = @[1,2,3]
+assert: check_gen_proc(len(a)) == (false, true)
+

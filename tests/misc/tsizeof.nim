@@ -10,14 +10,16 @@ type
   TMyArray2 = array[1..3, int32]
   TMyArray3 = array[TMyEnum, float64]
 
+var failed = false
+
 const
   mysize1 = sizeof(TMyArray1)
   mysize2 = sizeof(TMyArray2)
   mysize3 = sizeof(TMyArray3)
 
-assert mysize1 == 3
-assert mysize2 == 12
-assert mysize3 == 32
+doAssert mysize1 == 3
+doAssert mysize2 == 12
+doAssert mysize3 == 32
 
 import macros, typetraits
 
@@ -38,6 +40,7 @@ macro testSizeAlignOf(args: varargs[untyped]): untyped =
         if nim_align != c_align:
           msg.add  " align(get, expected): " & $nim_align & " != " & $c_align
         echo msg
+        failed = true
 
 
 macro testOffsetOf(a,b1,b2: untyped): untyped =
@@ -48,7 +51,8 @@ macro testOffsetOf(a,b1,b2: untyped): untyped =
       c_offset   = c_offsetof(`a`,`b1`)
       nim_offset = offsetof(`a`,`b2`)
     if c_offset != nim_offset:
-      echo `typeName`, ".", `member`, " offset: ", c_offset, " != ", nim_offset
+      echo `typeName`, ".", `member`, " offsetError, C: ", c_offset, " nim: ", nim_offset
+      failed = true
 
 template testOffsetOf(a,b: untyped): untyped =
   testOffsetOf(a,b,b)
@@ -100,21 +104,16 @@ macro testAlign(arg:untyped):untyped =
     let nimAlign = alignof(`arg`)
     if cAlign != nimAlign:
       echo `prefix`, cAlign, " != ", nimAlign
+      failed = true
 
-testAlign(pointer)
-testAlign(int)
-testAlign(uint)
-testAlign(int8)
-testAlign(int16)
-testAlign(int32)
-testAlign(int64)
-testAlign(uint8)
-testAlign(uint16)
-testAlign(uint32)
-testAlign(uint64)
-testAlign(float)
-testAlign(float32)
-testAlign(float64)
+macro testSize(arg:untyped):untyped =
+  let prefix = newLit(arg.lineinfo & "  sizeof " & arg.repr & " ")
+  result = quote do:
+    let cSize = c_sizeof(`arg`)
+    let nimSize = sizeof(`arg`)
+    if cSize != nimSize:
+      echo `prefix`, cSize, " != ", nimSize
+      failed = true
 
 type
   MyEnum {.pure.} = enum
@@ -142,14 +141,6 @@ type
     ValueA
     ValueB
 
-testAlign(MyEnum)
-testAlign(OtherEnum)
-testAlign(Enum1)
-testAlign(Enum2)
-testAlign(Enum4)
-testAlign(Enum8)
-
-
 template testinstance(body: untyped): untyped =
   block:
     {.pragma: objectconfig.}
@@ -158,6 +149,32 @@ template testinstance(body: untyped): untyped =
   block:
     {.pragma: objectconfig, packed.}
     body
+
+
+proc testPrimitiveTypes(): void =
+  testAlign(pointer)
+  testAlign(int)
+  testAlign(uint)
+  testAlign(int8)
+  testAlign(int16)
+  testAlign(int32)
+  testAlign(int64)
+  testAlign(uint8)
+  testAlign(uint16)
+  testAlign(uint32)
+  testAlign(uint64)
+  testAlign(float)
+  testAlign(float32)
+  testAlign(float64)
+
+  testAlign(MyEnum)
+  testAlign(OtherEnum)
+  testAlign(Enum1)
+  testAlign(Enum2)
+  testAlign(Enum4)
+  testAlign(Enum8)
+
+testPrimitiveTypes()
 
 testinstance:
   type
@@ -274,8 +291,6 @@ testinstance:
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
-  testAlign(SimpleAlignment)
-
   proc main(): void =
     var t : TrivialType
     var a : SimpleAlignment
@@ -286,6 +301,7 @@ testinstance:
     var f : PaddingAfterBranch
     var g : RecursiveStuff
     var ro : RootObj
+
     var
       e1: Enum1
       e2: Enum2
@@ -295,7 +311,19 @@ testinstance:
       eoa: EnumObjectA
       eob: EnumObjectB
 
+
+    testAlign(SimpleAlignment)
+
     testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+
+    when not defined(cpp):
+      type
+        WithBitsize {.objectconfig.} = object
+          bitfieldA {.bitsize: 16.}: uint32
+          bitfieldB {.bitsize: 16.}: uint32
+
+      var wbs: WithBitsize
+      testSize(wbs)
 
     testOffsetOf(TrivialType, x)
     testOffsetOf(TrivialType, y)
@@ -304,6 +332,7 @@ testinstance:
     testOffsetOf(SimpleAlignment, a)
     testOffsetOf(SimpleAlignment, b)
     testOffsetOf(SimpleAlignment, c)
+
     testOffsetOf(AlignAtEnd, a)
     testOffsetOf(AlignAtEnd, b)
     testOffsetOf(AlignAtEnd, c)
@@ -322,11 +351,11 @@ testinstance:
 
     testOffsetOf(Foobar, c)
 
-    testOffsetOf(Bazing, a)
-
-    testOffsetOf(InheritanceA, a)
-    testOffsetOf(InheritanceB, b)
-    testOffsetOf(InheritanceC, c)
+    when not defined(cpp):
+      testOffsetOf(Bazing, a)
+      testOffsetOf(InheritanceA, a)
+      testOffsetOf(InheritanceB, b)
+      testOffsetOf(InheritanceC, c)
 
     testOffsetOf(EnumObjectA, a)
     testOffsetOf(EnumObjectA, b)
@@ -350,5 +379,22 @@ testinstance:
 
   main()
 
+{.emit: """/*TYPESECTION*/
+typedef struct{
+  float a; float b;
+} Foo;
+""".}
 
-echo "OK"
+type
+  Foo {.importc.} = object
+
+  Bar = object
+    b: byte
+    foo: Foo
+
+assert sizeof(Bar) == 12
+
+if failed:
+  quit("FAIL")
+else:
+  echo "OK"

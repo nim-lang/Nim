@@ -41,8 +41,13 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
+    let sonType = n.sons[0].typ
+    let sonKind = n.sons[0].kind
+    if isEmptyType(sonType) or sonType.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
       localError(c.config, n.info, errInvalidDiscard)
+    if sonType.kind == tyProc and sonKind notin nkCallKinds:
+      # tyProc is disallowed to prevent ``discard foo`` to be valid, when ``discard foo()`` is meant.
+      localError(c.config, n.info, "illegal discard proc, did you mean: " & $n[0] & "()")
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
   result = n
@@ -61,12 +66,12 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         incl(s.flags, sfUsed)
         n.sons[0] = x
         suggestSym(c.config, x.info, s, c.graph.usageSym)
-        styleCheckUse(x.info, s)
+        onUse(x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
     else:
       localError(c.config, n.info, errGenerated, "'continue' cannot have a label")
-  elif (c.p.nestedLoopCounter <= 0) and (c.p.nestedBlockCounter <= 0):
+  elif (c.p.nestedLoopCounter <= 0) and ((c.p.nestedBlockCounter <= 0) or n.kind == nkContinueStmt):
     localError(c.config, n.info, errInvalidControlFlowX %
                renderTree(n, {renderNoComments}))
 
@@ -318,7 +323,6 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
   suggestSym(c.config, n.info, result, c.graph.usageSym)
-  styleCheckDef(c.config, result)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
@@ -359,6 +363,8 @@ proc semUsing(c: PContext; n: PNode): PNode =
       let typ = semTypeNode(c, a.sons[length-2], nil)
       for j in countup(0, length-3):
         let v = semIdentDef(c, a.sons[j], skParam)
+        styleCheckDef(c.config, v)
+        onDef(a[j].info, v)
         v.typ = typ
         strTableIncl(c.signatures, v)
     else:
@@ -489,6 +495,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, a)
         continue
       var v = semIdentDef(c, a.sons[j], symkind)
+      styleCheckDef(c.config, v)
+      onDef(a[j].info, v)
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addInterfaceDecl(c, v)
       when oKeepVariableNames:
@@ -542,6 +550,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind != nkConstDef: illFormedAst(a, c.config)
     checkSonsLen(a, 3, c.config)
     var v = semIdentDef(c, a.sons[0], skConst)
+    styleCheckDef(c.config, v)
+    onDef(a[0].info, v)
     var typ: PType = nil
     if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
 
@@ -585,6 +595,7 @@ proc symForVar(c: PContext, n: PNode): PSym =
   let m = if n.kind == nkPragmaExpr: n.sons[0] else: n
   result = newSymG(skForVar, m, c)
   styleCheckDef(c.config, result)
+  onDef(n.info, result)
   if n.kind == nkPragmaExpr:
     pragma(c, result, n.sons[1], forVarPragmas)
 
@@ -690,7 +701,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
   if r.state == csMatch:
     var match = r.calleeSym
     markUsed(c.config, n[0].info, match, c.graph.usageSym)
-    styleCheckUse(n[0].info, match)
+    onUse(n[0].info, match)
 
     # but pass 'n' to the 'match' macro, not 'n[0]':
     r.call.sons[1] = n
@@ -873,6 +884,8 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         let typsym = pkg.tab.strTableGet(typName)
         if typsym.isNil:
           s = semIdentDef(c, name[1], skType)
+          styleCheckDef(c.config, s)
+          onDef(name[1].info, s)
           s.typ = newTypeS(tyObject, c)
           s.typ.sym = s
           s.flags.incl sfForward
@@ -886,6 +899,8 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
           s = typsym
     else:
       s = semIdentDef(c, name, skType)
+      styleCheckDef(c.config, s)
+      onDef(name.info, s)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
       if name.kind == nkPragmaExpr:
@@ -1328,8 +1343,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       pushProcCon(c, s)
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
-      let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+      s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+      trackProc(c.graph, s, s.ast[bodyPos])
       popProcCon(c)
     elif efOperand notin flags:
       localError(c.config, n.info, errGenericLambdaNotAllowed)
@@ -1369,8 +1384,8 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   pushProcCon(c, s)
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
-  let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+  s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+  trackProc(c.graph, s, s.ast[bodyPos])
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1517,7 +1532,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
                                       tyAlias, tySink})
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
-          x.methods.safeAdd((col,s))
+          x.methods.add((col,s))
     if not foundObj:
       message(c.config, n.info, warnDeprecated, "generic method not attachable to object type")
   else:
@@ -1616,6 +1631,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       pragma(c, s, n.sons[pragmasPos], validPragmas)
     else:
       implicitPragmas(c, s, n, validPragmas)
+    styleCheckDef(c.config, s)
+    onDef(n[namePos].info, s)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, s, n.sons[pragmasPos], validPragmas)
@@ -1628,6 +1645,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
         localError(c.config, n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
           ("'" & proto.name.s & "' from " & c.config$proto.info))
+    styleCheckDef(c.config, s)
+    onDefResolveForward(n[namePos].info, proto)
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     excl(proto.flags, sfForward)
@@ -1660,7 +1679,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       localError(c.config, n.info, "the overloaded " & s.name.s &
         " operator has to be enabled with {.experimental: \"callOperator\".}")
 
-  if n.sons[bodyPos].kind != nkEmpty:
+  if n.sons[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:
       localError(c.config, n.sons[bodyPos].info, errImplOfXNotAllowed % s.name.s)
@@ -1683,10 +1702,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
         if lfDynamicLib notin s.loc.flags:
           # no semantic checking for importc:
-          let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+          s.ast[bodyPos] = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          n.sons[bodyPos] = transformBody(c.graph, c.module, semBody, s)
+          trackProc(c.graph, s, s.ast[bodyPos])
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
@@ -1841,7 +1860,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
-    of wLocks, wGcSafe:
+    of wLocks, wGcSafe, wNosideeffect:
       result = n
       result.typ = n.sons[1].typ
     of wNoRewrite:

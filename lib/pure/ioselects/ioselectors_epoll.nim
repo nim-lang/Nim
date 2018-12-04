@@ -383,14 +383,14 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if (pevents and EPOLLERR) != 0 or (pevents and EPOLLHUP) != 0:
         if (pevents and EPOLLHUP) != 0:
-          rkey.errorCode = ECONNRESET.OSErrorCode
+          rkey.errorCode = OSErrorCode ECONNRESET
         else:
           # Try reading SO_ERROR from fd.
           var error: cint
-          var size = sizeof(error).SockLen
-          if getsockopt(fdi.SocketHandle, SOL_SOCKET, SO_ERROR, addr(error),
+          var size = SockLen sizeof(error)
+          if getsockopt(SocketHandle fdi, SOL_SOCKET, SO_ERROR, addr(error),
                         addr(size)) == 0'i32:
-            rkey.errorCode = error.OSErrorCode
+            rkey.errorCode = OSErrorCode error
 
         rkey.events.incl(Event.Error)
       if (pevents and EPOLLOUT) != 0:

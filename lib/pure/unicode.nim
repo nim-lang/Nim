@@ -18,8 +18,6 @@ type
   Rune* = distinct RuneImpl   ## type that can hold any Unicode character
   Rune16* = distinct int16 ## 16 bit Unicode character
 
-{.deprecated: [TRune: Rune, TRune16: Rune16].}
-
 proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
 proc `<%`*(a, b: Rune): bool = return int(a) <% int(b)
 proc `==`*(a, b: Rune): bool = return int(a) == int(b)
@@ -213,6 +211,10 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   result = ""
   fastToUTF8Copy(c, result, 0, false)
 
+proc add*(s: var string; c: Rune) =
+  let pos = s.len
+  fastToUTF8Copy(c, s, pos, false)
+
 proc `$`*(rune: Rune): string =
   ## Converts a Rune to a string
   rune.toUTF8
@@ -220,7 +222,8 @@ proc `$`*(rune: Rune): string =
 proc `$`*(runes: seq[Rune]): string =
   ## Converts a sequence of Runes to a string
   result = ""
-  for rune in runes: result.add(rune.toUTF8)
+  for rune in runes:
+    result.add rune
 
 proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## Returns the byte position of unicode character
@@ -228,7 +231,7 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   ## returns the special value -1 if it runs out of the string
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   var
     i = 0
@@ -244,7 +247,7 @@ proc runeAtPos*(s: string, pos: int): Rune =
   ## Returns the unicode character at position pos
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
@@ -252,7 +255,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
   ## Returns the unicode character at position pos as UTF8 String
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   let o = runeOffset(s, pos)
   s[o.. (o+runeLenAt(s, o)-1)]
@@ -266,7 +269,7 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
   ## satisfy the request.
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
-  ## Most problems are solve more efficient by using an iterator
+  ## Most problems can be solved more efficiently by using an iterator
   ## or conversion to a seq of Rune.
   var
     a = rev.int
@@ -1938,9 +1941,9 @@ proc strip*(s: string, leading = true, trailing = true,
         e_i = l_i - 1
         break
       dec(i)
-  let newLen = e_i - s_i
+  let newLen = e_i - s_i + 1
   result = newStringOfCap(newLen)
-  if e_i > s_i:
+  if newLen > 0:
     result.add s[s_i .. e_i]
 
 proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
@@ -1963,12 +1966,12 @@ proc align*(s: string, count: Natural, padding = ' '.Rune): string {.
   ## returned unchanged. If you need to left align a string use the `alignLeft
   ## proc <#alignLeft>`_.
   runnableExamples:
-     assert align("abc", 4) == " abc"
-     assert align("a", 0) == "a"
-     assert align("1232", 6) == "  1232"
-     assert align("1232", 6, '#'.Rune) == "##1232"
-     assert align("Åge", 5) == "  Åge"
-     assert align("×", 4, '_'.Rune) == "___×"
+    assert align("abc", 4) == " abc"
+    assert align("a", 0) == "a"
+    assert align("1232", 6) == "  1232"
+    assert align("1232", 6, '#'.Rune) == "##1232"
+    assert align("Åge", 5) == "  Åge"
+    assert align("×", 4, '_'.Rune) == "___×"
 
   let sLen = s.runeLen
   if sLen < count:
@@ -2158,6 +2161,9 @@ when isMainModule:
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
 
   block stripTests:
+    doAssert(strip("") == "")
+    doAssert(strip(" ") == "")
+    doAssert(strip("y") == "y")
     doAssert(strip("  foofoofoo  ") == "foofoofoo")
     doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
 

@@ -32,7 +32,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils
+  intsets, cgmeth, lowerings, sighashes, lineinfos, rodutils, pathutils, transf
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -1903,6 +1903,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, n.sons[1], x)
       useMagic(p, "nimCopy")
       r.res = "nimCopy(null, $1, $2)" % [x.rdLoc, genTypeInfo(p, n.typ)]
+  of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
@@ -2181,7 +2182,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  p.nested: genStmt(p, prc.getBody)
+  let transformed_body = transformBody(oldProc.module.graph, prc, cache = false)
+  p.nested: genStmt(p, transformed_body)
 
   var def: Rope
   if not prc.constraint.isNil:
@@ -2438,7 +2440,8 @@ proc genModule(p: PProc, n: PNode) =
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
-  genStmt(p, n)
+  let n_transformed = transformStmt(p.module.graph, p.module.module, n)
+  genStmt(p, n_transformed)
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
 

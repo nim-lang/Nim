@@ -33,8 +33,6 @@ type
     root: Node[T]
     count: int
 
-{.deprecated: [TCritBitTree: CritBitTree].}
-
 proc len*[T](c: CritBitTree[T]): int =
   ## returns the number of elements in `c` in O(1).
   result = c.count

@@ -45,15 +45,6 @@ type
 
   SomeLinkedNode*[T] = SinglyLinkedNode[T] | DoublyLinkedNode[T]
 
-{.deprecated: [TDoublyLinkedNode: DoublyLinkedNodeObj,
-    PDoublyLinkedNode: DoublyLinkedNode,
-    TSinglyLinkedNode: SinglyLinkedNodeObj,
-    PSinglyLinkedNode: SinglyLinkedNode,
-    TDoublyLinkedList: DoublyLinkedList,
-    TSinglyLinkedRing: SinglyLinkedRing,
-    TDoublyLinkedRing: DoublyLinkedRing,
-    TSinglyLinkedList: SinglyLinkedList].}
-
 proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   ## creates a new singly linked list that is empty.
   discard

@@ -547,7 +547,7 @@ proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
   ##
   ## The portion matched by ``sep`` is not returned.
   result = @[]
-  for x in split(s, sep): result.add x
+  for x in split(s, sep, maxsplit): result.add x
 
 proc escapeRe*(s: string): string =
   ## escapes ``s`` so that it is matched verbatim when used as a regular
@@ -636,6 +636,11 @@ when isMainModule:
   doAssert(accum == @["", "this", "is", "an", "example", ""])
 
   accum = @[]
+  for word in split("00232this02939is39an22example111", re"\d+", maxsplit=2):
+    accum.add(word)
+  doAssert(accum == @["", "this", "is39an22example111"])
+
+  accum = @[]
   for word in split("AAA :   : BBB", re"\s*:\s*"):
     accum.add(word)
   doAssert(accum == @["AAA", "", "BBB"])
@@ -647,6 +652,8 @@ when isMainModule:
   doAssert(split(";a;b;c", re";") == @["", "a", "b", "c"])
   doAssert(split(";a;b;c;", re";") == @["", "a", "b", "c", ""])
   doAssert(split("a;b;c;", re";") == @["a", "b", "c", ""])
+  doAssert(split("00232this02939is39an22example111", re"\d+", maxsplit=2) == @["", "this", "is39an22example111"])
+
 
   for x in findAll("abcdef", re"^{.}", 3):
     doAssert x == "d"

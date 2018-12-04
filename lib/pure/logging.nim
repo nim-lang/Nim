@@ -80,6 +80,7 @@ type
 
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
+    useStderr*: bool ## will send logs into Stderr if set 
 
 when not defined(js):
   type
@@ -150,16 +151,20 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       {.emit: "console.log(`cln`);".}
     else:
       try:
-        writeLine(stdout, ln)
-        if level in {lvlError, lvlFatal}: flushFile(stdout)
+        var handle = stdout
+        if logger.useStderr:
+          handle = stderr 
+        writeLine(handle, ln)
+        if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr, useStderr=false): ConsoleLogger =
   ## Creates a new console logger. This logger logs to the console.
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
+  result.useStderr = useStderr
 
 when not defined(js):
   method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =

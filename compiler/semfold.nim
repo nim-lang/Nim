@@ -267,12 +267,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mSubF64: result = newFloatNodeT(getFloat(a) - getFloat(b), n, g)
   of mMulF64: result = newFloatNodeT(getFloat(a) * getFloat(b), n, g)
   of mDivF64:
-    if getFloat(b) == 0.0:
-      if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n, g)
-      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n, g)
-      else: result = newFloatNodeT(Inf, n, g)
-    else:
-      result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
+    result = newFloatNodeT(getFloat(a) / getFloat(b), n, g)
   of mMaxF64:
     if getFloat(a) > getFloat(b): result = newFloatNodeT(getFloat(a), n, g)
     else: result = newFloatNodeT(getFloat(b), n, g)
@@ -420,7 +415,7 @@ proc rangeCheck(n: PNode, value: BiggestInt; g: ModuleGraph) =
     err = value < firstOrd(g.config, n.typ) or value > lastOrd(g.config, n.typ)
   if err:
     localError(g.config, n.info, "cannot convert " & $value &
-                                     " to " & typeToString(n.typ))
+                                    " to " & typeToString(n.typ))
 
 proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   let dstTyp = skipTypes(n.typ, abstractRange)

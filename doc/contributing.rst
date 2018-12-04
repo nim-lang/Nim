@@ -22,7 +22,7 @@ There are 3 types of tests:
 2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
-3. testament tests, eg: tests/stdlib/tospaths.nim (only used for Nim repo).
+3. testament tests, eg: tests/stdlib/tos.nim (only used for Nim repo).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -30,7 +30,7 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-If you change the stdlib (anything under ``lib/``, eg ``lib/pure/ospaths.nim``),
+If you change the stdlib (anything under ``lib/``, eg ``lib/pure/os.nim``),
 put a test in the file you changed. Add the tests under a ``when isMainModule:``
 condition so they only get executed when the tester is building the
 file. Each test should be in a separate ``block:`` statement, such that
@@ -53,7 +53,7 @@ Sample test:
       doAssert: not 1 == 2
 
 Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
-eg ``tests/stdlib/tospaths.nim``; this allows additional features such as custom
+eg ``tests/stdlib/tos.nim``; this allows additional features such as custom
 compiler flags; for more details see below.
 
 Compiler
@@ -197,7 +197,7 @@ as well as ``testament`` and guarantee they stay in sync.
 
      result = a & "Bar"
 
-See `parentDir <https://nim-lang.github.io/Nim/ospaths.html#parentDir%2Cstring>`_
+See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
 example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
@@ -248,13 +248,100 @@ or
 
 the first is preferred.
 
+Best practices
+=============
+
+Note: these are general guidelines, not hard rules; there are always exceptions.
+Code reviews can just point to a specific section here to save time and
+propagate best practices.
+
+.. _noimplicitbool:
+Take advantage of no implicit bool conversion
+
+.. code-block:: nim
+
+  doAssert isValid() == true
+  doAssert isValid() # preferred
+
+.. _immediately_invoked_lambdas:
+Immediately invoked lambdas (https://en.wikipedia.org/wiki/Immediately-invoked_function_expression)
+
+.. code-block:: nim
+
+  let a = (proc (): auto = getFoo())()
+  let a = block:  # preferred
+    getFoo()
+
+.. _design_for_mcs:
+Design with method call syntax (UFCS in other languages) chaining in mind
+
+.. code-block:: nim
+
+  proc foo(cond: bool, lines: seq[string]) # bad
+  proc foo(lines: seq[string], cond: bool) # preferred
+  # can be called as: `getLines().foo(false)`
+
+.. _avoid_quit:
+Use exceptions (including assert / doAssert) instead of ``quit``
+rationale: https://forum.nim-lang.org/t/4089
+
+.. code-block:: nim
+
+  quit() # bad in almost all cases
+  doAssert() # preferred
+
+.. _tests_use_doAssert:
+Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests.
+
+.. code-block:: nim
+
+  runnableExamples: assert foo() # bad
+  runnableExamples: doAssert foo() # preferred
+
+.. _delegate_printing:
+Delegate printing to caller: return ``string`` instead of calling ``echo``
+rationale: it's more flexible (eg allows caller to call custom printing,
+including prepending location info, writing to log files, etc).
+
+.. code-block:: nim
+
+  proc foo() = echo "bar" # bad
+  proc foo(): string = "bar" # preferred (usually)
+
+.. _use_Option:
+[Ongoing debate] Consider using Option instead of return bool + var argument,
+unless stack allocation is needed (eg for efficiency).
+
+.. code-block:: nim
+
+  proc foo(a: var Bar): bool
+  proc foo(): Option[Bar]
+
+.. _use_doAssert_not_echo:
+Tests (including in testament) should always prefer assertions over ``echo``,
+except when that's not possible. It's more precise, easier for readers and
+maintaners to where expected values refer to. See for example
+https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
+
+.. code-block:: nim
+
+  echo foo() # adds a line in testament `discard` block.
+  doAssert foo() == [1, 2] # preferred, except when not possible to do so.
+
 The Git stuff
 =============
 
 General commit rules
 --------------------
 
-1. All changes introduced by the commit (diff lines) must be related to the
+1. Bugfixes that should be backported to the latest stable release should
+   contain the string ``[backport]`` in the commit message! There will be an
+   outmated process relying on these. However, bugfixes also have the inherent
+   risk of causing regressions which are worse for a "stable, bugfixes-only"
+   branch, so in doubt, leave out the ``[backport]``. Standard library bugfixes
+   are less critical than compiler bugfixes.
+
+2. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
 
    If you change something unrelated to the subject parts of the file, because
@@ -264,7 +351,7 @@ General commit rules
    *Tip:* Never commit everything as is using ``git commit -a``, but review
    carefully your changes with ``git add -p``.
 
-2. Changes should not introduce any trailing whitespace.
+3. Changes should not introduce any trailing whitespace.
 
    Always check your changes for whitespace errors using ``git diff --check``
    or add following ``pre-commit`` hook:
@@ -274,7 +361,7 @@ General commit rules
       #!/bin/sh
       git diff --check --cached || exit $?
 
-3. Describe your commit and use your common sense.
+4. Describe your commit and use your common sense.
 
    Example Commit messages: ``Fixes #123; refs #124``
 
@@ -282,11 +369,44 @@ General commit rules
    close it when the PR is committed), wheres issue ``#124`` is referenced
    (eg: partially fixed) and won't close the issue when committed.
 
-4. Commits should be always be rebased against devel (so a fast forward
+5. Commits should be always be rebased against devel (so a fast forward
    merge can happen)
 
    eg: use ``git pull --rebase origin devel``. This is to avoid messing up
    git history, see `#8664 <https://github.com/nim-lang/Nim/issues/8664>`_ .
-   Exceptions should be very rare.
+   Exceptions should be very rare: when rebase gives too many conflicts, simply
+   squash all commits using the script shown in
+   https://github.com/nim-lang/Nim/pull/9356
+
+
+6. Do not mix pure formatting changes (eg whitespace changes, nimpretty) or
+   automated changes (eg nimfix) with other code changes: these should be in
+   separate commits (and the merge on github should not squash these into 1).
+
+
+Continuous Integration (CI)
+---------------------------
+
+1. Continuous Integration is by default run on every push in a PR; this clogs
+   the CI pipeline and affects other PR's; if you don't need it (eg for WIP or
+   documentation only changes), add ``[ci skip]`` to your commit message title.
+   This convention is supported by `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_
+
+
+2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+   waiting for CI to be green in that fork (fixing bugs as needed) before
+   opening your PR in original Nim repo, so as to reduce CI congestion. Same
+   applies for updates on a PR: you can test commits on a separate private
+   branch before updating the main PR.
+
+Code reviews
+------------
+
+1. Whenever possible, use github's new 'Suggested change' in code reviews, which
+   saves time explaining the change or applying it; see also
+   https://forum.nim-lang.org/t/4317
 
 .. include:: docstyle.rst
+
+

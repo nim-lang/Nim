@@ -23,3 +23,10 @@ when true:
   doAssert s == "fooabc"
 
   echo x
+
+  # casting an empty string as sequence with shallow() should not segfault
+  var s2: string
+  shallow(s2)
+  s2 &= "foo"
+  doAssert s2 == "foo"
+

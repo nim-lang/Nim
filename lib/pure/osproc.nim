@@ -15,7 +15,6 @@ include "system/inclrtl"
 import
   strutils, os, strtabs, streams, cpuinfo
 
-from ospaths import quoteShell, quoteShellWindows, quoteShellPosix
 export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):
@@ -65,6 +64,7 @@ const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
 proc execProcess*(command: string,
+                  workingDir: string = "",
                   args: openArray[string] = [],
                   env: StringTableRef = nil,
                   options: set[ProcessOption] = {poStdErrToStdOut,
@@ -121,7 +121,7 @@ proc startProcess*(command: string,
   ## invocation if possible as it leads to non portable software.
   ##
   ## Return value: The newly created process object. Nil is never returned,
-  ## but ``EOS`` is raised in case of an error.
+  ## but ``OSError`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[ProcessOption] = {
                poStdErrToStdOut, poUsePath}): Process {.
@@ -350,12 +350,13 @@ proc select*(readfds: var seq[Process], timeout = 500): int
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
+                   workingDir: string = "",
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
                                                    poEvalCommand}): TaintedString =
-    var p = startProcess(command, args=args, env=env, options=options)
+    var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
@@ -1324,6 +1325,12 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
   var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  close inputStream(p)
+
   result = (TaintedString"", -1)
   var line = newStringOfCap(120).TaintedString
   while true:

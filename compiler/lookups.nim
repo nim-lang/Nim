@@ -168,7 +168,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         localError(c.config, s.info, "implementation of '$1' expected" %
             getSymRepr(c.config, s))
       inc missingImpls
-    elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options:
+    elif {sfUsed, sfExported} * s.flags == {}:
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.

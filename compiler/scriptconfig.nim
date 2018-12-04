@@ -123,6 +123,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf setCommand:
     conf.command = a.getString 0
     let arg = a.getString 1
+    incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
       conf.projectName = arg
       let path =
@@ -158,6 +159,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
   rawMessage(conf, hintConf, scriptName.string)
+  let oldSymbolFiles = conf.symbolFiles
+  conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
@@ -183,3 +186,4 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.symbolFiles = oldSymbolFiles

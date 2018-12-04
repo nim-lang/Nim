@@ -1,12 +1,21 @@
 sudo: false
 language: c
-os:
-  - linux
-  - osx
+
 dist: trusty
 
-#matrix:
-#  allow_failures:
+matrix:
+  include:
+    - os: linux
+      env: NIM_COMPILE_TO_CPP=false
+
+    - os: osx
+      env: NIM_COMPILE_TO_CPP=false
+
+    - os: osx
+      env: NIM_COMPILE_TO_CPP=true
+
+  allow_failures:
+    - env: NIM_COMPILE_TO_CPP=true
 #    - os: osx
 
 addons:
@@ -33,7 +42,7 @@ before_script:
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
 script:
   - nim c koch
-  - ./koch boot
+  - env NIM_COMPILE_TO_CPP=false ./koch boot
   - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims

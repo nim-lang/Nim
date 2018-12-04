@@ -1,3 +1,6 @@
+discard """
+outputsub: "Number of parameters: 0"
+"""
 # Test the command line
 
 import

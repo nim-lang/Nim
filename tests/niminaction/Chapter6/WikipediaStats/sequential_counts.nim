@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import os, parseutils
 
 proc parse(line: string, domainCode, pageTitle: var string,

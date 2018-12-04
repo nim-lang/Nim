@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,

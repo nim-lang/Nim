@@ -16,7 +16,8 @@ import asyncfutures except callSoon
 import nativesockets, net, deques
 
 export Port, SocketFlag
-export asyncfutures, asyncstreams
+export asyncfutures except callSoon
+export asyncstreams
 
 #{.injectStmt: newGcInvariant().}
 
@@ -145,7 +146,9 @@ export asyncfutures, asyncstreams
 ##
 ## Futures should **never** be discarded. This is because they may contain
 ## errors. If you do not care for the result of a Future then you should
-## use the ``asyncCheck`` procedure instead of the ``discard`` keyword.
+## use the ``asyncCheck`` procedure instead of the ``discard`` keyword. Note
+## however that this does not wait for completion, and you should use
+## ``waitFor`` for that purpose.
 ##
 ## Examples
 ## --------
@@ -197,7 +200,7 @@ proc adjustTimeout(pollTimeout: int, nextTimer: Option[int]): int {.inline.} =
   if pollTimeout == -1: return
   result = min(pollTimeout, result)
 
-proc callSoon(cbproc: proc ()) {.gcsafe.}
+proc callSoon*(cbproc: proc ()) {.gcsafe.}
 
 proc initCallSoonProc =
   if asyncfutures.getCallSoonProc().isNil:
@@ -241,8 +244,6 @@ when defined(windows) or defined(nimdoc):
     AsyncEvent* = ptr AsyncEventImpl
 
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
-  {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
-                TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
@@ -1077,7 +1078,6 @@ else:
 
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
-  {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
@@ -1638,7 +1638,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
       return
     add(result, c)
 
-proc callSoon(cbproc: proc ()) =
+proc callSoon*(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
   getGlobalDispatcher().callbacks.addLast(cbproc)

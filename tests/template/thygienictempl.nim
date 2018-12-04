@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 
 var
   e = "abc"

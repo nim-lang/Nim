@@ -8,7 +8,7 @@
 
 
 from pcre import nil
-import nre.private.util
+import nre/private/util
 import tables
 from strutils import `%`
 from math import ceil
@@ -22,6 +22,12 @@ export options
 ## ============
 ##
 ## A regular expression library for Nim using PCRE to do the hard work.
+##
+## For documentation on how to write patterns, there exists `the official PCRE
+## pattern documentation
+## <https://www.pcre.org/original/doc/html/pcrepattern.html>`_. You can also
+## search the internet for a wide variety of third-party documentation and
+## tools.
 ##
 ## **Note**: If you love ``sequtils.toSeq`` we have bad news for you. This
 ## library doesn't work with it due to documented compiler limitations. As
@@ -70,7 +76,10 @@ type
     ## comment".``
     ##
     ## ``pattern: string``
-    ##     the string that was used to create the pattern.
+    ##     the string that was used to create the pattern. For details on how
+    ##     to write a pattern, please see `the official PCRE pattern
+    ##     documentation.
+    ##     <https://www.pcre.org/original/doc/html/pcrepattern.html>`_
     ##
     ## ``captureCount: int``
     ##     the number of captures that the pattern has.
@@ -126,6 +135,12 @@ type
     ## Convention <http://man7.org/linux/man-pages/man3/pcresyntax.3.html#NEWLINE_CONVENTION>`_
     ## sections of the `PCRE syntax
     ## manual <http://man7.org/linux/man-pages/man3/pcresyntax.3.html>`_.
+    ##
+    ## Some of these options are not part of PCRE and are converted by nre
+    ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
+    ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
+    ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
+    ## will need to pass these as seperate flags to PCRE.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -469,7 +484,8 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]](ceil(vecsize / 2).int)
+  # plus 1 because we need the ceiling, not the floor
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]]((vecsize + 1) div 2)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1

@@ -17,10 +17,10 @@ type
   TFilterKind* = enum
     filtNone, filtTemplate, filtReplace, filtStrip
   TParserKind* = enum
-    skinStandard, skinStrongSpaces, skinEndX
+    skinStandard, skinEndX
 
 const
-  parserNames*: array[TParserKind, string] = ["standard", "strongspaces",
+  parserNames*: array[TParserKind, string] = ["standard",
                                               "endx"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
                                               "strip"]
@@ -34,14 +34,14 @@ template config(p: TParsers): ConfigRef = p.parser.lex.config
 
 proc parseAll*(p: var TParsers): PNode =
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard:
     result = parser.parseAll(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
   case p.skin
-  of skinStandard, skinStrongSpaces:
+  of skinStandard:
     result = parser.parseTopLevelStmt(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
@@ -72,12 +72,16 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
       i = 0
       inc linenumber
     if i+1 < line.len and line[i] == '#' and line[i+1] == '?':
-      inc(i, 2)
-      while i < line.len and line[i] in Whitespace: inc(i)
-      var q: TParser
-      parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
-      result = parser.parseAll(q)
-      parser.closeParser(q)
+      when defined(nimpretty2):
+        # XXX this is a bit hacky, but oh well...
+        quit "can't nimpretty a source code filter"
+      else:
+        inc(i, 2)
+        while i < line.len and line[i] in Whitespace: inc(i)
+        var q: TParser
+        parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
+        result = parser.parseAll(q)
+        parser.closeParser(q)
     llStreamClose(s)
 
 proc getFilter(ident: PIdent): TFilterKind =
@@ -149,21 +153,23 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
   else: s = inputstream
   case p.skin
   of skinStandard, skinEndX:
-    parser.openParser(p.parser, fileIdx, s, cache, config, false)
-  of skinStrongSpaces:
-    parser.openParser(p.parser, fileIdx, s, cache, config, true)
+    parser.openParser(p.parser, fileIdx, s, cache, config)
 
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)
 
-proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
-  var
-    p: TParsers
-    f: File
+proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
+                   config: ConfigRef): bool =
+  var f: File
   let filename = toFullPathConsiderDirty(config, fileIdx)
   if not open(f, filename.string):
     rawMessage(config, errGenerated, "cannot open file: " & filename.string)
-    return
+    return false
   openParsers(p, fileIdx, llStreamOpen(f), cache, config)
-  result = parseAll(p)
-  closeParsers(p)
+  result = true
+
+proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode {.procvar.} =
+  var p: TParsers
+  if setupParsers(p, fileIdx, cache, config):
+    result = parseAll(p)
+    closeParsers(p)

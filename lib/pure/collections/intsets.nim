@@ -44,8 +44,6 @@ type
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-{.deprecated: [TIntSet: IntSet, TTrunk: Trunk, TTrunkSeq: TrunkSeq].}
-
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)

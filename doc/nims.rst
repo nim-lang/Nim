@@ -6,16 +6,32 @@ Strictly speaking, ``NimScript`` is the subset of Nim that can be evaluated
 by Nim's builtin virtual machine (VM). This VM is used for Nim's compiletime
 function evaluation features.
 
-You can use a ``<myproject>.nims`` file that simply contains Nim code
-controlling the compilation process. For a directory wide
-configuration, use ``config.nims`` instead of ``<myproject>.nims``.
+The ``nim`` executable processes the ``.nims`` configuration files in
+the following directories (in this order; later files overwrite
+previous settings):
+
+1) If environment variable ``XDG_CONFIG_HOME`` is defined,
+   ``$XDG_CONFIG_HOME/nim/config.nims`` or
+   ``~/.config/nim/config.nims`` (POSIX) or
+   ``%APPDATA%/nim/config.nims`` (Windows). This file can be skipped
+   with the ``--skipUserCfg`` command line option.
+2) ``$parentDir/config.nims`` where ``$parentDir`` stands for any
+   parent directory of the project file's path. These files can be
+   skipped with the ``--skipParentCfg`` command line option.
+3) ``$projectDir/config.nims`` where ``$projectDir`` stands for the
+   project's path. This file can be skipped with the ``--skipProjCfg``
+   command line option.
+4) A project can also have a project specific configuration file named
+   ``$project.nims`` that resides in the same directory as
+   ``$project.nim``. This file can be skipped with the same
+   ``--skipProjCfg`` command line option.
 
 The VM cannot deal with ``importc`` because the FFI is not
 available. So the stdlib modules using ``importc`` cannot be used with
 Nim's VM. However, at least the following modules are available:
 
 * `macros <macros.html>`_
-* `ospaths <ospaths.html>`_
+* `os <os.html>`_
 * `strutils <strutils.html>`_
 * `math <math.html>`_
 * `distros <distros.html>`_
@@ -74,6 +90,7 @@ In fact, as a convention the following tasks should be available:
 =========     ===================================================
 Task          Description
 =========     ===================================================
+``help``      List all the available NimScript tasks along with their docstrings.
 ``build``     Build the project with the required
               backend (``c``, ``cpp`` or ``js``).
 ``tests``     Runs the tests belonging to the project.

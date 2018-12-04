@@ -1,11 +1,15 @@
+discard """
+action: compile
+"""
+
 #bug #712
 
 import tables
 
-proc test(): TTable[string, string] =
+proc test(): Table[string, string] =
   discard
 
-proc test2(): TTable[string, string] =
+proc test2(): Table[string, string] =
   discard
 
 var x = 5

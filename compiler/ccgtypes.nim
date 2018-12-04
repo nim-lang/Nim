@@ -492,7 +492,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
-      if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
+      if fieldType.kind == tyUncheckedArray:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
       elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:
@@ -546,7 +546,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
+          appcg(m, result, "~$1() {if(this->raiseId) popCurrentExceptionEx(this->raiseId);}$n", [name])
           # hack: forward declare popCurrentExceptionEx() on top of type description,
           # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
           # generated function will be below declared Exception type and circular dependency
@@ -1188,6 +1188,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
+    assert m.g.modules[owner.position] != nil
     discard genTypeInfo(m.g.modules[owner.position], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
@@ -1213,8 +1214,8 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       let x = fakeClosureType(m, t.owner)
       genTupleInfo(m, x, x, result, info)
   of tySequence:
+    genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC != gcDestructors:
-      genTypeInfoAux(m, t, t, result, info)
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])

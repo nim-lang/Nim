@@ -127,7 +127,6 @@ type
       marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
-{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
   proc initReprClosure(cl: var ReprClosure) =

@@ -1,3 +1,13 @@
+discard """
+output: '''
+proc Base
+proc Child
+method Base
+yield Base
+yield Child
+'''
+"""
+
 import typetraits
 
 type

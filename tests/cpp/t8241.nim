@@ -21,3 +21,12 @@ proc imported_func2*(a: cint): cstring {.importc, dynlib: findlib2().}
 
 echo imported_func(1)
 echo imported_func2(1)
+
+# issue #8946
+
+from json import JsonParsingError
+import marshal
+
+const nothing = ""
+doAssertRaises(JsonParsingError):
+  var bar = marshal.to[int](nothing)

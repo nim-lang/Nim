@@ -1,5 +1,5 @@
 discard """
-  file: "tclosure.nim"
+  target: "c"
   output: '''
 1 3 6 11 20 foo
 foo88

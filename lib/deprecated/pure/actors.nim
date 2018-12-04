@@ -111,7 +111,6 @@ type
     actors: seq[PActor[In, Out]]
     when Out isnot void:
       outputs: Channel[Out]
-{.deprecated: [TActorPool: ActorPool].}
 
 proc `^`*[T](f: ptr Channel[T]): T =
   ## alias for 'recv'.
