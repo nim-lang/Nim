@@ -773,7 +773,7 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.freeTemp(tmp)
 
 proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
-  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
+  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar, tyPointer}
   var signedIntegers = {tyInt8..tyInt32}
   var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
   let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
