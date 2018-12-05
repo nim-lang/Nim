@@ -670,7 +670,5 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   when defined(nimDebugDestroys):
     if true:
       echo "------------------------------------"
-      echo n
-      echo "-------"
       echo owner.name.s, " transformed to: "
       echo result
