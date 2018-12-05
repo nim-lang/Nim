@@ -620,7 +620,8 @@ proc p(n: PNode; c: var Con): PNode =
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ):
       result = moveOrCopy(n[0], n[1], c)
-      c.enableDestructor(n[0].sym)
+      c.enableDestructor(n[0].sym) # last read to sink argument could have disabled the destructor
+                                   # but the variable is assigned again and new value should be destroyed
     else:
       result = copyNode(n)
       recurse(n, result)
