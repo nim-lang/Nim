@@ -1,6 +1,6 @@
-< please delete these template lines>
-* see [guidelines for contributing](https://nim-lang.github.io/Nim/contributing.html)
-* If needed, update change.log.md (eg for breaking change, addition, other significant change)
-* Add '[ci-skip]' in commit msg to skip CI for commits that shouldn't require CI to run
-* Add 'refs #bugid' or 'fix #bugid' to either reference or fix #bugid in relevant commit messages (and if applicable in PR message for easy 1 click access)
------
+Tips for making a perfect PR (remove this message before submitting):
+
+* See [guidelines for contributing](https://nim-lang.github.io/Nim/contributing.html)
+* If needed, update changelog.md (e.g. for breaking change, addition, or other significant change)
+* Add '[ci-skip]' in commit msg to skip CI for commits that shouldn't require CI to run (in particular minor documentation changes like typo fixes)
+* Add 'refs #bugid' or 'fixes #bugid' to either reference or fix issues respectively one your PR is merged
