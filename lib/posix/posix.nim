@@ -823,6 +823,12 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
+proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_LEN*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
 const
   INVALID_SOCKET* = SocketHandle(-1)
 
