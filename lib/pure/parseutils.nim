@@ -129,8 +129,8 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseIdent*(s: string, start = 0): string =
-  ## parses an identifier and stores it in ``ident``.
-  ## Returns the parsed identifier or an empty string in case of an error.
+  ## parses an identifier and returns it or an empty string in
+  ## case of an error.
   result = ""
   var i = start
   if i < s.len and s[i] in IdentStartChars:
