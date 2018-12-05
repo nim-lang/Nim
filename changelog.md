@@ -85,7 +85,7 @@ proc enumToString*(enums: openArray[enum]): string =
   (default value: true) that can be set to `false` for better Posix
   interoperability. (Bug #9619.)
 
-- The `sequtils.map` proc has been removed.
+- The `map[T](s: var openArray[T], op: proc (x: var T)` proc has been removed.
   Use the ``apply`` proc instead.
 
 - The `sequtils.mapIt(s, typ, op: untyped)` template has been removed.
