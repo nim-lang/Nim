@@ -128,8 +128,8 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     topLevelVars: PNode
-    destroys: OrderedTable[int, tuple[enabled: bool, destroy_call: PNode]] # Symbol to destructor table
-    toDropBit: Table[int, PSym]
+    destroys: OrderedTable[int, tuple[enabled: bool, dropBit: PSym, destroy_call: PNode]] 
+                                 # Symbol to destructor call table
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -323,11 +323,11 @@ proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
 proc dropBit(c: var Con; s: PSym): PSym =
-  result = c.toDropBit.getOrDefault(s.id)
+  result = c.destroys.getOrDefault(s.id).dropBit
   assert result != nil
 
-proc addDestructor(c: var Con; s: PSym; destructor_call: PNode) = 
-  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (true, destructor_call))
+proc addDestructor(c: var Con; s: PSym; destructor_call: PNode, dropBit: PSym = nil) = 
+  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (true, dropBit, destructor_call))
   if alreadyIn:  
     let lineInfo = if s.ast != nil: s.ast.info else: c.owner.info
     internalError(c.graph.config, lineInfo, "Destructor call for sym " & s.name.s & " is already injected")
@@ -347,13 +347,12 @@ proc registerDropBit(c: var Con; s: PSym) =
   result.typ = getSysType(c.graph, s.info, tyBool)
   let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
   c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, c.emptyNode, trueVal)
-  c.toDropBit[s.id] = result
   # generate:
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
   let t = s.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   if t.destructor != nil:
     c.addDestructor(s, newTree(nkIfStmt,
-      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s))))
+      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s))), result)
    
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
@@ -638,8 +637,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   var c: Con
   c.owner = owner
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.toDropBit = initTable[int, PSym](16)
-  c.destroys = initOrderedTable[int, (bool, PNode)](16)
+  c.destroys = initOrderedTable[int, (bool, PSym, PNode)](16)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)

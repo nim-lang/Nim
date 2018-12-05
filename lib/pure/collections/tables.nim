@@ -248,7 +248,6 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   else:
     body2
 
-
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table ``t`` that belongs to the given ``key``.
   var h: Hash = genHash(key) and high(t.data)
