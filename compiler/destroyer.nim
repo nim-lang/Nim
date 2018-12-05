@@ -413,7 +413,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
   template pArgIfTyped(arg_part: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
-    if arg_part.typ == nil: copyTree(arg_part)
+    if arg_part.typ == nil: p(arg_part, c)
     else: pArg(arg_part, c, isSink)
   
   if isSink:
@@ -478,7 +478,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   template moveOrCopyIfTyped(ri_part: PNode): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
-    if ri_part.typ == nil: copyTree(ri_part)
+    if ri_part.typ == nil: p(ri_part, c)
     else: moveOrCopy(dest, ri_part, c)
 
   case ri.kind
@@ -537,29 +537,32 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result.add branch
   of nkBracket:
     # array constructor
+    result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 0..<ri.len:
       # everything that is passed to an array constructor is consumed,
       # so these all act like 'sink' parameters:
       ri2[i] = pArg(ri[i], c, isSink = true)
-    result = genSink(c, dest.typ, dest, ri2)
+    result.add ri2
   of nkObjConstr:
+    result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 1..<ri.len:
       # everything that is passed to an object constructor is consumed,
       # so these all act like 'sink' parameters:
-      ri2[i][1] = pArg(ri[i][1], c, isSink = true)
-    result = genSink(c, dest.typ, dest, ri2)
+      ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
+    result.add ri2
   of nkTupleConstr:
+    result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
     for i in 0..<ri.len:
       # everything that is passed to an tuple constructor is consumed,
       # so these all act like 'sink' parameters:
       if ri[i].kind == nkExprColonExpr:
-        ri2[i][1] = pArg(ri[i][1], c, isSink = true)
+        ri2[i].sons[1] = pArg(ri[i][1], c, isSink = true)
       else:
         ri2[i] = pArg(ri[i], c, isSink = true)
-    result = genSink(c, dest.typ, dest, ri2)
+    result.add ri2
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
@@ -639,8 +642,8 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
-  when false: # defined(nimDebugDestroys):
-    echo "injecting into ", n
+  #when true: # defined(nimDebugDestroys):
+  #  echo "injecting into ", n
   var c: Con
   c.owner = owner
   c.tmp = newSym(skTemp, getIdent(g.cache, ":d"), owner, n.info)
@@ -675,8 +678,10 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  when defined(nimDebugDestroys):
-    if true:
-      echo "------------------------------------"
-      echo owner.name.s, " transformed to: "
-      echo result
+  #when defined(nimDebugDestroys):
+  if true:
+    echo "------------------------------------"
+    echo n
+    echo "-------"
+    echo owner.name.s, " transformed to: "
+    echo result

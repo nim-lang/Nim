@@ -152,3 +152,12 @@ seq4 =
     else: 
       let (x1, x2, x3) = myfunc2(2, 3)
       x3
+
+
+#------------------------------------------------------------
+#-- Move into array constructor
+#------------------------------------------------------------
+
+var ii = 1
+let arr2 = [newMySeq(2, 5.0), if i > 1: newMySeq(3, 1.0) else: newMySeq(0, 0.0)]
+var seqOfSeq2 = @[newMySeq(2, 5.0), newMySeq(3, 1.0)]
