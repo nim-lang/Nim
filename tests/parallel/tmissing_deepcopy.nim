@@ -36,6 +36,6 @@ proc update =
     for i in 0 .. people.high:
       spawn people[i].greet()
 
-when isMainModule:
+when true:
   setup()
   update()

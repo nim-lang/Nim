@@ -11,5 +11,5 @@ type
 
 var console* {.importc.}: Console
 
-when isMainModule:
+when true:
   console.log "Hello, world"

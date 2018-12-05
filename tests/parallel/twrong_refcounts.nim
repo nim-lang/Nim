@@ -48,6 +48,6 @@ proc update =
 
 # ---
 
-when isMainModule:
+when true:
   setup()
   update()

@@ -1,9 +1,12 @@
 discard """
 output: '''
+tdiscardable
 1
 1
 '''
 """
+
+echo "tdiscardable"
 
 # Test the discardable pragma
 

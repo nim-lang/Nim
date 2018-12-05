@@ -3,7 +3,7 @@ discard """
 """
 import json, strutils, options, tables
 
-when isMainModule:
+when true:
   # Tests inspired by own use case (with some additional tests).
   # This should succeed.
   type

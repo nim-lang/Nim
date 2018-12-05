@@ -32,7 +32,7 @@ proc readPageCounts(filename: string) =
 
   echo("Most popular is: ", mostPopular)
 
-when isMainModule:
+when true:
   const file = "pagecounts-20160101-050000"
   let filename = getCurrentDir() / file
   readPageCounts(filename)

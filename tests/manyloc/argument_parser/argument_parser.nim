@@ -486,7 +486,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
     echo line
 
 
-when isMainModule:
+when true:
   # Simply tests code embedded in docs.
   let
     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)

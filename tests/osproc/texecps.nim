@@ -1,7 +1,3 @@
-discard """
-  output: ""
-"""
-
 import osproc, streams, strutils, os
 
 const NumberOfProcesses = 13
@@ -13,8 +9,7 @@ proc execCb(idx: int, p: Process) =
   if exitCode < len(gResults):
     gResults[exitCode] = p.outputStream.readAll.strip
 
-when isMainModule:
-
+when true:
   if paramCount() == 0:
     gResults = newSeq[string](NumberOfProcesses)
     var checks = newSeq[string](NumberOfProcesses)

@@ -252,7 +252,7 @@ template forwardPacketT*(typeName: expr): stmt {.dirty, immediate.} =
   proc `pack typeName`*(p: var typeName; s: PStream) =
     writeData(s, addr p, sizeof(p))
 
-when isMainModule:
+when true:
   type
     SomeEnum = enum
       A = 0'i8,

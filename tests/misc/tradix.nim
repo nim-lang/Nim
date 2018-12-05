@@ -1,5 +1,6 @@
 discard """
 output: '''
+start tradix.nim
 false
 false
 false
@@ -28,6 +29,8 @@ false
 ## another method to store an efficient array of pointers:
 ## We use a radix tree with node compression.
 ## There are two node kinds:
+
+echo "start tradix.nim"
 
 const BitsPerUnit = 8*sizeof(int)
 

@@ -663,7 +663,7 @@ proc mainRender() =
 proc readyMainState() =
   specInputClient.setActive()
 
-when isMainModule:
+when true:
   import parseopt
 
   localPlayer = newPlayer()

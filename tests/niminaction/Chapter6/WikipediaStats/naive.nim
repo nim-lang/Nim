@@ -29,5 +29,5 @@ proc parse(filename: string): tuple[projectName, pageTitle: string,
 
   file.close()
 
-when isMainModule:
+when true:
   echo parse(filename)

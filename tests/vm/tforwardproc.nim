@@ -14,4 +14,4 @@ proc initArray(): array[10, int] =
   for f in 0..<10:
     result[f] = 3
 
-when isMainModule: echo repr(someTable)
+when true: echo repr(someTable)

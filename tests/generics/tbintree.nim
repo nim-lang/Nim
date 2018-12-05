@@ -81,7 +81,7 @@ proc debug[T](a: PBinaryTree[T]) =
     echo a.data
     debug(a.ri)
 
-when isMainModule:
+when true:
   var
     root: PBinaryTree[string]
     x = newNode("hello")

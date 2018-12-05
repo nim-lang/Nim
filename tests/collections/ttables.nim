@@ -1,6 +1,6 @@
 discard """
 output: '''
-done
+done tableadds
 And we get here
 1
 2
@@ -17,7 +17,7 @@ block tableadds:
       tab.add "key", "value " & $i
 
   main()
-  echo "done"
+  echo "done tableadds"
 
 
 block tcounttable:
