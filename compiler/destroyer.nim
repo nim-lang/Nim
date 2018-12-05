@@ -100,12 +100,12 @@ Rule      Pattern                 Transformed into
                                   finally: `=destroy`(x)
 1.2       var x: sink T; stmts    var x: sink T; stmts; ensureEmpty(x)
 2         x = f()                 `=sink`(x, f())
-3         x = lastReadOf z        `=sink`(x, z); wasMoved(z)
+3         x = lastReadOf z        `=sink`(x, z);
 4.1       y = sinkParam           `=sink`(y, sinkParam)
 4.2       x = y                   `=`(x, y) # a copy
 5.1       f_sink(g())             f_sink(g())
 5.2       f_sink(y)               f_sink(copy y); # copy unless we can see it's the last read
-5.3       f_sink(move y)          f_sink(y); wasMoved(y) # explicit moves empties 'y'
+5.3       f_sink(move y)          f_sink(y); # explicit moves empties 'y'
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
 Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
@@ -116,7 +116,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, tables, modulegraphs,
+  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns
 
 const
@@ -127,20 +127,13 @@ type
     owner: PSym
     g: ControlFlowGraph
     jumpTargets: IntSet
-    tmpObj: PType
-    tmp: PSym
-    destroys, topLevelVars: PNode
+    topLevelVars: PNode
+    destroys: OrderedTable[int, tuple[enabled: bool, destroy_call: PNode]] # Symbol to destructor table
     toDropBit: Table[int, PSym]
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
 
-proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
-  # XXX why are temps fields in an object here?
-  let f = newSym(skField, getIdent(c.graph.cache, ":d" & $c.tmpObj.n.len), c.owner, info)
-  f.typ = typ
-  rawAddField c.tmpObj, f
-  result = rawDirectAccess(c.tmp, f)
 
 proc isHarmlessVar*(s: PSym; c: Con): bool =
   # 's' is harmless if it used only once and its
@@ -333,6 +326,22 @@ proc dropBit(c: var Con; s: PSym): PSym =
   result = c.toDropBit.getOrDefault(s.id)
   assert result != nil
 
+proc addDestructor(c: var Con; s: PSym; destructor_call: PNode) = 
+  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (true, destructor_call))
+  if alreadyIn:  
+    let lineInfo = if s.ast != nil: s.ast.info else: c.owner.info
+    internalError(c.graph.config, lineInfo, "Destructor call for sym " & s.name.s & " is already injected")
+
+proc disableDestructor(c: var Con; s: PSym) = 
+  ## disable destructor, but do not delete such that it can be enabled back again later
+  c.destroys.with_value(s.id, value):
+    value.enabled = false
+
+proc enableDestructor(c: var Con; s: PSym) = 
+  ## if destructor does not exist then ignore, otherwise make sure destructor is enabled
+  c.destroys.with_value(s.id, value):
+    value.enabled = true
+
 proc registerDropBit(c: var Con; s: PSym) =
   let result = newSym(skTemp, getIdent(c.graph.cache, s.name.s & "_AliveBit"), c.owner, s.info)
   result.typ = getSysType(c.graph, s.info, tyBool)
@@ -343,8 +352,14 @@ proc registerDropBit(c: var Con; s: PSym) =
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
   let t = s.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   if t.destructor != nil:
-    c.destroys.add newTree(nkIfStmt,
-      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s)))
+    c.addDestructor(s, newTree(nkIfStmt,
+      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s))))
+   
+proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
+  sym.typ = typ
+  result = newSymNode(sym)
+  c.addTopVar(result)
 
 proc p(n: PNode; c: var Con): PNode
 
@@ -370,31 +385,6 @@ proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result.add(newSymNode(createMagic(c.graph, magicname, m)))
   result.add n
 
-proc genWasMoved(n: PNode; c: var Con): PNode =
-  # The mWasMoved builtin does not take the address.
-  result = genMagicCall(n, c, "wasMoved", mWasMoved)
-
-proc destructiveMoveVar(n: PNode; c: var Con): PNode =
-  # generate: (let tmp = v; reset(v); tmp)
-  # XXX: Strictly speaking we can only move if there is a ``=sink`` defined
-  # or if no ``=sink`` is defined and also no assignment.
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-
-  var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
-  temp.typ = n.typ
-  var v = newNodeI(nkLetSection, n.info)
-  let tempAsNode = newSymNode(temp)
-
-  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
-  vpart.sons[0] = tempAsNode
-  vpart.sons[1] = c.emptyNode
-  vpart.sons[2] = n
-  add(v, vpart)
-
-  result.add v
-  result.add genWasMoved(n, c)
-  result.add tempAsNode
-
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -415,7 +405,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     # typ is nil if we are in if/case expr branch with noreturn
     if arg_part.typ == nil: p(arg_part, c)
     else: pArg(arg_part, c, isSink)
-  
+
   if isSink:
     if arg.kind in nkCallKinds:
       # recurse but skip the call expression in order to prevent
@@ -431,9 +421,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result = arg
     elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
       # if x is a variable and it its last read we eliminate its
-      # destructor invokation, but don't. We need to reset its memory
-      # to disable its destructor which we have not elided:
-      result = destructiveMoveVar(arg, c)
+      # destructor invocation
+      c.disableDestructor(arg.sym)
+      result = arg
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # mark the sink parameter as used:
       result = destructiveMoveSink(arg, c)
@@ -566,9 +556,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkSym:
     if ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      var snk = genSink(c, dest.typ, dest, ri)
-      snk.add p(ri, c)
-      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
+      result = genSink(c, dest.typ, dest, ri)
+      result.add p(ri, c)
     elif isSinkParam(ri.sym):
       result = genSink(c, dest.typ, dest, ri)
       result.add destructiveMoveSink(ri, c)
@@ -599,7 +588,7 @@ proc p(n: PNode; c: var Con): PNode =
           # move the variable declaration to the top of the frame:
           c.addTopVar v
           # make sure it's destroyed at the end of the proc:
-          c.destroys.add genDestroy(c, v.typ, v)
+          c.addDestructor(v.sym, genDestroy(c, v.typ, v))
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -625,12 +614,13 @@ proc p(n: PNode; c: var Con): PNode =
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp
-      c.destroys.add genDestroy(c, n.typ, tmp)
+      c.addDestructor(tmp.sym, genDestroy(c, n.typ, tmp))
     else:
       result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ):
       result = moveOrCopy(n[0], n[1], c)
+      c.enableDestructor(n[0].sym)
     else:
       result = copyNode(n)
       recurse(n, result)
@@ -646,12 +636,9 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   #  echo "injecting into ", n
   var c: Con
   c.owner = owner
-  c.tmp = newSym(skTemp, getIdent(g.cache, ":d"), owner, n.info)
-  c.tmpObj = createObj(g, owner, n.info)
-  c.tmp.typ = c.tmpObj
-  c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.toDropBit = initTable[int, PSym]()
+  c.toDropBit = initTable[int, PSym](16)
+  c.destroys = initOrderedTable[int, (bool, PNode)](16)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
@@ -668,13 +655,15 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       let param = params[i].sym
       if param.typ.kind == tySink: registerDropBit(c, param)
   let body = p(n, c)
-  if c.tmp.typ.n.len > 0:
-    c.addTopVar(newSymNode c.tmp)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    result.add newTryFinally(body, c.destroys)
+    var destroy_list = newNodeI(nkStmtList, n.info)
+    for val in c.destroys.values:
+      if val.enabled:
+        destroy_list.add val.destroy_call
+    result.add newTryFinally(body, destroy_list)
   else:
     result.add body
 

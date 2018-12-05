@@ -1901,13 +1901,6 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
 proc skipAddr(n: PNode): PNode =
   result = if n.kind in {nkAddr, nkHiddenAddr}: n[0] else: n
 
-proc genWasMoved(p: BProc; n: PNode) =
-  var a: TLoc
-  initLocExpr(p, n[1].skipAddr, a)
-  resetLoc(p, a)
-  #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-  #  addrLoc(p.config, a), getTypeDesc(p.module, a.t))
-
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d)
   var a: TLoc
@@ -2046,7 +2039,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     initLocExpr(p, e.sons[2], b)
     genDeepCopy(p, a, b)
   of mDotDot, mEqCString: genCall(p, e, d)
-  of mWasMoved: genWasMoved(p, e)
   of mMove: genMove(p, e, d)
   of mDestroy: discard "ignore calls to the default destructor"
   of mSlice:

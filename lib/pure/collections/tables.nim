@@ -248,6 +248,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   else:
     body2
 
+
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table ``t`` that belongs to the given ``key``.
   var h: Hash = genHash(key) and high(t.data)
@@ -878,6 +879,51 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   ## deletes ``key`` from ordered hash table ``t``. O(n) complexity.  Does nothing
   ## if the key does not exist.
   t[].del(key)
+
+
+template withValue*[A, B](t: var OrderedTable[A, B], key: A, value, body: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## ``value`` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   orderedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body
+
+template withValue*[A, B](t: var OrderedTable[A, B], key: A,
+                          value, body1, body2: untyped) =
+  ## retrieves the value at ``t[key]``.
+  ## ``value`` can be modified in the scope of the ``withValue`` call.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   orderedTable.withValue(key, value) do:
+  ##     # block is executed only if ``key`` in ``t``
+  ##     value.name = "username"
+  ##     value.uid = 1000
+  ##   do:
+  ##     # block is executed when ``key`` not in ``t``
+  ##     raise newException(KeyError, "Key not found")
+  ##
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  let hasKey = index >= 0
+  if hasKey:
+    var value {.inject.} = addr(t.data[index].val)
+    body1
+  else:
+    body2
 
 # ------------------------------ count tables -------------------------------
 
