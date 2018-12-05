@@ -497,25 +497,33 @@ proc internalErrorFlag*(): string {.magic: "NError", noSideEffect.}
   ## Some builtins set an error flag. This is then turned into a proper
   ## exception. **Note**: Ordinary application code should not call this.
 
+proc indent(s: string, prefix: string): string =
+  # Avoids `strutils.indent` dependency
+  result.add prefix
+  for ai in s:
+    result.add ai
+    if ai == '\n': result.add prefix
+
+template handleParseError() =
+  let x = internalErrorFlag()
+  if x.len > 0:
+    var msg = "parse error: "
+    msg.addQuoted x
+    msg.add " with:\n"
+    msg.add s.indent ">"
+    raise newException(ValueError, msg)
+
 proc parseExpr*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression. Raises ``ValueError`` for parsing errors.
   result = internalParseExpr(s)
-  let x = internalErrorFlag()
-  if x.len > 0: raise newException(ValueError, x)
+  handleParseError()
 
 proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
   result = internalParseStmt(s)
-  let x = internalErrorFlag()
-  if x.len > 0:
-    var msg = "internalError: "
-    msg.addQuoted x
-    msg.add "\ns:\n------\n"
-    msg.add s
-    msg.add "\n------"
-    raise newException(ValueError, msg)
+  handleParseError()
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
