@@ -553,6 +553,8 @@ proc main() =
   var r = initResults()
   case action
   of "all":
+    doAssert runJoinedTest()
+
     let testsDir = "tests" & DirSep
     var myself = quoteShell(findExe("testament" / "tester"))
     if targetsStr.len > 0:
@@ -573,7 +575,7 @@ proc main() =
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string)
+    processCategory(r, cat, p.cmdLineRest.string, runJoinableTests = false)
   of "r", "run":
     let (dir, file) = splitPath(p.key.string)
     let (_, subdir) = splitPath(dir)
@@ -582,7 +584,7 @@ proc main() =
   of "html":
     generateHtml(resultsFile, optFailing)
   of "stats":
-    runJoinedTest()
+    discard runJoinedTest()
   else:
     quit Usage
 
