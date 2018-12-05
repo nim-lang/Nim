@@ -1268,7 +1268,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     x.add(prc)
 
     # recursion assures that this works for multiple macro annotations too:
-    var r = semOverloadedCall(c, x, x, {skMacro}, {efNoUndeclared})
+    var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
     if r == nil:
       # Restore the old list of pragmas since we couldn't process this
       prc.sons[pragmasPos] = n
