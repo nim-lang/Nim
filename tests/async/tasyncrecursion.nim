@@ -15,7 +15,7 @@ proc asyncRecursionTest*(): Future[int] {.async.} =
     inc(result, await asyncRecursionCycle(i))
     inc(i)
 
-when isMainModule:
+when true:
   setGlobalDispatcher(newDispatcher())
   var i = waitFor asyncRecursionTest()
   echo i

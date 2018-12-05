@@ -37,7 +37,7 @@ proc createMessage*(username, message: string): string =
     "message": %message
   }) & "\c\l"
 
-when isMainModule:
+when true:
   block:
     let data = """{"username": "dom", "message": "hello"}"""
     let parsed = parseMessage(data)

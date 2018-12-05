@@ -12,5 +12,5 @@ type
 
 var foo {.threadvar.}: CircAlloc[1,Job]
 
-when isMainModule:
+when true:
   echo foo.index

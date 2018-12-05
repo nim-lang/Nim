@@ -156,7 +156,7 @@ proc poll*(timeout: int = 250) =
       echo("Write ", c, " result: ", res, " data: ", repr(c.outputBuf.data))
       c.outputBuf.flush()
 
-when isMainModule:
+when true:
   import parseopt, matchers, strutils
   var cfgFile = "dirserver_settings.json"
   for kind, key, val in getOpt():

@@ -36,7 +36,7 @@ proc pointlessWrapper(s: string): Data =
 proc main =
   var x = pointlessWrapper"test"
 
-when isMainModule:
+when true:
   main()
 
 # bug #985

@@ -340,6 +340,6 @@ macro tmpl*(body: untyped): untyped =
 
 
 # Run tests
-when isMainModule:
+when true:
     include otests
     echo "Success"

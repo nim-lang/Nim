@@ -79,5 +79,5 @@ proc readChunks(filename: string, chunksize = 1000000): Stats =
   file.close()
 
 
-when isMainModule:
+when true:
   echo readChunks(filename)

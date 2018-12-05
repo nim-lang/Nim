@@ -15,7 +15,7 @@ type
 proc mult(x:int, y:var int) =
   y = 2 * x
 
-when isMainModule:
+when true:
 
   var input = 1
   var output = 0

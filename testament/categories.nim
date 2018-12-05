@@ -579,7 +579,8 @@ const specialCategories = [
   "niminaction",
   "rodfiles",
   "threads",
-  "untestable"
+  "untestable",
+  "stdlib",
 ]
 
 
@@ -598,9 +599,18 @@ const specialDisabedTests = [
   "tests/system/t7894.nim",          # causes out of memory in later tests
   "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
   "tests/pragmas/tused.nim",         # paths in nimout differ when imported
+  "tests/generics/trtree.nim",       # very very ugly test
+  "tests/array/tarray.nim",          #
+  "tests/osproc/texecps.nim",        # uses getAppFileName() to start itself with arguments
+  "tests/destructor/turn_destroy_into_finalizer.nim", # fails when imported
+  "tests/osproc/texitsignal.nim",    # uses getAppFileName() to start itself with arguments
 ]
 
 proc isJoinableSpec(spec: TSpec): bool =
+
+  if spec.sortoutput:
+    return false
+
   if spec.action != actionRun:
     return false
 
@@ -678,24 +688,63 @@ proc runJoinedTest(): bool =
   else:
     echo "nimout FAIL"
 
-  (buf, exitCode) = execCmdEx2("./megatest", [], {}, "")
+  (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
   if exitCode != 0:
     quit("megatest execution failed")
 
   echo "run ok"
 
-  var outputOK = true
-  for runSpec in specs:
+
+  writeFile("outputGotten.txt", buf)
+  var outputExpected = ""
+
+  var outputErrorCount = 0
+  var currentPos = 0
+
+  var lastLine = ""
+
+  # when a lot of output is skipped, this can be the cause why a later test fails.
+  var warnings = ""
+
+  for i, runSpec in specs:
+    outputExpected.add runSpec.output
+    if outputExpected[^1] != '\n':
+       outputExpected.add '\n'
+
     for line in runSpec.output.splitLines:
-      if buf.find(line) < 0:
-        echo "could not find: ", line
-        echo runSpec.file
-        outputOK = false
-  if outputOK:
+      if line != "":
+        #if line == "2":
+        #  echo "found the test: ", runSpec.file
+        let newPos = buf.find(line, currentPos)
+        if newPos < 0:
+          if outputErrorCount < 5:
+            echo "could not find:      ", line
+            echo "it could be, because the test failed, or too much output is discarded by a previous search in the output."
+            echo warnings
+            warnings.setLen 0
+
+            # don't spam too much of this
+            if outputErrorCount == 0:
+              echo "############"
+              echo buf[currentPos-200 ..< currentPos]
+              echo "| (", current_pos, ")"
+              echo buf[currentPos ..< min(currentPos+200, buf.len)]
+              echo "############"
+
+          inc outputErrorCount
+        else:
+          if currentPos + lastLine.len * 2 < newPos:
+            warnings.addLine "Warning long skip in search for: ", line
+            warnings.addLine "in test: ", runSpec.file
+          currentPos = newPos + line.len
+
+        lastLine = line
+  if outputErrorCount == 0:
     echo "output OK"
   else:
-    echo "output FAIL"
+    echo "output FAIL (", outputErrorCount, " errors)"
 
-  removeFile("megatest.nim")
+  writeFile("outputExpected.txt", outputExpected)
 
-  return nimoutOK and outputOK
+  # removeFile("megatest.nim")
+  return nimoutOK and outputErrorCount == 0

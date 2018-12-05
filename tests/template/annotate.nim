@@ -65,7 +65,7 @@ proc reindent*(value: string, preset_indent = 0): string =
 make([ html, xml, glsl, js, css, rst ])
 
 
-when isMainModule:
+when true:
     ## Test tags
 
     const script = js"""

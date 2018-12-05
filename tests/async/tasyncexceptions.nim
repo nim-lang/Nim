@@ -27,7 +27,7 @@ proc serve() {.async.} =
     var fut = await accept()
     await processClient(fut)
 
-when isMainModule:
+when true:
   proc main =
     var fut = serve()
     fut.callback =

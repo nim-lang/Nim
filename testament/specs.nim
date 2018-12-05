@@ -109,12 +109,11 @@ proc parseTargets*(value: string): set[TTarget] =
     of "js": result.incl(targetJS)
     else: echo "target ignored: " & v
 
-
-proc addLine(self: var string; a: string) =
+proc addLine*(self: var string; a: string) =
   self.add a
   self.add "\n"
 
-proc addLine(self: var string; a,b: string) =
+proc addLine*(self: var string; a,b: string) =
   self.add a
   self.add b
   self.add "\n"

@@ -16,7 +16,6 @@ action: compile
 """
 
 # bug #9764
-
 iterator s1(a:string): int = discard
 iterator s2(): int = discard
 template s3(): untyped = 123
