@@ -31,10 +31,18 @@ proc intLiteral(i: BiggestInt): Rope =
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
-  if ty == nil: internalError(p.config, n.info, "genLiteral: ty is nil")
   case n.kind
   of nkCharLit..nkUInt64Lit:
-    case skipTypes(ty, abstractVarRange).kind
+    var k: TTypeKind
+    if ty != nil:
+      k = skipTypes(ty, abstractVarRange).kind
+    else:
+      case n.kind
+      of nkCharLit: k = tyChar
+      of nkUInt64Lit: k = tyUInt64
+      of nkInt64Lit: k = tyInt64
+      else: k = tyNil # don't go into the case variant that uses 'ty'
+    case k
     of tyChar, tyNil:
       result = intLiteral(n.intVal)
     of tyBool:
@@ -46,8 +54,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       result = "(($1) $2)" % [getTypeDesc(p.module,
           ty), intLiteral(n.intVal)]
   of nkNilLit:
-    let t = skipTypes(ty, abstractVarRange)
-    if t.kind == tyProc and t.callConv == ccClosure:
+    let k = if ty == nil: tyPointer else: skipTypes(ty, abstractVarRange).kind
+    if k == tyProc and skipTypes(ty, abstractVarRange).callConv == ccClosure:
       let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
       result = p.module.tmpBase & rope(id)
       if id == p.module.labels:
@@ -59,7 +67,9 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    case skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
+    let k = if ty == nil: tyString
+            else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
+    case k
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
