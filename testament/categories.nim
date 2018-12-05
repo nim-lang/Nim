@@ -497,7 +497,9 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
     testSpec r, makeTest(test, options, cat), {target}
   else: echo "[Warning] - ", test, " test does not exist"
 
-proc processCategory(r: var TResults, cat: Category, options: string) =
+proc isJoinableSpec(spec: TSpec): bool
+
+proc processCategory(r: var TResults, cat: Category, options: string, runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
     when false:
@@ -549,7 +551,11 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   else:
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
-      testSpec r, makeTest(name, options, cat)
+      let test = makeTest(name, options, cat)
+      if runJoinableTests or not isJoinableSpec(test.spec):
+        testSpec r, test
+      else:
+        echo "filter out: ", test.name
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
@@ -594,75 +600,58 @@ const specialDisabedTests = [
   "tests/pragmas/tused.nim",         # paths in nimout differ when imported
 ]
 
-proc runJoinedTest(): void =
-  var specs: array[TTestAction, seq[TSpec]]
-  var specialTests = 0
-  var ignoredTests = 0
-  var specsWithCfg: seq[TSpec]
-  var specsWithCustomCmd: seq[TSpec]
-  var specsEarlyExit: seq[TSpec]
-  var specsWithInput: seq[TSpec]
-  var specsNonCtarget: seq[TSpec]
+proc isJoinableSpec(spec: TSpec): bool =
+  if spec.action != actionRun:
+    return false
+
+  if spec.file in specialDisabedTests:
+    return false
+
+  if fileExists(spec.file & ".cfg"):
+    return false
+
+  if fileExists(parentDir(spec.file) / "nim.cfg"):
+    return false
+
+  if spec.cmd != cmdTemplate():
+    return false
+
+  if spec.err == reIgnored:
+    return false
+
+  if spec.exitCode != 0:
+    return false
+
+  if spec.input != "":
+    return false
+
+  if spec.targets != {} and spec.targets != {targetC}:
+    return false
+
+  return true
+
+
+proc runJoinedTest(): bool =
+  ## returs a list of tests that have problems
+  var specs:seq[TSpec]
 
   for file in os.walkFiles("tests/*/t*.nim"):
-
     let a = find(file, '/') + 1
     let b = find(file, '/', a)
     let cat = file[a ..< b]
 
     if cat in specialCategories:
-      specialTests += 1
-      continue
-
-    if file in specialDisabedTests:
-      # a special ignore here.
       continue
 
     let spec = parseSpec(file)
 
-    #echo cat, ": ", file
-    if fileExists(file & ".cfg"):
-      specsWithCfg.add spec
-      continue
+    if isJoinableSpec(spec):
+      specs.add spec
 
-    if fileExists(parentDir(file) / "nim.cfg"):
-      specsWithCfg.add spec
-      continue
-
-    if spec.cmd != cmdTemplate():
-      specsWithCustomCmd.add spec
-      continue
-
-    if spec.err == reIgnored:
-      ignoredTests += 1
-      continue
-
-    if spec.exitCode != 0:
-      specsEarlyExit.add spec
-      continue
-
-    if spec.input != "":
-      specsWithInput.add spec
-      continue
-
-    if card(spec.targets) > 0 and spec.targets != {targetC}:
-      specsNonCtarget.add spec
-      continue
-
-    specs[spec.action].add spec
-
-  for action, specs in specs.pairs:
-    echo action, ": ", specs.len
-  echo "specsWithCfg: ", specsWithCfg.len
-  echo "specsWithCustomCmd: ", specsWithCustomCmd.len
-  echo "earlyExit: ", specsEarlyExit.len
-  echo "special: ", specialTests
-  echo "ignored: ", ignoredTests
-  echo "withInput: ", specsWithInput.len
-  echo "nonCtarget: ", specsNonCtarget.len
+  echo "joinable specs: ", specs.len
 
   var megatest: string
-  for runSpec in specs[actionRun]:
+  for runSpec in specs:
     megatest.add "import \""
     megatest.add runSpec.file
     megatest.add "\"\n"
@@ -677,7 +666,7 @@ proc runJoinedTest(): void =
   echo "compilation ok"
 
   var nimoutOK = true
-  for runSpec in specs[actionRun]:
+  for runSpec in specs:
     for line in runSpec.nimout.splitLines:
       if buf.find(line) < 0:
         echo "could not find: ", line
@@ -696,7 +685,7 @@ proc runJoinedTest(): void =
   echo "run ok"
 
   var outputOK = true
-  for runSpec in specs[actionRun]:
+  for runSpec in specs:
     for line in runSpec.output.splitLines:
       if buf.find(line) < 0:
         echo "could not find: ", line
@@ -708,3 +697,5 @@ proc runJoinedTest(): void =
     echo "output FAIL"
 
   removeFile("megatest.nim")
+
+  return nimoutOK and outputOK
