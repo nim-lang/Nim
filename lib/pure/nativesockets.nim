@@ -105,6 +105,7 @@ else:
     osInvalidSocket* = posix.INVALID_SOCKET
     nativeAfInet = posix.AF_INET
     nativeAfInet6 = posix.AF_INET6
+    nativeAfUnix = posix.AF_UNIX
 
 proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
@@ -482,7 +483,17 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
         raiseOSError(osLastError())
     setLen(result, len(cstring(result)))
   else:
+    when defined(posix):
+      if sockAddr.sa_family.cint == nativeAfUnix:
+        return "unix"
     raise newException(IOError, "Unknown socket family in getAddrString")
+
+when defined(posix) and not defined(nimdoc):
+  proc makeUnixAddr*(path: string): Sockaddr_un =
+    result.sun_family = AF_UNIX.uint16
+    if path.len >= Sockaddr_un_path_length:
+      raise newException(ValueError, "socket path too long")
+    copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
 proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
