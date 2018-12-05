@@ -3461,6 +3461,7 @@ when not defined(JS): #and not defined(nimscript):
       of 1: d = ze(cast[ptr int8](a +% n.offset)[])
       of 2: d = ze(cast[ptr int16](a +% n.offset)[])
       of 4: d = int(cast[ptr int32](a +% n.offset)[])
+      of 8: d = int(cast[ptr int64](a +% n.offset)[])
       else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
