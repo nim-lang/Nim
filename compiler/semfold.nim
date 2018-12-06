@@ -15,6 +15,8 @@ import
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
+import system/helpers2
+
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
@@ -489,11 +491,11 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
-      localError(g.config, n.info, "index out of bounds: " & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)+1) & $n)
   of nkBracket:
     idx = idx - firstOrd(g.config, x.typ)
     if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
-    else: localError(g.config, n.info, "index out of bounds: " & $n)
+    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len+1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < len(x.strVal):
@@ -501,7 +503,7 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
     elif idx == len(x.strVal) and optLaxStrings in g.config.options:
       discard
     else:
-      localError(g.config, n.info, "index out of bounds: " & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, len(x.strVal)-1) & $n)
   else: discard
 
 proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
