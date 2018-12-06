@@ -31,3 +31,5 @@ proc wordWrap2(s: string, maxLineWidth = 80,
   result = ""
   for word, isSep in tokenize2(s, seps):
     var w = 0
+
+stdout.write "\n"

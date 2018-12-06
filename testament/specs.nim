@@ -14,9 +14,6 @@ var compilerPrefix* = "compiler" / "nim"
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 
-proc cmdTemplate*(): string =
-  compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
-
 type
   TTestAction* = enum
     actionRun = "run"
@@ -70,6 +67,12 @@ type
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
 
+proc getCmd*(s: TSpec): string =
+  if s.cmd.len == 0:
+    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+  else:
+    result = s.cmd
+
 const
   targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
@@ -97,9 +100,6 @@ proc extractSpec(filename: string): string =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-proc defaultSpec*(): TSpec =
-  result.cmd = cmdTemplate()
-
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
     case v
@@ -119,7 +119,6 @@ proc addLine*(self: var string; a,b: string) =
   self.add "\n"
 
 proc parseSpec*(filename: string): TSpec =
-  result = defaultSpec()
   result.file = filename
   let specStr = extractSpec(filename)
   var ss = newStringStream(specStr)

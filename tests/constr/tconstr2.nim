@@ -18,5 +18,5 @@ const
     (s: "hi", x: 69, y: 45, z: 0.0, chars: {'a', 'b', 'c'}),
     (s: "hi", x: 69, y: 45, z: 1.0, chars: {'a'})]
 
-write(stdout, things[0].x)
+writeLine(stdout, things[0].x)
 #OUT 69

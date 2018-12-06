@@ -84,3 +84,5 @@ proc use(r: var TResource) =
 
 autoClose(r = openResource("test")):
   use r
+
+write stdout, "\n"

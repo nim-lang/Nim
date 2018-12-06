@@ -32,3 +32,5 @@ c.add('A', "12")
 c.add('B', "13")
 for k, v in items(c):
   stdout.write(" Key: ", $k, " value: ", v)
+
+stdout.write "\n"

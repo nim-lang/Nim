@@ -101,4 +101,6 @@ when true:
   for y in items(r2):
     stdout.write(y)
 
+  stdout.write "\n"
+
 #OUT helloworld99110223

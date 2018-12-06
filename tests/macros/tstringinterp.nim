@@ -70,3 +70,4 @@ var
   s2 = formatStyleInterpolation"Hello ${bob}, ${sum(alice.len, bob.len, 2)}$$"
 
 write(stdout, s1 & " | " & s2)
+write(stdout, "\n")

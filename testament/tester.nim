@@ -378,13 +378,13 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
 
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name, test.options, target,
+      var given = callCompiler(expected.getCmd, test.name, test.options, target,
         extraOptions=" --stdout --hint[Path]:off --hint[Processing]:off")
       compilerOutputTests(test, target, given, expected, r)
     of actionRun:
       # In this branch of code "early return" pattern is clearer than deep
       # nested conditionals - the empty rows in between to clarify the "danger"
-      var given = callCompiler(expected.cmd, test.name, test.options,
+      var given = callCompiler(expected.getCmd, test.name, test.options,
                                target)
 
       if given.err != reSuccess:
@@ -438,7 +438,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
                           bufB, reExitCodesDiffer)
         continue
 
-      if (expected.outputCheck == ocEqual  and expected.output !=  bufB) or
+      if (expected.outputCheck == ocEqual and expected.output != bufB) or
          (expected.outputCheck == ocSubstr and expected.output notin bufB):
         given.err = reOutputsDiffer
         r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
@@ -448,7 +448,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       continue
 
     of actionReject:
-      var given = callCompiler(expected.cmd, test.name, test.options,
+      var given = callCompiler(expected.getCmd, test.name, test.options,
                                target)
       cmpMsgs(r, expected, given, test, target)
       continue
@@ -458,7 +458,7 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
   let tname = test.name.addFileExt(".c")
   inc(r.total)
   maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, targetC)
+  var given = callCCompiler(getCmd(TSpec()), test.name & ".c", test.options, targetC)
   if given.err != reSuccess:
     r.addResult(test, targetC, "", given.msg, given.err)
   elif action == actionRun:
@@ -471,7 +471,7 @@ proc testExec(r: var TResults, test: TTest) =
   # runs executable or script, just goes by exit code
   inc(r.total)
   let (outp, errC) = execCmdEx(test.options.strip())
-  var given: TSpec = defaultSpec()
+  var given: TSpec
   if errC == 0:
     given.err = reSuccess
   else:
@@ -497,15 +497,9 @@ else:
     # array of modules disabled from compilation test of stdlib.
     disabledFiles = ["-"]
 
-
-
-
 include categories
 
-# proc runCaasTests(r: var TResults) =
-#   for test, output, status, mode in caasTestsRunner():
-#     r.addResult(test, "", output & "-> " & $mode,
-#                 if status: reSuccess else: reOutputsDiffer)
+const testsDir = "tests" & DirSep
 
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
@@ -556,9 +550,8 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    doAssert runJoinedTest()
+    doAssert runJoinedTest(testsDir)
 
-    let testsDir = "tests" & DirSep
     var myself = quoteShell(findExe("testament" / "tester"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
@@ -587,7 +580,7 @@ proc main() =
   of "html":
     generateHtml(resultsFile, optFailing)
   of "stats":
-    discard runJoinedTest()
+    discard runJoinedTest(testsDir)
   else:
     quit Usage
 

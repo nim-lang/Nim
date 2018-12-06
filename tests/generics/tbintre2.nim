@@ -25,3 +25,4 @@ for y in items(r2):
   stdout.write(y)
 
 #OUT helloworld99110223
+stdout.write "\n"

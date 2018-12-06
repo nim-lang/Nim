@@ -29,4 +29,5 @@ proc mypos(sub, s: string, start: int = 0): int =
 var sub = "hello"
 var s = "world hello"
 write(stdout, mypos(sub, s))
+write stdout, "\n"
 #OUT 6

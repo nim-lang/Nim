@@ -10,3 +10,5 @@ iterator iterAndZero(a: var openArray[int]): int =
 var x = [[1, 2, 3], [4, 5, 6]]
 for y in iterAndZero(x[0]): write(stdout, $y)
 #OUT 123
+
+write stdout, "\n"

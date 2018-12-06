@@ -10,6 +10,58 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+const
+  specialCategories = [
+    "assert",
+    "async",
+    "debugger",
+    "dll",
+    "examples",
+    "flags",
+    "gc",
+    "io",
+    "js",
+    "lib",
+    "longgc",
+    "manyloc",
+    "nimble-all",
+    "nimble-core",
+    "nimble-extra",
+    "niminaction",
+    "rodfiles",
+    "threads",
+    "untestable",
+    "stdlib",
+    "testdata",
+    "nimcache",
+    "coroutines",
+    "osproc"
+  ]
+
+
+# these tests still have bugs. At some point when the bugs are fixd
+# this should become empty.
+
+# exclude for various reasons
+const
+  specialDisabedTests = [
+    "tests/dir with space/tspace.nim", # can't import dir with spaces.
+    "tests/method/tmultim.nim",        # (77, 8) Error: method is not a base
+    "tests/system/talloc2.nim",        # too much memory
+    "tests/collections/ttables.nim",   # takes too long
+    "tests/system/tparams.nim",        # executes itself with parameters
+    "tests/stdlib/tquit.nim",          # not testing for obvious reasons
+    "tests/system/trealloc.nim",       # out of memory
+    "tests/system/t7894.nim",          # causes out of memory in later tests
+    "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
+    "tests/pragmas/tused.nim",         # paths in nimout differ when imported
+    "tests/generics/trtree.nim",       # very very ugly test
+    "tests/array/tarray.nim",          #
+    "tests/destructor/turn_destroy_into_finalizer.nim", # fails when imported
+    "tests/misc/tnew.nim",
+    "tests/misc/tcmdline.nim"
+  ]
+
 # included from tester.nim
 # ---------------- ROD file tests ---------------------------------------------
 
@@ -327,24 +379,15 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     let filename = "tests" / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
     doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
-
-
-
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
-
   let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
   testJS jsFile
-
   let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
   testCPP cppFile
 
-
 # ------------------------- manyloc -------------------------------------------
-#proc runSpecialTests(r: var TResults, options: string) =
-#  for t in ["lib/packages/docutils/highlite"]:
-#    testSpec(r, t, options)
 
 proc findMainFile(dir: string): string =
   # finds the file belonging to ".nim.cfg"; if there is no such file
@@ -382,20 +425,18 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
   for testFile in os.walkFiles(pattern):
     let name = extractFilename(testFile)
     if name notin disabledFiles:
-
-
       let contents = readFile(testFile).string
-
       var testObj = makeTest(testFile, options, cat)
       if "when isMainModule" notin contents:
         testObj.spec.action = actionCompile
       testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
-type PackageFilter = enum
-  pfCoreOnly
-  pfExtraOnly
-  pfAll
+type
+  PackageFilter = enum
+    pfCoreOnly
+    pfExtraOnly
+    pfAll
 
 var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
@@ -425,7 +466,6 @@ proc getPackageDir(package: string): string =
 
 iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
   let packageList = parseFile(packageIndex)
-
   for package in packageList.items():
     let
       name = package["name"].str
@@ -485,19 +525,28 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startswith(a): b else: a & b
 
-#proc `&?.`(a, b: string): string = # not used
-  # candidate for the stdlib?
-  #result = if a.endswith(b): a else: a & b
-
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
-
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
-  else: echo "[Warning] - ", test, " test does not exist"
+  else:
+    echo "[Warning] - ", test, " test does not exist"
 
-proc isJoinableSpec(spec: TSpec): bool
+proc isJoinableSpec(spec: TSpec): bool =
+  result = not spec.sortoutput and
+    spec.action == actionRun and
+    spec.file.replace('\\', '/') notin specialDisabedTests and
+    not fileExists(spec.file.changeFileExt("cfg")) and
+    not fileExists(parentDir(spec.file) / "nim.cfg") and
+    spec.cmd.len == 0 and
+    spec.err != reIgnored and
+    spec.exitCode == 0 and
+    spec.input.len == 0 and
+    spec.nimout.len == 0 and
+    spec.outputCheck != ocSubstr and
+    spec.ccodeCheck.len == 0 and
+    (spec.targets == {} or spec.targets == {targetC})
 
 proc processCategory(r: var TResults, cat: Category, options: string, runJoinableTests: bool) =
   case cat.string.normalize
@@ -560,133 +609,43 @@ proc processCategory(r: var TResults, cat: Category, options: string, runJoinabl
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
 
+proc norm(s: var string) =
+  while true:
+    let tmp = s.replace("\n\n", "\n")
+    if tmp == s: break
+    s = tmp
+  s = s.strip
 
-const specialCategories = [
-  "async",
-  "debugger",
-  "dll",
-  "examples",
-  "flags",
-  "gc",
-  "io",
-  "js",
-  "lib",
-  "longgc",
-  "manyloc",
-  "nimble-all",
-  "nimble-core",
-  "nimble-extra",
-  "niminaction",
-  "rodfiles",
-  "threads",
-  "untestable",
-  "stdlib",
-]
-
-
-# these tests still have bugs. At some point when the bugs are fixd
-# this should become empty.
-
-# exclude for various reasons
-const specialDisabedTests = [
-  "tests/dir with space/tspace.nim", # can't import dir with spaces.
-  "tests/method/tmultim.nim",        # (77, 8) Error: method is not a base
-  "tests/system/talloc2.nim",        # too much memory
-  "tests/collections/ttables.nim",   # takes too long
-  "tests/system/tparams.nim",        # executes itself with parameters
-  "tests/stdlib/tquit.nim",          # not testing for obvious reasons
-  "tests/system/trealloc.nim",       # out of memory
-  "tests/system/t7894.nim",          # causes out of memory in later tests
-  "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
-  "tests/pragmas/tused.nim",         # paths in nimout differ when imported
-  "tests/generics/trtree.nim",       # very very ugly test
-  "tests/array/tarray.nim",          #
-  "tests/osproc/texecps.nim",        # uses getAppFileName() to start itself with arguments
-  "tests/destructor/turn_destroy_into_finalizer.nim", # fails when imported
-  "tests/osproc/texitsignal.nim",    # uses getAppFileName() to start itself with arguments
-]
-
-proc isJoinableSpec(spec: TSpec): bool =
-
-  if spec.sortoutput:
-    return false
-
-  if spec.action != actionRun:
-    return false
-
-  if spec.file in specialDisabedTests:
-    return false
-
-  if fileExists(spec.file & ".cfg"):
-    return false
-
-  if fileExists(parentDir(spec.file) / "nim.cfg"):
-    return false
-
-  if spec.cmd != cmdTemplate():
-    return false
-
-  if spec.err == reIgnored:
-    return false
-
-  if spec.exitCode != 0:
-    return false
-
-  if spec.input != "":
-    return false
-
-  if spec.targets != {} and spec.targets != {targetC}:
-    return false
-
-  return true
-
-
-proc runJoinedTest(): bool =
+proc runJoinedTest(testsDir: string): bool =
   ## returs a list of tests that have problems
-  var specs:seq[TSpec]
+  var specs: seq[TSpec] = @[]
 
-  for file in os.walkFiles("tests/*/t*.nim"):
-    let a = find(file, '/') + 1
-    let b = find(file, '/', a)
-    let cat = file[a ..< b]
-
-    if cat in specialCategories:
-      continue
-
-    let spec = parseSpec(file)
-
-    if isJoinableSpec(spec):
-      specs.add spec
+  for kind, dir in walkDir(testsDir):
+    assert testsDir.startsWith(testsDir)
+    let cat = dir[testsDir.len .. ^1]
+    if kind == pcDir and cat notin specialCategories:
+      for file in os.walkFiles(testsDir / cat / "t*.nim"):
+        let spec = parseSpec(file)
+        if isJoinableSpec(spec):
+          specs.add spec
 
   echo "joinable specs: ", specs.len
 
   var megatest: string
   for runSpec in specs:
-    megatest.add "import \""
+    megatest.add "import r\""
     megatest.add runSpec.file
     megatest.add "\"\n"
 
   writeFile("megatest.nim", megatest)
 
-  let args = ["c", "-d:testing", "--gc:boehm", "megatest.nim"]
+  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
   var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
   if exitCode != 0:
+    echo buf
     quit("megatest compilation failed")
 
   echo "compilation ok"
-
-  var nimoutOK = true
-  for runSpec in specs:
-    for line in runSpec.nimout.splitLines:
-      if buf.find(line) < 0:
-        echo "could not find: ", line
-        echo runSpec.file
-        nimoutOK = false
-
-  if nimoutOK:
-    echo "nimout OK"
-  else:
-    echo "nimout FAIL"
 
   (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
   if exitCode != 0:
@@ -694,57 +653,20 @@ proc runJoinedTest(): bool =
 
   echo "run ok"
 
-
+  norm buf
   writeFile("outputGotten.txt", buf)
   var outputExpected = ""
-
-  var outputErrorCount = 0
-  var currentPos = 0
-
-  var lastLine = ""
-
-  # when a lot of output is skipped, this can be the cause why a later test fails.
-  var warnings = ""
-
   for i, runSpec in specs:
-    outputExpected.add runSpec.output
-    if outputExpected[^1] != '\n':
-       outputExpected.add '\n'
+    outputExpected.add runSpec.output.strip
+    outputExpected.add '\n'
+  norm outputExpected
 
-    for line in runSpec.output.splitLines:
-      if line != "":
-        #if line == "2":
-        #  echo "found the test: ", runSpec.file
-        let newPos = buf.find(line, currentPos)
-        if newPos < 0:
-          if outputErrorCount < 5:
-            echo "could not find:      ", line
-            echo "it could be, because the test failed, or too much output is discarded by a previous search in the output."
-            echo warnings
-            warnings.setLen 0
-
-            # don't spam too much of this
-            if outputErrorCount == 0:
-              echo "############"
-              echo buf[currentPos-200 ..< currentPos]
-              echo "| (", current_pos, ")"
-              echo buf[currentPos ..< min(currentPos+200, buf.len)]
-              echo "############"
-
-          inc outputErrorCount
-        else:
-          if currentPos + lastLine.len * 2 < newPos:
-            warnings.addLine "Warning long skip in search for: ", line
-            warnings.addLine "in test: ", runSpec.file
-          currentPos = newPos + line.len
-
-        lastLine = line
-  if outputErrorCount == 0:
-    echo "output OK"
+  if buf != outputExpected:
+    writeFile("outputExpected.txt", outputExpected)
+    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+    echo "output different!"
+    result = false
   else:
-    echo "output FAIL (", outputErrorCount, " errors)"
-
-  writeFile("outputExpected.txt", outputExpected)
-
-  # removeFile("megatest.nim")
-  return nimoutOK and outputErrorCount == 0
+    echo "output OK"
+    removeFile("megatest.nim")
+    result = true

@@ -10,3 +10,4 @@ for x in lines.split():
   stdout.write(x)
 
 #OUT abcxyz
+stdout.write "\n"

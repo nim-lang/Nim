@@ -43,3 +43,4 @@ for i in 0..w-1:
 
 for i in 0..w-1:
   stdout.write(m[i,i]) #OUT 111
+stdout.write "\n"
