@@ -572,7 +572,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
     # example that triggers it.
     if argtype.kind == tyProc and notGcSafe(argtype) and not tracked.inEnforcedGcSafe:
       localError(tracked.config, n.info, $n & " is not GC safe")
-  notNilCheck(tracked, n, paramType)
+  # notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
   # semantic check doesn't allow statements after raise, break, return or
@@ -771,7 +771,7 @@ proc track(tracked: PEffects, n: PNode) =
     invalidateFacts(tracked.guards, n.sons[0])
     track(tracked, n.sons[0])
     addAsgnFact(tracked.guards, n.sons[0], n.sons[1])
-    notNilCheck(tracked, n.sons[1], n.sons[0].typ)
+    # notNilCheck(tracked, n.sons[1], n.sons[0].typ)
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked.graph, tracked.c, n[0].typ, n.info)
@@ -790,7 +790,7 @@ proc track(tracked: PEffects, n: PNode) =
         for i in 0 .. child.len-3:
           initVar(tracked, child.sons[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child.sons[i], last)
-          notNilCheck(tracked, last, child.sons[i].typ)
+          # notNilCheck(tracked, last, child.sons[i].typ)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0 .. child.len-2:
           if child[i].kind == nkEmpty or
@@ -799,7 +799,7 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child[i], volatileCheck=false)
           if last.kind in {nkPar, nkTupleConstr}:
             addAsgnFact(tracked.guards, child[i], last[i])
-            notNilCheck(tracked, last[i], child[i].typ)
+            # notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkConstSection:
