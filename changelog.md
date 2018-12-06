@@ -65,6 +65,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `macros.isInstantiationOf` for checking if the proc symbol
   is instantiation of generic proc symbol.
 
+- Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
 
 ### Library changes
 
