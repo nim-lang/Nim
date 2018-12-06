@@ -683,11 +683,11 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string; ba
       builddll = ""
     if not conf.outFile.isEmpty:
       exefile = conf.outFile.string.expandTilde
-    if not exefile.isAbsolute():
-      exefile = base.string / exefile
     if not noAbsolutePaths(conf):
       if not exefile.isAbsolute():
         exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
+    if not exefile.isAbsolute():
+      exefile = base.string / exefile
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
