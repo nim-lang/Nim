@@ -155,7 +155,7 @@ proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
-  ## returns `p`'s process ID.
+  ## returns `p`'s process ID. See also ``os.getCurrentProcessId()``.
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
@@ -1341,3 +1341,4 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
       result[1] = peekExitCode(p)
       if result[1] != -1: break
   close(p)
+

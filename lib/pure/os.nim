@@ -1564,11 +1564,14 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               k = getSymlinkFileKind(y)
             yield (k, y)
 
-iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
-                     followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
+iterator walkDirRec*(dir: string,
+                     yieldFilter = {pcFile}, followFilter = {pcDir},
+                     relative = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
-  ## The full path for each file or directory is returned.
+  ## If ``relative`` is true the resulting path is
+  ## shortened to be relative to ``dir``, otherwise the full path is returned.
+  ##
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
@@ -1591,13 +1594,15 @@ iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
-  var stack = @[dir]
+  var stack = @[""]
   while stack.len > 0:
-    for k, p in walkDir(stack.pop()):
+    let d = stack.pop()
+    for k, p in walkDir(dir / d, relative = true):
+      let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
-        stack.add(p)
+        stack.add rel
       if k in yieldFilter:
-        yield p
+        yield if relative: rel else: dir / rel
 
 proc rawRemoveDir(dir: string) {.noNimScript.} =
   when defined(windows):
@@ -2418,6 +2423,15 @@ proc isHidden*(path: string): bool {.noNimScript.} =
   else:
     let fileName = lastPathPart(path)
     result = len(fileName) >= 2 and fileName[0] == '.' and fileName != ".."
+
+proc getCurrentProcessId*(): int {.noNimScript.} =
+  ## return current process ID. See also ``osproc.processID(p: Process)``.
+  when defined(windows):
+    proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
+                                        importc: "GetCurrentProcessId".}
+    result = GetCurrentProcessId().int
+  else:
+    result = getpid()
 
 {.pop.}
 

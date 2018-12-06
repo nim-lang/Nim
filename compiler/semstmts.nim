@@ -1268,7 +1268,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     x.add(prc)
 
     # recursion assures that this works for multiple macro annotations too:
-    var r = semOverloadedCall(c, x, x, {skMacro}, {efNoUndeclared})
+    var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
     if r == nil:
       # Restore the old list of pragmas since we couldn't process this
       prc.sons[pragmasPos] = n
@@ -1963,7 +1963,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         case n.sons[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
             nkBlockStmt, nkState: discard
-        else: localError(c.config, n.sons[j].info, "unreachable statement after 'return'")
+        else: localError(c.config, n.sons[j].info,
+          "unreachable statement after 'return' statement or '{.noReturn.}' proc")
     else: discard
 
   if result.len == 1 and

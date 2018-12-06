@@ -2522,12 +2522,13 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
     when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
-    else:
-      proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
-        asm """return `x`"""
 
-    if seqToPtr(x) == seqToPtr(y):
-      return true
+      if seqToPtr(x) == seqToPtr(y):
+        return true
+    else:
+      var sameObject = false
+      asm """`sameObject` = `x` === `y`"""
+      if sameObject: return true
 
   when not defined(nimNoNil):
     if x.isNil or y.isNil:
@@ -3460,6 +3461,7 @@ when not defined(JS): #and not defined(nimscript):
       of 1: d = ze(cast[ptr int8](a +% n.offset)[])
       of 2: d = ze(cast[ptr int16](a +% n.offset)[])
       of 4: d = int(cast[ptr int32](a +% n.offset)[])
+      of 8: d = int(cast[ptr int64](a +% n.offset)[])
       else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 

@@ -258,7 +258,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # add 'new' statement:
   result.add newCall(getSysSym(g, n.info, "internalNew"), env)
   result.add makeClosure(g, iter, env, n.info)
-  
+
 proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.lastSon
@@ -454,11 +454,10 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           createUpField(c, w, up, n.info)
           w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
-     nkTemplateDef, nkTypeSection:
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkFuncDef:
     discard
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
-    discard
-  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
+  of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
   of nkReturnStmt:
@@ -672,9 +671,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       else:
         result = accessViaEnvVar(n, owner, d, c)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
-     nkTemplateDef, nkTypeSection:
-    discard
-  of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
+     nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef, nkConverterDef,
+     nkMacroDef, nkFuncDef:
     discard
   of nkClosure:
     if n[1].kind == nkNilLit:
@@ -685,7 +683,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
         n.sons[1] = x.sons[1]
-  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
+  of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let oldInContainer = c.inContainer
       c.inContainer = 0
@@ -720,19 +718,37 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 # ------------------ old stuff -------------------------------------------
 
 proc semCaptureSym*(s, owner: PSym) =
+  discard """
+    proc outer() =
+      var x: int
+      proc inner() =
+        proc innerInner() =
+          echo x
+        innerInner()
+      inner()
+    # inner() takes a closure too!
+  """
+  proc propagateClosure(start, last: PSym) =
+    var o = start
+    while o != nil and o.kind != skModule:
+      if o == last: break
+      o.typ.callConv = ccClosure
+      o = o.skipGenericOwner
+
   if interestingVar(s) and s.kind != skResult:
     if owner.typ != nil and not isGenericRoutine(owner):
       # XXX: is this really safe?
       # if we capture a var from another generic routine,
       # it won't be consider captured.
       var o = owner.skipGenericOwner
-      while o.kind != skModule and o != nil:
+      while o != nil and o.kind != skModule:
         if s.owner == o:
           if owner.typ.callConv in {ccClosure, ccDefault} or owner.kind == skIterator:
             owner.typ.callConv = ccClosure
+            propagateClosure(owner.skipGenericOwner, s.owner)
           else:
             discard "do not produce an error here, but later"
-          #echo "computing .closure for ", owner.name.s, " ", owner.info, " because of ", s.name.s
+          #echo "computing .closure for ", owner.name.s, " because of ", s.name.s
         o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'
     # here

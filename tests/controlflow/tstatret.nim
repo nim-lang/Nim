@@ -1,7 +1,7 @@
 discard """
   file: "tstatret.nim"
   line: 9
-  errormsg: "unreachable statement after 'return'"
+  errormsg: "unreachable statement after 'return' statement or '{.noReturn.}' proc"
 """
 # no statement after return
 proc main() =

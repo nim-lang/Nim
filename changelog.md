@@ -91,6 +91,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Vm suport for float32<->int32 and float64<->int64 casts was added.
 - There is a new pragma block `noSideEffect` that works like
   the `gcsafe` pragma block.
+- added os.getCurrentProcessId()
 
 ### Language changes
 
@@ -106,5 +107,6 @@ proc enumToString*(enums: openArray[enum]): string =
   documentation.
 
 ### Compiler changes
+- The deprecated `fmod` proc is now unavailable on the VM'.
 
 ### Bugfixes

@@ -52,6 +52,7 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
 proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
+  assert n != nil
   if n.typ != nil and n.typ.size == szIllegalRecursion:
     result.offset = szIllegalRecursion
     result.align  = szIllegalRecursion
@@ -177,7 +178,7 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   ## computes and sets ``size`` and ``align`` members of ``typ``
-
+  assert typ != nil
   let hasSize = typ.size != szUncomputedSize
   let hasAlign = typ.align != szUncomputedSize
 

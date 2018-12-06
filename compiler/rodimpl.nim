@@ -52,7 +52,7 @@ proc needsRecompile(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile;
       return true
   return false
 
-proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
+proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): int =
   ## Analyse the known dependency graph.
   if g.config.symbolFiles == disabledSf: return getID()
   when false:
@@ -82,6 +82,10 @@ proc getModuleId*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): i
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
 
+proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) =
+  let id = getModuleId(g, fileIdx, fullpath)
+  result = (g.incr.r.syms.getOrDefault(abs id), id)
+
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.uniqueId):
     w.tstack.add(t)
@@ -109,7 +113,8 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(int n.info.line, result)
     result.add(',')
-    encodeVInt(toDbFileId(g.incr, g.config, n.info.fileIndex), result)
+    #encodeVInt(toDbFileId(g.incr, g.config, n.info.fileIndex), result)
+    encodeVInt(n.info.fileIndex.int, result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -292,7 +297,8 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   result.add(',')
   encodeVInt(int s.info.line, result)
   result.add(',')
-  encodeVInt(toDbFileId(g.incr, g.config, s.info.fileIndex), result)
+  #encodeVInt(toDbFileId(g.incr, g.config, s.info.fileIndex), result)
+  encodeVInt(s.info.fileIndex.int, result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -376,7 +382,7 @@ proc storeType(g: ModuleGraph; t: PType) =
 proc transitiveClosure(g: ModuleGraph) =
   var i = 0
   while true:
-    if i > 10_000:
+    if i > 100_000:
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
@@ -453,9 +459,11 @@ proc decodeLineInfo(g; b; info: var TLineInfo) =
       else: info.line = uint16(decodeVInt(b.s, b.pos))
       if b.s[b.pos] == ',':
         inc(b.pos)
-        info.fileIndex = fromDbFileId(g.incr, g.config, decodeVInt(b.s, b.pos))
+        #info.fileIndex = fromDbFileId(g.incr, g.config, decodeVInt(b.s, b.pos))
+        info.fileIndex = FileIndex decodeVInt(b.s, b.pos)
 
 proc skipNode(b) =
+  # ')' itself cannot be part of a string literal so that this is correct.
   assert b.s[b.pos] == '('
   var par = 0
   var pos = b.pos+1
