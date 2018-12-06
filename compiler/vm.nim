@@ -413,26 +413,12 @@ proc recSetFlagIsRef(arg: PNode) =
     arg.sons[i].recSetFlagIsRef
 
 proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
-  # FIXME: this doesn't attempt to solve incomplete
-  # support of tyPtr, tyRef in VM.
   let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeKind = case typeEntry.kind
-                 of tyUInt..tyUInt64: nkUIntLit
-                 of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
-                 of tyFloat..tyFloat128: nkFloatLit
-                 of tyString: nkStrLit
-                 of tyObject: nkObjConstr
-                 of tySequence: nkNilLit
-                 of tyProc, tyTuple: nkTupleConstr
-                 else: nkEmpty
-
   let oldLen = node.len
   setLen(node.sons, newLen)
   if oldLen < newLen:
-    # TODO: This is still not correct for tyPtr, tyRef default value
     for i in oldLen ..< newLen:
-      node.sons[i] = newNodeI(typeKind, info)
+      node.sons[i] = getNullValue(typ.sons[0], info, c.config)
 
 const
   errIndexOutOfBounds = "index out of bounds"
@@ -458,7 +444,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     #if c.traceActive:
     when traceCode:
       echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
-    #  message(c.config, c.debug[pc], warnUser, "Trace")
+      # message(c.config, c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
     of opcEof: return regs[ra]
