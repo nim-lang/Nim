@@ -763,6 +763,13 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
       rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
         cmds.join())
 
+proc minimizeObjfileNameLen(fullObjName: AbsoluteFile, conf: ConfigRef): string =
+  # For OSes with command line length limitations we try to use relative
+  # paths over absolute ones:
+  result = relativeTo(fullObjName, getNimcacheDir(conf)).string
+  if result.len >= fullObjName.string.len:
+    result = fullObjName.string
+
 proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   var
     linkCmd: string
@@ -783,19 +790,24 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   if optNoLinking notin conf.globalOptions:
     # call the linker:
     var objfiles = ""
-    for it in conf.externalToLink:
-      let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(
-          addFileExt(objFile, CC[conf.cCompiler].objExt)))
-    for x in conf.toCompile:
-      let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(objFile))
+    let oldCwd = getCurrentDir()
+    try:
+      setCurrentDir(getNimcacheDir(conf).string)
+      for it in conf.externalToLink:
+        let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
+        add(objfiles, ' ')
+        let fullObjName = AbsoluteFile addFileExt(objFile, CC[conf.cCompiler].objExt)
+        add(objfiles, quoteShell(minimizeObjfileNameLen(fullObjName, conf)))
+      for x in conf.toCompile:
+        let objFile = if noAbsolutePaths(conf): x.obj.extractFilename.AbsoluteFile else: x.obj
+        add(objfiles, ' ')
+        add(objfiles, quoteShell(minimizeObjfileNameLen(objFile, conf)))
 
-    linkCmd = getLinkCmd(conf, projectfile, objfiles)
-    if optCompileOnly notin conf.globalOptions:
-      execLinkCmd(conf, linkCmd)
+      linkCmd = getLinkCmd(conf, projectfile, objfiles)
+      if optCompileOnly notin conf.globalOptions:
+        execLinkCmd(conf, linkCmd)
+    finally:
+      setCurrentDir(oldCwd)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
