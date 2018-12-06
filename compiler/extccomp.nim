@@ -652,13 +652,13 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
       add(script, compileCmd)
       add(script, "\n")
 
-proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): string =
+proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string; base: AbsoluteDir): string =
   if optGenStaticLib in conf.globalOptions:
     var libname: string
     if not conf.outFile.isEmpty:
       libname = conf.outFile.string.expandTilde
       if not libname.isAbsolute():
-        libname = getCurrentDir() / libname
+        libname = base.string / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
@@ -684,7 +684,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
     if not conf.outFile.isEmpty:
       exefile = conf.outFile.string.expandTilde
       if not exefile.isAbsolute():
-        exefile = getCurrentDir() / exefile
+        exefile = base.string / exefile
     if not noAbsolutePaths(conf):
       if not exefile.isAbsolute():
         exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
@@ -803,7 +803,7 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
         add(objfiles, ' ')
         add(objfiles, quoteShell(minimizeObjfileNameLen(objFile, conf)))
 
-      linkCmd = getLinkCmd(conf, projectfile, objfiles)
+      linkCmd = getLinkCmd(conf, projectfile, objfiles, AbsoluteDir oldCwd)
       if optCompileOnly notin conf.globalOptions:
         execLinkCmd(conf, linkCmd)
     finally:
@@ -877,7 +877,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, projectfile, objfiles)
+    str getLinkCmd(conf, projectfile, objfiles, AbsoluteDir getCurrentDir())
     lit "\L}\L"
     close(f)
 
