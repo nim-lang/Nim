@@ -203,12 +203,13 @@ proc invalidate(map; name: string) =
       map[a] = MaybeNil
 
 proc makeDependencies(map, n) =
-  let key = $n
-  let first = $n[0]
-  makeDependency(map, first, key)
-  if n.kind != nkDotExpr:
-    let second = $n[1]
-    makeDependency(map, second, key)
+  if n.kind notin {nkHiddenDeref, nkHiddenStdConv}:
+    let key = $n
+    let first = $n[0]
+    makeDependency(map, first, key)
+    if n.kind != nkDotExpr and n.len > 0:
+      let second = $n[1]
+      makeDependency(map, second, key)
 
 proc checkDotExpr(n, conf, map): Check =
   result = check(n[0], conf, map)

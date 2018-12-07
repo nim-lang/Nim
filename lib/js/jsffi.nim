@@ -71,6 +71,7 @@ template mangleJsName(name: cstring): cstring =
 
 # only values that can be mapped 1 to 1 with cstring should be keys: they have an injective function with cstring
 
+
 proc toJsKey*[T: SomeInteger](text: cstring, t: type T): T {.importcpp: "parseInt(#)".}
 
 proc toJsKey*[T: enum](text: cstring, t: type T): T =
