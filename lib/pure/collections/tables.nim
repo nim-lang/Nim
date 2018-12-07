@@ -879,7 +879,6 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   ## if the key does not exist.
   t[].del(key)
 
-
 # ------------------------------ count tables -------------------------------
 
 type

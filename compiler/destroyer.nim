@@ -105,7 +105,7 @@ Rule      Pattern                 Transformed into
 4.2       x = y                   `=`(x, y) # a copy
 5.1       f_sink(g())             f_sink(g())
 5.2       f_sink(y)               f_sink(copy y); # copy unless we can see it's the last read
-5.3       f_sink(move y)          f_sink(y); # wasMoved(z) # explicit moves empties 'y'
+5.3       f_sink(move y)          f_sink(y); wasMoved(y) # explicit moves empties 'y'
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
 Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
