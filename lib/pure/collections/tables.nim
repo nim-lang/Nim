@@ -880,50 +880,6 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   t[].del(key)
 
 
-template withValue*[A, B](t: var OrderedTable[A, B], key: A, value, body: untyped) =
-  ## retrieves the value at ``t[key]``.
-  ## ``value`` can be modified in the scope of the ``withValue`` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   orderedTable.withValue(key, value) do:
-  ##     # block is executed only if ``key`` in ``t``
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  let hasKey = index >= 0
-  if hasKey:
-    var value {.inject.} = addr(t.data[index].val)
-    body
-
-template withValue*[A, B](t: var OrderedTable[A, B], key: A,
-                          value, body1, body2: untyped) =
-  ## retrieves the value at ``t[key]``.
-  ## ``value`` can be modified in the scope of the ``withValue`` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   orderedTable.withValue(key, value) do:
-  ##     # block is executed only if ``key`` in ``t``
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##   do:
-  ##     # block is executed when ``key`` not in ``t``
-  ##     raise newException(KeyError, "Key not found")
-  ##
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  let hasKey = index >= 0
-  if hasKey:
-    var value {.inject.} = addr(t.data[index].val)
-    body1
-  else:
-    body2
-
 # ------------------------------ count tables -------------------------------
 
 type

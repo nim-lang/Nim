@@ -100,12 +100,12 @@ Rule      Pattern                 Transformed into
                                   finally: `=destroy`(x)
 1.2       var x: sink T; stmts    var x: sink T; stmts; ensureEmpty(x)
 2         x = f()                 `=sink`(x, f())
-3         x = lastReadOf z        `=sink`(x, z);
+3         x = lastReadOf z        `=sink`(x, z); wasMoved(z)
 4.1       y = sinkParam           `=sink`(y, sinkParam)
 4.2       x = y                   `=`(x, y) # a copy
 5.1       f_sink(g())             f_sink(g())
 5.2       f_sink(y)               f_sink(copy y); # copy unless we can see it's the last read
-5.3       f_sink(move y)          f_sink(y); # explicit moves empties 'y'
+5.3       f_sink(move y)          f_sink(y); # wasMoved(z) # explicit moves empties 'y'
 5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
 
 Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
@@ -128,7 +128,7 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     topLevelVars: PNode
-    destroys: OrderedTable[int, tuple[enabled: bool, dropBit: PSym, destroy_call: PNode]] 
+    destroys: OrderedTable[int, tuple[dropBit: PSym, destroy_call: PNode]] 
                                  # Symbol to destructor call table
     graph: ModuleGraph
     emptyNode: PNode
@@ -327,20 +327,10 @@ proc dropBit(c: var Con; s: PSym): PSym =
   assert result != nil
 
 proc addDestructor(c: var Con; s: PSym; destructor_call: PNode, dropBit: PSym = nil) = 
-  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (true, dropBit, destructor_call))
+  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (dropBit, destructor_call))
   if alreadyIn:  
     let lineInfo = if s.ast != nil: s.ast.info else: c.owner.info
     internalError(c.graph.config, lineInfo, "Destructor call for sym " & s.name.s & " is already injected")
-
-proc disableDestructor(c: var Con; s: PSym) = 
-  ## disable destructor, but do not delete such that it can be enabled back again later
-  c.destroys.with_value(s.id, value):
-    value.enabled = false
-
-proc enableDestructor(c: var Con; s: PSym) = 
-  ## if destructor does not exist then ignore, otherwise make sure destructor is enabled
-  c.destroys.with_value(s.id, value):
-    value.enabled = true
 
 proc registerDropBit(c: var Con; s: PSym) =
   let result = newSym(skTemp, getIdent(c.graph.cache, s.name.s & "_AliveBit"), c.owner, s.info)
@@ -384,6 +374,31 @@ proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result.add(newSymNode(createMagic(c.graph, magicname, m)))
   result.add n
 
+proc genWasMoved(n: PNode; c: var Con): PNode =
+  # The mWasMoved builtin does not take the address.
+  result = genMagicCall(n, c, "wasMoved", mWasMoved)
+
+proc destructiveMoveVar(n: PNode; c: var Con): PNode =
+  # generate: (let tmp = v; reset(v); tmp)
+  # XXX: Strictly speaking we can only move if there is a ``=sink`` defined
+  # or if no ``=sink`` is defined and also no assignment.
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+  var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
+  temp.typ = n.typ
+  var v = newNodeI(nkLetSection, n.info)
+  let tempAsNode = newSymNode(temp)
+
+  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
+  vpart.sons[0] = tempAsNode
+  vpart.sons[1] = c.emptyNode
+  vpart.sons[2] = n
+  add(v, vpart)
+
+  result.add v
+  result.add genWasMoved(n, c)
+  result.add tempAsNode
+
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -420,9 +435,9 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result = arg
     elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
       # if x is a variable and it its last read we eliminate its
-      # destructor invocation
-      c.disableDestructor(arg.sym)
-      result = arg
+      # destructor invokation, but don't. We need to reset its memory
+      # to disable its destructor which we have not elided:
+      result = destructiveMoveVar(arg, c)
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # mark the sink parameter as used:
       result = destructiveMoveSink(arg, c)
@@ -580,14 +595,15 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isUnpackedTuple(it[0].sym):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
           # move the variable declaration to the top of the frame:
           c.addTopVar v
           # make sure it's destroyed at the end of the proc:
-          c.addDestructor(v.sym, genDestroy(c, v.typ, v))
+          if not isUnpackedTuple(it[0].sym):
+            c.addDestructor(v.sym, genDestroy(c, v.typ, v))
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -619,8 +635,6 @@ proc p(n: PNode; c: var Con): PNode =
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ):
       result = moveOrCopy(n[0], n[1], c)
-      c.enableDestructor(n[0].sym) # last read to sink argument could have disabled the destructor
-                                   # but the variable is assigned again and new value should be destroyed
     else:
       result = copyNode(n)
       recurse(n, result)
@@ -637,7 +651,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   var c: Con
   c.owner = owner
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.destroys = initOrderedTable[int, (bool, PSym, PNode)](16)
+  c.destroys = initOrderedTable[int, (PSym, PNode)](32)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
@@ -660,8 +674,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if c.destroys.len > 0:
     var destroy_list = newNodeI(nkStmtList, n.info)
     for val in c.destroys.values:
-      if val.enabled:
-        destroy_list.add val.destroy_call
+      destroy_list.add val.destroy_call
     result.add newTryFinally(body, destroy_list)
   else:
     result.add body
