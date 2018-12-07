@@ -135,15 +135,25 @@ when false:
   proc f19(a: seq[A]) =
     echo a[0].a # can't deref a[0]
 
-proc f20(a: seq[A]) =
-  var b = 1
-  if not a[b].isNil:
-    b = 0
-    echo a[b].a # can't deref a[b]
+  proc f20(a: seq[A]) =
+    var b = 1
+    if not a[b].isNil:
+      b = 0
+      echo a[b].a # can't deref a[b]
+
+  proc f21(a: A) =  
+    if a.isNil:
+      return
+    echo a.a
+
+proc f22: A not nil=
+  new(result)
 
 var a: A
 var b = B()
-f20(@[a, A()])
+echo f22().a
+
+
 
 
 

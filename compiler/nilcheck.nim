@@ -144,7 +144,12 @@ proc checkCall(n, conf, map): Check =
           isNew = true
         result.map[$child] = MaybeNil
         invalidate(result.map, $child)
-  result.nilability = typeNilability(n.typ)
+  if n[0].kind == nkSym and n[0].sym.magic == mNew:
+    let b = $n[1]
+    result.map[b] = Safe
+    result.nilability = Safe
+  else:
+    result.nilability = typeNilability(n.typ)
   
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
@@ -348,12 +353,29 @@ proc checkCase(n, conf, map): Check =
     else:
       discard
 
+proc directStop(n): bool =
+  case n.kind:
+  of nkStmtList:
+    for child in n:
+      if directStop(child):
+        return true
+  of nkReturnStmt, nkBreakStmt, nkContinueStmt, nkRaiseStmt:
+    return true
+  of nkIfStmt, nkElse:
+    return false
+  else:
+    echo n.kind
+  return false
+
 proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
   if base:
     map.base = map
   result = map
   # echo n.kind
   if n.kind == nkCall:
+    #echo n[0]
+    #echo n[0].kind
+    #echo n[0].sym.magic
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil: # and n[1].kind == nkSym:
       result = newNilMap(map, if base: map else: map.base)
       result[$n[1]] = if not isElse: Nil else: Safe
@@ -416,14 +438,21 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     var mapR: NilMap = map.copyMap()
     var nilabilityR: Nilability = Safe
     let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[0], n.sons[0].sons[1], conf, map)
+    var isDirect = false
     if n.sons.len > 1:
       (nilabilityR, mapR) = checkElseBranch(n.sons[0].sons[0], n.sons[1], conf, map)
     else:
       mapR = checkCondition(n.sons[0].sons[0], conf, mapR, true, true)
       nilabilityR = Safe
+      if directStop(n[0][1]):
+        isDirect = true
+        result.map = mapR
+        result.nilability = nilabilityR
+
     #echo "other", mapL, mapR
-    result.map = union(mapL, mapR)
-    result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
+    if not isDirect:
+      result.map = union(mapL, mapR)
+      result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
     #echo "result", result
   of nkAsgn:
     result = checkAsgn(n[0], n[1], conf, map)
