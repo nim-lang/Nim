@@ -441,11 +441,15 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.kind == nkSym and isSinkParam(arg.sym):
       # mark the sink parameter as used:
       result = destructiveMoveSink(arg, c)
-    elif arg.kind in {nkStmtListExpr, nkBlockExpr, nkBlockStmt}:
-        result = copyNode(arg)
-        for i in 0..arg.len-2:
-          result.add p(arg[i], c)
-        result.add pArg(arg[^1], c, isSink)
+    elif arg.kind in {nkBlockExpr, nkBlockStmt}:
+      result = copyNode(arg)
+      result.add arg[0]
+      result.add pArg(arg[1], c, isSink)
+    elif arg.kind == nkStmtListExpr:
+      result = copyNode(arg)
+      for i in 0..arg.len-2:
+        result.add p(arg[i], c)
+      result.add pArg(arg[^1], c, isSink)
     elif arg.kind in {nkIfExpr, nkIfStmt}:
       result = copyNode(arg)
       for i in 0..<arg.len:

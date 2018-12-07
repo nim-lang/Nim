@@ -115,8 +115,13 @@ proc myfunc2(x, y: int): tuple[a: MySeqNonCopyable, b:int, c:MySeqNonCopyable] =
       z2
     elif x > 5: raise newException(ValueError, "new error")
     else: newMySeq(x, 1.0), 
-   b:0, 
-   c: if y > 0: move(cc) else: newMySeq(1, 3.0))
+   b: 0, 
+   c: block:
+        var tmp = if y > 0: move(cc) else: newMySeq(1, 3.0)
+        tmp[0] = 5
+        tmp 
+  )
+   
 
 let (seq1, seq2) = myfunc(2, 3)
 doAssert seq1.len == 2
