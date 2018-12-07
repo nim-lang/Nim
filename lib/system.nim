@@ -221,10 +221,15 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## be called before any possible `object branch transition`:idx:.
 
 when defined(nimNewRuntime):
+  proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+    ## resets an object `obj` to its initial (binary zero) value to signify
+    ## it was "moved" and to signify its destructor should do nothing and
+    ## ideally be optimized away.
+    discard
 
   proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
     result = x
-    reset(x)
+    wasMoved(x)
 
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
