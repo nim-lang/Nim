@@ -1,4 +1,7 @@
 {.experimental: "notnil".}
+
+import tables
+
 type
   A = ref object
     a: float
@@ -128,9 +131,20 @@ when false:
     b.refField = A()
     echo b.refField.a
 
+  # index
+  proc f19(a: seq[A]) =
+    echo a[0].a # can't deref a[0]
+
+proc f20(a: seq[A]) =
+  var b = 1
+  if not a[b].isNil:
+    b = 0
+    echo a[b].a # can't deref a[b]
+
 var a: A
 var b = B()
-f18(b)
+f20(@[a, A()])
+
 
 
 

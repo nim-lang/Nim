@@ -9,7 +9,6 @@
 
 import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lineinfos, strutils, sequtils, strformat, idents
 
-# Rules
 # 
 # Env: int => nilability
 # a = b
@@ -44,6 +43,13 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 #   if arg is ref, assume it's MaybeNil after call
 # loop
 #   union of env for 0, 1, 2 iterations as Herb Sutter's paper
+# fields and bracket
+#   basically we generate a id for them and do almost the same as
+#   for names, we preserve nilability for them
+#   however, we also maintain that their atom variables are
+#   their dependencies
+#   and when the atom variables change, they invalidate
+#   the compound expressions and they are MaybeNil
 # each check returns its nilability and map
 
 type
@@ -51,6 +57,8 @@ type
     locals*:   Table[string, Nilability]
     previous*: NilMap
     base*:     NilMap
+    top*:      NilMap
+    dependencies*: Table[string, seq[string]]
 
   Nilability* = enum Safe, MaybeNil, Nil
 
@@ -58,9 +66,11 @@ type
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
+proc invalidate(map: NilMap, name: string)
 
 proc newNilMap(previous: NilMap = nil, base: NilMap = nil): NilMap =
-  NilMap(locals: initTable[string, Nilability](), previous: previous, base: base)
+  result = NilMap(locals: initTable[string, Nilability](), previous: previous, base: base, dependencies: initTable[string, seq[string]]())
+  result.top = if previous.isNil: result else: previous.top
 
 proc `[]`(map: NilMap, name: string): Nilability =
   var now = map
@@ -107,6 +117,12 @@ proc `$`(map: NilMap): string =
     for name, value in now.locals:
       result.add(&"  {name} {value}\n")
   
+  result.add("#dependencies\n")
+  for name, list in map.top.dependencies:
+    result.add(name & "\n")
+    for a in list:
+      result.add("  " & a & "\n")
+
 using
   n: PNode
   conf: ConfigRef
@@ -114,17 +130,8 @@ using
 
 proc typeNilability(typ: PType): Nilability
 
-proc checkUse(n, conf, map): NilMap =
-  # echo "use:",n.sym.name.s
-  map
-
-#proc checkMagic(n; m: TMagic; conf, map): NilMap =
-#  result = map
-#  for child in n:
-#    result = check(child, conf, result)
 
 proc checkCall(n, conf, map): Check =
-  # if an argument is passes as var and is ref: make it MaybeNil
   var isNew = false
   result.map = map
   for i, child in n:
@@ -136,6 +143,7 @@ proc checkCall(n, conf, map): Check =
           result.map = newNilMap(map)
           isNew = true
         result.map[$child] = MaybeNil
+        invalidate(result.map, $child)
   result.nilability = typeNilability(n.typ)
   
 proc checkDeref(n, conf, map): Check =
@@ -153,9 +161,11 @@ proc checkDeref(n, conf, map): Check =
   else:
     message(conf, n.info, hintUser, "can deref " & $n)
     
-proc checkDotExpr(n, conf, map): Check =
-  # a.b : determine nilability
-  result = check(n[0], conf, map)
+
+proc makeDependencies(map: NilMap, n: PNode)
+
+proc checkRefExpr(n, conf; check: Check): Check =
+  result = check
   if n.typ.kind != tyRef:
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
@@ -165,6 +175,40 @@ proc checkDotExpr(n, conf, map): Check =
     else:
       result.map[key] = MaybeNil
       result.nilability = MaybeNil
+    echo "dependencies"
+    makeDependencies(result.map, n)
+
+
+# Ok, we need to easily make a dependency of id-s, so
+# when we invalidate one, we can turn all of its dependendant id-s to MaybeNil
+proc makeDependency(map; name: string, key: string) =
+  if not map.top.dependencies.hasKey(name):
+    map.top.dependencies[name] = @[]
+  map.top.dependencies[name].add(key)
+
+proc invalidate(map; name: string) =
+  if map.top.dependencies.hasKey(name):
+    let list = map.top.dependencies[name]
+    for a in list:
+      map[a] = MaybeNil
+
+proc makeDependencies(map, n) =
+  let key = $n
+  let first = $n[0]
+  makeDependency(map, first, key)
+  if n.kind != nkDotExpr:
+    let second = $n[1]
+    makeDependency(map, second, key)
+
+proc checkDotExpr(n, conf, map): Check =
+  result = check(n[0], conf, map)
+  result = checkRefExpr(n, conf, result)
+
+proc checkBracketExpr(n, conf, map): Check =
+  result = check(n[0], conf, map)
+  result = check(n[1], conf, result.map)
+  result = checkRefExpr(n, conf, result)
+
 
 proc union(l: Nilability, r: Nilability): Nilability =
   if l == r:
@@ -178,15 +222,18 @@ proc union(l: NilMap, r: NilMap): NilMap =
     if r.hasKey(name) and not result.locals.hasKey(name):
       result[name] = union(value, r[name])
 
-proc checkAsgn(l: PNode, r: PNode; conf, map): Check =
-  result = check(r, conf, map)
+proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
+  result = check(assigned, conf, map)
+
   if result.map.isNil:
     result.map = map
-  case l.kind:
+  let t = $target
+  case target.kind:
   of nkNilLit:
-    result.map[$l] = Nil
+    result.map[t] = Nil
   else:
-    result.map[$l] = result.nilability
+    result.map[t] = result.nilability
+  invalidate(result.map, t)
 
 proc checkReturn(n, conf, map): Check =
   # return n same as result = n; return
@@ -226,11 +273,11 @@ proc checkInfix(n, conf, map): Check =
   result.nilability = Safe
 
 proc checkIsNil(n, conf, map; isElse: bool = false): Check =
-  if n[1].kind == nkSym:
-    result.map = newNilMap(map)
-    result.map[$n[1]] = if not isElse: Nil else: Safe
-  else:
-    result.map = map
+  result.map = newNilMap(map)
+  let value = n[1]
+  result.map[$value] = if not isElse: Nil else: Safe
+  if value.kind != nkSym:
+    makeDependencies(result.map, value)
 
 proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
   var name = case magic:
@@ -310,6 +357,8 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil: # and n[1].kind == nkSym:
       result = newNilMap(map, if base: map else: map.base)
       result[$n[1]] = if not isElse: Nil else: Safe
+      if n[1].kind != nkSym:
+        makeDependencies(result, n[1])
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
       result = checkCondition(n[1], conf, map, not isElse, false)
   elif n.kind == nkInfix:
@@ -317,7 +366,6 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
 
 proc checkResult(n, conf, map) =
   let resultNilability = map["result"]
-  # echo map
   case resultNilability:
   of Nil:
     localError conf, n.info, "return value is nil"
@@ -336,9 +384,8 @@ proc checkElseBranch(condition: PNode, n, conf, map): Check =
 # Faith!
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
-  # echo debugTree(conf, n, 2, 10)
   case n.kind:
-  of nkSym: result = (nilability: map[$n], map: map) # checkUse(n, conf, map)
+  of nkSym: result = (nilability: map[$n], map: map)
   of nkCallKinds:
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
@@ -390,6 +437,8 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result = checkCase(n, conf, map)
   of nkReturnStmt:
     result = checkReturn(n, conf, map)
+  of nkBracketExpr:
+    result = checkBracketExpr(n, conf, map)
   of nkNilLit:
     result = (Nil, map)
   of nkIntLit:
