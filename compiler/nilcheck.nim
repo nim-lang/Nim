@@ -43,13 +43,18 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 #   if arg is ref, assume it's MaybeNil after call
 # loop
 #   union of env for 0, 1, 2 iterations as Herb Sutter's paper
-# fields and bracket
+# fields and index
 #   basically we generate a id for them and do almost the same as
 #   for names, we preserve nilability for them
 #   however, we also maintain that their atom variables are
 #   their dependencies
 #   and when the atom variables change, they invalidate
 #   the compound expressions and they are MaybeNil
+# return
+#   if something: stop (break return etc)
+#   is equivalent to if something: .. else: remain
+# new(ref)
+#   ref becomes Safe
 # each check returns its nilability and map
 
 type
