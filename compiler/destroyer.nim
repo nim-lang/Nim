@@ -116,7 +116,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
+  strutils, options, dfa, lowerings, tables, modulegraphs,
   lineinfos, parampatterns
 
 const
@@ -127,8 +127,7 @@ type
     owner: PSym
     g: ControlFlowGraph
     jumpTargets: IntSet
-    topLevelVars: PNode
-    destroys: PNode 
+    destroys, topLevelVars: PNode
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -616,8 +615,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echo "injecting into ", n
   var c: Con
   c.owner = owner
-  c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.destroys = newNodeI(nkStmtList, n.info)
+  c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
