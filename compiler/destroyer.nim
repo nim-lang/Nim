@@ -128,8 +128,7 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     topLevelVars: PNode
-    destroys: OrderedTable[int, tuple[dropBit: PSym, destroy_call: PNode]] 
-                                 # Symbol to destructor call table
+    destroys: PNode 
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -322,28 +321,6 @@ proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
-proc dropBit(c: var Con; s: PSym): PSym =
-  result = c.destroys.getOrDefault(s.id).dropBit
-  assert result != nil
-
-proc addDestructor(c: var Con; s: PSym; destructor_call: PNode, dropBit: PSym = nil) = 
-  let alreadyIn = c.destroys.hasKeyOrPut(s.id, (dropBit, destructor_call))
-  if alreadyIn:  
-    let lineInfo = if s.ast != nil: s.ast.info else: c.owner.info
-    internalError(c.graph.config, lineInfo, "Destructor call for sym " & s.name.s & " is already injected")
-
-proc registerDropBit(c: var Con; s: PSym) =
-  let result = newSym(skTemp, getIdent(c.graph.cache, s.name.s & "_AliveBit"), c.owner, s.info)
-  result.typ = getSysType(c.graph, s.info, tyBool)
-  let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
-  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, c.emptyNode, trueVal)
-  # generate:
-  #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
-  let t = s.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.destructor != nil:
-    c.addDestructor(s, newTree(nkIfStmt,
-      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s))), result)
-   
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
   sym.typ = typ
@@ -358,16 +335,6 @@ template recurse(n, dest) =
 
 proc isSinkParam(s: PSym): bool {.inline.} =
   result = s.kind == skParam and s.typ.kind == tySink
-
-proc destructiveMoveSink(n: PNode; c: var Con): PNode =
-  # generate:  (chckMove(sinkParam_AliveBit); sinkParam_AliveBit = false; sinkParam)
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  let bit = newSymNode dropBit(c, n.sym)
-  if optMoveCheck in c.owner.options:
-    result.add callCodegenProc(c.graph, "chckMove", bit.info, bit)
-  result.add newTree(nkAsgn, bit,
-    newIntTypeNode(nkIntLit, 0, getSysType(c.graph, n.info, tyBool)))
-  result.add n
 
 proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result = newNodeI(nkCall, n.info)
@@ -433,14 +400,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkFloat128Lit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
-    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
-      # if x is a variable and it its last read we eliminate its
-      # destructor invokation, but don't. We need to reset its memory
-      # to disable its destructor which we have not elided:
+    elif arg.kind == nkSym and (isSinkParam(arg.sym) or
+         arg.sym.kind in InterestingSyms and isLastRead(arg, c)):
+      # it is the last read be final consumption. We need to reset the memory
+      # to disable the destructor which we have not elided:
       result = destructiveMoveVar(arg, c)
-    elif arg.kind == nkSym and isSinkParam(arg.sym):
-      # mark the sink parameter as used:
-      result = destructiveMoveSink(arg, c)
     elif arg.kind in {nkBlockExpr, nkBlockStmt}:
       result = copyNode(arg)
       result.add arg[0]
@@ -572,13 +536,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
-    if ri.sym.kind != skParam and isLastRead(ri, c):
+    if isSinkParam(ri.sym) or (ri.sym.kind != skParam and isLastRead(ri, c)):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      result = genSink(c, dest.typ, dest, ri)
-      result.add p(ri, c)
-    elif isSinkParam(ri.sym):
-      result = genSink(c, dest.typ, dest, ri)
-      result.add destructiveMoveSink(ri, c)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add ri
+      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
     else:
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
@@ -607,7 +569,7 @@ proc p(n: PNode; c: var Con): PNode =
           c.addTopVar v
           # make sure it's destroyed at the end of the proc:
           if not isUnpackedTuple(it[0].sym):
-            c.addDestructor(v.sym, genDestroy(c, v.typ, v))
+            c.destroys.add genDestroy(c, v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -633,7 +595,7 @@ proc p(n: PNode; c: var Con): PNode =
       sinkExpr.add n
       result.add sinkExpr
       result.add tmp
-      c.addDestructor(tmp.sym, genDestroy(c, n.typ, tmp))
+      c.destroys.add genDestroy(c, n.typ, tmp)
     else:
       result = n
   of nkAsgn, nkFastAsgn:
@@ -655,7 +617,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   var c: Con
   c.owner = owner
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.destroys = initOrderedTable[int, (PSym, PNode)](32)
+  c.destroys = newNodeI(nkStmtList, n.info)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
@@ -670,16 +632,15 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink: registerDropBit(c, param)
+      if param.typ.kind == tySink: 
+        c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
+
   let body = p(n, c)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    var destroy_list = newNodeI(nkStmtList, n.info)
-    for val in c.destroys.values:
-      destroy_list.add val.destroy_call
-    result.add newTryFinally(body, destroy_list)
+    result.add newTryFinally(body, c.destroys)
   else:
     result.add body
 
