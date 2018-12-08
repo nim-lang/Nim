@@ -647,6 +647,7 @@ proc p(n: PNode; c: var Con): PNode =
     c.tracingSinkedParams = false
     for i in 1..<n.len:
       result.add p(n[i], c)
+    c.tracingSinkedParams = true
   of nkForStmt:
     result = copyNode(n)
     for i in 1..n.len-2:
