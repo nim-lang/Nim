@@ -39,17 +39,18 @@
 ##
 ## .. code-block:: nim
 ##
-##   try:
-##     assert("abc".find('c').get() == 2)  # Immediately extract the value
-##   except UnpackError:  # If there is no value
-##     assert false  # This will not be reached, because the value is present
-##
+##    let found = "abc".find('c')
+##    assert found.isSome and found.get() == 2
+##   
 ## The ``get`` operation demonstrated above returns the underlying value, or
-## raises ``UnpackError`` if there is no value. There is another option for
-## obtaining the value: ``unsafeGet``, but you must only use it when you are
-## absolutely sure the value is present (e.g. after checking ``isSome``). If
-## you do not care about the tiny overhead that ``get`` causes, you should
-## simply never use ``unsafeGet``.
+## raises ``UnpackError`` if there is no value. Note that ``UnpackError`` inherits
+## from ``system.Defect``, and should therefore never be catched. Instead, rely on
+## checking if the option contains a value with ``isSome`` and ``isNone``.
+##
+## There is another option for obtaining the value: ``unsafeGet``, but you must
+## only use it when you are absolutely sure the value is present (e.g. after
+## checking ``isSome``). If you do not care about the tiny overhead that ``get``
+## causes, you should simply never use ``unsafeGet``.
 ##
 ## How to deal with an absence of a value:
 ##
@@ -61,12 +62,7 @@
 ##   assert(result == none(int))
 ##   # It has no value:
 ##   assert(result.isNone)
-##
-##   try:
-##     echo result.get()
-##     assert(false)  # This will not be reached
-##   except UnpackError:  # Because an exception is raised
-##     discard
+
 import typetraits
 
 type
@@ -81,7 +77,7 @@ type
       val: T
       has: bool
 
-  UnpackError* = ref object of ValueError
+  UnpackError* = object of Defect
 
 proc some*[T](val: T): Option[T] =
   ## Returns a ``Option`` that has this value.
@@ -129,7 +125,7 @@ proc get*[T](self: Option[T]): T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise UnpackError(msg: "Can't obtain a value from a `none`")
+    raise newException(UnpackError, "Can't obtain a value from a `none`")
   self.val
 
 proc get*[T](self: Option[T], otherwise: T): T =
@@ -143,7 +139,7 @@ proc get*[T](self: var Option[T]): var T =
   ## Returns contents of the Option. If it is none, then an exception is
   ## thrown.
   if self.isNone:
-    raise UnpackError(msg: "Can't obtain a value from a `none`")
+    raise newException(UnpackError, "Can't obtain a value from a `none`")
   return self.val
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
