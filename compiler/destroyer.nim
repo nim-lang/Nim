@@ -116,7 +116,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, tables, modulegraphs,
+  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns
 
 const
@@ -128,6 +128,8 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     destroys, topLevelVars: PNode
+    tracingSinkedParams: bool # we aren't checking double sink for proc args in if, case, loops since they possibly not taken
+    alreadySinkedParams: Table[int, TLineInfo]
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -365,6 +367,16 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   result.add genWasMoved(n, c)
   result.add tempAsNode
 
+proc sinkParamConsumed(c: var Con, s: PNode, tracing = true) = 
+  assert s.kind == nkSym
+  let isConsumed =
+    if c.tracingSinkedParams and tracing: 
+      c.alreadySinkedParams.hasKeyOrPut(s.sym.id, s.info)
+    else: c.alreadySinkedParams.hasKey(s.sym.id)
+  if isConsumed:
+    localError(c.graph.config, s.info, "sink parameter `" & $s.sym.name.s &
+        "` is already consumed at " & toFileLineCol(c. graph.config, c.alreadySinkedParams[s.sym.id]))
+
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -399,10 +411,14 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkFloat128Lit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
-    elif arg.kind == nkSym and (isSinkParam(arg.sym) or
-         arg.sym.kind in InterestingSyms and isLastRead(arg, c)):
-      # it is the last read be final consumption. We need to reset the memory
-      # to disable the destructor which we have not elided:
+    elif arg.kind == nkSym and isSinkParam(arg.sym):
+      # Sinked params can be consumed only once. We need to reset the memory
+      # to disable the destructor which we have not elided
+      result = destructiveMoveVar(arg, c)
+      sinkParamConsumed(c, arg)
+    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
+      # it is the last read, can be sinked. We need to reset the memory
+      # to disable the destructor which we have not elided
       result = destructiveMoveVar(arg, c)
     elif arg.kind in {nkBlockExpr, nkBlockStmt}:
       result = copyNode(arg)
@@ -415,6 +431,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add pArg(arg[^1], c, isSink)
     elif arg.kind in {nkIfExpr, nkIfStmt}:
       result = copyNode(arg)
+      c.tracingSinkedParams = false
       for i in 0..<arg.len:
         var branch = copyNode(arg[i])
         if arg[i].kind in {nkElifBranch, nkElifExpr}:   
@@ -423,9 +440,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
         else:
           branch.add pArgIfTyped(arg[i][0])
         result.add branch
+      c.tracingSinkedParams = true
     elif arg.kind == nkCaseStmt:
       result = copyNode(arg)
       result.add p(arg[0], c)
+      c.tracingSinkedParams = false
       for i in 1..<arg.len:
         var branch: PNode
         if arg[i].kind == nkOfbranch:
@@ -439,6 +458,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = copyNode(arg[i]) 
           branch.add pArgIfTyped(arg[i][0])
         result.add branch     
+      c.tracingSinkedParams = true
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -482,6 +502,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add moveOrCopy(dest, ri[1], c)
   of nkIfExpr, nkIfStmt:
     result = newNodeI(nkIfStmt, ri.info)
+    c.tracingSinkedParams = false
     for i in 0..<ri.len:
       var branch = copyNode(ri[i])
       if ri[i].kind in {nkElifBranch, nkElifExpr}:
@@ -490,9 +511,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       else:
         branch.add moveOrCopyIfTyped(ri[i][0])
       result.add branch
+    c.tracingSinkedParams = true
   of nkCaseStmt:
     result = newNodeI(nkCaseStmt, ri.info)
     result.add p(ri[0], c)
+    c.tracingSinkedParams = false
     for i in 1..<ri.len:
       var branch: PNode
       if ri[i].kind == nkOfbranch:
@@ -506,6 +529,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         branch = copyNode(ri[i]) 
         branch.add moveOrCopyIfTyped(ri[i][0])
       result.add branch
+    c.tracingSinkedParams = true
   of nkBracket:
     # array constructor
     result = genSink(c, dest.typ, dest, ri)
@@ -535,7 +559,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
-    if isSinkParam(ri.sym) or (ri.sym.kind != skParam and isLastRead(ri, c)):
+    if isSinkParam(ri.sym):
+      # Rule 3: `=sink`(x, z); wasMoved(z)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add ri
+      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))   
+      sinkParamConsumed(c, ri)
+    elif ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
@@ -603,7 +633,28 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = copyNode(n)
       recurse(n, result)
-  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+  of nkSym:
+    result = n
+    sinkParamConsumed(c, n, tracing = false)
+  of nkIfStmt, nkIfExpr:
+    c.tracingSinkedParams = false
+    result = copyNode(n)
+    recurse(n, result)
+    c.tracingSinkedParams = true
+  of nkCaseStmt, nkWhileStmt:
+    result = copyNode(n)
+    result.add p(n[0], c)
+    c.tracingSinkedParams = false
+    for i in 1..<n.len:
+      result.add p(n[i], c)
+  of nkForStmt:
+    result = copyNode(n)
+    for i in 1..n.len-2:
+      result.add p(n[i], c)
+    c.tracingSinkedParams = false
+    result.add p(n[^1], c)
+    c.tracingSinkedParams = true
+  of nkNone..pred(nkSym), succ(nkSym) .. nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = n
   else:
@@ -617,6 +668,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
+  c.alreadySinkedParams = initTable[int, TLineInfo](8)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
