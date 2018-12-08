@@ -652,13 +652,13 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
       add(script, compileCmd)
       add(script, "\n")
 
-proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string; base: AbsoluteDir): string =
+proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): string =
   if optGenStaticLib in conf.globalOptions:
     var libname: string
     if not conf.outFile.isEmpty:
       libname = conf.outFile.string.expandTilde
       if not libname.isAbsolute():
-        libname = base.string / libname
+        libname = getCurrentDir() / libname
     else:
       libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
@@ -683,11 +683,11 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string; ba
       builddll = ""
     if not conf.outFile.isEmpty:
       exefile = conf.outFile.string.expandTilde
+      if not exefile.isAbsolute():
+        exefile = getCurrentDir() / exefile
     if not noAbsolutePaths(conf):
       if not exefile.isAbsolute():
         exefile = string(splitFile(projectfile).dir / RelativeFile(exefile))
-    if not exefile.isAbsolute():
-      exefile = base.string / exefile
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
@@ -763,12 +763,31 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
       rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
         cmds.join())
 
-proc minimizeObjfileNameLen(fullObjName: AbsoluteFile, conf: ConfigRef): string =
-  # For OSes with command line length limitations we try to use relative
-  # paths over absolute ones:
-  result = relativeTo(fullObjName, getNimcacheDir(conf)).string
-  if result.len >= fullObjName.string.len:
-    result = fullObjName.string
+proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
+  # Extracting the linker.exe here is a bit hacky but the best solution
+  # given ``buildLib``'s design.
+  var i = 0
+  var last = 0
+  if cmd.len > 0 and cmd[0] == '"':
+    inc i
+    while i < cmd.len and cmd[i] != '"': inc i
+    last = i
+    inc i
+  else:
+    while i < cmd.len and cmd[i] != ' ': inc i
+    last = i
+  while i < cmd.len and cmd[i] == ' ': inc i
+  let linkerArgs = conf.projectName & "_" & "linkerArgs.txt"
+  let args = cmd.substr(i)
+  # GCC's response files don't support backslashes. Junk.
+  if conf.cCompiler == ccGcc:
+    writeFile(linkerArgs, args.replace('\\', '/'))
+  else:
+    writeFile(linkerArgs, args)
+  try:
+    execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
+  finally:
+    removeFile(linkerArgs)
 
 proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   var
@@ -790,24 +809,25 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   if optNoLinking notin conf.globalOptions:
     # call the linker:
     var objfiles = ""
-    let oldCwd = getCurrentDir()
-    try:
-      setCurrentDir(getNimcacheDir(conf).string)
-      for it in conf.externalToLink:
-        let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
-        add(objfiles, ' ')
-        let fullObjName = AbsoluteFile addFileExt(objFile, CC[conf.cCompiler].objExt)
-        add(objfiles, quoteShell(minimizeObjfileNameLen(fullObjName, conf)))
-      for x in conf.toCompile:
-        let objFile = if noAbsolutePaths(conf): x.obj.extractFilename.AbsoluteFile else: x.obj
-        add(objfiles, ' ')
-        add(objfiles, quoteShell(minimizeObjfileNameLen(objFile, conf)))
+    for it in conf.externalToLink:
+      let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
+      add(objfiles, ' ')
+      add(objfiles, quoteShell(
+          addFileExt(objFile, CC[conf.cCompiler].objExt)))
+    for x in conf.toCompile:
+      let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
+      add(objfiles, ' ')
+      add(objfiles, quoteShell(objFile))
 
-      linkCmd = getLinkCmd(conf, projectfile, objfiles, AbsoluteDir oldCwd)
-      if optCompileOnly notin conf.globalOptions:
+    linkCmd = getLinkCmd(conf, projectfile, objfiles)
+    if optCompileOnly notin conf.globalOptions:
+      if defined(windows) and linkCmd.len > 8_000:
+        # Windows's command line limit is about 8K (don't laugh...) so C compilers on
+        # Windows support a feature where the command line can be passed via ``@linkcmd``
+        # to them.
+        linkViaResponseFile(conf, linkCmd)
+      else:
         execLinkCmd(conf, linkCmd)
-    finally:
-      setCurrentDir(oldCwd)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
@@ -877,7 +897,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, projectfile, objfiles, AbsoluteDir getCurrentDir())
+    str getLinkCmd(conf, projectfile, objfiles)
     lit "\L}\L"
     close(f)
 
