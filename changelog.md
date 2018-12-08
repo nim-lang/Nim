@@ -29,6 +29,8 @@
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
 
+- `options.UnpackError` is no longer a ref type and inherits from `System.Defect` instead of `System.ValueError`.
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
