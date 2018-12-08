@@ -31,5 +31,10 @@ block:
   implementArithOpsNew(int)
   echoAdd 3, 5
 
+type
+  MyEnum {.used.} = enum
+    Val1, Val2, Val3
+
+
 static:
   echo "compile end"
