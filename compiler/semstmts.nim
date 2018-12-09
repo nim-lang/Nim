@@ -1843,17 +1843,33 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if n.sons[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
+proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
+  var f = checkModuleName(c.config, it)
+  if f != InvalidFileIDX:
+    if containsOrIncl(c.includedFiles, f.int):
+      localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
+    else:
+      addSon(includeStmtResult, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
+      excl(c.includedFiles, f.int)
+
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1):
-    var f = checkModuleName(c.config, n.sons[i])
-    if f != InvalidFileIDX:
-      if containsOrIncl(c.includedFiles, f.int):
-        localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
-      else:
-        addSon(result, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
-        excl(c.includedFiles, f.int)
+    var imp: PNode
+    let it = n.sons[i]
+    if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
+      let sep = it[0]
+      let dir = it[1]
+      imp = newNodeI(nkInfix, it.info)
+      imp.add sep
+      imp.add dir
+      imp.add sep # dummy entry, replaced in the loop
+      for x in it[2]:
+        imp.sons[2] = x
+        incMod(c, n, imp, result)
+    else:
+      incMod(c, n, it, result)
 
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 ..< safeLen(n): setLine(n.sons[i], info)
