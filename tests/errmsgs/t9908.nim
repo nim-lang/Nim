@@ -1,5 +1,5 @@
 discard """
-errormsg: "Error: ordinal type expected"
+errormsg: "ordinal type expected"
 line: 10
 """
 
