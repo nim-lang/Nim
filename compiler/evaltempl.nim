@@ -37,18 +37,21 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   case templ.kind
   of nkSym:
     var s = templ.sym
-    if s.owner.id == c.owner.id:
+    if s.owner == nil or s.owner.id == c.owner.id:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
-      elif s.kind == skGenericParam or
-           s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam:
+      elif (s.owner != nil) and (s.kind == skGenericParam or
+           s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s)
-          x.owner = c.genSymOwner
+          # sem'check needs to set the owner properly later, see bug #9476
+          x.owner = nil # c.genSymOwner
+          #if x.kind == skParam and x.owner.kind == skModule:
+          #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
     else:
@@ -173,6 +176,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   initIdTable(ctx.mapping)
 
   let body = tmpl.getBody
+  #echo "instantion of ", renderTree(body, {renderIds})
   if isAtom(body):
     result = newNodeI(nkPar, body.info)
     evalTemplateAux(body, args, ctx, result)
@@ -189,5 +193,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
+  #if ctx.debugActive:
+  #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
 
