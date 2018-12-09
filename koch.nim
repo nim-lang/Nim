@@ -79,6 +79,7 @@ template withDir(dir, body) =
   finally:
     setCurrentdir(old)
 
+let origDir = getCurrentDir()
 setCurrentDir(getAppDir())
 
 proc tryExec(cmd: string): bool =
@@ -415,6 +416,7 @@ proc temp(args: string) =
   let nimexec = findNim()
   exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
+  setCurrentDir(origDir)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
 proc xtemp(cmd: string) =
