@@ -63,26 +63,6 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
     add(pl, ~");$n")
     line(p, cpsStmts, pl)
 
-proc isInCurrentFrame(p: BProc, n: PNode): bool =
-  # checks if `n` is an expression that refers to the current frame;
-  # this does not work reliably because of forwarding + inlining can break it
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
-      result = p.prc.id == n.sym.owner.id
-  of nkDotExpr, nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyLent,tyPtr,tyRef}:
-      result = isInCurrentFrame(p, n.sons[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = isInCurrentFrame(p, n.sons[1])
-  of nkHiddenDeref, nkDerefExpr:
-    # what about: var x = addr(y); callAsOpenArray(x[])?
-    # *shrug* ``addr`` is unsafe anyway.
-    result = false
-  of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isInCurrentFrame(p, n.sons[0])
-  else: discard
-
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc openArrayLoc(p: BProc, n: PNode): Rope =
