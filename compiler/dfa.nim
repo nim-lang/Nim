@@ -272,7 +272,7 @@ proc genReturn(c: var Con; n: PNode) =
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 const
-  InterestingSyms = {skVar, skResult, skLet}
+  InterestingSyms = {skVar, skResult, skLet, skParam}
 
 proc genUse(c: var Con; n: PNode) =
   var n = n
