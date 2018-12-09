@@ -620,10 +620,7 @@ proc p(n: PNode; c: var Con): PNode =
     else:
       result = copyNode(n)
       recurse(n, result)
-  of nkSym:
-    result = n
-
-  of nkNone..pred(nkSym), succ(nkSym) .. nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+  of nkNone .. nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = n
   else:
