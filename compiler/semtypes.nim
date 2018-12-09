@@ -100,6 +100,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyString, tyCString:
         strVal = v
         x = counter
+      of tyFloat..tyFloat128:
+        localError(c.config, v.info, errOrdinalTypeExpected)
       else:
         x = getOrdValue(v)
       if i != 1:
