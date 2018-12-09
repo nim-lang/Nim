@@ -309,11 +309,15 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
   # recursion is handled explicitly, do not register the type based operation
   # before 'liftBodyAux':
-  case kind
-  of attachedAsgn: typ.assignment = result
-  of attachedSink: typ.sink = result
-  of attachedDeepCopy: typ.deepCopy = result
-  of attachedDestructor: typ.destructor = result
+  if c.config.selectedGC == gcDestructors and
+      typ.kind in {tySequence, tyString} and body.len == 0:
+    discard "do not cache it yet"
+  else:
+    case kind
+    of attachedAsgn: typ.assignment = result
+    of attachedSink: typ.sink = result
+    of attachedDeepCopy: typ.deepCopy = result
+    of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
