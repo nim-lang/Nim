@@ -128,7 +128,6 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     destroys, topLevelVars: PNode
-    alreadySinkedParams: Table[int, TLineInfo]
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -372,8 +371,6 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   if c.otherRead != nil:
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
-  else:
-    c.alreadySinkedParams[s.sym.id] = s.info
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -625,10 +622,6 @@ proc p(n: PNode; c: var Con): PNode =
       recurse(n, result)
   of nkSym:
     result = n
-    if c.alreadySinkedParams.hasKey n.sym.id:
-      # non desctructive use before sink is fine, but after sink it is an error
-      localError(c.graph.config, n.info, "sink parameter `" & $n.sym.name.s &
-        "` is already consumed at " & toFileLineCol(c. graph.config, c.alreadySinkedParams[n.sym.id]))
 
   of nkNone..pred(nkSym), succ(nkSym) .. nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
@@ -644,7 +637,6 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   c.owner = owner
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.alreadySinkedParams = initTable[int, TLineInfo](8)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
