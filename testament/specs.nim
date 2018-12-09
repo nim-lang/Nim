@@ -38,7 +38,8 @@ type
     reExeNotFound,
     reInstallFailed     # package installation failed
     reBuildFailed       # package building failed
-    reIgnored,          # test is ignored
+    reDisabled,         # test is disabled
+    reJoined,           # test is disabled because it was joined into the megatest
     reSuccess           # test was successful
     reInvalidSpec       # test had problems to parse the spec
 
@@ -66,6 +67,7 @@ type
     targets*: set[TTarget]
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
+    unjoinable*: bool
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -182,26 +184,28 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+      of "joinable":
+        result.unjoinable = not parseCfgBool(e.value)
       of "disabled":
         case e.value.normalize
-        of "y", "yes", "true", "1", "on": result.err = reIgnored
+        of "y", "yes", "true", "1", "on": result.err = reDisabled
         of "n", "no", "false", "0", "off": discard
         of "win", "windows":
-          when defined(windows): result.err = reIgnored
+          when defined(windows): result.err = reDisabled
         of "linux":
-          when defined(linux): result.err = reIgnored
+          when defined(linux): result.err = reDisabled
         of "bsd":
-          when defined(bsd): result.err = reIgnored
+          when defined(bsd): result.err = reDisabled
         of "macosx":
-          when defined(macosx): result.err = reIgnored
+          when defined(macosx): result.err = reDisabled
         of "unix":
-          when defined(unix): result.err = reIgnored
+          when defined(unix): result.err = reDisabled
         of "posix":
-          when defined(posix): result.err = reIgnored
+          when defined(posix): result.err = reDisabled
         of "travis":
-          if isTravis: result.err = reIgnored
+          if isTravis: result.err = reDisabled
         of "appveyor":
-          if isAppVeyor: result.err = reIgnored
+          if isAppVeyor: result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
@@ -237,6 +241,4 @@ proc parseSpec*(filename: string): TSpec =
       result.parseErrors.addLine e.msg
     of cfgEof:
       break
-
-
   close(p)

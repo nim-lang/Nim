@@ -35,31 +35,9 @@ const
     "testdata",
     "nimcache",
     "coroutines",
-    "osproc"
-  ]
-
-
-# these tests still have bugs. At some point when the bugs are fixd
-# this should become empty.
-
-# exclude for various reasons
-const
-  specialDisabedTests = [
-    "tests/dir with space/tspace.nim", # can't import dir with spaces.
-    "tests/method/tmultim.nim",        # (77, 8) Error: method is not a base
-    "tests/system/talloc2.nim",        # too much memory
-    "tests/collections/ttables.nim",   # takes too long
-    "tests/system/tparams.nim",        # executes itself with parameters
-    "tests/stdlib/tquit.nim",          # not testing for obvious reasons
-    "tests/system/trealloc.nim",       # out of memory
-    "tests/system/t7894.nim",          # causes out of memory in later tests
-    "tests/types/tissues_types.nim",   # causes out of memory with --gc:boehm
-    "tests/pragmas/tused.nim",         # paths in nimout differ when imported
-    "tests/generics/trtree.nim",       # very very ugly test
-    "tests/array/tarray.nim",          #
-    "tests/destructor/turn_destroy_into_finalizer.nim", # fails when imported
-    "tests/misc/tnew.nim",
-    "tests/misc/tcmdline.nim"
+    "osproc",
+    "shouldfail",
+    "dir with space"
   ]
 
 # included from tester.nim
@@ -536,11 +514,11 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
     spec.action == actionRun and
-    spec.file.replace('\\', '/') notin specialDisabedTests and
     not fileExists(spec.file.changeFileExt("cfg")) and
     not fileExists(parentDir(spec.file) / "nim.cfg") and
     spec.cmd.len == 0 and
-    spec.err != reIgnored and
+    spec.err != reDisabled and
+    not spec.unjoinable and
     spec.exitCode == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
@@ -600,11 +578,12 @@ proc processCategory(r: var TResults, cat: Category, options: string, runJoinabl
   else:
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
-      let test = makeTest(name, options, cat)
+      var test = makeTest(name, options, cat)
       if runJoinableTests or not isJoinableSpec(test.spec):
-        testSpec r, test
+        discard "run the test"
       else:
-        echo "filter out: ", test.name
+        test.spec.err = reJoined
+      testSpec r, test
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"

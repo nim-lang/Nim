@@ -6,10 +6,11 @@ And we get here
 2
 3
 '''
+joinable: false
 """
 import hashes, sequtils, tables
 
-
+# test should not be joined because it takes too long.
 block tableadds:
   proc main =
     var tab = newTable[string, string]()

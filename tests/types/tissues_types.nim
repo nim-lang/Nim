@@ -9,8 +9,9 @@ ptr Foo
 (member: "hello world", x: ...)
 (member: 123.456, x: ...)
 '''
+joinable: false
 """
-
+# not joinable because it causes out of memory with --gc:boehm
 import typetraits
 
 block t1252:

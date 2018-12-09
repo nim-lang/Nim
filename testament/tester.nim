@@ -233,8 +233,10 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
-  elif success == reIgnored:
+  elif success == reDisabled:
     maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
+  elif success == reJoined:
+    maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
   else:
     maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
@@ -248,7 +250,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     let (outcome, msg) =
       if success == reSuccess:
         ("Passed", "")
-      elif success == reIgnored:
+      elif success in {reDisabled, reJoined}:
         ("Skipped", "")
       else:
         ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
@@ -357,9 +359,9 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     inc(r.total)
     return
 
-  if expected.err == reIgnored:
+  if expected.err in {reDisabled, reJoined}:
     # targetC is a lie, but parameter is required
-    r.addResult(test, targetC, "", "", reIgnored)
+    r.addResult(test, targetC, "", "", expected.err)
     inc(r.skipped)
     inc(r.total)
     return
@@ -571,7 +573,7 @@ proc main() =
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, runJoinableTests = false)
+    processCategory(r, cat, p.cmdLineRest.string, runJoinableTests = true)
   of "r", "run":
     let (dir, file) = splitPath(p.key.string)
     let (_, subdir) = splitPath(dir)
@@ -579,7 +581,7 @@ proc main() =
     processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
     generateHtml(resultsFile, optFailing)
-  of "stats":
+  of "megatest":
     discard runJoinedTest(testsDir)
   else:
     quit Usage

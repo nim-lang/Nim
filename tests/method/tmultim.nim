@@ -4,9 +4,10 @@ collide: unit, thing
 collide: unit, thing
 collide: thing, unit
 collide: thing, thing
-collide: unit, thing | collide: unit, thing | collide: thing, unit | 
+collide: unit, thing | collide: unit, thing | collide: thing, unit |
 do nothing
 '''
+  joinable: false
 """
 
 

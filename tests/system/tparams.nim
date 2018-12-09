@@ -1,3 +1,8 @@
+discard """
+joinable: false
+"""
+
+# not joinable because it executes itself with parameters
 import os
 import osproc
 import parseopt2

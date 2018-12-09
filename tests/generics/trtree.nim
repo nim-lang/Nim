@@ -2,7 +2,10 @@ discard """
   output: '''1 [2, 3, 4, 7]
 [0, 0]'''
   target: "c"
+  joinable: false
 """
+
+# don't join because the code is too messy.
 
 # Nim RTree and R*Tree implementation
 # S. Salewski, 06-JAN-2018

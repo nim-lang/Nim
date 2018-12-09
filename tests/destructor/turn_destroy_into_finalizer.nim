@@ -1,5 +1,6 @@
 discard """
   output: "turn_destroy_into_finalizer works"
+  joinable: false
 """
 
 type
