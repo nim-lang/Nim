@@ -367,8 +367,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
 
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) = 
   assert s.kind == nkSym and s.sym.kind == skParam
-  discard isLastRead(s, c)
-  if c.otherRead != nil:
+  if not isLastRead(s, c):
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
