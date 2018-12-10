@@ -109,7 +109,19 @@ proc myfunc(x, y: int): (MySeqNonCopyable, MySeqNonCopyable) =
 
 proc myfunc2(x, y: int): tuple[a: MySeqNonCopyable, b:int, c:MySeqNonCopyable] =
   var cc = newMySeq(y, 5.0)
-  (a: newMySeq(x, 1.0), b:0, c: cc)
+  (a: case x:
+    of 1: 
+      let (z1, z2) = myfunc(x,y)
+      z2
+    elif x > 5: raise newException(ValueError, "new error")
+    else: newMySeq(x, 1.0), 
+   b: 0, 
+   c: block:
+        var tmp = if y > 0: move(cc) else: newMySeq(1, 3.0)
+        tmp[0] = 5
+        tmp 
+  )
+   
 
 let (seq1, seq2) = myfunc(2, 3)
 doAssert seq1.len == 2
@@ -123,3 +135,34 @@ doAssert seq3[0] == 1.0
 
 var seq4, seq5: MySeqNonCopyable
 (seq4, i, seq5) = myfunc2(2, 3)
+
+seq4 = block:
+  var tmp = newMySeq(4, 1.0)
+  tmp[0] = 3.0
+  tmp
+
+doAssert seq4[0] == 3.0 
+
+import macros
+
+seq4 = 
+  if i > 0: newMySeq(2, 5.0) 
+  elif i < -100: raise newException(ValueError, "Parse Error")
+  else: newMySeq(2, 3.0)
+
+seq4 = 
+  case (char) i:
+    of 'A', {'W'..'Z'}: newMySeq(2, 5.0) 
+    of 'B': quit(-1)
+    else: 
+      let (x1, x2, x3) = myfunc2(2, 3)
+      x3
+
+
+#------------------------------------------------------------
+#-- Move into array constructor
+#------------------------------------------------------------
+
+var ii = 1
+let arr2 = [newMySeq(2, 5.0), if i > 1: newMySeq(3, 1.0) else: newMySeq(0, 0.0)]
+var seqOfSeq2 = @[newMySeq(2, 5.0), newMySeq(3, 1.0)]
