@@ -821,7 +821,11 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       a.typ = nn.typ
       addDecl(c, a)
   else:
-    if sfGenSym notin param.flags: addDecl(c, param)
+    if sfGenSym in param.flags:
+      # bug #XXX, fix the gensym'ed parameters owner:
+      if param.owner == nil:
+        param.owner = getCurrOwner(c)
+    else: addDecl(c, param)
 
 template shouldHaveMeta(t) =
   internalAssert c.config, tfHasMeta in t.flags

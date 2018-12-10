@@ -169,7 +169,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
             getSymRepr(c.config, s))
       inc missingImpls
     elif {sfUsed, sfExported} * s.flags == {}:
-      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
+      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
