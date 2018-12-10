@@ -566,6 +566,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
   if exitCode != 0:
+    echo buf
     quit("megatest execution failed")
 
   norm buf

@@ -244,7 +244,7 @@ template forwardPacketT*(typeName: untyped; underlyingType: untyped) {.dirty.} =
     #writeData(s, addr p, sizeof(p))
     buffer.write(underlyingType(ord))
 
-when true:
+when false:
   type
     SomeEnum = enum
       A = 0'i8,
