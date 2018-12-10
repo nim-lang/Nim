@@ -246,7 +246,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     maybeStyledEcho fgYellow, "Gotten:"
     maybeStyledEcho styleBright, given, "\n"
 
-  if existsEnv("APPVEYOR"):
+  if backendLogging and existsEnv("APPVEYOR"):
     let (outcome, msg) =
       if success == reSuccess:
         ("Passed", "")
@@ -358,26 +358,21 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
-
   if expected.err in {reDisabled, reJoined}:
     # targetC is a lie, but parameter is required
     r.addResult(test, targetC, "", "", expected.err)
     inc(r.skipped)
     inc(r.total)
     return
-
   expected.targets.incl targets
-
   # still no target specified at all
   if expected.targets == {}:
     if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
       expected.targets = {targetCpp}
     else:
       expected.targets = {targetC}
-
   for target in expected.targets:
     inc(r.total)
-
     case expected.action
     of actionCompile:
       var given = callCompiler(expected.getCmd, test.name, test.options, target,
@@ -388,11 +383,9 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       # nested conditionals - the empty rows in between to clarify the "danger"
       var given = callCompiler(expected.getCmd, test.name, test.options,
                                target)
-
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
         continue
-
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
@@ -410,8 +403,6 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         r.addResult(test, target, expected.output, "nodejs binary not in PATH",
                     reExeNotFound)
         continue
-
-
       var exeCmd: string
       var args: seq[string]
       if isJsTarget:
@@ -419,13 +410,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
         args.add exeFile
       else:
         exeCmd = exeFile
-
       var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)
-
       # Treat all failure codes from nodejs as 1. Older versions of nodejs used
       # to return other codes, but for us it is sufficient to know that it's not 0.
       if exitCode != 0: exitCode = 1
-
       let bufB =
         if expected.sortoutput:
           var x = splitLines(strip(buf.string))
@@ -433,22 +421,18 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
           join(x, "\n")
         else:
           strip(buf.string)
-
       if exitCode != expected.exitCode:
         r.addResult(test, target, "exitcode: " & $expected.exitCode,
                           "exitcode: " & $exitCode & "\n\nOutput:\n" &
                           bufB, reExitCodesDiffer)
         continue
-
       if (expected.outputCheck == ocEqual and expected.output != bufB) or
          (expected.outputCheck == ocSubstr and expected.output notin bufB):
         given.err = reOutputsDiffer
         r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
         continue
-
       compilerOutputTests(test, target, given, expected, r)
       continue
-
     of actionReject:
       var given = callCompiler(expected.getCmd, test.name, test.options,
                                target)
@@ -523,7 +507,7 @@ proc main() =
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
     of "nim":
-      compilerPrefix = p.val.string
+      compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":

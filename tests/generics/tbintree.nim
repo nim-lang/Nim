@@ -1,5 +1,9 @@
 discard """
-  output: "helloworld99110223"
+  output: '''hello
+world
+99
+110
+223'''
 """
 type
   TBinaryTree[T] = object      # TBinaryTree is a generic type with
@@ -89,9 +93,9 @@ when true:
   add(root, "world")
   if find(root, "world"):
     for str in items(root):
-      stdout.write(str)
+      echo(str)
   else:
-    stdout.writeLine("BUG")
+    echo("BUG")
 
   var
     r2: PBinaryTree[int]
@@ -99,8 +103,4 @@ when true:
   add(r2, 223)
   add(r2, 99)
   for y in items(r2):
-    stdout.write(y)
-
-  stdout.write "\n"
-
-#OUT helloworld99110223
+    echo(y)
