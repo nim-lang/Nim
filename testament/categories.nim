@@ -499,7 +499,8 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
+const AdditionalCategories = ["debugger", "examples", "lib"]
+#, "megatest"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
