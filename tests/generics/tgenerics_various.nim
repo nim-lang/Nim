@@ -5,11 +5,10 @@ direct
 generic
 generic
 '''
+joinable: false
 """
 
-
 import algorithm, sugar, sequtils, typetraits, asyncdispatch
-
 
 block tconfusing_arrow:
   type Deck = object

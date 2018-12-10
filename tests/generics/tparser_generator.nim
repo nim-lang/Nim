@@ -1,6 +1,7 @@
 discard """
   output: '''Match failed: spam
 Match failed: ham'''
+joinable: false
 """
 
 # bug #6220

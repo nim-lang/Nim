@@ -16,5 +16,4 @@ const
 stdout.write(rawQuote)
 stdout.write(tripleEmpty)
 stdout.write(raw)
-stdout.write(escaped)
-#OUT a""long string"""""abc"def_'2'●𝌆𝌆A
+stdout.writeLine(escaped)
