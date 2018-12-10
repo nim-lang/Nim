@@ -617,6 +617,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "run", "r":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optRun)
+  of "errormax":
+    # Note: `nim check` (etc) can overwrite this;
+    # `0` is meaningless and has same effect as `1`
+    expectArg(conf, switch, arg, pass, info)
+    conf.errorMax = parseInt(arg)
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)
