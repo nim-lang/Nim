@@ -79,7 +79,7 @@ template withDir(dir, body) =
   finally:
     setCurrentdir(old)
 
-let nimHome        = getAppDir()
+let nimHome        = quoteShell(getAppDir()) # may contain spaces
 let installerIni   = nimHome / "compiler" / "installer.ini"
 let nimMain        = nimHome / "compiler" / "nim.nim"
 let compileNimInst = nimHome / "tools" / "niminst" / "niminst"
@@ -404,10 +404,13 @@ proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
   nimexec "cc --taintMode:on --opt:speed " & nimHome / "testament" / "tester.nim"
-  # Since tests take a long time (on my machine), and we want to defy Murhpys
-  # law - lets make sure the compiler really is freshly compiled!
-  nimexec "c --lib:lib -d:release --opt:speed " & nimMain
-  let tester = quoteShell(nimHome / "testament" / "tester".exe)
+  # Since tests take a long time (on my machine), and we want to defy
+  # Murhpys law - lets make sure the compiler really is freshly
+  # compiled!
+
+  let libDir = nimHome / "lib"
+  nimexec "c --lib:$1 -d:release --opt:speed $2" % [libDir, nimMain]
+  let tester = nimHome / "testament" / "tester".exe
   withDir(nimHome):
     let success = tryExec tester & " " & (args|"all")
     if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
