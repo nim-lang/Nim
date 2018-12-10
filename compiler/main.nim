@@ -266,11 +266,27 @@ proc mainCommand*(graph: ModuleGraph) =
       var libpaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
 
+      var hints = block: # consider factoring with `listHints`
+        var ret = newJObject()
+        for a in hintMin..hintMax:
+          let key = lineinfos.HintsToStr[ord(a) - ord(hintMin)]
+          ret[key] = % (a in conf.notes)
+        ret
+      var warnings = block: # consider factoring with `listWarnings`
+        var ret = newJObject()
+        for a in warnMin..warnMax:
+          let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
+          ret[key] = % (a in conf.notes)
+        ret
+
       var dumpdata = % [
         (key: "version", val: %VersionAsString),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
-        (key: "lib_paths", val: libpaths)
+        (key: "lib_paths", val: %libpaths),
+        (key: "out", val: %conf.outFile.string),
+        (key: "hints", val: hints),
+        (key: "warnings", val: warnings),
       ]
 
       msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
