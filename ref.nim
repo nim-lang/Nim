@@ -146,12 +146,32 @@ when false:
       return
     echo a.a
 
-proc f22: A not nil=
-  new(result)
+  proc f22: A not nil=
+    new(result)
+
+  proc f24(b: int) =
+    var a: A
+    try:
+      if b == 0:
+        raise newException(ValueError, "e")
+      else:
+        a = A()
+    except:
+      echo a.a # can't deref a
+  
+
+
+  proc f25(b: int) =
+    var a: A
+    try:
+      if b == 0:
+        raise newException(ValueError, "e")
+    finally:
+      echo a.a
+  
 
 var a: A
-var b = B()
-echo f22().a
+f25(0)
 
 
 

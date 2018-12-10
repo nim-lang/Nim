@@ -234,8 +234,10 @@ proc union(l: NilMap, r: NilMap): NilMap =
       result[name] = union(value, r[name])
 
 proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
-  result = check(assigned, conf, map)
-
+  if assigned.kind != nkEmpty:
+    result = check(assigned, conf, map)
+  else:
+    result = (typeNilability(target.typ), map)
   if result.map.isNil:
     result.map = map
   let t = $target
@@ -359,6 +361,27 @@ proc checkCase(n, conf, map): Check =
     else:
       discard
 
+proc checkTry(n, conf, map): Check =
+  var newMap = map
+  var currentMap = map
+  for child in n[0]:
+    let (childNilability, childMap) = check(child, conf, currentMap)
+    currentMap = childMap
+    newMap = union(newMap, childMap)
+  echo newMap
+  for a, branch in n:
+    if a > 0:
+      case branch.kind:
+      of nkFinally:
+        let (_, childMap) = check(branch[0], conf, newMap)
+        newMap = union(newMap, childMap)
+      of nkExceptBranch:        
+        let (_, childMap) = check(branch[^1], conf, newMap)
+        newMap = union(newMap, childMap)
+      else:
+        discard
+  result = (Safe, newMap)
+
 proc directStop(n): bool =
   case n.kind:
   of nkStmtList:
@@ -465,6 +488,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   of nkVarSection:
     result.map = map
     for child in n:
+      echo child.kind
       result = checkAsgn(child[0], child[2], conf, result.map)
   of nkForStmt:
     result = checkFor(n, conf, map)
@@ -474,6 +498,8 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result = checkReturn(n, conf, map)
   of nkBracketExpr:
     result = checkBracketExpr(n, conf, map)
+  of nkTryStmt:
+    result = checkTry(n, conf, map)
   of nkNilLit:
     result = (Nil, map)
   of nkIntLit:
@@ -484,7 +510,6 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   # echo ""
 
 proc typeNilability(typ: PType): Nilability =
-  echo "type", typeToString(typ)
   if typ.isNil:
     Safe
   elif tfNotNil in typ.flags:
