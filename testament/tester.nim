@@ -552,8 +552,6 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    doAssert runJoinedTest(testsDir)
-
     var myself = quoteShell(findExe("testament" / "tester"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
@@ -566,14 +564,21 @@ proc main() =
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
-        cmds.add(myself & " cat " & quoteShell(cat) & rest)
+        cmds.add(myself & " pcat " & quoteShell(cat) & rest)
     for cat in AdditionalCategories:
-      cmds.add(myself & " cat " & quoteShell(cat) & rest)
+      cmds.add(myself & " pcat " & quoteShell(cat) & rest)
     quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, runJoinableTests = true)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
+  of "pcat":
+    # 'pcat' is used for running a category in parallel. Currently the only
+    # difference is that we don't want to run joinable tests here as they
+    # are covered by the 'megatest' category.
+    var cat = Category(p.key)
+    p.next
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
   of "r", "run":
     let (dir, file) = splitPath(p.key.string)
     let (_, subdir) = splitPath(dir)
@@ -581,8 +586,6 @@ proc main() =
     processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
     generateHtml(resultsFile, optFailing)
-  of "megatest":
-    discard runJoinedTest(testsDir)
   else:
     quit Usage
 

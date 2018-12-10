@@ -262,7 +262,9 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  testSpec r, makeTest("tools/nimgrep", options & " --debugger:on", cat)
+  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+  t.spec.action = actionCompile
+  testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
@@ -337,20 +339,20 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "76de5833a7cc46f96b006ce51179aeb1",
     "705eff79844e219b47366bd431658961",
     "a1e87b881c5eb161553d119be8b52f64",
-    "13febc363ed82585f2a60de40ddfefda",
+    "2d706a6ec68d2973ec7e733e6d5dce50",
     "c11a013db35e798f44077bc0763cc86d",
     "3e32e2c5e9a24bd13375e1cd0467079c",
-    "0b9fe7ba159623d49ae60db18a15037c",
-    "b2dd5293d7f784824bbf9792c6fb51ad",
-    "4c19d8d9026bfe151b31d7007fa3c237",
-    "9415c6a568cfceed08da8378e95b5cd5",
+    "a5452722b2841f0c1db030cf17708955",
+    "dc6c45eb59f8814aaaf7aabdb8962294",
+    "69d208d281a2e7bffd3eaf4bab2309b1",
+    "ec05666cfb60211bedc5e81d4c1caf3d",
     "da520038c153f4054cb8cc5faa617714",
-    "e6c6e061b6f77b2475db6fec7abfb7f4",
+    "59906c8cd819cae67476baa90a36b8c1",
     "9a8fe78c588d08018843b64b57409a02",
     "8b5d28e985c0542163927d253a3e4fc9",
     "783299b98179cc725f9c46b5e3b5381f",
-    "bc523f9a9921299090bac1af6c958e73",
-    "80f9c3e594a798225046e8a42e990daf",
+    "1a2b3fba1187c68d6a9bfa66854f3318",
+    "80f9c3e594a798225046e8a42e990daf"
   ]
 
   for i, test in tests:
@@ -497,7 +499,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib"]
+const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -526,7 +528,68 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
 
-proc processCategory(r: var TResults, cat: Category, options: string, runJoinableTests: bool) =
+proc norm(s: var string) =
+  while true:
+    let tmp = s.replace("\n\n", "\n")
+    if tmp == s: break
+    s = tmp
+  s = s.strip
+
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
+  ## returs a list of tests that have problems
+  var specs: seq[TSpec] = @[]
+
+  for kind, dir in walkDir(testsDir):
+    assert testsDir.startsWith(testsDir)
+    let cat = dir[testsDir.len .. ^1]
+    if kind == pcDir and cat notin specialCategories:
+      for file in os.walkFiles(testsDir / cat / "t*.nim"):
+        let spec = parseSpec(file)
+        if isJoinableSpec(spec):
+          specs.add spec
+
+  echo "joinable specs: ", specs.len
+
+  var megatest: string
+  for runSpec in specs:
+    megatest.add "import r\""
+    megatest.add runSpec.file
+    megatest.add "\"\n"
+
+  writeFile("megatest.nim", megatest)
+
+  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
+  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  if exitCode != 0:
+    echo buf
+    quit("megatest compilation failed")
+
+  (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
+  if exitCode != 0:
+    quit("megatest execution failed")
+
+  norm buf
+  writeFile("outputGotten.txt", buf)
+  var outputExpected = ""
+  for i, runSpec in specs:
+    outputExpected.add runSpec.output.strip
+    outputExpected.add '\n'
+  norm outputExpected
+
+  if buf != outputExpected:
+    writeFile("outputExpected.txt", outputExpected)
+    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+    echo "output different!"
+    quit 1
+  else:
+    echo "output OK"
+    removeFile("megatest.nim")
+  #testSpec r, makeTest("megatest", options, cat)
+
+# ---------------------------------------------------------------------------
+
+proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
+                     runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
     when false:
@@ -575,6 +638,8 @@ proc processCategory(r: var TResults, cat: Category, options: string, runJoinabl
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
+  of "megatest":
+    runJoinedTest(r, cat, testsDir)
   else:
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
@@ -587,65 +652,3 @@ proc processCategory(r: var TResults, cat: Category, options: string, runJoinabl
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
-
-proc norm(s: var string) =
-  while true:
-    let tmp = s.replace("\n\n", "\n")
-    if tmp == s: break
-    s = tmp
-  s = s.strip
-
-proc runJoinedTest(testsDir: string): bool =
-  ## returs a list of tests that have problems
-  var specs: seq[TSpec] = @[]
-
-  for kind, dir in walkDir(testsDir):
-    assert testsDir.startsWith(testsDir)
-    let cat = dir[testsDir.len .. ^1]
-    if kind == pcDir and cat notin specialCategories:
-      for file in os.walkFiles(testsDir / cat / "t*.nim"):
-        let spec = parseSpec(file)
-        if isJoinableSpec(spec):
-          specs.add spec
-
-  echo "joinable specs: ", specs.len
-
-  var megatest: string
-  for runSpec in specs:
-    megatest.add "import r\""
-    megatest.add runSpec.file
-    megatest.add "\"\n"
-
-  writeFile("megatest.nim", megatest)
-
-  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
-  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
-  if exitCode != 0:
-    echo buf
-    quit("megatest compilation failed")
-
-  echo "compilation ok"
-
-  (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
-  if exitCode != 0:
-    quit("megatest execution failed")
-
-  echo "run ok"
-
-  norm buf
-  writeFile("outputGotten.txt", buf)
-  var outputExpected = ""
-  for i, runSpec in specs:
-    outputExpected.add runSpec.output.strip
-    outputExpected.add '\n'
-  norm outputExpected
-
-  if buf != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
-    echo "output different!"
-    result = false
-  else:
-    echo "output OK"
-    removeFile("megatest.nim")
-    result = true
