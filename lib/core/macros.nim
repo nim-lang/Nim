@@ -504,7 +504,7 @@ proc indent(s: string, prefix: string): string =
     result.add ai
     if ai == '\n': result.add prefix
 
-template handleParseError() =
+template handleParseError(s: string) =
   let x = internalErrorFlag()
   if x.len > 0:
     var msg = "parse error: "
@@ -517,13 +517,13 @@ proc parseExpr*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
   ## Expects a single expression. Raises ``ValueError`` for parsing errors.
   result = internalParseExpr(s)
-  handleParseError()
+  handleParseError(s)
 
 proc parseStmt*(s: string): NimNode {.noSideEffect, compileTime.} =
   ## Compiles the passed string to its AST representation.
   ## Expects one or more statements. Raises ``ValueError`` for parsing errors.
   result = internalParseStmt(s)
-  handleParseError()
+  handleParseError(s)
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
