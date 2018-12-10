@@ -36,11 +36,11 @@ type
     size*: int       ## size of the memory mapped file
 
     when defined(windows):
-      fHandle: Handle
-      mapHandle: Handle
-      wasOpened: bool   ## only close if wasOpened
+      fHandle*: Handle
+      mapHandle*: Handle
+      wasOpened*: bool   ## only close if wasOpened
     else:
-      handle: cint
+      handle*: cint
 
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
