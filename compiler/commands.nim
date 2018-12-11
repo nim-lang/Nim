@@ -619,13 +619,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     incl(conf.globalOptions, optRun)
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
-    conf.errorMax = block:
-      # Note: `nim check` (etc) can overwrite this.
-      # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
-      # If user doesn't set this flag and the code doesn't either, it'd
-      # have the same effect as errorMax = 1
-      let ret = parseInt(arg)
-      if ret == 0: high(int) else: ret
+    # Note: `nim check` (etc) can overwrite this.
+    # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
+    # If user doesn't set this flag and the code doesn't either, it'd
+    # have the same effect as errorMax = 1
+    let ret = parseInt(arg)
+    conf.errorMax = if ret == 0: high(int) else: ret
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)

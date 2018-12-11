@@ -263,17 +263,8 @@ Take advantage of no implicit bool conversion
   doAssert isValid() == true
   doAssert isValid() # preferred
 
-.. _immediately_invoked_lambdas:
-Immediately invoked lambdas (https://en.wikipedia.org/wiki/Immediately-invoked_function_expression)
-
-.. code-block:: nim
-
-  let a = (proc (): auto = getFoo())()
-  let a = block:  # preferred
-    getFoo()
-
 .. _design_for_mcs:
-Design with method call syntax (UFCS in other languages) chaining in mind
+Design with method call syntax chaining in mind
 
 .. code-block:: nim
 

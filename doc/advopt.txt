@@ -104,7 +104,7 @@ Advanced options:
                             value = number of processors (0 for auto-detect)
   --incremental:on|off      only recompile the changed modules (experimental!)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
-  --errorMax:int            stop after n errors in semantic pass; 0 means unlimited
+  --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
   -v, --version             show detailed version information
