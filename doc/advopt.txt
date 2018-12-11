@@ -13,6 +13,7 @@ Advanced commands:
   //genDepend               generate a DOT file containing the
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
+                            see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
 Advanced options:
