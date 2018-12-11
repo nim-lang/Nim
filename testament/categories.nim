@@ -499,8 +499,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib"]
-#, "megatest"]
+const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -565,7 +564,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     echo buf
     quit("megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx2("./megatest", [], {poStdErrToStdOut}, "")
+  (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
     echo buf
     quit("megatest execution failed")

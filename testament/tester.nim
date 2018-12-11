@@ -536,7 +536,7 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
     var myself = quoteShell(findExe("testament" / "tester"))
     if targetsStr.len > 0:
