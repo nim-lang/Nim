@@ -266,20 +266,16 @@ proc mainCommand*(graph: ModuleGraph) =
       var libpaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
 
-      var hints = block: # consider factoring with `listHints`
-        var ret = newJObject()
-        for a in hintMin..hintMax:
-          let key = lineinfos.HintsToStr[ord(a) - ord(hintMin)]
-          ret[key] = % (a in conf.notes)
-        ret
-      var warnings = block: # consider factoring with `listWarnings`
-        var ret = newJObject()
-        for a in warnMin..warnMax:
-          let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
-          ret[key] = % (a in conf.notes)
-        ret
+      var hints = newJObject() # consider factoring with `listHints`
+      for a in hintMin..hintMax:
+        let key = lineinfos.HintsToStr[ord(a) - ord(hintMin)]
+        hints[key] = %(a in conf.notes)
+      var warnings = newJObject()
+      for a in warnMin..warnMax:
+        let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
+        warnings[key] = %(a in conf.notes)
 
-      var dumpdata = % [
+      var dumpdata = %[
         (key: "version", val: %VersionAsString),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
