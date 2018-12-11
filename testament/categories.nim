@@ -584,6 +584,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     quit 1
   else:
     echo "output OK"
+    removeFile("outputGotten.txt")
     removeFile("megatest.nim")
   #testSpec r, makeTest("megatest", options, cat)
 
