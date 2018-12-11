@@ -507,7 +507,7 @@ proc strTableContains*(t: TStrTable, n: PSym): bool =
     h = nextTry(h, high(t.data))
   result = false
 
-proc strTableRawInsert(data: var TSymSeq, n: PSym) =
+proc strTableRawInsert(data: var seq[PSym], n: PSym) =
   var h: Hash = n.name.h and high(data)
   if sfImmediate notin n.flags:
     # fast path:
@@ -535,7 +535,7 @@ proc strTableRawInsert(data: var TSymSeq, n: PSym) =
     data[h] = n
     if favPos >= 0: swap data[h], data[favPos]
 
-proc symTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
+proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h
   var h: Hash = prevSym.name.h and high(data)
   while data[h] != nil:
@@ -549,7 +549,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
   symTabReplaceRaw(t.data, prevSym, newSym)
 
 proc strTableEnlarge(t: var TStrTable) =
-  var n: TSymSeq
+  var n: seq[PSym]
   newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
