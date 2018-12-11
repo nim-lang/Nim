@@ -458,7 +458,10 @@ when defined(nimRequiresNimFrame):
 
   proc callDepthLimitReached() {.noinline.} =
     writeStackTrace()
-    showErrorMessage("Error: call depth limit reached in a debug build (" & $nimCallDepthLimit & " function calls). You can change it with -d:nimCallDepthLimit=<int> or switch to a release build with -d:release.\n")
+    showErrorMessage("Error: call depth limit reached in a debug build (" &
+        $nimCallDepthLimit & " function calls). You can change it with " &
+        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+        "recursions instead.\n")
     quitOrDebug()
 
   proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
