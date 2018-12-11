@@ -117,12 +117,10 @@ let a3=1
   fun()
 
 
-else: # main driver
-
-  import os, strutils, osproc, nre
-
+when not defined(case_any_testcase): # main driver
+  import os, strutils, osproc, nre, strformat
   proc sanitizeOutput(s: string): string =
-    ## sanitize external location information to keep the test flexible, 
+    ## sanitize external location information to keep the test flexible,
     ## eg `../../lib/core/macros.nim(505))` => <replaced_file>
     result = s.replace(re"(?m)^../../[^\)]+\)", "<replaced_file>")
 
@@ -140,7 +138,7 @@ tparsestmt.nim(89, 6) template/generic instantiation of `fun` from here"""
     let cases_ok = @["-d:case_ok1", "-d:case_ok2"]
     let cases_err = @["-d:case1", "-d:case2", "-d:case3"]
     for opt in cases_ok & cases_err:
-      let cmd = nim & " c --compileOnly --colors:off --hints:off " & opt & " " & self
+      let cmd = fmt"{nim} c --compileOnly --colors:off --hints:off -d:case_any_testcase {opt} {self}"
       echo "test case: " & opt & "--------------------"
       let ret = execCmdEx(cmd, {poStdErrToStdOut, poEvalCommand})
       echo ret.output.sanitizeOutput
