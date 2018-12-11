@@ -12,6 +12,8 @@
 type
   UncheckedCharArray = UncheckedArray[char]
 
+import system/helpers2
+
 type
   Buffer = ptr object
     refcount: int
@@ -49,11 +51,11 @@ proc len*(s: SharedString): int = s.len
 
 proc `[]`*(s: SharedString; i: Natural): char =
   if i < s.len: result = s.buffer.data[i+s.first]
-  else: raise newException(IndexError, "index out of bounds")
+  else: raise newException(IndexError, formatErrorIndexBound(i, s.len-1))
 
 proc `[]=`*(s: var SharedString; i: Natural; value: char) =
   if i < s.len: s.buffer.data[i+s.first] = value
-  else: raise newException(IndexError, "index out of bounds")
+  else: raise newException(IndexError, formatErrorIndexBound(i, s.len-1))
 
 proc `[]`*(s: SharedString; ab: HSlice[int, int]): SharedString =
   #incRef(src.buffer)
