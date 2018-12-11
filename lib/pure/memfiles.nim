@@ -42,21 +42,6 @@ type
     else:
       handle: cint
 
-when defined(windows):
-  proc fHandle*(m: MemFile): Handle = m.fHandle
-  proc mapHandle*(m: MemFile): Handle = m.mapHandle
-  proc wasOpened*(m: MemFile): bool = m.wasOpened
-  proc `fHandle=`*(m: var MemFile, fHandle: Handle) =
-    m.fHandle = fHandle
-  proc `mapHandle=`*(m: var MemFile, mapHandle: Handle) =
-    m.mapHandle = mapHandle
-  proc `wasOpened=`*(m: var MemFile, wasOpened: bool) =
-    m.wasOpened = wasOpened
-else:
-  proc handle*(m: MemFile): cint = m.handle
-  proc `handle=`*(m: var MemFile, handle: cint) =
-    m.handle = handle
-
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
@@ -295,6 +280,35 @@ proc flush*(f: var MemFile; attempts: Natural = 3) =
       lastErr = osLastError()
       if lastErr != EBUSY.OSErrorCode:
         raiseOSError(lastErr, "error flushing mapping")
+
+proc resize*(f: var MemFile, newFileSize: int) =
+  ## resize and re-map the file underlying an ``allowRemap MemFile``.  NOTE:
+  ## this assumes the entire file is mapped read-write at offset zero.  Also,
+  ## the value of ``.mem`` will probably change.
+  when defined(windows):
+    discard #TODO This needs to be implemented.
+  else:
+    if f.handle == -1:
+      raise newException(IOError,
+                         "Cannot resize MemFile opened with allowRemap=false")
+    if ftruncate(f.handle, newFileSize) == -1:
+      raiseOSError(osLastError())
+    when defined(linux):                          #Maybe NetBSD, too?
+      #On Linux this can be over 100 times faster than a munmap,mmap cycle.
+      proc mremap(old: pointer; oldSize,newSize: csize; flags: cint): pointer {.
+        importc: "mremap", header: "<sys/mman.h>" .}
+      let newAddr = mremap(f.mem, csize(f.size), csize(newFileSize), cint(1))
+      if newAddr == cast[pointer](MAP_FAILED):
+        raiseOSError(osLastError())
+    else:
+      if munmap(f.mem, f.size) != 0:
+        raiseOSError(osLastError())
+      let newAddr = mmap(nil, newFileSize, PROT_READ or PROT_WRITE,
+                         MAP_SHARED or MAP_POPULATE, f.handle, 0)
+      if newAddr == cast[pointer](MAP_FAILED):
+        raiseOSError(osLastError())
+    f.mem = newAddr
+    f.size = newFileSize
 
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
