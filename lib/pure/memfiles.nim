@@ -36,11 +36,26 @@ type
     size*: int       ## size of the memory mapped file
 
     when defined(windows):
-      fHandle*: Handle
-      mapHandle*: Handle
-      wasOpened*: bool   ## only close if wasOpened
+      fHandle: Handle
+      mapHandle: Handle
+      wasOpened: bool   ## only close if wasOpened
     else:
-      handle*: cint
+      handle: cint
+
+when defined(windows):
+  proc fHandle*(m: MemFile): Handle = m.fHandle
+  proc mapHandle*(m: MemFile): Handle = m.mapHandle
+  proc wasOpened*(m: MemFile): bool = m.wasOpened
+  proc `fHandle=`*(m: var MemFile, fHandle: Handle) =
+    m.fHandle = fHandle
+  proc `mapHandle=`*(m: var MemFile, mapHandle: Handle) =
+    m.mapHandle = mapHandle
+  proc `wasOpened=`*(m: var MemFile, wasOpened: bool) =
+    m.wasOpened = wasOpened
+else:
+  proc handle*(m: MemFile): cint = m.handle
+  proc `handle=`*(m: var MemFile, handle: cint) =
+    m.handle = handle
 
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0): pointer =
