@@ -13,7 +13,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -113,6 +113,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
+    wrap0(getAppFilename, osop)
     wrap2svoid(writeFile, systemop)
     wrap1s(readFile, systemop)
     systemop getCurrentExceptionMsg
