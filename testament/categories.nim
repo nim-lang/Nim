@@ -646,7 +646,7 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     var testsRun = 0
     for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
       var test = makeTest(name, options, cat)
-      if runJoinableTests or not isJoinableSpec(test.spec):
+      if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
         discard "run the test"
       else:
         test.spec.err = reJoined
