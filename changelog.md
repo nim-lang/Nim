@@ -94,6 +94,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - There is a new pragma block `noSideEffect` that works like
   the `gcsafe` pragma block.
 - added os.getCurrentProcessId()
+- User defined pragmas are now allowed in the pragma blocks
+- Pragma blocks are now longer eliminated from the typed AST tree to preserve
+  pragmas for further analysis by macros
 
 ### Language changes
 
