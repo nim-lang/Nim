@@ -13,3 +13,5 @@ echo i
 # bug #9868
 proc foo(a: SomeInteger): array[sizeof(a), byte] =
   discard
+
+discard foo(1)
