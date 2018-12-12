@@ -86,7 +86,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `macros.isInstantiationOf` for checking if the proc symbol
   is instantiation of generic proc symbol.
 
-- There is a new stdlib mdoule `std/diff` to compute the famous "diff"
+- There is a new stdlib mdoule `experimental/diff` to compute the famous "diff"
   of two texts by line.
 
 
