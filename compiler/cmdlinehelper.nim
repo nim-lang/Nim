@@ -48,6 +48,12 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   if self.suggestMode:
     conf.command = "nimsuggest"
 
+  # These defines/options should not be enabled while processing nimscript
+  # bug #4446, #9420, #8991, #9589, #9153
+  var symsToUndef = ["profiler", "memProfiler", "nodejs"]
+  for sym in symsToUndef:
+    undefSymbol(conf.symbols, sym)
+
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
       runNimScript(cache, path, freshDefines = false, conf)
