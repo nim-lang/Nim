@@ -113,7 +113,6 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
-    wrap0(getAppFilename, osop)
     wrap2svoid(writeFile, systemop)
     wrap1s(readFile, systemop)
     systemop getCurrentExceptionMsg
@@ -121,3 +120,6 @@ proc registerAdditionalOps*(c: PCtx) =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     systemop gorgeEx
   macrosop getProjectPath
+
+  registerCallback c, "stdlib.os.staticGetAppFilename", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, getAppFilename())

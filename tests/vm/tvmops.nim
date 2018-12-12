@@ -5,12 +5,20 @@ import os
 import math
 import strutils
 
-# proc forceCT()
+template forceConst(a: untyped): untyped =
+  ## Force evaluation at CT, useful for example here:
+  ## `callFoo(forceConst(getBar1()), getBar2())`
+  ## instead of:
+  ##  block:
+  ##    const a = getBar1()
+  ##    `callFoo(a, getBar2())`
+  const ret = a
+  ret
 
 static:
   # TODO: add more tests
   block: #getAppFilename, gorgeEx, gorge
-    let nim = getAppFilename()
+    const nim = staticGetAppFilename()
     let ret = gorgeEx(nim & " --version")
     doAssert ret.exitCode == 0
     doAssert ret.output.contains "Nim Compiler"
@@ -31,3 +39,9 @@ static:
     const a1 = arcsin 0.3
     let a2 = arcsin 0.3
     doAssert a1 == a2
+
+block:
+  # Check against bugs like #9176
+  doAssert staticGetAppFilename() == forceConst(staticGetAppFilename())
+  if false: #pending #9176
+    doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))
