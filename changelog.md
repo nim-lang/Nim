@@ -27,6 +27,8 @@
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
 
+- `getProjectPath`, `gorgeEx` now return the same at run time or compile time
+  (before, they returned an uninitialized  value if called at run time), see issue #9176
 
 #### Breaking changes in the standard library
 
@@ -117,8 +119,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `parseopt.remainingArgs`.
 
-- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
-  can be used to retrieve the currently executing compiler.
+- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename`
+  at compile time), can be used to retrieve the currently executing compiler.
 
 
 ### Library changes

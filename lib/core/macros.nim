@@ -1524,7 +1524,7 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   for i in 0 ..< args.len:
     result.add args[i]
 
-proc getProjectPath*(): string = discard
+proc getProjectPath*(): string {.compileTime.} = discard
   ## Returns the path to the currently compiling project, not to
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.

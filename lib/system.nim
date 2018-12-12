@@ -3876,9 +3876,9 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## .. code-block:: nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
 
-proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
-                                                              exitCode: int] =
-  ## Same as `gorge` but also returns the precious exit code.
+proc gorgeEx*(command: string, input = "", cache = ""):
+    tuple[output: string, exitCode: int] {.compileTime.} =
+  ## Same as `gorge` but also returns the exit code.
   discard
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
