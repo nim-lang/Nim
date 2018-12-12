@@ -947,13 +947,6 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-when defined(posix) and not defined(nimdoc):
-  proc makeUnixAddr(path: string): Sockaddr_un =
-    result.sun_family = AF_UNIX.uint16
-    if path.len >= Sockaddr_un_path_length:
-      raise newException(ValueError, "socket path too long")
-    copyMem(addr result.sun_path, path.cstring, path.len + 1)
-
 when defined(posix) or defined(nimdoc):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
