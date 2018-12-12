@@ -1539,6 +1539,10 @@ else:
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
+
+when defined(profiler) and defined(memProfiler):
+  {.error: "profiler and memProfiler cannot be defined at the same time (See Embedded Stack Trace Profiler (ESTP) User Guide) for more details".}
+
 when defined(profiler):
   proc nimProfile() {.compilerProc, noinline.}
 when hasThreadSupport:
