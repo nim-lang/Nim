@@ -6,6 +6,7 @@ discard """
 true false
 100 300 100
 1
+true
 '''
 """
 
@@ -70,3 +71,13 @@ block:
     var nums = [1, 2]
     foo(nums)
     echo nums[0]
+
+block:
+    type TestObj = ref object
+        m: string
+
+    proc m0(m: string): TestObj =
+      result = TestObj(m: m)
+    
+    var m1 = m0("")
+    echo not m1.isNil
