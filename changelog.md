@@ -31,6 +31,25 @@
 
 - `options.UnpackError` is no longer a ref type and inherits from `System.Defect` instead of `System.ValueError`.
 
+- nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
+  `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
+  check if a group is captured, otherwise you'll recieve an exception.
+
+- nre's `RegexMatch.{captureBounds,captures}.toTable` no longer accept a
+  default parameter. Instead uncaptured entries are left empty. Use
+  `Table.getOrDefault()` if you need defaults.
+
+- nre's `RegexMatch.captures.{items,toSeq}` now returns an `Option[string]`
+  instead of a `string`. With the removal of `nil` strings, this is the only
+  way to indicate a missing match. Inside your loops, instead of `capture ==
+  ""` or `capture == nil`, use `capture.isSome` to check if a capture is
+  present, and `capture.get` to get its value.
+
+- nre's `replace()` no longer throws `ValueError` when the replacement string
+  has missing captures. It instead throws `KeyError` for named captures, and
+  `IndexError` for un-named captures. This is consistant with
+  `RegexMatch.{captureBounds,captures}[]`.
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
