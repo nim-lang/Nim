@@ -203,3 +203,4 @@ block ttoseq:
     stdout.write(x)
   var y: type("a b c".split)
   y = "xzy"
+  stdout.write("\n")

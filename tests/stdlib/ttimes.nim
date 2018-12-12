@@ -1,8 +1,5 @@
 discard """
-  file: "ttimes.nim"
   target: "c js"
-  output: '''[Suite] ttimes
-'''
 """
 
 import times, strutils, unittest
@@ -125,7 +122,7 @@ suite "ttimes":
   when defined(linux) or defined(macosx):
     let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
-    
+
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
     for tz_fn in walkFiles(tz_dir & "/**/*"):
@@ -152,7 +149,7 @@ suite "ttimes":
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
       check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
-      
+
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
 
     test "issue #6520":
@@ -170,10 +167,10 @@ suite "ttimes":
       check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")      
+      putEnv("TZ", "Europe/Stockholm")
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
-      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
+      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
     test "datetime before epoch":
       check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"

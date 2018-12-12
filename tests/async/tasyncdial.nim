@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncdial.nim"
   output: '''
 OK AF_INET
 OK AF_INET6

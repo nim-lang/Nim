@@ -1,6 +1,6 @@
 discard """
-  line: 7
   errormsg: "annotation to deprecated not supported here"
+  line: 7
 """
 
 var foo* {.deprecated.} = 42

@@ -1,5 +1,4 @@
 discard """
-  file: "twinasyncrw.nim"
   output: "5000"
 """
 when defined(windows):

@@ -407,11 +407,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
               obj.n[0].sym.id = -s.id
             else:
               addField(obj, s, c.graph.cache)
-      # but always return because the rest of the proc is only relevant when
-      # ow != owner:
-      return
     # direct or indirect dependency:
-    if (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
+    elif (innerProc and s.typ.callConv == ccClosure) or interestingVar(s):
       discard """
         proc outer() =
           var x: int

@@ -1,6 +1,6 @@
 discard """
-  line: 11
   errormsg: "no symbol to borrow from found"
+  line: 11
 """
 
 # bug #516
@@ -14,4 +14,3 @@ var
   d, e: TAtom
 
 echo( $(d == e) )
-

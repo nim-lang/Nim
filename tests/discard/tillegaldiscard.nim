@@ -1,6 +1,6 @@
 discard """
-  line: 9
   errormsg: "illegal discard"
+  line: 9
 """
 
 proc pop[T](arg: T): T =

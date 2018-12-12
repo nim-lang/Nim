@@ -43,7 +43,7 @@ block t2629:
 
   let rst_files = concat(glob_rst(), glob_rst("docs"))
 
-  when isMainModule: echo rst_files
+  when true: echo rst_files
 
 
 block t5417:

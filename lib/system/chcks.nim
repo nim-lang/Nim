@@ -8,12 +8,19 @@
 #
 
 # Implementation of some runtime checks.
+import system/helpers2
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
     sysFatal(RangeError, "value out of range")
   else:
     sysFatal(RangeError, "value out of range: ", $val)
+
+proc raiseIndexError3(i, a, b: int) {.compilerproc, noinline.} =
+  sysFatal(IndexError, formatErrorIndexBound(i, a, b))
+
+proc raiseIndexError2(i, n: int) {.compilerproc, noinline.} =
+  sysFatal(IndexError, formatErrorIndexBound(i, n))
 
 proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexError, "index out of bounds")
@@ -25,7 +32,7 @@ proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
     return i
   else:
-    raiseIndexError()
+    raiseIndexError3(i, a, b)
 
 proc chckRange(i, a, b: int): int =
   if i >= a and i <= b:

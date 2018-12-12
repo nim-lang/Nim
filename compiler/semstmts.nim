@@ -497,8 +497,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       var v = semIdentDef(c, a.sons[j], symkind)
       styleCheckDef(c.config, v)
       onDef(a[j].info, v)
-      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
-        addInterfaceDecl(c, v)
+      if sfGenSym notin v.flags:
+        if not isDiscardUnderscore(v): addInterfaceDecl(c, v)
+      else:
+        if v.owner == nil: v.owner = c.p.owner
       when oKeepVariableNames:
         if c.inUnrolledContext > 0: v.flags.incl(sfShadowed)
         else:
@@ -573,6 +575,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     setVarType(c, v, typ)
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+    elif v.owner == nil: v.owner = getCurrOwner(c)
     var b = newNodeI(nkConstDef, a.info)
     if importantComments(c.config): b.comment = a.comment
     addSon(b, newSymNode(v))
@@ -616,6 +619,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       v.typ = iterBase
       n.sons[0] = newSymNode(v)
       if sfGenSym notin v.flags: addForVarDecl(c, v)
+      elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
   elif length-2 != sonsLen(iter):
@@ -626,8 +630,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
       v.typ = iter.sons[i]
       n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags and not isDiscardUnderscore(v):
-        addForVarDecl(c, v)
+      if sfGenSym notin v.flags:
+        if not isDiscardUnderscore(v): addForVarDecl(c, v)
+      elif v.owner == nil: v.owner = getCurrOwner(c)
   inc(c.p.nestedLoopCounter)
   openScope(c)
   n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)
@@ -922,6 +927,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
             s = typsym
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+      elif s.owner == nil: s.owner = getCurrOwner(c)
 
     if name.kind == nkPragmaExpr:
       a.sons[0].sons[0] = newSymNode(s)
@@ -1620,7 +1626,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     else:
       s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
-    if sfGenSym in s.flags: discard
+    if sfGenSym in s.flags:
+      if s.owner == nil: s.owner = getCurrOwner(c)
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
         addInterfaceOverloadableSymAt(c, oldScope, s)
@@ -1836,35 +1843,49 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   if n.sons[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, errImplOfXexpected % s.name.s)
 
+proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
+  var f = checkModuleName(c.config, it)
+  if f != InvalidFileIDX:
+    if containsOrIncl(c.includedFiles, f.int):
+      localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
+    else:
+      addSon(includeStmtResult, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
+      excl(c.includedFiles, f.int)
+
 proc evalInclude(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   addSon(result, n)
   for i in countup(0, sonsLen(n) - 1):
-    var f = checkModuleName(c.config, n.sons[i])
-    if f != InvalidFileIDX:
-      if containsOrIncl(c.includedFiles, f.int):
-        localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
-      else:
-        addSon(result, semStmt(c, c.graph.includeFileCallback(c.graph, c.module, f), {}))
-        excl(c.includedFiles, f.int)
+    var imp: PNode
+    let it = n.sons[i]
+    if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
+      let sep = it[0]
+      let dir = it[1]
+      imp = newNodeI(nkInfix, it.info)
+      imp.add sep
+      imp.add dir
+      imp.add sep # dummy entry, replaced in the loop
+      for x in it[2]:
+        imp.sons[2] = x
+        incMod(c, n, imp, result)
+    else:
+      incMod(c, n, it, result)
 
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 ..< safeLen(n): setLine(n.sons[i], info)
   n.info = info
 
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
+  checkSonsLen(n, 2, c.config)
   let pragmaList = n.sons[0]
   pragma(c, nil, pragmaList, exprPragmas)
-  result = semExpr(c, n.sons[1])
-  n.sons[1] = result
+  n[1] = semExpr(c, n[1])
+  result = n
+  result.typ = n[1].typ
   for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
-    of wLocks, wGcSafe, wNosideeffect:
-      result = n
-      result.typ = n.sons[1].typ
-    of wNoRewrite:
-      incl(result.flags, nfNoRewrite)
+    of wNoRewrite: incl(result.flags, nfNoRewrite)
     else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =

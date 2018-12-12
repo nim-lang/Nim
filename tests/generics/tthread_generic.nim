@@ -26,7 +26,7 @@ proc `@||->`*[T](fn: proc(): T {.thread.},
 proc `||->`*[T](fn: proc(): T{.thread.}, callback: proc(val: T){.thread.}) =
   discard fn @||-> callback
 
-when isMainModule:
+when true:
   import os
   proc testFunc(): int {.thread.} =
     return 1

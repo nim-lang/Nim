@@ -119,28 +119,24 @@ template test(loopCount: int, testBody: untyped): typed =
     test(loopCount, 0, testBody)
     echo "done extraI passed 0"
 
-when isMainModule:
-  var
-    loops = 0
+var
+  loops = 0
 
-  test 0, 0:
+test 0, 0:
+  loops += 1
+echo "test 0 complete, loops=", loops
+
+test 1, 1.0:
+  loops += 1
+echo "test 1.0 complete, loops=", loops
+
+when true:
+  # when true we get the following compile time error:
+  #   b.nim(35, 6) Error: expression 'loops += 1' has no type (or is ambiguous)
+  loops = 0
+  test 2:
     loops += 1
-  echo "test 0 complete, loops=", loops
-
-  test 1, 1.0:
-    loops += 1
-  echo "test 1.0 complete, loops=", loops
-
-  when true:
-    # when true we get the following compile time error:
-    #   b.nim(35, 6) Error: expression 'loops += 1' has no type (or is ambiguous)
-    loops = 0
-    test 2:
-      loops += 1
-    echo "test no extra complete, loops=", loops
-
-
-
+  echo "test no extra complete, loops=", loops
 
 # bug #2229
 type

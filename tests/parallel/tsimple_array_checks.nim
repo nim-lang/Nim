@@ -59,5 +59,5 @@ proc maino =
 
 maino() # Doesn't work outside a proc
 
-when isMainModule:
+when true:
   main()

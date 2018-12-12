@@ -9,6 +9,6 @@ import asyncdispatch
 proc testCallback() =
   echo "testCallback()"
 
-when isMainModule:
+when true:
   callSoon(testCallback)
   poll()

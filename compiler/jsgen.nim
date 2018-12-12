@@ -945,7 +945,7 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
   else:
     return (mapType(y.typ) != etyBaseIndex and
             (skipTypes(y.typ, abstractInst).kind in
-             {tyRef, tyPtr, tyLent, tyVar, tyCString} + IntegralTypes))
+             {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
   return true
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =

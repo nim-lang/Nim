@@ -1,7 +1,5 @@
 discard """
-  file: "tarray.nim"
-  output:
-'''
+output: '''
 [4, 5, 6]
 
 [16, 25, 36]
@@ -30,6 +28,7 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
 '''
+joinable: false
 """
 
 block tarray:
@@ -358,7 +357,7 @@ block troofregression:
   echo testStr[testStr.len - 8 .. testStr.len - 1] & "__" & testStr[0 .. testStr.len - pred(rot)]
 
   var
-    instructions = readFile(getAppDir() / "troofregression2.txt").split(',')
+    instructions = readFile(parentDir(currentSourcePath) / "troofregression2.txt").split(',')
     programs = "abcdefghijklmnop"
 
   proc dance(dancers: string): string =

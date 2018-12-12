@@ -1111,8 +1111,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym != nil and sym.kind in {skVar, skLet, skParam, skField, skProc,
-                                     skFunc, skConverter, skMethod, skType}:
+    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam, 
+                      skField, skProc, skFunc, skConverter, skMethod, skType}):
       n.sons[i] = semCustomPragma(c, it)
     elif sym != nil:
       illegalCustomPragma(c, it, sym)
@@ -1138,7 +1138,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
-        if sym.kind in routineKinds: mergePragmas(sym.ast, o)
+        if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(c.config, n.info, ".dynlib requires .exportc")

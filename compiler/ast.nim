@@ -723,10 +723,9 @@ type
       sons*: TNodeSeq
     comment*: string
 
-  TSymSeq* = seq[PSym]
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
-    data*: TSymSeq
+    data*: seq[PSym]
 
   # -------------- backend information -------------------------------
   TLocKind* = enum
@@ -1087,9 +1086,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.id = getID()
   when debugIds:
     registerId(result)
-  #if result.id == 77131:
-  #  writeStacktrace()
-  #  echo name.s
 
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
@@ -1260,6 +1256,9 @@ proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
   elif x.ord == UnknownLockLevel.ord: result = "<unknown>"
   else: result = $int16(x)
+
+proc `$`*(s: PSym): string =
+  result = s.name.s & "@" & $s.id
 
 proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)

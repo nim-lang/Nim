@@ -1,9 +1,9 @@
 discard """
+  errormsg: "cannot evaluate at compile time: bn"
   file: "t99bott.nim"
   line: 26
-  errormsg: "cannot evaluate at compile time: bn"
-  disabled: false
 """
+
 ## 99 Bottles of Beer
 ## http://www.99-bottles-of-beer.net/
 ## Nim version
@@ -30,7 +30,3 @@ for bn in countdown(99, 1):
 
 echo "No more bottles of beer on the wall, no more bottles of beer."
 echo "Go to the store and buy some more, 99 bottles of beer on the wall."
-
-
-
-

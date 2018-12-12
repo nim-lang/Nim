@@ -1,5 +1,6 @@
 discard """
 disabled: "windows"
+joinable: false
 """
 
 # appveyor is "out of memory"

@@ -1083,6 +1083,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     elif sfGenSym in s.flags:
+      # the owner should have been set by now by addParamOrResult
+      internalAssert c.config, s.owner != nil
       if c.p.wasForwarded:
         # gensym'ed parameters that nevertheless have been forward declared
         # need a special fixup:
@@ -2289,6 +2291,8 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     var labl = newSymG(skLabel, n.sons[0], c)
     if sfGenSym notin labl.flags:
       addDecl(c, labl)
+    elif labl.owner == nil:
+      labl.owner = c.p.owner
     n.sons[0] = newSymNode(labl, n.sons[0].info)
     suggestSym(c.config, n.sons[0].info, labl, c.graph.usageSym)
     styleCheckDef(c.config, labl)

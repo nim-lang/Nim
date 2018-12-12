@@ -116,7 +116,7 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, tables, modulegraphs,
+  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns
 
 const
@@ -127,20 +127,11 @@ type
     owner: PSym
     g: ControlFlowGraph
     jumpTargets: IntSet
-    tmpObj: PType
-    tmp: PSym
     destroys, topLevelVars: PNode
-    toDropBit: Table[int, PSym]
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
 
-proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
-  # XXX why are temps fields in an object here?
-  let f = newSym(skField, getIdent(c.graph.cache, ":d" & $c.tmpObj.n.len), c.owner, info)
-  f.typ = typ
-  rawAddField c.tmpObj, f
-  result = rawDirectAccess(c.tmp, f)
 
 proc isHarmlessVar*(s: PSym; c: Con): bool =
   # 's' is harmless if it used only once and its
@@ -329,22 +320,11 @@ proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
-proc dropBit(c: var Con; s: PSym): PSym =
-  result = c.toDropBit.getOrDefault(s.id)
-  assert result != nil
-
-proc registerDropBit(c: var Con; s: PSym) =
-  let result = newSym(skTemp, getIdent(c.graph.cache, s.name.s & "_AliveBit"), c.owner, s.info)
-  result.typ = getSysType(c.graph, s.info, tyBool)
-  let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
-  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, c.emptyNode, trueVal)
-  c.toDropBit[s.id] = result
-  # generate:
-  #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
-  let t = s.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.destructor != nil:
-    c.destroys.add newTree(nkIfStmt,
-      newTree(nkElifBranch, newSymNode result, genDestroy(c, t, newSymNode s)))
+proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
+  sym.typ = typ
+  result = newSymNode(sym)
+  c.addTopVar(result)
 
 proc p(n: PNode; c: var Con): PNode
 
@@ -354,16 +334,6 @@ template recurse(n, dest) =
 
 proc isSinkParam(s: PSym): bool {.inline.} =
   result = s.kind == skParam and s.typ.kind == tySink
-
-proc destructiveMoveSink(n: PNode; c: var Con): PNode =
-  # generate:  (chckMove(sinkParam_AliveBit); sinkParam_AliveBit = false; sinkParam)
-  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-  let bit = newSymNode dropBit(c, n.sym)
-  if optMoveCheck in c.owner.options:
-    result.add callCodegenProc(c.graph, "chckMove", bit.info, bit)
-  result.add newTree(nkAsgn, bit,
-    newIntTypeNode(nkIntLit, 0, getSysType(c.graph, n.info, tyBool)))
-  result.add n
 
 proc genMagicCall(n: PNode; c: var Con; magicname: string; m: TMagic): PNode =
   result = newNodeI(nkCall, n.info)
@@ -395,6 +365,12 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   result.add genWasMoved(n, c)
   result.add tempAsNode
 
+proc sinkParamIsLastReadCheck(c: var Con, s: PNode) = 
+  assert s.kind == nkSym and s.sym.kind == skParam
+  if not isLastRead(s, c):
+     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
+         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
+
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
@@ -411,6 +387,11 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result.add tmp
 
 proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
+  template pArgIfTyped(arg_part: PNode): PNode =
+    # typ is nil if we are in if/case expr branch with noreturn
+    if arg_part.typ == nil: p(arg_part, c)
+    else: pArg(arg_part, c, isSink)
+
   if isSink:
     if arg.kind in nkCallKinds:
       # recurse but skip the call expression in order to prevent
@@ -421,17 +402,53 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result.add arg[0]
       for i in 1..<arg.len:
         result.add pArg(arg[i], c, i < L and parameters[i].kind == tySink)
-    elif arg.kind in {nkObjConstr, nkCharLit..nkFloat128Lit}:
+    elif arg.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkBracket, nkCharLit..nkFloat128Lit}:
       discard "object construction to sink parameter: nothing to do"
       result = arg
-    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
-      # if x is a variable and it its last read we eliminate its
-      # destructor invokation, but don't. We need to reset its memory
-      # to disable its destructor which we have not elided:
-      result = destructiveMoveVar(arg, c)
     elif arg.kind == nkSym and isSinkParam(arg.sym):
-      # mark the sink parameter as used:
-      result = destructiveMoveSink(arg, c)
+      # Sinked params can be consumed only once. We need to reset the memory
+      # to disable the destructor which we have not elided
+      sinkParamIsLastReadCheck(c, arg)
+      result = destructiveMoveVar(arg, c)
+    elif arg.kind == nkSym and arg.sym.kind in InterestingSyms and isLastRead(arg, c):
+      # it is the last read, can be sinked. We need to reset the memory
+      # to disable the destructor which we have not elided
+      result = destructiveMoveVar(arg, c)
+    elif arg.kind in {nkBlockExpr, nkBlockStmt}:
+      result = copyNode(arg)
+      result.add arg[0]
+      result.add pArg(arg[1], c, isSink)
+    elif arg.kind == nkStmtListExpr:
+      result = copyNode(arg)
+      for i in 0..arg.len-2:
+        result.add p(arg[i], c)
+      result.add pArg(arg[^1], c, isSink)
+    elif arg.kind in {nkIfExpr, nkIfStmt}:
+      result = copyNode(arg)
+      for i in 0..<arg.len:
+        var branch = copyNode(arg[i])
+        if arg[i].kind in {nkElifBranch, nkElifExpr}:   
+          branch.add p(arg[i][0], c)
+          branch.add pArgIfTyped(arg[i][1])
+        else:
+          branch.add pArgIfTyped(arg[i][0])
+        result.add branch
+    elif arg.kind == nkCaseStmt:
+      result = copyNode(arg)
+      result.add p(arg[0], c)
+      for i in 1..<arg.len:
+        var branch: PNode
+        if arg[i].kind == nkOfbranch:
+          branch = arg[i] # of branch conditions are constants
+          branch[^1] = pArgIfTyped(arg[i][^1])
+        elif arg[i].kind in {nkElifBranch, nkElifExpr}:
+          branch = copyNode(arg[i])   
+          branch.add p(arg[i][0], c)
+          branch.add pArgIfTyped(arg[i][1])
+        else:
+          branch = copyNode(arg[i]) 
+          branch.add pArgIfTyped(arg[i][0])
+        result.add branch     
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -440,6 +457,11 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
     result = p(arg, c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
+  template moveOrCopyIfTyped(ri_part: PNode): PNode =
+    # typ is nil if we are in if/case expr branch with noreturn
+    if ri_part.typ == nil: p(ri_part, c)
+    else: moveOrCopy(dest, ri_part, c)
+
   case ri.kind
   of nkCallKinds:
     result = genSink(c, dest.typ, dest, ri)
@@ -454,7 +476,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add ri2
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
-      # unpacking of tuple: move out the elements
+      # unpacking of tuple: move out the elements 
       result = genSink(c, dest.typ, dest, ri)
     else:
       result = genCopy(c, dest.typ, dest, ri)
@@ -464,6 +486,45 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     for i in 0..ri.len-2:
       result.add p(ri[i], c)
     result.add moveOrCopy(dest, ri[^1], c)
+  of nkBlockExpr, nkBlockStmt:
+    result = newNodeI(nkBlockStmt, ri.info)
+    result.add ri[0] ## add label
+    result.add moveOrCopy(dest, ri[1], c)
+  of nkIfExpr, nkIfStmt:
+    result = newNodeI(nkIfStmt, ri.info)
+    for i in 0..<ri.len:
+      var branch = copyNode(ri[i])
+      if ri[i].kind in {nkElifBranch, nkElifExpr}:
+        branch.add p(ri[i][0], c)
+        branch.add moveOrCopyIfTyped(ri[i][1])
+      else:
+        branch.add moveOrCopyIfTyped(ri[i][0])
+      result.add branch
+  of nkCaseStmt:
+    result = newNodeI(nkCaseStmt, ri.info)
+    result.add p(ri[0], c)
+    for i in 1..<ri.len:
+      var branch: PNode
+      if ri[i].kind == nkOfbranch:
+        branch = ri[i] # of branch conditions are constants
+        branch[^1] = moveOrCopyIfTyped(ri[i][^1])
+      elif ri[i].kind in {nkElifBranch, nkElifExpr}:
+        branch = copyNode(ri[i])   
+        branch.add p(ri[i][0], c)
+        branch.add moveOrCopyIfTyped(ri[i][1])
+      else:
+        branch = copyNode(ri[i]) 
+        branch.add moveOrCopyIfTyped(ri[i][0])
+      result.add branch
+  of nkBracket:
+    # array constructor
+    result = genSink(c, dest.typ, dest, ri)
+    let ri2 = copyTree(ri)
+    for i in 0..<ri.len:
+      # everything that is passed to an array constructor is consumed,
+      # so these all act like 'sink' parameters:
+      ri2[i] = pArg(ri[i], c, isSink = true)
+    result.add ri2
   of nkObjConstr:
     result = genSink(c, dest.typ, dest, ri)
     let ri2 = copyTree(ri)
@@ -484,14 +545,17 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         ri2[i] = pArg(ri[i], c, isSink = true)
     result.add ri2
   of nkSym:
-    if ri.sym.kind != skParam and isLastRead(ri, c):
+    if isSinkParam(ri.sym):
+      # Rule 3: `=sink`(x, z); wasMoved(z)
+      sinkParamIsLastReadCheck(c, ri)
+      var snk = genSink(c, dest.typ, dest, ri)
+      snk.add ri
+      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))   
+    elif ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
-      snk.add p(ri, c)
+      snk.add ri
       result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
-    elif isSinkParam(ri.sym):
-      result = genSink(c, dest.typ, dest, ri)
-      result.add destructiveMoveSink(ri, c)
     else:
       result = genCopy(c, dest.typ, dest, ri)
       result.add p(ri, c)
@@ -512,14 +576,15 @@ proc p(n: PNode; c: var Con): PNode =
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add p(x, c)
-      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isUnpackedTuple(it[0].sym):
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
         for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
           # move the variable declaration to the top of the frame:
           c.addTopVar v
           # make sure it's destroyed at the end of the proc:
-          c.destroys.add genDestroy(c, v.typ, v)
+          if not isUnpackedTuple(it[0].sym):
+            c.destroys.add genDestroy(c, v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
             result.add r
@@ -566,12 +631,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echo "injecting into ", n
   var c: Con
   c.owner = owner
-  c.tmp = newSym(skTemp, getIdent(g.cache, ":d"), owner, n.info)
-  c.tmpObj = createObj(g, owner, n.info)
-  c.tmp.typ = c.tmpObj
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
-  c.toDropBit = initTable[int, PSym]()
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
@@ -586,10 +647,10 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink: registerDropBit(c, param)
+      if param.typ.kind == tySink and hasDestructor(param.typ): 
+        c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
+
   let body = p(n, c)
-  if c.tmp.typ.n.len > 0:
-    c.addTopVar(newSymNode c.tmp)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars

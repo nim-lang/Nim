@@ -3,6 +3,7 @@ outputsub: '''
 Simple tree node allocation worked!
 Simple cycle allocation worked!
 '''
+joinable: false
 """
 
 # Test the implementation of the new operator

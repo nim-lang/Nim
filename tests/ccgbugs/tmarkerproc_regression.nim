@@ -1,5 +1,5 @@
 discard """
-  output: "done"
+  output: "done markerproc regression"
 """
 
 type
@@ -42,6 +42,6 @@ proc main =
     let expected = $i & "some longer text here " & $i
     if a[i].ver.string != expected:
       quit "bug!"
-  echo "done"
+  echo "done markerproc regression"
 
 main()

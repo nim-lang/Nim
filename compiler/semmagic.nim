@@ -321,8 +321,6 @@ proc semOf(c: PContext, n: PNode): PNode =
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
-  ## This function basically works like a macro, with the difference
-  ## that it is implemented in the compiler and not on the nimvm.
   ## ``c`` the current module, a symbol table to a very good approximation
   ## ``n`` the ast like it would be passed to a real macro
   ## ``flags`` Some flags for more contextual information on how the

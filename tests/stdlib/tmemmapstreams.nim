@@ -1,6 +1,6 @@
 discard """
-  file: "tmemmapstreams.nim"
-  output: '''Created size: 10
+output: '''
+Created size: 10
 Position after writing: 5
 Position after writing one char: 6
 Peeked data: Hello

@@ -1,7 +1,7 @@
 discard """
+  errormsg: "Expected a node of kind nnkCharLit, got nnkCommand"
   file: "tmacroerrorproc.nim"
   line: 13
-  errormsg: "Expected a node of kind nnkCharLit, got nnkCommand"
 """
 # issue #4915
 import macros

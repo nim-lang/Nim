@@ -53,8 +53,8 @@ build_script:
 #  - nimble install opengl -y
 #  - nimble install sdl1 -y
 #  - nimble install jester@#head -y
-  - nim c --taintMode:on -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester
-  - nim c --taintMode:on -d:nimCoroutines testament/tester
+  - nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester
+  - nim c -d:nimCoroutines testament/tester
 
 test_script:
   - testament\tester --pedantic all -d:nimCoroutines

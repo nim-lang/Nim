@@ -1,6 +1,7 @@
 discard """
   output: '''Match failed: spam
 Match failed: ham'''
+joinable: false
 """
 
 # bug #6220
@@ -397,19 +398,18 @@ template grammar*[K](Kind, Text, Symbol: typedesc; default: K, code: untyped): t
 template grammar*[K](Kind: typedesc; default: K, code: untyped): typed {.hint[XDeclaredButNotUsed]: off.} =
   grammar(Kind, string, char, default, code)
 
-when isMainModule:
-  block:
-    type DummyKind = enum dkDefault
-    grammar(DummyKind, string, char, dkDefault):
-      let rule = token("h[a]+m") + ignore(token(r"\s+")) + (literal("eggs") / literal("beans"))
-      var text = "ham beans"
-      discard rule.parse(text)
+block:
+  type DummyKind = enum dkDefault
+  grammar(DummyKind, string, char, dkDefault):
+    let rule = token("h[a]+m") + ignore(token(r"\s+")) + (literal("eggs") / literal("beans"))
+    var text = "ham beans"
+    discard rule.parse(text)
 
-      var recursive = newRule()
-      recursive -> (literal("(") + recursive + literal(")")) / token(r"\d+")
-      for test in ["spam", "57", "(25)", "((25))"]:
-        discard recursive.parse(test)
+    var recursive = newRule()
+    recursive -> (literal("(") + recursive + literal(")")) / token(r"\d+")
+    for test in ["spam", "57", "(25)", "((25))"]:
+      discard recursive.parse(test)
 
-      let repeated = +literal("spam") + ?literal("ham") + *literal("salami")
-      for test in ["ham", "spam", "spamspamspam" , "spamham", "spamsalami", "spamsalamisalami"]:
-        discard  repeated.parse(test)
+    let repeated = +literal("spam") + ?literal("ham") + *literal("salami")
+    for test in ["ham", "spam", "spamspamspam" , "spamham", "spamsalami", "spamsalamisalami"]:
+      discard  repeated.parse(test)

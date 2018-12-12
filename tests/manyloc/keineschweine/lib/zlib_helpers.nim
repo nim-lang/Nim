@@ -20,7 +20,7 @@ proc uncompress*(source: string, destLen: var int): string =
     echo "Error occurred: ", res
 
 
-when isMainModule:
+when true:
   import strutils
   var r = compress("Hello")
   echo repr(r)

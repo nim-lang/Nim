@@ -51,7 +51,7 @@ script:
   #- nimble install sdl1
   #- nimble install jester@#head -y
   #- nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines testament/tester
+  - nim c -d:nimCoroutines testament/tester
   - testament/tester --pedantic all -d:nimCoroutines
   - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
   - nim c -r nimpretty/tester.nim
