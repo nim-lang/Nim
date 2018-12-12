@@ -154,7 +154,7 @@ proc bundleNimsuggest() =
   nimCompile("nimsuggest/nimsuggest.nim", options = "-d:release")
 
 proc buildVccTool() =
-  nimCompile("tools/vccenv/vccexe.nim")
+  nimCompile("tools/vccexe/vccexe.nim")
 
 proc bundleWinTools() =
   # TODO: consider building under `bin` instead of `.`

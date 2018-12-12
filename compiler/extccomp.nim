@@ -134,7 +134,7 @@ compiler vcc:
   result = (
     name: "vcc",
     objExt: "obj",
-    optSpeed: " /Ogityb2 /G7 /arch:SSE2 ",
+    optSpeed: " /Ogityb2 /G7 ",
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
