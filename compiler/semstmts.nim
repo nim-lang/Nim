@@ -1876,18 +1876,16 @@ proc setLine(n: PNode, info: TLineInfo) =
   n.info = info
 
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
+  checkSonsLen(n, 2, c.config)
   let pragmaList = n.sons[0]
   pragma(c, nil, pragmaList, exprPragmas)
-  result = semExpr(c, n.sons[1])
-  n.sons[1] = result
+  n[1] = semExpr(c, n[1])
+  result = n
+  result.typ = n[1].typ
   for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
-    of wLocks, wGcSafe, wNosideeffect:
-      result = n
-      result.typ = n.sons[1].typ
-    of wNoRewrite:
-      incl(result.flags, nfNoRewrite)
+    of wNoRewrite: incl(result.flags, nfNoRewrite)
     else: discard
 
 proc semStaticStmt(c: PContext, n: PNode): PNode =
