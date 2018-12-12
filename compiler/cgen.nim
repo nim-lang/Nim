@@ -272,6 +272,8 @@ proc rdCharLoc(a: TLoc): Rope =
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
+  if optCDebug in p.config.globalOptions:
+    genVariantDebug(p.module, t, nil)
   if p.module.compileToCpp and t.isException and not isDefined(p.config, "noCppExceptions"):
     # init vtable in Exception object for polymorphic exceptions
     includeHeader(p.module, "<new>")

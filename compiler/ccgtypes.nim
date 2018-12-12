@@ -983,6 +983,70 @@ proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   var tmp = discriminatorTableName(m, objtype, d)
   result = "TNimNode* $1[$2];$n" % [tmp, rope(lengthOrd(m.config, d.typ)+1)]
 
+
+proc genVariantDebug(m: BModule, typ: PType, node: PNode = nil) =
+  # A variant info useful for generating repr from runtime values
+  # an array NIM_VARIANT_sig mapping the nth `case` to the index of the C union 
+  # based on genObjectFields
+  var n = node
+  let sig = $hashType(typ)
+  if n.isNil:
+    if not m.variants.isValid:
+      m.variants.init
+
+    if sig in m.variants:
+      return
+
+    n = typ.n
+    if n.isNil:
+      return
+
+  case n.kind:
+  of nkRecList:
+    for child in n.sons:
+      if child.kind == nkRecCase:
+        genVariantDebug(m, typ, child)
+        break
+
+  of nkRecCase:
+    var field = n.sons[0].sym
+    var L = lengthOrd(m.config, field.typ).int
+    assert L > 0
+    let name = rope("NIM_VARIANT_") & rope(sig)
+    addf(m.s[cfsData], "int $1[$2];$n", [name, rope(L+1)])
+    var init = newSeq[int](L)
+    for i in 0 ..< L:
+      init[i] = -1
+
+    for i in 1 .. n.sonsLen - 1:
+      var b = n.sons[i]
+      case b.kind:
+      of nkOfBranch:
+        for k in 0 .. b.sonsLen - 2:
+          var child = b[k]
+          case child.kind:
+          of nkRange:
+            var x = int(getOrdValue(child.sons[0]))
+            var y = int(getOrdValue(child.sons[1]))
+            while x <= y:
+              init[x] = i
+              x += 1
+          else:
+            var x = int(getOrdValue(child))
+            init[x] = i
+      of nkElse:
+        for k in 0 ..< L:
+          if init[k] == -1:
+            init[k] = i
+      else:
+        discard
+
+    for i in 0 ..< L:
+      addf(m.s[cfsTypeInit3], "$1[$2] = $3;$n", [name, rope(i), rope(init[i])])
+  else:
+    discard
+  m.variants.incl(sig)
+
 proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
                      info: TLineInfo) =
   case n.kind

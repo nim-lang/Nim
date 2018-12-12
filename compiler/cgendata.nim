@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos, pathutils
+  tables, ndi, lineinfos, pathutils, sets
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -155,6 +155,8 @@ type
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                               # OpenGL wrapper
+    variants*: HashSet[string] # debug info for variants
+
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
