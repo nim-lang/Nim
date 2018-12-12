@@ -54,6 +54,9 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   for sym in symsToUndef:
     undefSymbol(conf.symbols, sym)
 
+  # bug #9120
+  conf.globalOptions.excl(optTaintMode)
+
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
       runNimScript(cache, path, freshDefines = false, conf)
