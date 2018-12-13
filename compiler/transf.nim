@@ -368,6 +368,11 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   else:
     # we need to introduce new local variables:
     add(result, introduceNewLocalVars(c, c.transCon.forLoopBody.PNode))
+  if result.len > 0:
+    var changeNode = PNode(result[0])
+    changeNode.info = c.transCon.forStmt.info
+    for i, child in changeNode:
+      child.info = changeNode.info
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)

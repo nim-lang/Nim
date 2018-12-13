@@ -87,8 +87,10 @@ proc enumToString*(enums: openArray[enum]): string =
   is instantiation of generic proc symbol.
 
 - Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
-- There is a new stdlib mdoule `std/diff` to compute the famous "diff"
+- There is a new stdlib module `std/diff` to compute the famous "diff"
   of two texts by line.
+
+- Added `os.relativePath`.
 
 ### Library changes
 

@@ -239,7 +239,6 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of OK: fgGreen
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
-                    else: fgWhite
         styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()

@@ -154,7 +154,7 @@ String handling
 * `std/wordwrap <wordwrap.html>`_
   This module contains an algorithm to wordwrap a Unicode string.
 
-* `std/diff <diff.html>`_
+* `experimental/diff <diff.html>`_
   This module contains an algorithm to compute the famous "diff"
   of two texts by line.
 

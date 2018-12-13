@@ -134,7 +134,7 @@ compiler vcc:
   result = (
     name: "vcc",
     objExt: "obj",
-    optSpeed: " /Ogityb2 /G7 /arch:SSE2 ",
+    optSpeed: " /Ogityb2 /G7 ",
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
@@ -780,7 +780,7 @@ proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
   let linkerArgs = conf.projectName & "_" & "linkerArgs.txt"
   let args = cmd.substr(i)
   # GCC's response files don't support backslashes. Junk.
-  if conf.cCompiler == ccGcc:
+  if conf.cCompiler == ccGcc or conf.cCompiler == ccCLang:
     writeFile(linkerArgs, args.replace('\\', '/'))
   else:
     writeFile(linkerArgs, args)

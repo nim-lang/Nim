@@ -17,7 +17,7 @@
 include "system/inclrtl"
 
 import
-  strutils
+  strutils, pathnorm
 
 when defined(nimscript):
   discard
@@ -51,133 +51,7 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-const
-  doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
-
-when defined(Nimdoc): # only for proper documentation:
-  const
-    CurDir* = '.'
-      ## The constant string used by the operating system to refer to the
-      ## current directory.
-      ##
-      ## For example: '.' for POSIX or ':' for the classic Macintosh.
-
-    ParDir* = ".."
-      ## The constant string used by the operating system to refer to the
-      ## parent directory.
-      ##
-      ## For example: ".." for POSIX or "::" for the classic Macintosh.
-
-    DirSep* = '/'
-      ## The character used by the operating system to separate pathname
-      ## components, for example, '/' for POSIX or ':' for the classic
-      ## Macintosh.
-
-    AltSep* = '/'
-      ## An alternative character used by the operating system to separate
-      ## pathname components, or the same as `DirSep` if only one separator
-      ## character exists. This is set to '/' on Windows systems
-      ## where `DirSep` is a backslash.
-
-    PathSep* = ':'
-      ## The character conventionally used by the operating system to separate
-      ## search patch components (as in PATH), such as ':' for POSIX
-      ## or ';' for Windows.
-
-    FileSystemCaseSensitive* = true
-      ## true if the file system is case sensitive, false otherwise. Used by
-      ## `cmpPaths` to compare filenames properly.
-
-    ExeExt* = ""
-      ## The file extension of native executables. For example:
-      ## "" for POSIX, "exe" on Windows.
-
-    ScriptExt* = ""
-      ## The file extension of a script file. For example: "" for POSIX,
-      ## "bat" on Windows.
-
-    DynlibFormat* = "lib$1.so"
-      ## The format string to turn a filename into a `DLL`:idx: file (also
-      ## called `shared object`:idx: on some operating systems).
-
-elif defined(macos):
-  const
-    CurDir* = ':'
-    ParDir* = "::"
-    DirSep* = ':'
-    AltSep* = Dirsep
-    PathSep* = ','
-    FileSystemCaseSensitive* = false
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "$1.dylib"
-
-  #  MacOS paths
-  #  ===========
-  #  MacOS directory separator is a colon ":" which is the only character not
-  #  allowed in filenames.
-  #
-  #  A path containing no colon or which begins with a colon is a partial
-  #  path.
-  #  E.g. ":kalle:petter" ":kalle" "kalle"
-  #
-  #  All other paths are full (absolute) paths. E.g. "HD:kalle:" "HD:"
-  #  When generating paths, one is safe if one ensures that all partial paths
-  #  begin with a colon, and all full paths end with a colon.
-  #  In full paths the first name (e g HD above) is the name of a mounted
-  #  volume.
-  #  These names are not unique, because, for instance, two diskettes with the
-  #  same names could be inserted. This means that paths on MacOS are not
-  #  waterproof. In case of equal names the first volume found will do.
-  #  Two colons "::" are the relative path to the parent. Three is to the
-  #  grandparent etc.
-elif doslikeFileSystem:
-  const
-    CurDir* = '.'
-    ParDir* = ".."
-    DirSep* = '\\' # seperator within paths
-    AltSep* = '/'
-    PathSep* = ';' # seperator between paths
-    FileSystemCaseSensitive* = false
-    ExeExt* = "exe"
-    ScriptExt* = "bat"
-    DynlibFormat* = "$1.dll"
-elif defined(PalmOS) or defined(MorphOS):
-  const
-    DirSep* = '/'
-    AltSep* = Dirsep
-    PathSep* = ';'
-    ParDir* = ".."
-    FileSystemCaseSensitive* = false
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "$1.prc"
-elif defined(RISCOS):
-  const
-    DirSep* = '.'
-    AltSep* = '.'
-    ParDir* = ".." # is this correct?
-    PathSep* = ','
-    FileSystemCaseSensitive* = true
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "lib$1.so"
-else: # UNIX-like operating system
-  const
-    CurDir* = '.'
-    ParDir* = ".."
-    DirSep* = '/'
-    AltSep* = DirSep
-    PathSep* = ':'
-    FileSystemCaseSensitive* = when defined(macosx): false else: true
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
-
-const
-  ExtSep* = '.'
-    ## The character which separates the base filename from the extension;
-    ## for example, the '.' in ``os.nim``.
+include "includes/osseps"
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -192,7 +66,7 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     path.setLen(i)
     # foo => foo/
     path.add DirSep
-  elif i>0:
+  elif i > 0:
     # foo// => foo
     path.setLen(i)
   else:
@@ -228,29 +102,37 @@ proc joinPath*(head, tail: string): string {.
   ##   assert joinPath("", "lib") == "lib"
   ##   assert joinPath("", "/lib") == "/lib"
   ##   assert joinPath("usr/", "/lib") == "usr/lib"
-  if len(head) == 0:
-    result = tail
-  elif head[len(head)-1] in {DirSep, AltSep}:
-    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-      result = head & substr(tail, 1)
+  result = newStringOfCap(head.len + tail.len)
+  var state = 0
+  addNormalizePath(head, result, state, DirSep)
+  addNormalizePath(tail, result, state, DirSep)
+  when false:
+    if len(head) == 0:
+      result = tail
+    elif head[len(head)-1] in {DirSep, AltSep}:
+      if tail.len > 0 and tail[0] in {DirSep, AltSep}:
+        result = head & substr(tail, 1)
+      else:
+        result = head & tail
     else:
-      result = head & tail
-  else:
-    if tail.len > 0 and tail[0] in {DirSep, AltSep}:
-      result = head & tail
-    else:
-      result = head & DirSep & tail
+      if tail.len > 0 and tail[0] in {DirSep, AltSep}:
+        result = head & tail
+      else:
+        result = head & DirSep & tail
 
 proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
   ## The same as `joinPath(head, tail)`, but works with any number of
   ## directory parts. You need to pass at least one element or the proc
   ## will assert in debug builds and crash on release builds.
-  result = parts[0]
-  for i in 1..high(parts):
-    result = joinPath(result, parts[i])
+  var estimatedLen = 0
+  for p in parts: estimatedLen += p.len
+  result = newStringOfCap(estimatedLen)
+  var state = 0
+  for i in 0..high(parts):
+    addNormalizePath(parts[i], result, state, DirSep)
 
-proc `/` * (head, tail: string): string {.noSideEffect.} =
+proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## The same as ``joinPath(head, tail)``
   ##
   ## Here are some examples for Unix:
@@ -286,6 +168,71 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
   else:
     result.head = ""
     result.tail = path
+
+when FileSystemCaseSensitive:
+  template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
+else:
+  template `!=?`(a, b: char): bool = a != b
+
+proc relativePath*(path, base: string; sep = DirSep): string {.
+  noSideEffect, rtl, extern: "nos$1", raises: [].} =
+  ## Converts `path` to a path relative to `base`.
+  ## The `sep` is used for the path normalizations, this can be useful to
+  ## ensure the relative path only contains '/' so that it can be used for
+  ## URL constructions.
+  runnableExamples:
+    doAssert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
+    doAssert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
+    doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
+    doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
+    doAssert relativePath("", "/users/moo", '/') == ""
+
+
+  # Todo: If on Windows, path and base do not agree on the drive letter,
+  # return `path` as is.
+  if path.len == 0: return ""
+  var f, b: PathIter
+  var ff = (0, -1)
+  var bb = (0, -1) # (int, int)
+  result = newStringOfCap(path.len)
+  # skip the common prefix:
+  while f.hasNext(path) and b.hasNext(base):
+    ff = next(f, path)
+    bb = next(b, base)
+    let diff = ff[1] - ff[0]
+    if diff != bb[1] - bb[0]: break
+    var same = true
+    for i in 0..diff:
+      if path[i + ff[0]] !=? base[i + bb[0]]:
+        same = false
+        break
+    if not same: break
+    ff = (0, -1)
+    bb = (0, -1)
+  #  for i in 0..diff:
+  #    result.add base[i + bb[0]]
+
+  # /foo/bar/xxx/ -- base
+  # /foo/bar/baz  -- path path
+  #   ../baz
+  # every directory that is in 'base', needs to add '..'
+  while true:
+    if bb[1] >= bb[0]:
+      if result.len > 0 and result[^1] != sep:
+        result.add sep
+      result.add ".."
+    if not b.hasNext(base): break
+    bb = b.next(base)
+
+  # add the rest of 'path':
+  while true:
+    if ff[1] >= ff[0]:
+      if result.len > 0 and result[^1] != sep:
+        result.add sep
+      for i in 0..ff[1] - ff[0]:
+        result.add path[i + ff[0]]
+    if not f.hasNext(path): break
+    ff = f.next(path)
 
 proc parentDirPos(path: string): int =
   var q = 1
@@ -478,14 +425,17 @@ proc cmpPaths*(pathA, pathB: string): int {.
       doAssert cmpPaths("foo", "Foo") == 0
     elif defined(posix):
       doAssert cmpPaths("foo", "Foo") > 0
+
+  let a = normalizePath(pathA)
+  let b = normalizePath(pathB)
   if FileSystemCaseSensitive:
-    result = cmp(pathA, pathB)
+    result = cmp(a, b)
   else:
     when defined(nimscript):
-      result = cmpic(pathA, pathB)
+      result = cmpic(a, b)
     elif defined(nimdoc): discard
     else:
-      result = cmpIgnoreCase(pathA, pathB)
+      result = cmpIgnoreCase(a, b)
 
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
   ## Checks whether a given `path` is absolute.
@@ -523,12 +473,10 @@ proc unixToNativePath*(path: string, drive=""): string {.
   ## which drive label to use during absolute path conversion.
   ## `drive` defaults to the drive of the current working directory, and is
   ## ignored on systems that do not have a concept of "drives".
-
   when defined(unix):
     result = path
   else:
-    if path.len == 0:
-        return ""
+    if path.len == 0: return ""
 
     var start: int
     if path[0] == '/':
