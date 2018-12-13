@@ -3,11 +3,11 @@ import strutils, strtabs, os, osproc, vcvarsall, vccenv
 type
   VccVersion* = enum ## VCC compiler backend versions
     vccUndefined = 0,   ## VCC version undefined, resolves to the latest recognizable VCC version
-    vcc90  = ord(vs90)  ## Visual Studio 2008 (Version 9.0)
-    vcc100 = ord(vs100) ## Visual Studio 2010 (Version 10.0)
-    vcc110 = ord(vs110) ## Visual Studio 2012 (Version 11.0)
-    vcc120 = ord(vs120) ## Visual Studio 2013 (Version 12.0)
-    vcc140 = ord(vs140) ## Visual Studio 2015 (Version 14.0)
+    vcc90  = vs90  ## Visual Studio 2008 (Version 9.0)
+    vcc100 = vs100 ## Visual Studio 2010 (Version 10.0)
+    vcc110 = vs110 ## Visual Studio 2012 (Version 11.0)
+    vcc120 = vs120 ## Visual Studio 2013 (Version 12.0)
+    vcc140 = vs140 ## Visual Studio 2015 (Version 14.0)
 
 proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
   ## Returns the path to the vcvarsall utility of the specified VCC compiler backend.
