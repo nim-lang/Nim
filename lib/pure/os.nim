@@ -105,7 +105,10 @@ proc joinPath*(head, tail: string): string {.
   result = newStringOfCap(head.len + tail.len)
   var state = 0
   addNormalizePath(head, result, state, DirSep)
-  addNormalizePath(tail, result, state, DirSep)
+  if tail.len == 0:
+    result.add DirSep
+  else:
+    addNormalizePath(tail, result, state, DirSep)
   when false:
     if len(head) == 0:
       result = tail

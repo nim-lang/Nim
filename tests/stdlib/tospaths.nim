@@ -92,3 +92,8 @@ doAssert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.ni
 doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
 doAssert relativePath("", "/users/moo", '/') == ""
 doAssert relativePath("foo", "", '/') == "foo"
+
+doAssert joinPath("usr", "") == unixToNativePath"usr/"
+doAssert joinPath("", "lib") == "lib"
+doAssert joinPath("", "/lib") == unixToNativePath"/lib"
+doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
