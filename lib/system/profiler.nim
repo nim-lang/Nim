@@ -13,6 +13,9 @@
 # (except perhaps loops that have no side-effects). At every Nth call a
 # stack trace is taken. A stack tace is a list of cstrings.
 
+when defined(profiler) and defined(memProfiler):
+  {.error: "profiler and memProfiler cannot be defined at the same time (See Embedded Stack Trace Profiler (ESTP) User Guide) for more details".}
+
 {.push profiler: off.}
 
 const
