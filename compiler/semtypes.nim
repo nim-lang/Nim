@@ -613,7 +613,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   var chckCovered = false
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
   case typ.kind
-  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
+  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool, tyRange:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
     discard
