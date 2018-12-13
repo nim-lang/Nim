@@ -800,11 +800,13 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       typ = commonType(typ, x.sons[1])
       closeScope(c)
     of nkElse:
-      chckCovered = false
       checkSonsLen(x, 1, c.config)
       x.sons[0] = semExprBranchScope(c, x.sons[0])
       typ = commonType(typ, x.sons[0])
       hasElse = true
+      if chckCovered and covered == toCover(c, n.sons[0].typ):
+        localError(c.config, x.info, "invalid else, all cases are already covered")
+      chckCovered = false
     else:
       illFormedAst(x, c.config)
   if chckCovered:
