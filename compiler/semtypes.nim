@@ -618,8 +618,8 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of tyFloat..tyFloat128, tyString, tyError:
     discard
   else:
-    localError(c.config, n.info, "selector must be of an ordinal type, float or string")
-    return
+    if not isOrdinalType(typ):
+      localError(c.config, n.info, "selector must be of an ordinal type, float or string")
   for i in countup(1, sonsLen(n) - 1):
     var b = copyTree(n.sons[i])
     addSon(a, b)
