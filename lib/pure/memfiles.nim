@@ -90,7 +90,7 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1,
-           allowRemap = false): MemFile =
+           allowRemap = false, mapFlags = cint(-1)): MemFile =
   ## opens a memory mapped file. If this fails, ``OSError`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
@@ -104,6 +104,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
   ## the resulting MemFile; else file handles are not kept open.
+  ##
+  ## ``mapFlags`` allows callers to override default choices for memory mapping
+  ## flags with a bitwise mask of a variety of perhaps platform-specific flags.
   ##
   ## Example:
   ##
@@ -245,11 +248,17 @@ proc open*(filename: string, mode: FileMode = fmRead,
       else:
         fail(osLastError(), "error getting file size")
 
+    let actualFlags =
+      if mapFlags == -1:
+        if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE)
+      else:
+        mapFlags
+
     result.mem = mmap(
       nil,
       result.size,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
+      actualFlags,
       result.handle,
       offset)
 
