@@ -11,7 +11,7 @@
 
 import
   options, idents, nimconf, scriptconfig, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils, strtabs
+  lineinfos, modulegraphs, condsyms, os, pathutils, strtabs, tables
 
 type
   NimProg* = ref object
@@ -50,17 +50,17 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
 
   # These defines/options should not be enabled while processing nimscript
   # bug #4446, #9420, #8991, #9589, #9153
-  undefSymbol(conf.symbols, "profiler")
-  undefSymbol(conf.symbols, "nodejs")
-  
-  # Symbols defined using -d:symbol need to be manually redefined later
-  var memProfEnabled = false
-  if conf.symbols.contains("memProfiler"):
-    memProfEnabled = true
-    undefSymbol(conf.symbols, "memProfiler")
+  var symbolsToUndef = {"profiler": false, "nodejs": falze, "memProfiler": false}.toTable()
+  for sym in symbolsToUndef:
+    if conf.symbols.contains(sym):
+      symbolsToUndef[sym] = true
+      undefSymbol(conf.symbols, sym)
 
   # bug #9120
-  conf.globalOptions.excl(optTaintMode)
+  var optToUndef = {optTaintMode: "false"}.toTable()
+  for opt in optToUndef:
+    optToUndef[opt] = true
+    conf.globalOptions.excl(opt)
 
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
@@ -93,8 +93,14 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
         # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
         discard
 
-  if memProfEnabled:
-    defineSymbol(conf.symbols, "memProfiler")
+  # .cfg file can modify the defined symbols and options
+  # so don't rely on re-parsing command line arguments only
+  for sym, value in symbolsToUndef.pairs():
+    if value:
+      defineSymbol(conf.symbols, sym)
+  for opt, value in optToUndef.pairs():
+    if value:
+      conf.globalOptions.incl(opt)
 
   # now process command line arguments again, because some options in the
   # command line can overwite the config file's settings
