@@ -90,6 +90,8 @@ proc enumToString*(enums: openArray[enum]): string =
 - There is a new stdlib module `std/diff` to compute the famous "diff"
   of two texts by line.
 
+- Added `os.relativePath`.
+
 ### Library changes
 
 - The string output of `macros.lispRepr` proc has been tweaked
