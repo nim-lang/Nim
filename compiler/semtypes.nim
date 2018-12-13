@@ -91,7 +91,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
           strVal = v.sons[1] # second tuple part is the string value
           if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
             if not isOrdinalType(v.sons[0].typ):
-              localError(c.config, v.sons[0].info, errOrdinalTypeExpected)
+              localError(c.config, v.sons[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v.sons[0].typ, preferDesc))
             x = getOrdValue(v.sons[0]) # first tuple part is the ordinal
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
@@ -102,7 +102,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         x = counter
       else:
         if not isOrdinalType(v.typ):
-          localError(c.config, v.info, errOrdinalTypeExpected)
+          localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
         x = getOrdValue(v)
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
