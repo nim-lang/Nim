@@ -55,7 +55,10 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   undefSymbol(conf.symbols, "nodejs")
 
   # bug #9120
-  conf.globalOptions.excl(optTaintMode)
+  var taint = false
+  if conf.globalOptions.contains(optTaintMode):
+    taint = true
+    conf.globalOptions.excl(optTaintMode)
 
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
@@ -88,8 +91,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
         # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
         discard
 
-  # Reload configuration from .cfg file
-  loadConfigs(DefaultConfig, cache, conf)
+  if taint:
+    conf.globalOptions.incl(optTaintMode)
 
   # now process command line arguments again, because some options in the
   # command line can overwite the config file's settings
