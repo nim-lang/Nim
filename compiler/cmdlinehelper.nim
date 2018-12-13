@@ -51,16 +51,17 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   # These defines/options should not be enabled while processing nimscript
   # bug #4446, #9420, #8991, #9589, #9153
   var symbolsToUndef = {"profiler": false, "nodejs": false, "memProfiler": false}.toTable()
-  for sym in symbolsToUndef:
+  for sym in symbolsToUndef.keys():
     if conf.symbols.contains(sym):
       symbolsToUndef[sym] = true
       undefSymbol(conf.symbols, sym)
 
   # bug #9120
   var optToUndef = {optTaintMode: false}.toTable()
-  for opt in optToUndef:
-    optToUndef[opt] = true
-    conf.globalOptions.excl(opt)
+  for opt in optToUndef.keys():
+    if conf.globalOptions.contains(opt):
+      optToUndef[opt] = true
+      conf.globalOptions.excl(opt)
 
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
