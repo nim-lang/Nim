@@ -369,7 +369,8 @@ when not defined(useNimRtl):
     close(p)
 
 template streamAccess(p) =
-  assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
+  # assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
+  discard
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -594,8 +595,8 @@ when defined(Windows) and not defined(useNimRtl):
   proc close(p: Process) =
     if poParentStreams notin p.options:
       discard closeHandle(p.inHandle)
-      discard closeHandle(p.outHandle)
-      discard closeHandle(p.errHandle)
+    discard closeHandle(p.outHandle)
+    discard closeHandle(p.errHandle)
     discard closeHandle(p.fThreadHandle)
     discard closeHandle(p.fProcessHandle)
 
@@ -785,8 +786,10 @@ elif not defined(useNimRtl):
     result.exitFlag = true
 
     if poParentStreams notin options:
-      if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
-         pipe(pStderr) != 0'i32:
+      if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or pipe(pStderr) != 0'i32:
+        raiseOSError(osLastError())
+    else:
+      if pipe(pStdout) != 0'i32 or pipe(pStderr) != 0'i32:
         raiseOSError(osLastError())
 
     var sysCommand: string
@@ -843,22 +846,22 @@ elif not defined(useNimRtl):
     if poParentStreams in options:
       # does not make much sense, but better than nothing:
       result.inHandle = 0
-      result.outHandle = 1
-      if poStdErrToStdOut in options:
-        result.errHandle = result.outHandle
-      else:
-        result.errHandle = 2
+      # result.outHandle = 1
+      # if poStdErrToStdOut in options:
+      #   result.errHandle = result.outHandle
+      # else:
+      #   result.errHandle = 2
     else:
       result.inHandle = pStdin[writeIdx]
-      result.outHandle = pStdout[readIdx]
-      if poStdErrToStdOut in options:
-        result.errHandle = result.outHandle
-        discard close(pStderr[readIdx])
-      else:
-        result.errHandle = pStderr[readIdx]
-      discard close(pStderr[writeIdx])
       discard close(pStdin[readIdx])
-      discard close(pStdout[writeIdx])
+    result.outHandle = pStdout[readIdx]
+    if poStdErrToStdOut in options:
+      result.errHandle = result.outHandle
+      discard close(pStderr[readIdx])
+    else:
+      result.errHandle = pStderr[readIdx]
+    discard close(pStderr[writeIdx])
+    discard close(pStdout[writeIdx])
 
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid =
@@ -886,13 +889,13 @@ elif not defined(useNimRtl):
       if not (poParentStreams in data.options):
         chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
-        chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
-        chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
-        chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-        if poStdErrToStdOut in data.options:
-          chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
-        else:
-          chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
+      chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
+      chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
+      chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
+      if poStdErrToStdOut in data.options:
+        chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
+      else:
+        chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
 
       var res: cint
       if data.workingDir.len > 0:
