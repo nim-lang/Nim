@@ -22,6 +22,13 @@ true
 Event { name: 'click: test' }
 Event { name: 'reloaded: test' }
 Event { name: 'updates: test' }
+true
+true
+true
+true
+true
+true
+true
 '''
 """
 
@@ -317,3 +324,12 @@ block:
   jslib.subscribe("updates"):
     console.log jsarguments[0]
 
+block:
+
+  echo jsUndefined == jsNull
+  echo jsUndefined == nil
+  echo jsNull == nil
+  echo jsUndefined.isNil
+  echo jsNull.isNil
+  echo jsNull.isNull
+  echo jsUndefined.isUndefined
