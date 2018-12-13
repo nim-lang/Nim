@@ -549,17 +549,17 @@ proc semConst(c: PContext, n: PNode): PNode =
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
-    if a.kind != nkConstDef: illFormedAst(a, c.config)
-    checkSonsLen(a, 3, c.config)
-    var v = semIdentDef(c, a.sons[0], skConst)
-    styleCheckDef(c.config, v)
-    onDef(a[0].info, v)
-    var typ: PType = nil
-    if a.sons[1].kind != nkEmpty: typ = semTypeNode(c, a.sons[1], nil)
+    if a.kind notin {nkConstDef, nkConstTuple}: illFormedAst(a, c.config)
+    checkMinSonsLen(a, 3, c.config)
+    var length = sonsLen(a)
 
-    var def = semConstExpr(c, a.sons[2])
+    var typ: PType = nil
+    if a.sons[length-2].kind != nkEmpty:
+      typ = semTypeNode(c, a.sons[length-2], nil)
+
+    var def = semConstExpr(c, a.sons[length-1])
     if def == nil:
-      localError(c.config, a.sons[2].info, errConstExprExpected)
+      localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
     # check type compatibility between def.typ and typ:
     if typ != nil:
@@ -567,21 +567,43 @@ proc semConst(c: PContext, n: PNode): PNode =
     else:
       typ = def.typ
     if typ == nil:
-      localError(c.config, a.sons[2].info, errConstExprExpected)
+      localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(c.config, a.info, "invalid type for const: " & typeToString(typ))
       continue
-    setVarType(c, v, typ)
-    v.ast = def               # no need to copy
-    if sfGenSym notin v.flags: addInterfaceDecl(c, v)
-    elif v.owner == nil: v.owner = getCurrOwner(c)
-    var b = newNodeI(nkConstDef, a.info)
-    if importantComments(c.config): b.comment = a.comment
-    addSon(b, newSymNode(v))
-    addSon(b, a.sons[1])
-    addSon(b, copyTree(def))
-    addSon(result, b)
+
+    var b: PNode
+    if a.kind == nkConstTuple:
+      if typ.kind != tyTuple:
+        localError(c.config, a.info, errXExpected, "tuple")
+      elif int(length/2) != sonsLen(typ):
+        localError(c.config, a.info, errWrongNumberOfVariables)
+      b = newNodeI(nkConstTuple, a.info)
+      newSons(b, length)
+      b.sons[length-2] = a.sons[length-2]
+      b.sons[length-1] = def
+  
+    for j in countup(0, length-3):
+      var v = semIdentDef(c, a.sons[j], skConst)
+      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+      elif v.owner == nil: v.owner = getCurrOwner(c)
+      styleCheckDef(c.config, v)
+      onDef(a[j].info, v)
+
+      if a.kind != nkConstTuple:
+          setVarType(c, v, typ)
+          v.ast = def               # no need to copy
+          b = newNodeI(nkConstDef, a.info)
+          if importantComments(c.config): b.comment = a.comment
+          addSon(b, newSymNode(v))
+          addSon(b, a.sons[1])
+          addSon(b, copyTree(def))
+      else:
+        setVarType(c, v, typ.sons[j])
+        v.ast = def[j]
+        b.sons[j] = newSymNode(v)
+    addSon(result,b)
 
 include semfields
 
