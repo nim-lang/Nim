@@ -1061,7 +1061,9 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo
   else:
     genTypeInfoAuxBase(m, typ, origType, name, rope("0"), info)
   var tmp = getNimNode(m)
-  if not isImportedType(typ):
+  if isImportedType(typ) and tfIncompleteStruct in typ.flags:
+    discard "bug #9940"
+  else:
     genObjectFields(m, typ, origType, typ.n, tmp, info)
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
