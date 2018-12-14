@@ -222,8 +222,8 @@ type
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
-    nkTupleConstr         # a tuple constructor
-    nkConstTuple,         # a ``const (a, b) = expr`` construct
+    nkTupleConstr,        # a tuple constructor
+    nkConstTuple          # a ``const (a, b) = expr`` construct
 
   TNodeKinds* = set[TNodeKind]
 
