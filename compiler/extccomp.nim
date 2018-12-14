@@ -153,6 +153,13 @@ compiler vcc:
     structStmtFmt: "$3$n$1 $2",
     props: {hasCpp, hasAssume, hasDeclspec})
 
+compiler clangcl:
+  result = vcc()
+  result.name = "clang_cl"
+  result.compilerExe = "clang-cl"
+  result.cppCompiler = "clang-cl"
+  result.linkerExe = "clang-cl"
+
 # Intel C/C++ Compiler
 compiler icl:
   result = vcc()
@@ -353,7 +360,8 @@ const
     pcc(),
     ucc(),
     icl(),
-    icc()]
+    icc(),
+    clangcl()]
 
   hExt* = ".h"
 
