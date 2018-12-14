@@ -111,6 +111,9 @@ proc enumToString*(enums: openArray[enum]): string =
   (default value: true) that can be set to `false` for better Posix
   interoperability. (Bug #9619.)
 
+- `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
+  differently.
+
 
 ### Language additions
 

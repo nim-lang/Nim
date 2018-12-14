@@ -66,19 +66,26 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
     if (state shr 1 == 0) and isSlash(x, b):
       result.add dirSep
       state = state or 1
-    elif result.len > (state and 1) and isDotDot(x, b):
-      var d = result.len
-      # f/..
-      while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
-        dec d
-      if d > 0: setLen(result, d-1)
+    elif isDotDot(x, b):
+      if (state shr 1) >= 1:
+        var d = result.len
+        # f/..
+        while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
+          dec d
+        if d > 0:
+          setLen(result, d-1)
+          dec state, 2
+      else:
+        if result.len > 0 and result[^1] notin {DirSep, AltSep}:
+          result.add dirSep
+        result.add substr(x, b[0], b[1])
     elif isDot(x, b):
       discard "discard the dot"
     elif b[1] >= b[0]:
       if result.len > 0 and result[^1] notin {DirSep, AltSep}:
         result.add dirSep
       result.add substr(x, b[0], b[1])
-    inc state, 2
+      inc state, 2
 
 proc normalizePath*(path: string; dirSep = DirSep): string =
   ## Example:
