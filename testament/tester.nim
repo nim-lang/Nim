@@ -292,8 +292,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
   let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
   result = nimcacheDir(test.name, test.options, target) /
-    (if target == targetJS: "" else: "compiler_") &
-    name.changeFileExt(ext)
+    ((if target == targetJS: "" else: "compiler_") & name.changeFileExt(ext))
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
