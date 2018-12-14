@@ -57,7 +57,12 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
 
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
-  for b in dirs(x):
+  var it: PathIter
+  it.notFirst = (state shr 1) > 0
+  if it.notFirst:
+    while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
+  while hasNext(it, x):
+    let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
       result.add dirSep
       state = state or 1
