@@ -155,7 +155,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     while true:
       openParsers(p, fileIdx, s, graph.cache, graph.config)
 
-      if sfSystemModule notin module.flags:
+      if graph.config.mainPackageId == module.owner.id:
         # XXX what about caching? no processing then? what if I change the
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
