@@ -282,7 +282,7 @@ proc mergeConfigs*(dest, src: ConfigRef) =
   m globalOptions
   m cmd
   m selectedGC
-  m verbosity
+  dest.verbosity = src.verbosity
   m numberOfProcessors
   m evalExpr
   m symbolFiles
