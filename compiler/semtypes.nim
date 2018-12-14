@@ -477,19 +477,33 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
   # identifier with visibility
-  if n.kind == nkPostfix:
+  if n.kind in {nkPostfix, nkExportDoc}:
+    var ident, operator: NimNode
+    if n.kind == nkPostfix:
+      # this branch should be dead
+      if n.len != 2:
+        illFormedAst(n, c.config)
+      else:
+        ident = n.sons[1]
+        operator = n.sons[0]
+    else:
+      if n.len != 3:
+        illFormedAst(n, c.config)
+      else:
+        ident = n.sons[0]
+        operator = n.sons[1]
     if sonsLen(n) == 2:
       # for gensym'ed identifiers the identifier may already have been
       # transformed to a symbol and we need to use that here:
-      result = newSymG(kind, n.sons[1], c)
-      var v = considerQuotedIdent(c, n.sons[0])
+      result = newSymG(kind, ident, c)
+      var v = considerQuotedIdent(c, operator)
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
         if not (sfExported in allowed):
-          localError(c.config, n.sons[0].info, errXOnlyAtModuleScope % "export")
+          localError(c.config, operator.info, errXOnlyAtModuleScope % "export")
         else:
-          localError(c.config, n.sons[0].info, errInvalidVisibilityX % renderTree(n[0]))
+          localError(c.config, operator.info, errInvalidVisibilityX % renderTree(operator))
     else:
       illFormedAst(n, c.config)
   else:

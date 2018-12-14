@@ -56,6 +56,7 @@ proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
 
 when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
+    assert(fid.int < conf.m.fileInfos.len, "fid: " & $fid.int & " fileInfosLen " & $conf.m.fileInfos.len & " a: " & $a & " b: " & $b)
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
@@ -152,8 +153,8 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   else: result = conf.m.msgContext[i].info
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0 or conf == nil:
-    "???"
+  if conf == nil or fileIdx.int < 0 or fileIdx.int > conf.m.fileInfos.len:
+    $int(fileIdx)
   else:
     conf.m.fileInfos[fileIdx.int32].projPath.string
 

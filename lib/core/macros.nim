@@ -81,7 +81,8 @@ type
     nnkState,
     nnkBreakState,
     nnkFuncDef,
-    nnkTupleConstr
+    nnkTupleConstr,
+    nnkExportDoc
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim

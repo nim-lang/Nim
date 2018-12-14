@@ -75,7 +75,7 @@ type
                           # x"""abc""" has two sons: nkIdent, nkTripleStrLit
     nkInfix,              # a call like (a + b)
     nkPrefix,             # a call like !a
-    nkPostfix,            # something like a! (also used for visibility)
+    nkPostfix,            # deprecated, there is no postfix operator
     nkHiddenCallConv,     # an implicit type conversion via a type converter
 
     nkExprEqExpr,         # a named parameter with equals: ''expr = expr''
@@ -223,6 +223,7 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkExportDoc,          # a node for export marker and doc comment like ``a* ## comment``
 
   TNodeKinds* = set[TNodeKind]
 
@@ -715,13 +716,14 @@ type
       floatVal*: BiggestFloat
     of nkStrLit..nkTripleStrLit:
       strVal*: string
+    of nkCommentStmt:
+      comment*: string
     of nkSym:
       sym*: PSym
     of nkIdent:
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -1013,17 +1015,16 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-proc len*(n: PNode): int {.inline.} =
-  when defined(nimNoNilSeqs):
-    result = len(n.sons)
-  else:
-    if isNil(n.sons): result = 0
-    else: result = len(n.sons)
-
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit}: result = 0
-  else: result = len(n)
+  if n.kind in {nkNone..nkNilLit, nkCommentStmt}: result = 0
+  else: result = len(n.sons)
+
+proc len*(n: PNode): int {.inline.} =
+  safeLen(n)
+
+proc sonsLen*(n: PNode): int {.inline.} =
+  safeLen(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
@@ -1302,8 +1303,8 @@ proc newSons*(father: PType, length: int) =
       setLen(father.sons, length)
 
 proc sonsLen*(n: PType): int = n.sons.len
-proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
+proc len*(n: PType): int = sonsLen(n)
+
 proc lastSon*(n: PNode): PNode = n.sons[^1]
 proc lastSon*(n: PType): PType = n.sons[^1]
 
@@ -1496,7 +1497,6 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1506,6 +1506,7 @@ proc copyNode*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: result.comment = src.comment
   else: discard
 
 proc shallowCopy*(src: PNode): PNode =
@@ -1515,7 +1516,6 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1525,6 +1525,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: result.comment = src.comment
   else: newSeq(result.sons, sonsLen(src))
 
 proc copyTree*(src: PNode): PNode =
@@ -1535,7 +1536,6 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1545,6 +1545,7 @@ proc copyTree*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: result.comment = src.comment
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):

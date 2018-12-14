@@ -144,6 +144,44 @@ template realInd(p): bool = p.tok.indent > p.currInd
 template sameInd(p): bool = p.tok.indent == p.currInd
 template sameOrNoInd(p): bool = p.tok.indent == p.currInd or p.tok.indent < 0
 
+proc withComment(node: PNode, comment: string, p: TParser): PNode =
+  case node.kind
+  of nkExportDoc:
+    assert node.len == 3
+    assert node[2].kind in {nkCommentStmt, nkEmpty}
+    if node[2].kind == nkEmpty:
+      node[2] = newNodeP(nkCommentStmt, p)
+      node[2].comment = comment
+    else:
+      node[2].comment.add comment
+    result = node
+  of nkCommentStmt:
+    node.comment.add comment
+    result = node
+  of nkIdent:
+    var commentNode = newNodeP(nkCommentStmt, p)
+    commentNode.comment = comment
+    result = newNodeP(nkExportDoc, p)
+    result.add node
+    result.add newNodeP(nkEmpty, p)
+    result.add commentNode
+  of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr:
+    result = node
+    result[0] = node[0].withComment(comment, p)
+
+  of nkEnumTy, nkObjectTy:
+    # It is not possible to put the comment node at the correct
+    # location right now, so it just append it and fix it later.
+    result = node
+    var commentNode = newNodeP(nkCommentStmt, p)
+    commentNode.comment = comment
+    result.sons.insert(commentNode, 0)
+
+  else:
+    echo "ERROR: cannot add comment here \"", comment, "\""
+    debug(node)
+    # internalError(nil, "cannot add comment here")
+
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
@@ -155,7 +193,9 @@ proc rawSkipComment(p: var TParser, node: PNode) =
         else:
           add node.comment, p.tok.literal
       else:
-        add(node.comment, p.tok.literal)
+
+        discard withComment(node, p.tok.literal, p)
+
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -914,6 +954,8 @@ proc parsePragma(p: var TParser): PNode =
     parMessage(p, "expected '.}'")
   dec p.inPragma
 
+import renderer
+
 proc identVis(p: var TParser; allowDot=false): PNode =
   #| identVis = symbol opr?  # postfix position
   #| identVisDot = symbol '.' optInd symbol opr?
@@ -921,9 +963,10 @@ proc identVis(p: var TParser; allowDot=false): PNode =
   if p.tok.tokType == tkOpr:
     when defined(nimpretty2):
       starWasExportMarker(p.em)
-    result = newNodeP(nkPostfix, p)
-    addSon(result, newIdentNodeP(p.tok.ident, p))
-    addSon(result, a)
+    result = newNodeP(nkExportDoc, p)
+    result.addSon a
+    result.addSon newIdentNodeP(p.tok.ident, p)
+    result.addSon newNodeP(nkEmpty, p)
     getTok(p)
   elif p.tok.tokType == tkDot and allowDot:
     result = dotExpr(p, a)
@@ -1699,6 +1742,15 @@ proc parsePattern(p: var TParser): PNode =
 proc validInd(p: var TParser): bool =
   result = p.tok.indent < 0 or p.tok.indent > p.currInd
 
+
+proc findComment(arg: PNode): string =
+  if arg.comment != "":
+    result.add $arg.kind
+    result.add ""
+    result.add arg.comment
+  for child in arg:
+    result.add child.findComment
+
 proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   #| indAndComment = (IND{>} COMMENT)? | COMMENT?
   #| routine = optInd identVis pattern? genericParamList?
@@ -1988,7 +2040,17 @@ proc parseTypeDef(p: var TParser): PNode =
     result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
-    addSon(result, parseTypeDefAux(p))
+    var newSon = parseTypeDefAux(p)
+
+    if newSon.len > 0 and newSon[0].kind == nkCommentStmt:
+      # Here was a hack, could not put the comment statement anywhere
+      # eles, so it is the son at index 1.  Here the comment statement
+      # can be put at the right location.
+      let commentNode = newSon[0]
+      newSon.sons.delete(0)
+      result = withComment(result, commentNode.comment, p)
+
+    addSon(result, newSon)
   else:
     addSon(result, p.emptyNode)
   indAndComment(p, result)    # special extension!

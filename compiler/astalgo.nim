@@ -416,6 +416,8 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
+      of nkCommentStmt:
+        addf(result, ",$N$1\"comment\": $2", [istr, makeYamlString(n.comment)])
       else:
         if renderType and n.typ != nil:
           addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
