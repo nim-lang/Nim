@@ -90,6 +90,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - There is a new stdlib module `std/diff` to compute the famous "diff"
   of two texts by line.
 
+- Added `os.relativePath`.
+- Added `parseopt.remainingArgs`.
+
 ### Library changes
 
 - The string output of `macros.lispRepr` proc has been tweaked
@@ -108,6 +111,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
   (default value: true) that can be set to `false` for better Posix
   interoperability. (Bug #9619.)
+
+- `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
+  differently.
 
 
 ### Language additions

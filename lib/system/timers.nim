@@ -49,7 +49,7 @@ elif defined(macosx):
   mach_timebase_info(timeBaseInfo)
 
   proc `-`(a, b: Ticks): Nanos =
-    result = (a.int64 - b.int64)  * timeBaseInfo.numer div timeBaseInfo.denom
+    result = (a.int64 - b.int64) * timeBaseInfo.numer div timeBaseInfo.denom
 
 elif defined(posixRealtime):
   type

@@ -219,7 +219,6 @@ when defined(Posix):
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
     of AF_INET6:       result = posix.AF_INET6
-    else: discard
 
   proc toInt(typ: SockType): cint =
     case typ
@@ -227,7 +226,6 @@ when defined(Posix):
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
     of SOCK_RAW:       result = posix.SOCK_RAW
-    else: discard
 
   proc toInt(p: Protocol): cint =
     case p
@@ -237,7 +235,6 @@ when defined(Posix):
     of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
     of IPPROTO_RAW:    result = posix.IPPROTO_RAW
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    else: discard
 
 else:
   proc toInt(domain: Domain): cint =
@@ -853,7 +850,6 @@ proc connect*(socket: Socket, address: string, port = Port(0),
       of AF_UNIX: s.sin_family = posix.AF_UNIX
       of AF_INET: s.sin_family = posix.AF_INET
       of AF_INET6: s.sin_family = posix.AF_INET6
-      else: nil
     if connect(socket.fd, cast[ptr TSockAddr](addr(s)), sizeof(s).cint) < 0'i32:
       OSError()
 
