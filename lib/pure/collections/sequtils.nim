@@ -115,7 +115,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 ..< n:
     result[i] = x
 
-proc deduplicate*[T](s: openArray[T]): seq[T] =
+proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## Example:
@@ -129,8 +129,17 @@ proc deduplicate*[T](s: openArray[T]): seq[T] =
   ##   assert unique1 == @[1, 3, 4, 2, 8]
   ##   assert unique2 == @["a", "c", "d"]
   result = @[]
-  for itm in items(s):
-    if not result.contains(itm): result.add(itm)
+  if s.len > 0:
+    if isSorted:
+      var prev = s[0]
+      result.add(prev)
+      for i in 1..s.high:
+        if s[i] != prev:
+          prev = s[i]
+          result.add(prev)
+    else:
+      for itm in items(s):
+        if not result.contains(itm): result.add(itm)
 
 proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input containers.
@@ -827,6 +836,7 @@ macro mapLiterals*(constructor, op: untyped;
 
 when isMainModule:
   import strutils
+  from algorithm import sorted
 
   # helper for testing double substitution side effects which are handled
   # by `evalOnceAs`
@@ -902,10 +912,18 @@ when isMainModule:
       unique2 = deduplicate(dup2)
       unique3 = deduplicate(dup3)
       unique4 = deduplicate(dup4)
+      unique5 = deduplicate(dup1.sorted, true)
+      unique6 = deduplicate(dup2, true)
+      unique7 = deduplicate(dup3.sorted, true)
+      unique8 = deduplicate(dup4, true)
     assert unique1 == @[1, 3, 4, 2, 8]
     assert unique2 == @["a", "c", "d"]
     assert unique3 == @[1, 3, 4, 2, 8]
     assert unique4 == @["a", "c", "d"]
+    assert unique5 == @[1, 2, 3, 4, 8]
+    assert unique6 == @["a", "c", "d"]
+    assert unique7 == @[1, 2, 3, 4, 8]
+    assert unique8 == @["a", "c", "d"]
 
   block: # zip test
     let

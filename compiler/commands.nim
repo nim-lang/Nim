@@ -480,7 +480,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "native", "gdb":
       incl(conf.globalOptions, optCDebug)
       conf.options = conf.options + {optLineDir} - {optEndb}
-      defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
+      #defineSymbol(conf.symbols, "nimTypeNames") # type names are used in gdb pretty printing
       undefSymbol(conf.symbols, "endb")
     else:
       localError(conf, info, "expected endb|gdb but found " & arg)
@@ -617,6 +617,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "run", "r":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optRun)
+  of "errormax":
+    expectArg(conf, switch, arg, pass, info)
+    # Note: `nim check` (etc) can overwrite this.
+    # `0` is meaningless, give it a useful meaning as in clang's -ferror-limit
+    # If user doesn't set this flag and the code doesn't either, it'd
+    # have the same effect as errorMax = 1
+    let ret = parseInt(arg)
+    conf.errorMax = if ret == 0: high(int) else: ret
   of "verbosity":
     expectArg(conf, switch, arg, pass, info)
     let verbosity = parseInt(arg)

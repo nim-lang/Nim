@@ -723,10 +723,9 @@ type
       sons*: TNodeSeq
     comment*: string
 
-  TSymSeq* = seq[PSym]
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
-    data*: TSymSeq
+    data*: seq[PSym]
 
   # -------------- backend information -------------------------------
   TLocKind* = enum

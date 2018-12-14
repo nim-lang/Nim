@@ -1,5 +1,4 @@
 discard """
-  file: "texitcode.nim"
   output: ""
 """
 

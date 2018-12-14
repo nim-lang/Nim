@@ -1,5 +1,4 @@
 discard """
-  file: "tcastint.nim"
   output: "OK"
 """
 
@@ -130,7 +129,7 @@ proc test_float_cast =
   doAssert(mantissa == 0, $mantissa)
 
   # construct 2^N float, where N is integer
-  let x = -2'i64 
+  let x = -2'i64
   let xx = (x + exp_bias) shl exp_shift
   let xf = cast[float](xx)
   doAssert(xf == 0.25, $xf)
@@ -151,7 +150,7 @@ proc test_float32_cast =
   doAssert(mantissa == 0, $mantissa)
 
   # construct 2^N float32 where N is integer
-  let x = 4'i32  
+  let x = 4'i32
   let xx = (x + exp_bias) shl exp_shift
   let xf = cast[float32](xx)
   doAssert(xf == 16.0'f32, $xf)

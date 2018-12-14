@@ -1,7 +1,7 @@
 discard """
-  file: "tvariantasgn.nim"
   output: "came here"
 """
+
 #BUG
 type
   TAnyKind = enum
@@ -26,5 +26,3 @@ nr.intVal = 78
 # s = nr # works
 nr = s # fails!
 echo "came here"
-
-

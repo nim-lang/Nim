@@ -454,16 +454,21 @@ when not defined(gcDestructors):
     shallowCopy(result, e.trace)
 
 when defined(nimRequiresNimFrame):
-  proc stackOverflow() {.noinline.} =
+  const nimCallDepthLimit {.intdefine.} = 2000
+
+  proc callDepthLimitReached() {.noinline.} =
     writeStackTrace()
-    showErrorMessage("Stack overflow\n")
+    showErrorMessage("Error: call depth limit reached in a debug build (" &
+        $nimCallDepthLimit & " function calls). You can change it with " &
+        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+        "recursions instead.\n")
     quitOrDebug()
 
   proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
     s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
     s.prev = framePtr
     framePtr = s
-    if s.calldepth == 2000: stackOverflow()
+    if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 else:
   proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
     # XXX only for backwards compatibility

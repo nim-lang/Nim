@@ -1,7 +1,5 @@
 discard """
-  file: "tfuturestream.nim"
-  exitcode: 0
-  output: '''
+output: '''
 0
 1
 2

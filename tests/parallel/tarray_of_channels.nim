@@ -34,5 +34,5 @@ proc main =
   sync()
   for ix in 1..3: channels[ix].close()
 
-when isMainModule:
+when true:
   main()

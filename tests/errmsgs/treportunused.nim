@@ -12,10 +12,10 @@ treportunused.nim(27, 5) Hint: 's9' is declared but not used [XDeclaredButNotUse
 treportunused.nim(21, 10) Hint: 's3' is declared but not used [XDeclaredButNotUsed]
 treportunused.nim(28, 6) Hint: 's10' is declared but not used [XDeclaredButNotUsed]
 '''
+action: compile
 """
 
 # bug #9764
-
 iterator s1(a:string): int = discard
 iterator s2(): int = discard
 template s3(): untyped = 123

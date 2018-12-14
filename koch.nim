@@ -79,6 +79,7 @@ template withDir(dir, body) =
   finally:
     setCurrentdir(old)
 
+let origDir = getCurrentDir()
 setCurrentDir(getAppDir())
 
 proc tryExec(cmd: string): bool =
@@ -153,7 +154,7 @@ proc bundleNimsuggest() =
   nimCompile("nimsuggest/nimsuggest.nim", options = "-d:release")
 
 proc buildVccTool() =
-  nimCompile("tools/vccenv/vccexe.nim")
+  nimCompile("tools/vccexe/vccexe.nim")
 
 proc bundleWinTools() =
   # TODO: consider building under `bin` instead of `.`
@@ -378,9 +379,7 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  # we compile the tester with taintMode:on to have a basic
-  # taint mode test :-)
-  nimexec "cc --taintMode:on --opt:speed testament/tester"
+  nimexec "cc --opt:speed testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
@@ -415,6 +414,7 @@ proc temp(args: string) =
   let nimexec = findNim()
   exec(nimexec & " c -d:debug --debugger:native " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
+  setCurrentDir(origDir)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
 proc xtemp(cmd: string) =

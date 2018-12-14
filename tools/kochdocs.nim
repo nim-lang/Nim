@@ -129,6 +129,7 @@ lib/pure/math.nim
 lib/pure/matchers.nim
 lib/std/editdistance.nim
 lib/std/wordwrap.nim
+lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim

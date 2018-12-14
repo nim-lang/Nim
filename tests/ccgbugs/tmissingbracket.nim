@@ -1,6 +1,8 @@
 discard """
-  output: '''Subobject test called
-5'''
+output: '''
+Subobject test called
+5
+'''
 """
 
 type
@@ -49,4 +51,3 @@ var a: SubObject
 
 a.test()
 echo a.t
-

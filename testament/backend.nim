@@ -20,14 +20,11 @@ var
   thisCommit: CommitId
   thisBranch: string
 
-{.experimental.}
-proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
-
 proc getMachine*(): MachineId =
-  var name = "hostname"()
+  var name = execProcess("hostname").string.strip
   if name.len == 0:
-    name = when defined(posix): getenv"HOSTNAME".string
-           else: getenv"COMPUTERNAME".string
+    name = when defined(posix): getenv("HOSTNAME").string
+           else: getenv("COMPUTERNAME").string
   if name.len == 0:
     quit "cannot determine the machine name"
 
@@ -35,8 +32,8 @@ proc getMachine*(): MachineId =
 
 proc getCommit(): CommitId =
   const commLen = "commit ".len
-  let hash = "git log -n 1"()[commLen..commLen+10]
-  thisBranch = "git symbolic-ref --short HEAD"()
+  let hash = execProcess("git log -n 1").string.strip[commLen..commLen+10]
+  thisBranch = execProcess("git symbolic-ref --short HEAD").string.strip
   if hash.len == 0 or thisBranch.len == 0: quit "cannot determine git HEAD"
   result = CommitId(hash)
 
@@ -45,8 +42,7 @@ var
   currentCategory: string
   entries: int
 
-proc writeTestResult*(name, category, target,
-                      action, result, expected, given: string) =
+proc writeTestResult*(name, category, target, action, result, expected, given: string) =
   createDir("testresults")
   if currentCategory != category:
     if currentCategory.len > 0:

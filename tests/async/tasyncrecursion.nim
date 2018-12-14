@@ -1,6 +1,5 @@
 discard """
-  file: "tasyncrecursion.nim"
-  output: "50005000"
+output: "50005000"
 """
 import asyncdispatch
 
@@ -16,7 +15,7 @@ proc asyncRecursionTest*(): Future[int] {.async.} =
     inc(result, await asyncRecursionCycle(i))
     inc(i)
 
-when isMainModule:
+when true:
   setGlobalDispatcher(newDispatcher())
   var i = waitFor asyncRecursionTest()
   echo i

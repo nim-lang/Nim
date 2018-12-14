@@ -1,6 +1,6 @@
 discard """
-  file: "tfinally.nim"
-  output: '''came
+  output: '''
+came
 here
 3
 msg1

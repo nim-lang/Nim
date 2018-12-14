@@ -1,6 +1,6 @@
 discard """
-  line: 11
   errormsg: "cannot convert array[0..0, string] to varargs[string]"
+  line: 11
 """
 
 proc f(v: varargs[string]) =

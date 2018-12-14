@@ -1,6 +1,6 @@
 discard """
-  line: 15
   errmsg: "type mismatch: got <int>"
+  line: 15
   nimout: '''type mismatch: got <int>
 but expected one of:
 proc inc[T: Ordinal | uint | uint64](x: var T; y = 1)

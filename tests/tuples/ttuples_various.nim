@@ -121,7 +121,7 @@ block tuple_with_seq:
   proc g(t: tuple[n:int, xs:seq[int]]) =
     discard
 
-  when isMainModule:
+  when true:
     f(@[]) # OK
     g((1,@[1])) # OK
     g((0,@[])) # NG

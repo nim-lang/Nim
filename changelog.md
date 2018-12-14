@@ -31,6 +31,25 @@
 
 - `options.UnpackError` is no longer a ref type and inherits from `System.Defect` instead of `System.ValueError`.
 
+- nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
+  `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
+  check if a group is captured, otherwise you'll recieve an exception.
+
+- nre's `RegexMatch.{captureBounds,captures}.toTable` no longer accept a
+  default parameter. Instead uncaptured entries are left empty. Use
+  `Table.getOrDefault()` if you need defaults.
+
+- nre's `RegexMatch.captures.{items,toSeq}` now returns an `Option[string]`
+  instead of a `string`. With the removal of `nil` strings, this is the only
+  way to indicate a missing match. Inside your loops, instead of `capture ==
+  ""` or `capture == nil`, use `capture.isSome` to check if a capture is
+  present, and `capture.get` to get its value.
+
+- nre's `replace()` no longer throws `ValueError` when the replacement string
+  has missing captures. It instead throws `KeyError` for named captures, and
+  `IndexError` for un-named captures. This is consistant with
+  `RegexMatch.{captureBounds,captures}[]`.
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
@@ -67,6 +86,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `macros.isInstantiationOf` for checking if the proc symbol
   is instantiation of generic proc symbol.
 
+- Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
+- There is a new stdlib module `std/diff` to compute the famous "diff"
+  of two texts by line.
 
 ### Library changes
 
@@ -94,6 +116,9 @@ proc enumToString*(enums: openArray[enum]): string =
 - There is a new pragma block `noSideEffect` that works like
   the `gcsafe` pragma block.
 - added os.getCurrentProcessId()
+- User defined pragmas are now allowed in the pragma blocks
+- Pragma blocks are now longer eliminated from the typed AST tree to preserve
+  pragmas for further analysis by macros
 
 ### Language changes
 

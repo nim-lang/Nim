@@ -2,7 +2,10 @@ discard """
   output: '''1 [2, 3, 4, 7]
 [0, 0]'''
   target: "c"
+  joinable: false
 """
+
+# don't join because the code is too messy.
 
 # Nim RTree and R*Tree implementation
 # S. Salewski, 06-JAN-2018
@@ -589,70 +592,68 @@ proc delete*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: L[D, RT, LT]): boo
       t.root.parent = nil
     return true
 
-when isMainModule:
 
-  var t = [4, 1, 3, 2]
-  var xt = 7
-  sortPlus(t, xt, system.cmp, SortOrder.Ascending)
-  echo xt, " ", t
+var t = [4, 1, 3, 2]
+var xt = 7
+sortPlus(t, xt, system.cmp, SortOrder.Ascending)
+echo xt, " ", t
 
-  type
-    RSE = L[2, int, int]
-    RSeq = seq[RSE]
+type
+  RSE = L[2, int, int]
+  RSeq = seq[RSE]
 
-  proc rseq_search(rs: RSeq; rse: RSE): seq[int] =
-    result = newSeq[int]()
-    for i in rs:
-      if intersect(i.b, rse.b):
-        result.add(i.l)
+proc rseq_search(rs: RSeq; rse: RSE): seq[int] =
+  result = newSeq[int]()
+  for i in rs:
+    if intersect(i.b, rse.b):
+      result.add(i.l)
 
-  proc rseq_delete(rs: var RSeq; rse: RSE): bool =
-    for i in 0 .. rs.high:
-      if rs[i] == rse:
-        #rs.delete(i)
-        rs[i] = rs[rs.high]
-        rs.setLen(rs.len - 1)
-        return true
+proc rseq_delete(rs: var RSeq; rse: RSE): bool =
+  for i in 0 .. rs.high:
+    if rs[i] == rse:
+      #rs.delete(i)
+      rs[i] = rs[rs.high]
+      rs.setLen(rs.len - 1)
+      return true
 
-  import random, algorithm
+import random, algorithm
 
-  proc test(n: int) =
-    var b: Box[2, int]
-    echo center(b)
-    var x1, x2, y1, y2: int
-    var t = newRStarTree[8, 2, int, int]()
-    #var t = newRTree[8, 2, int, int]()
-    var rs = newSeq[RSE]()
-    for i in 0 .. 5:
-      for i in 0 .. n - 1:
-        x1 = rand(1000)
-        y1 = rand(1000)
-        x2 = x1 + rand(25)
-        y2 = y1 + rand(25)
-        b = [(x1, x2), (y1, y2)]
-        let el: L[2, int, int] = (b, i + 7)
-        t.insert(el)
-        rs.add(el)
+proc test(n: int) =
+  var b: Box[2, int]
+  echo center(b)
+  var x1, x2, y1, y2: int
+  var t = newRStarTree[8, 2, int, int]()
+  #var t = newRTree[8, 2, int, int]()
+  var rs = newSeq[RSE]()
+  for i in 0 .. 5:
+    for i in 0 .. n - 1:
+      x1 = rand(1000)
+      y1 = rand(1000)
+      x2 = x1 + rand(25)
+      y2 = y1 + rand(25)
+      b = [(x1, x2), (y1, y2)]
+      let el: L[2, int, int] = (b, i + 7)
+      t.insert(el)
+      rs.add(el)
 
-      for i in 0 .. (n div 4):
-        let j = rand(rs.high)
-        var el = rs[j]
-        assert t.delete(el)
-        assert rs.rseq_delete(el)
+    for i in 0 .. (n div 4):
+      let j = rand(rs.high)
+      var el = rs[j]
+      assert t.delete(el)
+      assert rs.rseq_delete(el)
 
-      for i in 0 .. n - 1:
-        x1 = rand(1000)
-        y1 = rand(1000)
-        x2 = x1 + rand(100)
-        y2 = y1 + rand(100)
-        b = [(x1, x2), (y1, y2)]
-        let el: L[2, int, int] = (b, i)
-        let r = search(t, b)
-        let r2 = rseq_search(rs, el)
-        assert r.len == r2.len
-        assert r.sorted(system.cmp) == r2.sorted(system.cmp)
+    for i in 0 .. n - 1:
+      x1 = rand(1000)
+      y1 = rand(1000)
+      x2 = x1 + rand(100)
+      y2 = y1 + rand(100)
+      b = [(x1, x2), (y1, y2)]
+      let el: L[2, int, int] = (b, i)
+      let r = search(t, b)
+      let r2 = rseq_search(rs, el)
+      assert r.len == r2.len
+      assert r.sorted(system.cmp) == r2.sorted(system.cmp)
 
-  test(1500)
+test(1500)
 
-  # 651 lines
-
+# 651 lines

@@ -1,7 +1,3 @@
-discard """
-  file: "t7758.nim"
-  exitcode: 0
-"""
 import asyncdispatch
 
 proc task() {.async.} =

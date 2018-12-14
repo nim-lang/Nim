@@ -1,6 +1,6 @@
 discard """
-  line: 19
   errormsg: "can raise an unlisted exception: ref IOError"
+  line: 19
 """
 
 type
@@ -17,4 +17,3 @@ proc lier(): int {.raises: [IOError].} =
 
 proc forw: int =
   raise newException(IOError, "arg")
-

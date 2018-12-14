@@ -1,6 +1,6 @@
 discard """
-  line: 12
   errormsg: "instantiate 'notConcrete' explicitly"
+  line: 12
   disabled: "true"
 """
 
@@ -14,4 +14,3 @@ proc wrap[T]() =
 
 
 wrap[int]()
-

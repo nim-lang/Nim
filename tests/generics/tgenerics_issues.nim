@@ -24,11 +24,10 @@ G:0,1:0.1
 G:0,1:0.1
 H:1:0.1
 '''
+joinable: false
 """
 
-
 import macros, sequtils, sets, sugar, tables, typetraits
-
 
 block t88:
   type

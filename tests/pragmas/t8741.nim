@@ -1,6 +1,6 @@
 discard """
-  line: 9
   errormsg: "cannot attach a custom pragma to 'a'"
+  line: 9
 """
 
 for a {.gensym, inject.} in @[1,2,3]:

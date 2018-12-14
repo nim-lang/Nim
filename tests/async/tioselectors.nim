@@ -1,5 +1,4 @@
 discard """
-  file: "tioselectors.nim"
   output: "All tests passed!"
 """
 import selectors

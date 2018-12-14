@@ -15,7 +15,7 @@ template mathPerComponent(op: untyped): untyped =
 mathPerComponent(`***`)
 # bug #5285
 when true:
-  if isMainModule:
+  if true:
     var v1: array[3, float64]
     var v2: array[3, float64]
     echo repr(v1 *** v2)
