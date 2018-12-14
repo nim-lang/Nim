@@ -66,6 +66,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
       initDefines(tempConf.symbols)
       tempConf.command = conf.command
       tempConf.commandArgs = conf.commandArgs
+      tempConf.searchPaths = conf.searchPaths
+      tempConf.lazyPaths = conf.lazyPaths
       runNimScript(cache, p, freshDefines = false, tempConf)
       mergeConfigs(conf, tempConf)
 
