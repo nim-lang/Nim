@@ -165,13 +165,13 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     result.add node
     result.add newNodeP(nkEmpty, p)
     result.add commentNode
-  of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr:
+  of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr, nkTemplateDef, nkMacroDef:
     result = node
     result[0] = node[0].withComment(comment, p)
 
-  of nkEnumTy, nkObjectTy:
+  of nkEnumTy, nkObjectTy, nkRecList:
     # It is not possible to put the comment node at the correct
-    # location right now, so it just append it and fix it later.
+    # location right now, so it just put it at the beginning and fix it later.
     result = node
     var commentNode = newNodeP(nkCommentStmt, p)
     commentNode.comment = comment
@@ -180,7 +180,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
   else:
     echo "ERROR: cannot add comment here \"", comment, "\""
     debug(node)
-    # internalError(nil, "cannot add comment here")
+    internalError(nil, "cannot add comment here")
 
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
@@ -1274,6 +1274,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkObject:
     if mode == pmTypeDef:
       result = parseObject(p)
+      # debug result
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
@@ -1973,7 +1974,14 @@ proc parseObject(p: var TParser): PNode =
   if not realInd(p):
     addSon(result, p.emptyNode)
     return
-  addSon(result, parseObjectPart(p))
+  let objectPart = parseObjectPart(p)
+  if objectPart.len >= 1 and objectPart[0].kind == nkCommentStmt:
+    let commentNode = objectPart[0]
+    objectPart.sons.delete(0)
+    result.sons.insert commentNode, 0
+  addSon(result, objectPart)
+
+
 
 proc parseTypeClassParam(p: var TParser): PNode =
   let modifier = case p.tok.tokType

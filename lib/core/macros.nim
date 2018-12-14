@@ -1039,8 +1039,8 @@ proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode(
     name,
     newEmptyNode(),
     newEmptyNode(),
-    newNimNode(nnkFormalParams).add(params), ##params
-    newEmptyNode(),  ## pragmas
+    newNimNode(nnkFormalParams).add(params), # params
+    newEmptyNode(),  # pragmas
     newEmptyNode(),
     body)
 

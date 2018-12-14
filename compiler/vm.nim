@@ -179,7 +179,6 @@ proc copyValue(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -189,6 +188,7 @@ proc copyValue(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: result.comment = src.comment
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
@@ -950,13 +950,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       let a = regs[rb].node
       let b = regs[rc].node
-      if a.kind == nkSym and a.sym.kind in skProcKinds and 
+      if a.kind == nkSym and a.sym.kind in skProcKinds and
          b.kind == nkSym and b.sym.kind in skProcKinds:
         regs[ra].intVal =
           if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
           else: 0
-      else:    
-        stackTrace(c, tos, pc, "node is not a proc symbol") 
+      else:
+        stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
