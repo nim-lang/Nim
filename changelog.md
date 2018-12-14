@@ -91,6 +91,7 @@ proc enumToString*(enums: openArray[enum]): string =
   of two texts by line.
 
 - Added `os.relativePath`.
+- Added `parseopt.remainingArgs`.
 
 ### Library changes
 
