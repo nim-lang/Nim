@@ -1920,6 +1920,8 @@ proc parseObject(p: var TParser): PNode =
   result = newNodeP(nkObjectTy, p)
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
+    # Deprecated since v0.19.9
+    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas")
     addSon(result, parsePragma(p))
   else:
     addSon(result, p.emptyNode)
