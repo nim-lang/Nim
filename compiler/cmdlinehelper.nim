@@ -64,12 +64,9 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
       var tempConf = newConfigRef()
       setDefaultLibpath(tempConf)
       initDefines(tempConf.symbols)
-      tempConf.command = conf.command
-      tempConf.commandArgs = conf.commandArgs
-      tempConf.searchPaths = conf.searchPaths
-      tempConf.lazyPaths = conf.lazyPaths
+      mergeConfigs(tempConf, conf, mergeSymbols = false)
       runNimScript(cache, p, freshDefines = false, tempConf)
-      mergeConfigs(conf, tempConf)
+      mergeConfigs(conf, tempConf, mergeSymbols = true)
 
   # Caution: make sure this stays in sync with `loadConfigs`
   if optSkipSystemConfigFile notin conf.globalOptions:
