@@ -1090,9 +1090,13 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
 
 
 proc checkForMetaFields(c: PContext; n: PNode) =
-  template checkMeta(t) =
+  proc checkMeta(c: PContext; n: PNode; t: PType) =
     if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
-      localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      if t.kind == tyBuiltInTypeClass and t.len == 1 and t.sons[0].kind == tyProc:
+        localError(c.config, n.info, ("'$1' is not a concrete type; " &
+          "for a callback without parameters use 'proc()'") % t.typeToString)
+      else:
+        localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
 
   if n.isNil: return
   case n.kind
@@ -1107,9 +1111,9 @@ proc checkForMetaFields(c: PContext; n: PNode) =
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start ..< t.len:
-        checkMeta(t.sons[i])
+        checkMeta(c, n, t.sons[i])
     else:
-      checkMeta(t)
+      checkMeta(c, n, t)
   else:
     internalAssert c.config, false
 
