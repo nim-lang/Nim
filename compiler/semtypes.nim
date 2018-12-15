@@ -1551,10 +1551,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         # XXX figure out why this has children already...
         result.sons.setLen 0
         result.n = nil
-        if c.config.selectedGc == gcDestructors:
-          result.flags = {tfHasAsgn}
-        else:
-          result.flags = {}
+        result.flags = {tfHasAsgn}
         semContainerArg(c, n, "seq", result)
       else:
         result = semContainer(c, n, tySequence, "seq", prev)

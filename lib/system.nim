@@ -3431,6 +3431,10 @@ when not defined(JS): #and not defined(nimscript):
     when defined(memtracker):
       include "system/memtracker"
 
+    when defined(gcDestructors):
+      include "core/strs"
+      include "core/seqs"
+
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -3479,10 +3483,7 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when defined(gcDestructors):
-        include "core/strs"
-        include "core/seqs"
-      else:
+      when not defined(gcDestructors):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"

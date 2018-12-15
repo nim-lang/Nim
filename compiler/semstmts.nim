@@ -1427,6 +1427,12 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
+proc canonType(c: PContext, t: PType): PType =
+  if t.kind == tySequence:
+    result = c.graph.sysTypes[tySequence]
+  else:
+    result = t
+
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "=destroy":
@@ -1440,6 +1446,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+        obj = canonType(c, obj)
         if obj.destructor.isNil:
           obj.destructor = s
         else:
@@ -1491,6 +1498,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+        # attach these ops to the canonical tySequence
+        obj = canonType(c, obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s
