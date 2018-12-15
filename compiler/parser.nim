@@ -2003,8 +2003,6 @@ proc parseTypeDef(p: var TParser): PNode =
   var noPragmaYet = true
 
   if p.tok.tokType == tkCurlyDotLe:
-    # Deprecated since v0.20.0
-    parMessage(p, warnDeprecated, "pragma before generic parameter list")
     pragma = optPragmas(p)
     identPragma = newNodeP(nkPragmaExpr, p)
     addSon(identPragma, identifier)
@@ -2012,6 +2010,9 @@ proc parseTypeDef(p: var TParser): PNode =
     noPragmaYet = false
 
   if p.tok.tokType == tkBracketLe and p.validInd:
+    if not noPragmaYet:
+      # Deprecated since v0.20.0
+      parMessage(p, warnDeprecated, "pragma before generic parameter list")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode
