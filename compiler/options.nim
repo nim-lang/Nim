@@ -303,6 +303,9 @@ proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
   m configVars
   if mergeSymbols:
     m symbols
+  m projectName
+  m projectPath
+  m projectFull
   m searchPaths
   m lazyPaths
   m outFile
