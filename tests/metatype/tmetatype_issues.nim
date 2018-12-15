@@ -156,3 +156,11 @@ block t3338:
   var t2 = Bar[int32]()
   t2.add()
   doAssert t2.x == 5
+
+block t9961:
+  proc n(t:typedesc) =
+    echo t.type.name
+  const t : typedesc = int
+  assert(not
+         compiles((block:
+                     n t)))

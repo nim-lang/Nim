@@ -502,6 +502,21 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
+
+  if r.state == csMatch and r.exactMatches == 0 and r.fauxMatch == tyFromExpr:
+    let diagnostic =
+      "Could not find a matching '" &
+        r.calleeSym.name.s &
+        "' for this typedesc because it does not carry enough information to resolve to a concrete type. " &
+        "\nTry parameterizing it with a concrete type before passing it, eg. typedesc[int]"
+    r.diagnostics.add(diagnostic)
+    errors.add(CandidateError(
+      sym: r.calleeSym,
+      unmatchedVarParam: int r.mutabilityProblem,
+      firstMismatch: r.firstMismatch,
+      diagnostics: r.diagnostics))
+    notFoundError(c,n,errors)
+
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
     if errors.len > 0:

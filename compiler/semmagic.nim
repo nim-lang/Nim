@@ -166,7 +166,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)
   let t = n.sons[1].typ
-  internalAssert c.config, t != nil and t.kind == tyTypeDesc
+  internalAssert c.config, t != nil and t.kind == tyTypeDesc or t.kind == tyFromExpr
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
