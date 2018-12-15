@@ -74,10 +74,34 @@ proc raiseEIO(msg: string) {.noinline, noreturn.} =
 proc raiseEOF() {.noinline, noreturn.} =
   sysFatal(EOFError, "EOF reached")
 
+proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
+
+proc c_getErrno*(): cint {.importc:"$1".}
+
+# TODO: this is useful, expose somewhere more public
+const defineExternC = """
+#ifndef NIM_EXTERN_C
+#ifdef __cplusplus
+#define NIM_EXTERN_C extern "C"
+#else
+#define NIM_EXTERN_C
+#endif
+#endif
+"""
+
+{.emit: defineExternC & """
+#include <errno.h>
+NIM_EXTERN_C
+int c_getErrno() {
+  return errno;
+}
+""".}
+
 proc checkErr(f: File) =
   if c_ferror(f) != 0:
+    let msg = "strerror: `" & $strerror(c_getErrno()) & "`"
     c_clearerr(f)
-    raiseEIO("Unknown IO Error")
+    raiseEIO(msg)
 
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =
