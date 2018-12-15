@@ -1920,7 +1920,7 @@ proc parseObject(p: var TParser): PNode =
   result = newNodeP(nkObjectTy, p)
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
-    # Deprecated since v0.19.9
+    # Deprecated since v0.20.0
     parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas")
     addSon(result, parsePragma(p))
   else:
@@ -2003,6 +2003,7 @@ proc parseTypeDef(p: var TParser): PNode =
   var noPragmaYet = true
 
   if p.tok.tokType == tkCurlyDotLe:
+    # Deprecated since v0.20.0
     parMessage(p, warnDeprecated, "pragma before generic parameter list")
     pragma = optPragmas(p)
     identPragma = newNodeP(nkPragmaExpr, p)
