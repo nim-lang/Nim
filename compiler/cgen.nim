@@ -1617,7 +1617,6 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
 
   for m in cgenModules(g):
     m.writeModule(pending=true)
-  writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 
 const cgenPass* = makePass(myOpen, myProcess, myClose)

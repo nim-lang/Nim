@@ -597,9 +597,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "listcmd":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optListCmd)
-  of "genmapping":
-    expectNoArg(conf, switch, arg, pass, info)
-    incl(conf.globalOptions, optGenMapping)
   of "os":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd1, passPP}:

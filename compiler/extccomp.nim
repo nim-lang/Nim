@@ -489,8 +489,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # We used to check current OS != specified OS, but this makes no sense
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
-  # `optGenMapping` is included here for niminst.
-  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
+  result = conf.globalOptions * {optGenScript} != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; cfilename: AbsoluteFile): string =
   result = conf.compileOptions
@@ -929,26 +928,3 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     when declared(echo):
       echo getCurrentException().getStackTrace()
     quit "error evaluating JSON file: " & jsonFile.string
-
-proc genMappingFiles(conf: ConfigRef; list: CFileList): Rope =
-  for it in list:
-    addf(result, "--file:r\"$1\"$N", [rope(it.cname.string)])
-
-proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
-  if optGenMapping notin conf.globalOptions: return
-  var code = rope("[C_Files]\n")
-  add(code, genMappingFiles(conf, conf.toCompile))
-  add(code, "\n[C_Compiler]\nFlags=")
-  add(code, strutils.escape(getCompileOptions(conf)))
-
-  add(code, "\n[Linker]\nFlags=")
-  add(code, strutils.escape(getLinkOptions(conf) & " " &
-                            getConfigVar(conf, conf.cCompiler, ".options.linker")))
-
-  add(code, "\n[Environment]\nlibpath=")
-  add(code, strutils.escape(conf.libpath.string))
-
-  addf(code, "\n[Symbols]$n$1", [symbolMapping])
-  let filename = conf.projectPath / RelativeFile"mapping.txt"
-  if not writeRope(code, filename):
-    rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
