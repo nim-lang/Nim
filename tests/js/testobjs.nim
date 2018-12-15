@@ -54,3 +54,20 @@ let test2 = test1
 
 echo toJSON(test1)
 echo toJSON(test2)
+
+block issue10005:
+  type
+    Player = ref object of RootObj
+      id*: string
+      nickname*: string
+      color*: string
+
+  proc newPlayer(nickname: string, color: string): Player =
+    let pl = Player(color: "#123", nickname: nickname)
+    return Player(
+        id: "foo",
+        nickname: nickname,
+        color: color,
+    )
+
+  doAssert newPlayer("foo", "#1232").nickname == "foo"
