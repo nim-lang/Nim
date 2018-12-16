@@ -57,13 +57,13 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     b = b.prev
 
 var
-  profilingRequestedHook*: proc (): bool {.nimcall, benign.}
+  profilingRequestedHook*: proc (): bool {.nimcall, locks: 0, gcsafe.}
     ## set this variable to provide a procedure that implements a profiler in
     ## user space. See the `nimprof` module for a reference implementation.
 
 when defined(memProfiler):
   type
-    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, benign.}
+    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, locks: 0, gcsafe.}
 
   var
     profilerHook*: MemProfilerHook
@@ -87,9 +87,10 @@ else:
   proc callProfilerHook(hook: ProfilerHook) {.noinline.} =
     # 'noinline' so that 'nimProfile' does not perform the stack allocation
     # in the common case.
-    var st: StackTrace
-    captureStackTrace(framePtr, st)
-    hook(st)
+    when not defined(nimdoc):
+      var st: StackTrace
+      captureStackTrace(framePtr, st)
+      hook(st)
 
   proc nimProfile() =
     ## This is invoked by the compiler in every loop and on every proc entry!
