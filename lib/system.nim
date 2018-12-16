@@ -3147,7 +3147,7 @@ when not defined(JS): #and not defined(nimscript):
         result = x.len - y.len
 
   when defined(nimscript):
-    proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
+    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading, calls `readAll
       ## <#readAll>`_ and closes the file afterwards. Returns the string.
       ## Raises an IO exception in case of an error. If # you need to call

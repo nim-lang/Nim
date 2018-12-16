@@ -48,16 +48,6 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   if self.suggestMode:
     conf.command = "nimsuggest"
 
-  when false:
-    # These defines/options should not be enabled while processing nimscript
-    # bug #9420
-    undefSymbol(conf.symbols, "profiler")
-    undefSymbol(conf.symbols, "memProfiler")
-    undefSymbol(conf.symbols, "nodejs")
-
-    # bug #9120
-    conf.globalOptions.excl(optTaintMode)
-
   template runNimScriptIfExists(path: AbsoluteFile) =
     let p = path # eval once
     if fileExists(p):
