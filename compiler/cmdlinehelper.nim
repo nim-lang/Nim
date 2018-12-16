@@ -62,6 +62,10 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
     tainted = true
     conf.globalOptions.excl(optTaintMode)
 
+  # config.nims is incompatible with --os:standalone
+  let targetOs = conf.target.targetOs
+  conf.target.targetOs = conf.target.hostOS
+
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
       runNimScript(cache, path, freshDefines = false, conf)
@@ -99,6 +103,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
       defineSymbol(conf.symbols, sym)
   if tainted:
     conf.globalOptions.incl(optTaintMode)
+  conf.target.targetOs = targetOs
 
   # now process command line arguments again, because some options in the
   # command line can overwite the config file's settings
