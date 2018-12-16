@@ -1090,9 +1090,13 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
 
 
 proc checkForMetaFields(c: PContext; n: PNode) =
-  template checkMeta(t) =
+  proc checkMeta(c: PContext; n: PNode; t: PType) =
     if t != nil and t.isMetaType and tfGenericTypeParam notin t.flags:
-      localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
+      if t.kind == tyBuiltInTypeClass and t.len == 1 and t.sons[0].kind == tyProc:
+        localError(c.config, n.info, ("'$1' is not a concrete type; " &
+          "for a callback without parameters use 'proc()'") % t.typeToString)
+      else:
+        localError(c.config, n.info, errTIsNotAConcreteType % t.typeToString)
 
   if n.isNil: return
   case n.kind
@@ -1107,9 +1111,9 @@ proc checkForMetaFields(c: PContext; n: PNode) =
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start ..< t.len:
-        checkMeta(t.sons[i])
+        checkMeta(c, n, t.sons[i])
     else:
-      checkMeta(t)
+      checkMeta(c, n, t)
   else:
     internalAssert c.config, false
 
@@ -1423,6 +1427,12 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
     addResult(c, s.typ.sons[0], n.info, s.kind)
     addResultNode(c, n)
 
+proc canonType(c: PContext, t: PType): PType =
+  if t.kind == tySequence:
+    result = c.graph.sysTypes[tySequence]
+  else:
+    result = t
+
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "=destroy":
@@ -1436,6 +1446,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
+        obj = canonType(c, obj)
         if obj.destructor.isNil:
           obj.destructor = s
         else:
@@ -1487,6 +1498,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
+        # attach these ops to the canonical tySequence
+        obj = canonType(c, obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s

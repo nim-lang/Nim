@@ -102,9 +102,9 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
     if m.position != resolveMod(graph.config, module, relativeTo).int32:
-      var importStmt = newNodeI(nodeKind, gCmdLineInfo)
+      var importStmt = newNodeI(nodeKind, m.info)
       var str = newStrNode(nkStrLit, module)
-      str.info = gCmdLineInfo
+      str.info = m.info
       importStmt.addSon str
       if not processTopLevelStmt(graph, importStmt, a): break
 
