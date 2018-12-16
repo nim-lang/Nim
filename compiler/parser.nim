@@ -2019,7 +2019,7 @@ proc parseTypeDef(p: var TParser): PNode =
 
   if noPragmaYet:
     pragma = optPragmas(p)
-    if not pragma.isNil:
+    if pragma.kind != nkEmpty:
       identPragma = newNodeP(nkPragmaExpr, p)
       addSon(identPragma, identifier)
       addSon(identPragma, pragma)
