@@ -61,12 +61,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   template runNimScriptIfExists(path: AbsoluteFile) =
     let p = path # eval once
     if fileExists(p):
-      var tempConf = newConfigRef()
-      setDefaultLibpath(tempConf)
-      initDefines(tempConf.symbols)
-      mergeConfigs(tempConf, conf, mergeSymbols = false)
-      runNimScript(cache, p, freshDefines = false, tempConf)
-      mergeConfigs(conf, tempConf, mergeSymbols = true)
+      runNimScript(cache, p, freshDefines = false, conf)
 
   # Caution: make sure this stays in sync with `loadConfigs`
   if optSkipSystemConfigFile notin conf.globalOptions:
