@@ -397,10 +397,8 @@ macro toJson*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-{.deprecated: [`%*`: toJson].}
-# `toJson` is more readable / searchable / guessable; furthermore easier to
-# use in method call syntax because of required quoting:
-# foo.toJson vs foo.`%*`
+template `%*`*(x: untyped): JsonNode = toJson(x)
+  ## Alias for `toJson`
 
 proc `==`* (a, b: JsonNode): bool =
   ## Check two nodes for equality
