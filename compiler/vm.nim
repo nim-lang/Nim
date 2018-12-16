@@ -1455,7 +1455,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
+                            toFullPath(c.config, c.debug[pc-2]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
