@@ -11,7 +11,7 @@
 
 import
   options, idents, nimconf, scriptconfig, extccomp, commands, msgs,
-  lineinfos, modulegraphs, condsyms, os, pathutils
+  lineinfos, modulegraphs, condsyms, os, pathutils, strtabs, tables
 
 type
   NimProg* = ref object
@@ -50,12 +50,17 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
 
   # These defines/options should not be enabled while processing nimscript
   # bug #4446, #9420, #8991, #9589, #9153
-  undefSymbol(conf.symbols, "profiler")
-  undefSymbol(conf.symbols, "memProfiler")
-  undefSymbol(conf.symbols, "nodejs")
+  var symbolsToUndef = {"profiler": false, "nodejs": false, "memProfiler": false}.toTable()
+  for sym in symbolsToUndef.keys():
+    if conf.symbols.contains(sym):
+      symbolsToUndef[sym] = true
+      undefSymbol(conf.symbols, sym)
 
   # bug #9120
-  conf.globalOptions.excl(optTaintMode)
+  var tainted = false
+  if conf.globalOptions.contains(optTaintMode):
+    tainted = true
+    conf.globalOptions.excl(optTaintMode)
 
   proc runNimScriptIfExists(path: AbsoluteFile)=
     if fileExists(path):
@@ -89,7 +94,11 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
         discard
 
   # Reload configuration from .cfg file
-  loadConfigs(DefaultConfig, cache, conf)
+  for sym, value in symbolsToUndef.pairs():
+    if value:
+      defineSymbol(conf.symbols, sym)
+  if tainted:
+    conf.globalOptions.incl(optTaintMode)
 
   # now process command line arguments again, because some options in the
   # command line can overwite the config file's settings
