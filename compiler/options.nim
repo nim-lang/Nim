@@ -253,7 +253,7 @@ template depConfigFields*(fn) {.dirty.} =
   fn(globalOptions)
   fn(selectedGC)
 
-proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
+proc mergeConfigs*(dest, src: ConfigRef) =
   template merge[T: enum](a, b: T) =
     a = b
   template merge[T](a, b: set[T]) =
@@ -301,8 +301,7 @@ proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
   m warnCounter
   m errorMax
   m configVars
-  if mergeSymbols:
-    m symbols
+  m symbols
   m searchPaths
   m lazyPaths
   m outFile
