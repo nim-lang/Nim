@@ -190,14 +190,17 @@ block walkDirRec:
   removeDir("walkdir_test")
 
 block normalizedPath:
+  doAssert normalizedPath("") == ""
   block relative:
-    doAssert normalizedPath(".") == ""
+    doAssert normalizedPath(".") == "."
+    doAssert normalizedPath("foo/..") == "."
+    doAssert normalizedPath("foo//../bar/.") == "bar"
     doAssert normalizedPath("..") == ".."
     doAssert normalizedPath("../") == ".."
     doAssert normalizedPath("../..") == unixToNativePath"../.."
     doAssert normalizedPath("../a/..") == ".."
     doAssert normalizedPath("../a/../") == ".."
-    doAssert normalizedPath("./") == ""
+    doAssert normalizedPath("./") == "."
 
   block absolute:
     doAssert normalizedPath("/") == unixToNativePath"/"

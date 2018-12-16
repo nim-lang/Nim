@@ -100,3 +100,4 @@ proc normalizePath*(path: string; dirSep = DirSep): string =
   result = newStringOfCap(path.len)
   var state = 0
   addNormalizePath(path, result, state, dirSep)
+  if result == "" and path != "": result = "."
