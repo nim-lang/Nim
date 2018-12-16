@@ -254,35 +254,15 @@ template depConfigFields*(fn) {.dirty.} =
   fn(selectedGC)
 
 proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
-  template merge[T: enum](a, b: T) =
-    a = b
-  template merge[T](a, b: set[T]) =
-    a = a + b
-  template merge(a, b: int) =
-    inc a, b
-  template merge[T](a, b: seq[T]) =
-    for bb in b: a.add b
-  template merge(a, b: string) =
-    a = b
-  template merge[T: AbsoluteFile|AbsoluteDir](a, b: T) =
-    if a.isEmpty and not b.isEmpty: a = b
-
-  template merge[T](a, b: HashSet[T]) =
-    for bb in b: a.incl b
-  template merge(a, b: StringTableRef) =
-    for k, v in b: a[k] = v
-  template merge[T: object](a, b: T) =
-    a = b
-
   template m(field) =
-    merge(dest.field, src.field)
+    dest.`field` = src.`field`
 
   m target
   m options
   m globalOptions
   m cmd
   m selectedGC
-  dest.verbosity = src.verbosity
+  m verbosity
   m numberOfProcessors
   m evalExpr
   m symbolFiles
@@ -302,7 +282,13 @@ proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
   m errorMax
   m configVars
   if mergeSymbols:
-    m symbols
+    #[
+    special case to handle this:
+    These defines/options should not be enabled while processing nimscript
+    bug #4446, #9420, #8991, #9589, #9153
+    ]#
+    for k, v in src.symbols: dest.symbols[k] = v
+
   m projectName
   m projectPath
   m projectFull
