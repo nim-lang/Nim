@@ -1539,7 +1539,7 @@ else:
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
-when defined(profiler):
+when defined(profiler) and not defined(nimscript):
   proc nimProfile() {.compilerProc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
@@ -3569,7 +3569,7 @@ when not defined(JS): #and not defined(nimscript):
   when defined(endb) and not defined(nimscript):
     include "system/debugger"
 
-  when defined(profiler) or defined(memProfiler):
+  when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
   {.pop.} # stacktrace
 

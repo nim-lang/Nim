@@ -50,7 +50,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
 
   when false:
     # These defines/options should not be enabled while processing nimscript
-    # bug #4446, #9420, #8991, #9589, #9153
+    # bug #4446, #9420, #8991
     undefSymbol(conf.symbols, "profiler")
     undefSymbol(conf.symbols, "memProfiler")
     undefSymbol(conf.symbols, "nodejs")
