@@ -565,10 +565,12 @@ proc main() =
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
   of "r", "run":
-    let (dir, file) = splitPath(p.key.string)
-    let (_, subdir) = splitPath(dir)
-    var cat = Category(subdir)
-    processSingleTest(r, cat, p.cmdLineRest.string, file)
+    # at least one directory is required in the path, to use as a category name
+    let pathParts = split(p.key.string, {DirSep, AltSep})
+    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let cat = Category(pathParts[0])
+    let subPath = joinPath(pathParts[1..^1])
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:

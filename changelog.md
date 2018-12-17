@@ -66,6 +66,9 @@ proc enumToString*(enums: openArray[enum]): string =
 ```
 
 - ``discard x`` is now illegal when `x` is a function symbol.
+- Implicit imports via ``--import: module`` in a config file are now restricted
+  to the main package.
+
 
 ### Library additions
 

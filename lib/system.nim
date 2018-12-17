@@ -1539,7 +1539,7 @@ else:
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
-when defined(profiler):
+when defined(profiler) and not defined(nimscript):
   proc nimProfile() {.compilerProc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
@@ -1555,7 +1555,7 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-when defined(nodejs):
+when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
@@ -1601,7 +1601,7 @@ elif defined(genode):
 
 
 
-elif defined(nodejs):
+elif defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -3147,7 +3147,7 @@ when not defined(JS): #and not defined(nimscript):
         result = x.len - y.len
 
   when defined(nimscript):
-    proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
+    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading, calls `readAll
       ## <#readAll>`_ and closes the file afterwards. Returns the string.
       ## Raises an IO exception in case of an error. If # you need to call
@@ -3431,6 +3431,10 @@ when not defined(JS): #and not defined(nimscript):
     when defined(memtracker):
       include "system/memtracker"
 
+    when defined(gcDestructors):
+      include "core/strs"
+      include "core/seqs"
+
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -3479,10 +3483,7 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when defined(gcDestructors):
-        include "core/strs"
-        include "core/seqs"
-      else:
+      when not defined(gcDestructors):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
@@ -3568,7 +3569,7 @@ when not defined(JS): #and not defined(nimscript):
   when defined(endb) and not defined(nimscript):
     include "system/debugger"
 
-  when defined(profiler) or defined(memProfiler):
+  when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
   {.pop.} # stacktrace
 
@@ -3609,7 +3610,7 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-  when defined(JS):
+  when defined(JS) and not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
   elif defined(nimscript):
