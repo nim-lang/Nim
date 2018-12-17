@@ -32,6 +32,7 @@ type
     cfsData,                  # section for C constant data
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
+    cfsDatInitProc,           # section for the C datInit proc
     cfsTypeInit1,             # section 1 for declarations of type information
     cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
