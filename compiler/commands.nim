@@ -590,10 +590,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optGenIndex}, arg, pass, info)
   of "import":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: conf.implicitImports.add arg
+    if pass in {passCmd2, passPP}:
+      conf.implicitImports.add findModule(conf, arg, toFullPath(conf, info)).string
   of "include":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: conf.implicitIncludes.add arg
+    if pass in {passCmd2, passPP}:
+      conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
   of "listcmd":
     expectNoArg(conf, switch, arg, pass, info)
     incl(conf.globalOptions, optListCmd)
