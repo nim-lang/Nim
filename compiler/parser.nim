@@ -144,7 +144,14 @@ template realInd(p): bool = p.tok.indent > p.currInd
 template sameInd(p): bool = p.tok.indent == p.currInd
 template sameOrNoInd(p): bool = p.tok.indent == p.currInd or p.tok.indent < 0
 
+import renderer, msgs
+
 proc withComment(node: PNode, comment: string, p: TParser): PNode =
+
+  #if "Timezone interface for supporting" in comment:
+  #  echo "Timezone interface comment"
+  #  writeStackTrace()
+
   case node.kind
   of nkExportDoc:
     assert node.len == 3
@@ -178,9 +185,14 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     result.sons.insert(commentNode, 0)
 
   else:
-    echo "ERROR: cannot add comment here \"", comment, "\""
-    debug(node)
-    internalError(nil, "cannot add comment here")
+    #p.currInd
+    var info  = TLineInfo(
+      line: p.tok.line.uint16,
+      col: p.tok.col.int16,
+      fileIndex: p.lex.fileIdx.FileIndex
+    )
+    #localError(p.lex.config, info, "cannot add documentation comment \"$1\" to node \"$2\" % [comment, renderTree(node)])
+    localWarning(p.lex.config, info, "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)])
 
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
@@ -1977,6 +1989,7 @@ proc parseObject(p: var TParser): PNode =
   let objectPart = parseObjectPart(p)
   if objectPart.len >= 1 and objectPart[0].kind == nkCommentStmt:
     let commentNode = objectPart[0]
+    echo "propagating comment node: \"", commentNode.comment, "\""
     objectPart.sons.delete(0)
     result.sons.insert commentNode, 0
   addSon(result, objectPart)
@@ -2050,12 +2063,16 @@ proc parseTypeDef(p: var TParser): PNode =
     optInd(p, result)
     var newSon = parseTypeDefAux(p)
 
-    if newSon.len > 0 and newSon[0].kind == nkCommentStmt:
+
+    var n = newSon
+    while n.kind in {nkRefTy, nkPtrTy} and n.len == 1:
+      n = n[0]
+    if n.len > 0 and n[0].kind == nkCommentStmt:
       # Here was a hack, could not put the comment statement anywhere
       # eles, so it is the son at index 1.  Here the comment statement
       # can be put at the right location.
-      let commentNode = newSon[0]
-      newSon.sons.delete(0)
+      let commentNode = n[0]
+      n.sons.delete(0)
       result = withComment(result, commentNode.comment, p)
 
     addSon(result, newSon)
@@ -2150,7 +2167,6 @@ proc simpleStmt(p: var TParser): PNode =
   of tkExport: result = parseImport(p, nkExportStmt)
   of tkFrom: result = parseFromStmt(p)
   of tkInclude: result = parseIncludeStmt(p)
-  of tkComment: result = newCommentStmt(p)
   else:
     if isExprStart(p): result = parseExprStmt(p)
     else: result = p.emptyNode
@@ -2207,6 +2223,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkBind: result = parseBind(p, nkBindStmt)
   of tkMixin: result = parseBind(p, nkMixinStmt)
   of tkUsing: result = parseSection(p, nkUsingStmt, parseVariable)
+  of tkComment: result = newCommentStmt(p)
   else: result = simpleStmt(p)
 
 proc parseStmt(p: var TParser): PNode =

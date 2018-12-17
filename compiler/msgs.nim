@@ -525,6 +525,9 @@ proc localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
 proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openarray[string]) =
   localError(conf, info, format % params)
 
+proc localWarning*(conf: ConfigRef; info: TLineInfo, arg: string) =
+  liMessage(conf, info, warnGenerated, arg, doNothing)
+
 proc message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing)
 
