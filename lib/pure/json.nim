@@ -366,20 +366,20 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc toJsonImpl(x: NimNode): NimNode {.compiletime.} =
+proc asJsonImpl(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
-      result.add(toJsonImpl(x[i]))
+      result.add(asJsonImpl(x[i]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add newTree(nnkExprColonExpr, x[i][0], toJsonImpl(x[i][1]))
+      result.add newTree(nnkExprColonExpr, x[i][0], asJsonImpl(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)
@@ -387,18 +387,18 @@ proc toJsonImpl(x: NimNode): NimNode {.compiletime.} =
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
-    if x.len == 1: result = toJsonImpl(x[0])
+    if x.len == 1: result = asJsonImpl(x[0])
     else: result = newCall(bindSym("%", brOpen), x)
   else:
     result = newCall(bindSym("%", brOpen), x)
 
-macro toJson*(x: untyped): untyped =
+macro asJson*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
-  result = toJsonImpl(x)
+  result = asJsonImpl(x)
 
-template `%*`*(x: untyped): JsonNode = toJson(x)
-  ## Alias for `toJson`
+template `%*`*(x: untyped): JsonNode = asJson(x)
+  ## Alias for `asJson`
 
 proc `==`* (a, b: JsonNode): bool =
   ## Check two nodes for equality

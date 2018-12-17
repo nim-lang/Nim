@@ -255,10 +255,16 @@ when true:
       MsgChallenge = ref object of MsgBase
         challenge*: string
 
-    let data = %*{"name": "foo", "challenge": "bar"}
+    # let data = asJson {"name": "foo", "challenge": "bar"}
+    let data = asJson({"name": "foo", "challenge": "bar"})
     let msg = data.to(MsgChallenge)
     doAssert msg.name == "foo"
     doAssert msg.challenge == "bar"
+    doAssert data == %*{"name": "foo", "challenge": "bar"}
+    type Foo = object
+      a1: string
+      a2: int
+    doAssert $Foo(a1:"bob", a2: 10).asJson == """{"a1":"bob","a2":10}"""
 
   block:
     type
