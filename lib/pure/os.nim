@@ -1419,7 +1419,7 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-proc staticGetAppFilename*(): string {.compileTime.} = discard
+proc getCurrentNimExe*(): string {.compileTime.} = discard
   ## `getAppFilename` at CT; can be used to retrive the currently executing
   ## nim compiler.
 
@@ -2123,7 +2123,7 @@ when defined(haiku):
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noNimScript.} =
   ## Returns the filename of the application's executable. See also
-  ## `staticGetAppFilename`.
+  ## `getCurrentNimExe`.
   ##
   ## This procedure will resolve symlinks.
 

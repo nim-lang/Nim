@@ -121,5 +121,5 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop gorgeEx
   macrosop getProjectPath
 
-  registerCallback c, "stdlib.os.staticGetAppFilename", proc (a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.os.getCurrentNimExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
