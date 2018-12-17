@@ -13,12 +13,14 @@ import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, lookups,
   semdata, passes, renderer, modulepaths, sigmatch, lineinfos
 
-proc readExceptSet*(c: PContext, n: PNode): IntSet =
+proc readExceptSet*(c: PContext, n: PNode, fromMod: PSym): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
   for i in 1 ..< n.len:
     let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
+    let s = strTableGet(fromMod.tab, ident)
+    suggestSym(c.config, n[i].info, s, c.graph.usageSym, false)
 
 proc importPureEnumField*(c: PContext; s: PSym) =
   let check = strTableGet(c.importTable.symbols, s.name)
@@ -231,5 +233,5 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    importAllSymbolsExcept(c, m, readExceptSet(c, n))
+    importAllSymbolsExcept(c, m, readExceptSet(c, n, m))
     #importForwarded(c, m.ast, exceptSet)
