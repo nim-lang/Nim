@@ -47,6 +47,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
         of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(c.cache, id)
+  of nkExportDoc:
+    result = considerQuotedIdent(c, n[0], origin)
   of nkOpenSymChoice, nkClosedSymChoice:
     if n[0].kind == nkSym:
       result = n.sons[0].sym.name
@@ -464,4 +466,3 @@ proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
       if result == nil: result = a
       else: return nil # ambiguous
     a = nextOverloadIter(o, c, n)
-

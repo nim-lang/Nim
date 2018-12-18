@@ -172,7 +172,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     result.add node
     result.add newNodeP(nkEmpty, p)
     result.add commentNode
-  of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr, nkTemplateDef, nkMacroDef:
+  of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr, nkTemplateDef, nkMacroDef, nkRecCase, nkEnumFieldDef:
     result = node
     result[0] = node[0].withComment(comment, p)
 
@@ -191,6 +191,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
       col: p.tok.col.int16,
       fileIndex: p.lex.fileIdx
     )
+    debug(node, p.lex.config)
     localError(p.lex.config, info, "cannot add documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
     #localWarning(p.lex.config, info, "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)])
     #echo p.lex.config $ info, " WARNING: ", "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)]
@@ -2153,7 +2154,7 @@ proc parseStmtPragma(p: var TParser): PNode =
 proc simpleStmt(p: var TParser): PNode =
   #| simpleStmt = ((returnStmt | raiseStmt | yieldStmt | discardStmt | breakStmt
   #|            | continueStmt | pragmaStmt | importStmt | exportStmt | fromStmt
-  #|            | includeStmt | commentStmt) / exprStmt) COMMENT?
+  #|            | includeStmt | commentStmt) / exprStmt)
   #|
   case p.tok.tokType
   of tkReturn: result = parseReturnOrRaise(p, nkReturnStmt)
@@ -2170,7 +2171,6 @@ proc simpleStmt(p: var TParser): PNode =
   else:
     if isExprStart(p): result = parseExprStmt(p)
     else: result = p.emptyNode
-  if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
 proc complexOrSimpleStmt(p: var TParser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
