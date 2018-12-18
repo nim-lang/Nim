@@ -1419,6 +1419,12 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
+proc getCurrentCompilerExe*(): string {.compileTime.} = discard
+  ## `getAppFilename` at CT; can be used to retrive the currently executing
+  ## Nim compiler from a Nim or nimscript program, or the nimble binary
+  ## inside a nimble program (likewise with other binaries built from
+  ## compiler API).
+
 when defined(posix) and not defined(nimscript):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
@@ -2118,7 +2124,8 @@ when defined(haiku):
       result = ""
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noNimScript.} =
-  ## Returns the filename of the application's executable.
+  ## Returns the filename of the application's executable. See also
+  ## `getCurrentCompilerExe`.
   ##
   ## This procedure will resolve symlinks.
 
