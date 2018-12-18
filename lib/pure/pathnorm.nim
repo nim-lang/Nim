@@ -86,6 +86,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
         result.add dirSep
       result.add substr(x, b[0], b[1])
       inc state, 2
+  if result == "" and x != "": result = "."
 
 proc normalizePath*(path: string; dirSep = DirSep): string =
   ## Example:
@@ -96,7 +97,7 @@ proc normalizePath*(path: string; dirSep = DirSep): string =
   ##
   ## - Turns multiple slashes into single slashes.
   ## - Resolves '/foo/../bar' to '/bar'.
-  ## - Removes './' from the path.
+  ## - Removes './' from the path (but "foo/.." becomes ".")
   result = newStringOfCap(path.len)
   var state = 0
   addNormalizePath(path, result, state, dirSep)
