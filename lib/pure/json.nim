@@ -135,7 +135,8 @@
 ##    echo j2
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  strutils
 
 export
   tables.`$`
@@ -366,6 +367,12 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
+template identOrValue*(x: untyped): untyped =
+  when not declaredInScope(x):
+    astToStr(x)
+  else:
+    $x
+
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
@@ -379,7 +386,13 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+      var key = x[i][0]
+      if key.kind != nnkStrLit:
+        if not validIdentifier(key.repr):
+          error(key.repr & " is an invalid identifier! Make this key an " &
+            " explict string to resolve this error.")
+        key = nnkCall.newTree(ident"identOrValue", key)
+      result.add newTree(nnkExprColonExpr, key, toJson(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)

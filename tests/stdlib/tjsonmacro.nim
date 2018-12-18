@@ -516,3 +516,64 @@ when true:
       var w = u.to(MyDistRef)
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
+
+  # implicit string keys for JObjects
+  block:
+    block allImplicit:
+      let res = %* {
+        xy: {rows: 1, columns: 2, pattern: "independent"},
+        abc: 10
+      }
+      doAssert res["xy"]["rows"].getInt == 1
+      doAssert res["xy"]["columns"].getInt == 2
+      doAssert res["xy"]["pattern"].getStr == "independent"
+      doAssert res["abc"].getInt == 10
+
+    block someImplicit:
+      let res = %* {
+        xy: {rows: 1, "columns": 2, "pattern": "independent"},
+        abc: 10
+      }
+      doAssert res["xy"]["rows"].getInt == 1
+      doAssert res["xy"]["columns"].getInt == 2
+      doAssert res["xy"]["pattern"].getStr == "independent"
+      doAssert res["abc"].getInt == 10
+    block noneImplicit:
+      let res = %* {
+        "xy": {"rows": 1, "columns": 2, "pattern": "independent"},
+        "abc": 10
+      }
+      doAssert res["xy"]["rows"].getInt == 1
+      doAssert res["xy"]["columns"].getInt == 2
+      doAssert res["xy"]["pattern"].getStr == "independent"
+      doAssert res["abc"].getInt == 10
+
+    block keyVars:
+      let xyKey = "xy"
+      let colKey = "columns"
+      let res = %* {
+        xyKey: {"rows": 1, colKey: 2, pattern: "independent"},
+        "abc": 10
+      }
+      doAssert res["xy"]["rows"].getInt == 1
+      doAssert res["xy"]["columns"].getInt == 2
+      doAssert res["xy"]["pattern"].getStr == "independent"
+      doAssert res["abc"].getInt == 10
+
+    block invalidIdent:
+      # the following two contain invalid identifiers
+      when compiles((
+        let res = %* {
+          xy-abc: "test",
+          "abc": 10
+        }
+      )):
+        echo "FAIL"
+
+      when compiles((
+        let res = %* {
+          xy(abc): "test",
+          "abc": 10
+        }
+      )):
+        echo "FAIL"
