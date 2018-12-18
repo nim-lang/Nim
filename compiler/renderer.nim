@@ -409,7 +409,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  # if n.comment.len > 0: return MaxLineLen + 1
+  if n.kind == nkCommentStmt and n.comment.len > 0: return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -1393,6 +1393,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     dedent(g)
     putNL(g)
   of nkCommentStmt:
+    pushCom(g, n)
     gcoms(g)
     optNL(g)
   of nkOfBranch:
