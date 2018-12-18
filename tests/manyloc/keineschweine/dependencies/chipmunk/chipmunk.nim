@@ -775,7 +775,7 @@ proc UpdatePosition*(body: PBody; dt: CpFloat){.
   cdecl, importc: "cpBodyUpdatePosition", dynlib: Lib.}
 #/ Convert body relative/local coordinates to absolute/world coordinates.
 proc Local2World*(body: PBody; v: TVector): TVector{.inline.} =
-  result = body.p + v.rotate(body.rot) ##return cpvadd(body.p, cpvrotate(v, body.rot))
+  result = body.p + v.rotate(body.rot) #return cpvadd(body.p, cpvrotate(v, body.rot))
 #/ Convert body absolute/world coordinates to  relative/local coordinates.
 proc world2Local*(body: PBody; v: TVector): TVector{.inline.} =
   result = (v - body.p).unrotate(body.rot)
@@ -1509,6 +1509,3 @@ proc newSimpleMotor*(a, b: PBody; rate: CpFloat): PConstraint{.
   cdecl, importc: "cpSimpleMotorNew", dynlib: Lib.}
 
 defCProp(SimpleMotor, CpFloat, rate, Rate)
-
-
-

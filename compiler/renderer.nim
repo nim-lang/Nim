@@ -799,10 +799,11 @@ proc gblock(g: var TSrcGen, n: PNode) =
   else:
     put(g, tkBlock, "block")
   putWithSpace(g, tkColon, ":")
-  if longMode(g, n) or (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen):
+  if longMode(g, n) or ((n.len > 1) and (lsub(g, n.sons[1]) + g.lineLen > MaxLineLen)):
     incl(c.flags, rfLongMode)
   gcoms(g)
-  gstmts(g, n.sons[1], c)
+  if n.len > 1:
+    gstmts(g, n.sons[1], c)
 
 proc gstaticStmt(g: var TSrcGen, n: PNode) =
   var c: TContext

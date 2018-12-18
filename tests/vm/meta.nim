@@ -32,6 +32,10 @@ proc newIdent*(node: NimNode): Ident =
     of nnkPostfix:
       result = newIdent(node[1])
       result.exported = true
+    of nnkExportDoc:
+      result = newIdent(node[0])
+      if node[1].eqIdent "*":
+        result.exported = true
     of nnkIdent, nnkSym:
       result.name = $(node)
     else:

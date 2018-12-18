@@ -107,6 +107,7 @@ proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
   of nkPostfix: replaceIdentBySym(c, n.sons[1], s)
+  of nkExportDoc: replaceIdentBySym(c, n.sons[0], s)
   of nkPragmaExpr: replaceIdentBySym(c, n.sons[0], s)
   of nkIdent, nkAccQuoted, nkSym: n = s
   else: illFormedAst(n, c.config)
@@ -125,6 +126,7 @@ template withBracketExpr(ctx, x, body: untyped) =
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(c, n.sons[1])
+  of nkExportDoc: result = getIdentNode(c, n.sons[0])
   of nkPragmaExpr: result = getIdentNode(c, n.sons[0])
   of nkIdent:
     result = n
@@ -181,6 +183,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     while true:
       case x.kind
       of nkPostfix: x = x[1]
+      of nkExportDoc: x = x[0]
       of nkPragmaExpr: x = x[0]
       of nkIdent: break
       of nkAccQuoted:
