@@ -60,7 +60,7 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType
+  TransitionKind = enum TArg, TAssign, TType, TArg
   
   History = object
     info: TLineInfo
@@ -583,7 +583,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
           if s.ast.sons[3].sons[i].kind != nkIdentDefs:
             continue
           let arg = s.ast.sons[3].sons[i].sons[0]
-          map.store(symbol(arg), typeNilability(child), TType, arg.info)
+          map.store(symbol(arg), typeNilability(child), TArg, arg.info)
     # even not nil is nil by default
     # map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
     map.store(-1, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TType, s.ast.info)
