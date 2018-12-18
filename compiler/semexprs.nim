@@ -2309,7 +2309,7 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   if moduleName.kind != nkSym or moduleName.sym.kind != skModule:
     localError(c.config, n.info, "The export/except syntax expects a module name")
     return n
-  let exceptSet = readExceptSet(c, n, moduleName.sym)
+  let exceptSet = readExceptSet(c, n, nil)
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
   strTableAdd(c.module.tab, exported)
