@@ -402,14 +402,42 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, test
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  for testFile in os.walkFiles(pattern):
-    let name = extractFilename(testFile)
-    if name notin disabledFiles:
-      let contents = readFile(testFile).string
-      var testObj = makeTest(testFile, options, cat)
-      if "when isMainModule" notin contents:
-        testObj.spec.action = actionCompile
-      testSpec r, testObj
+  var files: seq[string]
+
+  proc isValid(file: string): bool =
+    for dir in parentDirs(file, inclusive = false):
+      if dir.lastPathPart in ["includes", "nimcache"]:
+        # eg: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
+        return false
+    let name = extractFilename(file)
+    if name.splitFile.ext != ".nim": return false
+    for namei in disabledFiles:
+      # because of `LockFreeHash.nim` which has case
+      if namei.cmpPaths(name) == 0: return false
+    return true
+
+  for testFile in os.walkDirRec(pattern):
+    if isValid(testFile):
+      files.add testFile
+
+  files.sort # reproducible order
+  for testFile in files:
+    let contents = readFile(testFile).string
+    var testObj = makeTest(testFile, options, cat)
+    #[
+    TODO:
+    this logic is fragile:
+    false positives (if appears in a comment), or false negatives, eg
+    `when defined(osx) and isMainModule`.
+    Instead of fixing this, a much better way, is to extend
+    https://github.com/nim-lang/Nim/issues/9581 to stdlib modules as follows:
+    * add these to megatest
+    * patch compiler so `isMainModule` is true when -d:isMainModuleIsAlwaysTrue
+    That'll give speedup benefit, and we don't have to patch stdlib files.
+    ]#
+    if "when isMainModule" notin contents:
+      testObj.spec.action = actionCompile
+    testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
 type
@@ -517,7 +545,7 @@ proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
-    not fileExists(parentDir(spec.file) / "nim.cfg") and
+    not fileExists(spec.file.changeFileExt("nims")) and
     spec.cmd.len == 0 and
     spec.err != reDisabled and
     not spec.unjoinable and
@@ -527,6 +555,10 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
+  if result:
+    for dir in parentDirs(spec.file, inclusive=false):
+      if fileExists(dir / "nim.cfg") or fileExists(dir / "config.nims"):
+        result = false
 
 proc norm(s: var string) =
   while true:
@@ -535,20 +567,28 @@ proc norm(s: var string) =
     s = tmp
   s = s.strip
 
+proc isTestFile*(file: string): bool =
+  let (dir, name, ext) = splitFile(file)
+  result = ext == ".nim" and name.startsWith("t")
+
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returs a list of tests that have problems
   var specs: seq[TSpec] = @[]
-
   for kind, dir in walkDir(testsDir):
     assert testsDir.startsWith(testsDir)
     let cat = dir[testsDir.len .. ^1]
     if kind == pcDir and cat notin specialCategories:
-      for file in os.walkFiles(testsDir / cat / "t*.nim"):
+      for file in walkDirRec(testsDir / cat):
+        if not isTestFile(file): continue
         let spec = parseSpec(file)
         if isJoinableSpec(spec):
           specs.add spec
 
   echo "joinable specs: ", specs.len
+
+  if dryrun:
+    echo "runJoinedTest: ", specs.mapIt(it.file).join(" ")
+    return
 
   var megatest: string
   for runSpec in specs:
@@ -623,8 +663,8 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
   of "async":
     asyncTests r, cat, options
   of "lib":
-    testStdlib(r, "lib/pure/*.nim", options, cat)
-    testStdlib(r, "lib/packages/docutils/highlite", options, cat)
+    testStdlib(r, "lib/pure/", options, cat)
+    testStdlib(r, "lib/packages/docutils/", options, cat)
   of "examples":
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
@@ -644,7 +684,13 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     runJoinedTest(r, cat, testsDir)
   else:
     var testsRun = 0
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
+
+    var files: seq[string]
+    for file in walkDirRec("tests" & DirSep &.? cat.string):
+        if isTestFile(file): files.add file
+    files.sort # give reproducible order
+
+    for i, name in files:
       var test = makeTest(name, options, cat)
       if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
         discard "run the test"
