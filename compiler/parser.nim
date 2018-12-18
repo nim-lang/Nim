@@ -176,7 +176,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     result = node
     result[0] = node[0].withComment(comment, p)
 
-  of nkEnumTy, nkObjectTy, nkRecList:
+  of nkEnumTy, nkObjectTy, nkTupleTy, nkRecList:
     # It is not possible to put the comment node at the correct
     # location right now, so it just put it at the beginning and fix it later.
     result = node
@@ -2077,7 +2077,7 @@ proc parseTypeDef(p: var TParser): PNode =
       n = n[0]
     if n.len > 0 and n[0].kind == nkCommentStmt:
       # Here was a hack, could not put the comment statement anywhere
-      # eles, so it is the son at index 1.  Here the comment statement
+      # else, so it is the son at index 0.  Here the comment statement
       # can be put at the right location.
       let commentNode = n[0]
       n.sons.delete(0)
