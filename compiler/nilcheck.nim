@@ -58,8 +58,19 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 # each check returns its nilability and map
 
 type
+  Symbol = int
+
+  TransitionKind = enum TArg, TAssign, TType
+  
+  History = object
+    info: TLineInfo
+    nilability: Nilability
+    kind: TransitionKind
+    
+
   NilMap* = ref object
-    locals*:   Table[string, Nilability]
+    locals*:   Table[Symbol, Nilability]
+    history*:  Table[Symbol, seq[History]]
     previous*: NilMap
     base*:     NilMap
     top*:      NilMap
@@ -73,11 +84,19 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
 proc invalidate(map: NilMap, name: string)
 
+proc invalidate(map: NilMap, name: Symbol) =
+  discard
+
 proc newNilMap(previous: NilMap = nil, base: NilMap = nil): NilMap =
-  result = NilMap(locals: initTable[string, Nilability](), previous: previous, base: base, dependencies: initTable[string, seq[string]]())
+  result = NilMap(
+    locals: initTable[Symbol, Nilability](),
+    previous: previous,
+    base: base,
+    dependencies: initTable[string, seq[string]](),
+    history: initTable[Symbol, seq[History]]())
   result.top = if previous.isNil: result else: previous.top
 
-proc `[]`(map: NilMap, name: string): Nilability =
+proc `[]`(map: NilMap, name: Symbol): Nilability =
   var now = map
   while not now.isNil:
     if now.locals.hasKey(name):
@@ -85,10 +104,19 @@ proc `[]`(map: NilMap, name: string): Nilability =
     now = now.previous
   return Safe
 
-proc `[]=`(map: NilMap, name: string, value: Nilability) =
-  map.locals[name] = value
+proc history(map: NilMap, name: Symbol): seq[History] =
+  var now = map
+  while not now.isNil:
+    if now.history.hasKey(name):
+      return now.history[name]
+    now = now.previous
+  return @[]
 
-proc hasKey(map: NilMap, name: string): bool =
+proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo) =
+  map.locals[symbol] = value
+  map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
+
+proc hasKey(map: NilMap, name: Symbol): bool =
   var now = map
   result = false
   while not now.isNil:
@@ -96,7 +124,7 @@ proc hasKey(map: NilMap, name: string): bool =
       return true
     now = now.previous
 
-iterator pairs(map: NilMap): (string, Nilability) =
+iterator pairs(map: NilMap): (Symbol, Nilability) =
   var now = map
   while not now.isNil:
     for name, value in now.locals:
@@ -109,6 +137,8 @@ proc copyMap(map: NilMap): NilMap =
   result = newNilMap(map.previous.copyMap())
   for name, value in map.locals:
     result.locals[name] = value
+  for name, value in map.history:
+    result.history[name] = value
 
 proc `$`(map: NilMap): string =
   var now = map
@@ -128,12 +158,20 @@ proc `$`(map: NilMap): string =
     for a in list:
       result.add("  " & a & "\n")
 
+proc symbol(n: PNode): Symbol =
+  case n.kind:
+  of nkSym:
+    n.sym.id
+  else:
+    -2
+
 using
   n: PNode
   conf: ConfigRef
   map: NilMap
 
 proc typeNilability(typ: PType): Nilability
+
 
 
 proc checkCall(n, conf, map): Check =
@@ -147,15 +185,21 @@ proc checkCall(n, conf, map): Check =
         if not isNew:
           result.map = newNilMap(map)
           isNew = true
-        result.map[$child] = MaybeNil
+        # result.map[$child] = MaybeNil
+        result.map.store(symbol(child), MaybeNil, TArg, n.info)
         invalidate(result.map, $child)
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
-    let b = $n[1]
-    result.map[b] = Safe
+    # let b = $n[1]
+    let b = symbol(n[1])
+    # result.map[b] = Safe
+    result.map.store(b, Safe, TAssign, n[1].info)
     result.nilability = Safe
   else:
     result.nilability = typeNilability(n.typ)
-  
+
+proc derefError(n, conf, map) =
+    localError conf, n.info, "can't deref " & $n
+    
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
 
@@ -165,12 +209,13 @@ proc checkDeref(n, conf, map): Check =
   # message
   case result.nilability:
   of Nil:
-    localError conf, n.info, "can't deref " & $n & ": it is nil"
+    derefError(n[0], conf, map)
   of MaybeNil:
-    localError conf, n.info, "can't deref " & $n & ": it might be nil"
+    derefError(n[0], conf, map)
   else:
     message(conf, n.info, hintUser, "can deref " & $n)
     
+
 
 proc makeDependencies(map: NilMap, n: PNode)
 
@@ -179,11 +224,12 @@ proc checkRefExpr(n, conf; check: Check): Check =
   if n.typ.kind != tyRef:
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
-    let key = $n
+    let key = symbol(n)
     if result.map.hasKey(key):
       result.nilability = result.map[key]
     else:
-      result.map[key] = MaybeNil
+      # result.map[key] = MaybeNil
+      result.map.store(key, MaybeNil, TAssign, n.info)
       result.nilability = MaybeNil
     echo "dependencies"
     makeDependencies(result.map, n)
@@ -200,7 +246,8 @@ proc invalidate(map; name: string) =
   if map.top.dependencies.hasKey(name):
     let list = map.top.dependencies[name]
     for a in list:
-      map[a] = MaybeNil
+      discard
+      # map[a] = MaybeNil
 
 proc makeDependencies(map, n) =
   if n.kind notin {nkHiddenDeref, nkHiddenStdConv}:
@@ -231,7 +278,9 @@ proc union(l: NilMap, r: NilMap): NilMap =
   result = newNilMap(l.base)
   for name, value in l:
     if r.hasKey(name) and not result.locals.hasKey(name):
-      result[name] = union(value, r[name])
+      var h = history(r, name)
+      assert h.len > 0
+      result.store(name, union(value, r[name]), TAssign, h[^1].info)
 
 proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
   if assigned.kind != nkEmpty:
@@ -240,18 +289,20 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
     result = (typeNilability(target.typ), map)
   if result.map.isNil:
     result.map = map
-  let t = $target
+  let t = symbol(target) # $target
   case target.kind:
   of nkNilLit:
-    result.map[t] = Nil
+    #result.map[t] = Nil
+    result.map.store(t, Nil, TAssign, target.info)
   else:
-    result.map[t] = result.nilability
+    result.map.store(t, result.nilability, TAssign, target.info)
   invalidate(result.map, t)
 
 proc checkReturn(n, conf, map): Check =
   # return n same as result = n; return
   result = check(n[0], conf, map)
-  result.map["result"] = result.nilability
+  result.map.store(-1, result.nilability, TAssign, n.info)
+
 
 proc checkFor(n, conf, map): Check =
   var m = map
@@ -288,7 +339,7 @@ proc checkInfix(n, conf, map): Check =
 proc checkIsNil(n, conf, map; isElse: bool = false): Check =
   result.map = newNilMap(map)
   let value = n[1]
-  result.map[$value] = if not isElse: Nil else: Safe
+  result.map.store(symbol(value), if not isElse: Nil else: Safe, TArg, n.info)
   if value.kind != nkSym:
     makeDependencies(result.map, value)
 
@@ -402,12 +453,9 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
   result = map
   # echo n.kind
   if n.kind == nkCall:
-    #echo n[0]
-    #echo n[0].kind
-    #echo n[0].sym.magic
-    if n[0].kind == nkSym and n[0].sym.magic == mIsNil: # and n[1].kind == nkSym:
+    if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       result = newNilMap(map, if base: map else: map.base)
-      result[$n[1]] = if not isElse: Nil else: Safe
+      result.store(symbol(n[1]), if not isElse: Nil else: Safe, TArg, n.info)
       if n[1].kind != nkSym:
         makeDependencies(result, n[1])
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
@@ -416,7 +464,7 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
     result = checkInfix(n, conf, map).map
 
 proc checkResult(n, conf, map) =
-  let resultNilability = map["result"]
+  let resultNilability = map[-1] # "result"]
   case resultNilability:
   of Nil:
     localError conf, n.info, "return value is nil"
@@ -436,7 +484,7 @@ proc checkElseBranch(condition: PNode, n, conf, map): Check =
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   case n.kind:
-  of nkSym: result = (nilability: map[$n], map: map)
+  of nkSym: result = (nilability: map[symbol(n)], map: map)
   of nkCallKinds:
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
@@ -531,9 +579,10 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
           if s.ast.sons[3].sons[i].kind != nkIdentDefs:
             continue
           let arg = s.ast.sons[3].sons[i].sons[0]
-          map[arg.ident.s] = typeNilability(child)
+          map.store(symbol(arg), typeNilability(child), TType, arg.info)
     # even not nil is nil by default
-    map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
+    # map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
+    map.store(-1, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TType, s.ast.info)
     let res = check(body, conf, map)
     if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
       checkResult(s.ast, conf, res.map)

@@ -10,10 +10,12 @@ type
   B = ref object
     refField: A
 
+proc e(a: A) = # A is Ref
+  echo a.a > 0 # can't deref a: it might be nil  
+
 when false:
   proc e(a: A) = # A is Ref
     echo a.a > 0 # can't deref a: it might be nil  
-
 
   proc e2(a: A) =
     echo not a.isNil and a.a > 0
@@ -169,9 +171,13 @@ when false:
     finally:
       echo a.a
   
+proc f26(b: seq[A]) =
+  for a in b:
+    if not a.isNil:
+      echo a.a
 
 var a: A
-f25(0)
+e(a)
 
 
 
