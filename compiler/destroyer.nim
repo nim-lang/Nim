@@ -489,7 +489,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add moveOrCopy(dest, ri[^1], c)
   of nkBlockExpr, nkBlockStmt:
     result = newNodeI(nkBlockStmt, ri.info)
-    result.add ri[0] ## add label
+    result.add ri[0] # add label
     result.add moveOrCopy(dest, ri[1], c)
   of nkIfExpr, nkIfStmt:
     result = newNodeI(nkIfStmt, ri.info)

@@ -191,10 +191,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
       col: p.tok.col.int16,
       fileIndex: p.lex.fileIdx
     )
-    debug(node, p.lex.config)
-    localError(p.lex.config, info, "cannot add documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
-    #localWarning(p.lex.config, info, "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)])
-    #echo p.lex.config $ info, " WARNING: ", "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)]
+    localWarning(p.lex.config, info, "cannot attach documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
 
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
@@ -1790,6 +1787,7 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
     let lastLine = p.tok.line
     getTok(p)
     let sameLine = p.tok.line == lastLine
+    doAssert sameLine == (p.tok.indent < 0)
     skipComment(p, result)
     addSon(result, parseStmt(p))
     # if the implementation is on the same line, a doc comment may
@@ -1799,6 +1797,15 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   else:
     addSon(result, p.emptyNode)
     indAndComment(p, result)
+
+  if p.tok.tokType == tkComment and p.tok.indent < 0:
+    var info  = TLineInfo(
+      line: p.tok.line.uint16,
+      col: p.tok.col.int16,
+      fileIndex: p.lex.fileIdx
+    )
+    localError(p.lex.config, info, "illegal documentation comment \"$1\" terminates parsing of \"$2\"" % [p.tok.literal, renderTree(result[0])])
+
 
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
