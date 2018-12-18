@@ -1261,7 +1261,7 @@ proc getInitName(m: PSym): Rope =
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(g: BModuleList; m: BModule) =
-  if m.s[cfsInitProc].len != 0:
+  if m.s[cfsInitProc].len > 0:
     let init = m.module.getInitName
     addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
     let initCall = "\t$1();$N" % [init]
@@ -1270,7 +1270,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     else:
       add(g.otherModsInit, initCall)
 
-  if m.s[cfsDatInitProc].len != 0:
+  if m.s[cfsDatInitProc].len > 0:
     let datInit = m.module.getDatInitName
     addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
     if sfSystemModule notin m.module.flags:
@@ -1576,6 +1576,7 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:
+      genMainProc(m)
       add(m.s[cfsProcHeaders], m.g.mainModProcs)
       generateThreadVarsSize(m)
 
@@ -1616,13 +1617,14 @@ proc updateCachedModule(m: BModule) =
     mergeFiles(cfile, m)
     genInitCode(m)
     finishTypeDescriptions(m)
-
     var code = genModule(m, cf)
     if code != nil:
       if not writeRope(code, cfile):
         rawMessage(m.config, errCannotOpenFile, cfile.string)
       addFileToCompile(m.config, cf)
   else:
+    if sfMainModule notin m.module.flags:
+      genMainProc(m)
     cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
 
@@ -1643,7 +1645,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       incl m.flags, objHasKidsValid
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
-    genMainProc(m)
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
