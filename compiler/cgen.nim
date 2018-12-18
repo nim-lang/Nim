@@ -1341,6 +1341,7 @@ proc genInitCode(m: BModule) =
     add(prc, genSectionEnd(cpsLocals, m.config))
 
   if m.initProc.s(cpsInit).len > 0 or m.initProc.s(cpsStmts).len > 0:
+    moduleInitRequired = true
     if optStackTrace in m.initProc.options and frameDeclared notin m.flags:
       # BUT: the generated init code might depend on a current frame, so
       # declare it nevertheless:
