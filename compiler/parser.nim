@@ -189,10 +189,11 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     var info  = TLineInfo(
       line: p.tok.line.uint16,
       col: p.tok.col.int16,
-      fileIndex: p.lex.fileIdx.FileIndex
+      fileIndex: p.lex.fileIdx
     )
-    #localError(p.lex.config, info, "cannot add documentation comment \"$1\" to node \"$2\" % [comment, renderTree(node)])
-    localWarning(p.lex.config, info, "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)])
+    localError(p.lex.config, info, "cannot add documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
+    #localWarning(p.lex.config, info, "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)])
+    #echo p.lex.config $ info, " WARNING: ", "cannot add comment \"$1\" to node ``$2``" % [comment, renderTree(node)]
 
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
@@ -1989,7 +1990,6 @@ proc parseObject(p: var TParser): PNode =
   let objectPart = parseObjectPart(p)
   if objectPart.len >= 1 and objectPart[0].kind == nkCommentStmt:
     let commentNode = objectPart[0]
-    echo "propagating comment node: \"", commentNode.comment, "\""
     objectPart.sons.delete(0)
     result.sons.insert commentNode, 0
   addSon(result, objectPart)
