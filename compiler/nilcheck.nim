@@ -188,6 +188,7 @@ proc checkCall(n, conf, map): Check =
         # result.map[$child] = MaybeNil
         result.map.store(symbol(child), MaybeNil, TArg, n.info)
         invalidate(result.map, $child)
+
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
     # let b = $n[1]
     let b = symbol(n[1])
@@ -483,9 +484,11 @@ proc checkElseBranch(condition: PNode, n, conf, map): Check =
 # Faith!
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
+  echo "n", n, " ", n.kind
   case n.kind:
-  of nkSym: result = (nilability: map[symbol(n)], map: map)
+  of nkSym: echo symbol(n), map; result = (nilability: map[symbol(n)], map: map)
   of nkCallKinds:
+    echo "call", n
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
       case callSym.magic:
@@ -573,6 +576,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
   # TODO
   if not filename.contains("nim/lib") and not filename.contains("zero-functional") and not filename.contains("/lib"):
+    
     for i, child in s.typ.sons:
       if not child.isNil and not s.ast.isNil:
         if s.ast.sons.len >= 4 and s.ast.sons[3].sons.len > i:

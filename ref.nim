@@ -171,10 +171,10 @@ when false:
     finally:
       echo a.a
   
-proc f26(b: seq[A]) =
-  for a in b:
-    if not a.isNil:
-      echo a.a
+  proc f26(b: seq[A]) =
+    for a in b:
+      if not a.isNil:
+        echo a.a
 
 var a: A
 e(a)
