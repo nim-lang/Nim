@@ -1785,13 +1785,20 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   else: addSon(result, p.emptyNode)
   # empty exception tracking:
   addSon(result, p.emptyNode)
+
   if p.tok.tokType == tkEquals and p.validInd:
+    let lastLine = p.tok.line
     getTok(p)
+    let sameLine = p.tok.line == lastLine
     skipComment(p, result)
     addSon(result, parseStmt(p))
+    # if the implementation is on the same line, a doc comment may
+    # document the routine in the next line.
+    if sameLine:
+      indAndComment(p, result)
   else:
     addSon(result, p.emptyNode)
-  indAndComment(p, result)
+    indAndComment(p, result)
 
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
