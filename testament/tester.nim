@@ -68,7 +68,7 @@ let
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
-var targets = {low(TTarget)..high(TTarget)}
+var gTargets = {low(TTarget)..high(TTarget)}
 
 proc normalizeMsg(s: string): string =
   result = newStringOfCap(s.len+1)
@@ -372,6 +372,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       expected.targets = {targetC}
   for target in expected.targets:
     inc(r.total)
+    if target notin gTargets:
+      r.addResult(test, target, "", "", reDisabled)
+      inc(r.skipped)
+      continue
     case expected.action
     of actionCompile:
       var given = callCompiler(expected.getCmd, test.name, test.options, target,
@@ -504,7 +508,7 @@ proc main() =
     of "pedantic": discard "now always enabled"
     of "targets":
       targetsStr = p.val.string
-      targets = parseTargets(targetsStr)
+      gTargets = parseTargets(targetsStr)
     of "nim":
       compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
