@@ -68,7 +68,7 @@ let
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
-var targets = {low(TTarget)..high(TTarget)}
+var gTargets = {low(TTarget)..high(TTarget)}
 
 proc normalizeMsg(s: string): string =
   result = newStringOfCap(s.len+1)
@@ -372,6 +372,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       expected.targets = {targetC}
   for target in expected.targets:
     inc(r.total)
+    if target notin gTargets:
+      r.addResult(test, target, "", "", reDisabled)
+      inc(r.skipped)
+      continue
     case expected.action
     of actionCompile:
       var given = callCompiler(expected.getCmd, test.name, test.options, target,
@@ -504,7 +508,7 @@ proc main() =
     of "pedantic": discard "now always enabled"
     of "targets":
       targetsStr = p.val.string
-      targets = parseTargets(targetsStr)
+      gTargets = parseTargets(targetsStr)
     of "nim":
       compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
@@ -565,10 +569,12 @@ proc main() =
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
   of "r", "run":
-    let (dir, file) = splitPath(p.key.string)
-    let (_, subdir) = splitPath(dir)
-    var cat = Category(subdir)
-    processSingleTest(r, cat, p.cmdLineRest.string, file)
+    # at least one directory is required in the path, to use as a category name
+    let pathParts = split(p.key.string, {DirSep, AltSep})
+    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let cat = Category(pathParts[0])
+    let subPath = joinPath(pathParts[1..^1])
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:

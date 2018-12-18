@@ -7365,6 +7365,17 @@ Example:
 
   embedsC()
 
+``nimbase.h`` defines ``NIM_EXTERNC`` C macro that can be used for
+``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, eg:
+
+.. code-block:: Nim
+  proc foobar() {.importc:"$1".}
+  {.emit: """
+  #include <stdio.h>
+  NIM_EXTERNC
+  void fun(){}
+  """.}
+
 For backwards compatibility, if the argument to the ``emit`` statement
 is a single string literal, Nim symbols can be referred to via backticks.
 This usage is however deprecated.

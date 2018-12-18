@@ -190,61 +190,35 @@ block walkDirRec:
   removeDir("walkdir_test")
 
 block normalizedPath:
-  when defined(posix):
-    block relative:
-      doAssert normalizedPath(".") == "."
-      doAssert normalizedPath("..") == ".."
-      doAssert normalizedPath("../") == ".."
-      doAssert normalizedPath("../..") == "../.."
-      doAssert normalizedPath("../a/..") == ".."
-      doAssert normalizedPath("../a/../") == ".."
-      doAssert normalizedPath("./") == "."
+  doAssert normalizedPath("") == ""
+  block relative:
+    doAssert normalizedPath(".") == "."
+    doAssert normalizedPath("foo/..") == "."
+    doAssert normalizedPath("foo//../bar/.") == "bar"
+    doAssert normalizedPath("..") == ".."
+    doAssert normalizedPath("../") == ".."
+    doAssert normalizedPath("../..") == unixToNativePath"../.."
+    doAssert normalizedPath("../a/..") == ".."
+    doAssert normalizedPath("../a/../") == ".."
+    doAssert normalizedPath("./") == "."
 
-    block absolute:
-      doAssert normalizedPath("/") == "/"
-      doAssert normalizedPath("/.") == "/"
-      doAssert normalizedPath("/..") == "/"
-      doAssert normalizedPath("/../") == "/"
-      doAssert normalizedPath("/../..") == "/"
-      doAssert normalizedPath("/../../") == "/"
-      doAssert normalizedPath("/../../../") == "/"
-      doAssert normalizedPath("/a/b/../../foo") == "/foo"
-      doAssert normalizedPath("/a/b/../../../foo") == "/foo"
-      doAssert normalizedPath("/./") == "/"
-      doAssert normalizedPath("//") == "/"
-      doAssert normalizedPath("///") == "/"
-      doAssert normalizedPath("/a//b") == "/a/b"
-      doAssert normalizedPath("/a///b") == "/a/b"
-      doAssert normalizedPath("/a/b/c/..") == "/a/b"
-      doAssert normalizedPath("/a/b/c/../") == "/a/b"
-
-  else:
-    block relative:
-      doAssert normalizedPath(".") == "."
-      doAssert normalizedPath("..") == ".."
-      doAssert normalizedPath("..\\") == ".."
-      doAssert normalizedPath("..\\..") == "..\\.."
-      doAssert normalizedPath("..\\a\\..") == ".."
-      doAssert normalizedPath("..\\a\\..\\") == ".."
-      doAssert normalizedPath(".\\") == "."
-
-    block absolute:
-      doAssert normalizedPath("\\") == "\\"
-      doAssert normalizedPath("\\.") == "\\"
-      doAssert normalizedPath("\\..") == "\\"
-      doAssert normalizedPath("\\..\\") == "\\"
-      doAssert normalizedPath("\\..\\..") == "\\"
-      doAssert normalizedPath("\\..\\..\\") == "\\"
-      doAssert normalizedPath("\\..\\..\\..\\") == "\\"
-      doAssert normalizedPath("\\a\\b\\..\\..\\foo") == "\\foo"
-      doAssert normalizedPath("\\a\\b\\..\\..\\..\\foo") == "\\foo"
-      doAssert normalizedPath("\\.\\") == "\\"
-      doAssert normalizedPath("\\\\") == "\\"
-      doAssert normalizedPath("\\\\\\") == "\\"
-      doAssert normalizedPath("\\a\\\\b") == "\\a\\b"
-      doAssert normalizedPath("\\a\\\\\\b") == "\\a\\b"
-      doAssert normalizedPath("\\a\\b\\c\\..") == "\\a\\b"
-      doAssert normalizedPath("\\a\\b\\c\\..\\") == "\\a\\b"
+  block absolute:
+    doAssert normalizedPath("/") == unixToNativePath"/"
+    doAssert normalizedPath("/.") == unixToNativePath"/"
+    doAssert normalizedPath("/..") == unixToNativePath"/.."
+    doAssert normalizedPath("/../") == unixToNativePath"/.."
+    doAssert normalizedPath("/../..") == unixToNativePath"/../.."
+    doAssert normalizedPath("/../../") == unixToNativePath"/../.."
+    doAssert normalizedPath("/../../../") == unixToNativePath"/../../.."
+    doAssert normalizedPath("/a/b/../../foo") == unixToNativePath"/foo"
+    doAssert normalizedPath("/a/b/../../../foo") == unixToNativePath"/../foo"
+    doAssert normalizedPath("/./") == unixToNativePath"/"
+    doAssert normalizedPath("//") == unixToNativePath"/"
+    doAssert normalizedPath("///") == unixToNativePath"/"
+    doAssert normalizedPath("/a//b") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a///b") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a/b/c/..") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a/b/c/../") == unixToNativePath"/a/b"
 
 block isHidden:
   when defined(posix):

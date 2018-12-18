@@ -575,6 +575,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
+  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
+
   var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 

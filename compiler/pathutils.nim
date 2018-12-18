@@ -17,11 +17,9 @@ type
   AbsoluteDir* = distinct string
   RelativeFile* = distinct string
   RelativeDir* = distinct string
+  AnyPath* = AbsoluteFile|AbsoluteDir|RelativeFile|RelativeDir
 
-proc isEmpty*(x: AbsoluteFile): bool {.inline.} = x.string.len == 0
-proc isEmpty*(x: AbsoluteDir): bool {.inline.} = x.string.len == 0
-proc isEmpty*(x: RelativeFile): bool {.inline.} = x.string.len == 0
-proc isEmpty*(x: RelativeDir): bool {.inline.} = x.string.len == 0
+proc isEmpty*(x: AnyPath): bool {.inline.} = x.string.len == 0
 
 proc copyFile*(source, dest: AbsoluteFile) =
   os.copyFile(source.string, dest.string)
@@ -44,14 +42,13 @@ proc cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
 
 proc createDir*(x: AbsoluteDir) {.borrow.}
 
+proc `$`*(x: AnyPath): string = x.string
+
 when true:
   proc eqImpl(x, y: string): bool {.inline.} =
     result = cmpPaths(x, y) == 0
 
-  proc `==`*(x, y: AbsoluteFile): bool = eqImpl(x.string, y.string)
-  proc `==`*(x, y: AbsoluteDir): bool = eqImpl(x.string, y.string)
-  proc `==`*(x, y: RelativeFile): bool = eqImpl(x.string, y.string)
-  proc `==`*(x, y: RelativeDir): bool = eqImpl(x.string, y.string)
+  proc `==`*[T: AnyPath](x, y: T): bool = eqImpl(x.string, y.string)
 
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
     #assert isAbsolute(base.string)
@@ -88,6 +85,12 @@ when true:
 when isMainModule:
   doAssert AbsoluteDir"/Users/me///" / RelativeFile"z.nim" == AbsoluteFile"/Users/me/z.nim"
   doAssert relativePath("/foo/bar.nim", "/foo/", '/') == "bar.nim"
+  doAssert $RelativeDir"foo/bar" == "foo/bar"
+  doAssert RelativeDir"foo/bar" == RelativeDir"foo/bar"
+  doAssert RelativeFile"foo/bar".changeFileExt(".txt") == RelativeFile"foo/bar.txt"
+  doAssert RelativeFile"foo/bar".addFileExt(".txt") == RelativeFile"foo/bar.txt"
+  doAssert not RelativeDir"foo/bar".isEmpty
+  doAssert RelativeDir"".isEmpty
 
 when isMainModule and defined(windows):
   let nasty = string(AbsoluteDir(r"C:\Users\rumpf\projects\nim\tests\nimble\nimbleDir\linkedPkgs\pkgB-#head\../../simplePkgs/pkgB-#head/") / RelativeFile"pkgA/module.nim")

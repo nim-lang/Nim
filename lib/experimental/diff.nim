@@ -252,8 +252,11 @@ proc createDiffs(dataA, dataB: DiffData): seq[Item] =
 
 proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   ## Find the difference in 2 arrays of integers.
+  ##
   ## ``arrayA`` A-version of the numbers (usualy the old one)
+  ##
   ## ``arrayB`` B-version of the numbers (usualy the new one)
+  ##
   ## Returns a array of Items that describe the differences.
 
   # The A-Version of the data (original data) to be compared.
@@ -273,15 +276,16 @@ proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
 
 proc diffText*(textA, textB: string): seq[Item] =
   ## Find the difference in 2 text documents, comparing by textlines.
+  ##
   ## The algorithm itself is comparing 2 arrays of numbers so when comparing 2 text documents
   ## each line is converted into a (hash) number. This hash-value is computed by storing all
   ## textlines into a common hashtable so i can find dublicates in there, and generating a
   ## new number each time a new textline is inserted.
-  ## ``TextA`` A-version of the text (usualy the old one)
-  ## ``TextB`` B-version of the text (usualy the new one)
-  ## ``trimSpace`` When set to true, all leading and trailing whitespace characters are stripped out before the comparation is done.
-  ## ``ignoreSpace`` When set to true, all whitespace characters are converted to a single space character before the comparation is done.
-  ## ``ignoreCase`` When set to true, all characters are converted to their lowercase equivivalence before the comparation is done.
+  ##
+  ## ``textA`` A-version of the text (usually the old one)
+  ##
+  ## ``textB`` B-version of the text (usually the new one)
+  ##
   ## Returns a seq of Items that describe the differences.
 
   # prepare the input-text and convert to comparable numbers.

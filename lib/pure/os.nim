@@ -984,36 +984,37 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
   ##
   ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
   ## Triple dot is not handled.
-  let isAbs = isAbsolute(path)
-  var stack: seq[string] = @[]
-  for p in split(path, {DirSep}):
-    case p
-    of "", ".":
-      continue
-    of "..":
-      if stack.len == 0:
-        if isAbs:
-          discard  # collapse all double dots on absoluta paths
-        else:
+  path = pathnorm.normalizePath(path)
+  when false:
+    let isAbs = isAbsolute(path)
+    var stack: seq[string] = @[]
+    for p in split(path, {DirSep}):
+      case p
+      of "", ".":
+        continue
+      of "..":
+        if stack.len == 0:
+          if isAbs:
+            discard  # collapse all double dots on absoluta paths
+          else:
+            stack.add(p)
+        elif stack[^1] == "..":
           stack.add(p)
-      elif stack[^1] == "..":
-        stack.add(p)
+        else:
+          discard stack.pop()
       else:
-        discard stack.pop()
-    else:
-      stack.add(p)
+        stack.add(p)
 
-  if isAbs:
-    path = DirSep & join(stack, $DirSep)
-  elif stack.len > 0:
-    path = join(stack, $DirSep)
-  else:
-    path = "."
+    if isAbs:
+      path = DirSep & join(stack, $DirSep)
+    elif stack.len > 0:
+      path = join(stack, $DirSep)
+    else:
+      path = "."
 
 proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Returns a normalized path for the current OS. See `<#normalizePath>`_
-  result = path
-  normalizePath(result)
+  result = pathnorm.normalizePath(path)
 
 when defined(Windows) and not defined(nimscript):
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
@@ -1417,6 +1418,12 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
+
+proc getCurrentCompilerExe*(): string {.compileTime.} = discard
+  ## `getAppFilename` at CT; can be used to retrive the currently executing
+  ## Nim compiler from a Nim or nimscript program, or the nimble binary
+  ## inside a nimble program (likewise with other binaries built from
+  ## compiler API).
 
 when defined(posix) and not defined(nimscript):
   proc getSymlinkFileKind(path: string): PathComponent =
@@ -2117,7 +2124,8 @@ when defined(haiku):
       result = ""
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noNimScript.} =
-  ## Returns the filename of the application's executable.
+  ## Returns the filename of the application's executable. See also
+  ## `getCurrentCompilerExe`.
   ##
   ## This procedure will resolve symlinks.
 

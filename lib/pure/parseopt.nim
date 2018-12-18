@@ -234,6 +234,11 @@ when declared(os.paramCount):
       res.add quote(p.cmds[i])
     result = res.TaintedString
 
+  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+    ## retrieves the rest of the command line that has not been parsed yet.
+    result = @[]
+    for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
+
 iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
   ## This is an convenience iterator for iterating over the given OptParser object.
   ## Example:
