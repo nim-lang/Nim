@@ -18,7 +18,7 @@ template forceConst(a: untyped): untyped =
 static:
   # TODO: add more tests
   block: #getAppFilename, gorgeEx, gorge
-    const nim = getCurrentNimExe()
+    const nim = getCurrentCompilerExe()
     let ret = gorgeEx(nim & " --version")
     doAssert ret.exitCode == 0
     doAssert ret.output.contains "Nim Compiler"
@@ -42,6 +42,6 @@ static:
 
 block:
   # Check against bugs like #9176
-  doAssert getCurrentNimExe() == forceConst(getCurrentNimExe())
+  doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())
   if false: #pending #9176
     doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))

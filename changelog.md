@@ -95,8 +95,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `os.relativePath`.
 - Added `parseopt.remainingArgs`.
-- Added `os.getCurrentNimExe` (implmented as `getAppFilename` at CT),
-  can be used to retrive the currently executing nim compiler.
+- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
+  can be used to retrive the currently executing compiler.
 
 
 ### Library changes

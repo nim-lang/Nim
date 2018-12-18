@@ -143,7 +143,7 @@ proc existsDir*(dir: string): bool =
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
-  # TODO: consider making this as deprecated alias of `getCurrentNimExe`
+  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
