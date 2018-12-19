@@ -546,6 +546,8 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
     not fileExists(spec.file.changeFileExt("nims")) and
+    not fileExists(parentDir(spec.file) / "nim.cfg") and
+    not fileExists(parentDir(spec.file) / "config.nims") and
     spec.cmd.len == 0 and
     spec.err != reDisabled and
     not spec.unjoinable and
@@ -555,10 +557,6 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
-  if result:
-    for dir in parentDirs(spec.file, inclusive=false):
-      if fileExists(dir / "nim.cfg") or fileExists(dir / "config.nims"):
-        result = false
 
 proc norm(s: var string) =
   while true:
