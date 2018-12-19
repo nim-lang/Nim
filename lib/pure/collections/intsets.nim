@@ -9,9 +9,12 @@
 
 ## The ``intsets`` module implements an efficient int set implemented as a
 ## `sparse bit set`:idx:.
-## **Note**: Since Nim currently does not allow the assignment operator to
-## be overloaded, ``=`` for int sets performs some rather meaningless shallow
-## copy; use ``assign`` to get a deep copy.
+
+## **Note**: Currently the assignment operator ``=`` for ``intsets``
+## performs some rather meaningless shallow copy. Since Nim currently does
+## not allow the assignment operator to be overloaded, use ``assign`` to
+## get a deep copy.
+
 
 import
   hashes, math
