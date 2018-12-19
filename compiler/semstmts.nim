@@ -95,13 +95,6 @@ proc semWhile(c: PContext, n: PNode; flags: TExprFlags): PNode =
   elif efInTypeof in flags:
     result.typ = n[1].typ
 
-proc toCover(c: PContext, t: PType): BiggestInt =
-  let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
-  if t2.kind == tyEnum and enumHasHoles(t2):
-    result = sonsLen(t2.n)
-  else:
-    result = lengthOrd(c.config, skipTypes(t, abstractVar-{tyTypeDesc}))
-
 proc semProc(c: PContext, n: PNode): PNode
 
 proc semExprBranch(c: PContext, n: PNode; flags: TExprFlags = {}): PNode =

@@ -591,6 +591,13 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
   for i in lastIndex.succ..(sonsLen(branch) - 2):
     checkForOverlap(c, t, i, branchIndex)
 
+proc toCover(c: PContext, t: PType): BiggestInt =
+  let t2 = skipTypes(t, abstractVarRange-{tyTypeDesc})
+  if t2.kind == tyEnum and enumHasHoles(t2):
+    result = sonsLen(t2.n)
+  else:
+    result = lengthOrd(c.config, skipTypes(t, abstractVar-{tyTypeDesc}))
+
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
@@ -603,15 +610,16 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     return
   incl(a.sons[0].sym.flags, sfDiscriminant)
   var covered: BiggestInt = 0
+  var chckCovered = false
   var typ = skipTypes(a.sons[0].typ, abstractVar-{tyTypeDesc})
-  if not isOrdinalType(typ):
-    localError(c.config, n.info, "selector must be of an ordinal type")
-  elif firstOrd(c.config, typ) != 0:
-    localError(c.config, n.info, "low(" & $a.sons[0].sym.name.s &
-                                     ") must be 0 for discriminant")
-  elif lengthOrd(c.config, typ) > 0x00007FFF:
-    localError(c.config, n.info, "len($1) must be less than 32768" % a.sons[0].sym.name.s)
-  var chckCovered = true
+  case typ.kind
+  of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool, tyRange:
+    chckCovered = true
+  of tyFloat..tyFloat128, tyString, tyError:
+    discard
+  else:
+    if not isOrdinalType(typ):
+      localError(c.config, n.info, "selector must be of an ordinal type, float or string")
   for i in countup(1, sonsLen(n) - 1):
     var b = copyTree(n.sons[i])
     addSon(a, b)
@@ -620,12 +628,14 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       checkMinSonsLen(b, 2, c.config)
       semCaseBranch(c, a, b, i, covered)
     of nkElse:
-      chckCovered = false
       checkSonsLen(b, 1, c.config)
+      if chckCovered and covered == toCover(c, a.sons[0].typ):
+        localError(c.config, b.info, "invalid else, all cases are already covered")
+      chckCovered = false
     else: illFormedAst(n, c.config)
     delSon(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
-  if chckCovered and covered != lengthOrd(c.config, a.sons[0].typ):
+  if chckCovered and covered != toCover(c, a.sons[0].typ):
     localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
