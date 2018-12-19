@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, times, sets, md5, sequtils
+  algorithm, compiler/nodejs, times, sets, md5
 
 var useColors = true
 var backendLogging = true
