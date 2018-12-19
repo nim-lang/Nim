@@ -723,11 +723,12 @@ type
       strVal*: string
     of nkSym:
       sym*: PSym
+      comment*: string
     of nkIdent:
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
+    # comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
