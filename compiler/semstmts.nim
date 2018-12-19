@@ -542,7 +542,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
-    if a.kind notin {nkConstDef, nkConstTuple}: illFormedAst(a, c.config)
+    if a.kind notin {nkConstDef, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
     var length = sonsLen(a)
 
@@ -567,16 +567,16 @@ proc semConst(c: PContext, n: PNode): PNode =
       continue
 
     var b: PNode
-    if a.kind == nkConstTuple:
+    if a.kind == nkVarTuple:
       if typ.kind != tyTuple:
         localError(c.config, a.info, errXExpected, "tuple")
       elif int(length/2) != sonsLen(typ):
         localError(c.config, a.info, errWrongNumberOfVariables)
-      b = newNodeI(nkConstTuple, a.info)
+      b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
       b.sons[length-2] = a.sons[length-2]
       b.sons[length-1] = def
-  
+
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], skConst)
       if sfGenSym notin v.flags: addInterfaceDecl(c, v)
@@ -584,14 +584,14 @@ proc semConst(c: PContext, n: PNode): PNode =
       styleCheckDef(c.config, v)
       onDef(a[j].info, v)
 
-      if a.kind != nkConstTuple:
-          setVarType(c, v, typ)
-          v.ast = def               # no need to copy
-          b = newNodeI(nkConstDef, a.info)
-          if importantComments(c.config): b.comment = a.comment
-          addSon(b, newSymNode(v))
-          addSon(b, a.sons[1])
-          addSon(b, copyTree(def))
+      if a.kind != nkVarTuple:
+        setVarType(c, v, typ)
+        v.ast = def               # no need to copy
+        b = newNodeI(nkConstDef, a.info)
+        if importantComments(c.config): b.comment = a.comment
+        addSon(b, newSymNode(v))
+        addSon(b, a.sons[1])
+        addSon(b, copyTree(def))
       else:
         setVarType(c, v, typ.sons[j])
         v.ast = def[j]

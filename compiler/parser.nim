@@ -1764,43 +1764,6 @@ proc parseSection(p: var TParser, kind: TNodeKind,
   else:
     parMessage(p, errIdentifierExpected, p.tok)
 
-proc parseConstTuple(p: var TParser): PNode =
-  result = newNodeP(nkConstTuple, p)
-  getTok(p)                   # skip '('
-  optInd(p, result)
-  while p.tok.tokType in {tkSymbol, tkAccent}:
-    addSon(result, identWithPragma(p))
-    if p.tok.tokType == tkColon:
-      getTok(p)
-      optInd(p, result)
-      addSon(result, parseTypeDesc(p))
-    if p.tok.tokType != tkComma: break
-    getTok(p)
-
-  addSon(result, p.emptyNode)
-  eat(p, tkParRi)
-  eat(p, tkEquals)
-  optInd(p, result)
-  addSon(result, parseExpr(p))
-  indAndComment(p, result)
-
-proc parseConstant(p: var TParser): PNode =
-  #| constant = identWithPragma (colon typeDesc)? '=' optInd expr indAndComment
-  if p.tok.tokType == tkParLe: result = parseConstTuple(p)
-  else:
-    result = newNodeP(nkConstDef, p)
-    addSon(result, identWithPragma(p))
-    if p.tok.tokType == tkColon:
-      getTok(p)
-      optInd(p, result)
-      addSon(result, parseTypeDesc(p))
-    else:
-      addSon(result, p.emptyNode)
-    eat(p, tkEquals)
-    optInd(p, result)
-    addSon(result, parseExpr(p))
-    indAndComment(p, result)
-
 proc parseEnum(p: var TParser): PNode =
   #| enum = 'enum' optInd (symbol optInd ('=' optInd expr COMMENT?)? comma?)+
   result = newNodeP(nkEnumTy, p)
@@ -2056,6 +2019,23 @@ proc parseVariable(p: var TParser): PNode =
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
+
+proc parseConstant(p: var TParser): PNode =
+  #| constant = (parseVarTuple / identWithPragma) (colon typeDesc)? '=' optInd expr indAndComment
+  if p.tok.tokType == tkParLe: result = parseVarTuple(p)
+  else:
+    result = newNodeP(nkConstDef, p)
+    addSon(result, identWithPragma(p))
+    if p.tok.tokType == tkColon:
+      getTok(p)
+      optInd(p, result)
+      addSon(result, parseTypeDesc(p))
+    else:
+      addSon(result, p.emptyNode)
+    eat(p, tkEquals)
+    optInd(p, result)
+    addSon(result, parseExpr(p))
+    indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
   #| bindStmt = 'bind' optInd qualifiedIdent ^+ comma
