@@ -229,7 +229,7 @@ proc execProcesses*(cmds: openArray[string],
                     {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
-  ## that execute in parallel. The highest return value of all processes
+  ## that execute in parallel. The highest return absolute value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
 
   assert n > 0
