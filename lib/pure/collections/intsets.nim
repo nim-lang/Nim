@@ -211,8 +211,8 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
 proc initIntSet*: IntSet =
   ## creates a new int set that is empty.
 
-  #newSeq(result.data, InitIntSetSize)
-  #result.max = InitIntSetSize-1
+  # newSeq(result.data, InitIntSetSize)
+  # result.max = InitIntSetSize-1
   when defined(nimNoNilSeqs):
     result.data = @[]
   else:
@@ -223,9 +223,9 @@ proc initIntSet*: IntSet =
   result.elems = 0
 
 proc clear*(result: var IntSet) =
-  #setLen(result.data, InitIntSetSize)
-  #for i in 0..InitIntSetSize-1: result.data[i] = nil
-  #result.max = InitIntSetSize-1
+  # setLen(result.data, InitIntSetSize)
+  # for i in 0..InitIntSetSize-1: result.data[i] = nil
+  # result.max = InitIntSetSize-1
   when defined(nimNoNilSeqs):
     result.data = @[]
   else:
