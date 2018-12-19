@@ -196,4 +196,5 @@ iterator cgenModules*(g: BModuleList): BModule =
     # ultimately, we are iterating over the file ids here.
     # some "files" won't have an associated cgen module (like stdin)
     # and we must skip over them.
-    if g.modules[i] != nil: yield g.modules[i]
+    if g.modules[i] != nil: 
+      yield g.modules[i]

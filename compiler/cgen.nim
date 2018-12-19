@@ -1641,6 +1641,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     genStmts(m.initProc, n)
 
   if sfMainModule in m.module.flags:
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+      discard cgsym(m, "initStackBottomWith")
+    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+      discard cgsym(m, "initThreadVarsEmulation")
+
     if m.g.forwardedProcs.len == 0:
       incl m.flags, objHasKidsValid
     let disp = generateMethodDispatchers(graph)
