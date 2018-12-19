@@ -1064,6 +1064,11 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a.sons[length-2], constraint)
+      var owner = getCurrOwner(c).owner
+      # TODO: Disallow typed/untyped in procs in the compiler/stdlib
+      if (owner.kind != skModule or owner.owner.name.s != "stdlib") and
+        kind == skProc and (typ.kind == tyStmt or typ.kind == tyExpr):
+          localError(c.config, a.sons[length-2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros")
 
     if hasDefault:
       def = a[^1]
