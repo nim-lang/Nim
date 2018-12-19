@@ -288,14 +288,19 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
   let ident = considerQuotedIdent(c, f, n).s
   if nfDotField in n.flags and nfExplicitCall notin n.flags:
     let sym = n.sons[1].typ.sym
-    var typeStr = ""
+    var typeHint = ""
     if sym == nil:
-      # perhaps we're in a `compiles(foo.bar)` expression
-      # we coudl use: `(c.config $ n.sons[1].info)` to get more context
-      typeStr = "?"
+      #[
+      Perhaps we're in a `compiles(foo.bar)` expression, or
+      in a concept, eg:
+        ExplainedConcept {.explain.} = concept o
+          o.foo is int
+      We coudl use: `(c.config $ n.sons[1].info)` to get more context.
+      ]#
+      discard
     else:
-      typeStr = getProcHeader(c.config, sym)
-    result = errUndeclaredField % ident & " for type " & typeStr & " " & result
+      typeHint = " for type " & getProcHeader(c.config, sym)
+    result = errUndeclaredField % ident & typeHint & " " & result
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident
     else: result = errBadRoutine % [ident, result]
