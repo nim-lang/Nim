@@ -584,7 +584,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   echo "joinable specs: ", specs.len
 
-  if dryrun:
+  if simulate:
     var s = "runJoinedTest: "
     for a in specs: s.add a.file & " "
     echo s

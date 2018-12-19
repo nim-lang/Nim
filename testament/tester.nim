@@ -16,7 +16,7 @@ import
 
 var useColors = true
 var backendLogging = true
-var dryrun = false
+var simulate = false
 
 const
   resultsFile = "testresults.html"
@@ -34,6 +34,7 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
@@ -379,7 +380,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       inc(r.skipped)
       continue
 
-    if dryrun:
+    if simulate:
       var count {.global.} = 0
       count.inc
       echo "testSpec count: ", count, " expected: ", expected
@@ -546,8 +547,8 @@ proc main() =
         useColors = false
       else:
         quit Usage
-    of "dryrun":
-      dryrun = true
+    of "simulate":
+      simulate = true
     of "backendlogging":
       case p.val.string:
       of "on":
@@ -590,7 +591,7 @@ proc main() =
     proc progressStatus(idx: int) =
       echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
 
-    if dryrun:
+    if simulate:
       for i, cati in cats:
         progressStatus(i)
         processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
