@@ -1215,6 +1215,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       onDef(a[j].info, arg)
 
   var r: PType
+
   if n.sons[0].kind != nkEmpty:
     r = semTypeNode(c, n.sons[0], nil)
 

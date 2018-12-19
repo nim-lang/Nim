@@ -60,7 +60,7 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType, TArg
+  TransitionKind = enum TArg, TAssign, TType
   
   History = object
     info: TLineInfo
@@ -576,17 +576,19 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
   # TODO
   if not filename.contains("nim/lib") and not filename.contains("zero-functional") and not filename.contains("/lib"):
-    
-    for i, child in s.typ.sons:
-      if not child.isNil and not s.ast.isNil:
-        if s.ast.sons.len >= 4 and s.ast.sons[3].sons.len > i:
-          if s.ast.sons[3].sons[i].kind != nkIdentDefs:
-            continue
-          let arg = s.ast.sons[3].sons[i].sons[0]
-          map.store(symbol(arg), typeNilability(child), TArg, arg.info)
+    echo "check nil"
+    echo debugTree(conf, s.typ.n, 2, 10)  
+    for i, child in s.typ.n.sons:
+      if i > 0:
+        #if not child.isNil and not s.ast.isNil:
+        #if s.ast.sons.len >= 4 and s.ast.sons[3].sons.len > i:
+         # if s.ast.sons[3].sons[i].kind != nkIdentDefs:
+        if child.kind != nkSym:
+          continue
+        map.store(symbol(child), typeNilability(child.typ), TArg, child.info)
     # even not nil is nil by default
     # map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
-    map.store(-1, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TType, s.ast.info)
+    map.store(-1, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TArg, s.ast.info)
     let res = check(body, conf, map)
     if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
       checkResult(s.ast, conf, res.map)
