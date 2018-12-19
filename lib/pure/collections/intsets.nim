@@ -97,7 +97,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc contains*(s: IntSet, key: int): bool =
-  ## returns true iff `key` is in `s`.
+  ## returns true if `key` is in `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key: return true
@@ -307,7 +307,7 @@ proc `-`*(s1, s2: IntSet): IntSet {.inline.} =
   result = difference(s1, s2)
 
 proc disjoint*(s1, s2: IntSet): bool =
-  ## Returns true iff the sets `s1` and `s2` have no items in common.
+  ## Returns true if the sets `s1` and `s2` have no items in common.
   for item in s1:
     if contains(s2, item):
       return false
@@ -327,14 +327,14 @@ proc card*(s: IntSet): int {.inline.} =
   result = s.len()
 
 proc `<=`*(s1, s2: IntSet): bool =
-  ## Returns true iff `s1` is subset of `s2`.
+  ## Returns true if `s1` is subset of `s2`.
   for item in s1:
     if not s2.contains(item):
       return false
   return true
 
 proc `<`*(s1, s2: IntSet): bool =
-  ## Returns true iff `s1` is proper subset of `s2`.
+  ## Returns true if `s1` is proper subset of `s2`.
   return s1 <= s2 and not (s2 <= s1)
 
 proc `==`*(s1, s2: IntSet): bool =
