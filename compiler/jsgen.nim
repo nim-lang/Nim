@@ -1243,7 +1243,7 @@ proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
       internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
     if owner.prc == s.owner:
       if not owner.generatedParamCopies.containsOrIncl(s.id):
-        let copy = "$1 = nimCopy(null, $1, $2);" % [s.loc.r, genTypeInfo(p, s.typ)]
+        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
         add(owner.locals, owner.indentLine(copy))
       return
     owner = owner.up

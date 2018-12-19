@@ -52,29 +52,32 @@ doAssert(expected == $results)
 
 block issue7048:
   block:
-    proc foo(x: seq[int]; y: int): auto =
+    proc foo(x: seq[int]): auto =
       proc bar: int = x[1]
       bar
 
     var stuff = @[1, 2]
-    let f = foo(stuff, 1)
+    let f = foo(stuff)
     stuff[1] = 321
     doAssert f() == 2
 
   block:
-    proc foo(x: tuple[things: string]; y: int): auto =
+    proc foo(x: tuple[things: string]; y: array[3, int]): auto =
       proc very: auto = 
         proc deeply: auto =
-          proc nested: char = x.things[0]
+          proc nested: (char, int) = (x.things[0], y[1])
           nested
         deeply
       very()
 
-    var stuff = (things: "NIM")
-    let f = foo(stuff, 1)
+    var
+      stuff = (things: "NIM")
+      stuff2 = [32, 64, 96]
+    let f = foo(stuff, stuff2)
     stuff.things = "VIM"
-    doAssert f()() == 'N'
-    doAssert stuff.things[0] == 'V'
+    stuff2[1] *= 10
+    doAssert f()() == ('N', 64)
+    doAssert (stuff.things[0], stuff2[1]) == ('V', 640)
 
   block:
     proc foo(x: ptr string): auto =
