@@ -49,3 +49,44 @@ for i in 1 .. 10:
 let results = runCallbacks()
 
 doAssert(expected == $results)
+
+block issue7048:
+  block:
+    proc foo(x: seq[int]; y: int): auto =
+      proc bar: int = x[1]
+      bar
+
+    var stuff = @[1, 2]
+    let f = foo(stuff, 1)
+    stuff[1] = 321
+    doAssert f() == 2
+
+  block:
+    proc foo(x: tuple[things: string]; y: int): auto =
+      proc very: auto = 
+        proc deeply: auto =
+          proc nested: char = x.things[0]
+          nested
+        deeply
+      very()
+
+    var stuff = (things: "NIM")
+    let f = foo(stuff, 1)
+    stuff.things = "VIM"
+    doAssert f()() == 'N'
+    doAssert stuff.things[0] == 'V'
+
+  block:
+    proc foo(x: ptr string): auto =
+      proc bar(): int = len(x[])
+      bar
+    
+    var 
+      s1 = "xyz"
+      s2 = "stuff"
+      p = addr s1
+    
+    let f = foo(p)
+    p = addr s2
+    doAssert len(p[]) == 5
+    doAssert f() == 3
