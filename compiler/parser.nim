@@ -2024,7 +2024,7 @@ proc parseTypeDef(p: var TParser): PNode =
       addSon(identPragma, identifier)
       addSon(identPragma, pragma)
   elif p.tok.tokType == tkCurlyDotLe:
-    parMessage(p, errUser, "pragma already present")
+    parMessage(p, errGenerated, "pragma already present")
 
   addSon(result, identPragma)
   addSon(result, genericParam)
