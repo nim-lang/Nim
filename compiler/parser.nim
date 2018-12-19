@@ -1994,6 +1994,7 @@ proc parseTypeClass(p: var TParser): PNode =
 proc parseTypeDef(p: var TParser): PNode =
   #|
   #| typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
+  #|             indAndComment? / identVisDot genericParamList? pragma '=' optInd typeDefAux
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
   var identifier = identVis(p, allowDot=true)
