@@ -240,6 +240,7 @@ block absolutePath:
     doAssert absolutePath("/a", "b/") == "/a"
 
 block splitFile:
+  doAssert splitFile("") == ("", "", "")
   doAssert splitFile("abc/") == ("abc", "", "")
   doAssert splitFile("/") == ("/", "", "")
   doAssert splitFile("./abc") == (".", "abc", "")
