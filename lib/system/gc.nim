@@ -17,9 +17,9 @@
 const
   CycleIncrease = 2 # is a multiplicative increase
   InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
-  ZctThreshold = 500  # we collect garbage if the ZCT's size
-                      # reaches this threshold
-                      # this seems to be a good value
+  InitialZctThreshold = 500  # we collect garbage if the ZCT's size
+                             # reaches this threshold
+                             # this seems to be a good value
   withRealTime = defined(useRealtimeGC)
 
 when withRealTime and not declared(getTicks):
@@ -78,6 +78,7 @@ type
     when nimCoroutines:
       activeStack: ptr GcStack    # current executing coroutine stack.
     cycleThreshold: int
+    zctThreshold: int
     when useCellIds:
       idGenerator: int
     zct: CellSeq             # the zero count table
@@ -298,6 +299,7 @@ proc initGC() =
     when traceGC:
       for i in low(CellState)..high(CellState): init(states[i])
     gch.cycleThreshold = InitialCycleThreshold
+    gch.zctThreshold = InitialZctThreshold
     gch.stat.stackScans = 0
     gch.stat.cycleCollections = 0
     gch.stat.maxThreshold = 0
@@ -829,11 +831,7 @@ proc collectCTBody(gch: var GcHeap) =
         c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
 proc collectCT(gch: var GcHeap) =
-  # stackMarkCosts prevents some pathological behaviour: Stack marking
-  # becomes more expensive with large stacks and large stacks mean that
-  # cells with RC=0 are more likely to be kept alive by the stack.
-  let stackMarkCosts = max(stackSize() div (16*sizeof(int)), ZctThreshold)
-  if (gch.zct.len >= stackMarkCosts or (cycleGC and
+  if (gch.zct.len >= gch.zctThreshold or (cycleGC and
       getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and
       gch.recGcLock == 0:
     when false:
@@ -841,6 +839,7 @@ proc collectCT(gch: var GcHeap) =
       cellsetReset(gch.marked)
       markForDebug(gch)
     collectCTBody(gch)
+    gch.zctThreshold = max(InitialZctThreshold, gch.zct.len * CycleIncrease)
 
 when withRealTime:
   proc toNano(x: int): Nanos {.inline.} =
@@ -852,7 +851,7 @@ when withRealTime:
   proc GC_step(gch: var GcHeap, us: int, strongAdvice: bool) =
     acquire(gch)
     gch.maxPause = us.toNano
-    if (gch.zct.len >= ZctThreshold or (cycleGC and
+    if (gch.zct.len >= gch.zctThreshold or (cycleGC and
         getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) or
         strongAdvice:
       collectCTBody(gch)
