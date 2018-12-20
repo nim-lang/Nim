@@ -169,8 +169,43 @@ proc rawSkipComment(p: var TParser, node: PNode) =
         else:
           add node.comment, p.tok.literal
       else:
-        # echo2 node.kind, p.tok.literal # TODO
+        # TODO
         # add(node.comment, p.tok.literal)
+        let comment = p.tok.literal
+        # TODO: add instead of overwrite, below
+        let file = toFullPath(p.lex.config, getLineInfo(p.lex, p.tok))
+        # echo2 file
+        if file != "/Users/timothee/git_clone/nim/timn/tests/nim/all/t0055.nim":
+          # PRTEMP
+          getTok(p)
+          return
+        echo2 node.kind, c=comment.replace("\n", r"\"), loc=toFileLineCol2(p.lex.config, getLineInfo(p.lex, p.tok))
+        if node.kind == nkCommentStmt:
+          node.setComment comment
+        else:
+          echo2 node.sonsLen
+          for i in 0..<node.sonsLen:
+            echo2 i, node.sons[i].kind
+          case node.kind
+          of nkIdent:
+            node.setComment comment
+          of nkIdentDefs:
+            var n2 = node.sons[0]
+            n2.setComment comment
+          of nkConstDef:
+            var n2 = node.sons[0][1]
+            # for i in 0..<n2.sons.len:
+            #   echo2 i, n2.sons[i].kind
+            echo2 n2.kind
+            n2.setComment comment
+          of nkTypeDef:
+            var n2 = node.sons[0]
+            # echo2 n2.kind
+            if n2.kind == nkSym:
+              n2.setComment comment
+          else:
+            # TODO
+            discard
         discard
     else:
       parMessage(p, errInternal, "skipComment")

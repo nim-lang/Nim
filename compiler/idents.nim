@@ -24,6 +24,7 @@ type
     s*: string
     next*: PIdent             # for hash-table chaining
     h*: Hash                 # hash value of s
+    commentIdent*: string
 
   IdentCache* = ref object
     buckets: array[0..4096 * 2 - 1, PIdent]

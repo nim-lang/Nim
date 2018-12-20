@@ -1879,6 +1879,9 @@ proc getComment*(n: PNode): string =
   case n.kind
   of nkCommentStmt:
     result = n.commentStmt
+  of nkIdent:
+    assert(n.ident != nil)
+    result = n.ident.commentIdent
   of nkSym:
     assert(n.sym != nil)
     result = n.sym.commentSym
@@ -1891,6 +1894,9 @@ proc setComment*(n: PNode, s: string) =
   case n.kind
   of nkCommentStmt:
     n.commentStmt = s
+  of nkIdent:
+    assert(n.ident != nil)
+    n.ident.commentIdent = s
   of nkSym:
     if n.sym != nil:
       n.sym.commentSym = s
