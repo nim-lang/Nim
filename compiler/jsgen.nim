@@ -94,6 +94,7 @@ type
     options: TOptions
     module: BModule
     g: PGlobals
+    generatedParamCopies: IntSet
     beforeRetNeeded: bool
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
@@ -924,7 +925,7 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
-        (mapType(y.typ) != etyBaseIndex and
+        ((mapType(y.typ) != etyBaseIndex or y.sym.kind == skParam) and
           (skipTypes(y.typ, abstractInst).kind in
             {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
 
@@ -1232,12 +1233,29 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
     if owner != nil: add(owner.locals, newp)
     else: attachProc(p, newp, s)
 
+proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
+  let s = n.sym
+  if p.prc == s.owner or needsNoCopy(p, n): 
+    return
+  var owner = p.up
+  while true:
+    if owner == nil:
+      internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
+    if owner.prc == s.owner:
+      if not owner.generatedParamCopies.containsOrIncl(s.id):
+        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
+        add(owner.locals, owner.indentLine(copy))
+      return
+    owner = owner.up
+
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
+    if s.kind == skParam:
+      genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
