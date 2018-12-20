@@ -367,40 +367,60 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-template identOrValue*(x: untyped): untyped =
-  when not declaredInScope(x):
-    astToStr(x)
-  else:
-    $x
+proc toJson(x: NimNode, identAsKey: static bool = false): NimNode {.compileTime.}
 
-proc toJson(x: NimNode): NimNode {.compiletime.} =
+proc handleTableConstrIdentStr(x: NimNode): NimNode {.compileTime.} =
+  ## handles ``JObject`` constructors while allowing for identifiers to be
+  ## interpreted as strings and variable quoting by surrounding in `[]`
+  if x.len == 0: return newCall(bindSym"newJObject")
+  result = newNimNode(nnkTableConstr)
+  for i in 0 ..< x.len:
+    x[i].expectKind nnkExprColonExpr
+    let key = x[i][0]
+    var keyNode: NimNode
+    case key.kind
+    of nnkStrLit:
+      keyNode = key
+    of nnkIdent:
+      keyNode = key.toStrLit
+    of nnkBracket:
+      assert key.len == 1
+      keyNode = key[0]
+    else:
+      error("Unsupported key " & $key.toStrLit & " of kind " & $key.kind & "!")
+    result.add newTree(nnkExprColonExpr,
+                       keyNode,
+                       toJson(x[i][1], identAsKey = true))
+  result = newCall(bindSym("%", brOpen), result)
+
+proc handleTableConstrStrLit(x: NimNode): NimNode {.compileTime.} =
+  if x.len == 0: return newCall(bindSym"newJObject")
+  result = newNimNode(nnkTableConstr)
+  for i in 0 ..< x.len:
+    x[i].expectKind nnkExprColonExpr
+    result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+  result = newCall(bindSym("%", brOpen), result)
+
+proc toJson(x: NimNode, identAsKey: static bool = false): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
-      result.add(toJson(x[i]))
+      result.add(toJson(x[i], identAsKey))
     result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
-    if x.len == 0: return newCall(bindSym"newJObject")
-    result = newNimNode(nnkTableConstr)
-    for i in 0 ..< x.len:
-      x[i].expectKind nnkExprColonExpr
-      var key = x[i][0]
-      if key.kind != nnkStrLit:
-        if not validIdentifier(key.repr):
-          error(key.repr & " is an invalid identifier! Make this key an " &
-            " explict string to resolve this error.")
-        key = nnkCall.newTree(ident"identOrValue", key)
-      result.add newTree(nnkExprColonExpr, key, toJson(x[i][1]))
-    result = newCall(bindSym("%", brOpen), result)
+    when not identAsKey:
+      result = handleTableConstrStrLit(x)
+    else:
+      result = handleTableConstrIdentStr(x)
   of nnkCurly: # empty object
     x.expectLen(0)
     result = newCall(bindSym"newJObject")
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
-    if x.len == 1: result = toJson(x[0])
+    if x.len == 1: result = toJson(x[0], identAsKey)
     else: result = newCall(bindSym("%", brOpen), x)
   else:
     result = newCall(bindSym("%", brOpen), x)
@@ -409,6 +429,30 @@ macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
   result = toJson(x)
+
+macro `%*$`*(x: untyped): untyped =
+  ## Convert an expression to a JsonNode directly, without having to specify
+  ## `%` for every element. Raw Nim identifiers for ``JObject`` keys will be
+  ## taken as string literals. Variable quoting is achieved by surrounding the
+  ## variable in `[]`.
+  ##
+  ## .. code-block:: nim
+  ## import json
+  ##
+  ## let aVar = "someKey"
+  ## let j = %*$ {
+  ##   myKey: 1,
+  ##   "another": 2,
+  ##   [aVar]: 3
+  ## doAssert j["myKey"].getInt == 1
+  ## doAssert j["another"].getInt == 2
+  ## doAssert j["someKey"].getInt == 3
+  result = toJson(x, identAsKey = true)
+
+macro asJson*(x: untyped): untyped =
+  ## Convert an expression to a JsonNode directly, without having to specify
+  ## `%` for every element.
+  result = toJson(x, identAsKey = true)
 
 proc `==`* (a, b: JsonNode): bool =
   ## Check two nodes for equality
