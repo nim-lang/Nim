@@ -1295,6 +1295,7 @@ proc genDatInitCode(m: BModule) =
     add(m.s[cfsDatInitProc], prc)
 
 proc genInitCode(m: BModule) =
+  echo " genInitCode ", m.module.name.s
   var moduleInitRequired = false
   let initname = getInitName(m.module)
   var prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" % [initname]
@@ -1650,6 +1651,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       incl m.flags, objHasKidsValid
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
+
+  m.g.modules_closed.add m
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

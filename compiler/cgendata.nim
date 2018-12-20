@@ -113,6 +113,7 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
+    modules_closed*: seq[BModule] # list of the same compiled modules, but it in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
@@ -192,9 +193,6 @@ proc newModuleList*(g: ModuleGraph): BModuleList =
     graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for i in countdown(g.modules.len - 1, 0):
-    # ultimately, we are iterating over the file ids here.
-    # some "files" won't have an associated cgen module (like stdin)
-    # and we must skip over them.
-    if g.modules[i] != nil: 
-      yield g.modules[i]
+  for m in g.modules_closed:
+    # iterate modules in the order they were closed
+    yield m
