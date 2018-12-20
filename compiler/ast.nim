@@ -708,6 +708,7 @@ type
   TNodeSeq* = seq[PNode]
   PType* = ref TType
   PSym* = ref TSym
+
   TNode*{.final, acyclic.} = object # on a 32bit machine, this takes 32 bytes
     when defined(useNodeIds):
       id*: int
@@ -723,12 +724,12 @@ type
       strVal*: string
     of nkSym:
       sym*: PSym
-      comment*: string
     of nkIdent:
       ident*: PIdent
+    of nkCommentStmt:
+      commentStmt*: string
     else:
       sons*: TNodeSeq
-    # comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -837,6 +838,8 @@ type
     name*: PIdent
     info*: TLineInfo
     owner*: PSym
+    commentSym*: string # PRTEMP
+
     flags*: TSymFlags
     ast*: PNode               # syntax tree of proc, iterator, etc.:
                               # the whole proc including header; this is used
@@ -953,6 +956,7 @@ type
   TImplication* = enum
     impUnknown, impNo, impYes
 
+
 # BUGFIX: a module is overloadable so that a proc can have the
 # same name as an imported module. This is necessary because of
 # the poor naming choices in the standard library.
@@ -1027,7 +1031,7 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-proc len*(n: PNode): int {.inline.} =
+proc lenImpl(n: PNode): int {.inline.} =
   when defined(nimNoNilSeqs):
     result = len(n.sons)
   else:
@@ -1036,8 +1040,11 @@ proc len*(n: PNode): int {.inline.} =
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit}: result = 0
-  else: result = len(n)
+  if n.kind in {nkNone..nkNilLit, nkCommentStmt}: result = 0
+  else: result = lenImpl(n)
+
+template len*(n: PNode): int =
+  safeLen(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
@@ -1079,6 +1086,7 @@ proc newNode*(kind: TNodeKind): PNode =
 
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
+  if kind == nkCommentStmt: return result
   if children.len > 0:
     result.info = children[0].info
   result.sons = @children
@@ -1366,7 +1374,7 @@ proc newSons*(father: PType, length: int) =
 
 proc sonsLen*(n: PType): int = n.sons.len
 proc len*(n: PType): int = n.sons.len
-proc sonsLen*(n: PNode): int = n.sons.len
+proc sonsLen*(n: PNode): int = n.safeLen
 proc lastSon*(n: PNode): PNode = n.sons[^1]
 
 proc assignType*(dest, src: PType) =
@@ -1553,7 +1561,8 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+  if src.kind == nkCommentStmt:
+    result.commentStmt = src.commentStmt
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1572,7 +1581,8 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+  if src.kind == nkCommentStmt:
+    result.commentStmt = src.commentStmt
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1582,6 +1592,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: discard
   else: newSeq(result.sons, sonsLen(src))
 
 proc copyTree*(src: PNode): PNode =
@@ -1592,7 +1603,8 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+  if src.kind == nkCommentStmt:
+    result.commentStmt = src.commentStmt
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1602,6 +1614,7 @@ proc copyTree*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkCommentStmt: discard
   else:
     newSeq(result.sons, sonsLen(src))
     for i in 0 ..< sonsLen(src):
@@ -1861,3 +1874,32 @@ proc addParam*(procType: PType; param: PSym) =
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
 template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
 template asink*(t: PType): PSym = t.attachedOps[attachedSink]
+
+proc getComment*(n: PNode): string =
+  case n.kind
+  of nkCommentStmt:
+    result = n.commentStmt
+  of nkSym:
+    assert(n.sym != nil)
+    result = n.sym.commentSym
+  else:
+    # TODO: doAssert false
+    result = ""
+
+# proc setComment*(n: var PNode, s: string): string =
+proc setComment*(n: PNode, s: string) =
+  case n.kind
+  of nkCommentStmt:
+    n.commentStmt = s
+  of nkSym:
+    if n.sym != nil:
+      n.sym.commentSym = s
+    else:
+      assert s.len == 0
+      # assert2 false, s
+      # assert2 n.sym != nil, s
+    # assert(n.sym != nil, "{".s)# failed....
+  else:
+    # TODO: doAssert false
+    assert s.len == 0
+    discard

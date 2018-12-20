@@ -188,7 +188,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         var defs = newTransNode(nkIdentDefs, it.info, 3)
         if importantComments(c.graph.config):
           # keep documentation information:
-          PNode(defs).comment = it.comment
+          PNode(defs).setComment it.getComment
         defs[0] = x.PTransNode
         defs[1] = it.sons[1].PTransNode
         defs[2] = transform(c, it.sons[2])
@@ -1031,7 +1031,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result[2] = transform(c, n[2])
     # XXX comment handling really sucks:
     if importantComments(c.graph.config):
-      PNode(result).comment = n.comment
+      PNode(result).setComment n.getComment
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment

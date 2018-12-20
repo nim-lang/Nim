@@ -162,14 +162,15 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       when not defined(nimNoNilSeqs):
-        if node.comment == nil: node.comment = ""
+        if node.comment == nil: node.comment = "" # PRTEMP
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
           add node.comment, fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
         else:
           add node.comment, p.tok.literal
       else:
-        add(node.comment, p.tok.literal)
+        echo2 node.kind, p.tok.literal # TODO
+        # add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -1783,7 +1784,7 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.comment = p.tok.literal
+  result.commentStmt = p.tok.literal
   getTok(p)
 
 type

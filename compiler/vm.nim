@@ -189,7 +189,7 @@ proc copyValue(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+  result.setComment src.getComment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1529,7 +1529,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkStrLit..nkTripleStrLit:
         regs[ra].node.strVal = a.strVal
       of nkCommentStmt:
-        regs[ra].node.strVal = a.comment
+        regs[ra].node.strVal = a.commentStmt
       of nkIdent:
         regs[ra].node.strVal = a.ident.s
       of nkSym:
@@ -1750,7 +1750,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
       elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
-        dest.comment = regs[rb].node.strVal
+        dest.commentStmt = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcNNewNimNode:

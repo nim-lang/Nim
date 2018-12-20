@@ -541,7 +541,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b = newNodeI(nkIdentDefs, a.info)
         if importantComments(c.config):
           # keep documentation information:
-          b.comment = a.comment
+          b.setComment a.getComment
         addSon(b, newSymNode(v))
         # keep type desc for doc generator
         addSon(b, a.sons[length-2])
@@ -648,7 +648,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         setVarType(c, v, typ)
         v.ast = def               # no need to copy
         b = newNodeI(nkConstDef, a.info)
-        if importantComments(c.config): b.comment = a.comment
+        if importantComments(c.config): b.setComment a.getComment
         addSon(b, newSymNode(v))
         addSon(b, a.sons[1])
         addSon(b, copyTree(def))
@@ -1848,8 +1848,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: internalError(c.config, n.info, "semProcAux")
     n.sons[namePos].sym = proto
-    if importantComments(c.config) and proto.ast.comment.len > 0:
-      n.comment = proto.ast.comment
+    if importantComments(c.config) and proto.ast.getComment.len > 0:
+      n.setComment proto.ast.getComment
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)
@@ -2108,6 +2108,11 @@ proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  # echo2 n.info.)
+  # message(c.config, n.info, warnUser, "semStmtList:" & $n.kind)
+  echo2(semStmtList=toFileLineCol2(c.config, n.info))
+  # message(c.config, n.info, msg: TMsgKind, "semStmtList", n.kind)
+  # localError(c.config, result.info, "concept predicate failed")
   # these must be last statements in a block:
   const
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}

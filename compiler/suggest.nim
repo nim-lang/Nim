@@ -47,7 +47,7 @@ template origModuleName(m: PSym): string = m.name.s
 
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
-  if n.comment.len > 0: return n
+  if n.getComment.len > 0: return n
   if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
     result = findDocComment(n.sons[0])
     if result != nil: return
@@ -61,7 +61,7 @@ proc extractDocComment(s: PSym): string =
   if n.isNil and s.kind in routineKinds and s.ast != nil:
     n = findDocComment(s.ast[bodyPos])
   if not n.isNil:
-    result = n.comment.replace("\n##", "\n").strip
+    result = n.getComment.replace("\n##", "\n").strip
   else:
     result = ""
 
