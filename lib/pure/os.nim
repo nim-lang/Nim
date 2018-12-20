@@ -349,19 +349,30 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## If `path` has no extension, `ext` is the empty string.
   ## If `path` has no directory component, `dir` is the empty string.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
-  if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
-    result = (path, "", "")
+  if path.len == 0:
+      result = ("", "", "")
+  elif path[^1] in {DirSep, AltSep}:
+    if path.len == 1:
+      # issue #8255
+      result = ($path[0], "", "")
+    else:
+      result = (path[0 ..< ^1], "", "")
   else:
     var sepPos = -1
     var dotPos = path.len
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
         if dotPos == path.len and i > 0 and
-            path[i-1] notin {DirSep, AltSep}: dotPos = i
+            path[i-1] notin {DirSep, AltSep, ExtSep}: dotPos = i
       elif path[i] in {DirSep, AltSep}:
         sepPos = i
         break
-    result.dir = substr(path, 0, sepPos-1)
+    if sepPos-1 >= 0:
+      result.dir = substr(path, 0, sepPos-1)
+    elif path[0] in {DirSep, AltSep}:
+      # issue #8255
+      result.dir = $path[0]
+
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
@@ -1419,6 +1430,12 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
+proc getCurrentCompilerExe*(): string {.compileTime.} = discard
+  ## `getAppFilename` at CT; can be used to retrive the currently executing
+  ## Nim compiler from a Nim or nimscript program, or the nimble binary
+  ## inside a nimble program (likewise with other binaries built from
+  ## compiler API).
+
 when defined(posix) and not defined(nimscript):
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
@@ -2118,7 +2135,8 @@ when defined(haiku):
       result = ""
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noNimScript.} =
-  ## Returns the filename of the application's executable.
+  ## Returns the filename of the application's executable. See also
+  ## `getCurrentCompilerExe`.
   ##
   ## This procedure will resolve symlinks.
 

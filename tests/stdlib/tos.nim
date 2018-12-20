@@ -190,14 +190,17 @@ block walkDirRec:
   removeDir("walkdir_test")
 
 block normalizedPath:
+  doAssert normalizedPath("") == ""
   block relative:
-    doAssert normalizedPath(".") == ""
+    doAssert normalizedPath(".") == "."
+    doAssert normalizedPath("foo/..") == "."
+    doAssert normalizedPath("foo//../bar/.") == "bar"
     doAssert normalizedPath("..") == ".."
     doAssert normalizedPath("../") == ".."
     doAssert normalizedPath("../..") == unixToNativePath"../.."
     doAssert normalizedPath("../a/..") == ".."
     doAssert normalizedPath("../a/../") == ".."
-    doAssert normalizedPath("./") == ""
+    doAssert normalizedPath("./") == "."
 
   block absolute:
     doAssert normalizedPath("/") == unixToNativePath"/"
@@ -236,3 +239,19 @@ block absolutePath:
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
 
+block splitFile:
+  doAssert splitFile("") == ("", "", "")
+  doAssert splitFile("abc/") == ("abc", "", "")
+  doAssert splitFile("/") == ("/", "", "")
+  doAssert splitFile("./abc") == (".", "abc", "")
+  doAssert splitFile(".txt") == ("", ".txt", "")
+  doAssert splitFile("abc/.txt") == ("abc", ".txt", "")
+  doAssert splitFile("abc") == ("", "abc", "")
+  doAssert splitFile("abc.txt") == ("", "abc", ".txt")
+  doAssert splitFile("/abc.txt") == ("/", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt") == ("/foo", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt.gz") == ("/foo", "abc.txt", ".gz")
+  doAssert splitFile(".") == ("", ".", "")
+  doAssert splitFile("abc/.") == ("abc", ".", "")
+  doAssert splitFile("..") == ("", "..", "")
+  doAssert splitFile("a/..") == ("a", "..", "")

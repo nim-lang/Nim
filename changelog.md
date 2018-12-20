@@ -50,6 +50,8 @@
   `IndexError` for un-named captures. This is consistant with
   `RegexMatch.{captureBounds,captures}[]`.
 
+- splitFile now correctly handles edge cases, see #10047
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
@@ -95,6 +97,9 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `os.relativePath`.
 - Added `parseopt.remainingArgs`.
+- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
+  can be used to retrive the currently executing compiler.
+
 
 ### Library changes
 

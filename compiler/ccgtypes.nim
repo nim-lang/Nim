@@ -544,7 +544,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1() {if(this->raiseId) popCurrentExceptionEx(this->raiseId);}$n", [name])
+          appcg(m, result, "~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
           # hack: forward declare popCurrentExceptionEx() on top of type description,
           # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
           # generated function will be below declared Exception type and circular dependency
