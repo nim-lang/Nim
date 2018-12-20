@@ -430,7 +430,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJson(x)
 
-macro `%*$`*(x: untyped): untyped =
+macro buildJson*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element. Raw Nim identifiers for ``JObject`` keys will be
   ## taken as string literals. Variable quoting is achieved by surrounding the
@@ -447,11 +447,6 @@ macro `%*$`*(x: untyped): untyped =
   ## doAssert j["myKey"].getInt == 1
   ## doAssert j["another"].getInt == 2
   ## doAssert j["someKey"].getInt == 3
-  result = toJson(x, identAsKey = true)
-
-macro asJson*(x: untyped): untyped =
-  ## Convert an expression to a JsonNode directly, without having to specify
-  ## `%` for every element.
   result = toJson(x, identAsKey = true)
 
 proc `==`* (a, b: JsonNode): bool =

@@ -520,17 +520,17 @@ when true:
   # implicit string keys for JObjects
   block:
     block allImplicit:
-      let res = %*$ {
+      let res = buildJson({
         xy: {rows: 1, columns: 2, pattern: "independent"},
         abc: 10
-      }
+      })
       doAssert res["xy"]["rows"].getInt == 1
       doAssert res["xy"]["columns"].getInt == 2
       doAssert res["xy"]["pattern"].getStr == "independent"
       doAssert res["abc"].getInt == 10
 
     block someImplicit:
-      let res = asJson({
+      let res = buildJson({
         xy: {rows: 1, "columns": 2, "pattern": "independent"},
         abc: 10
       })
@@ -539,10 +539,10 @@ when true:
       doAssert res["xy"]["pattern"].getStr == "independent"
       doAssert res["abc"].getInt == 10
     block noneImplicit:
-      let res = %*$ {
+      let res = buildJson({
         "xy": {"rows": 1, "columns": 2, "pattern": "independent"},
         "abc": 10
-      }
+      })
       doAssert res["xy"]["rows"].getInt == 1
       doAssert res["xy"]["columns"].getInt == 2
       doAssert res["xy"]["pattern"].getStr == "independent"
@@ -551,10 +551,10 @@ when true:
     block keyVars:
       let xyKey = "xy"
       let colKey = "columns"
-      let res = %*$ {
+      let res = buildJson({
         [xyKey]: {"rows": 1, [colKey]: 2, pattern: "independent"},
         "abc": 10
-      }
+      })
       doAssert res["xy"]["rows"].getInt == 1
       doAssert res["xy"]["columns"].getInt == 2
       doAssert res["xy"]["pattern"].getStr == "independent"
@@ -563,17 +563,17 @@ when true:
     block invalidIdent:
       # the following two contain invalid identifiers
       when compiles((
-        let res = %*$ {
+        let res = buildJson({
           xy-abc: "test",
           "abc": 10
-        }
+        })
       )):
         echo "FAIL"
 
       when compiles((
-        let res = %*$ {
+        let res = buildJson({
           xy(abc): "test",
           "abc": 10
-        }
+        })
       )):
         echo "FAIL"
