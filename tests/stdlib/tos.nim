@@ -239,3 +239,19 @@ block absolutePath:
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
 
+block splitFile:
+  doAssert splitFile("") == ("", "", "")
+  doAssert splitFile("abc/") == ("abc", "", "")
+  doAssert splitFile("/") == ("/", "", "")
+  doAssert splitFile("./abc") == (".", "abc", "")
+  doAssert splitFile(".txt") == ("", ".txt", "")
+  doAssert splitFile("abc/.txt") == ("abc", ".txt", "")
+  doAssert splitFile("abc") == ("", "abc", "")
+  doAssert splitFile("abc.txt") == ("", "abc", ".txt")
+  doAssert splitFile("/abc.txt") == ("/", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt") == ("/foo", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt.gz") == ("/foo", "abc.txt", ".gz")
+  doAssert splitFile(".") == ("", ".", "")
+  doAssert splitFile("abc/.") == ("abc", ".", "")
+  doAssert splitFile("..") == ("", "..", "")
+  doAssert splitFile("a/..") == ("a", "..", "")

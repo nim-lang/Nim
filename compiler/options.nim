@@ -132,7 +132,7 @@ type
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time

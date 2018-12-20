@@ -1448,7 +1448,6 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
 
   let
     last = if last==0: s.high else: last
-    sLen = last - start + 1
     subLast = sub.len - 1
 
   if subLast == -1:
