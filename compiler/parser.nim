@@ -169,8 +169,9 @@ proc rawSkipComment(p: var TParser, node: PNode) =
         else:
           add node.comment, p.tok.literal
       else:
-        echo2 node.kind, p.tok.literal # TODO
+        # echo2 node.kind, p.tok.literal # TODO
         # add(node.comment, p.tok.literal)
+        discard
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)

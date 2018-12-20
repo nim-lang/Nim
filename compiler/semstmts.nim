@@ -2108,12 +2108,8 @@ proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # echo2 n.info.)
-  # message(c.config, n.info, warnUser, "semStmtList:" & $n.kind)
-  echo2(semStmtList=toFileLineCol2(c.config, n.info))
-  # message(c.config, n.info, msg: TMsgKind, "semStmtList", n.kind)
-  # localError(c.config, result.info, "concept predicate failed")
   # these must be last statements in a block:
+  # echo2(semStmtList=toFileLineCol2(c.config, n.info))
   const
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n

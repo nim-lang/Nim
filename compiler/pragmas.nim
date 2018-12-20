@@ -87,7 +87,7 @@ proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 
 proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
   var recorded = newNodeI(nkCommentStmt, n.info)
-  echo2(loc=toFileLineCol2(c.config, n.info), key, val, val2)
+  # echo2(loc=toFileLineCol2(c.config, n.info), key, val, val2)
   when false: # PRTEMP
     recorded.add newStrNode(key, n.info)
     recorded.add newStrNode(val, n.info)
