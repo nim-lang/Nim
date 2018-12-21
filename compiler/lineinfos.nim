@@ -141,22 +141,17 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc msgToHumanStr*(a: TMsgKind): string =
-  case a
-  # of errMin..errMax: result = ($a)["err".len .. ^1]
-  of warnMin..warnMax: result = ($a)["warn".len .. ^1]
-  of hintMin..hintMax: result = ($a)["hint".len .. ^1]
-  else:
-    doAssert false
-
-  # handle special cases to match old code behavior; consider removing these
-  # special cases
-  case a
+  case a # handle exceptions here
   of warnInconsistentSpacing: result = "Spacing"
   of hintConditionAlwaysTrue: result = "CondTrue"
   of hintConditionAlwaysFalse: result = "CondFalse"
   of hintExecuting: result = "Exec"
   of hintLinking: result = "Link"
-  else: discard
+  else: # general case
+    case a
+    of warnMin..warnMax: result = ($a)["warn".len .. ^1]
+    of hintMin..hintMax: result = ($a)["hint".len .. ^1]
+    else: doAssert false
 
 proc humanStrToMsg*(a: string): (bool,TMsgKind) =
   # Consider using `Option[TMsgKind]` if we're ok depending on options.nim
