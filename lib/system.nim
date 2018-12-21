@@ -2656,7 +2656,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: nim
-  ##   $(23, 45) == "(23, 45)"
+  ##   $(23, 45) == "(Field0: 23, Field1: 45)"
   ##   $() == "()"
   result = "("
   var firstElement = true
@@ -2710,6 +2710,16 @@ proc `$`*[T](x: seq[T]): string =
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
+
+proc `$`*[T, U](x: HSlice[T, U]): string =
+  ## generic ``$`` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = $x.a
+  result.add(" .. ")
+  result.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
