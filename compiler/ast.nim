@@ -1261,6 +1261,59 @@ proc `$`*(x: TLockLevel): string =
 proc `$`*(s: PSym): string =
   result = s.name.s & "@" & $s.id
 
+
+proc treeTraverse(n: PNode; res: var string; level = 0; isLisp = false, indented = false) =
+  if level > 0:
+    if indented:
+      res.add("\n")
+      for i in 0 .. level-1:
+        if isLisp:
+          res.add(" ")          # dumpLisp indentation
+        else:
+          res.add("  ")         # dumpTree indentation
+    else:
+      res.add(" ")
+
+  if isLisp:
+    res.add("(")
+  res.add(($n.kind).substr(2))
+
+  case n.kind
+  of nkEmpty, nkNilLit:
+    discard # same as nil node in this representation
+  of nkCharLit .. nkInt64Lit:
+    res.add(" " & $n.intVal)
+  of nkFloatLit .. nkFloat64Lit:
+    res.add(" " & $n.floatVal)
+  of nkStrLit .. nkTripleStrLit:
+    res.add(" " & $n.strVal)
+  of nkCommentStmt:
+    res.add(" " & $n.comment)
+  of nkIdent:
+    res.add(" " & $n.ident.s)
+  of nkSym:
+    res.add(" " & $n.sym.name.s)
+  of nkNone:
+    assert false
+  else:
+    for j in 0 .. n.len-1:
+      n[j].treeTraverse(res, level+1, isLisp, indented)
+
+  if isLisp:
+    res.add(")")
+
+proc treeRepr*(n: PNode): string =
+  ## Convert the AST `n` to a human-readable tree-like string.
+  ##
+  ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  n.treeTraverse(result, isLisp = false, indented = true)
+
+proc lispRepr*(n: PNode; indented = false): string =
+  ## Convert the AST ``n`` to a human-readable lisp-like string.
+  ##
+  ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
+  n.treeTraverse(result, isLisp = true, indented = indented)
+
 proc newType*(kind: TTypeKind, owner: PSym): PType =
   new(result)
   result.kind = kind
