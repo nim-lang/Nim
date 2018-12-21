@@ -163,6 +163,29 @@ proc rand*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(a.low..a.high)]
 
+import algorithm                    #For upperBound
+proc rand*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
+  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
+  ## according to convertible-to-``float``, not necessarily normalized, and
+  ## non-negative weights ``w``.  Uses state in ``r``.
+  if w.len != a.len:
+    raise newException(ValueError, "w.len != a.len")
+  var cdf = newSeq[float](a.len)    #The *unnormalized* CDF
+  var tot = float(0)                #Unnormalized is fine if we sample up to tot
+  for i, w in w:
+    if w < 0:
+      raise newException(ValueError, "w[" & $i & "] = " & $w & " < 0")
+    tot += float(w)
+    cdf[i] = tot
+  for i in 0 ..< n:
+    result.add(a[cdf.upperBound(r.rand(tot))])
+
+proc rand*[T, U](a: openArray[T], w: openArray[U], n=1): seq[T] =
+  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
+  ## according to convertible-to-``float``, not necessarily normalized, and
+  ## non-negative weights ``w``.  Uses default non-thread-safe state.
+  state.rand(a, w, n)
+
 
 proc initRand*(seed: int64): Rand =
   ## Creates a new ``Rand`` state from ``seed``.
