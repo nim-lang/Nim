@@ -40,8 +40,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
-    of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkCommentStmt: result = a.comment == b.comment
+    of nkStrLit..nkTripleStrLit, nkCommentStmt: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):

@@ -187,8 +187,7 @@ proc copyValue(src: PNode): PNode =
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  of nkCommentStmt: result.comment = src.comment
+  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
@@ -1397,10 +1396,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       case a.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of {nkStrLit..nkTripleStrLit, nkCommentStmt}:
         regs[ra].node.strVal = a.strVal
-      of nkCommentStmt:
-        regs[ra].node.strVal = a.comment
       of nkIdent:
         regs[ra].node.strVal = a.ident.s
       of nkSym:
@@ -1602,11 +1599,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node
-      if dest.kind in {nkStrLit..nkTripleStrLit} and
+      if dest.kind in {nkStrLit..nkTripleStrLit, nkCommentStmt} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
-      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
-        dest.comment = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcNNewNimNode:

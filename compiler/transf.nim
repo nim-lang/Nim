@@ -186,9 +186,6 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         let x = freshVar(c, it.sons[0].sym)
         idNodeTablePut(c.transCon.mapping, it.sons[0].sym, x)
         var defs = newTransNode(nkIdentDefs, it.info, 3)
-        if importantComments(c.graph.config):
-          # keep documentation information:
-          PNode(defs).comment = it.comment
         defs[0] = x.PTransNode
         defs[1] = it.sons[1].PTransNode
         defs[2] = transform(c, it.sons[2])
@@ -954,9 +951,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     result[2] = transform(c, n[2])
-    # XXX comment handling really sucks:
-    if importantComments(c.graph.config):
-      PNode(result).comment = n.comment
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment

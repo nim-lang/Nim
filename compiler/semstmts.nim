@@ -513,9 +513,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
         setVarType(c, v, typ)
         b = newNodeI(nkIdentDefs, a.info)
-        if importantComments(c.config):
-          # keep documentation information:
-          b.comment = a.comment
         addSon(b, newSymNode(v))
         # keep type desc for doc generator
         addSon(b, a.sons[length-2])

@@ -158,16 +158,16 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     assert node[2].kind in {nkCommentStmt, nkEmpty}
     if node[2].kind == nkEmpty:
       node[2] = newNodeP(nkCommentStmt, p)
-      node[2].comment = comment
+      node[2].strVal = comment
     else:
-      node[2].comment.add comment
+      node[2].strVal.add comment
     result = node
   of nkCommentStmt:
-    node.comment.add comment
+    node.strVal.add comment
     result = node
   of nkIdent:
     var commentNode = newNodeP(nkCommentStmt, p)
-    commentNode.comment = comment
+    commentNode.strVal = comment
     result = newNodeP(nkExportDoc, p)
     result.add node
     result.add newNodeP(nkEmpty, p)
@@ -181,7 +181,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     # location right now, so it just put it at the beginning and fix it later.
     result = node
     var commentNode = newNodeP(nkCommentStmt, p)
-    commentNode.comment = comment
+    commentNode.strVal = comment
     result.sons.insert(commentNode, 0)
 
   else:
@@ -1756,10 +1756,10 @@ proc validInd(p: var TParser): bool =
 
 
 proc findComment(arg: PNode): string =
-  if arg.comment != "":
+  if arg.kind == nkCommentStmt and arg.strVal != "":
     result.add $arg.kind
     result.add ""
-    result.add arg.comment
+    result.add arg.strVal
   for child in arg:
     result.add child.findComment
 
@@ -1810,7 +1810,7 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.comment = p.tok.literal
+  result.strVal = p.tok.literal
   getTok(p)
 
 type
@@ -2088,7 +2088,7 @@ proc parseTypeDef(p: var TParser): PNode =
       # can be put at the right location.
       let commentNode = n[0]
       n.sons.delete(0)
-      result = withComment(result, commentNode.comment, p)
+      result = withComment(result, commentNode.strVal, p)
 
     addSon(result, newSon)
   else:
