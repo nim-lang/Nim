@@ -1692,7 +1692,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   else:
     when defined(js):
       var it : T
-      {.emit: "`x`.splice(`i`, 0, `it`);".}
+      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
