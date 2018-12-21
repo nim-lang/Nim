@@ -173,7 +173,7 @@ proc detectOsImpl(d: Distribution): bool =
     result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or dd in toLowerAscii("Operating System: " & hostnamectl())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
