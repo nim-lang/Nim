@@ -159,7 +159,7 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    if optForceFullPaths in conf.globalOptions:
+    if optListFullPaths in conf.globalOptions:
       conf.m.fileInfos[fileIdx.int32].fullPath.string
     else:
       conf.m.fileInfos[fileIdx.int32].projPath.string
@@ -199,10 +199,10 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
     result = "???"
     return
   let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-  if optListFullPaths in conf.globalOptions or optForceFullPaths in conf.globalOptions:
+  if optListFullPaths in conf.globalOptions:
     result = absPath
   else:
+    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
     result = if absPath.len < relPath.len: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =

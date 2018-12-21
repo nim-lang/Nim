@@ -719,9 +719,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "listfullpaths":
     expectNoArg(conf, switch, arg, pass, info)
     incl conf.globalOptions, optListFullPaths
-  of "forcefullpaths":
-    expectNoArg(conf, switch, arg, pass, info)
-    incl conf.globalOptions, optForceFullPaths
   of "dynliboverride":
     dynlibOverride(conf, switch, arg, pass, info)
   of "dynliboverrideall":
