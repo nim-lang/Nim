@@ -148,3 +148,27 @@ let a = @[1, 2, 3]
 
 # a.boundedOpenArray(1, 2).foo()  # Works
 echo a.boundedOpenArray(1, 2).len # Internal compiler error
+
+block: # isNamedTuple
+  type Foo1 = (a:1,).type
+  type Foo2 = (Field0:1,).type
+  type Foo3 = ().type
+  type Foo4= object
+
+  doAssert (a:1,).type.isNamedTuple
+  doAssert Foo1.isNamedTuple
+  doAssert Foo2.isNamedTuple
+  doAssert not Foo3.isNamedTuple
+  doAssert not Foo4.isNamedTuple
+  doAssert not (1,).type.isNamedTuple
+
+block: # `$`*[T: tuple|object](x: T)
+  doAssert $(foo1:0, bar1:"a") == """(foo1: 0, bar1: "a")"""
+  doAssert $(foo1:0, ) == """(foo1: 0)"""
+  doAssert $(0, "a") == """(0, "a")"""
+  doAssert $(0, ) == "(0,)"
+  type Foo = object
+    x:int
+    x2:float
+  doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
+  doAssert $() == "()"
