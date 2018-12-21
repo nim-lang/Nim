@@ -2624,8 +2624,8 @@ proc `==`*[T: tuple|object](x, y: T): bool =
   return true
 
 proc `<=`*[T: tuple](x, y: T): bool =
-  ## generic ``<=`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<=`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
@@ -2633,8 +2633,8 @@ proc `<=`*[T: tuple](x, y: T): bool =
   return true
 
 proc `<`*[T: tuple](x, y: T): bool =
-  ## generic ``<`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
