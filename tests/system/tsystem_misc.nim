@@ -30,6 +30,22 @@ discard """
 '''
 """
 
+block:
+  static:
+    doAssert $type(42) == "int"
+
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
+
 # check high/low implementations
 doAssert high(int) > low(int)
 doAssert high(int8) > low(int8)
@@ -122,3 +138,4 @@ let a = @[1, 2, 3]
 
 # a.boundedOpenArray(1, 2).foo()  # Works
 echo a.boundedOpenArray(1, 2).len # Internal compiler error
+

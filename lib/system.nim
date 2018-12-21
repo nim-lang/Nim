@@ -4432,17 +4432,18 @@ when defined(genode):
         # Perform application initialization
         # and return to thread entrypoint.
 
+proc name(t: typedesc): string {.magic: "TypeTrait".}
+  ## pending https://github.com/nim-lang/Nim/issues/10078, nest inside
+  ## `$`*(t: typedesc)
 
-proc `$`*(t: typedesc): string =
+template `$`*(t: typedesc): string =
   ## Returns the name of the given type.
   ##
   ## For more procedures dealing with ``typedesc``, see the ``typetraits``
   ## module.
-  ##
   runnableExamples:
     doAssert $(type(42)) == "int"
     doAssert $(type("Foo")) == "string"
-    doAssert $(type(@['A', 'B'])) == "seq[char]"
-  proc name(t: typedesc): string {.magic: "TypeTrait".}
+    static: doAssert $(type(@['A', 'B'])) == "seq[char]"
 
-  return name(t)
+  name(t)
