@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  types, lookups, lineinfos, pathutils
+  types, lookups, lineinfos, pathutils, tables
 
 const
   FirstCallConv* = wNimcall
@@ -306,13 +306,9 @@ proc processNote(c: PContext, n: PNode) =
       n[0][1].kind == nkIdent and n[0][0].kind == nkIdent:
     var nk: TNoteKind
     case whichKeyword(n[0][0].ident)
-    of wHint:
-      var x = findStr(HintsToStr, n[0][1].ident.s)
-      if x >= 0: nk = TNoteKind(x + ord(hintMin))
-      else: invalidPragma(c, n); return
-    of wWarning:
-      var x = findStr(WarningsToStr, n[0][1].ident.s)
-      if x >= 0: nk = TNoteKind(x + ord(warnMin))
+    of wHint,wWarning:
+      let ret = humanStrToMsg(n[0][1].ident.s)
+      if ret[0]: nk = ret[1]
       else: invalidPragma(c, n); return
     else:
       invalidPragma(c, n)

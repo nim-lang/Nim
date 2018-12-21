@@ -27,7 +27,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils, lineinfos,
-  pathutils
+  pathutils, tables
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -188,14 +188,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
 
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  if state == wHint:
-    let x = findStr(lineinfos.HintsToStr, id)
-    if x >= 0: n = TNoteKind(x + ord(hintMin))
-    else: localError(conf, info, "unknown hint: " & id)
-  else:
-    let x = findStr(lineinfos.WarningsToStr, id)
-    if x >= 0: n = TNoteKind(x + ord(warnMin))
-    else: localError(conf, info, "unknown warning: " & id)
+
+  let ret = humanStrToMsg(id)
+  if ret[0]: n = ret[1]
+  else: localError(conf, info, "unknown hint/warning: " & id)
+
   case substr(arg, i).normalize
   of "on":
     incl(conf.notes, n)

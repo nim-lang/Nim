@@ -11,6 +11,7 @@
 ## ``TLineInfo`` object.
 
 import ropes, tables, pathutils
+from strutils import cmpIgnoreStyle
 
 const
   explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
@@ -37,6 +38,7 @@ type
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
+    # code relies on hintSuccess being 1st hint
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -46,7 +48,7 @@ type
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintGlobalVar,
     hintUser, hintUserRaw,
-    hintExtendedContext
+    hintExtendedContext, hintLinkingVerbose,
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -121,29 +123,7 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
-  ]
-
-const
-  WarningsToStr* = ["CannotOpenFile", "OctalEscape",
-    "XIsNeverRead", "XmightNotBeenInit",
-    "Deprecated", "ConfigDeprecated",
-    "SmallLshouldNotBeUsed", "UnknownMagic",
-    "RedefinitionOfLabel", "UnknownSubstitutionX",
-    "LanguageXNotSupported", "FieldXNotSupported",
-    "CommentXIgnored",
-    "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
-    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "User"]
-
-  HintsToStr* = [
-    "Success", "SuccessX", "CC", "LineTooLong",
-    "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
-    "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
-    "User", "UserRaw", "ExtendedContext",
+    hintLinkingVerbose: "$1",
   ]
 
 const
@@ -156,20 +136,42 @@ const
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
 
-static:
-  doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
-  doAssert WarningsToStr.len == ord(warnMax) - ord(warnMin) + 1
-
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
+
+proc msgToHumanStr*(a: TMsgKind): string =
+  case a
+  # of errMin..errMax: result = ($a)["err".len .. ^1]
+  of warnMin..warnMax: result = ($a)["warn".len .. ^1]
+  of hintMin..hintMax: result = ($a)["hint".len .. ^1]
+  else:
+    doAssert false
+
+  # handle special cases to match old code behavior; consider removing these
+  # special cases
+  case a
+  of warnInconsistentSpacing: result = "Spacing"
+  of hintConditionAlwaysTrue: result = "CondTrue"
+  of hintConditionAlwaysFalse: result = "CondFalse"
+  of hintExecuting: result = "Exec"
+  of hintLinking: result = "Link"
+  else: discard
+
+proc humanStrToMsg*(a: string): (bool,TMsgKind) =
+  # Consider using `Option[TMsgKind]` if we're ok depending on options.nim
+  for b in TNoteKind:
+    let a2 = msgToHumanStr(b)
+    if cmpIgnoreStyle(a2, a) == 0:
+      return (true, b)
+  return (false, low(TMsgKind))
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
   result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats}
+    hintSource, hintGlobalVar, hintGCStats, hintLinkingVerbose}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking}
 

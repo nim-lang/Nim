@@ -13,7 +13,7 @@ import
   strtabs, platform, strutils, idents
 
 from options import Feature
-from lineinfos import HintsToStr, WarningsToStr
+from lineinfos import warnMin, warnMax, hintMin, hintMax, msgToHumanStr
 
 const
   catNone = "false"
@@ -91,7 +91,5 @@ proc initDefines*(symbols: StringTableRef) =
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
-  for s in WarningsToStr:
-    defineSymbol("nimHasWarning" & s)
-  for s in HintsToStr:
-    defineSymbol("nimHasHint" & s)
+  for s in warnMin..warnMax: defineSymbol("nimHasWarning" & msgToHumanStr(s))
+  for s in hintMin..hintMax: defineSymbol("nimHasHint" & msgToHumanStr(s))

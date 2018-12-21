@@ -737,6 +737,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
     raise
 
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
+  rawMessage(conf, hintLinkingVerbose, linkCmd)
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
     execExternalProgram(conf, linkCmd,
       if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)

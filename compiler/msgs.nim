@@ -386,7 +386,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     writeContext(conf, unknownLineInfo())
     title = WarningTitle
     color = WarningColor
-    kind = WarningsToStr[ord(msg) - ord(warnMin)]
+    kind = msgToHumanStr(msg)
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
@@ -394,7 +394,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     if msg notin conf.notes: return
     title = HintTitle
     color = HintColor
-    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = msgToHumanStr(msg)
     inc(conf.hintCounter)
   let s = msgKindToString(msg) % args
 
@@ -474,14 +474,14 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if not ignoreMsg: writeContext(conf, info)
     title = WarningTitle
     color = WarningColor
-    kind = WarningsToStr[ord(msg) - ord(warnMin)]
+    kind = msgToHumanStr(msg)
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = optHints notin conf.options or msg notin conf.notes
     title = HintTitle
     color = HintColor
-    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = msgToHumanStr(msg)
     inc(conf.hintCounter)
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
@@ -556,7 +556,7 @@ proc listWarnings*(conf: ConfigRef) =
   for warn in warnMin..warnMax:
     msgWriteln(conf, "  [$1] $2" % [
       if warn in conf.notes: "x" else: " ",
-      lineinfos.WarningsToStr[ord(warn) - ord(warnMin)]
+      lineinfos.msgToHumanStr(warn)
     ])
 
 proc listHints*(conf: ConfigRef) =
@@ -564,5 +564,5 @@ proc listHints*(conf: ConfigRef) =
   for hint in hintMin..hintMax:
     msgWriteln(conf, "  [$1] $2" % [
       if hint in conf.notes: "x" else: " ",
-      lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
+      lineinfos.msgToHumanStr(hint)
     ])
