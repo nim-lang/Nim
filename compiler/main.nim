@@ -76,6 +76,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   registerPass(graph, cgenPass)
 
   compileProject(graph)
+  if graph.config.errorCounter > 0:
+    return # issue #9933
   cgenWriteModules(graph.backend, conf)
   if conf.cmd != cmdRun:
     let proj = changeFileExt(conf.projectFull, "")
