@@ -1644,7 +1644,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     genStmts(m.initProc, n)
 
   if sfMainModule in m.module.flags:
-    # raise dependencies on behave of genMainProc
+    # raise dependencies on behalf of genMainProc
     if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
       discard cgsym(m, "initStackBottomWith")
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
