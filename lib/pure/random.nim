@@ -157,8 +157,9 @@ proc rand*[T](x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b`.
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T =
+proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
+  ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
@@ -166,8 +167,12 @@ proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(a.low..a.high)]
 
+proc sample*[T](r: var Rand; a: openArray[T]): T =
+  ## returns a random element from openArray ``a`` using state in ``r``.
+  result = a[r.rand(a.low..a.high)]
+
 proc sample*[T](a: openArray[T]): T =
-  ## returns a random element from the openarray `a`.
+  ## returns a random element from openArray ``a`` using non-thread-safe state.
   result = a[rand(a.low..a.high)]
 
 proc sample*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
