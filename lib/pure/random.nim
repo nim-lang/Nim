@@ -161,11 +161,16 @@ proc rand*[T](r: var Rand; a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T](a: openArray[T]): T =
+proc rand*[T](a: openArray[T]): T {.deprecated.} =
+  ## returns a random element from the openarray `a`.
+  ## **Deprecated since v0.20.0:** use ``sample`` instead.
+  result = a[rand(a.low..a.high)]
+
+proc sample*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(a.low..a.high)]
 
-proc rand*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
+proc sample*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
   ## Return a sample (with replacement) of size ``n`` from elements of ``a``
   ## according to convertible-to-``float``, not necessarily normalized, and
   ## non-negative weights ``w``.  Uses state in ``r``.  Must have sum ``w > 0.0``.
@@ -180,11 +185,11 @@ proc rand*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
   for i in 0 ..< n:
     result.add(a[cdf.upperBound(r.rand(tot))])
 
-proc rand*[T, U](a: openArray[T], w: openArray[U], n=1): seq[T] =
+proc sample*[T, U](a: openArray[T], w: openArray[U], n=1): seq[T] =
   ## Return a sample (with replacement) of size ``n`` from elements of ``a``
   ## according to convertible-to-``float``, not necessarily normalized, and
   ## non-negative weights ``w``.  Uses default non-thread-safe state.
-  state.rand(a, w, n)
+  state.sample(a, w, n)
 
 
 proc initRand*(seed: int64): Rand =
