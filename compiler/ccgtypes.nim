@@ -436,30 +436,25 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
   if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
-                        accessExpr: Rope, rectype: PType,
+                        rectype: PType,
                         check: var IntSet): Rope =
   result = nil
   case n.kind
   of nkRecList:
     for i in countup(0, sonsLen(n) - 1):
-      add(result, genRecordFieldsAux(m, n.sons[i], accessExpr, rectype, check))
+      add(result, genRecordFieldsAux(m, n.sons[i], rectype, check))
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    add(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
+    add(result, genRecordFieldsAux(m, n.sons[0], rectype, check))
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
-    let uname = rope("_U" & mangle(n.sons[0].sym.name.s))
-    let ae = if accessExpr != nil: "$1.$2" % [accessExpr, uname]
-             else: uname
     var unionBody: Rope = nil
     for i in countup(1, sonsLen(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         let k = lastSon(n.sons[i])
         if k.kind != nkSym:
-          let sname = "S" & rope(i)
-          let a = genRecordFieldsAux(m, k, "$1.$2" % [ae, sname], rectype,
-                                     check)
+          let a = genRecordFieldsAux(m, k, rectype, check)
           if a != nil:
             if tfPacked notin rectype.flags:
               add(unionBody, "struct {")
@@ -469,22 +464,20 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               else:
                 addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
-            addf(unionBody, "} $1;$n", [sname])
+            addf(unionBody, "};$n", [])
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               addf(unionBody, "#pragma pack(pop)$n", [])
         else:
-          add(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
+          add(unionBody, genRecordFieldsAux(m, k, rectype, check))
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != nil:
-      addf(result, "union{$n$1} $2;$n", [unionBody, uname])
+      addf(result, "union{$n$1};$n", [unionBody])
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
-             else: sname
-    fillLoc(field.loc, locField, n, ae, OnUnknown)
+    fillLoc(field.loc, locField, n, sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
@@ -505,7 +498,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
-  result = genRecordFieldsAux(m, typ.n, nil, typ, check)
+  result = genRecordFieldsAux(m, typ.n, typ, check)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
@@ -549,7 +542,13 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
           # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
           # generated function will be below declared Exception type and circular dependency
           # between Exception and popCurrentExceptionEx function
-          result = genProcHeader(m, magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")) & ";" & result
+
+          let popExSym = magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")
+          if lfDynamicLib in popExSym.loc.flags and sfImportc in popExSym.flags:
+            #  echo popExSym.flags, " ma flags ", popExSym.loc.flags
+            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " & mangleName(m, popExSym) & ";\L" & result
+          else:
+            result = genProcHeader(m, popExSym) & ";\L" & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",

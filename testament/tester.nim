@@ -16,6 +16,7 @@ import
 
 var useColors = true
 var backendLogging = true
+var simulate = false
 
 const
   resultsFile = "testresults.html"
@@ -33,6 +34,7 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
@@ -219,7 +221,11 @@ proc `$`(x: TResults): string =
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
-  let name = test.name.extractFilename & " " & $target & test.options
+  # test.name is easier to find than test.name.extractFilename
+  # A bit hacky but simple and works with tests/testament/tshouldfail.nim
+  var name = test.name.replace(DirSep, '/')
+  name.add " " & $target & test.options
+
   let duration = epochTime() - test.startTime
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   if backendLogging:
@@ -376,6 +382,13 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       r.addResult(test, target, "", "", reDisabled)
       inc(r.skipped)
       continue
+
+    if simulate:
+      var count {.global.} = 0
+      count.inc
+      echo "testSpec count: ", count, " expected: ", expected
+      continue
+
     case expected.action
     of actionCompile:
       var given = callCompiler(expected.getCmd, test.name, test.options, target,
@@ -477,14 +490,30 @@ proc makeTest(test, options: string, cat: Category): TTest =
   result.spec = parseSpec(addFileExt(test, ".nim"))
   result.startTime = epochTime()
 
+# TODO: fix these files
+const disabledFilesDefault = @[
+  "LockFreeHash.nim",
+  "sharedstrings.nim",
+  "tableimpl.nim",
+
+  # Error: undeclared identifier: 'hasThreadSupport'
+  "ioselectors_epoll.nim",
+  "ioselectors_kqueue.nim",
+  "ioselectors_poll.nim",
+
+  # Error: undeclared identifier: 'Timeval'
+  "ioselectors_select.nim",
+]
+
 when defined(windows):
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["coro.nim"]
+    disabledFiles = disabledFilesDefault & @["coro.nim"]
 else:
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["-"]
+    # TODO: why the ["-"]? (previous code should've prob used seq[string] = @[] instead)
+    disabledFiles = disabledFilesDefault & @["-"]
 
 include categories
 
@@ -521,6 +550,8 @@ proc main() =
         useColors = false
       else:
         quit Usage
+    of "simulate":
+      simulate = true
     of "backendlogging":
       case p.val.string:
       of "on":
@@ -547,16 +578,28 @@ proc main() =
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
 
-    var cmds: seq[string] = @[]
+    var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
-        cmds.add(myself & " pcat " & quoteShell(cat) & rest)
-    for cat in AdditionalCategories:
+        cats.add cat
+    cats.add AdditionalCategories
+
+    var cmds: seq[string]
+    for cat in cats:
       cmds.add(myself & " pcat " & quoteShell(cat) & rest)
-    quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
+
+    proc progressStatus(idx: int) =
+      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+
+    if simulate:
+      for i, cati in cats:
+        progressStatus(i)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    else:
+      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
