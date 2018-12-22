@@ -1235,6 +1235,25 @@ proc processType(typeName: NimNode, obj: NimNode,
           )
       else:
         doAssert false, "Unable to process nnkSym " & $typeName
+  of nnkBracketExpr:
+    if obj[0].kind == nnkSym and $obj[0] == "range":
+      case obj[1].kind
+      of nnkIntLit:
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+            `typeName`(`jsonNode`.num)
+          )
+      of nnkFloatLit:
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
+            if `jsonNode`.kind == JFloat: `typeName`(`jsonNode`.fnum) else: `typeName`(`jsonNode`.num)
+          )
+      else:
+        doAssert false, "Unable to process range with " & $obj[1].kind
+    else:
+      doAssert false, "Unable to process nnkBracketExpr"
   else:
     doAssert false, "Unable to process type: " & $obj.kind
 

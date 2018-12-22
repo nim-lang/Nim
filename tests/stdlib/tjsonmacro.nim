@@ -516,3 +516,19 @@ when true:
       var w = u.to(MyDistRef)
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
+
+  block:
+    # Support for `range[0 .. 5]`
+    type
+      RangeTest = object
+        x: range[0 .. 5]
+        y: range[0.0 .. 12.23]
+
+    let data = """
+      {"x": 2, "y": 0.1}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, RangeTest)
+    doAssert dataDeser.x == 2
+    doAssert dataDeser.y == 0.1
