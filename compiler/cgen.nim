@@ -1087,28 +1087,23 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   result = getCopyright(conf, cfile)
   addIntTypes(result, conf)
 
-proc genFilenames(m: BModule): Rope =
-  discard cgsym(m, "dbgRegisterFilename")
-  result = nil
-  for i in 0..<m.config.m.fileInfos.len:
-    result.addf("dbgRegisterFilename($1);$N",
-      [m.config.m.fileInfos[i].projPath.string.makeCString])
-
 proc genMainProc(m: BModule) =
+  ## this function is called in cgenWriteModules after all modules are closed,
+  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## into other modules, only simple rope manipulations are allowed
+
   const
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
       "void PreMainInner(void) {$N" &
-      "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
       "void PreMain(void) {$N" &
       "\tvoid (*volatile inner)(void);$N" &
-      "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
       "\t(*inner)();$N" &
@@ -1217,9 +1212,10 @@ proc genMainProc(m: BModule) =
   else:
     nimMain = PosixNimMain
     otherMain = PosixCMain
-  if m.g.breakpoints != nil: discard cgsym(m, "dbgRegisterBreakpoint")
   if optEndb in m.config.options:
-    m.g.breakpoints.add(m.genFilenames)
+    for i in 0..<m.config.m.fileInfos.len:
+      m.g.breakpoints.addf("dbgRegisterFilename($1);$N",
+        [m.config.m.fileInfos[i].projPath.string.makeCString])
 
   let initStackBottomCall =
     if m.config.target.targetOS == osStandalone or m.config.selectedGC == gcNone: "".rope
@@ -1273,10 +1269,13 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   if m.s[cfsDatInitProc].len > 0:
     let datInit = m.module.getDatInitName
     addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
-    if sfSystemModule notin m.module.flags:
-      addf(g.mainDatInit, "\t$1();$N", [datInit])
+    addf(g.mainDatInit, "\t$1();$N", [datInit])
 
 proc genDatInitCode(m: BModule) =
+  ## this function is called in cgenWriteModules after all modules are closed,
+  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## into other modules, only simple rope manipulations are allowed
+
   var moduleDatInitRequired = false
 
   var prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" %
@@ -1295,7 +1294,10 @@ proc genDatInitCode(m: BModule) =
     add(m.s[cfsDatInitProc], prc)
 
 proc genInitCode(m: BModule) =
-  echo " genInitCode ", m.module.name.s
+  ## this function is called in cgenWriteModules after all modules are closed,
+  ## it means raising dependency on the symbols is too late as it will not propogate
+  ## into other modules, only simple rope manipulations are allowed
+
   var moduleInitRequired = false
   let initname = getInitName(m.module)
   var prc = "N_LIB_PRIVATE N_NIMCALL(void, $1)(void) {$N" % [initname]
@@ -1642,10 +1644,16 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     genStmts(m.initProc, n)
 
   if sfMainModule in m.module.flags:
+    # raise dependencies on behave of genMainProc
     if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
       discard cgsym(m, "initStackBottomWith")
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
       discard cgsym(m, "initThreadVarsEmulation")
+
+    if m.g.breakpoints != nil:
+      discard cgsym(m, "dbgRegisterBreakpoint")
+    if optEndb in m.config.options:
+      discard cgsym(m, "dbgRegisterFilename")
 
     if m.g.forwardedProcs.len == 0:
       incl m.flags, objHasKidsValid
