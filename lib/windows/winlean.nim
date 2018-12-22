@@ -516,7 +516,7 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  Timeval* = object
+  Timeval* {.importc: "timeval", header: "<time.h>".} = object
     tv_sec*, tv_usec*: int32
 
   AddrInfo* = object

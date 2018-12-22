@@ -189,6 +189,14 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+when not defined(windows):
+  block walkDirRelative:
+    createDir("walkdir_test")
+    createSymlink(".", "walkdir_test/c")
+    for k, p in walkDir("walkdir_test", true):
+      doAssert k == pcLinkToDir
+    removeDir("walkdir_test")
+
 block normalizedPath:
   doAssert normalizedPath("") == ""
   block relative:

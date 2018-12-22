@@ -1692,7 +1692,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   else:
     when defined(js):
       var it : T
-      {.emit: "`x`.splice(`i`, 0, `it`);".}
+      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
@@ -2624,8 +2624,8 @@ proc `==`*[T: tuple|object](x, y: T): bool =
   return true
 
 proc `<=`*[T: tuple](x, y: T): bool =
-  ## generic ``<=`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<=`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
@@ -2633,8 +2633,8 @@ proc `<=`*[T: tuple](x, y: T): bool =
   return true
 
 proc `<`*[T: tuple](x, y: T): bool =
-  ## generic ``<`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
@@ -2656,7 +2656,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## of `x`. Example:
   ##
   ## .. code-block:: nim
-  ##   $(23, 45) == "(23, 45)"
+  ##   $(23, 45) == "(Field0: 23, Field1: 45)"
   ##   $() == "()"
   result = "("
   var firstElement = true
@@ -2710,6 +2710,16 @@ proc `$`*[T](x: seq[T]): string =
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
+
+proc `$`*[T, U](x: HSlice[T, U]): string =
+  ## generic ``$`` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = $x.a
+  result.add(" .. ")
+  result.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
