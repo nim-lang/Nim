@@ -60,7 +60,7 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType
+  TransitionKind = enum TArg, TAssign, TType, TNil
   
   History = object
     info: TLineInfo
@@ -112,9 +112,20 @@ proc history(map: NilMap, name: Symbol): seq[History] =
     now = now.previous
   return @[]
 
+import macros
+
+macro aecho*(a: varargs[untyped]): untyped =
+  var e = nnkCall.newTree(ident"echo")
+  for b in a:
+    e.add(b)
+  result = quote:
+    when defined(debugInfo):
+      `e`
+
 proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo) =
   map.locals[symbol] = value
   map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
+  aecho 0
 
 proc hasKey(map: NilMap, name: Symbol): bool =
   var now = map
@@ -198,8 +209,21 @@ proc checkCall(n, conf, map): Check =
   else:
     result.nilability = typeNilability(n.typ)
 
-proc derefError(n, conf, map) =
-    localError conf, n.info, "can't deref " & $n
+proc event(b: History): string =
+  case b.kind:
+  of TArg: "param with nilable type"
+  of TNil: "isNil"
+  of TAssign: "assigns a value which might be nil"
+  else: ""
+
+proc derefError(n, conf, map; maybe: bool) =
+  var a = history(map, symbol(n))
+  var res = ""
+  res.add("can't deref " & $n & " it " & (if maybe: "might be" else: "is") & " nil")
+  res.add("\n")
+  for b in a:
+    res.add("  " & event(b) & " on line " & $b.info.line & ":" & $b.info.col)
+  localError(conf, n.info, res)
     
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
@@ -210,11 +234,12 @@ proc checkDeref(n, conf, map): Check =
   # message
   case result.nilability:
   of Nil:
-    derefError(n[0], conf, map)
+    derefError(n[0], conf, map, false)
   of MaybeNil:
-    derefError(n[0], conf, map)
+    derefError(n[0], conf, map, true)
   else:
-    message(conf, n.info, hintUser, "can deref " & $n)
+    when defined(debugInfo):
+      message(conf, n.info, hintUser, "can deref " & $n)
     
 
 
@@ -232,7 +257,7 @@ proc checkRefExpr(n, conf; check: Check): Check =
       # result.map[key] = MaybeNil
       result.map.store(key, MaybeNil, TAssign, n.info)
       result.nilability = MaybeNil
-    echo "dependencies"
+    aecho "dependencies"
     makeDependencies(result.map, n)
 
 
@@ -420,7 +445,7 @@ proc checkTry(n, conf, map): Check =
     let (childNilability, childMap) = check(child, conf, currentMap)
     currentMap = childMap
     newMap = union(newMap, childMap)
-  echo newMap
+  aecho newMap
   for a, branch in n:
     if a > 0:
       case branch.kind:
@@ -445,7 +470,7 @@ proc directStop(n): bool =
   of nkIfStmt, nkElse:
     return false
   else:
-    echo n.kind
+    aecho n.kind
   return false
 
 proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
@@ -456,7 +481,7 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
   if n.kind == nkCall:
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       result = newNilMap(map, if base: map else: map.base)
-      result.store(symbol(n[1]), if not isElse: Nil else: Safe, TArg, n.info)
+      result.store(symbol(n[1]), if not isElse: Nil else: Safe, TNil, n.info)
       if n[1].kind != nkSym:
         makeDependencies(result, n[1])
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
@@ -484,11 +509,11 @@ proc checkElseBranch(condition: PNode, n, conf, map): Check =
 # Faith!
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
-  echo "n", n, " ", n.kind
+  aecho "n", n, " ", n.kind
   case n.kind:
-  of nkSym: echo symbol(n), map; result = (nilability: map[symbol(n)], map: map)
+  of nkSym: aecho symbol(n), map; result = (nilability: map[symbol(n)], map: map)
   of nkCallKinds:
-    echo "call", n
+    aecho "call", n
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
       case callSym.magic:
@@ -539,7 +564,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   of nkVarSection:
     result.map = map
     for child in n:
-      echo child.kind
+      aecho child.kind
       result = checkAsgn(child[0], child[2], conf, result.map)
   of nkForStmt:
     result = checkFor(n, conf, map)
@@ -557,9 +582,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result = (Safe, map)
   else:
     result = (Safe, map)
-  # echo "RESULT ", result.nilability
-  # echo ""
-
+  
 proc typeNilability(typ: PType): Nilability =
   if typ.isNil:
     Safe
@@ -576,8 +599,6 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
   # TODO
   if not filename.contains("nim/lib") and not filename.contains("zero-functional") and not filename.contains("/lib"):
-    echo "check nil"
-    echo debugTree(conf, s.typ.n, 2, 10)  
     for i, child in s.typ.n.sons:
       if i > 0:
         #if not child.isNil and not s.ast.isNil:

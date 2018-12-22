@@ -10,8 +10,12 @@ type
   B = ref object
     refField: A
 
+
 proc e(a: A) = # A is Ref
   echo a.a > 0 # can't deref a: it might be nil  
+
+  # can't deref a: it might be nil
+  #   it is an arg with nilable type on line 14, column 7
 
 when false:
   proc e(a: A) = # A is Ref
