@@ -176,6 +176,7 @@ proc rand*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
     assert(w >= 0)
     tot += float(w)
     cdf[i] = tot
+  assert(tot > 0.0)                # Need at least one non-zero weight
   for i in 0 ..< n:
     result.add(a[cdf.upperBound(r.rand(tot))])
 
