@@ -10,6 +10,36 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+const
+  specialCategories = [
+    "assert",
+    "async",
+    "debugger",
+    "dll",
+    "examples",
+    "flags",
+    "gc",
+    "io",
+    "js",
+    "lib",
+    "longgc",
+    "manyloc",
+    "nimble-all",
+    "nimble-core",
+    "nimble-extra",
+    "niminaction",
+    "rodfiles",
+    "threads",
+    "untestable",
+    "stdlib",
+    "testdata",
+    "nimcache",
+    "coroutines",
+    "osproc",
+    "shouldfail",
+    "dir with space"
+  ]
+
 # included from tester.nim
 # ---------------- ROD file tests ---------------------------------------------
 
@@ -27,7 +57,7 @@ proc delNimCache(filename, options: string) =
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
     if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
+    testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
 
   # test basic recompilation scheme:
@@ -97,11 +127,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl --threads:on", cat)
-  testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
-
+  var test1 = makeTest("lib/nimrtl.nim", options & " --app:lib -d:createNimRtl --threads:on", cat)
+  test1.spec.action = actionCompile
+  testSpec c, test1
+  var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
+  test2.spec.action = actionCompile
+  testSpec c, test2
 
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
@@ -121,7 +152,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
-                       cat, actionRun)
+                       cat)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -139,32 +170,32 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithNone(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:none", cat, actionRun)
+                  " --gc:none", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:none", cat, actionRun)
+                  " -d:release --gc:none", cat)
 
   template testWithoutMs(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options, cat, actionRun)
+    testSpec r, makeTest("tests/gc" / filename, options, cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release", cat, actionRun)
+                  " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release -d:useRealtimeGC", cat, actionRun)
+                  " -d:release -d:useRealtimeGC", cat)
 
   template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:markAndSweep", cat, actionRun)
+                  " --gc:markAndSweep", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:markAndSweep", cat, actionRun)
+                  " -d:release --gc:markAndSweep", cat)
   template test(filename: untyped) =
     testWithoutBoehm filename
     when not defined(windows) and not defined(android):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:boehm", cat, actionRun)
+                    " --gc:boehm", cat)
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " -d:release --gc:boehm", cat, actionRun)
+                    " -d:release --gc:boehm", cat)
 
   testWithoutBoehm "foreign_thr"
   test "gcemscripten"
@@ -197,17 +228,18 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 
   var c = initResults()
   # According to ioTests, this should compile the file
-  testNoSpec c, makeTest("tests/realtimeGC/shared", options, cat, actionCompile)
-  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat, actionRun)
-  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat, actionRun)
+  testSpec c, makeTest("tests/realtimeGC/shared", options, cat)
+  #        ^- why is this not appended to r? Should this be discarded?
+  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun
+  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat)
 
 # ------------------------- threading tests -----------------------------------
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionRun)
-    testSpec r, makeTest(filename, options & " -d:release", cat, actionRun)
-    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat, actionRun)
+    testSpec r, makeTest(filename, options, cat)
+    testSpec r, makeTest(filename, options & " -d:release", cat)
+    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat)
   for t in os.walkFiles("tests/threads/t*.nim"):
     test(t)
 
@@ -230,23 +262,22 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  testNoSpec r, makeTest("tools/nimgrep", options & " --debugger:on", cat)
+  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+  t.spec.action = actionCompile
+  testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun), targetJS
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun), targetJS
+    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
-                   "exception/tunhandledexc",
                    "actiontable/tactiontable", "method/tmultimjs",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
                    "varres/tvartup", "misc/tints", "misc/tunsignedinc",
@@ -261,14 +292,14 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 proc testNimInAction(r: var TResults, cat: Category, options: string) =
   let options = options & " --nilseqs:on"
 
-  template test(filename: untyped, action: untyped) =
-    testSpec r, makeTest(filename, options, cat, action)
+  template test(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat)
 
   template testJS(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
+    testSpec r, makeTest(filename, options, cat), {targetJS}
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
+    testSpec r, makeTest(filename, options, cat), {targetCPP}
 
   let tests = [
     "niminaction/Chapter1/various1",
@@ -299,43 +330,44 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   # whoever edits these hashes without dom96's permission, j/k. But please only
   # edit when making a conscious breaking change, also please try to make your
   # commit message clear and notify me so I can easily compile an errata later.
-  var testHashes: seq[string] = @[]
-
-  for test in tests:
-    testHashes.add(getMD5(readFile("tests" / test.addFileExt("nim")).string))
-
   const refHashes = @[
-    "51afdfa84b3ca3d810809d6c4e5037ba", "30f07e4cd5eaec981f67868d4e91cfcf",
-    "d14e7c032de36d219c9548066a97e846", "2e40bfd5daadb268268727da91bb4e81",
-    "c5d3853ed0aba04bf6d35ba28a98dca0", "058603145ff92d46c009006b06e5b228",
-    "7b94a029b94ddb7efafddd546c965ff6", "586d74514394e49f2370dfc01dd9e830",
-    "e1901837b757c9357dc8d259fd0ef0f6", "097670c7ae12e825debaf8ec3995227b",
-    "a8cb7b78cc78d28535ab467361db5d6e", "bfaec2816a1848991b530c1ad17a0184",
-    "47cb71bb4c1198d6d29cdbee05aa10b9", "87e4436809f9d73324cfc4f57f116770",
-    "7b7db5cddc8cf8fa9b6776eef1d0a31d", "e6e40219f0f2b877869b738737b7685e",
-    "6532ee87d819f2605a443d5e94f9422a", "9a8fe78c588d08018843b64b57409a02",
-    "03a801275b8b76b4170c870cd0da079d", "20bb7d3e2d38d43b0cb5fcff4909a4a8",
-    "af6844598f534fab6942abfa4dfe9ab2", "2a7a17f84f6503d9bc89a5ab8feea127"
+    "51afdfa84b3ca3d810809d6c4e5037ba",
+    "30f07e4cd5eaec981f67868d4e91cfcf",
+    "d14e7c032de36d219c9548066a97e846",
+    "b335635562ff26ec0301bdd86356ac0c",
+    "6c4add749fbf50860e2f523f548e6b0e",
+    "76de5833a7cc46f96b006ce51179aeb1",
+    "705eff79844e219b47366bd431658961",
+    "a1e87b881c5eb161553d119be8b52f64",
+    "2d706a6ec68d2973ec7e733e6d5dce50",
+    "c11a013db35e798f44077bc0763cc86d",
+    "3e32e2c5e9a24bd13375e1cd0467079c",
+    "a5452722b2841f0c1db030cf17708955",
+    "dc6c45eb59f8814aaaf7aabdb8962294",
+    "69d208d281a2e7bffd3eaf4bab2309b1",
+    "ec05666cfb60211bedc5e81d4c1caf3d",
+    "da520038c153f4054cb8cc5faa617714",
+    "59906c8cd819cae67476baa90a36b8c1",
+    "9a8fe78c588d08018843b64b57409a02",
+    "8b5d28e985c0542163927d253a3e4fc9",
+    "783299b98179cc725f9c46b5e3b5381f",
+    "1a2b3fba1187c68d6a9bfa66854f3318",
+    "80f9c3e594a798225046e8a42e990daf"
   ]
-  doAssert testHashes == refHashes, "Nim in Action tests were changed."
 
+  for i, test in tests:
+    let filename = "tests" / test.addFileExt("nim")
+    let testHash = getMD5(readFile(filename).string)
+    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
   # Run the tests.
   for testfile in tests:
-    test "tests/" & testfile & ".nim", actionCompile
-
+    test "tests/" & testfile & ".nim"
   let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
   testJS jsFile
-
   let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
   testCPP cppFile
 
-
-
-
 # ------------------------- manyloc -------------------------------------------
-#proc runSpecialTests(r: var TResults, options: string) =
-#  for t in ["lib/packages/docutils/highlite"]:
-#    testSpec(r, t, options)
 
 proc findMainFile(dir: string): string =
   # finds the file belonging to ".nim.cfg"; if there is no such file
@@ -359,27 +391,60 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
       if dir.endsWith"named_argument_bug": continue
       let mainfile = findMainFile(dir)
       if mainfile != "":
-        testNoSpec r, makeTest(mainfile, options, cat)
+        var test = makeTest(mainfile, options, cat)
+        test.spec.action = actionCompile
+        testSpec r, test
 
 proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
   for test in os.walkFiles(pattern):
-    testNoSpec r, makeTest(test, options, cat)
+    var test = makeTest(test, options, cat)
+    test.spec.action = actionCompile
+    testSpec r, test
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  for test in os.walkFiles(pattern):
-    let name = extractFilename(test)
-    if name notin disabledFiles:
-      let contents = readFile(test).string
-      if contents.contains("when isMainModule"):
-        testSpec r, makeTest(test, options, cat, actionRunNoSpec)
-      else:
-        testNoSpec r, makeTest(test, options, cat, actionCompile)
+  var files: seq[string]
+
+  proc isValid(file: string): bool =
+    for dir in parentDirs(file, inclusive = false):
+      if dir.lastPathPart in ["includes", "nimcache"]:
+        # eg: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
+        return false
+    let name = extractFilename(file)
+    if name.splitFile.ext != ".nim": return false
+    for namei in disabledFiles:
+      # because of `LockFreeHash.nim` which has case
+      if namei.cmpPaths(name) == 0: return false
+    return true
+
+  for testFile in os.walkDirRec(pattern):
+    if isValid(testFile):
+      files.add testFile
+
+  files.sort # reproducible order
+  for testFile in files:
+    let contents = readFile(testFile).string
+    var testObj = makeTest(testFile, options, cat)
+    #[
+    TODO:
+    this logic is fragile:
+    false positives (if appears in a comment), or false negatives, eg
+    `when defined(osx) and isMainModule`.
+    Instead of fixing this, a much better way, is to extend
+    https://github.com/nim-lang/Nim/issues/9581 to stdlib modules as follows:
+    * add these to megatest
+    * patch compiler so `isMainModule` is true when -d:isMainModuleIsAlwaysTrue
+    That'll give speedup benefit, and we don't have to patch stdlib files.
+    ]#
+    if "when isMainModule" notin contents:
+      testObj.spec.action = actionCompile
+    testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
-type PackageFilter = enum
-  pfCoreOnly
-  pfExtraOnly
-  pfAll
+type
+  PackageFilter = enum
+    pfCoreOnly
+    pfExtraOnly
+    pfAll
 
 var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
@@ -409,7 +474,6 @@ proc getPackageDir(package: string): string =
 
 iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
   let packageList = parseFile(packageIndex)
-
   for package in packageList.items():
     let
       name = package["name"].str
@@ -463,24 +527,111 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib"]
+const AdditionalCategories = ["debugger", "examples", "lib", "megatest"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startswith(a): b else: a & b
 
-#proc `&?.`(a, b: string): string = # not used
-  # candidate for the stdlib?
-  #result = if a.endswith(b): a else: a & b
-
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
+  if existsFile(test):
+    testSpec r, makeTest(test, options, cat), {target}
+  else:
+    echo "[Warning] - ", test, " test does not exist"
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat), target
-  else: echo "[Warning] - ", test, " test does not exist"
+proc isJoinableSpec(spec: TSpec): bool =
+  result = not spec.sortoutput and
+    spec.action == actionRun and
+    not fileExists(spec.file.changeFileExt("cfg")) and
+    not fileExists(spec.file.changeFileExt("nims")) and
+    not fileExists(parentDir(spec.file) / "nim.cfg") and
+    not fileExists(parentDir(spec.file) / "config.nims") and
+    spec.cmd.len == 0 and
+    spec.err != reDisabled and
+    not spec.unjoinable and
+    spec.exitCode == 0 and
+    spec.input.len == 0 and
+    spec.nimout.len == 0 and
+    spec.outputCheck != ocSubstr and
+    spec.ccodeCheck.len == 0 and
+    (spec.targets == {} or spec.targets == {targetC})
 
-proc processCategory(r: var TResults, cat: Category, options: string) =
+proc norm(s: var string) =
+  while true:
+    let tmp = s.replace("\n\n", "\n")
+    if tmp == s: break
+    s = tmp
+  s = s.strip
+
+proc isTestFile*(file: string): bool =
+  let (dir, name, ext) = splitFile(file)
+  result = ext == ".nim" and name.startsWith("t")
+
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
+  ## returs a list of tests that have problems
+  var specs: seq[TSpec] = @[]
+  for kind, dir in walkDir(testsDir):
+    assert testsDir.startsWith(testsDir)
+    let cat = dir[testsDir.len .. ^1]
+    if kind == pcDir and cat notin specialCategories:
+      for file in walkDirRec(testsDir / cat):
+        if not isTestFile(file): continue
+        let spec = parseSpec(file)
+        if isJoinableSpec(spec):
+          specs.add spec
+
+  echo "joinable specs: ", specs.len
+
+  if simulate:
+    var s = "runJoinedTest: "
+    for a in specs: s.add a.file & " "
+    echo s
+    return
+
+  var megatest: string
+  for runSpec in specs:
+    megatest.add "import r\""
+    megatest.add runSpec.file
+    megatest.add "\"\n"
+
+  writeFile("megatest.nim", megatest)
+
+  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
+  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  if exitCode != 0:
+    echo buf
+    quit("megatest compilation failed")
+
+  (buf, exitCode) = execCmdEx("./megatest")
+  if exitCode != 0:
+    echo buf
+    quit("megatest execution failed")
+
+  norm buf
+  writeFile("outputGotten.txt", buf)
+  var outputExpected = ""
+  for i, runSpec in specs:
+    outputExpected.add runSpec.output.strip
+    outputExpected.add '\n'
+  norm outputExpected
+
+  if buf != outputExpected:
+    writeFile("outputExpected.txt", outputExpected)
+    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+    echo "output different!"
+    quit 1
+  else:
+    echo "output OK"
+    removeFile("outputGotten.txt")
+    removeFile("megatest.nim")
+  #testSpec r, makeTest("megatest", options, cat)
+
+# ---------------------------------------------------------------------------
+
+proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
+                     runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
     when false:
@@ -512,8 +663,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "async":
     asyncTests r, cat, options
   of "lib":
-    testStdlib(r, "lib/pure/*.nim", options, cat)
-    testStdlib(r, "lib/packages/docutils/highlite", options, cat)
+    testStdlib(r, "lib/pure/", options, cat)
+    testStdlib(r, "lib/packages/docutils/", options, cat)
   of "examples":
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
@@ -529,10 +680,23 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
+  of "megatest":
+    runJoinedTest(r, cat, testsDir)
   else:
     var testsRun = 0
-    for name in os.walkFiles("tests" & DirSep &.? cat.string / "t*.nim"):
-      testSpec r, makeTest(name, options, cat)
+
+    var files: seq[string]
+    for file in walkDirRec("tests" & DirSep &.? cat.string):
+        if isTestFile(file): files.add file
+    files.sort # give reproducible order
+
+    for i, name in files:
+      var test = makeTest(name, options, cat)
+      if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
+        discard "run the test"
+      else:
+        test.spec.err = reJoined
+      testSpec r, test
       inc testsRun
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"

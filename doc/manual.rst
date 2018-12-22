@@ -285,6 +285,11 @@ contain the following `escape sequences`:idx:\ :
   ``\e``                   `escape`:idx: `[ESC]`:idx:
   ``\x`` HH                `character with hex value HH`:idx:;
                            exactly two hex digits are allowed
+  ``\u`` HHHH              `unicode codepoint with hex value HHHH`:idx:;
+                           exactly four hex digits are allowed
+  ``\u`` {H+}              `unicode codepoint`:idx:;
+                           all hex digits enclosed in ``{}`` are used for
+                           the codepoint
 ==================         ===================================================
 
 
@@ -508,6 +513,9 @@ are used for other notational purposes.
 
 ``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
+
+The ``not`` keyword is always a unary operator, ``a not b`` is parsed
+as ``a(not b)``, not as ``(a) not (b)``.
 
 
 Other tokens
@@ -1224,6 +1232,37 @@ so that the builtin ``echo`` proc does what is expected:
 
   echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
+
+
+Unchecked arrays
+----------------
+The ``UncheckedArray[T]`` type is a special kind of ``array`` where its bounds
+are not checked. This is often useful to implement customized flexibly sized
+arrays. Additionally an unchecked array is translated into a C array of
+undetermined size:
+
+.. code-block:: nim
+  type
+    MySeq = object
+      len, cap: int
+      data: UncheckedArray[int]
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
+
 
 
 Tuples and object types
@@ -2344,7 +2383,8 @@ Automatic self insertions
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
 or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
-statement pragma. This pragma is active for the rest of the module:
+statement pragma (instead of ``self`` any other identifier can be used too).
+This pragma is active for the rest of the module:
 
 .. code-block:: nim
   type
@@ -2358,10 +2398,6 @@ statement pragma. This pragma is active for the rest of the module:
     result = parentField + childField
     # is rewritten to:
     # result = self.parentField + self.childField
-
-Instead of ``self`` any other identifier can be used too, but
-``{.this: self.}`` will become the default directive for the whole language
-eventually.
 
 In addition to fields, routine applications are also rewritten, but only
 if no other interpretation of the call is possible:
@@ -6719,6 +6755,16 @@ routines marked as ``noSideEffect``.
   func `+` (x, y: int): int
 
 
+To override the compiler's side effect analysis a ``{.noSideEffect.}``
+pragma block can be used:
+
+.. code-block:: nim
+
+  func f() =
+    {.noSideEffect.}:
+      echo "test"
+
+
 compileTime pragma
 ------------------
 The ``compileTime`` pragma is used to mark a proc or variable to be used at
@@ -7319,6 +7365,17 @@ Example:
 
   embedsC()
 
+``nimbase.h`` defines ``NIM_EXTERNC`` C macro that can be used for
+``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, eg:
+
+.. code-block:: Nim
+  proc foobar() {.importc:"$1".}
+  {.emit: """
+  #include <stdio.h>
+  NIM_EXTERNC
+  void fun(){}
+  """.}
+
 For backwards compatibility, if the argument to the ``emit`` statement
 is a single string literal, Nim symbols can be referred to via backticks.
 This usage is however deprecated.
@@ -7891,36 +7948,6 @@ defined, and it should not be used with GC'ed memory (ref's).
 
 **Future directions**: Using GC'ed memory in packed pragma will result in
 compile-time error. Usage with inheritance should be defined and documented.
-
-Unchecked pragma
-----------------
-The ``unchecked`` pragma can be used to mark a named array as ``unchecked``
-meaning its bounds are not checked. This is often useful to
-implement customized flexibly sized arrays. Additionally an unchecked array is
-translated into a C array of undetermined size:
-
-.. code-block:: nim
-  type
-    ArrayPart{.unchecked.} = array[0, int]
-    MySeq = object
-      len, cap: int
-      data: ArrayPart
-
-Produces roughly this C code:
-
-.. code-block:: C
-  typedef struct {
-    NI len;
-    NI cap;
-    NI data[];
-  } MySeq;
-
-The base type of the unchecked array may not contain any GC'ed memory but this
-is currently not checked.
-
-**Future directions**: GC'ed memory should be allowed in unchecked arrays and
-there should be an explicit annotation of how the GC is to determine the
-runtime size of the array.
 
 
 Dynlib pragma for import

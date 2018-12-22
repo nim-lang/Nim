@@ -1,8 +1,9 @@
 discard """
-  file: "tmacrogenerics.nim"
-  msg: '''
-instantiation 1 with typedesc and typedesc
-counter: 1
+  nimout: '''
+instantiation 1 with None and None
+instantiation 2 with None and None
+instantiation 3 with None and None
+counter: 3
 '''
   output: "int\nfloat\nint\nstring"
 """

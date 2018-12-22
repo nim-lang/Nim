@@ -105,7 +105,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
       elif errorsEnabled or z.diagnosticsEnabled:
-        errors.safeAdd(CandidateError(
+        errors.add(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
@@ -138,6 +138,7 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
+  let n = if n.kind == nkHiddenDeref: n[0] else: n
   if n.kind == nkHiddenCallConv and n.len > 1:
     result = $n[0] & "(" & result & ")"
   elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
@@ -166,20 +167,22 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
-  when false:
-    # we pretend procs are attached to the type of the first
-    # argument in order to remove plenty of candidates. This is
-    # comparable to what C# does and C# is doing fine.
-    var filterOnlyFirst = false
+  # we pretend procs are attached to the type of the first
+  # argument in order to remove plenty of candidates. This is
+  # comparable to what C# does and C# is doing fine.
+  var filterOnlyFirst = false
+  if optShowAllMismatches notin c.config.globalOptions:
     for err in errors:
       if err.firstMismatch > 1:
         filterOnlyFirst = true
         break
 
   var candidates = ""
+  var skipped = 0
   for err in errors:
-    when false:
-      if filterOnlyFirst and err.firstMismatch == 1: continue
+    if filterOnlyFirst and err.firstMismatch == 1:
+      inc skipped
+      continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -216,7 +219,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                       "' is immutable\n")
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
-
+  if skipped > 0:
+    candidates.add($skipped & " other mismatching symbols have been " &
+        " suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const
@@ -390,6 +395,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
+  let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:
     let s = a.sons[0].sym
     if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
@@ -450,7 +456,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
-  styleCheckUse(n.sons[0].info, finalCallee)
+  onUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
@@ -558,14 +564,17 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   markUsed(c.config, n.info, s, c.graph.usageSym)
-  styleCheckUse(n.info, s)
+  onUse(n.info, s)
   result = newSymNode(newInst, n.info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
     let e = semExpr(c, n.sons[i])
-    n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
+    if e.typ == nil:
+      localError(c.config, e.info, "expression has no type")
+    else:
+      n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s
   var a = n.sons[0]
   if a.kind == nkSym:

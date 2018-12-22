@@ -52,7 +52,17 @@ proc execCleanPath*(cmd: string,
   putEnv("PATH", prevPath)
 
 proc nimexec*(cmd: string) =
+  # Consider using `nimCompile` instead
   exec findNim() & " " & cmd
+
+proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
+  # TODO: simplify pending https://github.com/nim-lang/Nim/issues/9513
+  var cmd = findNim() & " " & mode
+  let output = outputDir / input.splitFile.name.exe
+  cmd.add " -o:" & output
+  cmd.add " " & options
+  cmd.add " " & input
+  exec cmd
 
 const
   pdf = """
@@ -60,6 +70,7 @@ doc/manual.rst
 doc/lib.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
@@ -72,6 +83,7 @@ doc/lib.rst
 doc/manual.rst
 doc/tut1.rst
 doc/tut2.rst
+doc/tut3.rst
 doc/nimc.rst
 doc/overview.rst
 doc/filters.rst
@@ -95,7 +107,7 @@ doc/manual/var_t_return.rst
   doc = """
 lib/system.nim
 lib/system/nimscript.nim
-lib/pure/ospaths.nim
+lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim
 lib/core/macros.nim
@@ -115,7 +127,9 @@ lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
 lib/pure/matchers.nim
-lib/pure/editdistance.nim
+lib/std/editdistance.nim
+lib/std/wordwrap.nim
+lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim
 lib/windows/winlean.nim

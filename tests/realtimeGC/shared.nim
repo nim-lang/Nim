@@ -1,5 +1,6 @@
 discard """
-  cmd: "nim $target --debuginfo --hints:on --app:lib $options $file"
+cmd: "nim $target --debuginfo --hints:on --app:lib $options $file"
+action: compile
 """
 
 import strutils

@@ -76,7 +76,6 @@ type
     res: PPGresult     ## used to get a row's
     line: int          ## column text on demand
   SqlPrepared* = distinct string ## a identifier for the prepared queries
-{.deprecated: [TRow: Row, TDbConn: DbConn, TSqlPrepared: SqlPrepared].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.

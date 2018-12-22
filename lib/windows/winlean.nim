@@ -22,10 +22,8 @@ const
 
 when useWinUnicode:
   type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
 else:
   type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -95,10 +93,6 @@ type
     dwBuildNumber*: DWORD
     dwPlatformId*: DWORD
     szCSDVersion*: array[0..127, WinChar]
-
-{.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
-    TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
-    TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
 
 const
   STARTF_USESHOWWINDOW* = 1'i32
@@ -327,7 +321,6 @@ type
     dwReserved1: int32
     cFileName*: array[0..(MAX_PATH) - 1, WinChar]
     cAlternateFileName*: array[0..13, WinChar]
-{.deprecated: [TWIN32_FIND_DATA: WIN32_FIND_DATA].}
 
 when useWinUnicode:
   proc findFirstFileW*(lpFileName: WideCString,
@@ -453,7 +446,6 @@ proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
   SocketHandle* = distinct int
-{.deprecated: [TSocketHandle: SocketHandle].}
 
 type
   WSAData* {.importc: "WSADATA", header: "winsock2.h".} = object
@@ -524,9 +516,6 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  Timeval* = object
-    tv_sec*, tv_usec*: int32
-
   AddrInfo* = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
@@ -538,12 +527,15 @@ type
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
   SockLen* = cuint
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    TWSADATA: WSADATA, Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, Tin6_addr: In6_addr, Tsockaddr_in6: Sockaddr_in6,
-    Tsockaddr_in6_old: Sockaddr_in6_old].}
 
+when defined(cpp):
+  type
+    Timeval* {.importc: "timeval", header: "<time.h>".} = object
+      tv_sec*, tv_usec*: int32
+else:
+  type
+    Timeval* = object
+      tv_sec*, tv_usec*: int32
 
 var
   SOMAXCONN* {.importc, header: "winsock2.h".}: cint
@@ -668,7 +660,6 @@ const
 type
   WOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, Handle]
   PWOHandleArray* = ptr WOHandleArray
-{.deprecated: [TWOHandleArray: WOHandleArray].}
 
 proc waitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
                              bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
@@ -798,7 +789,6 @@ type
     D2*: int16
     D3*: int16
     D4*: array[0..7, int8]
-{.deprecated: [TOVERLAPPED: OVERLAPPED, TGUID: GUID].}
 
 const
   ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
@@ -1101,7 +1091,7 @@ proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynl
 proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
+proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =
   ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.

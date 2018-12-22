@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
@@ -241,7 +239,6 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of OK: fgGreen
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
-                    else: fgWhite
         styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()

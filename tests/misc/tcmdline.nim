@@ -1,3 +1,7 @@
+discard """
+outputsub: "Number of parameters: 0"
+joinable: false
+"""
 # Test the command line
 
 import

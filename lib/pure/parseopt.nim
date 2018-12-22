@@ -44,9 +44,9 @@ type
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
-    cmd*: string              #  cmd,pos exported so caller can catch "--" as..
     pos*: int                 # ..empty key or subcmd cmdArg & handle specially
     inShortState: bool
+    allowWhitespaceAfterColon: bool
     shortNoVal: set[char]
     longNoVal: seq[string]
     cmds: seq[string]
@@ -95,7 +95,8 @@ when declared(os.paramCount):
   # access the command line arguments then!
 
   proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
-                      longNoVal: seq[string] = @[]): OptParser =
+                      longNoVal: seq[string] = @[];
+                      allowWhitespaceAfterColon = true): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.  If ``shortNoVal`` is
     ## provided command users do not need to delimit short option keys and
@@ -108,23 +109,21 @@ when declared(os.paramCount):
     result.inShortState = false
     result.shortNoVal = shortNoVal
     result.longNoVal = longNoVal
+    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
     if cmdline != "":
-      result.cmd = cmdline
       result.cmds = parseCmdLine(cmdline)
     else:
-      result.cmd = ""
       result.cmds = newSeq[string](paramCount())
       for i in countup(1, paramCount()):
         result.cmds[i-1] = paramStr(i).string
-        result.cmd.add quote(result.cmds[i-1])
-        result.cmd.add ' '
 
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
 
   proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
-                      longNoVal: seq[string] = @[]): OptParser =
+                      longNoVal: seq[string] = @[];
+                      allowWhitespaceAfterColon = true): OptParser =
     ## inits the option parser. If ``cmdline.len == 0``, the real command line
     ## (as provided by the ``OS`` module) is taken. ``shortNoVal`` and
     ## ``longNoVal`` behavior is the same as for ``initOptParser(string,...)``.
@@ -133,19 +132,15 @@ when declared(os.paramCount):
     result.inShortState = false
     result.shortNoVal = shortNoVal
     result.longNoVal = longNoVal
-    result.cmd = ""
+    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
     if cmdline.len != 0:
       result.cmds = newSeq[string](cmdline.len)
       for i in 0..<cmdline.len:
         result.cmds[i] = cmdline[i].string
-        result.cmd.add quote(cmdline[i].string)
-        result.cmd.add ' '
     else:
       result.cmds = newSeq[string](paramCount())
       for i in countup(1, paramCount()):
         result.cmds[i-1] = paramStr(i).string
-        result.cmd.add quote(result.cmds[i-1])
-        result.cmd.add ' '
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
@@ -210,7 +205,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
-        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
         p.val = TaintedString p.cmds[p.idx].substr(i)
@@ -238,6 +233,11 @@ when declared(os.paramCount):
       if i > p.idx: res.add ' '
       res.add quote(p.cmds[i])
     result = res.TaintedString
+
+  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+    ## retrieves the rest of the command line that has not been parsed yet.
+    result = @[]
+    for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
 
 iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
   ## This is an convenience iterator for iterating over the given OptParser object.

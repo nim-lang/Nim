@@ -16,12 +16,15 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, pluginsupport, plugins/active, rod, lineinfos
 
-from modulegraphs import ModuleGraph, PPassContext
+from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
 when defined(nimfix):
   import nimfix/prettybase
+
+when not defined(leanCompiler):
+  import semparallel
 
 # implementation
 
@@ -201,14 +204,15 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
-    if result.kind != kind:
+    if result.kind notin {kind, skTemp}:
       localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
-    if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
-      # declarative context, so produce a fresh gensym:
-      result = copySym(result)
-      result.ast = n.sym.ast
-      put(c.p, n.sym, result)
+    when false:
+      if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
+        # declarative context, so produce a fresh gensym:
+        result = copySym(result)
+        result.ast = n.sym.ast
+        put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
@@ -447,7 +451,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   markUsed(c.config, n.info, sym, c.graph.usageSym)
-  styleCheckUse(n.info, sym)
+  onUse(n.info, sym)
   if sym == c.p.owner:
     globalError(c.config, n.info, "recursive dependency: '$1'" % sym.name.s)
 
@@ -583,7 +587,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  result = transformStmt(c.graph, c.module, result)
+  trackTopLevelStmt(c.graph, c.module, result)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

@@ -32,7 +32,7 @@ proc listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   builtin
 
-proc removeDir(dir: string){.
+proc removeDir(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -143,6 +143,7 @@ proc existsDir*(dir: string): bool =
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
+  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
@@ -282,7 +283,9 @@ proc projectPath*(): string =
   builtin
 
 proc thisDir*(): string =
-  ## Retrieves the location of the current ``nims`` script file.
+  ## Retrieves the directory of the current ``nims`` script file. Its path is
+  ## obtained via ``currentSourcePath`` (although, currently,
+  ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
   builtin
 
 proc cd*(dir: string) {.raises: [OSError].} =

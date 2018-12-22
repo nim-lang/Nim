@@ -1,5 +1,5 @@
 discard """
-  msg: '''initApple
+  nimout: '''initApple
 deinitApple
 Coral
 enum

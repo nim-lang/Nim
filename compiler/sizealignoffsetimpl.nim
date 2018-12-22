@@ -1,3 +1,12 @@
+#
+#
+#           The Nim Compiler
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+## code owner: Arne Döring
+## e-mail: arne.doering@gmx.net
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
@@ -43,6 +52,7 @@ proc computeSubObjectAlign(conf: ConfigRef; n: PNode): BiggestInt =
 proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
+  assert n != nil
   if n.typ != nil and n.typ.size == szIllegalRecursion:
     result.offset = szIllegalRecursion
     result.align  = szIllegalRecursion
@@ -118,11 +128,16 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOffset: 
       result.offset = align(offset, result.align)
 
   of nkSym:
-    computeSizeAlign(conf, n.sym.typ)
-    let size = n.sym.typ.size
-    let align = n.sym.typ.align
+    var size = szUnknownSize
+    var align = szUnknownSize
+
+    if n.sym.bitsize == 0: # 0 represents bitsize not set
+      computeSizeAlign(conf, n.sym.typ)
+      size = n.sym.typ.size.int
+      align = n.sym.typ.align.int
+
     result.align = align
-    if initialOffset == szUnknownSize:
+    if initialOffset == szUnknownSize or size == szUnknownSize:
       n.sym.offset = szUnknownSize
       result.offset = szUnknownSize
     else:
@@ -163,7 +178,7 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
 
 proc computeSizeAlign(conf: ConfigRef; typ: PType) =
   ## computes and sets ``size`` and ``align`` members of ``typ``
-
+  assert typ != nil
   let hasSize = typ.size != szUncomputedSize
   let hasAlign = typ.align != szUncomputedSize
 
@@ -206,7 +221,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     typ.align = int16(conf.target.ptrSize)
 
   of tyString:
-    if tfHasAsgn in typ.flags:
+    if conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
@@ -223,13 +238,13 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     # recursive tuplers are not allowed and should be detected in the frontend
     if base.kind == tyTuple:
       computeSizeAlign(conf, base)
-      if base.size == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
+      if base.size < 0:
+        typ.size = base.size
+        typ.align = base.align
         return
 
     typ.align = int16(conf.target.ptrSize)
-    if typ.kind == tySequence and tfHasAsgn in typ.flags:
+    if typ.kind == tySequence and conf.selectedGC == gcDestructors:
       typ.size = conf.target.ptrSize * 2
     else:
       typ.size = conf.target.ptrSize
@@ -296,9 +311,9 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     for i in countup(0, sonsLen(typ) - 1):
       let child = typ.sons[i]
       computeSizeAlign(conf, child)
-      if child.size == szIllegalRecursion:
-        typ.size = szIllegalRecursion
-        typ.align = szIllegalRecursion
+      if child.size < 0:
+        typ.size = child.size
+        typ.align = child.align
         return
       maxAlign = max(maxAlign, child.align)
       sizeAccum = align(sizeAccum, child.align) + child.size
@@ -309,16 +324,24 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     var headerAlign: int16
     if typ.sons[0] != nil:
       # compute header size
-      var st = typ.sons[0]
-      while st.kind in skipPtrs:
-        st = st.sons[^1]
-      computeSizeAlign(conf, st)
-      if st.size == szIllegalRecursion:
-        typ.size = st.size
-        typ.align = st.align
-        return
-      headerSize = st.size
-      headerAlign = st.align
+
+      if conf.cmd == cmdCompileToCpp:
+        # if the target is C++ the members of this type are written
+        # into the padding byets at the end of the parent type. At the
+        # moment it is not supported to calculate that.
+        headerSize = szUnknownSize
+        headerAlign = szUncomputedSize
+      else:
+        var st = typ.sons[0]
+        while st.kind in skipPtrs:
+          st = st.sons[^1]
+        computeSizeAlign(conf, st)
+        if st.size == szIllegalRecursion:
+          typ.size = st.size
+          typ.align = st.align
+          return
+        headerSize = st.size
+        headerAlign = st.align
     elif isObjectWithTypeFieldPredicate(typ):
       # this branch is taken for RootObj
       headerSize = conf.target.intSize
@@ -357,7 +380,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
 
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
+  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink:
     computeSizeAlign(conf, typ.lastSon)
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align

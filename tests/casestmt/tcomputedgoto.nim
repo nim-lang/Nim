@@ -1,16 +1,22 @@
 discard """
   output: '''
 yeah A enumB
+uneven
 yeah A enumB
 yeah CD enumD
+uneven
 yeah CD enumE
 yeah A enumB
+uneven
 yeah CD enumE
 yeah CD enumD
+uneven
 yeah A enumB
 yeah B enumC
+uneven
 yeah A enumB
 yeah A enumB
+uneven
 yeah A enumB
 '''
 """
@@ -46,5 +52,8 @@ proc vm() =
       break
     of enumLast: discard
     inc(pc)
+
+    if pc mod 2 == 1:
+      echo "uneven"
 
 vm()

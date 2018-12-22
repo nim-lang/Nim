@@ -193,8 +193,6 @@ proc isImportedCppType(t: PType): bool =
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope
-proc needsComplexAssignment(typ: PType): bool =
-  result = containsGarbageCollectedRef(typ)
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
@@ -214,7 +212,7 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
-      result = needsComplexAssignment(t) or
+      result = containsGarbageCollectedRef(t) or
           (t.kind == tyObject and not isObjLackingTypeField(t))
     else: result = false
 
@@ -438,30 +436,25 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
   if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
-                        accessExpr: Rope, rectype: PType,
+                        rectype: PType,
                         check: var IntSet): Rope =
   result = nil
   case n.kind
   of nkRecList:
     for i in countup(0, sonsLen(n) - 1):
-      add(result, genRecordFieldsAux(m, n.sons[i], accessExpr, rectype, check))
+      add(result, genRecordFieldsAux(m, n.sons[i], rectype, check))
   of nkRecCase:
     if n.sons[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    add(result, genRecordFieldsAux(m, n.sons[0], accessExpr, rectype, check))
+    add(result, genRecordFieldsAux(m, n.sons[0], rectype, check))
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
-    let uname = rope("_U" & mangle(n.sons[0].sym.name.s))
-    let ae = if accessExpr != nil: "$1.$2" % [accessExpr, uname]
-             else: uname
     var unionBody: Rope = nil
     for i in countup(1, sonsLen(n) - 1):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
         let k = lastSon(n.sons[i])
         if k.kind != nkSym:
-          let sname = "S" & rope(i)
-          let a = genRecordFieldsAux(m, k, "$1.$2" % [ae, sname], rectype,
-                                     check)
+          let a = genRecordFieldsAux(m, k, rectype, check)
           if a != nil:
             if tfPacked notin rectype.flags:
               add(unionBody, "struct {")
@@ -471,28 +464,26 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               else:
                 addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
-            addf(unionBody, "} $1;$n", [sname])
+            addf(unionBody, "};$n", [])
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               addf(unionBody, "#pragma pack(pop)$n", [])
         else:
-          add(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
+          add(unionBody, genRecordFieldsAux(m, k, rectype, check))
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != nil:
-      addf(result, "union{$n$1} $2;$n", [unionBody, uname])
+      addf(result, "union{$n$1};$n", [unionBody])
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
-             else: sname
-    fillLoc(field.loc, locField, n, ae, OnUnknown)
+    fillLoc(field.loc, locField, n, sname, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
-      if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
+      if fieldType.kind == tyUncheckedArray:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
       elif fieldType.kind == tySequence and m.config.selectedGC != gcDestructors:
@@ -507,7 +498,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
-  result = genRecordFieldsAux(m, typ.n, nil, typ, check)
+  result = genRecordFieldsAux(m, typ.n, typ, check)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
@@ -546,12 +537,18 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
+          appcg(m, result, "~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
           # hack: forward declare popCurrentExceptionEx() on top of type description,
           # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
           # generated function will be below declared Exception type and circular dependency
           # between Exception and popCurrentExceptionEx function
-          result = genProcHeader(m, magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")) & ";" & result
+
+          let popExSym = magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")
+          if lfDynamicLib in popExSym.loc.flags and sfImportc in popExSym.flags:
+            #  echo popExSym.flags, " ma flags ", popExSym.loc.flags
+            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " & mangleName(m, popExSym) & ";\L" & result
+          else:
+            result = genProcHeader(m, popExSym) & ";\L" & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -1188,6 +1185,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let owner = t.skipTypes(typedescPtrs).owner.getModule
   if owner != m.module:
     # make sure the type info is created in the owner module
+    assert m.g.modules[owner.position] != nil
     discard genTypeInfo(m.g.modules[owner.position], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
@@ -1213,8 +1211,8 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       let x = fakeClosureType(m, t.owner)
       genTupleInfo(m, x, x, result, info)
   of tySequence:
+    genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC != gcDestructors:
-      genTypeInfoAux(m, t, t, result, info)
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])

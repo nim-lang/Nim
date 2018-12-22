@@ -22,7 +22,7 @@
     let time = cpuTime()
 
     sleep(100)   # replace this with something to be timed
-    echo "Time taken: ",cpuTime() - time
+    echo "Time taken: ", cpuTime() - time
 
     echo "My formatted time: ", format(now(), "d MMMM yyyy HH:mm")
     echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
@@ -122,12 +122,8 @@
   only for years in the range 1..9999).
 ]##
 
-
-{.push debugger:off.} # the user does not want to trace a part
-                      # of the standard library!
-
 import
-  strutils, parseutils, algorithm, math, options, strformat
+  strutils, algorithm, math, options, strformat
 
 include "system/inclrtl"
 
@@ -158,7 +154,9 @@ when defined(posix):
 
   type CTime = posix.Time
 
-  var CLOCK_REALTIME {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
+  var
+    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
+    cpuClockId {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: Clockid
 
   proc gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
@@ -298,14 +296,10 @@ type
   TimeIntervalParts* = array[TimeUnit, int] # Array of Duration parts starts
   TimesMutableTypes = DateTime | Time | Duration | TimeInterval
 
-{.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
-    TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
-
 const
   secondsInMin = 60
   secondsInHour = 60*60
   secondsInDay = 60*60*24
-  minutesInHour = 60
   rateDiff = 10000000'i64 # 100 nsecs
   # The number of hectonanoseconds between 1601/01/01 (windows epoch)
   # and 1970/01/01 (unix epoch).
@@ -748,8 +742,7 @@ proc abs*(a: Duration): Duration =
   initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
-  ## Converts a broken-down time structure to
-  ## calendar time representation.
+  ## Converts a ``DateTime`` to a ``Time`` representing the same point in time.
   let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
   seconds.inc dt.hour * secondsInHour
@@ -843,6 +836,11 @@ proc `$`*(zone: Timezone): string =
 
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two ``Timezone``'s are considered equal if their name is equal.
+  if system.`==`(zone1, zone2):
+    return true
+  if zone1.isNil or zone2.isNil:
+    return false
+
   runnableExamples:
     doAssert local() == local()
     doAssert local() != utc()
@@ -967,11 +965,13 @@ else:
           return ((0 - tm.toAdjUnix).int, false)
         return (0, false)
 
-    var a = unix.CTime
+    # In case of a 32-bit time_t, we fallback to the closest available
+    # timezone information.
+    var a = clamp(unix, low(CTime), high(CTime)).CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:
       let tm = tmPtr[]
-      return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
+      return ((a.int64 - tm.toAdjUnix).int, tm.isdst > 0)
     return (0, false)
 
   proc localZonedTimeFromTime(time: Time): ZonedTime =
@@ -1048,7 +1048,7 @@ proc local*(t: Time): DateTime =
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
-  ## Gets the current time as a ``Time`` with nanosecond resolution.
+  ## Gets the current time as a ``Time`` with up to nanosecond resolution.
   when defined(JS):
     let millis = newDate().getTime()
     let seconds = convert(Milliseconds, Seconds, millis)
@@ -1062,7 +1062,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     result = initTime(a.tv_sec.int64, convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
-    discard clock_gettime(CLOCK_REALTIME, ts)
+    discard clock_gettime(realTimeClockId, ts)
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
     var f: FILETIME
@@ -1142,16 +1142,16 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   result = ti1 + (-ti2)
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current date as a string of the format ``YYYY-MM-DD``.
-  var ti = now()
-  result = $ti.year & '-' & intToStr(ord(ti.month), 2) &
-    '-' & intToStr(ti.monthday, 2)
+  ## Gets the current local date as a string of the format ``YYYY-MM-DD``.
+  var dt = now()
+  result = $dt.year & '-' & intToStr(ord(dt.month), 2) &
+    '-' & intToStr(dt.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current clock time as a string of the format ``HH:MM:SS``.
-  var ti = now()
-  result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
-    ':' & intToStr(ti.second, 2)
+  ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
+  var dt = now()
+  result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
+    ':' & intToStr(dt.second, 2)
 
 proc toParts* (ti: TimeInterval): TimeIntervalParts =
   ## Converts a `TimeInterval` into an array consisting of its time units,
@@ -1383,7 +1383,6 @@ proc `==`*(a, b: DateTime): bool =
   ## Returns true if ``a == b``, that is if both dates represent the same point in time.
   return a.toTime == b.toTime
 
-
 proc isStaticInterval(interval: TimeInterval): bool =
   interval.years == 0 and interval.months == 0 and
     interval.days == 0 and interval.weeks == 0
@@ -1398,28 +1397,20 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
     hours = interval.hours)
 
 proc between*(startDt, endDt: DateTime): TimeInterval =
-  ## Evaluate difference between two dates in ``TimeInterval`` format, so, it
-  ## will be relative.
+  ## Gives the difference between ``startDt`` and ``endDt`` as a
+  ## ``TimeInterval``.
   ##
-  ## **Warning:** It's not recommended to use ``between`` for ``DateTime's`` in
-  ## different ``TimeZone's``.
-  ## ``a + between(a, b) == b`` is only guaranteed when ``a`` and ``b`` are in UTC.
+  ## **Warning:** This proc currently gives very few guarantees about the
+  ## result. ``a + between(a, b) == b`` is **not** true in general
+  ## (it's always true when UTC is used however). Neither is it guaranteed that
+  ## all components in the result will have the same sign. The behavior of this
+  ## proc might change in the future.
   runnableExamples:
-    var a = initDateTime(year = 2018, month = Month(3), monthday = 25,
-                     hour = 0, minute = 59, second = 59, nanosecond = 1,
-                     zone = utc()).local
-    var b = initDateTime(year = 2018, month = Month(3), monthday = 25,
-                     hour = 1, minute =  1, second =  1, nanosecond = 0,
-                     zone = utc()).local
-    doAssert between(a, b) == initTimeInterval(
-      nanoseconds=999, milliseconds=999, microseconds=999, seconds=1, minutes=1)
-
-    a = parse("2018-01-09T00:00:00+00:00", "yyyy-MM-dd'T'HH:mm:sszzz", utc())
-    b = parse("2018-01-10T23:00:00-02:00", "yyyy-MM-dd'T'HH:mm:sszzz")
-    doAssert between(a, b) == initTimeInterval(hours=1, days=2)
-    ## Though, here correct answer should be 1 day 25 hours (cause this day in
-    ## this tz is actually 26 hours). That's why operating different TZ is
-    ## discouraged
+    var a = initDateTime(25, mMar, 2015, 12, 0, 0, utc())
+    var b = initDateTime(1, mApr, 2017, 15, 0, 15, utc())
+    var ti = initTimeInterval(years = 2, days = 7, hours = 3, seconds = 15)
+    doAssert between(a, b) == ti
+    doAssert between(a, b) == -between(b, a)
 
   var startDt = startDt.utc()
   var endDt = endDt.utc()
@@ -1547,7 +1538,6 @@ proc `*=`*[T: TimesMutableTypes, U](a: var T, b: U) =
     var dur = initDuration(seconds = 1)
     dur *= 5
     doAssert dur == initDuration(seconds = 5)
-
   a = a * b
 
 #
@@ -1607,6 +1597,12 @@ type
       ## be encoded as ``@[Lit.byte, 3.byte, 'f'.byte, 'o'.byte, 'o'.byte]``.
     formatStr: string
 
+  TimeParseError* = object of ValueError ## \
+    ## Raised when parsing input using a ``TimeFormat`` fails.
+
+  TimeFormatParseError* = object of ValueError ## \
+    ## Raised when parsing a ``TimeFormat`` string fails.
+
 const FormatLiterals = { ' ', '-', '/', ':', '(', ')', '[', ']', ',' }
 
 proc `$`*(f: TimeFormat): string =
@@ -1617,8 +1613,33 @@ proc `$`*(f: TimeFormat): string =
   f.formatStr
 
 proc raiseParseException(f: TimeFormat, input: string, msg: string) =
-  raise newException(ValueError,
+  raise newException(TimeParseError,
                      &"Failed to parse '{input}' with format '{f}'. {msg}")
+
+proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
+              allowSign = false): int =
+  var sign = -1
+  var i = start
+  let stop = start + min(s.high - start + 1, maxLen) - 1
+  if allowSign and i <= stop:
+    if s[i] == '+':
+      inc(i)
+    elif s[i] == '-':
+      inc(i)
+      sign = 1
+  if i <= stop and s[i] in {'0'..'9'}:
+    b = 0
+    while i <= stop and s[i] in {'0'..'9'}:
+      let c = ord(s[i]) - ord('0')
+      if b >= (low(int) + c) div 10:
+        b = b * 10 - c
+      else:
+        return 0
+      inc(i)
+    if sign == -1 and b == low(int):
+      return 0
+    b = b * sign
+    result = i - start
 
 iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
   var i = 0
@@ -1644,7 +1665,7 @@ iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
           i.inc
 
         if i > f.high:
-          raise newException(ValueError,
+          raise newException(TimeFormatParseError,
                              &"Unclosed ' in time format string. " &
                              "For a literal ', use ''.")
         i.inc
@@ -1701,7 +1722,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "zzz": result = zzz
   of "zzzz": result = zzzz
   of "g": result = g
-  else: raise newException(ValueError, &"'{str}' is not a valid pattern")
+  else: raise newException(TimeFormatParseError,
+                           &"'{str}' is not a valid pattern")
 
 proc initTimeFormat*(format: string): TimeFormat =
   ## Construct a new time format for parsing & formatting time types.
@@ -1720,7 +1742,7 @@ proc initTimeFormat*(format: string): TimeFormat =
       else:
         result.patterns.add(FormatPattern.Lit.byte)
         if token.len > 255:
-          raise newException(ValueError,
+          raise newException(TimeFormatParseError,
                              "Format literal is to long:" & token)
         result.patterns.add(token.len.byte)
         for c in token:
@@ -1811,7 +1833,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
   of UUUU:
       result.add $dt.year
   of z, zz, zzz, zzzz:
-    if dt.timezone.name == "Etc/UTC":
+    if dt.timezone != nil and dt.timezone.name == "Etc/UTC":
       result.add 'Z'
     else:
       result.add  if -dt.utcOffset >= 0: '+' else: '-'
@@ -1838,15 +1860,10 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
 
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
                   parsed: var ParsedTime): bool =
-  template takeInt(allowedWidth: Slice[int]): int =
+  template takeInt(allowedWidth: Slice[int], allowSign = false): int =
     var sv: int
-    let max = i + allowedWidth.b - 1
-    var pd =
-      if max > input.high:
-        parseInt(input, sv, i)
-      else:
-        parseInt(input[i..max], sv)
-    if pd notin allowedWidth:
+    var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
+    if pd < allowedWidth.a:
       return false
     i.inc pd
     sv
@@ -1858,11 +1875,13 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
 
   case pattern
   of d:
-    parsed.monthday = some(takeInt(1..2))
-    result = parsed.monthday.get() in MonthdayRange
+    let monthday = takeInt(1..2)
+    parsed.monthday = some(monthday)
+    result = monthday in MonthdayRange
   of dd:
-    parsed.monthday = some(takeInt(2..2))
-    result = parsed.monthday.get() in MonthdayRange
+    let monthday = takeInt(2..2)
+    parsed.monthday = some(monthday)
+    result = monthday in MonthdayRange
   of ddd:
     result = input.substr(i, i+2).toLowerAscii() in [
       "sun", "mon", "tue", "wed", "thu", "fri", "sat"]
@@ -1998,7 +2017,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
   of yyyy:
     let year =
       if input[i] in { '+', '-' }:
-        takeInt(4..high(int))
+        takeInt(4..high(int), allowSign = true)
       else:
         takeInt(4..4)
     result = year > 0
@@ -2010,12 +2029,12 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
   of uuuu:
     let year =
       if input[i] in { '+', '-' }:
-        takeInt(4..high(int))
+        takeInt(4..high(int), allowSign = true)
       else:
         takeInt(4..4)
     parsed.year = some(year)
   of UUUU:
-    parsed.year = some(takeInt(1..high(int)))
+    parsed.year = some(takeInt(1..high(int), allowSign = true))
   of z, zz, zzz, zzzz:
     case input[i]
     of '+', '-':
@@ -2024,9 +2043,9 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       var offset = 0
       case pattern
       of z:
-        offset = takeInt(1..2) * -3600
+        offset = takeInt(1..2) * 3600
       of zz:
-        offset = takeInt(2..2) * -3600
+        offset = takeInt(2..2) * 3600
       of zzz:
         offset.inc takeInt(2..2) * 3600
         if input[i] != ':':
@@ -2060,9 +2079,8 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     else:
       result = false
   of y, yyy, yyyyy:
-    raise newException(ValueError,
-                      &"The pattern '{pattern}' is only valid for formatting")
-  of Lit: assert false # Can't happen
+    raiseAssert "Pattern is invalid for parsing: " & $pattern
+  of Lit: doAssert false, "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
@@ -2152,7 +2170,8 @@ proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
       formatPattern(dt, f.patterns[idx].FormatPattern, result = result)
       idx.inc
 
-proc format*(dt: DateTime, f: string): string =
+proc format*(dt: DateTime, f: string): string
+    {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format ``dt``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
@@ -2168,7 +2187,8 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: string, zone: Timezone = local()): string
+    {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
   ## ``time``. Will use the timezone specified by ``zone``.
   ##
@@ -2180,13 +2200,14 @@ proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: []
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
   time.inZone(zone).format(f)
 
-proc format*(time: Time, f: static[string],
-             zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: static[string], zone: Timezone = local()): string
+    {.raises: [].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
   result = time.inZone(zone).format(f2)
 
-proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime =
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
+    {.raises: [TimeParseError, Defect].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
@@ -2226,7 +2247,8 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime =
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, f: string, tz: Timezone = local()): DateTime =
+proc parse*(input, f: string, tz: Timezone = local()): DateTime
+    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
   ##
@@ -2238,12 +2260,14 @@ proc parse*(input, f: string, tz: Timezone = local()): DateTime =
   let dtFormat = initTimeFormat(f)
   result = input.parse(dtFormat, tz)
 
-proc parse*(input: string, f: static[string], zone: Timezone = local()): DateTime =
+proc parse*(input: string, f: static[string], zone: Timezone = local()): DateTime
+    {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone)
 
-proc parseTime*(input, f: string, zone: Timezone): Time =
+proc parseTime*(input, f: string, zone: Timezone): Time
+    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``, then converting it a ``Time``.
   ##
@@ -2254,7 +2278,8 @@ proc parseTime*(input, f: string, zone: Timezone): Time =
     doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", utc()) == fromUnix(0)
   parse(input, f, zone).toTime()
 
-proc parseTime*(input: string, f: static[string], zone: Timezone): Time =
+proc parseTime*(input: string, f: static[string], zone: Timezone): Time
+    {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``format`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()
@@ -2279,8 +2304,6 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
     let tm = dt.toTime()
     doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
   $time.local
-
-{.pop.}
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
@@ -2344,7 +2367,15 @@ when not defined(JS):
           fib.add(fib[^1] + fib[^2])
         echo "CPU time [s] ", cpuTime() - t0
         echo "Fib is [s] ", fib
-      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+      when defined(posix):
+        # 'clocksPerSec' is a compile-time constant, possibly a
+        # rather awful one, so use clock_gettime instead
+        var ts: Timespec
+        discard clock_gettime(cpuClockId, ts)
+        result = toFloat(ts.tv_sec.int) +
+          toFloat(ts.tv_nsec.int) / 1_000_000_000
+      else:
+        result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
     proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time after the UNIX epoch (1970) in seconds. It is a float

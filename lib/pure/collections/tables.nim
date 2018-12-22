@@ -125,8 +125,6 @@ type
     counter: int
   TableRef*[A,B] = ref Table[A, B]
 
-{.deprecated: [TTable: Table, PTable: TableRef].}
-
 template maxHash(t): untyped = high(t.data)
 template dataLen(t): untyped = len(t.data)
 
@@ -520,8 +518,6 @@ type
     counter, first, last: int
   OrderedTableRef*[A, B] = ref OrderedTable[A, B]
 
-{.deprecated: [TOrderedTable: OrderedTable, POrderedTable: OrderedTableRef].}
-
 proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## returns the number of keys in ``t``.
   result = t.counter
@@ -795,7 +791,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
   getOrDefault(t[], key)
 
 proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
-  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, 
+  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise,
   ## ``default`` is returned.
   getOrDefault(t[], key, default)
 
@@ -891,8 +887,6 @@ type
     data: seq[tuple[key: A, val: int]]
     counter: int
   CountTableRef*[A] = ref CountTable[A]
-
-{.deprecated: [TCountTable: CountTable, PCountTable: CountTableRef].}
 
 proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in ``t``.

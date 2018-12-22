@@ -92,7 +92,7 @@ defPacket(DsMsg, tuple[msg: string])
 let HVerifyClient* = 'v'
 defPacket(SdVerifyClient, tuple[session: ScLogin])
 
-when isMainModule:
+when true:
 
   var buf = newBuffer(100)
   var m = toMd5("hello there")

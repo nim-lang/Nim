@@ -83,8 +83,6 @@ when not defined(js):
   template `rawType=`(x: var Any, p: PNimType) =
     x.rawTypePtr = cast[pointer](p)
 
-{.deprecated: [TAny: Any, TAnyKind: AnyKind].}
-
 when defined(gogc):
   const GenericSeqSize = (3 * sizeof(int))
 else:
@@ -108,6 +106,7 @@ proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   of 1: d = ze(cast[ptr int8](a +% n.offset)[])
   of 2: d = ze(cast[ptr int16](a +% n.offset)[])
   of 4: d = int(cast[ptr int32](a +% n.offset)[])
+  of 8: d = int(cast[ptr int64](a +% n.offset)[])
   else: assert(false)
   return d
 

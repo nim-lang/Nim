@@ -11,18 +11,15 @@
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, fmod
+  floor, ceil, `mod`
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 
 template osop(op) {.dirty.} =
   registerCallback(c, "stdlib.os." & astToStr(op), `op Wrapper`)
-
-template ospathsop(op) {.dirty.} =
-  registerCallback(c, "stdlib.ospaths." & astToStr(op), `op Wrapper`)
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
@@ -105,12 +102,15 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
-  wrap2f_math(fmod)
+
+  proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
+  registerCallback(c, "stdlib.math.mod", `mod Wrapper`)
 
   when defined(nimcore):
-    wrap2s(getEnv, ospathsop)
-    wrap1s(existsEnv, ospathsop)
-    wrap2svoid(putEnv, ospathsop)
+    wrap2s(getEnv, osop)
+    wrap1s(existsEnv, osop)
+    wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
     wrap2svoid(writeFile, systemop)
@@ -120,3 +120,6 @@ proc registerAdditionalOps*(c: PCtx) =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     systemop gorgeEx
   macrosop getProjectPath
+
+  registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, getAppFilename())

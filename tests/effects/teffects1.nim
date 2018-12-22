@@ -1,6 +1,6 @@
 discard """
-  file: "system.nim"
   errormsg: "can raise an unlisted exception: ref IOError"
+  file: "system.nim"
 """
 
 type
@@ -17,4 +17,3 @@ proc lier(): int {.raises: [IO2Error].} =
 
 proc forw: int =
   raise newException(IOError, "arg")
-

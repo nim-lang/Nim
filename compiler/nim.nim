@@ -9,14 +9,14 @@
 
 when defined(gcc) and defined(windows):
   when defined(x86):
-    {.link: "icons/nim.res".}
+    {.link: "../icons/nim.res".}
   else:
-    {.link: "icons/nim_icon.o".}
+    {.link: "../icons/nim_icon.o".}
 
 when defined(amd64) and defined(windows) and defined(vcc):
-  {.link: "icons/nim-amd64-windows-vcc.res".}
+  {.link: "../icons/nim-amd64-windows-vcc.res".}
 when defined(i386) and defined(windows) and defined(vcc):
-  {.link: "icons/nim-i386-windows-vcc.res".}
+  {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
   commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
@@ -54,7 +54,8 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     of cmdArgument:
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
-    if optRun notin config.globalOptions and config.arguments.len > 0 and config.command.normalize != "run":
+    if {optRun, optWasNimscript} * config.globalOptions == {} and
+        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =

@@ -23,7 +23,7 @@
 ##
 ## SSL is supported through the OpenSSL library. This support can be activated
 ## by compiling with the ``-d:ssl`` switch. When an SSL socket is used it will
-## raise ESSL exceptions when SSL errors occur.
+## raise SslError exceptions when SSL errors occur.
 ##
 ## Asynchronous sockets are supported, however a better alternative is to use
 ## the `asyncio <asyncio.html>`_ module.
@@ -70,9 +70,6 @@ when defined(ssl):
     SSLAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
 
-  {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
-     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
-     TSSLAcceptResult: SSLAcceptResult].}
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
@@ -146,12 +143,6 @@ type
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
   TimeoutError* = object of Exception
-
-{.deprecated: [TSocket: Socket, TType: SockType, TPort: Port, TDomain: Domain,
-    TProtocol: Protocol, TServent: Servent, THostent: Hostent,
-    TSOBool: SOBool, TRecvLineResult: RecvLineResult,
-    TReadLineResult: ReadLineResult, ETimeout: TimeoutError,
-    TSocketImpl: SocketImpl].}
 
 when defined(booting):
   let invalidSocket*: Socket = nil ## invalid socket
@@ -228,7 +219,6 @@ when defined(Posix):
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
     of AF_INET6:       result = posix.AF_INET6
-    else: discard
 
   proc toInt(typ: SockType): cint =
     case typ
@@ -236,7 +226,6 @@ when defined(Posix):
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
     of SOCK_RAW:       result = posix.SOCK_RAW
-    else: discard
 
   proc toInt(p: Protocol): cint =
     case p
@@ -246,7 +235,6 @@ when defined(Posix):
     of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
     of IPPROTO_RAW:    result = posix.IPPROTO_RAW
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    else: discard
 
 else:
   proc toInt(domain: Domain): cint =
@@ -262,7 +250,7 @@ proc socket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
              protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket; returns `InvalidSocket` if an error occurs.
 
-  # TODO: Perhaps this should just raise EOS when an error occurs.
+  # TODO: Perhaps this should just raise OSError when an error occurs.
   when defined(Windows):
     result = newTSocket(winlean.socket(cint(domain), cint(typ), cint(protocol)), buffered)
   else:
@@ -422,7 +410,7 @@ proc parseIp4*(s: string): BiggestInt =
   ##
   ## This is equivalent to `inet_ntoa`:idx:.
   ##
-  ## Raises EInvalidValue in case of an error.
+  ## Raises ValueError in case of an error.
   var a, b, c, d: int
   var i = 0
   var j = parseInt(s, a, i)
@@ -543,7 +531,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string) {.
   ## If ``server`` is non-blocking then this function returns immediately, and
   ## if there are no connections queued the returned socket will be
   ## ``InvalidSocket``.
-  ## This function will raise EOS if an error occurs.
+  ## This function will raise OSError if an error occurs.
   ##
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
@@ -664,7 +652,7 @@ proc close*(socket: Socket) =
     discard winlean.closesocket(socket.fd)
   else:
     discard posix.close(socket.fd)
-  # TODO: These values should not be discarded. An EOS should be raised.
+  # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
   when defined(ssl):
     if socket.isSSL:
@@ -862,7 +850,6 @@ proc connect*(socket: Socket, address: string, port = Port(0),
       of AF_UNIX: s.sin_family = posix.AF_UNIX
       of AF_INET: s.sin_family = posix.AF_INET
       of AF_INET6: s.sin_family = posix.AF_INET6
-      else: nil
     if connect(socket.fd, cast[ptr TSockAddr](addr(s)), sizeof(s).cint) < 0'i32:
       OSError()
 
@@ -920,7 +907,7 @@ when defined(ssl):
     ## Returns ``False`` whenever the socket is not yet ready for a handshake,
     ## ``True`` whenever handshake completed successfully.
     ##
-    ## A ESSL error is raised on any other errors.
+    ## A SslError error is raised on any other errors.
     result = true
     if socket.isSSL:
       var ret = SSLConnect(socket.sslHandle)
@@ -946,7 +933,7 @@ when defined(ssl):
     ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
     ##
-    ## Throws ESSL if ``socket`` is not an SSL socket.
+    ## Throws SslError if ``socket`` is not an SSL socket.
     if socket.isSSL:
       return not socket.sslNoHandshake
     else:
@@ -1215,7 +1202,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1): int =
   ##
   ## When 0 is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs. A value
+  ## This function will throw an OSError exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
@@ -1273,7 +1260,7 @@ proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
   ## will be set to it.
   ##
   ## ``True`` is returned if data is available. ``False`` suggests an
-  ## error, EOS exceptions are not raised and ``False`` is simply returned
+  ## error, OSError exceptions are not raised and ``False`` is simply returned
   ## instead.
   ##
   ## If the socket is disconnected, ``line`` will be set to ``""`` and ``True``
@@ -1321,7 +1308,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
   ##
   ## If the socket is disconnected, ``line`` will be set to ``""``.
   ##
-  ## An EOS exception will be raised in the case of a socket error.
+  ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
@@ -1394,7 +1381,7 @@ proc readLineAsync*(socket: Socket,
   ##   * If some data has been retrieved; ``ReadPartialLine`` is returned.
   ##   * If the socket has been disconnected; ``ReadDisconnected`` is returned.
   ##   * If no data could be retrieved; ``ReadNone`` is returned.
-  ##   * If call to ``recv`` failed; **an EOS exception is raised.**
+  ##   * If call to ``recv`` failed; **an OSError exception is raised.**
   setLen(line.string, 0)
 
   template errorOrNone =
@@ -1421,7 +1408,7 @@ proc readLineAsync*(socket: Socket,
 
 proc recv*(socket: Socket): TaintedString {.tags: [ReadIOEffect], deprecated.} =
   ## receives all the available data from the socket.
-  ## Socket errors will result in an ``EOS`` error.
+  ## Socket errors will result in an ``OSError`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``""`` will be returned.
   ##
@@ -1470,7 +1457,7 @@ proc recvAsync*(socket: Socket, s: var TaintedString): bool {.
   tags: [ReadIOEffect], deprecated.} =
   ## receives all the data from a non-blocking socket. If socket is non-blocking
   ## and there are no messages available, `False` will be returned.
-  ## Other socket errors will result in an ``EOS`` error.
+  ## Other socket errors will result in an ``OSError`` error.
   ## If socket is not a connectionless socket and socket is not connected
   ## ``s`` will be set to ``""``.
   ##
@@ -1547,7 +1534,7 @@ proc recvFromAsync*(socket: Socket, data: var string, length: int,
                     address: var string, port: var Port,
                     flags = 0'i32): bool {.tags: [ReadIOEffect].} =
   ## Variant of ``recvFrom`` for non-blocking sockets. Unlike ``recvFrom``,
-  ## this function will raise an EOS error whenever a socket error occurs.
+  ## this function will raise an OSError error whenever a socket error occurs.
   ##
   ## If there is no data to be read from the socket ``False`` will be returned.
   result = true
@@ -1622,7 +1609,7 @@ proc sendAsync*(socket: Socket, data: string): int {.tags: [WriteIOEffect].} =
   ## returns the amount of bytes of ``data`` that was successfully sent. This
   ## number may not always be the length of ``data`` but typically is.
   ##
-  ## An EOS (or ESSL if socket is an SSL socket) exception is raised if an error
+  ## An OSError (or SslError if socket is an SSL socket) exception is raised if an error
   ## occurs.
   result = send(socket, cstring(data), data.len)
   when defined(ssl):
@@ -1656,7 +1643,7 @@ proc sendAsync*(socket: Socket, data: string): int {.tags: [WriteIOEffect].} =
 
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
-  ## safe alternative to ``send``. Does not raise an EOS when an error occurs,
+  ## safe alternative to ``send``. Does not raise an OSError when an error occurs,
   ## and instead returns ``false`` on failure.
   result = send(socket, cstring(data), data.len) == data.len
 

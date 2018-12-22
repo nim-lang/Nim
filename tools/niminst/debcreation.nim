@@ -84,7 +84,7 @@ proc createCopyright(pkgName, mtnName, mtnEmail, version: string,
     addN("Files: " & f)
     addN("License: " & license)
 
-proc formatDateTime(t: TimeInfo, timezone: string): string =
+proc formatDateTime(t: DateTime, timezone: string): string =
   var day = ($t.weekday)[0..2] & ", "
 
   return "$1$2 $3 $4 $5:$6:$7 $8" % [day, intToStr(t.monthday, 2),

@@ -1,9 +1,11 @@
 discard """
   output: '''
+tdistinct
 25
 '''
 """
 
+echo "tdistinct"
 
 block tborrowdot:
   type
@@ -17,8 +19,6 @@ block tborrowdot:
   new bb
   bb.a = 90
   bb.s = "abc"
-
-
 
 block tcurrncy:
   template Additive(typ: untyped) =
@@ -52,8 +52,6 @@ block tcurrncy:
   DefineCurrency(TDollar, int)
   DefineCurrency(TEuro, int)
   echo($( 12.TDollar + 13.TDollar )) #OUT 25
-
-
 
 block tconsts:
   # bug #2641

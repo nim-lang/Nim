@@ -45,15 +45,6 @@ type
 
   SomeLinkedNode*[T] = SinglyLinkedNode[T] | DoublyLinkedNode[T]
 
-{.deprecated: [TDoublyLinkedNode: DoublyLinkedNodeObj,
-    PDoublyLinkedNode: DoublyLinkedNode,
-    TSinglyLinkedNode: SinglyLinkedNodeObj,
-    PSinglyLinkedNode: SinglyLinkedNode,
-    TDoublyLinkedList: DoublyLinkedList,
-    TSinglyLinkedRing: SinglyLinkedRing,
-    TDoublyLinkedRing: DoublyLinkedRing,
-    TSinglyLinkedList: SinglyLinkedList].}
-
 proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   ## creates a new singly linked list that is empty.
   discard
@@ -149,11 +140,26 @@ proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
   ## exist, true otherwise.
   result = find(L, value) != nil
 
+proc append*[T](L: var SinglyLinkedList[T],
+                n: SinglyLinkedNode[T]) {.inline.} =
+  ## appends a node `n` to `L`. Efficiency: O(1).
+  n.next = nil
+  if L.tail != nil:
+    assert(L.tail.next == nil)
+    L.tail.next = n
+  L.tail = n
+  if L.head == nil: L.head = n
+
+proc append*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
+  ## appends a value to `L`. Efficiency: O(1).
+  append(L, newSinglyLinkedNode(value))
+
 proc prepend*[T](L: var SinglyLinkedList[T],
                  n: SinglyLinkedNode[T]) {.inline.} =
   ## prepends a node to `L`. Efficiency: O(1).
   n.next = L.head
   L.head = n
+  if L.tail == nil: L.tail = n
 
 proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
   ## prepends a node to `L`. Efficiency: O(1).

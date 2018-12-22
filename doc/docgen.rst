@@ -117,6 +117,7 @@ Output::
   {
     "orig": "docgen_sample.nim",
     "nimble": "",
+    "moduleDescription": "This module is a sample",
     "entries": [
       {
         "name": "helloWorld",

@@ -397,7 +397,7 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "opt", "sink",
-    "lent", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
+    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -406,7 +406,7 @@ const
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
-  tc.sons.safeAdd concrete
+  tc.sons.add concrete
   tc.flags.incl tfResolved
 
 # TODO: It would be a good idea to kill the special state of a resolved
@@ -528,7 +528,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
   of tyUncheckedArray:
-    result = "uncheckedArray[" & typeToString(t.sons[0]) & ']'
+    result = "UncheckedArray[" & typeToString(t.sons[0]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOpt:
@@ -1086,8 +1086,8 @@ proc inheritanceDiff*(a, b: PType): int =
   # | returns: +x iff `a` is the x'th direct subclass of `b`
   # | returns: `maxint` iff `a` and `b` are not compatible at all
   if a == b or a.kind == tyError or b.kind == tyError: return 0
-  assert a.kind == tyObject
-  assert b.kind == tyObject
+  assert a.kind in {tyObject} + skipPtrs
+  assert b.kind in {tyObject} + skipPtrs
   var x = a
   result = 0
   while x != nil:
@@ -1176,6 +1176,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst}: return t
+    elif t.kind == tyLent and kind != skResult: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar, tyLent:

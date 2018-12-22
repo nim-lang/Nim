@@ -133,16 +133,17 @@ const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-var unameRes, releaseRes: string ## we cache the result of the 'uname -a'
-                                 ## execution for faster platform detections.
+var unameRes, releaseRes, hostnamectlRes: string ## we cache the result of the 'uname -a'
+                                                 ## execution for faster platform detections.
 
 template unameRelease(cmd, cache): untyped =
   if cache.len == 0:
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -a", unameRes)
-template release(): untyped = unameRelease("lsb_release -a", releaseRes)
+template uname(): untyped = unameRelease("uname -o", unameRes)
+template release(): untyped = unameRelease("lsb_release -d", releaseRes)
+template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -172,7 +173,7 @@ proc detectOsImpl(d: Distribution): bool =
     result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the

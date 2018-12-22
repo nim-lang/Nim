@@ -1,7 +1,11 @@
 discard """
   output: '''1 [2, 3, 4, 7]
 [0, 0]'''
+  target: "c"
+  joinable: false
 """
+
+# don't join because the code is too messy.
 
 # Nim RTree and R*Tree implementation
 # S. Salewski, 06-JAN-2018
@@ -67,7 +71,7 @@ proc center(r: Box): auto =#BoxCenter[r.len, type(r[0].a)] =
   for i in 0 .. r.high:
     when r[0].a is SomeInteger:
       result[i] = (r[i].a + r[i].b) div 2
-    elif r[0].a is SomeReal:
+    elif r[0].a is SomeFloat:
       result[i] = (r[i].a + r[i].b) / 2
     else: assert false
   return result
@@ -81,13 +85,13 @@ proc distance(c1, c2: BoxCenter): auto =
 proc overlap(r1, r2: Box): auto =
   result = type(r1[0].a)(1)
   for i in 0 .. r1.high:
-    result *=  (min(r1[i]. b, r2[i]. b) - max(r1[i]. a, r2[i]. a))
+    result *= (min(r1[i].b, r2[i].b) - max(r1[i].a, r2[i].a))
     if result <= 0: return 0
 
 proc union(r1, r2: Box): Box =
   for i in 0 .. r1.high:
-    result[i]. a = min(r1[i]. a, r2[i]. a)
-    result[i]. b = max(r1[i]. b, r2[i]. b)
+    result[i].a = min(r1[i].a, r2[i].a)
+    result[i].b = max(r1[i].b, r2[i].b)
 
 proc intersect(r1, r2: Box): bool =
   for i in 0 .. r1.high:
@@ -98,12 +102,12 @@ proc intersect(r1, r2: Box): bool =
 proc area(r: Box): auto = #type(r[0].a) =
   result = type(r[0].a)(1)
   for i in 0 .. r.high:
-    result *= r[i]. b - r[i]. a
+    result *= r[i].b - r[i].a
 
 proc margin(r: Box): auto = #type(r[0].a) =
   result = type(r[0].a)(0)
   for i in 0 .. r.high:
-    result += r[i]. b - r[i]. a
+    result += r[i].b - r[i].a
 
 # how much enlargement does r1 need to include r2
 proc enlargement(r1, r2: Box): auto =
@@ -238,12 +242,12 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
   for d2 in 0 ..< 2 * D:
     let d = d2 div 2
     if d2 mod 2 == 0:
-      sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(x.b[d].a, y.b[d].a))
+      sortPlus(n.a, lx, proc (x, y: NL): int = cmp(x.b[d].a, y.b[d].a))
     else:
-      sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(x.b[d].b, y.b[d].b))
+      sortPlus(n.a, lx, proc (x, y: NL): int = cmp(x.b[d].b, y.b[d].b))
     for i in t.m - 1 .. n.a.high - t.m + 1:
       var b = lx.b
-      for j in 0 ..< i: # we can precalculate union() for range 0 .. t.m - 1, but that seems to give no real benefit. Maybe for very large M?
+      for j in 0 ..< i: # we can precalculate union() for range 0 .. t.m - 1, but that seems to give no real benefit.Maybe for very large M?
         #echo "x",j
         b = union(n.a[j].b, b)
       var m = margin(b)
@@ -278,7 +282,7 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
   for i in i0 .. n.a.high:
     result.a[i - i0] = nbest.a[i]
   n.numEntries = i0 + 1
-  result.numEntries = M  - i0
+  result.numEntries = M - i0
   when n is Node[M, D, RT, LT]:
     for i in 0 ..< result.numEntries:
       result.a[i].n.parent = result
@@ -302,7 +306,7 @@ proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D,
   else:
     n1.a[0] = n.a[s1]
     dec(n.numEntries)
-    if s2 ==  n.numEntries: # important fix
+    if s2 == n.numEntries: # important fix
       s2 = s1
     n.a[s1] = n.a[n.numEntries]
   inc(n1.numEntries)
@@ -446,7 +450,7 @@ proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, R
   while p.a[i].n != n:
     inc(i)
   let c = center(p.a[i].b)
-  sortPlus(n.a, lx, proc (x, y: NL):  int = cmp(distance(center(x.b), c), distance(center(y.b), c)))
+  sortPlus(n.a, lx, proc (x, y: NL): int = cmp(distance(center(x.b), c), distance(center(y.b), c)))
   n.numEntries = M - t.p
   swap(n.a[n.numEntries], lx)
   inc n.numEntries
@@ -588,70 +592,68 @@ proc delete*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: L[D, RT, LT]): boo
       t.root.parent = nil
     return true
 
-when isMainModule:
 
-  var t = [4, 1, 3, 2]
-  var xt = 7
-  sortPlus(t, xt, system.cmp, SortOrder.Ascending)
-  echo xt, " ", t
+var t = [4, 1, 3, 2]
+var xt = 7
+sortPlus(t, xt, system.cmp, SortOrder.Ascending)
+echo xt, " ", t
 
-  type
-    RSE = L[2, int, int]
-    RSeq = seq[RSE]
+type
+  RSE = L[2, int, int]
+  RSeq = seq[RSE]
 
-  proc rseq_search(rs: RSeq; rse: RSE): seq[int] =
-    result = newSeq[int]()
-    for i in rs:
-      if intersect(i.b, rse.b):
-        result.add(i.l)
+proc rseq_search(rs: RSeq; rse: RSE): seq[int] =
+  result = newSeq[int]()
+  for i in rs:
+    if intersect(i.b, rse.b):
+      result.add(i.l)
 
-  proc rseq_delete(rs: var RSeq; rse: RSE): bool =
-    for i in 0 .. rs.high:
-      if rs[i] == rse:
-        #rs.delete(i)
-        rs[i] = rs[rs.high]
-        rs.setLen(rs.len - 1)
-        return true
+proc rseq_delete(rs: var RSeq; rse: RSE): bool =
+  for i in 0 .. rs.high:
+    if rs[i] == rse:
+      #rs.delete(i)
+      rs[i] = rs[rs.high]
+      rs.setLen(rs.len - 1)
+      return true
 
-  import random, algorithm
+import random, algorithm
 
-  proc test(n: int) =
-    var b: Box[2, int]
-    echo center(b)
-    var x1, x2, y1, y2: int
-    var t = newRStarTree[8, 2, int, int]()
-    #var t = newRTree[8, 2, int, int]()
-    var rs = newSeq[RSE]()
-    for i in 0 .. 5:
-      for i in 0 .. n - 1:
-        x1 = rand(1000)
-        y1 = rand(1000)
-        x2 = x1 + rand(25)
-        y2 = y1 + rand(25)
-        b = [(x1, x2), (y1, y2)]
-        let el: L[2, int, int] = (b, i + 7)
-        t.insert(el)
-        rs.add(el)
+proc test(n: int) =
+  var b: Box[2, int]
+  echo center(b)
+  var x1, x2, y1, y2: int
+  var t = newRStarTree[8, 2, int, int]()
+  #var t = newRTree[8, 2, int, int]()
+  var rs = newSeq[RSE]()
+  for i in 0 .. 5:
+    for i in 0 .. n - 1:
+      x1 = rand(1000)
+      y1 = rand(1000)
+      x2 = x1 + rand(25)
+      y2 = y1 + rand(25)
+      b = [(x1, x2), (y1, y2)]
+      let el: L[2, int, int] = (b, i + 7)
+      t.insert(el)
+      rs.add(el)
 
-      for i in 0 .. (n div 4):
-        let j = rand(rs.high)
-        var el = rs[j]
-        assert t.delete(el)
-        assert rs.rseq_delete(el)
+    for i in 0 .. (n div 4):
+      let j = rand(rs.high)
+      var el = rs[j]
+      assert t.delete(el)
+      assert rs.rseq_delete(el)
 
-      for i in 0 .. n - 1:
-        x1 = rand(1000)
-        y1 = rand(1000)
-        x2 = x1 + rand(100)
-        y2 = y1 + rand(100)
-        b = [(x1, x2), (y1, y2)]
-        let el: L[2, int, int] = (b, i)
-        let r = search(t, b)
-        let r2 = rseq_search(rs, el)
-        assert r.len == r2.len
-        assert r.sorted(system.cmp) == r2.sorted(system.cmp)
+    for i in 0 .. n - 1:
+      x1 = rand(1000)
+      y1 = rand(1000)
+      x2 = x1 + rand(100)
+      y2 = y1 + rand(100)
+      b = [(x1, x2), (y1, y2)]
+      let el: L[2, int, int] = (b, i)
+      let r = search(t, b)
+      let r2 = rseq_search(rs, el)
+      assert r.len == r2.len
+      assert r.sorted(system.cmp) == r2.sorted(system.cmp)
 
-  test(5500)
+test(1500)
 
-  # 651 lines
-
+# 651 lines

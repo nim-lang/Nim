@@ -79,3 +79,17 @@ static:
   assert fooSym.kind in {nnkOpenSymChoice, nnkClosedSymChoice}
   assert    fooSym.eqIdent("fOO")
   assertNot fooSym.eqIdent("bar")
+
+  var empty: NimNode
+  var myLit = newLit("str")
+
+  assert( (empty or myLit) == myLit )
+
+  empty = newEmptyNode()
+
+  assert( (empty or myLit) == myLit )
+
+  proc bottom(): NimNode =
+    quit("may not be evaluated")
+
+  assert( (myLit or bottom()) == myLit )

@@ -105,6 +105,7 @@ else:
     osInvalidSocket* = posix.INVALID_SOCKET
     nativeAfInet = posix.AF_INET
     nativeAfInet6 = posix.AF_INET6
+    nativeAfUnix = posix.AF_UNIX
 
 proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
@@ -221,7 +222,7 @@ proc close*(socket: SocketHandle) =
     discard winlean.closesocket(socket)
   else:
     discard posix.close(socket)
-  # TODO: These values should not be discarded. An EOS should be raised.
+  # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr, namelen: SockLen): cint =
@@ -482,7 +483,17 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
         raiseOSError(osLastError())
     setLen(result, len(cstring(result)))
   else:
+    when defined(posix) and not defined(nimdoc):
+      if sockAddr.sa_family.cint == nativeAfUnix:
+        return "unix"
     raise newException(IOError, "Unknown socket family in getAddrString")
+
+when defined(posix) and not defined(nimdoc):
+  proc makeUnixAddr*(path: string): Sockaddr_un =
+    result.sun_family = AF_UNIX.uint16
+    if path.len >= Sockaddr_un_path_length:
+      raise newException(ValueError, "socket path too long")
+    copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
 proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
@@ -594,7 +605,7 @@ proc setSockOptInt*(socket: SocketHandle, level, optname, optval: int) {.
 proc setBlocking*(s: SocketHandle, blocking: bool) =
   ## Sets blocking mode on socket.
   ##
-  ## Raises EOS on error.
+  ## Raises OSError on error.
   when useWinVersion:
     var mode = clong(ord(not blocking)) # 1 for non-blocking, 0 for blocking
     if ioctlsocket(s, FIONBIO, addr(mode)) == -1:

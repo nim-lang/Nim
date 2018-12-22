@@ -1,6 +1,7 @@
 discard """
-  msg: "Warning: 'y' might not have been initialized [Uninit]"
+  nimout: "Warning: 'y' might not have been initialized [Uninit]"
   line:34
+  action: compile
 """
 
 import strutils

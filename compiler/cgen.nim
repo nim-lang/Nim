@@ -14,7 +14,12 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets, ndi, lineinfos, pathutils
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf
+
+import system/helpers2
+
+when not defined(leanCompiler):
+  import semparallel
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -42,8 +47,7 @@ when options.hasTinyCBackend:
 # implementation
 
 proc addForwardedProc(m: BModule, prc: PSym) =
-  m.forwardedProcs.add(prc)
-  inc(m.g.forwardedProcsCounter)
+  m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
@@ -292,10 +296,10 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
 
 type
   TAssignmentFlag = enum
-    needToCopy, afDestIsNil, afDestIsNotNil, afSrcIsNil, afSrcIsNotNil
+    needToCopy
   TAssignmentFlags = set[TAssignmentFlag]
 
-proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+proc genRefAssign(p: BProc, dest, src: TLoc)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst + tyUserTypeClasses)
@@ -311,7 +315,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
-      genRefAssign(p, loc, nilLoc, {afSrcIsNil})
+      genRefAssign(p, loc, nilLoc)
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
@@ -444,20 +448,21 @@ proc assignGlobalVar(p: BProc, n: PNode) =
     return
   useHeader(p.module, s)
   if lfNoDecl in s.loc.flags: return
-  if sfThread in s.flags:
-    declareThreadVar(p.module, s, sfImportc in s.flags)
-  else:
-    var decl: Rope = nil
-    var td = getTypeDesc(p.module, s.loc.t)
-    if s.constraint.isNil:
-      if sfImportc in s.flags: add(decl, "extern ")
-      add(decl, td)
-      if sfRegister in s.flags: add(decl, " register")
-      if sfVolatile in s.flags: add(decl, " volatile")
-      addf(decl, " $1;$n", [s.loc.r])
+  if not containsOrIncl(p.module.declaredThings, s.id):
+    if sfThread in s.flags:
+      declareThreadVar(p.module, s, sfImportc in s.flags)
     else:
-      decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
-    add(p.module.s[cfsVars], decl)
+      var decl: Rope = nil
+      var td = getTypeDesc(p.module, s.loc.t)
+      if s.constraint.isNil:
+        if sfImportc in s.flags: add(decl, "extern ")
+        add(decl, td)
+        if sfRegister in s.flags: add(decl, " register")
+        if sfVolatile in s.flags: add(decl, " volatile")
+        addf(decl, " $1;$n", [s.loc.r])
+      else:
+        decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
+      add(p.module.s[cfsVars], decl)
   if p.withinLoop > 0:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
@@ -845,6 +850,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
+  let procBody = transformBody(m.g.graph, prc, cache = false)
+
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(m.config, prc.info, "proc has no result symbol")
@@ -852,7 +859,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     let res = resNode.sym # get result symbol
     if not isInvalidReturnType(m.config, prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
-      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(prc.getBody); val != nil):
+      if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(procBody); val != nil):
         var decl = localVarDecl(p, resNode)
         var a: TLoc
         initLocExprSingleUse(p, val, a)
@@ -873,7 +880,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # global is either 'nil' or points to valid memory and so the RC operation
       # succeeds without touching not-initialized memory.
       if sfNoInit in prc.flags: discard
-      elif allPathsAsgnResult(prc.getBody) == InitSkippable: discard
+      elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
         resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
@@ -885,7 +892,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param)
   closureSetup(p, prc)
-  genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
+  genStmts(p, procBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
   if sfNoReturn in prc.flags:
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
@@ -1034,7 +1041,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
   let sym = n.sym
   useHeader(m, sym)
   fillLoc(sym.loc, locGlobalVar, n, mangleName(m, sym), OnHeap)
-  if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
+  if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
   if sym.owner.id != m.module.id:
     # else we already have the symbol generated!
@@ -1053,7 +1060,7 @@ proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
                "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
-  if conf.cppCustomNamespace.len > 0: 
+  if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
@@ -1388,7 +1395,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.preInitProc = newPreInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
-  result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
   # no line tracing for the init sections of the system module so that we
@@ -1403,49 +1409,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
     arr[i] = Rope(nil)
-
-proc resetModule*(m: BModule) =
-  # between two compilations in CAAS mode, we can throw
-  # away all the data that was written to disk
-  m.headerFiles = @[]
-  m.declaredProtos = initIntSet()
-  m.forwTypeCache = initTable[SigHash, Rope]()
-  m.initProc = newProc(nil, m)
-  m.initProc.options = initProcOptions(m)
-  m.preInitProc = newPreInitProc(m)
-  initNodeTable(m.dataCache)
-  m.typeStack = @[]
-  m.forwardedProcs = @[]
-  m.typeNodesName = getTempName(m)
-  m.nimTypesName = getTempName(m)
-  if sfSystemModule in m.module.flags:
-    incl m.flags, preventStackTrace
-  else:
-    excl m.flags, preventStackTrace
-  nullify m.s
-  m.typeNodes = 0
-  m.nimTypes = 0
-  nullify m.extensionLoaders
-
-  # indicate that this is now cached module
-  # the cache will be invalidated by nullifying gModules
-  #m.fromCache = true
-  m.g = nil
-
-  # we keep only the "merge info" information for the module
-  # and the properties that can't change:
-  # m.filename
-  # m.cfilename
-  # m.isHeaderFile
-  # m.module ?
-  # m.typeCache
-  # m.declaredThings
-  # m.typeInfoMarker
-  # m.labels
-  # m.FrameDeclared
-
-proc resetCgenModules*(g: BModuleList) =
-  for m in cgenModules(g): resetModule(m)
 
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
@@ -1522,27 +1485,14 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  genStmts(m.initProc, n)
-
-proc finishModule(m: BModule) =
-  var i = 0
-  while i <= high(m.forwardedProcs):
-    # Note: ``genProc`` may add to ``m.forwardedProcs``, so we cannot use
-    # a ``for`` loop here
-    var prc = m.forwardedProcs[i]
-    if sfForward in prc.flags:
-      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
-    genProcNoForward(m, prc)
-    inc(i)
-  assert(m.g.forwardedProcsCounter >= i)
-  dec(m.g.forwardedProcsCounter, i)
-  setLen(m.forwardedProcs, 0)
+  let tranformed_n = transformStmt(m.g.graph, m.module, n)
+  genStmts(m.initProc, tranformed_n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true
   if optForceFullMake notin m.config.globalOptions:
     if not equalsFile(code, cfile.cname):
-      if isDefined(m.config, "nimdiff"):
+      if m.config.symbolFiles == readOnlySf: #isDefined(m.config, "nimdiff"):
         if fileExists(cfile.cname):
           copyFile(cfile.cname.string, cfile.cname.string & ".backup")
           echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
@@ -1633,11 +1583,25 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.g, m.module)
 
   if sfMainModule in m.module.flags:
-    if m.g.forwardedProcsCounter == 0:
+    if m.g.forwardedProcs.len == 0:
       incl m.flags, objHasKidsValid
     let disp = generateMethodDispatchers(graph)
     for x in disp: genProcAux(m, x.sym)
     genMainProc(m)
+
+proc genForwardedProcs(g: BModuleList) =
+  # Forward declared proc:s lack bodies when first encountered, so they're given
+  # a second pass here
+  # Note: ``genProcNoForward`` may add to ``forwardedProcs``
+  while g.forwardedProcs.len > 0:
+    let
+      prc = g.forwardedProcs.pop()
+      ms = getModule(prc)
+      m = g.modules[ms.position]
+    if sfForward in prc.flags:
+      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
+
+    genProcNoForward(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
@@ -1648,10 +1612,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let (outDir, _, _) = splitFile(config.outfile)
   if not outDir.isEmpty:
     createDir(outDir)
-  if g.generatedHeader != nil: finishModule(g.generatedHeader)
-  while g.forwardedProcsCounter > 0:
-    for m in cgenModules(g):
-      finishModule(m)
+
+  genForwardedProcs(g)
+
   for m in cgenModules(g):
     m.writeModule(pending=true)
   writeMapping(config, g.mapping)

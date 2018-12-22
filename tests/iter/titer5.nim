@@ -1,5 +1,4 @@
 discard """
-  file: "titer5.nim"
   output: "abcxyz"
 """
 # Test method call syntax for iterators:
@@ -11,6 +10,4 @@ for x in lines.split():
   stdout.write(x)
 
 #OUT abcxyz
-
-
-
+stdout.write "\n"

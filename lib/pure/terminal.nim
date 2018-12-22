@@ -18,7 +18,7 @@
 
 import macros
 import strformat
-from strutils import toLowerAscii
+from strutils import toLowerAscii, `%`
 import colors, tables
 
 when defined(windows):
@@ -481,9 +481,6 @@ type
     styleHidden,         ## hidden text
     styleStrikethrough   ## strikethrough
 
-{.deprecated: [TStyle: Style].}
-{.deprecated: [styleUnknown: styleItalic].}
-
 when not defined(windows):
   var
     gFG {.threadvar.}: int
@@ -555,9 +552,6 @@ type
     bgWhite,               ## white
     bg8Bit,                ## 256-color (not supported, see ``enableTrueColors`` instead.)
     bgDefault              ## default terminal background color
-
-{.deprecated: [TForegroundColor: ForegroundColor,
-               TBackgroundColor: BackgroundColor].}
 
 when defined(windows):
   var defaultForegroundColor, defaultBackgroundColor: int16 = 0xFFFF'i16 # Default to an invalid value 0xFFFF
@@ -635,7 +629,8 @@ proc ansiForegroundColorCode*(color: Color): string =
 
 template ansiForegroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
-  (static(fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+  # no usage of `fmt`, see issue #7632
+  (static("$1$2;$3;$4m" % [$fgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
 proc ansiBackgroundColorCode*(color: Color): string =
   let rgb = extractRGB(color)
@@ -643,7 +638,8 @@ proc ansiBackgroundColorCode*(color: Color): string =
 
 template ansiBackgroundColorCode*(color: static[Color]): string =
   const rgb = extractRGB(color)
-  (static(fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+  # no usage of `fmt`, see issue #7632
+  (static("$1$2;$3;$4m" % [$bgPrefix, $(rgb.r), $(rgb.g), $(rgb.b)]))
 
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.

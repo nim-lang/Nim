@@ -1,6 +1,6 @@
 discard """
-  file: "tlenopenarray.nim"
-  output: '''1
+output: '''
+1
 0
 Whopie
 12

@@ -11,8 +11,9 @@ Advanced commands:
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
-                            module dependency graph
+                          module dependency graph
   //dump                    dump all defined conditionals and search paths
+                            see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
 Advanced options:
@@ -25,6 +26,13 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --styleCheck:off|hint|error
+                            produce hints or errors for Nim identifiers that
+                            do not adhere to Nim's official style guide
+                            https://nim-lang.org/docs/nep1.html
+  --showAllMismatches:on|off
+                            show all mismatching candidates in overloading
+                            resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
@@ -94,7 +102,9 @@ Advanced options:
   --listCmd                 list the commands used to execute external programs
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
+  --incremental:on|off      only recompile the changed modules (experimental!)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
+  --errorMax:N              stop compilation after N errors; 0 means unlimited
   --experimental:$1
                             enable experimental language feature
   -v, --version             show detailed version information

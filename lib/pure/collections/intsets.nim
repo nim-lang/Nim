@@ -9,9 +9,12 @@
 
 ## The ``intsets`` module implements an efficient int set implemented as a
 ## `sparse bit set`:idx:.
-## **Note**: Since Nim currently does not allow the assignment operator to
-## be overloaded, ``=`` for int sets performs some rather meaningless shallow
-## copy; use ``assign`` to get a deep copy.
+
+## **Note**: Currently the assignment operator ``=`` for ``intsets``
+## performs some rather meaningless shallow copy. Since Nim currently does
+## not allow the assignment operator to be overloaded, use ``assign`` to
+## get a deep copy.
+
 
 import
   hashes, math
@@ -43,8 +46,6 @@ type
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
-
-{.deprecated: [TIntSet: IntSet, TTrunk: Trunk, TTrunkSeq: TrunkSeq].}
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
@@ -96,7 +97,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc contains*(s: IntSet, key: int): bool =
-  ## returns true iff `key` is in `s`.
+  ## Returns true iff `key` is in `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key: return true
@@ -109,7 +110,7 @@ proc contains*(s: IntSet, key: int): bool =
       result = false
 
 iterator items*(s: IntSet): int {.inline.} =
-  ## iterates over any included element of `s`.
+  ## Iterates over any included element of `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       yield s.a[i]
@@ -137,7 +138,7 @@ proc bitincl(s: var IntSet, key: int) {.inline.} =
       `shl`(1, u and IntMask)
 
 proc incl*(s: var IntSet, key: int) =
-  ## includes an element `key` in `s`.
+  ## Includes an element `key` in `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key: return
@@ -172,7 +173,7 @@ proc exclImpl(s: var IntSet, key: int) =
           not `shl`(1, u and IntMask)
 
 proc excl*(s: var IntSet, key: int) =
-  ## excludes `key` from the set `s`.
+  ## Excludes `key` from the set `s`.
   exclImpl(s, key)
 
 proc excl*(s: var IntSet, other: IntSet) =
@@ -180,14 +181,14 @@ proc excl*(s: var IntSet, other: IntSet) =
   for item in other: excl(s, item)
 
 proc missingOrExcl*(s: var IntSet, key: int) : bool =
-  ## returns true if `s` does not contain `key`, otherwise
+  ## Returns true if `s` does not contain `key`, otherwise
   ## `key` is removed from `s` and false is returned.
   var count = s.elems
   exclImpl(s, key)
   result = count == s.elems
 
 proc containsOrIncl*(s: var IntSet, key: int): bool =
-  ## returns true if `s` contains `key`, otherwise `key` is included in `s`
+  ## Returns true if `s` contains `key`, otherwise `key` is included in `s`
   ## and false is returned.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
@@ -208,10 +209,14 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
       result = false
 
 proc initIntSet*: IntSet =
-  ## creates a new int set that is empty.
+  ## Returns an empty IntSet. Example:
+  ##
+  ## .. code-block ::
+  ##   var a = initIntSet()
+  ##   a.incl(2)
 
-  #newSeq(result.data, InitIntSetSize)
-  #result.max = InitIntSetSize-1
+  # newSeq(result.data, InitIntSetSize)
+  # result.max = InitIntSetSize-1
   when defined(nimNoNilSeqs):
     result.data = @[]
   else:
@@ -222,9 +227,11 @@ proc initIntSet*: IntSet =
   result.elems = 0
 
 proc clear*(result: var IntSet) =
-  #setLen(result.data, InitIntSetSize)
-  #for i in 0..InitIntSetSize-1: result.data[i] = nil
-  #result.max = InitIntSetSize-1
+  ## Clears the IntSet back to an empty state.
+
+  # setLen(result.data, InitIntSetSize)
+  # for i in 0..InitIntSetSize-1: result.data[i] = nil
+  # result.max = InitIntSetSize-1
   when defined(nimNoNilSeqs):
     result.data = @[]
   else:
@@ -306,7 +313,7 @@ proc `-`*(s1, s2: IntSet): IntSet {.inline.} =
   result = difference(s1, s2)
 
 proc disjoint*(s1, s2: IntSet): bool =
-  ## Returns true iff the sets `s1` and `s2` have no items in common.
+  ## Returns true if the sets `s1` and `s2` have no items in common.
   for item in s1:
     if contains(s2, item):
       return false
@@ -322,7 +329,7 @@ proc len*(s: IntSet): int {.inline.} =
       inc(result)
 
 proc card*(s: IntSet): int {.inline.} =
-  ## alias for `len() <#len>` _.
+  ## Alias for `len() <#len>` _.
   result = s.len()
 
 proc `<=`*(s1, s2: IntSet): bool =
@@ -352,7 +359,7 @@ proc `$`*(s: IntSet): string =
   dollarImpl()
 
 proc empty*(s: IntSet): bool {.inline, deprecated.} =
-  ## returns true if `s` is empty. This is safe to call even before
+  ## Returns true if `s` is empty. This is safe to call even before
   ## the set has been initialized with `initIntSet`. Note this never
   ## worked reliably and so is deprecated.
   result = s.counter == 0

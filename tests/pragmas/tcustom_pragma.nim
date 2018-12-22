@@ -174,3 +174,25 @@ type
 var foo: Something
 foo.cardinal = north
 doAssert foo.b.hasCustomPragma(thingy) == true
+
+
+proc myproc(s: string): int = 
+  {.thingy.}:
+    s.len
+
+doAssert myproc("123") == 3
+
+let xx = compiles:
+  proc myproc_bad(s: string): int = 
+    {.not_exist.}:
+      s.len
+doAssert: xx == false
+
+
+macro checkSym(s: typed{nkSym}): untyped = 
+  let body = s.getImpl.body
+  doAssert body[1].kind == nnkPragmaBlock
+  doAssert body[1][0].kind == nnkPragma
+  doAssert body[1][0][0] == bindSym"thingy"
+
+checkSym(myproc)

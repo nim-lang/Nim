@@ -12,7 +12,6 @@ type
   PccState* = ptr CcState
 
   ErrorFunc* = proc (opaque: pointer, msg: cstring) {.cdecl.}
-{.deprecated: [TccState: CcState, TErrorFunc: ErrorFunc].}
 
 proc openCCState*(): PccState {.importc: "tcc_new", cdecl.}
   ## create a new TCC compilation context

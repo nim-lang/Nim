@@ -230,7 +230,7 @@ proc explode*(b: PLiveBullet) =
 proc bulletUpdate(body: PBody, gravity: TVector, damping, dt: CpFloat){.cdecl.} =
   body.UpdateVelocity(gravity, damping, dt)
 
-template getPhysical() {.immediate.} =
+template getPhysical() {.dirty.} =
   result.body = space.addBody(newBody(
     record.physics.mass,
     record.physics.moment))
@@ -281,7 +281,7 @@ proc draw*(window: PRenderWindow; b: PLiveBullet) {.inline.} =
 
 
 proc free*(veh: PVehicle) =
-  ("Destroying vehicle "& veh.record.name).echo
+  ("Destroying vehicle " & veh.record.name).echo
   destroy(veh.sprite)
   if veh.shape.isNil: "Free'd vehicle's shape was NIL!".echo
   else: space.removeShape(veh.shape)
@@ -290,12 +290,12 @@ proc free*(veh: PVehicle) =
   veh.body.free()
   veh.shape.free()
   veh.sprite = nil
-  veh.body   = nil
+  veh.body = nil
   veh.shape  = nil
 
 
 proc newVehicle*(record: PVehicleRecord): PVehicle =
-  echo("Creating "& record.name)
+  echo("Creating " & record.name)
   new(result, free)
   result.record = record
   result.sprite = result.record.anim.spriteSheet.sprite.copy()
@@ -663,7 +663,7 @@ proc mainRender() =
 proc readyMainState() =
   specInputClient.setActive()
 
-when isMainModule:
+when true:
   import parseopt
 
   localPlayer = newPlayer()

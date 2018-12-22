@@ -134,7 +134,7 @@ compiler vcc:
   result = (
     name: "vcc",
     objExt: "obj",
-    optSpeed: " /Ogityb2 /G7 /arch:SSE2 ",
+    optSpeed: " /Ogityb2 /G7 ",
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
@@ -152,6 +152,13 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     props: {hasCpp, hasAssume, hasDeclspec})
+
+compiler clangcl:
+  result = vcc()
+  result.name = "clang_cl"
+  result.compilerExe = "clang-cl"
+  result.cppCompiler = "clang-cl"
+  result.linkerExe = "clang-cl"
 
 # Intel C/C++ Compiler
 compiler icl:
@@ -353,7 +360,8 @@ const
     pcc(),
     ucc(),
     icl(),
-    icc()]
+    icc(),
+    clangcl()]
 
   hExt* = ".h"
 
@@ -567,6 +575,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
+  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
+
   var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 
@@ -627,7 +637,8 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
-  if optForceFullMake notin conf.globalOptions and not externalFileChanged(conf, c):
+  if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
+      not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
   conf.toCompile.add(c)
 
@@ -762,6 +773,32 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
       rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
         cmds.join())
 
+proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
+  # Extracting the linker.exe here is a bit hacky but the best solution
+  # given ``buildLib``'s design.
+  var i = 0
+  var last = 0
+  if cmd.len > 0 and cmd[0] == '"':
+    inc i
+    while i < cmd.len and cmd[i] != '"': inc i
+    last = i
+    inc i
+  else:
+    while i < cmd.len and cmd[i] != ' ': inc i
+    last = i
+  while i < cmd.len and cmd[i] == ' ': inc i
+  let linkerArgs = conf.projectName & "_" & "linkerArgs.txt"
+  let args = cmd.substr(i)
+  # GCC's response files don't support backslashes. Junk.
+  if conf.cCompiler == ccGcc or conf.cCompiler == ccCLang:
+    writeFile(linkerArgs, args.replace('\\', '/'))
+  else:
+    writeFile(linkerArgs, args)
+  try:
+    execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
+  finally:
+    removeFile(linkerArgs)
+
 proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
   var
     linkCmd: string
@@ -794,7 +831,13 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
     linkCmd = getLinkCmd(conf, projectfile, objfiles)
     if optCompileOnly notin conf.globalOptions:
-      execLinkCmd(conf, linkCmd)
+      if defined(windows) and linkCmd.len > 8_000:
+        # Windows's command line limit is about 8K (don't laugh...) so C compilers on
+        # Windows support a feature where the command line can be passed via ``@linkcmd``
+        # to them.
+        linkViaResponseFile(conf, linkCmd)
+      else:
+        execLinkCmd(conf, linkCmd)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:

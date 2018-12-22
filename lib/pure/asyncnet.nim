@@ -218,7 +218,7 @@ when defineSsl:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
       let length = len(data)
       if length > 0:
-        let ret = bioWrite(socket.bioIn, addr data[0], data.len.cint)
+        let ret = bioWrite(socket.bioIn, addr data[0], length.cint)
         if ret < 0:
           raiseSSLError()
       elif length == 0:
@@ -599,7 +599,7 @@ proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} 
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
   ##
-  ## Raises an EOS error upon failure.
+  ## Raises an OSError error upon failure.
   if listen(socket.fd, backlog) < 0'i32: raiseOSError(osLastError())
 
 proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
@@ -621,6 +621,61 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     freeAddrInfo(aiList)
     raiseOSError(osLastError())
   freeAddrInfo(aiList)
+
+when defined(posix):
+
+  proc connectUnix*(socket: AsyncSocket, path: string): Future[void] =
+    ## Binds Unix socket to `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
+    when not defined(nimdoc):
+      let retFuture = newFuture[void]("connectUnix")
+      result = retFuture
+  
+      proc cb(fd: AsyncFD): bool =
+        let ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
+        if ret == 0:
+          retFuture.complete()
+          return true
+        elif ret == EINTR:
+          return false
+        else:
+          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
+          return true
+  
+      var socketAddr = makeUnixAddr(path)
+      let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
+                       (sizeof(socketAddr.sun_family) + path.len).Socklen)
+      if ret == 0:
+        # Request to connect completed immediately.
+        retFuture.complete()
+      else:
+        let lastError = osLastError()
+        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
+          addWrite(AsyncFD(socket.fd), cb)
+        else:
+          retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+
+  proc bindUnix*(socket: AsyncSocket, path: string)  {.
+    tags: [ReadIOEffect].} =
+    ## Binds Unix socket to `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
+    when not defined(nimdoc):
+      var socketAddr = makeUnixAddr(path)
+      if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
+                            (sizeof(socketAddr.sun_family) + path.len).Socklen) != 0'i32:
+        raiseOSError(osLastError())
+
+elif defined(nimdoc):
+
+  proc connectUnix*(socket: AsyncSocket, path: string): Future[void] =
+    ## Binds Unix socket to `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
+    discard
+  
+  proc bindUnix*(socket: AsyncSocket, path: string) =
+    ## Binds Unix socket to `path`.
+    ## This only works on Unix-style systems: Mac OS X, BSD and Linux
+    discard
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.

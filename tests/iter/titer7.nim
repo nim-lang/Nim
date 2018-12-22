@@ -45,9 +45,9 @@ proc square(x:int): int =
 let list = @[1,2,3,4,5,6,7,8,9]
 
 echo ("--- evens")
-for item in list / isEven : echo(item)
+for item in list / isEven: echo(item)
 echo ("--- squares")
-for item in list >> square : echo(item)
+for item in list >> square: echo(item)
 #echo ("--- squares of evens, only")
 # next line doesn't compile. Generic types are not inferred
 #for item in list />> (isEven, square) : echo(item)

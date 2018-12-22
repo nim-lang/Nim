@@ -1,7 +1,7 @@
 ## Include file that implements 'osErrorMsg' and friends. Do not import it!
 
-when not declared(ospaths):
-  {.error: "This is an include file for ospaths.nim!".}
+when not declared(os):
+  {.error: "This is an include file for os.nim!".}
 
 when not defined(nimscript):
   var errno {.importc, header: "<errno.h>".}: cint
@@ -59,7 +59,8 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
-    e.msg.add  "; Additional info: "
+    if e.msg[^1] != '\n': e.msg.add '\n'
+    e.msg.add  "Additional info: "
     e.msg.addQuoted additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"

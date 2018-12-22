@@ -1,7 +1,7 @@
 discard """
+  errormsg: "type mismatch: got <type int> but expected 'int'"
   file: "ttypenoval.nim"
   line: 38
-  errormsg: "type mismatch: got <type int> but expected 'int'"
 """
 
 # A min-heap.
@@ -51,5 +51,3 @@ var
 newBinHeap(heap, 256)
 add(heap, 1, 100)
 print(heap)
-
-

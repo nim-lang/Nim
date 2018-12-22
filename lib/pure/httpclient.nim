@@ -848,8 +848,6 @@ proc newHttpClient*(userAgent = defUserAgent,
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
 
-{.deprecated: [PAsyncHttpClient: AsyncHttpClient].}
-
 proc newAsyncHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(),
     proxy: Proxy = nil): AsyncHttpClient =
@@ -1164,6 +1162,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   # Helper that actually makes the request. Does not handle redirects.
   let requestUrl = parseUri(url)
 
+  if requestUrl.scheme == "":
+    raise newException(ValueError, "No uri scheme supplied.")
+
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:
       # let the current operation finish before making another request
@@ -1207,7 +1208,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.requestAux(redirectTo, httpMethod, body, headers)
+      # Guarantee method for HTTP 307: see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
+      var meth = if result.status == "307": httpMethod else: "GET"
+      result = await client.requestAux(redirectTo, meth, body, headers)
       lastURL = redirectTo
 
 
@@ -1226,36 +1229,49 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## be closed.
   result = await request(client, url, $httpMethod, body, headers)
 
-proc get*(client: HttpClient | AsyncHttpClient,
-          url: string): Future[Response | AsyncResponse] {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a GET request.
-  ##
-  ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``client.maxRedirects``.
-  result = await client.request(url, HttpGET)
-
-proc getContent*(client: HttpClient | AsyncHttpClient,
-                 url: string): Future[string] {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a GET request.
-  ##
-  ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``client.maxRedirects``.
+proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
+  ## Returns the content of a response as a string.
   ##
   ## A ``HttpRequestError`` will be raised if the server responds with a
   ## client error (status code 4xx) or a server error (status code 5xx).
-  let resp = await get(client, url)
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
   else:
     return await resp.bodyStream.readAll()
 
-proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
-           multipart: MultipartData = nil): Future[Response | AsyncResponse]
-           {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a POST request.
+proc head*(client: HttpClient | AsyncHttpClient,
+          url: string): Future[Response | AsyncResponse] {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a HEAD request.
   ##
-  ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``client.maxRedirects``.
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  result = await client.request(url, HttpHEAD)
+
+proc get*(client: HttpClient | AsyncHttpClient,
+          url: string): Future[Response | AsyncResponse] {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a GET request.
+  ##
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  result = await client.request(url, HttpGET)
+
+proc getContent*(client: HttpClient | AsyncHttpClient,
+                 url: string): Future[string] {.multisync.} =
+  ## Connects to the hostname specified by the URL and returns the content of a GET request.
+  let resp = await get(client, url)
+  return await responseContent(resp)
+
+proc delete*(client: HttpClient | AsyncHttpClient,
+          url: string): Future[Response | AsyncResponse] {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a DELETE request.
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  result = await client.request(url, HttpDELETE)
+
+proc deleteContent*(client: HttpClient | AsyncHttpClient,
+                 url: string): Future[string] {.multisync.} =
+  ## Connects to the hostname specified by the URL and returns the content of a DELETE request.
+  let resp = await delete(client, url)
+  return await responseContent(resp)
+
+proc makeRequestContent(body = "", multipart: MultipartData = nil): (string, HttpHeaders) =
   let (mpContentType, mpBody) = format(multipart)
   # TODO: Support FutureStream for `body` parameter.
   template withNewLine(x): untyped =
@@ -1264,38 +1280,59 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
     else:
       x
   var xb = mpBody.withNewLine() & body
-
   var headers = newHttpHeaders()
   if multipart != nil:
     headers["Content-Type"] = mpContentType
   headers["Content-Length"] = $len(xb)
+  return (xb, headers)
 
-  result = await client.requestAux(url, $HttpPOST, xb, headers)
-  # Handle redirects.
-  var lastURL = url
-  for i in 1..client.maxRedirects:
-    if result.status.redirection():
-      let redirectTo = getNewLocation(lastURL, result.headers)
-      var meth = if result.status != "307": HttpGet else: HttpPost
-      result = await client.requestAux(redirectTo, $meth, xb, headers)
-      lastURL = redirectTo
+proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+           multipart: MultipartData = nil): Future[Response | AsyncResponse]
+           {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a POST request.
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  var (xb, headers) = makeRequestContent(body, multipart)
+  result = await client.request(url, $HttpPOST, xb, headers)
 
 proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
                   multipart: MultipartData = nil): Future[string]
                   {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a POST request.
-  ##
-  ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``client.maxRedirects``.
-  ##
-  ## A ``HttpRequestError`` will be raised if the server responds with a
-  ## client error (status code 4xx) or a server error (status code 5xx).
+  ## Connects to the hostname specified by the URL and returns the content of a POST request.
   let resp = await post(client, url, body, multipart)
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
-  else:
-    return await resp.bodyStream.readAll()
+  return await responseContent(resp)
+
+proc put*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+           multipart: MultipartData = nil): Future[Response | AsyncResponse]
+           {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a PUT request.
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  var (xb, headers) = makeRequestContent(body, multipart)
+  result = await client.request(url, $HttpPUT, xb, headers)
+
+proc putContent*(client: HttpClient | AsyncHttpClient, url: string,
+                  body = "",
+                  multipart: MultipartData = nil): Future[string]
+                  {.multisync.} =
+  ## Connects to the hostname specified by the URL andreturns the content of a PUT request.
+  let resp = await put(client, url, body, multipart)
+  return await responseContent(resp)
+
+proc patch*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+           multipart: MultipartData = nil): Future[Response | AsyncResponse]
+           {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a PATCH request.
+  ## This procedure uses httpClient values such as ``client.maxRedirects``.
+  var (xb, headers) = makeRequestContent(body, multipart)
+  result = await client.request(url, $HttpPATCH, xb, headers)
+
+proc patchContent*(client: HttpClient | AsyncHttpClient, url: string,
+                  body = "",
+                  multipart: MultipartData = nil): Future[string]
+                  {.multisync.} =
+  ## Connects to the hostname specified by the URL and returns the content of a PATCH request.
+  let resp = await patch(client, url, body, multipart)
+  return await responseContent(resp)
 
 proc downloadFile*(client: HttpClient, url: string, filename: string) =
   ## Downloads ``url`` and saves it to ``filename``.

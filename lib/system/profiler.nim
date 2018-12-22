@@ -13,6 +13,9 @@
 # (except perhaps loops that have no side-effects). At every Nth call a
 # stack trace is taken. A stack tace is a list of cstrings.
 
+when defined(profiler) and defined(memProfiler):
+  {.error: "profiler and memProfiler cannot be defined at the same time (See Embedded Stack Trace Profiler (ESTP) User Guide) for more details".}
+
 {.push profiler: off.}
 
 const
@@ -23,7 +26,6 @@ type
     lines*: array[0..MaxTraceLen-1, cstring]
     files*: array[0..MaxTraceLen-1, cstring]
   ProfilerHook* = proc (st: StackTrace) {.nimcall.}
-{.deprecated: [TStackTrace: StackTrace, TProfilerHook: ProfilerHook].}
 
 proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
@@ -58,13 +60,13 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     b = b.prev
 
 var
-  profilingRequestedHook*: proc (): bool {.nimcall, benign.}
+  profilingRequestedHook*: proc (): bool {.nimcall, locks: 0, gcsafe.}
     ## set this variable to provide a procedure that implements a profiler in
     ## user space. See the `nimprof` module for a reference implementation.
 
 when defined(memProfiler):
   type
-    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, benign.}
+    MemProfilerHook* = proc (st: StackTrace, requestedSize: int) {.nimcall, locks: 0, gcsafe.}
 
   var
     profilerHook*: MemProfilerHook
@@ -88,9 +90,10 @@ else:
   proc callProfilerHook(hook: ProfilerHook) {.noinline.} =
     # 'noinline' so that 'nimProfile' does not perform the stack allocation
     # in the common case.
-    var st: StackTrace
-    captureStackTrace(framePtr, st)
-    hook(st)
+    when not defined(nimdoc):
+      var st: StackTrace
+      captureStackTrace(framePtr, st)
+      hook(st)
 
   proc nimProfile() =
     ## This is invoked by the compiler in every loop and on every proc entry!

@@ -147,3 +147,23 @@ block:
   # x needs to be of type seq[string]
   var x = test_newLit_empty_seq_string
   x.add("xyz")
+
+type
+  MyEnum = enum
+    meA
+    meB
+
+macro test_newLit_Enum: untyped =
+  result = newLit(meA)
+
+block:
+  let tmp: MyEnum = meA
+  doAssert tmp == test_newLit_Enum
+
+macro test_newLit_set: untyped =
+  let myset = {MyEnum.low .. MyEnum.high}
+  result = newLit(myset)
+
+block:
+  let tmp: set[MyEnum] = {MyEnum.low .. MyEnum.high}
+  doAssert tmp == test_newLit_set

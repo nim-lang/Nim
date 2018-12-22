@@ -78,7 +78,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skLet, getIdent(g.cache, "_"), owner, value.info, owner.options)
+  var temp = newSym(skTemp, getIdent(g.cache, "_"), owner, value.info, owner.options)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
@@ -405,6 +405,8 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
                        spawnKind: TSpawnResult): PSym =
   var body = newNodeI(nkStmtList, f.info)
+  body.flags.incl nfTransf # do not transform further
+
   var threadLocalBarrier: PSym
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)

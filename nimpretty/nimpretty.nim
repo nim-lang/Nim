@@ -12,7 +12,8 @@
 when not defined(nimpretty):
   {.error: "This needs to be compiled with --define:nimPretty".}
 
-import ../compiler / [idents, msgs, ast, syntaxes, renderer, options, pathutils]
+import ../compiler / [idents, msgs, ast, syntaxes, renderer, options,
+  pathutils, layouter]
 
 import parseopt, strutils, os
 
@@ -26,6 +27,7 @@ Usage:
 Options:
   --backup:on|off     create a backup file before overwritting (default: ON)
   --output:file       set the output file (default: overwrite the .nim file)
+  --indent:N          set the number of spaces that is used for indentation
   --version           show the version
   --help              show this help
 """
@@ -40,12 +42,20 @@ proc writeVersion() =
   stdout.flushFile()
   quit(0)
 
-proc prettyPrint(infile, outfile: string) =
+type
+  PrettyOptions = object
+    indWidth: int
+
+proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   conf.outFile = AbsoluteFile outfile
   when defined(nimpretty2):
-    discard parseFile(fileIdx, newIdentCache(), conf)
+    var p: TParsers
+    p.parser.em.indWidth = opt.indWidth
+    if setupParsers(p, fileIdx, newIdentCache(), conf):
+      discard parseAll(p)
+      closeParsers(p)
   else:
     let tree = parseFile(fileIdx, newIdentCache(), conf)
     renderModule(tree, infile, outfile, {}, fileIdx, conf)
@@ -53,6 +63,7 @@ proc prettyPrint(infile, outfile: string) =
 proc main =
   var infile, outfile: string
   var backup = true
+  var opt: PrettyOptions
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -63,6 +74,7 @@ proc main =
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
       of "output", "o": outfile = val
+      of "indent": opt.indWidth = parseInt(val)
       else: writeHelp()
     of cmdEnd: assert(false) # cannot happen
   if infile.len == 0:
@@ -70,6 +82,6 @@ proc main =
   if backup:
     os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
   if outfile.len == 0: outfile = infile
-  prettyPrint(infile, outfile)
+  prettyPrint(infile, outfile, opt)
 
 main()

@@ -1,6 +1,5 @@
 discard """
-  file: "tvariantstack.nim"
-  output: "came here"
+output: "came here"
 """
 #BUG
 type

@@ -1,3 +1,8 @@
+discard """
+output: '''
+done999 999
+'''
+"""
 
 import threadpool
 

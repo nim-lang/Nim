@@ -1,6 +1,6 @@
 discard """
-  line: 12
   errormsg: "type mismatch: got <proc (x: int){.gcsafe, locks: 0.}>"
+  line: 12
 """
 
 proc ugh[T](x: T) {.nimcall.} =

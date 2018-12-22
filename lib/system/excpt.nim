@@ -17,8 +17,15 @@ var
     ## instead of stdmsg.write when printing stacktrace.
     ## Unstable API.
 
+proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
+proc rawWrite(f: File, s: string|cstring) =
+  # we cannot throw an exception here!
+  discard c_fwrite(cstring(s), 1, s.len, f)
+
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: cstring) = write(stdmsg, msg)
+  proc writeToStdErr(msg: cstring) = rawWrite(stdmsg, msg)
 
 else:
   proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
@@ -60,7 +67,7 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
-  raise_counter {.threadvar.}: uint
+  raiseCounter {.threadvar.}: uint
 
   gcFramePtr {.threadvar.}: GcFrame
 
@@ -122,12 +129,12 @@ proc popCurrentException {.compilerRtl, inl.} =
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raise_id == id:
+  if currException.raiseId == id:
     currException = currException.up
   else:
     var cur = currException.up
     var prev = currException
-    while cur != nil and cur.raise_id != id:
+    while cur != nil and cur.raiseId != id:
       prev = cur
       cur = cur.up
     if cur == nil:
@@ -345,10 +352,10 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
-      raise_counter.inc
-      if raise_counter == 0:
-        raise_counter.inc # skip zero at overflow
-      e.raise_id = raise_counter
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
       {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:
@@ -381,6 +388,8 @@ proc raiseExceptionAux(e: ref Exception) =
           xadd(buf, s, s.len)
         var buf: array[0..2000, char]
         var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation
         add(buf, "Error: unhandled exception: ")
         add(buf, e.msg)
         add(buf, " [")
@@ -394,7 +403,7 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.len == 0:
@@ -403,7 +412,13 @@ proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
       e.trace.add reraisedFrom(reraisedFromBegin)
       auxWriteStackTrace(framePtr, e.trace)
       e.trace.add reraisedFrom(reraisedFromEnd)
+  else:
+    if procname != nil and filename != nil:
+      e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
+
+proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+  raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
@@ -439,16 +454,21 @@ when not defined(gcDestructors):
     shallowCopy(result, e.trace)
 
 when defined(nimRequiresNimFrame):
-  proc stackOverflow() {.noinline.} =
+  const nimCallDepthLimit {.intdefine.} = 2000
+
+  proc callDepthLimitReached() {.noinline.} =
     writeStackTrace()
-    showErrorMessage("Stack overflow\n")
+    showErrorMessage("Error: call depth limit reached in a debug build (" &
+        $nimCallDepthLimit & " function calls). You can change it with " &
+        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+        "recursions instead.\n")
     quitOrDebug()
 
   proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
     s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
     s.prev = framePtr
     framePtr = s
-    if s.calldepth == 2000: stackOverflow()
+    if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 else:
   proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
     # XXX only for backwards compatibility

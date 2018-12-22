@@ -31,7 +31,7 @@
 ##
 ## .. code-block:: Nim
 ##     import db_sqlite
-##     let db = open("mytest.db", nil, nil, nil)  # user, password, database name can be nil
+##     let db = open("mytest.db", "", "", "")  # user, password, database name can be empty
 ##     db.close()
 ##
 ## Creating a table
@@ -94,7 +94,6 @@ type
                        ## converted to nil.
   InstantRow* = Pstmt  ## a handle that can be used to get a row's column
                        ## text on demand
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.

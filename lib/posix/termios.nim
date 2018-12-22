@@ -13,7 +13,6 @@ import posix
 type
   Speed* = cuint
   Cflag* = cuint
-{.deprecated: [Tcflag: Cflag].}
 
 const
   NCCS* = when defined(macosx): 20 else: 32

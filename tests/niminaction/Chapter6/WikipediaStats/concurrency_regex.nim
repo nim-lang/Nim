@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 # See this page for info about the format https://wikitech.wikimedia.org/wiki/Analytics/Data/Pagecounts-all-sites
 import tables, parseutils, strutils, threadpool, re
 
@@ -60,5 +64,5 @@ proc readChunks(filename: string, chunksize = 1000000): Stats =
   file.close()
 
 
-when isMainModule:
+when true:
   echo readChunks(filename)

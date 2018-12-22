@@ -413,26 +413,12 @@ proc recSetFlagIsRef(arg: PNode) =
     arg.sons[i].recSetFlagIsRef
 
 proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
-  # FIXME: this doesn't attempt to solve incomplete
-  # support of tyPtr, tyRef in VM.
   let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeKind = case typeEntry.kind
-                 of tyUInt..tyUInt64: nkUIntLit
-                 of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
-                 of tyFloat..tyFloat128: nkFloatLit
-                 of tyString: nkStrLit
-                 of tyObject: nkObjConstr
-                 of tySequence: nkNilLit
-                 of tyProc, tyTuple: nkTupleConstr
-                 else: nkEmpty
-
   let oldLen = node.len
   setLen(node.sons, newLen)
   if oldLen < newLen:
-    # TODO: This is still not correct for tyPtr, tyRef default value
     for i in oldLen ..< newLen:
-      node.sons[i] = newNodeI(typeKind, info)
+      node.sons[i] = getNullValue(typ.sons[0], info, c.config)
 
 const
   errIndexOutOfBounds = "index out of bounds"
@@ -458,7 +444,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     #if c.traceActive:
     when traceCode:
       echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
-    #  message(c.config, c.debug[pc], warnUser, "Trace")
+      # message(c.config, c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -488,6 +474,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
+    of opcAsgnIntFromFloat32:
+      let rb = instr.regB
+      ensureKind(rkInt)
+      regs[ra].intVal = cast[int32](float32(regs[rb].floatVal))
+    of opcAsgnIntFromFloat64:
+      let rb = instr.regB
+      ensureKind(rkInt)
+      regs[ra].intVal = cast[int64](regs[rb].floatVal)
+    of opcAsgnFloat32FromInt:
+      let rb = instr.regB
+      ensureKind(rkFloat)
+      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+    of opcAsgnFloat64FromInt:
+      let rb = instr.regB
+      ensureKind(rkFloat)
+      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
@@ -924,6 +926,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcGetImplTransf:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+                        else:
+                          let ast = a.sym.ast.shallowCopy
+                          for i in 0..<a.sym.ast.len:
+                            ast[i] = a.sym.ast[i]
+                          ast[bodyPos] = transformBody(c.graph, a.sym)
+                          ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node
@@ -933,6 +946,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcSymIsInstantiationOf:
+      decodeBC(rkInt)
+      let a = regs[rb].node
+      let b = regs[rc].node
+      if a.kind == nkSym and a.sym.kind in skProcKinds and 
+         b.kind == nkSym and b.sym.kind in skProcKinds:
+        regs[ra].intVal =
+          if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
+          else: 0
+      else:    
+        stackTrace(c, tos, pc, "node is not a proc symbol") 
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
@@ -1201,7 +1225,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcOf:
       decodeBC(rkInt)
       let typ = c.types[regs[rc].intVal.int]
-      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) >= 0)
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) <= 0)
     of opcIs:
       decodeBC(rkInt)
       let t1 = regs[rb].node.typ.skipTypes({tyTypeDesc})
@@ -1795,7 +1819,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       "NimScript: attempt to call non-routine: " & sym.name.s)
 
 proc evalStmt*(c: PCtx, n: PNode) =
-  let n = transformExpr(c.graph, c.module, n)
+  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
   let start = genStmt(c, n)
   # execute new instructions; this redundant opcEof check saves us lots
   # of allocations in 'execute':
@@ -1803,7 +1827,7 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
-  let n = transformExpr(c.graph, c.module, n)
+  let n = transformExpr(c.graph, c.module, n, noDestructors = true)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof
   result = execute(c, start)
@@ -1850,7 +1874,7 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
-  let n = transformExpr(g, module, n)
+  let n = transformExpr(g, module, n, noDestructors = true)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
