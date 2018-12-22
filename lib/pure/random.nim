@@ -14,6 +14,8 @@
 ##
 ## **Do not use this module for cryptographic purposes!**
 
+import algorithm                    #For upperBound
+
 include "system/inclrtl"
 {.push debugger:off.}
 
@@ -163,14 +165,13 @@ proc rand*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(a.low..a.high)]
 
-import algorithm                    #For upperBound
 proc rand*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
   ## Return a sample (with replacement) of size ``n`` from elements of ``a``
   ## according to convertible-to-``float``, not necessarily normalized, and
   ## non-negative weights ``w``.  Uses state in ``r``.
   assert(w.len == a.len)
-  var cdf = newSeq[float](a.len)    #The *unnormalized* CDF
-  var tot = 0.0                     #Unnormalized is fine if we sample up to tot
+  var cdf = newSeq[float](a.len)   # The *unnormalized* CDF
+  var tot = 0.0                    # Unnormalized is fine if we sample up to tot
   for i, w in w:
     assert(w >= 0)
     tot += float(w)
