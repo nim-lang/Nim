@@ -1098,12 +1098,12 @@ proc genMainProc(m: BModule) =
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
       "void PreMainInner(void) {$N" &
-      "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
       "void PreMain(void) {$N" &
       "\tvoid (*volatile inner)(void);$N" &
+      "$1" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
       "\t(*inner)();$N" &
