@@ -1172,7 +1172,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   result = nil
   if typ == nil: return
   if containsOrIncl(marker, typ.id): return
-  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
+  var t = skipTypes(typ, abstractInst+{tyStatic}-{tyTypeDesc})
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst}: return t
@@ -1197,7 +1197,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyTypeDesc:
     # XXX: This is still a horrible idea...
     result = nil
-  of tyExpr, tyStmt, tyStatic:
+  of tyExpr, tyStmt:
     if kind notin {skParam, skResult}: result = t
   of tyVoid:
     if taField notin flags: result = t
@@ -1260,6 +1260,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # prevent cascading errors:
     result = nil
   of tyOptAsRef: result = t
+  of tyStatic: assert(false)
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
