@@ -2671,11 +2671,11 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 
 proc isNamedTuple*(T: type): bool =
   ## return true for named tuples, false for any other type.
-  if T isnot tuple: result = false
+  when T isnot tuple: result = false
   else:
     var t: T
     for name, _ in t.fieldPairs:
-      if name == "Field0":
+      when name == "Field0":
         return compiles(t.Field0)
       else:
         return true
