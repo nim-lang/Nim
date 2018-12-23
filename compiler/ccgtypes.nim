@@ -970,9 +970,9 @@ proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
 
 proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
   # bugfix: we need to search the type that contains the discriminator:
-  var objtype = objtype
+  var objtype = objtype.skipTypes(abstractPtrs)
   while lookupInRecord(objtype.n, d.name) == nil:
-    objtype = objtype.sons[0]
+    objtype = objtype.sons[0].skipTypes(abstractPtrs)
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]
