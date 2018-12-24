@@ -83,7 +83,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, logFile: File = nil): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
@@ -103,6 +103,10 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
     if outp.readLine(line):
       result[0].string.add(line.string)
       result[0].string.add("\n")
+      if logFile != nil:
+        logFile.write line.string
+        logFile.write "\n"
+        logFile.flushFile
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

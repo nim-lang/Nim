@@ -559,6 +559,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     (spec.targets == {} or spec.targets == {targetC})
 
 proc norm(s: var string) =
+  # equivalent of s/\n+/\n/g (could use a single pass over input if needed)
   while true:
     let tmp = s.replace("\n\n", "\n")
     if tmp == s: break
@@ -566,8 +567,12 @@ proc norm(s: var string) =
   s = s.strip
 
 proc isTestFile*(file: string): bool =
-  let (dir, name, ext) = splitFile(file)
+  let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
+
+proc quoted(a: string): string =
+  # TODO: consider moving to system.nim
+  result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returs a list of tests that have problems
@@ -582,6 +587,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
         if isJoinableSpec(spec):
           specs.add spec
 
+  proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
+  sort(specs, cmp=cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
@@ -591,15 +598,34 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  for runSpec in specs:
-    megatest.add "import r\""
-    megatest.add runSpec.file
-    megatest.add "\"\n"
+  #[
+  TODO(MINOR):
+  get from Nim cmd
+  put outputGotten.txt, outputGotten.txt, megatest.nim there too
+  delete upon completion, maybe
+  ]# 
+  var outDir = nimcacheDir("megatest", "", targetC)
+  const marker = "megatest:processing: "
+
+  for i, runSpec in specs:
+    let file = runSpec.file
+    let file2 = outDir / ("megatest_" & $i & ".nim")
+    var code = ""
+    # `include` didn't work with `trecmod2.nim`, so using `import`
+    code.add "echo \"" & marker & "\", " & quoted(file) & "\n"
+
+    createDir(file2.parentDir)
+    writeFile(file2, code)
+    megatest.add "import " & quoted(file2) & "\n"
+    megatest.add "import " & quoted(file) & "\n"
 
   writeFile("megatest.nim", megatest)
 
   const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  let logFile = outDir / "testament_logfile.log"
+  let logFile2 = open(logFile, fmWrite)
+  echo "follow progress with: tail -F " & logFile # Could also append to this in execCmdEx("./megatest")
+  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "", logFile = logFile2)
   if exitCode != 0:
     echo buf
     quit("megatest compilation failed")
@@ -613,6 +639,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile("outputGotten.txt", buf)
   var outputExpected = ""
   for i, runSpec in specs:
+    outputExpected.add marker & runSpec.file & "\n"
     outputExpected.add runSpec.output.strip
     outputExpected.add '\n'
   norm outputExpected
@@ -621,6 +648,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     writeFile("outputExpected.txt", outputExpected)
     discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
     echo "output different!"
+    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
     quit 1
   else:
     echo "output OK"
