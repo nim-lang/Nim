@@ -269,10 +269,25 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     discard waitForExit(p)
     close(p)
 
+proc containsLinesInOrder(haystack: string, needles: string): bool =
+  ## return true if haystack contains all (stripped) lines of needles in order.
+  ## (using a greedy match, no attempt is made to backtrack).
+  let haystack2 = haystack.strip
+  var currentPos = 0
+  # Only check that nimout contains all needles lines in that order.
+  # There may be more output in nimout. It is ignored here.
+  for line in needles.strip.splitLines:
+    currentPos = haystack2.find(line.strip, currentPos)
+    if currentPos < 0:
+      return false
+    # TODO: consider advancing `currentPos` to end of line to avoid
+    # matching part of the same line twice
+  return true
+
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+  elif expected.nimout.len > 0 and not containsLinesInOrder(given.nimout, expected.nimout):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -328,16 +343,11 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reCodeNotFound
     echo getCurrentExceptionMsg()
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let giv = given.nimout.strip
-  var currentPos = 0
+proc nimoutCheck(expectedNimout: string; given: var TSpec) =
   # Only check that nimout contains all expected lines in that order.
   # There may be more output in nimout. It is ignored here.
-  for line in expectedNimout.strip.splitLines:
-    currentPos = giv.find(line.strip, currentPos)
-    if currentPos < 0:
-      given.err = reMsgsDiffer
-      return
+  if not containsLinesInOrder(given.nimout, expectedNimout):
+    given.err = reMsgsDiffer
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
@@ -350,7 +360,7 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
-      nimoutCheck(test, expectedmsg, given)
+      nimoutCheck(expectedmsg, given)
   else:
     givenmsg = given.nimout.strip
   if given.err == reSuccess: inc(r.passed)
