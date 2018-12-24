@@ -599,7 +599,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile("megatest.nim", megatest)
 
   const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
-  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
   if exitCode != 0:
     echo buf
     quit("megatest compilation failed")
