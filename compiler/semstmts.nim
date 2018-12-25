@@ -315,7 +315,17 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
-  suggestSym(c.config, n.info, result, c.graph.usageSym)
+  let info = case n.kind
+             of nkPostfix:
+               n.sons[1].info
+             of nkPragmaExpr:
+               if n.sons[0].kind == nkPostfix:
+                 n.sons[0].sons[1].info
+               else:
+                 n.sons[0].info
+             else:
+               n.info
+  suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
