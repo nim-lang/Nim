@@ -44,7 +44,7 @@ proc callSoon*(cbproc: CallbackFunc) =
   ## is called recursively. In such case `cbproc` will be called
   ## as soon as currently handled `cbproc` is complete.
   if pendingCallbacks.isNil:
-      pendingCallbacks = newSeqOfCap[CallbackFunc](8)
+    pendingCallbacks = newSeqOfCap[CallbackFunc](8)
   pendingCallbacks.add(cbproc)
 
   # Every callback is added to pendingCallbacks, but in order to avoid recursion
