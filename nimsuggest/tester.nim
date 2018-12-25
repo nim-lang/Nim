@@ -13,7 +13,7 @@ type
     disabled: bool
 
 const
-  curDir = when defined(windows): "" else: ""
+  curDir = when defined(windows): "" else: "./"
   DummyEof = "!EOF!"
 
 template tpath(): untyped = getAppDir() / "tests"
