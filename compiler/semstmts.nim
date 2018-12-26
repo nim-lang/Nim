@@ -580,7 +580,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind == nkVarTuple:
       if typ.kind != tyTuple:
         localError(c.config, a.info, errXExpected, "tuple")
-      elif int(length/2) != sonsLen(typ):
+      elif length-2 != sonsLen(typ):
         localError(c.config, a.info, errWrongNumberOfVariables)
       b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
