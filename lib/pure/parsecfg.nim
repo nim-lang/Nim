@@ -135,8 +135,9 @@ type
                                  ## ``key= value`` pair has been parsed.
                                  ## ``value==""`` if it was not specified in the
                                  ## configuration file.
-    of cfgError:                 ## the parser encountered an error: `msg`
-      msg*: string               ## contains the error message. No exceptions
+    of cfgError:
+      msg*: string               ## the parser encountered an error: `msg`
+                                 ## contains the error message. No exceptions
                                  ## are thrown if a parse error occurs.
 
   TokKind = enum
@@ -519,14 +520,14 @@ proc writeConfig*(dict: Config, stream: Stream) =
   ##
   ## **Note:** Comment statement will be ignored.
   for section, sectionData in dict.pairs():
-    if section != "": ## Not general section
-      if not allCharsInSet(section, SymChars): ## Non system character
+    if section != "": # Not general section
+      if not allCharsInSet(section, SymChars): # Non system character
         stream.writeLine("[\"" & section & "\"]")
       else:
         stream.writeLine("[" & section & "]")
     for key, value in sectionData.pairs():
       var kv, segmentChar: string
-      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
+      if key.len > 1 and key[0] == '-' and key[1] == '-': # If it is a command key
         segmentChar = ":"
         if not allCharsInSet(key[2..key.len()-1], SymChars):
           kv.add("--\"")
@@ -537,7 +538,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       else:
         segmentChar = "="
         kv = key
-      if value != "": ## If the key is not empty
+      if value != "": # If the key is not empty
         if not allCharsInSet(value, SymChars):
           if find(value, '"') == -1:
             kv.add(segmentChar)

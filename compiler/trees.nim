@@ -16,9 +16,9 @@ proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return
   for v in visited:
     if v == n: return true
-  if not (n.kind in {nkEmpty..nkNilLit}):
+  if not (n.kind in {nkEmpty..nkNilLit, nkCommentStmt}):
     visited.add(n)
-    for nSon in n.sons:
+    for nSon in n:
       if cyclicTreeAux(nSon, visited): return true
     discard visited.pop()
 
@@ -40,8 +40,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
-    of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkCommentStmt: result = a.comment == b.comment
+    of nkStrLit..nkTripleStrLit, nkCommentStmt: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
@@ -66,7 +65,7 @@ proc sameTree*(a, b: PNode): bool =
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkEmpty, nkNilLit, nkType: result = true
+    of nkEmpty, nkNilLit, nkType, nkCommentStmt: result = true
     else:
       if sonsLen(a) == sonsLen(b):
         for i in countup(0, sonsLen(a) - 1):
@@ -92,7 +91,7 @@ proc isCaseObj*(n: PNode): bool =
 
 proc isDeepConstExpr*(n: PNode): bool =
   case n.kind
-  of nkCharLit..nkNilLit:
+  of nkCharLit..nkNilLit, nkCommentStmt:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])

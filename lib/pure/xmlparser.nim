@@ -59,7 +59,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlError:
     errors.add(errorMsg(x))
     next(x)
-  of xmlElementStart:    ## ``<elem>``
+  of xmlElementStart: # ``<elem>``
     result = newElement(x.elementName)
     next(x)
     untilElementEnd(x, result, errors)

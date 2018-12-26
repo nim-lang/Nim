@@ -107,7 +107,7 @@ proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind
   of nkPostfix: replaceIdentBySym(c, n.sons[1], s)
-  of nkPragmaExpr: replaceIdentBySym(c, n.sons[0], s)
+  of nkExportDoc, nkPragmaExpr: replaceIdentBySym(c, n.sons[0], s)
   of nkIdent, nkAccQuoted, nkSym: n = s
   else: illFormedAst(n, c.config)
 
@@ -125,7 +125,7 @@ template withBracketExpr(ctx, x, body: untyped) =
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(c, n.sons[1])
-  of nkPragmaExpr: result = getIdentNode(c, n.sons[0])
+  of nkExportDoc, nkPragmaExpr: result = getIdentNode(c, n.sons[0])
   of nkIdent:
     result = n
     let s = qualifiedLookUp(c.c, n, {})
@@ -181,7 +181,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
     while true:
       case x.kind
       of nkPostfix: x = x[1]
-      of nkPragmaExpr: x = x[0]
+      of nkExportDoc, nkPragmaExpr: x = x[0]
       of nkIdent: break
       of nkAccQuoted:
         # consider:  type `T TemplParam` {.inject.}
@@ -338,7 +338,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMixinStmt:
     if c.scopeN > 0: result = semTemplBodySons(c, n)
     else: result = semMixinStmt(c.c, n, c.toMixin)
-  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
+  of nkEmpty, nkSym..nkNilLit, nkComesFrom, nkCommentStmt:
     discard
   of nkIfStmt:
     for i in countup(0, sonsLen(n)-1):
@@ -454,7 +454,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = semRoutineInTemplBody(c, n, skMacro)
   of nkConverterDef:
     result = semRoutineInTemplBody(c, n, skConverter)
-  of nkPragmaExpr:
+  of nkPragmaExpr, nkExportDoc:
     result.sons[0] = semTemplBody(c, n.sons[0])
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
@@ -537,7 +537,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     result = semTemplBodyDirty(c, n.sons[0])
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
+  of nkEmpty, nkSym..nkNilLit, nkComesFrom, nkCommentStmt:
     discard
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
@@ -680,7 +680,7 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     result = handleSym(c, n, s)
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit: discard
+  of nkEmpty, nkSym..nkNilLit, nkCommentStmt: discard
   of nkCurlyExpr:
     # we support '(pattern){x}' to bind a subpattern to a parameter 'x';
     # '(pattern){|x}' does the same but the matches will be gathered in 'x'

@@ -125,7 +125,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   # we really must not hash line information. 'n.typ' is debatable but
   # shouldn't be necessary for now and avoids potential infinite recursions.
   case n.kind
-  of nkEmpty, nkNilLit, nkType: discard
+  of nkEmpty, nkNilLit, nkType, nkCommentStmt: discard
   of nkIdent:
     c &= n.ident.s
   of nkSym:

@@ -216,13 +216,14 @@ type
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
-    nkReturnToken,        # token used for interpretation
+    nkReplayInstr,        # replay instruction for --symbolFiles
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
-    nkTupleConstr         # a tuple constructor
+    nkTupleConstr,        # a tuple constructor
+    nkExportDoc
 
   TNodeKinds* = set[TNodeKind]
 
@@ -713,7 +714,7 @@ type
       intVal*: BiggestInt
     of nkFloatLit..nkFloat128Lit:
       floatVal*: BiggestFloat
-    of nkStrLit..nkTripleStrLit:
+    of nkStrLit..nkTripleStrLit, nkCommentStmt:
       strVal*: string
     of nkSym:
       sym*: PSym
@@ -721,7 +722,6 @@ type
       ident*: PIdent
     else:
       sons*: TNodeSeq
-    comment*: string
 
   TStrTable* = object         # a table[PIdent] of PSym
     counter*: int
@@ -1022,7 +1022,7 @@ proc len*(n: PNode): int {.inline.} =
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit}: result = 0
+  if n.kind in {nkNone..nkNilLit, nkCommentStmt}: result = 0
   else: result = len(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
@@ -1496,7 +1496,6 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1505,7 +1504,7 @@ proc copyNode*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
   else: discard
 
 proc shallowCopy*(src: PNode): PNode =
@@ -1515,7 +1514,6 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1524,7 +1522,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
   else: newSeq(result.sons, sonsLen(src))
 
 proc copyTree*(src: PNode): PNode =
@@ -1535,7 +1533,6 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1544,7 +1541,7 @@ proc copyTree*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
@@ -1567,14 +1564,14 @@ proc hasNilSon*(n: PNode): bool =
 proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   if n == nil: return
   case n.kind
-  of nkEmpty..nkNilLit: result = n.kind in kinds
+  of nkEmpty..nkNilLit, nkCommentStmt: result = n.kind in kinds
   else:
     for i in countup(0, sonsLen(n) - 1):
       if n.kind in kinds or containsNode(n.sons[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
-  of nkEmpty..nkNilLit: result = n.kind == kind
+  of nkEmpty..nkNilLit, nkCommentStmt: result = n.kind == kind
   else:
     for i in countup(0, sonsLen(n) - 1):
       if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
@@ -1675,7 +1672,7 @@ iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
   for i in 0..<n.safeLen: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
-  result = n.kind >= nkNone and n.kind <= nkNilLit
+  result = n.kind >= nkNone and n.kind <= nkNilLit or n.kind == nkCommentStmt
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:

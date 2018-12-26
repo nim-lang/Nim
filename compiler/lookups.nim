@@ -52,6 +52,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
       result = n.sons[0].sym.name
     else:
       handleError(n, origin)
+  #of nkExportDoc:
+  #  result = considerQuotedIdent(c, n[0], origin)
   else:
     handleError(n, origin)
 

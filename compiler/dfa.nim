@@ -336,7 +336,7 @@ proc gen(c: var Con; n: PNode) =
         genCall(c, n)
     else:
       genCall(c, n)
-  of nkCharLit..nkNilLit: discard
+  of nkCharLit..nkNilLit, nkCommentStmt: discard
   of nkAsgn, nkFastAsgn:
     gen(c, n[1])
     genDef(c, n[0])

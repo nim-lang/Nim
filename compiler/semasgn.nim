@@ -47,7 +47,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
   of nkSym:
     let f = n.sym
     liftBodyAux(c, f.typ, body, x.dotField(f), y.dotField(f))
-  of nkNilLit: discard
+  of nkNilLit, nkCommentStmt: discard
   of nkRecCase:
     # copy the selector:
     liftBodyObj(c, n[0], body, x, y)

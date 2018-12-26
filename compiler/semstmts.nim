@@ -212,7 +212,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     checkMinSonsLen(a, 1, c.config)
     openScope(c)
     if a.kind == nkExceptBranch:
-
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
         a.sons[0..0] = a[0].sons
@@ -226,24 +225,22 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
-
       elif a.len == 1:
-          # count number of ``except: body`` blocks
-          inc catchAllExcepts
-
+        # count number of ``except: body`` blocks
+        inc catchAllExcepts
       else:
         # support ``except KeyError, ValueError, ... : body``
         if catchAllExcepts > 0:
           # if ``except: body`` already encountered,
           # cannot be followed by a ``except KeyError, ... : body`` block
           inc catchAllExcepts
-        var is_native, is_imported: bool
+        var isNative, isImported: bool
         for j in 0..a.len-2:
           let tmp = semExceptBranchType(a[j])
-          if tmp: is_imported = true
-          else: is_native = true
+          if tmp: isImported = true
+          else: isNative = true
 
-        if is_native and is_imported:
+        if isNative and isImported:
           localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
 
     elif a.kind == nkFinally:
@@ -283,7 +280,8 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
   result = fitNode(c, typ, n, n.info)
   if result.kind in {nkHiddenStdConv, nkHiddenSubConv}:
     let r1 = result.sons[1]
-    if r1.kind in {nkCharLit..nkUInt64Lit} and typ.skipTypes(abstractRange).kind in {tyFloat..tyFloat128}:
+    if r1.kind in {nkCharLit..nkUInt64Lit} and
+        typ.skipTypes(abstractRange).kind in {tyFloat..tyFloat128}:
       result = newFloatNode(nkFloatLit, BiggestFloat r1.intVal)
       result.info = n.info
       result.typ = typ
@@ -513,9 +511,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
         setVarType(c, v, typ)
         b = newNodeI(nkIdentDefs, a.info)
-        if importantComments(c.config):
-          # keep documentation information:
-          b.comment = a.comment
         addSon(b, newSymNode(v))
         # keep type desc for doc generator
         addSon(b, a.sons[length-2])
@@ -588,7 +583,6 @@ proc semConst(c: PContext, n: PNode): PNode =
         setVarType(c, v, typ)
         v.ast = def               # no need to copy
         b = newNodeI(nkConstDef, a.info)
-        if importantComments(c.config): b.comment = a.comment
         addSon(b, newSymNode(v))
         addSon(b, a.sons[1])
         addSon(b, copyTree(def))
@@ -1700,9 +1694,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[paramsPos] = proto.ast.sons[paramsPos]
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: internalError(c.config, n.info, "semProcAux")
-    n.sons[namePos].sym = proto
-    if importantComments(c.config) and proto.ast.comment.len > 0:
-      n.comment = proto.ast.comment
+    n.sons[namePos] = proto.ast[namePos]
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)

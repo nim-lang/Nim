@@ -186,9 +186,6 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         let x = freshVar(c, it.sons[0].sym)
         idNodeTablePut(c.transCon.mapping, it.sons[0].sym, x)
         var defs = newTransNode(nkIdentDefs, it.info, 3)
-        if importantComments(c.graph.config):
-          # keep documentation information:
-          PNode(defs).comment = it.comment
         defs[0] = x.PTransNode
         defs[1] = it.sons[1].PTransNode
         defs[2] = transform(c, it.sons[2])
@@ -233,7 +230,7 @@ proc transformConstSection(c: PTransf, v: PNode): PTransNode =
 
 proc hasContinue(n: PNode): bool =
   case n.kind
-  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt: discard
+  of nkEmpty..nkNilLit, nkForStmt, nkParForStmt, nkWhileStmt, nkCommentStmt: discard
   of nkContinueStmt: result = true
   else:
     for i in countup(0, sonsLen(n) - 1):
@@ -303,7 +300,7 @@ proc introduceNewLocalVars(c: PTransf, n: PNode): PTransNode =
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkCommentStmt:
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkVarSection, nkLetSection:
@@ -522,7 +519,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     return paDirectMapping    # XXX really correct?
                               # what if ``arg`` has side-effects?
   case arg.kind
-  of nkEmpty..nkNilLit:
+  of nkEmpty..nkNilLit, nkCommentStmt:
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkCurly, nkBracket:
     result = paFastAsgn
@@ -954,9 +951,6 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     # Skip the second son since it only contains an unsemanticized copy of the
     # variable type used by docgen
     result[2] = transform(c, n[2])
-    # XXX comment handling really sucks:
-    if importantComments(c.graph.config):
-      PNode(result).comment = n.comment
   of nkClosure:
     # it can happen that for-loop-inlining produced a fresh
     # set of variables, including some computed environment

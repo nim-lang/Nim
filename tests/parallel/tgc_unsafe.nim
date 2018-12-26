@@ -17,7 +17,7 @@ var global: MyObject[string]
 var globalB: MyObject[float]
 
 proc consumer(ix : int) {.thread.} =
-  echo channels[ix].recv() ###### not GC-safe: 'channels'
+  echo channels[ix].recv() # GC-safe: 'channels'
   echo global
   echo globalB
 

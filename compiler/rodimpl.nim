@@ -829,13 +829,12 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
     #  nkVarSections are already covered by the vmgen which produces nkStaticStmt
   of nkMethodDef:
     methodDef(g, n[namePos].sym, fromCache=true)
-  of nkCommentStmt:
+  of nkReplayInstr:
     # pragmas are complex and can be user-overriden via templates. So
     # instead of using the original ``nkPragma`` nodes, we rely on the
     # fact that pragmas.nim was patched to produce specialized recorded
-    # statements for us in the form of ``nkCommentStmt`` with (key, value)
-    # pairs. Ordinary nkCommentStmt nodes never have children so this is
-    # not ambiguous.
+    # statements for us in the form of ``nkReplayInstr`` with (key, value)
+    # pairs.
     # Fortunately only a tiny subset of the available pragmas need to
     # be replayed here. This is always a subset of ``pragmas.stmtPragmas``.
     if n.len >= 2:

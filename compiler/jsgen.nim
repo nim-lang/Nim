@@ -1235,7 +1235,7 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
 
 proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
   let s = n.sym
-  if p.prc == s.owner or needsNoCopy(p, n): 
+  if p.prc == s.owner or needsNoCopy(p, n):
     return
   var owner = p.up
   while true:

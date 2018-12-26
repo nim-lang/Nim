@@ -85,7 +85,7 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 
 proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
-  var recorded = newNodeI(nkCommentStmt, n.info)
+  var recorded = newNodeI(nkReplayInstr, n.info)
   recorded.add newStrNode(key, n.info)
   recorded.add newStrNode(val, n.info)
   if val2.len > 0: recorded.add newStrNode(val2, n.info)
@@ -1111,7 +1111,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam, 
+    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam,
                       skField, skProc, skFunc, skConverter, skMethod, skType}):
       n.sons[i] = semCustomPragma(c, it)
     elif sym != nil:

@@ -158,7 +158,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
         result = seUnknown
-  of nkNone..nkNilLit:
+  of nkNone..nkNilLit, nkCommentStmt:
     # an atom cannot produce a side effect:
     result = seNoSideEffect
   else:

@@ -492,7 +492,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ##
   ## **Warning**: ``recvLineInto`` on unbuffered sockets assumes that the
   ## protocol uses ``\r\L`` to delimit a new line.
-  assert SocketFlag.Peek notin flags ## TODO:
+  assert SocketFlag.Peek notin flags
   result = newFuture[void]("asyncnet.recvLineInto")
 
   # TODO: Make the async transformation check for FutureVar params and complete
@@ -586,7 +586,7 @@ proc recvLine*(socket: AsyncSocket,
   ##
   ## **Warning**: ``recvLine`` on unbuffered sockets assumes that the protocol
   ## uses ``\r\L`` to delimit a new line.
-  assert SocketFlag.Peek notin flags ## TODO:
+  assert SocketFlag.Peek notin flags
 
   # TODO: Optimise this
   var resString = newFutureVar[string]("asyncnet.recvLine")

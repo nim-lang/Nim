@@ -56,7 +56,7 @@ proc sameTrees(a, b: PNode): bool =
     of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-    of nkEmpty, nkNilLit: result = true
+    of nkEmpty, nkNilLit, nkCommentStmt: result = true
     of nkType: result = sameTypeOrNil(a.typ, b.typ)
     else:
       if sonsLen(a) == sonsLen(b):
@@ -172,7 +172,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
     of nkCharLit..nkInt64Lit: result = p.intVal == n.intVal
     of nkFloatLit..nkFloat64Lit: result = p.floatVal == n.floatVal
     of nkStrLit..nkTripleStrLit: result = p.strVal == n.strVal
-    of nkEmpty, nkNilLit, nkType:
+    of nkEmpty, nkNilLit, nkType, nkCommentStmt:
       result = true
     else:
       var plen = sonsLen(p)

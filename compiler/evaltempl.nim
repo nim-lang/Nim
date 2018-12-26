@@ -64,8 +64,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in countup(0, sonsLen(templ) - 1):
-        evalTemplateAux(templ.sons[i], actual, c, res)
+      #for i in countup(0, sonsLen(templ) - 1):
+      #  evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
       result.add newNodeI(nkEmpty, templ.info)

@@ -152,7 +152,7 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
                   closure: RootRef): bool =
   if n != nil:
     case n.kind
-    of nkNone..nkNilLit:
+    of nkNone..nkNilLit, nkCommentStmt:
       # a leaf
       result = iterOverTypeAux(marker, n.typ, iter, closure)
     else:
@@ -309,7 +309,7 @@ proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
     result = canFormAcycleAux(marker, n.typ, startId)
     if not result:
       case n.kind
-      of nkNone..nkNilLit:
+      of nkNone..nkNilLit, nkCommentStmt:
         discard
       else:
         for i in countup(0, sonsLen(n) - 1):
@@ -353,7 +353,7 @@ proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
     result = copyNode(n)
     result.typ = mutateTypeAux(marker, n.typ, iter, closure)
     case n.kind
-    of nkNone..nkNilLit:
+    of nkNone..nkNilLit, nkCommentStmt:
       # a leaf
       discard
     else:
@@ -924,7 +924,7 @@ proc sameObjectTree(a, b: PNode, c: var TSameTypeClosure): bool =
       of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
       of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
       of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-      of nkEmpty, nkNilLit, nkType: result = true
+      of nkEmpty, nkNilLit, nkType, nkCommentStmt: result = true
       else:
         if sonsLen(a) == sonsLen(b):
           for i in countup(0, sonsLen(a) - 1):
@@ -1145,7 +1145,7 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
     result = typeAllowedAux(marker, n.typ, kind, flags)
     if result == nil:
       case n.kind
-      of nkNone..nkNilLit:
+      of nkNone..nkNilLit, nkCommentStmt:
         discard
       else:
         if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:

@@ -65,33 +65,33 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
     of nnkBracketExpr: #ex: paddedstring[32, '\0'], array[range, type]
       case $typeFields[i][1][0].ident
       of "seq":
-        ## let lenX = readInt16(s)
+        # let lenX = readInt16(s)
         newLenName()
         let
-          item = ^"item"  ## item name in our iterators
-          seqType = typeFields[i][1][1] ## type of seq
+          item = ^"item"  # item name in our iterators
+          seqType = typeFields[i][1][1] # type of seq
           readName = newIdentNode("read" & $seqType.ident)
         readBody.add(newNimNode(nnkLetSection).und(
           newNimNode(nnkIdentDefs).und(
             lenName,
             newNimNode(nnkEmpty),
             newCall("readInt16", streamID))))
-        readBody.add(      ## result.name = @[]
+        readBody.add(      # result.name = @[]
           resName := ("@".prefix(newNimNode(nnkBracket))),
-          newNimNode(nnkForStmt).und(  ## for item in 1..len:
+          newNimNode(nnkForStmt).und(  # for item in 1..len:
             item,
             infix(1.lit, "..", lenName),
             newNimNode(nnkStmtList).und(
-              newCall(  ## add(result.name, unpack[seqType](stream))
+              newCall(  # add(result.name, unpack[seqType](stream))
                 "add", resName, newNimNode(nnkCall).und(readName, streamID)
         ) ) ) )
         packbody.add(
           newNimNode(nnkVarSection).und(newNimNode(nnkIdentDefs).und(
-            lenName,  ## var lenName = int16(len(p.name))
+            lenName,  # var lenName = int16(len(p.name))
             newIdentNode("int16"),
             newCall("int16", newCall("len", dotName)))),
           newCall("writeBE", streamID, lenName),
-          newNimNode(nnkForStmt).und(  ## for item in 0..length - 1: pack(p.name[item], stream)
+          newNimNode(nnkForStmt).und(  # for item in 0..length - 1: pack(p.name[item], stream)
             item,
             infix(0.lit, "..", infix(lenName, "-", 1.lit)),
             newNimNode(nnkStmtList).und(
@@ -101,7 +101,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
         typeFields[i][2] = "@".prefix(newNimNode(nnkBracket))
       else:
         error("Unknown type: " & treeRepr(typeFields[i]))
-    of nnkIdent: ##normal type
+    of nnkIdent: #normal type
       case $typeFields[i][1].ident
       of "string": # length encoded string
         packBody.add(newCall("write", streamID, dotName))
@@ -110,7 +110,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
         packBody.add(newCall(
           "writeBE", streamID, dotName))
         readBody.add(resName := newCall("read" & $typeFields[i][1].ident, streamID))
-      else:  ## hopefully the type you specified was another defpacket() type
+      else:  # hopefully the type you specified was another defpacket() type
         packBody.add(newCall("pack", streamID, dotName))
         readBody.add(resName := newCall("read" & $typeFields[i][1].ident, streamID))
     else:
@@ -133,10 +133,10 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
       emptyNode(),
       newNimNode(nnkStmtList).und(# [6]
         newNimNode(nnkAsgn).und(
-          ^"result",                  ## result =
+          ^"result",                  # result =
           newNimNode(nnkCall).und(# [6][0][1]
-            ^"format",  ## format
-            emptyNode()))))  ## "[TypeName   $1   $2]"
+            ^"format",  # format
+            emptyNode()))))  # "[TypeName   $1   $2]"
     formatStr = "[" & $typeName.ident
 
   const emptyFields = {nnkEmpty, nnkNilLit}
@@ -151,7 +151,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
     #export the name
     typeFields[i][0] = fname.postfix("*")
     if not(typeFields[i][2].kind in emptyFields):
-      ## empty the type default for the type def
+      # empty the type default for the type def
       typeFields[i][2] = newNimNode(nnkEmpty)
     objFields.add(typeFields[i])
     toStringFunc[6][0][1].add(

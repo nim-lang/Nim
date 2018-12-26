@@ -489,7 +489,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add moveOrCopy(dest, ri[^1], c)
   of nkBlockExpr, nkBlockStmt:
     result = newNodeI(nkBlockStmt, ri.info)
-    result.add ri[0] ## add label
+    result.add ri[0] # add label
     result.add moveOrCopy(dest, ri[1], c)
   of nkIfExpr, nkIfStmt:
     result = newNodeI(nkIfStmt, ri.info)
@@ -621,7 +621,8 @@ proc p(n: PNode; c: var Con): PNode =
       result = copyNode(n)
       recurse(n, result)
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
-      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef,
+      nkCommentStmt:
     result = n
   else:
     result = copyNode(n)

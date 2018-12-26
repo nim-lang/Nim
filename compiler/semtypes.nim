@@ -113,6 +113,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       counter = x
     of nkSym:
       e = n.sons[i].sym
+    of nkExportDoc:
+      e = newSymS(skEnumField, n[i][0], c)
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n.sons[i], c)
     else:
@@ -477,7 +479,23 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
   # identifier with visibility
-  if n.kind == nkPostfix:
+  if n.kind == nkExportDoc:
+    if sonsLen(n) == 3:
+      # for gensym'ed identifiers the identifier may already have been
+      # transformed to a symbol and we need to use that here:
+      result = newSymG(kind, n.sons[0], c)
+      if n[1].kind != nkEmpty:
+        var v = considerQuotedIdent(c, n.sons[1])
+        if sfExported in allowed and v.id == ord(wStar):
+          incl(result.flags, sfExported)
+        else:
+          if sfExported notin allowed:
+            localError(c.config, n.sons[1].info, errXOnlyAtModuleScope % "export")
+          else:
+            localError(c.config, n.sons[1].info, errInvalidVisibilityX % renderTree(n[1]))
+    else:
+      illFormedAst(n, c.config)
+  elif n.kind == nkPostfix:
     if sonsLen(n) == 2:
       # for gensym'ed identifiers the identifier may already have been
       # transformed to a symbol and we need to use that here:
@@ -486,7 +504,7 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
       if sfExported in allowed and v.id == ord(wStar):
         incl(result.flags, sfExported)
       else:
-        if not (sfExported in allowed):
+        if sfExported notin allowed:
           localError(c.config, n.sons[0].info, errXOnlyAtModuleScope % "export")
         else:
           localError(c.config, n.sons[0].info, errInvalidVisibilityX % renderTree(n[0]))

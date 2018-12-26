@@ -169,7 +169,7 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
 proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
   result = n
   case n.kind
-  of nkNone..nkNilLit:
+  of nkNone..nkNilLit, nkCommentStmt:
     discard
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
@@ -203,7 +203,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result.typ = replaceTypeVarsT(cl, n.typ)
     checkMetaInvariants(cl, result.typ)
   case n.kind
-  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkCommentStmt:
     discard
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)

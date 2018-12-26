@@ -397,7 +397,7 @@ proc sameConstant*(a, b: PNode): bool =
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
-    of nkEmpty: result = true
+    of nkEmpty, nkCommentStmt: result = true
     else:
       if sonsLen(a) == sonsLen(b):
         for i in countup(0, sonsLen(a) - 1):

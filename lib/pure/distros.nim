@@ -147,7 +147,7 @@ template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
-  of Distribution.Windows: ## some version of Windows
+  of Distribution.Windows: # some version of Windows
     result = defined(windows)
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)

@@ -20,7 +20,7 @@ type
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
   case n.kind
-  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
+  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit, nkCommentStmt: result = n
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)
@@ -73,7 +73,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
-  of nkNilLit: discard
+  of nkNilLit, nkCommentStmt: discard
   of nkRecCase:
     let L = forLoop.len
     let call = forLoop.sons[L-2]

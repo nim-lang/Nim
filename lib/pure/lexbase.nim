@@ -28,12 +28,12 @@ type
   BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
                                  ## this object.
     bufpos*: int              ## the current position within the buffer
-    when defined(js):         ## the buffer itself
-      buf*: string
+    when defined(js):
+      buf*: string            ## the buffer itself
     else:
       buf*: cstring
     bufLen*: int              ## length of buffer in characters
-    input: Stream            ## the input stream
+    input: Stream             ## the input stream
     lineNumber*: int          ## the current line number
     sentinel: int
     lineStart: int            # index of last line start in buffer

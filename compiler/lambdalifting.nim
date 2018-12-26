@@ -452,7 +452,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef,
-     nkConverterDef, nkMacroDef, nkFuncDef:
+     nkConverterDef, nkMacroDef, nkFuncDef, nkCommentStmt:
     discard
   of nkLambdaKinds, nkIteratorDef:
     if n.typ != nil:
@@ -669,7 +669,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         result = accessViaEnvVar(n, owner, d, c)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
      nkTemplateDef, nkTypeSection, nkProcDef, nkMethodDef, nkConverterDef,
-     nkMacroDef, nkFuncDef:
+     nkMacroDef, nkFuncDef, nkCommentStmt:
     discard
   of nkClosure:
     if n[1].kind == nkNilLit:

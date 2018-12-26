@@ -9,7 +9,8 @@ proc MyProc2*() =
   discard
 
 
-template MyTemplate1*() = discard ## Comment behind template
+template MyTemplate1*() = ## Comment behind template
+  discard
 
 template MyTemplate2*() = discard
   ## Comment below template
