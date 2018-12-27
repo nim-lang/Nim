@@ -60,7 +60,7 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType, TNil
+  TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult
   
   History = object
     info: TLineInfo
@@ -79,6 +79,8 @@ type
   Nilability* = enum Safe, MaybeNil, Nil
 
   Check = tuple[nilability: Nilability, map: NilMap]
+
+let RESULT_ID = -1
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
@@ -170,11 +172,18 @@ proc `$`(map: NilMap): string =
       result.add("  " & a & "\n")
 
 proc symbol(n: PNode): Symbol =
+  echo n, n.kind
   case n.kind:
   of nkSym:
-    n.sym.id
+    if $n == "result":
+      result = RESULT_ID
+    else:
+      result = n.sym.id
+  of nkHiddenAddr, nkAddr:
+    result = symbol(n[0])
   else:
-    -2
+    result = -2
+  echo result
 
 using
   n: PNode
@@ -197,8 +206,12 @@ proc checkCall(n, conf, map): Check =
           result.map = newNilMap(map)
           isNew = true
         # result.map[$child] = MaybeNil
-        result.map.store(symbol(child), MaybeNil, TArg, n.info)
+        # echo "MaybeNil arg"
+        # echo "  ", child
+        # echo "  ", symbol(child)
+        result.map.store(symbol(child), MaybeNil, TVarArg, n.info)
         invalidate(result.map, $child)
+        # echo result.map
 
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
     # let b = $n[1]
@@ -208,12 +221,16 @@ proc checkCall(n, conf, map): Check =
     result.nilability = Safe
   else:
     result.nilability = typeNilability(n.typ)
+  # echo result.map
 
 proc event(b: History): string =
   case b.kind:
   of TArg: "param with nilable type"
   of TNil: "isNil"
   of TAssign: "assigns a value which might be nil"
+  of TVarArg: "passes it as a var arg which might change to nil"
+  of TResult: "it is nil by default"
+  of TType: "it has ref type"
   else: ""
 
 proc derefError(n, conf, map; maybe: bool) =
@@ -255,7 +272,7 @@ proc checkRefExpr(n, conf; check: Check): Check =
       result.nilability = result.map[key]
     else:
       # result.map[key] = MaybeNil
-      result.map.store(key, MaybeNil, TAssign, n.info)
+      result.map.store(key, MaybeNil, TType, n.info)
       result.nilability = MaybeNil
     aecho "dependencies"
     makeDependencies(result.map, n)
@@ -327,7 +344,7 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
 proc checkReturn(n, conf, map): Check =
   # return n same as result = n; return
   result = check(n[0], conf, map)
-  result.map.store(-1, result.nilability, TAssign, n.info)
+  result.map.store(RESULT_ID, result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, conf, map): Check =
@@ -344,10 +361,9 @@ proc checkFor(n, conf, map): Check =
 
 proc checkInfix(n, conf, map): Check =
   if n[0].kind == nkSym:
-    let op = n[0].sym.name.s
     var mapL: NilMap
     var mapR: NilMap
-    if n[0].sym.magic != mAnd:
+    if n[0].sym.magic notin {mAnd, mEqRef}:
       mapL = checkCondition(n[1], conf, map, false, false)
       mapR = checkCondition(n[2], conf, map, false, false)
     case n[0].sym.magic:
@@ -356,6 +372,17 @@ proc checkInfix(n, conf, map): Check =
     of mAnd:
       result.map = checkCondition(n[1], conf, map, false, false)
       result.map = checkCondition(n[2], conf, result.map, false, false)
+    of mEqRef:
+      if n[2].kind == nkIntLit:
+        if $n[2] == "true":
+          result.map = checkCondition(n[1], conf, map, false, false)
+        elif $n[2] == "false":
+          result.map = checkCondition(n[1], conf, map, true, false)
+      elif n[1].kind == nkIntLit:
+        if $n[1] == "true":
+          result.map = checkCondition(n[2], conf, map, false, false)
+        elif $n[1] == "false":
+          result.map = checkCondition(n[2], conf, map, true, false)
     else:
       result.map = map
   else:
@@ -477,7 +504,6 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
   if base:
     map.base = map
   result = map
-  # echo n.kind
   if n.kind == nkCall:
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       result = newNilMap(map, if base: map else: map.base)
@@ -490,7 +516,7 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
     result = checkInfix(n, conf, map).map
 
 proc checkResult(n, conf, map) =
-  let resultNilability = map[-1] # "result"]
+  let resultNilability = map[RESULT_ID] # "result"]
   case resultNilability:
   of Nil:
     localError conf, n.info, "return value is nil"
@@ -529,7 +555,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
      nkCast:
     result = check(n.sons[1], conf, map)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
+     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkElse:
     result.map = map
     for child in n:
       result = check(child, conf, result.map)
@@ -581,7 +607,8 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   of nkIntLit:
     result = (Safe, map)
   else:
-    result = (Safe, map)
+    echo n.kind
+    result = (Nil, map)
   
 proc typeNilability(typ: PType): Nilability =
   if typ.isNil:
@@ -609,7 +636,14 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
         map.store(symbol(child), typeNilability(child.typ), TArg, child.info)
     # even not nil is nil by default
     # map["result"] = if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe
-    map.store(-1, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TArg, s.ast.info)
+    # if not s.typ[0].isNil:
+    #   echo s.typ[0].kind
+
+    map.store(RESULT_ID, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+    # echo map
     let res = check(body, conf, map)
+    if res.nilability == Safe and (not res.map.history.hasKey(RESULT_ID) or res.map.history[RESULT_ID].len <= 1):
+      res.map.store(RESULT_ID, Safe, TAssign, s.ast.info)
     if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
+      # echo res.map
       checkResult(s.ast, conf, res.map)
