@@ -224,8 +224,12 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    let now = times.getTime()
-    randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+    when defined(js):
+      let time = int64(times.epochTime() * 1_000_000_000)
+      randomize(time)
+    else:
+      let now = times.getTime()
+      randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
 {.pop.}
 
