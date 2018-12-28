@@ -12,11 +12,6 @@
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Alias for system.`$`(t) since Nim v0.20.0.
-when false:
-  # pending https://github.com/nim-lang/Nim/issues/10079, consider using this
-  # instead:
-  template name*(t: typedesc): string =
-    system.`$`(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
   ## Returns the arity of the given type. This is the number of "type" components or

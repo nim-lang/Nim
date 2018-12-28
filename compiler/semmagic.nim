@@ -136,7 +136,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     return typeWithSonsResult(tyAnd, @[operand, operand2])
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
-  of "name":
+  of "name", "$":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info

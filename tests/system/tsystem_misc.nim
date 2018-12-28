@@ -30,10 +30,8 @@ discard """
 '''
 """
 
-block:
-  static:
-    doAssert $type(42) == "int"
 
+block:
   const a2 = $(int)
   const a3 = $int
   doAssert a2 == "int"
@@ -138,4 +136,3 @@ let a = @[1, 2, 3]
 
 # a.boundedOpenArray(1, 2).foo()  # Works
 echo a.boundedOpenArray(1, 2).len # Internal compiler error
-
