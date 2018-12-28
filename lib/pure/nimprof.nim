@@ -197,7 +197,7 @@ proc writeProfile() {.noconv.} =
 
     var sum = 0
     # only write the first 100 entries:
-    for i in 0..min(100, entries-1):
+    for i in 0..<min(100, entries):
       if profileData[i].total > 1:
         inc sum, profileData[i].total
         writeLine(f, "Entry: ", i+1, "/", entries, " Calls: ",
