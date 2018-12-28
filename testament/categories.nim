@@ -97,7 +97,7 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
 
 proc flagTests(r: var TResults, cat: Category, options: string) =
   # --genscript
-  const filename = "tests"/"flags"/"tgenscript"
+  const filename = testsDir/"flags"/"tgenscript"
   const genopts = " --genscript"
   let nimcache = nimcacheDir(filename, genopts, targetC)
   testSpec r, makeTest(filename, genopts, cat)
@@ -356,7 +356,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   ]
 
   for i, test in tests:
-    let filename = "tests" / test.addFileExt("nim")
+    let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
     doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
   # Run the tests.
@@ -534,7 +534,7 @@ proc `&.?`(a, b: string): string =
   result = if b.startswith(a): b else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
-  let test = "tests" & DirSep &.? cat.string / test
+  let test = testsDir &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
@@ -604,7 +604,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   put outputGotten.txt, outputGotten.txt, megatest.nim there too
   delete upon completion, maybe
   ]# 
-  var outDir = nimcacheDir("megatest", "", targetC)
+  var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
   for i, runSpec in specs:
@@ -619,15 +619,15 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   writeFile("megatest.nim", megatest)
 
-  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
-  let logFile = outDir / "testament_logfile.log"
-  let logFile2 = open(logFile, fmWrite)
-  echo "follow progress with: tail -F " & logFile # Could also append to this in execCmdEx("./megatest")
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "", logFile = logFile2)
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  proc onStdout(line: string) = echo line
+  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
+    onStdout = if verboseMegatest: onStdout else: nil)
   if exitCode != 0:
     echo buf
     quit("megatest compilation failed")
 
+  # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
     echo buf
@@ -712,7 +712,7 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     var testsRun = 0
 
     var files: seq[string]
-    for file in walkDirRec("tests" & DirSep &.? cat.string):
+    for file in walkDirRec(testsDir &.? cat.string):
         if isTestFile(file): files.add file
     files.sort # give reproducible order
 
