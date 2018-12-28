@@ -80,9 +80,17 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if isPure: initStrTable(symbols)
   var hasNull = false
   for i in countup(1, sonsLen(n) - 1):
+    if n.sons[i].kind == nkEmpty: continue
     case n.sons[i].kind
     of nkEnumFieldDef:
-      e = newSymS(skEnumField, n.sons[i].sons[0], c)
+      let enumField =
+        if n.sons[i].sons[0].kind == nkPragmaExpr:
+          n.sons[i].sons[0].sons[0]
+        else:
+          n.sons[i].sons[0]
+      e = newSymS(skEnumField, enumField, c)
+      if n.sons[i].sons[0].kind == nkPragmaExpr:
+        pragma(c, e, n.sons[i].sons[0].sons[1], enumFieldPragmas)
       var v = semConstExpr(c, n.sons[i].sons[1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
@@ -115,6 +123,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = n.sons[i].sym
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n.sons[i], c)
+    of nkPragmaExpr:
+      e = newSymS(skEnumField, n.sons[i].sons[0], c)
+      pragma(c, e, n.sons[i].sons[1], enumFieldPragmas)
     else:
       illFormedAst(n[i], c.config)
     e.typ = result
