@@ -141,6 +141,12 @@ proc enumToString*(enums: openArray[enum]): string =
   it's more recognizable and allows tools like github to recognize it as Nim,
   see [#9647](https://github.com/nim-lang/Nim/issues/9647).
   The previous extension will continue to work.
+- Pragma syntax is now consistent. Previous syntax where type pragmas did not 
+  follow the type name is now deprecated. Also pragma before generic parameter
+  list is deprecated to be consistent with how pragmas are used with a proc. See
+  [#8514](https://github.com/nim-lang/Nim/issues/8514) and 
+  [#1872](https://github.com/nim-lang/Nim/issues/1872) for further details.
+
 
 ### Tool changes
 - `jsondoc` now include a `moduleDescription` field with the module

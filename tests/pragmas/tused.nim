@@ -1,7 +1,7 @@
 discard """
   nimout: '''
 compile start
-tused.nim(17, 8) Hint: 'tused.echoSub(a: int, b: int)[declared in tused.nim(17, 7)]' is declared but not used [XDeclaredButNotUsed]
+tused.nim(17, 8) Hint: 'echoSub' is declared but not used [XDeclaredButNotUsed]
 compile end'''
   output: "8\n8"
   joinable: false

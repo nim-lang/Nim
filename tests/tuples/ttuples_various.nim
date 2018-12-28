@@ -66,6 +66,22 @@ block unpack_asgn:
 
 
 
+block unpack_const:
+  const (a, ) = (1, )
+  doAssert a == 1
+
+  const (b, c) = (2, 3)
+  doAssert b == 2
+  doAssert c == 3
+
+  # bug #10098
+  const (x, y, z) = (4, 5, 6)
+  doAssert x == 4
+  doAssert y == 5
+  doAssert z == 6
+
+
+
 block tuple_subscript:
   proc`[]` (t: tuple, key: string): string =
     for name, field in fieldPairs(t):
