@@ -108,3 +108,6 @@ Advanced options:
   --experimental:$1
                             enable experimental language feature
   -v, --version             show detailed version information
+  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+                            works better with `--stackTrace:on`
+                            see also https://nim-lang.github.io/Nim/estp.html
