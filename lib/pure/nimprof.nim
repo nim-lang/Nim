@@ -39,6 +39,15 @@ type
     st: StackTrace
   ProfileData = array[0..64*1024-1, ptr ProfileEntry]
 
+proc `==`(x, y: cstring): bool {.noSideEffect, inline.} =
+  ## Checks for equality between two `cstring` variables.
+  # copied over from system.nim as workaround for #10106
+  proc strcmp(a, b: cstring): cint {.noSideEffect,
+    importc, header: "<string.h>".}
+  if pointer(x) == pointer(y): result = true
+  elif x.isNil or y.isNil: result = false
+  else: result = strcmp(x, y) == 0
+
 proc `==`(a, b: StackTrace): bool =
   for i in 0 .. high(a.lines):
     if a[i] != b[i]: return false
@@ -146,7 +155,7 @@ else:
       dec gTicker
 
   proc hook(st: StackTrace) {.nimcall, locks: 0.} =
-    #echo "profiling! ", interval
+    # echo "profiling! ", interval
     if interval == 0:
       hookAux(st, 1)
     else:
@@ -167,7 +176,7 @@ proc writeProfile() {.noconv.} =
   when declared(system.StackTrace):
     system.profilerHook = nil
   const filename = "profile_results.txt"
-  echo "writing " & filename & "..."
+  echo "writing " & filename & " ..."
   var f: File
   if open(f, filename, fmWrite):
     sort(profileData, cmpEntries)
