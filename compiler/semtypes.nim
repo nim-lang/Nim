@@ -83,14 +83,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if n.sons[i].kind == nkEmpty: continue
     case n.sons[i].kind
     of nkEnumFieldDef:
-      let enumField =
-        if n.sons[i].sons[0].kind == nkPragmaExpr:
-          n.sons[i].sons[0].sons[0]
-        else:
-          n.sons[i].sons[0]
-      e = newSymS(skEnumField, enumField, c)
       if n.sons[i].sons[0].kind == nkPragmaExpr:
+        e = newSymS(skEnumField, n.sons[i].sons[0].sons[0], c)
         pragma(c, e, n.sons[i].sons[0].sons[1], enumFieldPragmas)
+      else:
+        e = newSymS(skEnumField, n.sons[i].sons[0], c)
       var v = semConstExpr(c, n.sons[i].sons[1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
