@@ -599,7 +599,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   var megatest: string
   #[
-  TODO(MINOR):
+  TODO(minor):
   get from Nim cmd
   put outputGotten.txt, outputGotten.txt, megatest.nim there too
   delete upon completion, maybe
@@ -610,10 +610,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   for i, runSpec in specs:
     let file = runSpec.file
     let file2 = outDir / ("megatest_" & $i & ".nim")
-    var code = ""
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    code.add "echo \"" & marker & "\", " & quoted(file) & "\n"
-
+    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
     createDir(file2.parentDir)
     writeFile(file2, code)
     megatest.add "import " & quoted(file2) & "\n"
