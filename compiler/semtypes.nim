@@ -117,6 +117,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = newSymS(skEnumField, n.sons[i], c)
     else:
       illFormedAst(n[i], c.config)
+    if e.name.s == "_":
+      localError(c.config, e.info, "_ cannot be used here")
     e.typ = result
     e.position = int(counter)
     if e.position == 0: hasNull = true
