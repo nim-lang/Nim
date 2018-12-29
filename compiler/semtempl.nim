@@ -557,6 +557,8 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     incl(s.flags, sfGlobal)
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
+  if s.name.s == "_":
+    localError(c.config, s.info, "_ cannot be used here")
   styleCheckDef(c.config, s)
   onDef(n[0].info, s)
   # check parameter list:

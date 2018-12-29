@@ -1628,6 +1628,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.ast = n
     #s.scope = c.currentScope
 
+  if s.name.s == "_":
+    localError(c.config, s.info, "_ cannot be used here")
+
   s.options = c.config.options
 
   # before compiling the proc body, set as current the scope
