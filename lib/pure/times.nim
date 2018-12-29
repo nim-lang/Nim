@@ -163,7 +163,8 @@ when defined(posix):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
-    tzset()
+    when not defined(valgrind_workaround_10121):
+      tzset()
 
 elif defined(windows):
   import winlean
