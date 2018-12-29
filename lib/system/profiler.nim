@@ -25,6 +25,13 @@ type
   StackTrace* = object
     lines*: array[0..MaxTraceLen-1, cstring]
     files*: array[0..MaxTraceLen-1, cstring]
+    #[
+    TODO(minor):
+    * rename to loc after renaming `lines` to procnames
+    * make StackTrace = object: entry: array[0..MaxTraceLen-1, StackTraceEntry]
+      with some StackTraceEntry object
+    ]#
+    locLines*: array[0..MaxTraceLen-1, int]
   ProfilerHook* = proc (st: StackTrace) {.nimcall.}
 
 proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
@@ -40,6 +47,7 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     # the (-1) is for the "..." entry
     st.lines[i] = it.procname
     st.files[i] = it.filename
+    st.locLines[i] = it.line
     inc(i)
     inc(total)
     it = it.prev
@@ -52,10 +60,12 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
   if total != i:
     st.lines[i] = "..."
     st.files[i] = "..."
+    st.locLines[i] = 0
     inc(i)
   while b != nil and i <= high(st.lines):
     st.lines[i] = b.procname
     st.files[i] = b.filename
+    st.locLines[i] = b.line
     inc(i)
     b = b.prev
 

@@ -26,12 +26,6 @@ const
   withThreads = compileOption("threads")
   tickCountCorrection = 50_000
 
-when not declared(system.StackTrace):
-  type StackTrace = object
-    lines: array[0..20, cstring]
-    files: array[0..20, cstring]
-  proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
-
 # We use a simple hash table of bounded size to keep track of the stack traces:
 type
   ProfileEntry = object
@@ -206,8 +200,9 @@ proc writeProfile() {.noconv.} =
         for ii in 0..high(StackTrace.lines):
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
+          let line = profileData[i].st.locLines[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ":" & $line & " " & $procname, " ", perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:
