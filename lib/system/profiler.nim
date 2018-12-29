@@ -11,7 +11,7 @@
 # code generator. The idea is to inject the instruction stream
 # with 'nimProfile()' calls. These calls are injected at every loop end
 # (except perhaps loops that have no side-effects). At every Nth call a
-# stack trace is taken. A stack tace is a list of cstrings.
+# stack trace is taken. A stack trace is a list of cstrings.
 
 when defined(profiler) and defined(memProfiler):
   {.error: "profiler and memProfiler cannot be defined at the same time (See Embedded Stack Trace Profiler (ESTP) User Guide) for more details".}
@@ -26,7 +26,7 @@ type
     lines*: array[0..MaxTraceLen-1, cstring]
     files*: array[0..MaxTraceLen-1, cstring]
     #[
-    TODO(minor):
+    todo(minor):
     * rename to loc after renaming `lines` to procnames
     * make StackTrace = object: entry: array[0..MaxTraceLen-1, StackTraceEntry]
       with some StackTraceEntry object
