@@ -952,6 +952,8 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
               localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
                       "previous type completion was here: " & c.config$typsym.info)
             s = typsym
+      if s.name.s == "_":
+        localError(c.config, s.info, "_ cannot be used here")
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
       elif s.owner == nil: s.owner = getCurrOwner(c)
