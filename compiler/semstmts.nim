@@ -589,7 +589,7 @@ proc semConst(c: PContext, n: PNode): PNode =
 
     for j in countup(0, length-3):
       var v = semIdentDef(c, a.sons[j], skConst)
-      if sfGenSym notin v.flags: addInterfaceDecl(c, v)
+      if sfGenSym notin v.flags and not isDiscardUnderscore(v): addInterfaceDecl(c, v)
       elif v.owner == nil: v.owner = getCurrOwner(c)
       styleCheckDef(c.config, v)
       onDef(a[j].info, v)
