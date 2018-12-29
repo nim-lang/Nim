@@ -537,6 +537,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if tup.kind == tyTuple: setVarType(c, v, tup.sons[j])
         else: v.typ = tup
         b.sons[j] = newSymNode(v)
+
+      # https://github.com/nim-lang/Nim/issues/9331
+      v.ast = n[0]
+
       checkNilable(c, v)
       if sfCompileTime in v.flags: hasCompileTime = true
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
