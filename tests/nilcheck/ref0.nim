@@ -3,7 +3,7 @@ discard """
   errormsg: ""
   nimout: '''
   ref0.nim(65, 8) Error: can't deref a it might be nil
-   param with nilable type on line 64:7
+    param with nilable type on line 64:7
   ref0.nim(72, 10) Error: can't deref a it is nil
     isNil on line 71:6
   ref0.nim(80, 8) Error: can't deref a2 it might be nil
@@ -19,32 +19,32 @@ discard """
   ref0.nim(129, 17) Error: can't deref a it is nil
     isNil on line 128:8
   ref0.nim(133, 8) Error: can't deref result it is nil
-    it is nil by default on line 132
+    it is nil by default on line 132:0
+  ref0.nim(136, 8) Warning: Cannot prove that 'result' is initialized. This will become a compile time error in the future. [ProveInit]
   ref0.nim(136, 8) Error: can't deref result it is nil
     it is nil by default on line 135:0
+  ref0.nim(139, 3) Warning: Cannot prove that 'result' is initialized. This will become a compile time error in the future. [ProveInit]
   ref0.nim(138, 1) Error: return value is nil
   ref0.nim(147, 1) Error: return value might be nil
   ref0.nim(174, 9) Error: can't deref b.refField it might be nil
-    it has ref type on line 174
-  '''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    it has ref type on line 174:8
+  ref0.nim(183, 9) Error: can't deref b.refField it is nil
+    assigns a value which might be nil on line 181:19
+  ref0.nim(192, 9) Error: can't deref a[0] it might be nil
+    it has ref type on line 192:8
+  ref0.nim(198, 11) Error: can't deref a[b] it might be nil
+    isNil on line 196:13  a subexpression changed: we can't prove it isn't nil now on line 197:8
+  ref0.nim(216, 10) Error: can't deref a it might be nil
+    assigns a value which might be nil on line 214:6
+  ref0.nim(226, 10) Error: can't deref a it might be nil
+    assigns a value which might be nil on line 221:6
+  ref0.nim(237, 10) Error: can't deref b it might be nil
+    assigns a value which might be nil on line 234:6
+  ref0.nim(240, 8) Error: can't deref b it might be nil
+    assigns a value which might be nil on line 234:6
+  ref0.nim(244, 10) Error: can't deref a it might be nil
+    assigns a value which might be nil on line 243:6
+'''
 
 
 
@@ -177,15 +177,71 @@ proc f16(b: B not nil) =
   if not b.refField.isNil:
     echo b.refField.a
 
-when false:
-  proc f17(b: B not nil) =
-    if not b.refField.isNil:
-      b.refField = nil
-    echo b.refField.a # can't deref b.refField
+proc f17(b: B not nil) =
+  if not b.refField.isNil:
+    b.refField = nil
+  echo b.refField.a # can't deref b.refField
 
-  proc f18(b: B not nil) =
-    b.refField = A()
-    echo b.refField.a
+proc f18(b: B not nil) =
+  b.refField = A()
+  echo b.refField.a
+
+
+
+proc f19(a: seq[A]) =
+  echo a[0].a # can't deref a[0]
+
+proc f20(a: seq[A]) =
+  var b = 1
+  if not a[b].isNil:
+    b = 0
+    echo a[b].a # can't deref a[b]
+
+proc f21(a: A) =  
+  if a.isNil:
+    return
+  echo a.a
+
+proc f22: A not nil=
+  new(result)
+
+proc f24(b: int) =
+  var a: A
+  try:
+    if b == 0:
+      raise newException(ValueError, "e")
+    else:
+      a = A()
+  except:
+    echo a.a # can't deref a
+
+
+
+proc f25(b: int) =
+  var a: A
+  try:
+    if b == 0:
+      raise newException(ValueError, "e")
+  finally:
+    echo a.a
+
+proc f26(b: seq[A]) =
+  for a in b:
+    if not a.isNil:
+      echo a.a
+
+proc f27 =
+  var b = A()
+  var i = 0
+  while i < 5:
+    echo b.a
+    if i == 2:
+      b = nil
+  echo b.a
+
+proc f28(b: seq[A]) =
+  for a in b:
+    echo a.a
 
 e(a)
 

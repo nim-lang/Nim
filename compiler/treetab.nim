@@ -12,16 +12,18 @@
 import
   hashes, ast, astalgo, types
 
-proc hashTree(n: PNode): Hash =
-  if n == nil: return
+proc hashTree*(n: PNode): Hash =
+  if n.isNil:
+    return
   result = ord(n.kind)
   case n.kind
   of nkEmpty, nkNilLit, nkType:
     discard
   of nkIdent:
+    echo "what", "ident"
     result = result !& n.ident.h
   of nkSym:
-    result = result !& n.sym.name.h
+    result = result !& n.sym.id
   of nkCharLit..nkUInt64Lit:
     if (n.intVal >= low(int)) and (n.intVal <= high(int)):
       result = result !& int(n.intVal)
