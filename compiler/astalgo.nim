@@ -174,6 +174,8 @@ proc getModule*(s: PSym): PSym =
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
 
+proc fromSystem*(op: PSym): bool {.inline.} = sfSystemModule in getModule(op).flags
+
 proc getSymFromList(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in countup(start, sonsLen(list) - 1):
     if list.sons[i].kind == nkSym:

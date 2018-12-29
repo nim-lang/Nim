@@ -641,7 +641,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray:
+  of tyUncheckedArray, tyCString:
     result = 0
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')

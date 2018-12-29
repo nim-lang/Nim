@@ -262,8 +262,6 @@ proc min(a, b: PNode): PNode =
   elif a.intVal < b.intVal: result = a
   else: result = b
 
-proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
-
 template pushSpawnId(c, body) {.dirty.} =
   inc c.spawns
   let oldSpawnId = c.currentSpawnId

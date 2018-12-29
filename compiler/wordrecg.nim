@@ -52,7 +52,7 @@ type
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks,
-    wFloatchecks, wNanChecks, wInfChecks, wMoveChecks,
+    wFloatchecks, wNanChecks, wInfChecks, wStaticBoundchecks,
     wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
@@ -140,7 +140,7 @@ const
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks", "movechecks",
+    "floatchecks", "nanchecks", "infchecks", "staticboundchecks",
 
     "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",

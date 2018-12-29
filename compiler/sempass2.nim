@@ -705,6 +705,23 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
+proc checkLe(c: PEffects; a, b: PNode) =
+  case proveLe(c.guards, a, b)
+  of impUnknown:
+    #for g in c.guards.s:
+    #  if g != nil: echo "I Know ", g
+    message(c.config, a.info, warnStaticIndexCheck,
+      "cannot prove: " & $a & " <= " & $b)
+  of impYes:
+    discard
+  of impNo:
+    message(c.config, a.info, warnStaticIndexCheck,
+      "can prove: " & $a & " > " & $b)
+
+proc checkBounds(c: PEffects; arr, idx: PNode) =
+  checkLe(c, lowBound(c.config, arr), idx)
+  checkLe(c, idx, highBound(c.config, arr, c.guards.o))
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
@@ -757,17 +774,20 @@ proc track(tracked: PEffects, n: PNode) =
             markSideEffect(tracked, a)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
-    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
-      # may not look like an assignment, but it is:
-      let arg = n.sons[1]
-      initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
-        if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
-            n[2].intVal == 0:
-          # var s: seq[notnil];  newSeq(s, 0)  is a special case!
-          discard
-        else:
-          message(tracked.config, arg.info, warnProveInit, $arg)
+    if a.kind == nkSym:
+      if a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
+        # may not look like an assignment, but it is:
+        let arg = n.sons[1]
+        initVarViaNew(tracked, arg)
+        if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+          if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
+              n[2].intVal == 0:
+            # var s: seq[notnil];  newSeq(s, 0)  is a special case!
+            discard
+          else:
+            message(tracked.config, arg.info, warnProveInit, $arg)
+      elif a.sym.magic in {mArrGet, mArrPut} and optStaticBoundsCheck in tracked.config.options:
+        checkBounds(tracked, n[1], n[2])
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
@@ -830,9 +850,31 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
+    let oldFacts = tracked.guards.s.len
+    let iterCall = n[n.len-2]
+    if optStaticBoundsCheck in tracked.config.options and iterCall.kind in nkCallKinds:
+      let op = iterCall[0]
+      if op.kind == nkSym and fromSystem(op.sym):
+        let iterVar = n[0]
+        case op.sym.name.s
+        of "..", "countup", "countdown":
+          let lower = iterCall[1]
+          let upper = iterCall[2]
+          # for i in 0..n   means  0 <= i and i <= n. Countdown is
+          # the same since only the iteration direction changes.
+          addFactLe(tracked.guards, lower, iterVar)
+          addFactLe(tracked.guards, iterVar, upper)
+        of "..<":
+          let lower = iterCall[1]
+          let upper = iterCall[2]
+          addFactLe(tracked.guards, lower, iterVar)
+          addFactLt(tracked.guards, iterVar, upper)
+        else: discard
+
     for i in 0 ..< len(n):
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
+    setLen(tracked.guards.s, oldFacts)
   of nkObjConstr:
     when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.s.len
@@ -870,6 +912,11 @@ proc track(tracked: PEffects, n: PNode) =
     if n.len == 2: track(tracked, n.sons[1])
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n.sons[0])
+  of nkBracketExpr:
+    if optStaticBoundsCheck in tracked.config.options and n.len == 2:
+      if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
+        checkBounds(tracked, n[0], n[1])
+    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
   else:
     for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 
