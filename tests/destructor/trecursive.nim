@@ -22,6 +22,9 @@ proc pushFront*[T] (list: var ForwardList[T], val: sink T) =
     result = list.first.cas(head, newNode)
   list.len.atomicInc()
 
-var list: ForwardList[int]
-list.pushFront(1)
-echo list.len
+proc test = 
+  var list: ForwardList[int]
+  list.pushFront(1)
+  echo list.len
+
+test()
