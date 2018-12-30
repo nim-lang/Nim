@@ -168,7 +168,7 @@ proc cumsummed*[T](x: openArray[T]): seq[T] =
   ##
   ## .. code-block:: nim
   ##   var x = [1, 2, 3, 4]
-  ##   echo x.cumsum    # [1, 3, 6, 10]
+  ##   echo x.cumsummed    # [1, 3, 6, 10]
   result.setLen(x.len)
   result[0] = x[0]
   for i in 1 ..< x.len: result[i] = result[i-1] + x[i]

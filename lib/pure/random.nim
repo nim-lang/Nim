@@ -178,7 +178,7 @@ proc sample*[T](a: openArray[T]): T =
 proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ## Sample one element from openArray ``a`` when it has cumulative distribution
   ## function (CDF) ``cdf`` (not necessarily normalized, any type of elements
-  ## convertible to ``float``).   Uses state in ``r``.  E.g.:
+  ## convertible to ``float``). Uses state in ``r``. E.g.:
   ##
   ## .. code-block:: nim
   ##   let val = [ "a", "b", "c", "d" ]  # some values
