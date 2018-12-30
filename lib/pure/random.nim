@@ -183,7 +183,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ## .. code-block:: nim
   ##   let val = [ "a", "b", "c", "d" ]  # some values
   ##   var cnt = [1, 2, 3, 4]            # histogram of counts
-  ##   echo r.sample(val, cnt.cumsum)    # echo a sample
+  ##   echo r.sample(val, cnt.cumsummed) # echo a sample
   assert(cdf.len == a.len)              # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get

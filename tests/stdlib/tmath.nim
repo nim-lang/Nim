@@ -77,20 +77,30 @@ suite "random float":
     check rand1 != rand2
 
 suite "cumsum":
-  test "cumsum int":
+  test "cumsum int seq return":
     let counts = [ 1, 2, 3, 4 ]
-    check counts.cumsum == [ 1, 3, 6, 10 ]
+    check counts.cumsummed == [ 1, 3, 6, 10 ]
 
-  test "cumsum float":
+  test "cumsum float seq return":
     let counts = [ 1.0, 2.0, 3.0, 4.0 ]
-    check counts.cumsum == [ 1.0, 3.0, 6.0, 10.0 ]
+    check counts.cumsummed == [ 1.0, 3.0, 6.0, 10.0 ]
+
+  test "cumsum int in-place":
+    var counts = [ 1, 2, 3, 4 ]
+    counts.cumsum
+    check counts == [ 1, 3, 6, 10 ]
+
+  test "cumsum float in-place":
+    var counts = [ 1.0, 2.0, 3.0, 4.0 ]
+    counts.cumsum
+    check counts == [ 1.0, 3.0, 6.0, 10.0 ]
 
 suite "random sample":
   test "non-uniform array sample unnormalized int CDF":
     let values = [ 10, 20, 30, 40, 50 ] # values
     let counts = [ 4, 3, 2, 1, 0 ]      # weights aka unnormalized probabilities
     var histo = initCountTable[int]()
-    let cdf = counts.cumsum             # unnormalized CDF
+    let cdf = counts.cumsummed          # unnormalized CDF
     for i in 0 ..< 5000:
       histo.inc(sample(values, cdf))
     check histo.len == 4                # number of non-zero in `counts`
@@ -112,7 +122,7 @@ suite "random sample":
     let values = [ 10, 20, 30, 40, 50 ]     # values
     let counts = [ 0.4, 0.3, 0.2, 0.1, 0 ]  # probabilities
     var histo = initCountTable[int]()
-    let cdf = counts.cumsum                 # normalized CDF
+    let cdf = counts.cumsummed              # normalized CDF
     for i in 0 ..< 5000:
       histo.inc(sample(values, cdf))
     check histo.len == 4                    # number of non-zero in ``counts``
