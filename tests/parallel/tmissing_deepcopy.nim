@@ -1,5 +1,6 @@
 discard """
-  ccodeCheck: "\\i @'deepCopy(' .*"
+  ccodeCheck: "@'genericDeepCopy(' .*"
+  action: compile
 """
 
 # bug #2286
@@ -35,6 +36,6 @@ proc update =
     for i in 0 .. people.high:
       spawn people[i].greet()
 
-when isMainModule:
+when true:
   setup()
   update()

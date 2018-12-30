@@ -1,6 +1,6 @@
 discard """
-  file: "tfloatnan.nim"
-  output: '''Nim: nan
+output: '''
+Nim: nan
 Nim: nan (float)
 Nim: nan (double)
 '''

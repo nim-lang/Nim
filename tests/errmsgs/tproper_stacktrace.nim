@@ -66,7 +66,7 @@ template verifyStackTrace*(expectedStackTrace: string, body: untyped) =
 
 
 
-when isMainModule:
+when true:
 # <-- Align with line 70 in the text editor
   block:
     proc bar() =

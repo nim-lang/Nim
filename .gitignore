@@ -19,6 +19,8 @@ dnimcache/
 *.zip
 *.iss
 *.log
+*.ilk
+*.pdb
 
 mapping.txt
 tags
@@ -45,10 +47,13 @@ xcuserdata/
 
 # Generated files.
 /compile.json
-/compiler/nimrod.dot
+/compiler/nim.dot
 /reject.json
 /run.json
-/testresults.html
+# for `nim doc foo.nim`
+/*.html
+#/testresults.html #covered by /*.html
+
 /testresults.json
 testament.db
 /csources
@@ -58,6 +63,11 @@ dist/
 .*/
 ~*
 
-# testament cruft
+# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
 testresults/
 test.txt
+/test.ini
+
+tweeter.db
+tweeter_test.db
+megatest.nim

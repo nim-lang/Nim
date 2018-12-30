@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables
+import ropes, tables, pathutils
 
 const
   explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
@@ -37,15 +37,16 @@ type
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnUser,
-    hintSuccess, hintSuccessX,
+    hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
-    hintConditionAlwaysTrue, hintName, hintPattern,
+    hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintGlobalVar,
-    hintUser, hintUserRaw
+    hintUser, hintUserRaw,
+    hintExtendedContext
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -91,8 +92,9 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
-    hintSuccess: "operation successful",
+    hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -105,6 +107,7 @@ const
     hintConf: "used config file '$1'",
     hintPath: "added path: '$1'",
     hintConditionAlwaysTrue: "condition is always true: '$1'",
+    hintConditionAlwaysFalse: "condition is always false: '$1'",
     hintName: "name should be: '$1'",
     hintPattern: "$1",
     hintExecuting: "$1",
@@ -116,7 +119,9 @@ const
     hintGCStats: "$1",
     hintGlobalVar: "global variable declared here",
     hintUser: "$1",
-    hintUserRaw: "$1"]
+    hintUserRaw: "$1",
+    hintExtendedContext: "$1",
+  ]
 
 const
   WarningsToStr* = ["CannotOpenFile", "OctalEscape",
@@ -132,12 +137,14 @@ const
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "User"]
 
-  HintsToStr* = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr* = [
+    "Success", "SuccessX", "CC", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
+    "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar",
-    "User", "UserRaw"]
+    "User", "UserRaw", "ExtendedContext",
+  ]
 
 const
   fatalMin* = errUnknown
@@ -157,37 +164,24 @@ type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
 
-const
-  NotesVerbosity*: array[0..3, TNoteKinds] = [
-    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
-                                         warnProveField, warnProveIndex,
-                                         warnGcUnsafe,
-                                         hintSuccessX, hintPath, hintConf,
-                                         hintProcessing, hintPattern,
-                                         hintDependency,
-                                         hintExecuting, hintLinking,
-                                         hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
-                                         hintGlobalVar, hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
-                                         warnProveField, warnProveIndex,
-                                         warnGcUnsafe,
-                                         hintPath,
-                                         hintDependency,
-                                         hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
-                                         hintGlobalVar, hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
-    {low(TNoteKind)..high(TNoteKind)}]
+proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
+  result[1] = result[2] - {warnShadowIdent, warnProveField, warnProveIndex,
+    warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
+    hintSource, hintGlobalVar, hintGCStats}
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+    hintProcessing, hintPattern, hintExecuting, hintLinking}
 
 const
+  NotesVerbosity* = computeNotesVerbosity()
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
   errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
 
 type
   TFileInfo* = object
-    fullPath*: string          # This is a canonical full filesystem path
-    projPath*: string          # This is relative to the project's root
+    fullPath*: AbsoluteFile    # This is a canonical full filesystem path
+    projPath*: RelativeFile    # This is relative to the project's root
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
@@ -198,7 +192,7 @@ type
                                #   used for better error messages and
                                #   embedding the original source in the
                                #   generated code
-    dirtyfile*: string         # the file that is actually read into memory
+    dirtyfile*: AbsoluteFile   # the file that is actually read into memory
                                # and parsed; usually "" but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
@@ -230,6 +224,9 @@ type
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
+proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+  raise newException(ERecoverableError, msg)
+
 const
   InvalidFileIDX* = FileIndex(-1)
 
@@ -252,7 +249,7 @@ type
                             ## some close token.
 
     errorOutputs*: TErrorOutputs
-    msgContext*: seq[TLineInfo]
+    msgContext*: seq[tuple[info: TLineInfo, detail: string]]
     lastError*: TLineInfo
     filenameToIndexTbl*: Table[string, FileIndex]
     fileInfos*: seq[TFileInfo]

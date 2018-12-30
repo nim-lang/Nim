@@ -1,7 +1,7 @@
 discard """
+  errormsg: "recursive dependency: 'dump'"
   file: "trecmacro.nim"
   line: 8
-  errormsg: "recursive dependency: 'dump'"
 """
 
 macro dump(n: untyped): untyped =

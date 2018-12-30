@@ -261,6 +261,9 @@ else:
       param: int
       data: T
 
+  const
+    InvalidIdent = -1
+
   proc raiseIOSelectorsError[T](message: T) =
     var msg = ""
     when T is string:
@@ -301,6 +304,12 @@ else:
       else:
         if posix.sigprocmask(SIG_UNBLOCK, newmask, oldmask) == -1:
           raiseIOSelectorsError(osLastError())
+
+  template clearKey[T](key: ptr SelectorKey[T]) =
+    var empty: T
+    key.ident = InvalidIdent
+    key.events = {}
+    key.data = empty
 
   when defined(linux):
     include ioselects/ioselectors_epoll

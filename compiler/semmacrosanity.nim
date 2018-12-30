@@ -88,7 +88,7 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
     else:
       globalError(conf, n.info, "string literal must be of some string type")
   of nkNilLit:
-    if x.kind in NilableTypes:
+    if x.kind in NilableTypes+{tyString, tySequence}:
       n.typ = t
     else:
       globalError(conf, n.info, "nil literal must be of some pointer type")

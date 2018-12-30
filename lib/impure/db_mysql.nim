@@ -96,7 +96,6 @@ type
                        ## column text on demand
     row: cstringArray
     len: int
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
@@ -128,10 +127,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      if args[a].isNil:
-        add(result, "NULL")
-      else:
-        add(result, dbQuote(args[a]))
+      add(result, dbQuote(args[a]))
       inc(a)
     else:
       add(result, c)
@@ -183,24 +179,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1:
-        if row[i] == nil:
-          if backup == nil:
-            newSeq(backup, L)
-          if backup[i] == nil and result[i] != nil:
-            shallowCopy(backup[i], result[i])
-          result[i] = nil
-        else:
-          if result[i] == nil:
-            if backup != nil:
-              if backup[i] == nil:
-                backup[i] = ""
-              shallowCopy(result[i], backup[i])
-              setLen(result[i], 0)
-            else:
-              result[i] = ""
-          else:
-            setLen(result[i], 0)
-          add(result[i], row[i])
+        setLen(result[i], 0)
+        result[i].add row[i]
       yield result
     properFreeResult(sqlres, row)
 
@@ -323,10 +303,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
-        if row[i] == nil:
-          result[i] = nil
-        else:
-          add(result[i], row[i])
+        add(result[i], row[i])
     properFreeResult(sqlres, row)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
@@ -345,10 +322,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
       setLen(result, j+1)
       newSeq(result[j], L)
       for i in 0..L-1:
-        if row[i] == nil:
-          result[j][i] = nil
-        else:
-          result[j][i] = $row[i]
+        result[j][i] = $row[i]
       inc(j)
     mysql.freeResult(sqlres)
 

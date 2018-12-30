@@ -113,7 +113,7 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32:
       matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -133,7 +133,7 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
@@ -287,7 +287,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
-    else: matches[i-1] = nil
+    else: matches[i-1] = ""
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
@@ -364,7 +364,8 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of ``s`` that match ``pattern``.
   ## If it does not match, @[] is returned.
-  accumulateResult(findAll(s, pattern, start))
+  result = @[]
+  for x in findAll(s, pattern, start): result.add x
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -408,7 +409,7 @@ proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   result = matchLen(s, prefix) >= 0
 
 proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
-  ## returns true if `s` ends with the pattern `prefix`
+  ## returns true if `s` ends with the pattern `suffix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
 
@@ -428,11 +429,12 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ##   "; "
   result = ""
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, prev)
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     add(result, by)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -453,13 +455,12 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
-  while true:
+  while prev < s.len:
     var match = findBounds(s, sub, caps, prev)
     if match.first < 0: break
-    assert result != nil
-    assert s != nil
     add(result, substr(s, prev, match.first-1))
     addf(result, by, caps)
+    if match.last + 1 == prev: break
     prev = match.last + 1
   add(result, substr(s, prev))
 
@@ -545,7 +546,8 @@ proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
   ## Splits the string ``s`` into a seq of substrings.
   ##
   ## The portion matched by ``sep`` is not returned.
-  accumulateResult(split(s, sep))
+  result = @[]
+  for x in split(s, sep, maxsplit): result.add x
 
 proc escapeRe*(s: string): string =
   ## escapes ``s`` so that it is matched verbatim when used as a regular
@@ -615,7 +617,7 @@ when isMainModule:
     doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == nil
+    doAssert matches[0] == ""
   else: doAssert false
 
   if "abc" =~ re"().*":
@@ -634,6 +636,11 @@ when isMainModule:
   doAssert(accum == @["", "this", "is", "an", "example", ""])
 
   accum = @[]
+  for word in split("00232this02939is39an22example111", re"\d+", maxsplit=2):
+    accum.add(word)
+  doAssert(accum == @["", "this", "is39an22example111"])
+
+  accum = @[]
   for word in split("AAA :   : BBB", re"\s*:\s*"):
     accum.add(word)
   doAssert(accum == @["AAA", "", "BBB"])
@@ -645,6 +652,8 @@ when isMainModule:
   doAssert(split(";a;b;c", re";") == @["", "a", "b", "c"])
   doAssert(split(";a;b;c;", re";") == @["", "a", "b", "c", ""])
   doAssert(split("a;b;c;", re";") == @["a", "b", "c", ""])
+  doAssert(split("00232this02939is39an22example111", re"\d+", maxsplit=2) == @["", "this", "is39an22example111"])
+
 
   for x in findAll("abcdef", re"^{.}", 3):
     doAssert x == "d"
@@ -675,4 +684,10 @@ when isMainModule:
     for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
       accum.add($x)
     doAssert(accum == @["a","b","c"])
+
+  block:
+    # bug #9306
+    doAssert replace("bar", re"^", "foo") == "foobar"
+    doAssert replace("foo", re"", "-") == "-foo"
+    doAssert replace("foo", re"$", "bar") == "foobar"
 

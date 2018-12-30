@@ -13,7 +13,7 @@
 import
   ast, modules, idents, passes, passaux, condsyms,
   options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos
+  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos, pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -45,7 +45,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   template cbos(name, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
-        errorMsg = nil
+        errorMsg = ""
         try:
           body
         except OSError:
@@ -96,6 +96,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf fileExists:
     setResult(a, os.fileExists(a.getString 0))
 
+  cbconf projectName:
+    setResult(a, conf.projectName)
+  cbconf projectDir:
+    setResult(a, conf.projectPath.string)
+  cbconf projectPath:
+    setResult(a, conf.projectFull.string)
   cbconf thisDir:
     setResult(a, vthisDir)
   cbconf put:
@@ -105,7 +111,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf exists:
     setResult(a, options.existsConfigVar(conf, a.getString 0))
   cbconf nimcacheDir:
-    setResult(a, options.getNimcacheDir(conf))
+    setResult(a, options.getNimcacheDir(conf).string)
   cbconf paramStr:
     setResult(a, os.paramStr(int a.getInt 0))
   cbconf paramCount:
@@ -117,11 +123,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf setCommand:
     conf.command = a.getString 0
     let arg = a.getString 1
+    incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
       conf.projectName = arg
       let path =
-        if conf.projectName.isAbsolute: conf.projectName
-        else: conf.projectPath / conf.projectName
+        if conf.projectName.isAbsolute: AbsoluteFile(conf.projectName)
+        else: conf.projectPath / RelativeFile(conf.projectName)
       try:
         conf.projectFull = canonicalizePath(conf, path)
       except OSError:
@@ -149,9 +156,11 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
 
-proc runNimScript*(cache: IdentCache; scriptName: string;
+proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
-  rawMessage(conf, hintConf, scriptName)
+  rawMessage(conf, hintConf, scriptName.string)
+  let oldSymbolFiles = conf.symbolFiles
+  conf.symbolFiles = disabledSf
 
   let graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
@@ -166,9 +175,9 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, scriptName, graph)
+  graph.vm = setupVM(m, cache, scriptName.string, graph)
 
-  graph.compileSystemModule()
+  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # ensure we load 'system.nim' again for the real non-config stuff!
@@ -177,3 +186,4 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   #initDefines()
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
+  conf.symbolFiles = oldSymbolFiles

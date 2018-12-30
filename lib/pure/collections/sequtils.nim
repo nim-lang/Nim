@@ -25,6 +25,28 @@ import macros
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+
+macro evalOnceAs(expAlias, exp: untyped, letAssigneable: static[bool]): untyped =
+  ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
+  ##  substitution in macro arguments such as
+  ## https://github.com/nim-lang/Nim/issues/7187
+  ## ``evalOnceAs(myAlias, myExp)`` will behave as ``let myAlias = myExp``
+  ## except when ``letAssigneable`` is false (eg to handle openArray) where
+  ## it just forwards ``exp`` unchanged
+  expectKind(expAlias, nnkIdent)
+  var val = exp
+
+  result = newStmtList()
+  # If `exp` is not a symbol we evaluate it once here and then use the temporary
+  # symbol as alias
+  if exp.kind != nnkSym and letAssigneable:
+    val = genSym()
+    result.add(newLetStmt(val, exp))
+
+  result.add(
+    newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
+      body = val, procType = nnkTemplateDef))
+
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ##
@@ -93,7 +115,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 ..< n:
     result[i] = x
 
-proc deduplicate*[T](s: openArray[T]): seq[T] =
+proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## Example:
@@ -107,8 +129,17 @@ proc deduplicate*[T](s: openArray[T]): seq[T] =
   ##   assert unique1 == @[1, 3, 4, 2, 8]
   ##   assert unique2 == @["a", "c", "d"]
   result = @[]
-  for itm in items(s):
-    if not result.contains(itm): result.add(itm)
+  if s.len > 0:
+    if isSorted:
+      var prev = s[0]
+      result.add(prev)
+      for i in 1..s.high:
+        if s[i] != prev:
+          prev = s[i]
+          result.add(prev)
+    else:
+      for itm in items(s):
+        if not result.contains(itm): result.add(itm)
 
 proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input containers.
@@ -161,7 +192,6 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
-  assert(not s.isNil, "`s` can't be nil")
   if num < 2:
     result = @[s]
     return
@@ -483,31 +513,75 @@ template anyIt*(s, pred: untyped): bool =
       break
   result
 
-template toSeq*(iter: untyped): untyped =
-  ## Transforms any iterator into a sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   let
-  ##     numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-  ##     odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-  ##       if x mod 2 == 1:
-  ##         result = true)
-  ##   assert odd_numbers == @[1, 3, 5, 7, 9]
+template toSeq1(s: not iterator): untyped =
+  # overload for typed but not iterator
+  type outType = type(items(s))
+  when compiles(s.len):
+    block:
+      evalOnceAs(s2, s, compiles((let _ = s)))
+      var i = 0
+      var result = newSeq[outType](s2.len)
+      for it in s2:
+        result[i] = it
+        i += 1
+      result
+  else:
+    var result: seq[outType] = @[]
+    for it in s:
+      result.add(it)
+    result
 
-  when compiles(iter.len):
+template toSeq2(iter: iterator): untyped =
+  # overload for iterator
+  evalOnceAs(iter2, iter(), false)
+  when compiles(iter2.len):
     var i = 0
-    var result = newSeq[type(iter)](iter.len)
-    for x in iter:
+    var result = newSeq[type(iter2)](iter2.len)
+    for x in iter2:
       result[i] = x
       inc i
     result
   else:
-    var result: seq[type(iter)] = @[]
-    for x in iter:
-      result.add(x)
+    type outType = type(iter2())
+    var result: seq[outType] = @[]
+    when compiles(iter2()):
+      evalOnceAs(iter4, iter, false)
+      let iter3=iter4()
+      for x in iter3():
+        result.add(x)
+    else:
+      for x in iter2():
+        result.add(x)
     result
+
+template toSeq*(iter: untyped): untyped =
+  ## Transforms any iterable into a sequence.
+  runnableExamples:
+    let
+      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      odd_numbers = toSeq(filter(numeric, proc(x: int): bool = x mod 2 == 1))
+    doAssert odd_numbers == @[1, 3, 5, 7, 9]
+
+  when compiles(toSeq1(iter)):
+    toSeq1(iter)
+  elif compiles(toSeq2(iter)):
+    toSeq2(iter)
+  else:
+    # overload for untyped, eg: `toSeq(myInlineIterator(3))`
+    when compiles(iter.len):
+      block:
+        evalOnceAs(iter2, iter, true)
+        var result = newSeq[type(iter)](iter2.len)
+        var i = 0
+        for x in iter2:
+          result[i] = x
+          inc i
+        result
+    else:
+      var result: seq[type(iter)] = @[]
+      for x in iter:
+        result.add(x)
+      result
 
 template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
@@ -635,8 +709,7 @@ template mapIt*(s, typ, op: untyped): untyped =
     result.add(op)
   result
 
-
-template mapIt*(s, op: untyped): untyped =
+template mapIt*(s: typed, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -649,23 +722,34 @@ template mapIt*(s, op: untyped): untyped =
   ##     nums = @[1, 2, 3, 4]
   ##     strings = nums.mapIt($(4 * it))
   ##   assert strings == @["4", "8", "12", "16"]
-  type outType = type((
-    block:
-      var it{.inject.}: type(items(s));
-      op))
-  var result: seq[outType]
-  when compiles(s.len):
-    let t = s
-    var i = 0
-    result = newSeq[outType](t.len)
-    for it {.inject.} in t:
-      result[i] = op
-      i += 1
+  when defined(nimHasTypeof):
+    type outType = typeof((
+      block:
+        var it{.inject.}: typeof(items(s), typeOfIter);
+        op), typeOfProc)
   else:
-    result = @[]
+    type outType = type((
+      block:
+        var it{.inject.}: type(items(s));
+        op))
+  when compiles(s.len):
+    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+
+      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
+      # (`error: use of undeclared identifier`) instead of Nim compile errors
+      evalOnceAs(s2, s, compiles((let _ = s)))
+
+      var i = 0
+      var result = newSeq[outType](s2.len)
+      for it {.inject.} in s2:
+        result[i] = op
+        i += 1
+      result
+  else:
+    var result: seq[outType] = @[]
     for it {.inject.} in s:
       result.add(op)
-  result
+    result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
@@ -680,7 +764,7 @@ template applyIt*(varSeq, op: untyped) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.applyIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
-  for i in 0 ..< varSeq.len:
+  for i in low(varSeq) .. high(varSeq):
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
@@ -752,6 +836,15 @@ macro mapLiterals*(constructor, op: untyped;
 
 when isMainModule:
   import strutils
+  from algorithm import sorted
+
+  # helper for testing double substitution side effects which are handled
+  # by `evalOnceAs`
+  var counter = 0
+  proc identity[T](a:T):auto=
+    counter.inc
+    a
+
   block: # concat test
     let
       s1 = @[1, 2, 3]
@@ -819,10 +912,18 @@ when isMainModule:
       unique2 = deduplicate(dup2)
       unique3 = deduplicate(dup3)
       unique4 = deduplicate(dup4)
+      unique5 = deduplicate(dup1.sorted, true)
+      unique6 = deduplicate(dup2, true)
+      unique7 = deduplicate(dup3.sorted, true)
+      unique8 = deduplicate(dup4, true)
     assert unique1 == @[1, 3, 4, 2, 8]
     assert unique2 == @["a", "c", "d"]
     assert unique3 == @[1, 3, 4, 2, 8]
     assert unique4 == @["a", "c", "d"]
+    assert unique5 == @[1, 2, 3, 4, 8]
+    assert unique6 == @["a", "c", "d"]
+    assert unique7 == @[1, 2, 3, 4, 8]
+    assert unique8 == @["a", "c", "d"]
 
   block: # zip test
     let
@@ -854,20 +955,20 @@ when isMainModule:
     doAssert numbers.distribute(6)[0] == @[1, 2]
     doAssert numbers.distribute(6)[5] == @[7]
     let a = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert a.distribute(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert a.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
-    doAssert a.distribute(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
-    doAssert a.distribute(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
-    doAssert a.distribute(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
-    doAssert a.distribute(6, false)  == @[
+    doAssert a.distribute(1, true) == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(1, false) == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(2, true) == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(2, false) == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(3, true) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert a.distribute(3, false) == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+    doAssert a.distribute(4, true) == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(4, false) == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(5, true) == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
+    doAssert a.distribute(5, false) == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
+    doAssert a.distribute(6, true) == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
+    doAssert a.distribute(6, false) == @[
       @[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
-    doAssert a.distribute(8, false)  == a.distribute(8, true)
+    doAssert a.distribute(8, false) == a.distribute(8, true)
     doAssert a.distribute(90, false) == a.distribute(90, true)
     var b = @[0]
     for f in 1 .. 25: b.add(f)
@@ -990,13 +1091,79 @@ when isMainModule:
     assert anyIt(anumbers, it > 9) == false
 
   block: # toSeq test
-    let
-      numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
-        if x mod 2 == 1:
-          result = true)
-    assert odd_numbers == @[1, 3, 5, 7, 9]
+    block:
+      let
+        numeric = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+        odd_numbers = toSeq(filter(numeric) do (x: int) -> bool:
+          if x mod 2 == 1:
+            result = true)
+      assert odd_numbers == @[1, 3, 5, 7, 9]
 
+    block:
+      doAssert [1,2].toSeq == @[1,2]
+      doAssert @[1,2].toSeq == @[1,2]
+
+      doAssert @[1,2].toSeq == @[1,2]
+      doAssert toSeq(@[1,2]) == @[1,2]
+
+    block:
+      iterator myIter(seed:int):auto=
+        for i in 0..<seed:
+          yield i
+      doAssert toSeq(myIter(2)) == @[0, 1]
+
+    block:
+      iterator myIter():auto{.inline.}=
+        yield 1
+        yield 2
+
+      doAssert myIter.toSeq == @[1,2]
+      doAssert toSeq(myIter) == @[1,2]
+
+    block:
+      iterator myIter():int {.closure.} =
+        yield 1
+        yield 2
+
+      doAssert myIter.toSeq == @[1,2]
+      doAssert toSeq(myIter) == @[1,2]
+
+    block:
+      proc myIter():auto=
+        iterator ret():int{.closure.}=
+          yield 1
+          yield 2
+        result = ret
+
+      doAssert myIter().toSeq == @[1,2]
+      doAssert toSeq(myIter()) == @[1,2]
+
+    block:
+      proc myIter(n:int):auto=
+        var counter = 0
+        iterator ret():int{.closure.}=
+          while counter<n:
+            yield counter
+            counter.inc
+        result = ret
+
+      block:
+        let myIter3 = myIter(3)
+        doAssert myIter3.toSeq == @[0,1,2]
+      block:
+        let myIter3 = myIter(3)
+        doAssert toSeq(myIter3) == @[0,1,2]
+      block:
+        # makes sure this does not hang forever
+        doAssert myIter(3).toSeq == @[0,1,2]
+        doAssert toSeq(myIter(3)) == @[0,1,2]
+
+  block:
+    # tests https://github.com/nim-lang/Nim/issues/7187
+    counter = 0
+    let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
+    doAssert ret == @[1, 2]
+    doAssert counter == 1
   block: # foldl tests
     let
       numbers = @[5, 9, 11]
@@ -1023,10 +1190,12 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  block: # mapIt tests
+  block: # mapIt + applyIt test
+    counter = 0
     var
       nums = @[1, 2, 3, 4]
-      strings = nums.mapIt($(4 * it))
+      strings = nums.identity.mapIt($(4 * it))
+    doAssert counter == 1
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
     assert strings[2] == "12"
@@ -1043,6 +1212,60 @@ when isMainModule:
     doAssert x is array[4, int]
     doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+
+  block: # mapIt with openArray
+    counter = 0
+    proc foo(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    doAssert foo([identity(1),identity(2)]) == @[10, 20]
+    doAssert counter == 2
+
+  block: # mapIt with direct openArray
+    proc foo1(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo1(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    doAssert counter == 2
+
+    # Corner cases (openArray litterals should not be common)
+    template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
+    counter = 0
+    doAssert foo2(openArray[int]([identity(1),identity(2)])) == @[10,20]
+    # TODO: this fails; not sure how to fix this case
+    # doAssert counter == 2
+
+    counter = 0
+    doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1,2]
+    # ditto
+    # doAssert counter == 2
+
+  block: # mapIt empty test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
+    # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is (lacks type
+    # of elements)
+    doAssert: not compiles(mapIt(@[], it))
+    doAssert: not compiles(mapIt([], it))
+    doAssert newSeq[int](0).mapIt(it) == @[]
+
+  block: # mapIt redifinition check, see https://github.com/nim-lang/Nim/issues/8580
+    let s2 = [1,2].mapIt(it)
+    doAssert s2 == @[1,2]
+
+  block:
+    counter = 0
+    doAssert [1,2].identity().mapIt(it*2).mapIt(it*10) == @[20, 40]
+    # https://github.com/nim-lang/Nim/issues/7187 test case
+    doAssert counter == 1
+
+  block: # mapIt with invalid RHS for `let` (#8566)
+    type X = enum
+      A, B
+    doAssert mapIt(X, $it) == @["A", "B"]
+
+  block:
+    # bug #9093
+    let inp = "a:b,c:d"
+
+    let outp = inp.split(",").mapIt(it.split(":"))
+    doAssert outp == @[@["a", "b"], @["c", "d"]]
+
 
   when not defined(testing):
     echo "Finished doc tests"

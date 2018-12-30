@@ -1,3 +1,11 @@
+discard """
+output: '''
+100
+200
+300
+400
+'''
+"""
 
 import threadpool, os
 
@@ -12,4 +20,4 @@ proc sleepsort(nums: openArray[int]) =
       spawn single(nums[i])
       i += 1
 
-sleepsort([50,3,40,25])
+sleepsort([400,100,300,200])

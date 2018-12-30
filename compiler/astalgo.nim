@@ -27,9 +27,9 @@ proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 when declared(echo):
   # these are for debugging only: They are not really deprecated, but I want
   # the warning so that release versions do not contain debugging statements:
-  proc debug*(n: PSym; conf: ConfigRef = nil) {.deprecated.}
-  proc debug*(n: PType; conf: ConfigRef = nil) {.deprecated.}
-  proc debug*(n: PNode; conf: ConfigRef = nil) {.deprecated.}
+  proc debug*(n: PSym; conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
+  proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
+  proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
   template debug*(x: PSym|PType|PNode) {.deprecated.} =
     when compiles(c.config):
@@ -206,7 +206,7 @@ proc makeYamlString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = "\""
-  for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
+  for i in 0 ..< s.len:
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, "\n")
@@ -254,21 +254,26 @@ proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
   if n == nil:
     result = rope("null")
   elif containsOrIncl(marker, n.id):
-    result = "\"$1 @$2\"" % [rope(n.name.s), rope(
-        strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
+    result = "\"$1\"" % [rope(n.name.s)]
   else:
     var ast = treeToYamlAux(conf, n.ast, marker, indent + 2, maxRecDepth - 1)
     result = ropeConstr(indent, [rope("kind"),
                                  makeYamlString($n.kind),
                                  rope("name"), makeYamlString(n.name.s),
-                                 rope("typ"), typeToYamlAux(conf, n.typ, marker,
-                                   indent + 2, maxRecDepth - 1),
+                                 #rope("typ"), typeToYamlAux(conf, n.typ, marker,
+                                 #  indent + 2, maxRecDepth - 1),
                                  rope("info"), lineInfoToStr(conf, n.info),
                                  rope("flags"), flagsToStr(n.flags),
                                  rope("magic"), makeYamlString($n.magic),
                                  rope("ast"), ast, rope("options"),
                                  flagsToStr(n.options), rope("position"),
-                                 rope(n.position)])
+                                 rope(n.position),
+                                 rope("k"), makeYamlString($n.loc.k),
+                                 rope("storage"), makeYamlString($n.loc.storage),
+                                 rope("flags"), makeYamlString($n.loc.flags),
+                                 rope("r"), n.loc.r,
+                                 rope("lode"), treeToYamlAux(conf, n.loc.lode, marker, indent + 2, maxRecDepth - 1)
+    ])
 
 proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
@@ -314,10 +319,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
              [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth)])
@@ -395,15 +397,18 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
       of nkStrLit..nkTripleStrLit:
-        if n.strVal.isNil:
-          addf(result, ",$N$1\"strVal\": null", [istr])
-        else:
-          addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
+        addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
-        addf(result, ",$N$1\"sym\": $2_$3",
-            [istr, rope(n.sym.name.s), rope(n.sym.id)])
-        #     [istr, symToYaml(n.sym, indent, maxRecDepth),
-        #     rope(n.sym.id)])
+        let s = n.sym
+        addf(result, ",$N$1\"sym\": $2_$3 k: $4 storage: $5 flags: $6 r: $7",
+             [istr, rope(s.name.s), rope(s.id),
+                                 rope($s.loc.k),
+                                 rope($s.loc.storage),
+                                 rope($s.loc.flags),
+                                 s.loc.r
+             ])
+#             [istr, symToYaml(conf, n.sym, indent, maxRecDepth),
+#             rope(n.sym.id)])
         if renderType and n.sym.typ != nil:
           addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, 2)])
       of nkIdent:
@@ -412,6 +417,8 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
         else:
           addf(result, ",$N$1\"ident\": null", [istr])
       else:
+        if renderType and n.typ != nil:
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.typ, 2)])
         if sonsLen(n) > 0:
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
@@ -500,7 +507,7 @@ proc strTableContains*(t: TStrTable, n: PSym): bool =
     h = nextTry(h, high(t.data))
   result = false
 
-proc strTableRawInsert(data: var TSymSeq, n: PSym) =
+proc strTableRawInsert(data: var seq[PSym], n: PSym) =
   var h: Hash = n.name.h and high(data)
   if sfImmediate notin n.flags:
     # fast path:
@@ -528,7 +535,7 @@ proc strTableRawInsert(data: var TSymSeq, n: PSym) =
     data[h] = n
     if favPos >= 0: swap data[h], data[favPos]
 
-proc symTabReplaceRaw(data: var TSymSeq, prevSym: PSym, newSym: PSym) =
+proc symTabReplaceRaw(data: var seq[PSym], prevSym: PSym, newSym: PSym) =
   assert prevSym.name.h == newSym.name.h
   var h: Hash = prevSym.name.h and high(data)
   while data[h] != nil:
@@ -542,7 +549,7 @@ proc symTabReplace*(t: var TStrTable, prevSym: PSym, newSym: PSym) =
   symTabReplaceRaw(t.data, prevSym, newSym)
 
 proc strTableEnlarge(t: var TStrTable) =
-  var n: TSymSeq
+  var n: seq[PSym]
   newSeq(n, len(t.data) * GrowthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i] != nil: strTableRawInsert(n, t.data[i])
@@ -553,7 +560,8 @@ proc strTableAdd*(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
+proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
+                                 onConflictKeepOld = false): PSym =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
   # This way the newest redefinition is picked by the semantic analyses!
@@ -568,13 +576,13 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
     if it.name.id == n.name.id:
-      if it == n: return false
+      if it == n: return nil
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return true             # found it
+    return t.data[replaceSlot] # found it
   elif mustRehash(len(t.data), t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
@@ -582,7 +590,11 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     assert(t.data[h] == nil)
     t.data[h] = n
   inc(t.counter)
-  result = false
+  result = nil
+
+proc strTableIncl*(t: var TStrTable, n: PSym;
+                   onConflictKeepOld = false): bool {.discardable.} =
+  result = strTableInclReportConflict(t, n, onConflictKeepOld) != nil
 
 proc strTableGet*(t: TStrTable, name: PIdent): PSym =
   var h: Hash = name.h and high(t.data)
@@ -757,10 +769,6 @@ proc idNodeTableGet(t: TIdNodeTable, key: PIdObj): PNode =
   if index >= 0: result = t.data[index].val
   else: result = nil
 
-proc idNodeTableGetLazy*(t: TIdNodeTable, key: PIdObj): PNode =
-  if not isNil(t.data):
-    result = idNodeTableGet(t, key)
-
 proc idNodeTableRawInsert(data: var TIdNodePairSeq, key: PIdObj, val: PNode) =
   var h: Hash
   h = key.id and high(data)
@@ -786,10 +794,6 @@ proc idNodeTablePut(t: var TIdNodeTable, key: PIdObj, val: PNode) =
       swap(t.data, n)
     idNodeTableRawInsert(t.data, key, val)
     inc(t.counter)
-
-proc idNodeTablePutLazy*(t: var TIdNodeTable, key: PIdObj, val: PNode) =
-  if isNil(t.data): initIdNodeTable(t)
-  idNodeTablePut(t, key, val)
 
 iterator pairs*(t: TIdNodeTable): tuple[key: PIdObj, val: PNode] =
   for i in 0 .. high(t.data):

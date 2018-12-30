@@ -9,8 +9,11 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, lineinfos,
+  wordrecg, strutils, options, guards, lineinfos, semfold,
   modulegraphs
+
+when not defined(leanCompiler):
+  import writetracking
 
 when defined(useDfa):
   import dfa
@@ -48,10 +51,12 @@ type
     tags: PNode # list of tags
     bottom, inTryStmt: int
     owner: PSym
+    owner_module: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isToplevel, hasSideEffect, inEnforcedGcSafe: bool
+    inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     config: ConfigRef
     graph: ModuleGraph
@@ -190,10 +195,10 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
 
 when true:
   template markSideEffect(a: PEffects; reason: typed) =
-    a.hasSideEffect = true
+    if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
 else:
   template markSideEffect(a: PEffects; reason: typed) =
-    a.hasSideEffect = true
+    if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
     markGcUnsafe(a, reason)
 
 proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
@@ -323,13 +328,13 @@ proc catches(tracked: PEffects, e: PType) =
       dec L
     else:
       inc i
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, L)
   else:
     assert L == 0
 
 proc catchesAll(tracked: PEffects) =
-  if not isNil(tracked.exc.sons):
+  if tracked.exc.len > 0:
     setLen(tracked.exc.sons, tracked.bottom)
 
 proc track(tracked: PEffects, n: PNode)
@@ -552,16 +557,22 @@ proc isOwnedProcVar(n: PNode; owner: PSym): bool =
   # XXX prove the soundness of this effect system rule
   result = n.kind == nkSym and n.sym.kind == skParam and owner == n.sym.owner
 
+proc isNoEffectList(n: PNode): bool {.inline.} =
+  assert n.kind == nkEffectList
+  n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
+
 proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   let a = skipConvAndClosure(n)
   let op = a.typ
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
-    let s = n.skipConv
-    if s.kind == nkSym and s.sym.kind in routineKinds:
+    var s = n.skipConv
+    if s.kind == nkCast and s[1].typ.kind == tyProc:
+      s = s[1]
+    if s.kind == nkSym and s.sym.kind in routineKinds and isNoEffectList(effectList):
       propagateEffects(tracked, n, s.sym)
-    elif effectList.len == 0:
+    elif isNoEffectList(effectList):
       if isForwardedProc(n):
         # we have no explicit effects but it's a forward declaration and so it's
         # stated there are no additional effects, so simply propagate them:
@@ -705,9 +716,13 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:
+    if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
+      return
     # p's effects are ours too:
-    let a = n.sons[0]
+    var a = n.sons[0]
     let op = a.typ
+    if a.kind == nkCast and a[1].typ.kind == tyProc:
+      a = a[1]
     # XXX: in rare situations, templates and macros will reach here after
     # calling getAst(templateOrMacro()). Currently, templates and macros
     # are indistinguishable from normal procs (both have tyProc type) and
@@ -723,7 +738,7 @@ proc track(tracked: PEffects, n: PNode) =
       var effectList = op.n.sons[0]
       if a.kind == nkSym and a.sym.kind == skMethod:
         propagateEffects(tracked, n, a.sym)
-      elif effectList.len == 0:
+      elif isNoEffectList(effectList):
         if isForwardedProc(a):
           propagateEffects(tracked, n, a.sym)
         elif isIndirectCall(a, tracked.owner):
@@ -781,6 +796,15 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child.sons[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child.sons[i], last)
           notNilCheck(tracked, last, child.sons[i].typ)
+      elif child.kind == nkVarTuple and last.kind != nkEmpty:
+        for i in 0 .. child.len-2:
+          if child[i].kind == nkEmpty or
+            child[i].kind == nkSym and child[i].sym.name.s == "_":
+            continue
+          initVar(tracked, child[i], volatileCheck=false)
+          if last.kind in {nkPar, nkTupleConstr}:
+            addAsgnFact(tracked.guards, child[i], last[i])
+            notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
   of nkConstSection:
@@ -823,15 +847,20 @@ proc track(tracked: PEffects, n: PNode) =
     let oldLocked = tracked.locked.len
     let oldLockLevel = tracked.currLockLevel
     var enforcedGcSafety = false
+    var enforceNoSideEffects = false
     for i in 0 ..< pragmaList.len:
       let pragma = whichPragma(pragmaList.sons[i])
       if pragma == wLocks:
         lockLocations(tracked, pragmaList.sons[i])
       elif pragma == wGcSafe:
         enforcedGcSafety = true
+      elif pragma == wNosideeffect:
+        enforceNoSideEffects = true
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
+    if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
     track(tracked, n.lastSon)
     if enforcedGcSafety: tracked.inEnforcedGcSafe = false
+    if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = false
     setLen(tracked.locked, oldLocked)
     tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
@@ -897,19 +926,18 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
           [$branch.typ.lockLevel, $disp.typ.lockLevel])
 
 proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
-  var effects = t.n.sons[0]
+  var effects = t.n[0]
   if t.kind != tyProc or effects.kind != nkEffectList: return
-
-  let
-    raisesSpec = effectSpec(n, wRaises)
-    tagsSpec = effectSpec(n, wTags)
-  if not isNil(raisesSpec) or not isNil(tagsSpec):
+  if n.kind != nkEmpty:
     internalAssert g.config, effects.len == 0
     newSeq(effects.sons, effectListLen)
+    let raisesSpec = effectSpec(n, wRaises)
     if not isNil(raisesSpec):
-      effects.sons[exceptionEffects] = raisesSpec
+      effects[exceptionEffects] = raisesSpec
+    let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
-      effects.sons[tagEffects] = tagsSpec
+      effects[tagEffects] = tagsSpec
+    effects[pragmasEffects] = n
 
 proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   newSeq(effects.sons, effectListLen)
@@ -917,10 +945,12 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects) =
   effects.sons[tagEffects] = newNodeI(nkArgList, s.info)
   effects.sons[usesEffects] = g.emptyNode
   effects.sons[writeEffects] = g.emptyNode
+  effects.sons[pragmasEffects] = g.emptyNode
 
   t.exc = effects.sons[exceptionEffects]
   t.tags = effects.sons[tagEffects]
   t.owner = s
+  t.owner_module = s.getModule
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)

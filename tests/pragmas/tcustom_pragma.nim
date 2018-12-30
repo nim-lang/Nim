@@ -22,7 +22,7 @@ import custom_pragma
 block: # A bit more advanced case
   type
     Subfield {.defaultValue: "catman".} = object
-      c {.serializationKey: "cc".}: float
+      c* {.serializationKey: "cc".}: float
 
     MySerializable = object
       a {.serializationKey"asdf", defaultValue: 5.} : int
@@ -146,3 +146,53 @@ block:
 
   proc generic_proc[T]() =
     assert Annotated.hasCustomPragma(simpleAttr)
+
+
+#--------------------------------------------------------------------------
+# Pragma on proc type
+
+let a: proc(x: int) {.defaultValue(5).} = nil
+static:
+  doAssert hasCustomPragma(a.type, defaultValue)
+
+# bug #8371
+template thingy {.pragma.}
+
+type
+  Cardinal = enum
+    north, east, south, west
+  Something = object
+    a: float32
+    case cardinal: Cardinal
+    of north:
+      b {.thingy.}: int
+    of east:
+      c: int
+    of south: discard
+    else: discard
+
+var foo: Something
+foo.cardinal = north
+doAssert foo.b.hasCustomPragma(thingy) == true
+
+
+proc myproc(s: string): int = 
+  {.thingy.}:
+    s.len
+
+doAssert myproc("123") == 3
+
+let xx = compiles:
+  proc myproc_bad(s: string): int = 
+    {.not_exist.}:
+      s.len
+doAssert: xx == false
+
+
+macro checkSym(s: typed{nkSym}): untyped = 
+  let body = s.getImpl.body
+  doAssert body[1].kind == nnkPragmaBlock
+  doAssert body[1][0].kind == nnkPragma
+  doAssert body[1][0][0] == bindSym"thingy"
+
+checkSym(myproc)

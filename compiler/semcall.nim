@@ -89,7 +89,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       continue
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
-    if c.currentScope.symbols.counter == counterInitial or syms != nil:
+    if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
         #if sym.name.s == "==" and (n.info ?? "temp3"):
@@ -105,7 +105,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
       elif errorsEnabled or z.diagnosticsEnabled:
-        errors.safeAdd(CandidateError(
+        errors.add(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
@@ -138,7 +138,10 @@ proc effectProblem(f, a: PType; result: var string) =
 
 proc renderNotLValue(n: PNode): string =
   result = $n
-  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+  let n = if n.kind == nkHiddenDeref: n[0] else: n
+  if n.kind == nkHiddenCallConv and n.len > 1:
+    result = $n[0] & "(" & result & ")"
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv} and n.len == 2:
     result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
@@ -164,8 +167,22 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       prefer = preferModuleInfo
       break
 
+  # we pretend procs are attached to the type of the first
+  # argument in order to remove plenty of candidates. This is
+  # comparable to what C# does and C# is doing fine.
+  var filterOnlyFirst = false
+  if optShowAllMismatches notin c.config.globalOptions:
+    for err in errors:
+      if err.firstMismatch > 1:
+        filterOnlyFirst = true
+        break
+
   var candidates = ""
+  var skipped = 0
   for err in errors:
+    if filterOnlyFirst and err.firstMismatch == 1:
+      inc skipped
+      continue
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -175,15 +192,18 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     if err.firstMismatch != 0 and n.len > 1:
       let cond = n.len > 2
       if cond:
-        candidates.add("  first type mismatch at position: " & $err.firstMismatch &
-          "\n  required type: ")
+        candidates.add("  first type mismatch at position: " & $abs(err.firstMismatch))
+        if err.firstMismatch >= 0: candidates.add("\n  required type: ")
+        else: candidates.add("\n  unknown named parameter: " & $n[-err.firstMismatch][0])
       var wanted, got: PType = nil
-      if err.firstMismatch < err.sym.typ.len:
+      if err.firstMismatch < 0:
+        discard
+      elif err.firstMismatch < err.sym.typ.len:
         wanted = err.sym.typ.sons[err.firstMismatch]
         if cond: candidates.add typeToString(wanted)
       else:
         if cond: candidates.add "none"
-      if err.firstMismatch < n.len:
+      if err.firstMismatch > 0 and err.firstMismatch < n.len:
         if cond:
           candidates.add "\n  but expression '"
           candidates.add renderTree(n[err.firstMismatch])
@@ -199,7 +219,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                       "' is immutable\n")
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
-
+  if skipped > 0:
+    candidates.add($skipped & " other mismatching symbols have been " &
+        " suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const
@@ -207,6 +229,7 @@ const
   errButExpected = "but expected one of: "
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
+  errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -237,13 +260,37 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     if symx.kind in routineKinds:
       errors.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
-                                diagnostics: nil,
+                                diagnostics: @[],
                                 enabled: false))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
     localError(c.config, n.info, "could not resolve: " & $n)
   else:
     notFoundError(c, n, errors)
+
+proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+  if c.compilesContextId > 0:
+    # we avoid running more diagnostic when inside a `compiles(expr)`, to
+    # errors while running diagnostic (see test D20180828T234921), and
+    # also avoid slowdowns in evaluating `compiles(expr)`.
+    discard
+  else:
+    var o: TOverloadIter
+    var sym = initOverloadIter(o, c, f)
+    while sym != nil:
+      proc toHumanStr(kind: TSymKind): string =
+        result = $kind
+        assert result.startsWith "sk"
+        result = result[2..^1].toLowerAscii
+      result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+      sym = nextOverloadIter(o, c, n)
+
+  let ident = considerQuotedIdent(c, f, n).s
+  if nfDotField in n.flags and nfExplicitCall notin n.flags:
+    result = errUndeclaredField % ident & result
+  else:
+    if result.len == 0: result = errUndeclaredRoutine % ident
+    else: result = errBadRoutine % [ident, result]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
@@ -313,10 +360,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(c.config, n.info, errUndeclaredField % considerQuotedIdent(c, f, n).s)
-      else:
-        localError(c.config, n.info, errUndeclaredRoutine % considerQuotedIdent(c, f, n).s)
+      if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
+        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -350,6 +395,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
+  let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:
     let s = a.sons[0].sym
     if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
@@ -399,19 +445,18 @@ proc updateDefaultParams(call: PNode) =
   # the default params with `nfDefaultParam` and `instantiateProcType`
   # computes correctly the default values for each instantiation.
   let calleeParams = call[0].sym.typ.n
-  for i in countdown(call.len - 1, 1):
-    if nfDefaultParam notin call[i].flags:
-      return
-    let def = calleeParams[i].sym.ast
-    if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
-    call[i] = def
+  for i in 1..<call.len:
+    if nfDefaultParam in call[i].flags:
+      let def = calleeParams[i].sym.ast
+      if nfDefaultRefsParam in def.flags: call.flags.incl nfDefaultRefsParam
+      call[i] = def
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
   markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
-  styleCheckUse(n.sons[0].info, finalCallee)
+  onUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
@@ -455,7 +500,7 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
-  var errors: CandidateErrors = if efExplain in flags: @[] else: nil
+  var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
@@ -484,14 +529,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         # repeat the overload resolution,
         # this time enabling all the diagnostic output (this should fail again)
         discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      else:
+      elif efNoUndeclared notin flags:
         notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    else:
+    elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
@@ -505,20 +550,31 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
-    let arg = n[i].typ
+    var arg = n[i].typ
+    # try transforming the argument into a static one before feeding it into
+    # typeRel
+    if formal.kind == tyStatic and arg.kind != tyStatic:
+      let evaluated = c.semTryConstExpr(c, n[i])
+      if evaluated != nil:
+        arg = newTypeS(tyStatic, c)
+        arg.sons = @[evaluated.typ]
+        arg.n = evaluated
     let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   markUsed(c.config, n.info, s, c.graph.usageSym)
-  styleCheckUse(n.info, s)
+  onUse(n.info, s)
   result = newSymNode(newInst, n.info)
 
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
     let e = semExpr(c, n.sons[i])
-    n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
+    if e.typ == nil:
+      localError(c.config, e.info, "expression has no type")
+    else:
+      n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s
   var a = n.sons[0]
   if a.kind == nkSym:

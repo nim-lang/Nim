@@ -70,7 +70,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
-    father.add(semStmt(c.c, body))
+    father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
   of nkNilLit: discard
@@ -145,7 +145,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
-      stmts.add(semStmt(c, body))
+      stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
       closeScope(c)
   else:

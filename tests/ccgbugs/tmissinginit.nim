@@ -3,8 +3,8 @@ discard """
 0
 0
 0
-[[a = nil,
-b = nil]]'''
+[[a = "",
+b = []]]'''
 """
 
 # bug #1475
@@ -27,4 +27,4 @@ echo bug()[0]
 echo bug()[0]
 echo bug()[0]
 
-when isMainModule: test()
+test()

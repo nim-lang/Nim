@@ -23,7 +23,7 @@ proc strafe_left*(obj: PVehicle, dt: float) =
     VectorZero)
 proc strafe_right*(obj: PVehicle, dt: float) =
   obj.body.applyImpulse(
-    vectorForAngle(obj.body.getAngle()).rperp()* obj.record.handling.strafe * dt,
+    vectorForAngle(obj.body.getAngle()).rperp() * obj.record.handling.strafe * dt,
     VectorZero)
 proc turn_right*(obj: PVehicle, dt: float) =
   #obj.angle = (obj.angle + (obj.record.handling.rotation.float / 10.0 * dt)) mod TAU

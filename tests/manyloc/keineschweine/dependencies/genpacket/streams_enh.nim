@@ -24,7 +24,7 @@ proc writeLEStr*(s: PStream, str: string) =
   s.write(str.len.int16)
   s.write(str)
 
-when isMainModule:
+when true:
   var testStream = newStringStream()
 
   testStream.writeLEStr("Hello")

@@ -11,7 +11,7 @@ type
   Killer* = object
     lock:                      Lock
     bailed    {.guard: lock.}: bool
-    processes {.guard: lock.}: array[0..MAX_WORKERS-1, foreign ptr Process]
+    processes {.guard: lock.}: array[0..MAX_WORKERS-1, ptr Process]
 
 # Hold a lock for a statement.
 template hold(lock: Lock, body: untyped) =
@@ -32,7 +32,7 @@ proc initKiller*(): Killer =
 var killer = initKiller()
 
 # remember that a process has been launched, killing it if we have bailed.
-proc launched*(process: foreign ptr Process): int {.gcsafe.} =
+proc launched*(process: ptr Process): int {.gcsafe.} =
   result = killer.processes.high + 1
   killer.lock.hold:
     if killer.bailed:

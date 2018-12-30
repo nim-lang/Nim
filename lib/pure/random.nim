@@ -14,6 +14,8 @@
 ##
 ## **Do not use this module for cryptographic purposes!**
 
+import algorithm                    #For upperBound
+
 include "system/inclrtl"
 {.push debugger:off.}
 
@@ -66,7 +68,7 @@ proc skipRandomNumbers*(s: var Rand) =
     s0 = ui 0
     s1 = ui 0
   for i in 0..high(helper):
-    for b in 0..< 64:
+    for b in 0 ..< 64:
       if (helper[i] and (ui(1) shl ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1
@@ -110,7 +112,7 @@ proc random*[T](a: openArray[T]): T {.deprecated.} =
   ## Use ``rand`` instead.
   result = a[random(a.low..a.len)]
 
-proc rand*(r: var Rand; max: int): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -128,7 +130,7 @@ proc rand*(max: int): int {.benign.} =
   ## number, i.e. a tickcount.
   rand(state, max)
 
-proc rand*(r: var Rand; max: float): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random number in the range 0..max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
@@ -155,13 +157,44 @@ proc rand*[T](x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b`.
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T =
+proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
+  ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T](a: openArray[T]): T =
+proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
+  ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(a.low..a.high)]
+
+proc sample*[T](r: var Rand; a: openArray[T]): T =
+  ## returns a random element from openArray ``a`` using state in ``r``.
+  result = a[r.rand(a.low..a.high)]
+
+proc sample*[T](a: openArray[T]): T =
+  ## returns a random element from openArray ``a`` using non-thread-safe state.
+  result = a[rand(a.low..a.high)]
+
+proc sample*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
+  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
+  ## according to convertible-to-``float``, not necessarily normalized, and
+  ## non-negative weights ``w``.  Uses state in ``r``.  Must have sum ``w > 0.0``.
+  assert(w.len == a.len)
+  var cdf = newSeq[float](a.len)   # The *unnormalized* CDF
+  var tot = 0.0                    # Unnormalized is fine if we sample up to tot
+  for i, w in w:
+    assert(w >= 0)
+    tot += float(w)
+    cdf[i] = tot
+  assert(tot > 0.0)                # Need at least one non-zero weight
+  for i in 0 ..< n:
+    result.add(a[cdf.upperBound(r.rand(tot))])
+
+proc sample*[T, U](a: openArray[T], w: openArray[U], n=1): seq[T] =
+  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
+  ## according to convertible-to-``float``, not necessarily normalized, and
+  ## non-negative weights ``w``.  Uses default non-thread-safe state.
+  state.sample(a, w, n)
 
 
 proc initRand*(seed: int64): Rand =
@@ -191,8 +224,12 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    let now = times.getTime()
-    randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+    when defined(js):
+      let time = int64(times.epochTime() * 1_000_000_000)
+      randomize(time)
+    else:
+      let now = times.getTime()
+      randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
 {.pop.}
 
@@ -217,5 +254,22 @@ when isMainModule:
 
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
+
+    when compileOption("rangeChecks"):
+      try:
+        discard rand(-1)
+        doAssert false
+      except RangeError:
+        discard
+
+      try:
+        discard rand(-1.0)
+        doAssert false
+      except RangeError:
+        discard
+
+
+    # don't use causes integer overflow
+    doAssert compiles(random[int](low(int) .. high(int)))
 
   main()

@@ -1,6 +1,6 @@
 
-template makeDomElement(x: untyped, name: string = nil) =
-  const tag {.gensym.} = if name == nil: astToStr(x) else: name
+template makeDomElement(x: untyped, name: string = "") =
+  const tag {.gensym.} = if name.len == 0: astToStr(x) else: name
 
   proc x*(p: int|float) =
     echo tag, p

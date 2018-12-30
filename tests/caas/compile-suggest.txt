@@ -1,7 +1,0 @@
-main.nim
-> c --verbosity:0 --hints:on
-SuccessX
-> idetools --trackDirty:main_dirty.nim,$TESTNIM,12,7 --suggest $SILENT
-skField\tx
-skField\ty
-

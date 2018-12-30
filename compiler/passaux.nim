@@ -12,10 +12,10 @@
 import
   strutils, ast, astalgo, passes, idents, msgs, options, idgen, lineinfos
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
-  VerboseRef = ref object of TPassContext
+  VerboseRef = ref object of PPassContext
     config: ConfigRef
 
 proc verboseOpen(graph: ModuleGraph; s: PSym): PPassContext =

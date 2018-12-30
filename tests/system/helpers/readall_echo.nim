@@ -1,2 +1,2 @@
-when isMainModule:
+when true:
   echo(stdin.readAll)

@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import asyncdispatch, asyncnet
 
 type
@@ -75,7 +79,7 @@ proc loop(server: Server, port = 7687) {.async.} =
 
 # Check whether this module has been imported as a dependency to another
 # module, or whether this module is the main module.
-when isMainModule:
+when true:
   # Initialise a new server.
   var server = newServer()
   echo("Server initialised!")

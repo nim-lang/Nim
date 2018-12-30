@@ -12,7 +12,8 @@ Options:
   -p, --path:PATH           add path to search paths
   -d, --define:SYMBOL(:VAL)
                             define a conditional symbol
-                            (Optionally: Define the value for that symbol)
+                            (Optionally: Define the value for that symbol,
+                            see: "compile time define pragmas")
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild          force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off

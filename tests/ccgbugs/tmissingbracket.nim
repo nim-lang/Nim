@@ -1,6 +1,8 @@
 discard """
-  output: '''Subobject test called
-5'''
+output: '''
+Subobject test called
+5
+'''
 """
 
 type
@@ -38,7 +40,7 @@ type
         t:int
     SubObject* = object of TestObj
 
-method test*(t:var TestObj) =
+method test*(t:var TestObj) {.base.} =
     echo "test called"
 
 method test*(t:var SubObject) =
@@ -49,4 +51,3 @@ var a: SubObject
 
 a.test()
 echo a.t
-

@@ -108,7 +108,7 @@ proc `/`*[S](a, b: Vector2D[S]): Vector2D[S] =
 proc vec[S](x, y: S): Vector2D[S] =
   Vector2D[S](x: x, y: y)
 
-if isMainModule:
+if true:
   # Comment out this let, and the program will fail to
   # compile with a type mismatch, as expected.
 

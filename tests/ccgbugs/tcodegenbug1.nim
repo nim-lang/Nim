@@ -2,12 +2,13 @@ discard """
   output: '''obj = (inner: (kind: Just, id: 7))
 obj.inner.id = 7
 id = 7
-obj = (inner: (kind: Just, id: 7))'''
+obj = (inner: (kind: Just, id: 7))
+2'''
 """
 
 # bug #6960
 
-import future
+import sugar
 type
   Kind = enum None, Just, Huge
   Inner = object
@@ -105,3 +106,35 @@ type
 
 proc bug5137(d: MyIntDistinct) =
   discard d.MyInt
+
+#-------------------------------------
+# bug #8979
+
+type
+  MyKind = enum
+    Fixed, Float
+
+  MyObject = object
+    someInt: int
+    case kind: MyKind
+      of Float: index: string
+      of Fixed: nil
+
+  MyResult = object
+    val: array[0..1, string]
+    vis: set[0..1]
+
+import macros
+
+func myfunc(obj: MyObject): MyResult {.raises: [].} =
+  template index: auto =
+    case obj.kind:
+      of Float: $obj.index 
+      of Fixed: "Fixed"
+  macro to_str(a: untyped): string =
+    result = newStrLitNode(a.repr)  
+  result.val[0] = index
+  result.val[1] = to_str(obj.kind + Ola)
+
+let x = MyObject(someInt: 10, kind: Fixed)
+echo myfunc(x).val.len

@@ -11,25 +11,25 @@ proc timer(d: int): int =
   #echo fmt"done {d}"
   return d
 
-var durations = [1000, 2000, 3000, 4000, 5000]
+var durations = [1000, 1500, 2000, 2500, 3000]
 var tasks: seq[FlowVarBase] = @[]
 var results: seq[int] = @[]
 
 for i in 0 .. durations.high:
   tasks.add spawn timer(durations[i])
 
-var index = awaitAny(tasks)
+var index = blockUntilAny(tasks)
 while index != -1:
   results.add ^cast[FlowVar[int]](tasks[index])
   tasks.del(index)
   #echo repr results
-  index = awaitAny(tasks)
+  index = blockUntilAny(tasks)
 
 doAssert results.len == 5
 doAssert 1000 in results
+doAssert 1500 in results
 doAssert 2000 in results
+doAssert 2500 in results
 doAssert 3000 in results
-doAssert 4000 in results
-doAssert 5000 in results
 sync()
 echo "true"

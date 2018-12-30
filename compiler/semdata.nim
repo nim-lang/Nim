@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     notes*: TNoteKinds
+    features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -37,6 +38,7 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
+    mappingExists*: bool
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -63,7 +65,10 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoEvaluateGeneric, efInCall, efFromHlo
+    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoUndeclared
+      # Use this if undeclared identifiers should not raise an error during
+      # overload resolution.
 
   TExprFlags* = set[TExprFlag]
 
@@ -95,8 +100,8 @@ type
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
-    converters*: TSymSeq       # sequence of converters
-    patterns*: TSymSeq         # sequence of pattern matchers
+    converters*: seq[PSym]
+    patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
@@ -139,7 +144,6 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -176,12 +180,14 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
-  if p.mapping.data == nil: initIdTable(p.mapping)
+  if not p.mappingExists:
+    initIdTable(p.mapping)
+    p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
 
 proc get*(p: PProcCon; key: PSym): PSym =
-  if p.mapping.data == nil: return nil
+  if not p.mappingExists: return nil
   result = PSym(p.mapping.idTableGet(key))
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
@@ -233,7 +239,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
 
-proc inclSym(sq: var TSymSeq, s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
   for i in countup(0, L - 1):
     if sq[i].id == s.id: return

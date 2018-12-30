@@ -1,11 +1,10 @@
 discard """
-  file: "tcontinuexc.nim"
   outputsub: "ECcaught"
   exitcode: "1"
 """
 type
-  ESomething = object of E_Base
-  ESomeOtherErr = object of E_Base
+  ESomething = object of Exception
+  ESomeOtherErr = object of Exception
 
 proc genErrors(s: string) =
   if s == "error!":
@@ -25,6 +24,3 @@ finally:
   echo "caught"
 
 #OUT ECcaught
-
-
-

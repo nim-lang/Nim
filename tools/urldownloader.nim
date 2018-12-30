@@ -222,7 +222,7 @@ proc `$`(bstr: LPWSTR): string =
   if count == 0:
     raiseOsError(osLastError())
   else:
-    result = newStringOfCap(count + 8)
+    result = newString(count + 8)
     let res = WideCharToMultiByte(CP_UTF8, 0, bstr, -1, addr(result[0]), count,
                                   nil, nil)
     if res == 0:

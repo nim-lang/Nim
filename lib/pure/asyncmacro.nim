@@ -177,6 +177,9 @@ proc processBody(node, retFutureSym: NimNode,
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard, node)
+  of RoutineNodes-{nnkTemplateDef}:
+    # skip all the nested procedure definitions
+    return
   else: discard
 
   for i in 0 ..< result.len:
@@ -187,7 +190,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
-  of nnkIdent:
+  of nnkIdent, nnkSym:
     return node.strVal
   of nnkEmpty:
     return "anonymous"
@@ -327,8 +330,8 @@ macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
   ## iterators and yield statements.
   if prc.kind == nnkStmtList:
+    result = newStmtList()
     for oneProc in prc:
-      result = newStmtList()
       result.add asyncSingleProc(oneProc)
   else:
     result = asyncSingleProc(prc)

@@ -12,7 +12,7 @@ proc thread_proc(input: some_type): some_type {.thread.} =
   result.bla = 1
 
 proc main() =
-  var actorPool: TActorPool[some_type, some_type]
+  var actorPool: ActorPool[some_type, some_type]
   createActorPool(actorPool, 1)
 
   var some_data: some_type

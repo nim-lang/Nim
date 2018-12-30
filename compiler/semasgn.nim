@@ -81,8 +81,8 @@ proc genAddr(c: PContext; x: PNode): PNode =
     addSon(result, x)
 
 proc newAsgnCall(c: PContext; op: PSym; x, y: PNode): PNode =
-  if sfError in op.flags:
-    localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
+  #if sfError in op.flags:
+  #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
   result = newNodeI(nkCall, x.info)
   result.add newSymNode(op)
   result.add genAddr(c, x)
@@ -101,10 +101,7 @@ proc newOpCall(op: PSym; x: PNode): PNode =
 proc destructorCall(c: PContext; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
-  if destructor in c.features:
-    result.add genAddr(c, x)
-  else:
-    result.add x
+  result.add genAddr(c, x)
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
@@ -124,8 +121,11 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       op = field
       if op == nil:
         op = liftBody(c.c, t, c.kind, c.info)
-    markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-    styleCheckUse(c.info, op)
+    if sfError in op.flags:
+      incl c.fn.flags, sfError
+    else:
+      markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
+    onUse(c.info, op)
     body.add newAsgnCall(c.c, op, x, y)
     result = true
 
@@ -135,7 +135,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     let op = t.destructor
     if op != nil:
       markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-      styleCheckUse(c.info, op)
+      onUse(c.info, op)
       body.add destructorCall(c.c, op, x)
       result = true
   of attachedAsgn:
@@ -146,7 +146,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     let op = t.deepCopy
     if op != nil:
       markUsed(c.c.config, c.info, op, c.c.graph.usageSym)
-      styleCheckUse(c.info, op)
+      onUse(c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
 
@@ -200,12 +200,26 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyString, tyRef, tyOpt:
+      tyPtr, tyRef, tyOpt, tyUncheckedArray:
     defaultOp(c, t, body, x, y)
-  of tyArray, tySequence:
-    if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
-      if t.kind == tySequence:
-        # XXX add 'nil' handling here
+  of tyArray:
+    if tfHasAsgn in t.flags:
+      let i = declareCounter(c, body, firstOrd(c.c.config, t))
+      let whileLoop = genWhileLoop(c, i, x)
+      let elemType = t.lastSon
+      liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
+                                                  y.at(i, elemType))
+      addIncStmt(c, whileLoop.sons[1], i)
+      body.add whileLoop
+    else:
+      defaultOp(c, t, body, x, y)
+  of tySequence:
+    # note that tfHasAsgn is propagated so we need the check on
+    # 'selectedGC' here to determine if we have the new runtime.
+    if c.c.config.selectedGC == gcDestructors:
+      discard considerOverloadedOp(c, t, body, x, y)
+    elif tfHasAsgn in t.flags:
+      if c.kind != attachedDestructor:
         body.add newSeqCall(c.c, x, y)
       let i = declareCounter(c, body, firstOrd(c.c.config, t))
       let whileLoop = genWhileLoop(c, i, x)
@@ -214,6 +228,11 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
                                                   y.at(i, elemType))
       addIncStmt(c, whileLoop.sons[1], i)
       body.add whileLoop
+    else:
+      defaultOp(c, t, body, x, y)
+  of tyString:
+    if tfHasAsgn in t.flags:
+      discard considerOverloadedOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
   of tyObject, tyDistinct:
@@ -244,7 +263,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef: internalError(c.c.config, "liftBodyAux")
+  of tyOptAsRef: internalError(c.c.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -290,11 +309,15 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
   # recursion is handled explicitly, do not register the type based operation
   # before 'liftBodyAux':
-  case kind
-  of attachedAsgn: typ.assignment = result
-  of attachedSink: typ.sink = result
-  of attachedDeepCopy: typ.deepCopy = result
-  of attachedDestructor: typ.destructor = result
+  if c.config.selectedGC == gcDestructors and
+      typ.kind in {tySequence, tyString} and body.len == 0:
+    discard "do not cache it yet"
+  else:
+    case kind
+    of attachedAsgn: typ.assignment = result
+    of attachedSink: typ.sink = result
+    of attachedDeepCopy: typ.deepCopy = result
+    of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
@@ -319,7 +342,7 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
-  if destructor notin c.features or not hasDestructor(typ): return
+  if not hasDestructor(typ): return
   when false:
     # do not produce wrong liftings while we're still instantiating generics:
     # now disabled; breaks topttree.nim!

@@ -17,7 +17,7 @@
 
 from strutils import parseInt, cmpIgnoreStyle, Digits
 include "system/inclrtl"
-
+import system/helpers2
 
 proc findNormalized(x: string, inArray: openarray[string]): int =
   var i = 0
@@ -85,7 +85,7 @@ proc getFormatArg(p: var FormatParser, a: openArray[string]): int =
     result = parseInt(a[result])-1
   else:
     raiseInvalidFormat("'#', '$', number or identifier expected")
-  if result >=% a.len: raiseInvalidFormat("index out of bounds: " & $result)
+  if result >=% a.len: raiseInvalidFormat(formatErrorIndexBound(result, a.len))
   p.i = i
 
 proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) {.
@@ -299,8 +299,6 @@ proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) =
 
 type
   Subex* = distinct string ## string that contains a substitution expression
-
-{.deprecated: [TSubex: Subex].}
 
 proc subex*(s: string): Subex =
   ## constructs a *substitution expression* from `s`. Currently this performs

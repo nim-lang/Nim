@@ -1,9 +1,13 @@
+discard """
+action: compile
+"""
 
-template withOpenFile(f: untyped, filename: string, mode: TFileMode,
+
+template withOpenFile(f: untyped, filename: string, mode: FileMode,
                       actions: untyped): untyped =
   block:
     # test that 'f' is implicitly 'injecting':
-    var f: TFile
+    var f: File
     if open(f, filename, mode):
       try:
         actions

@@ -1,5 +1,4 @@
 discard """
-  file: "titer2.nim"
   output: "123"
 """
 # Try to break the transformation pass:
@@ -12,5 +11,4 @@ var x = [[1, 2, 3], [4, 5, 6]]
 for y in iterAndZero(x[0]): write(stdout, $y)
 #OUT 123
 
-
-
+write stdout, "\n"

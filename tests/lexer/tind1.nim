@@ -1,6 +1,6 @@
 discard """
-  line: 24
   errormsg: "invalid indentation"
+  line: 24
 """
 
 import macros

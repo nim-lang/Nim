@@ -7,14 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the code "prettifier". This is part of the toolchain
-## to convert Nim code into a consistent style.
+## This module implements the style checker.
 
 import
   strutils, os, intsets, strtabs
 
 import options, ast, astalgo, msgs, semdata, ropes, idents,
-  lineinfos
+  lineinfos, pathutils
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -22,9 +21,6 @@ const
 proc identLen*(line: string, start: int): int =
   while start+result < line.len and line[start+result] in Letters:
     inc result
-
-when false:
-  import prettybase
 
 type
   StyleCheck* {.pure.} = enum None, Warn, Auto
@@ -42,7 +38,7 @@ proc overwriteFiles*(conf: ConfigRef) =
       let newFile = if gOverWrite: conf.m.fileInfos[i].fullpath
                     else: conf.m.fileInfos[i].fullpath.changeFileExt(".pretty.nim")
       try:
-        var f = open(newFile, fmWrite)
+        var f = open(newFile.string, fmWrite)
         for line in conf.m.fileInfos[i].lines:
           if doStrip:
             f.write line.strip(leading = false, trailing = true)
@@ -51,7 +47,7 @@ proc overwriteFiles*(conf: ConfigRef) =
           f.write(conf.m.fileInfos[i], "\L")
         f.close
       except IOError:
-        rawMessage(conf, errGenerated, "cannot open file: " & newFile)
+        rawMessage(conf, errGenerated, "cannot open file: " & newFile.string)
 
 proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:
@@ -71,9 +67,9 @@ proc beautifyName(s: string, k: TSymKind): string =
     if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
              "char", "byte", "bool", "openArray", "seq", "array", "void",
              "pointer", "float", "csize", "cdouble", "cchar", "cschar",
-             "cshort", "cu", "nil", "expr", "stmt", "typedesc", "auto", "any",
-             "range", "openarray", "varargs", "set", "cfloat"
-             ]:
+             "cshort", "cu", "nil", "typedesc", "auto", "any",
+             "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
+             "untyped", "typed", "static", "sink", "lent", "type"]:
       result.add s[i]
     else:
       result.add toUpperAscii(s[i])
@@ -122,6 +118,12 @@ proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
     system.shallowCopy(conf.m.fileInfos[info.fileIndex.int].lines[info.line.int-1], x)
     conf.m.fileInfos[info.fileIndex.int].dirty = true
 
+proc lintReport(conf: ConfigRef; info: TLineInfo, beau: string) =
+  if optStyleError in conf.globalOptions:
+    localError(conf, info, "name should be: '$1'" % beau)
+  else:
+    message(conf, info, hintName, beau)
+
 proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
@@ -129,7 +131,7 @@ proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, 
       sym.name = getIdent(cache, beau)
       replaceInFile(conf, info, beau)
     else:
-      message(conf, info, hintName, beau)
+      lintReport(conf, info, beau)
 
 proc styleCheckDefImpl(conf: ConfigRef; cache: IdentCache; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
@@ -142,12 +144,14 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
+  if s.typ != nil and s.typ.kind == tyTypeDesc: return
+  if {sfImportc, sfExportc} * s.flags != {}: return
   let beau = beautifyName(s.name.s, k)
   if s.name.s != beau:
-    message(conf, info, hintName, beau)
+    lintReport(conf, info, beau)
 
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
-  if optCheckNep1 in conf.globalOptions:
+  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
     nep1CheckDefImpl(conf, info, s, k)
   when defined(nimfix):
     if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, cache, info, s, k)

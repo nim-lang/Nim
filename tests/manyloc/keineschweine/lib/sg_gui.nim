@@ -5,13 +5,13 @@ from strutils import countlines
 
 type
   PGuiContainer* = ref TGuiContainer
-  TGuiContainer* = object of TObject
+  TGuiContainer* = object of RootObj
     position: TVector2f
     activeEntry: PTextEntry
     widgets: seq[PGuiObject]
     buttons: seq[PButton]
   PGuiObject* = ref TGuiObject
-  TGuiObject* = object of TObject
+  TGuiObject* = object of RootObj
   PButton* = ref TButton
   TButton* = object of TGuiObject
     enabled: bool
@@ -92,8 +92,8 @@ proc newGuiContainer*(pos: TVector2f): PGuiContainer =
   result = newGuiContainer()
   result.setPosition pos
 proc free*(container: PGuiContainer) =
-  container.widgets = nil
-  container.buttons = nil
+  container.widgets = @[]
+  container.buttons = @[]
 proc add*(container: PGuiContainer; widget: PGuiObject) =
   container.widgets.add(widget)
 proc add*(container: PGuiContainer; button: PButton) =
@@ -260,7 +260,7 @@ proc update*(m: PMessageArea) =
       m.texts.add messageProto.copy()
   elif m.texts.len > m.sizeVisible:
     echo "cutting ", m.texts.len - m.sizeVisible, " fields"
-    for i in m.sizeVisible.. < m.texts.len:
+    for i in m.sizeVisible ..< m.texts.len:
       m.texts.pop().destroy()
   let nmsgs = m.messages.len()
   if m.sizeVisible == 0 or nmsgs == 0:

@@ -17,8 +17,7 @@ About this document
 ===================
 
 **Note**: This document is a draft! Several of Nim's features may need more
-precise wording. This manual is constantly evolving until the 1.0 release and is
-not to be considered as the final proper specification.
+precise wording. This manual is constantly evolving into a proper specification.
 
 This document describes the lexis, the syntax, and the semantics of Nim.
 
@@ -253,7 +252,7 @@ the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
-it was not case-sensitive and underscores were ignored and there was no even a
+it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
 
 
@@ -286,6 +285,11 @@ contain the following `escape sequences`:idx:\ :
   ``\e``                   `escape`:idx: `[ESC]`:idx:
   ``\x`` HH                `character with hex value HH`:idx:;
                            exactly two hex digits are allowed
+  ``\u`` HHHH              `unicode codepoint with hex value HHHH`:idx:;
+                           exactly four hex digits are allowed
+  ``\u`` {H+}              `unicode codepoint`:idx:;
+                           all hex digits enclosed in ``{}`` are used for
+                           the codepoint
 ==================         ===================================================
 
 
@@ -433,7 +437,7 @@ Numerical constants are of a single type and have the form::
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)* (('.' (['_'] digit)* [exponent]) |exponent)
+  FLOAT_LIT = digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
   FLOAT32_SUFFIX = ('f' | 'F') ['32']
   FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
@@ -504,11 +508,14 @@ following characters::
 These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
-`=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
+`.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
 
 ``*:`` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
 (to support ``var v*: T``).
+
+The ``not`` keyword is always a unary operator, ``a not b`` is parsed
+as ``a(not b)``, not as ``(a) not (b)``.
 
 
 Other tokens
@@ -618,6 +625,55 @@ The grammar's start symbol is ``module``.
 
 
 
+Order of evaluation
+===================
+
+Order of evaluation is strictly left-to-right, inside-out as it is typical for most others
+imperative programming languages:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var s = ""
+
+  proc p(arg: int): int =
+    s.add $arg
+    result = arg
+
+  discard p(p(1) + p(2))
+
+  doAssert s == "123"
+
+
+Assignments are not special, the left-hand-side expression is evaluated before the
+right-hand side:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  var v = 0
+  proc getI(): int =
+    result = v
+    inc v
+
+  var a, b: array[0..2, int]
+
+  proc someCopy(a: var int; b: int) = a = b
+
+  a[getI()] = getI()
+
+  doAssert a == [1, 0, 0]
+
+  v = 0
+  someCopy(b[getI()], getI())
+
+  doAssert b == [1, 0, 0]
+
+
+Rationale: Consistency with overloaded assignment or assignment-like operations,
+``a = b`` can be read as ``performSomeCopy(a, b)``.
+
+
 Types
 =====
 
@@ -676,7 +732,7 @@ intXX
   suffix ``'u`` is of this type.
 
 uintXX
-  additional signed integer types of XX bits use this naming scheme
+  additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16 bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
@@ -769,8 +825,8 @@ Pre-defined floating point types
 The following floating point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size is platform dependent
-  (the compiler chooses the processor's fastest floating point type).
+  the generic floating point type; its size used to be platform dependent,
+  but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
@@ -888,8 +944,12 @@ Now the following holds::
   ord(south) == 2
   ord(west) == 3
 
+  # Also allowed:
+  ord(Direction.west) == 3
+
 Thus, north < east < south < west. The comparison operators can be used
-with enumeration types.
+with enumeration types. Instead of ``north`` etc, the enum value can also
+be qualified with the enum type that it resides in, ``Direction.north``.
 
 For better interfacing to other programming languages, the fields of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
@@ -925,18 +985,25 @@ As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
-An enum can be marked with the ``pure`` pragma so that it's fields are not
-added to the current scope, so they always need to be accessed
-via ``MyEnum.value``:
+An enum can be marked with the ``pure`` pragma so that it's fields are
+added to a special module specific hidden scope that is only queried
+as the last attempt. Only non-ambiguous symbols are added to this scope.
+But one can always access these via type qualification written
+as ``MyEnum.value``:
 
 .. code-block:: nim
 
   type
     MyEnum {.pure.} = enum
-      valueA, valueB, valueC, valueD
+      valueA, valueB, valueC, valueD, amb
 
-  echo valueA # error: Unknown identifier
-  echo MyEnum.valueA # works
+    OtherEnum {.pure.} = enum
+      valueX, valueY, valueZ, amb
+
+
+  echo valueA # MyEnum.valueA
+  echo amb    # Error: Unclear whether it's MyEnum.amb or OtherEnum.amb
+  echo MyEnum.amb # OK.
 
 
 String type
@@ -945,6 +1012,11 @@ All string literals are of the type ``string``. A string in Nim is very
 similar to a sequence of characters. However, strings in Nim are both
 zero-terminated and have a length field. One can retrieve the length with the
 builtin ``len`` procedure; the length never counts the terminating zero.
+
+The terminating zero cannot be accessed unless the string is converted
+to the ``cstring`` type first. The terminating zero assures that this
+conversion can be done in O(1) and without any allocations.
+
 The assignment operator for strings always copies the string.
 The ``&`` operator concatenates strings.
 
@@ -1160,6 +1232,37 @@ so that the builtin ``echo`` proc does what is expected:
 
   echo @[1, 2, 3]
   # prints "@[1, 2, 3]" and not "123"
+
+
+Unchecked arrays
+----------------
+The ``UncheckedArray[T]`` type is a special kind of ``array`` where its bounds
+are not checked. This is often useful to implement customized flexibly sized
+arrays. Additionally an unchecked array is translated into a C array of
+undetermined size:
+
+.. code-block:: nim
+  type
+    MySeq = object
+      len, cap: int
+      data: UncheckedArray[int]
+
+Produces roughly this C code:
+
+.. code-block:: C
+  typedef struct {
+    NI len;
+    NI cap;
+    NI data[];
+  } MySeq;
+
+The base type of the unchecked array may not contain any GC'ed memory but this
+is currently not checked.
+
+**Future directions**: GC'ed memory should be allowed in unchecked arrays and
+there should be an explicit annotation of how the GC is to determine the
+runtime size of the array.
+
 
 
 Tuples and object types
@@ -1507,68 +1610,6 @@ non nilable pointers. The details of this analysis are still to be specified
 here.
 
 
-Memory regions
---------------
-
-The types ``ref`` and ``ptr`` can get an optional ``region`` annotation.
-A region has to be an object type.
-
-Regions are very useful to separate user space and kernel memory in the
-development of OS kernels:
-
-.. code-block:: nim
-  type
-    Kernel = object
-    Userspace = object
-
-  var a: Kernel ptr Stat
-  var b: Userspace ptr Stat
-
-  # the following does not compile as the pointer types are incompatible:
-  a = b
-
-As the example shows ``ptr`` can also be used as a binary
-operator, ``region ptr T`` is a shortcut for ``ptr[region, T]``.
-
-In order to make generic code easier to write ``ptr T`` is a subtype
-of ``ptr[R, T]`` for any ``R``.
-
-Furthermore the subtype relation of the region object types is lifted to
-the pointer types: If ``A <: B`` then ``ptr[A, T] <: ptr[B, T]``. This can be
-used to model subregions of memory. As a special typing rule ``ptr[R, T]`` is
-not compatible to ``pointer`` to prevent the following from compiling:
-
-.. code-block:: nim
-  # from system
-  proc dealloc(p: pointer)
-
-  # wrap some scripting language
-  type
-    PythonsHeap = object
-    PyObjectHeader = object
-      rc: int
-      typ: pointer
-    PyObject = ptr[PythonsHeap, PyObjectHeader]
-
-  proc createPyObject(): PyObject {.importc: "...".}
-  proc destroyPyObject(x: PyObject) {.importc: "...".}
-
-  var foo = createPyObject()
-  # type error here, how convenient:
-  dealloc(foo)
-
-
-Future directions:
-
-* Memory regions might become available for  ``string`` and ``seq`` too.
-* Builtin regions like ``private``, ``global`` and ``local`` might be
-  useful for an OpenCL target.
-* Builtin "regions" can model ``lent`` and ``unique`` pointers.
-* An assignment operator can be attached to a region so that proper write
-  barriers can be generated. This would imply that the GC can be implemented
-  completely in user-space.
-
-
 Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. ``nil`` is
@@ -1673,7 +1714,8 @@ A ``distinct`` type is new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
-base type and vice versa are allowed.
+base type and vice versa are allowed. See also ``distinctBase`` to get the
+reverse operation.
 
 
 Modelling currencies
@@ -2336,10 +2378,13 @@ pointer type and overloading resolution is tried with ``a[]`` instead.
 Automatic self insertions
 -------------------------
 
+**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
+
 Starting with version 0.14 of the language, Nim supports ``field`` as a
 shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
 or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
-statement pragma. This pragma is active for the rest of the module:
+statement pragma (instead of ``self`` any other identifier can be used too).
+This pragma is active for the rest of the module:
 
 .. code-block:: nim
   type
@@ -2353,10 +2398,6 @@ statement pragma. This pragma is active for the rest of the module:
     result = parentField + childField
     # is rewritten to:
     # result = self.parentField + self.childField
-
-Instead of ``self`` any other identifier can be used too, but
-``{.this: self.}`` will become the default directive for the whole language
-eventually.
 
 In addition to fields, routine applications are also rewritten, but only
 if no other interpretation of the call is possible:
@@ -2984,12 +3025,19 @@ name ``c`` should default to type ``Context``, ``n`` should default to
   proc bar(c, n, counter) = ...
   proc baz(c, n) = ...
 
+  proc mixedMode(c, n; x, y: int) =
+    # 'c' is inferred to be of the type 'Context'
+    # 'n' is inferred to be of the type 'Node'
+    # But 'x' and 'y' are of type 'int'.
 
 The ``using`` section uses the same indentation based grouping syntax as
 a ``var`` or ``let`` section.
 
 Note that ``using`` is not applied for ``template`` since untyped template
 parameters default to the type ``system.untyped``.
+
+Mixing parameters that should use the ``using`` declaration with parameters
+that are explicitly typed is possible and requires a semicolon between them.
 
 
 If expression
@@ -3025,7 +3073,7 @@ The `case expression` is again very similar to the case statement:
 
 As seen in the above example, the case expression can also introduce side
 effects. When multiple statements are given for a branch, Nim will use
-the last expression as the result value, much like in an `expr` template.
+the last expression as the result value.
 
 Table constructor
 -----------------
@@ -3102,6 +3150,19 @@ the address of variables, but one can't use it on variables declared through
   # The following line doesn't compile:
   echo repr(addr(t1))
   # Error: expression has no address
+
+
+The unsafeAddr operator
+-----------------------
+
+For easier interoperability with other compiled languages such as C, retrieving
+the address of a ``let`` variable, a parameter or a ``for`` loop variable, the
+``unsafeAddr`` operation can be used:
+
+.. code-block:: nim
+
+  let myArray = [1, 2, 3]
+  foreignProcThatTakesAnAddr(unsafeAddr myArray)
 
 
 Procedures
@@ -3613,10 +3674,31 @@ Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
 collide 1 because the resolution works from left to right.
 In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
-**Performance note**: Nim does not produce a virtual method table, but
-generates dispatch trees. This avoids the expensive indirect branch for method
-calls and enables inlining. However, other optimizations like compile time
-evaluation or dead code elimination do not work with methods.
+**Note**: Compile time evaluation is not (yet) supported for methods.
+
+
+Inhibit dynamic method resolution via procCall
+-----------------------------------------------
+
+Dynamic method resolution can be inhibited via the builtin `system.procCall`:idx:.
+This is somewhat comparable to the `super`:idx: keyword that traditional OOP
+languages offer.
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  type
+    Thing = ref object of RootObj
+    Unit = ref object of Thing
+      x: int
+
+  method m(a: Thing) {.base.} =
+    echo "base"
+
+  method m(a: Unit) =
+    # Call the base method:
+    procCall m(Thing(a))
+    echo "1"
 
 
 Iterators and the for statement
@@ -4028,9 +4110,13 @@ exception.
 Exception hierarchy
 -------------------
 
-The exception tree is defined in the `system <system.html>`_ module:
-
-.. include:: exception_hierarchy_fragment.txt
+The exception tree is defined in the `system <system.html>`_ module.
+Every exception inherits from ``system.Exception``. Exceptions that indicate
+programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
+and are stricly speaking not catchable as they can also be mapped to an operation
+that terminates the whole process. Exceptions that indicate any other runtime error
+that can be caught inherit from ``system.CatchableError``
+(which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -4382,6 +4468,34 @@ be inferred to have the equivalent of the `any` type class and thus they will
 match anything without discrimination.
 
 
+Generic inference restrictions
+------------------------------
+
+The types ``var T`` and ``typedesc[T]`` cannot be inferred in a generic
+instantiation. The following is not allowed:
+
+.. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
+  proc g[T](f: proc(x: T); x: T) =
+    f(x)
+
+  proc c(y: int) = echo y
+  proc v(y: var int) =
+    y += 100
+  var i: int
+
+  # allowed: infers 'T' to be of type 'int'
+  g(c, 42)
+
+  # not valid: 'T' is not inferred to be of type 'var int'
+  g(v, i)
+
+  # also not allowed: explict instantiation via 'var int'
+  g[var int](v, i)
+
+
 Concepts
 --------
 
@@ -4533,8 +4647,8 @@ The concept types can be parametric just like the regular generic types:
     M.data[m * M.N + n] = v
 
   # Adapt the Matrix type to the concept's requirements
-  template Rows*(M: type Matrix): expr = M.M
-  template Cols*(M: type Matrix): expr = M.N
+  template Rows*(M: type Matrix): int = M.M
+  template Cols*(M: type Matrix): int = M.N
   template ValueType*(M: type Matrix): type = M.T
 
   -------------
@@ -4628,7 +4742,7 @@ type is an instance of it:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import future, typetraits
+  import sugar, typetraits
 
   type
     Functor[A] = concept f
@@ -4958,9 +5072,8 @@ an ``immediate`` pragma and then these templates do not take part in
 overloading resolution and the parameters' types are *ignored* by the
 compiler. Explicit immediate templates are now deprecated.
 
-**Note**: For historical reasons ``stmt`` is an alias for ``typed`` and
-``expr`` an alias for ``untyped``, but new code should use the newer,
-clearer names.
+**Note**: For historical reasons ``stmt`` was an alias for ``typed`` and
+``expr`` was an alias for ``untyped``, but they are removed.
 
 
 Passing a code block to a template
@@ -5050,9 +5163,6 @@ also ``varargs[untyped]`` so that not even the number of parameters is fixed:
 
 However, since a template cannot iterate over varargs, this feature is
 generally much more useful for macros.
-
-**Note**: For historical reasons ``varargs[expr]`` is not equivalent
-to ``varargs[untyped]``.
 
 
 Symbol binding in templates
@@ -5160,7 +5270,7 @@ template cannot be accessed in the instantiation context:
 
   # so this works:
   let e = "message"
-  raise newException(EIO, e)
+  raise newException(IoError, e)
 
 
 Whether a symbol that is declared in a template is exposed to the instantiation
@@ -5435,6 +5545,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     :test: "nim c $1"
 
   import macros
+  {.experimental: "forLoopMacros".}
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5453,12 +5564,72 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
     newFor.add x[^2][1]
     newFor.add body
     result.add newFor
+    # now wrap the whole macro in a block to create a new scope
+    result = quote do:
+      block: `result`
 
   for a, b in enumerate(items([1, 2, 3])):
     echo a, " ", b
 
-  for a2, b2 in enumerate([1, 2, 3, 5]):
-    echo a2, " ", b2
+  # without wrapping the macro in a block, we'd need to choose different
+  # names for `a` and `b` here to avoid redefinition errors
+  for a, b in enumerate([1, 2, 3, 5]):
+    echo a, " ", b
+
+
+Currently for loop macros must be enabled explicitly
+via ``{.experimental: "forLoopMacros".}``.
+
+
+Case statement macros
+---------------------
+
+A macro that needs to be called `match`:idx: can be used to rewrite
+``case`` statements in order to implement `pattern matching`:idx: for
+certain types. The following example implements a simplistic form of
+pattern matching for tuples, leveraging the existing equality operator
+for tuples (as provided in ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then passed the complete ``case``
+statement body and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+macro to call.
 
 
 Special Types
@@ -5826,6 +5997,12 @@ curlies is the pattern to match against. The operators ``*``,  ``**``,
 notation, so to match verbatim against ``*`` the ordinary function call syntax
 needs to be used.
 
+Term rewriting macro are applied recursively, up to a limit. This means that
+if the result of a term rewriting macro is eligible for another rewriting,
+the compiler will try to perform it, and so on, until no more optimizations
+are applicable. To avoid putting the compiler into an infinite loop, there is
+a hard limit on how many times a single term rewriting macro can be applied.
+Once this limit has been passed, the term rewriting macro will be ignored.
 
 Unfortunately optimizations are hard to get right and even the tiny example
 is **wrong**:
@@ -6229,10 +6406,10 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpper
+  import strutils except `%`, toUpperAscii
 
   # doesn't work then:
-  echo "$1" % "abc".toUpper
+  echo "$1" % "abc".toUpperAscii
 
 
 It is not checked that the ``except`` list is really exported from the module.
@@ -6261,24 +6438,24 @@ A module alias can be introduced via the ``as`` keyword:
 
   echo su.format("$1", "lalelu")
 
-The original module name is then not accessible. The
-notations ``path/to/module`` or ``path.to.module`` or ``"path/to/module"``
-can be used to refer to a module in subdirectories:
+The original module name is then not accessible. The notations
+``path/to/module`` or ``"path/to/module"`` can be used to refer to a module
+in subdirectories:
 
 .. code-block:: nim
-  import lib.pure.strutils, lib/pure/os, "lib/pure/times"
+  import lib/pure/os, "lib/pure/times"
 
-Note that the module name is still ``strutils`` and not ``lib.pure.strutils``
+Note that the module name is still ``strutils`` and not ``lib/pure/strutils``
 and so one **cannot** do:
 
 .. code-block:: nim
-  import lib.pure.strutils
-  echo lib.pure.strutils
+  import lib/pure/strutils
+  echo lib/pure/strutils.toUpperAscii("abc")
 
 Likewise the following does not make sense as the name is ``strutils`` already:
 
 .. code-block:: nim
-  import lib.pure.strutils as strutils
+  import lib/pure/strutils as strutils
 
 
 Collective imports from a directory
@@ -6297,17 +6474,18 @@ name is not a valid Nim identifier it needs to be a string literal:
 Pseudo import/include paths
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A directory can also be a so called "pseudo directory".
+A directory can also be a so called "pseudo directory". They can be used to
+avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
 
 1. ``std``: The ``std`` pseudo directory is the abstract location of Nim's standard
-  library. For example, the syntax ``import std / strutils`` is used to unambiguously
-  refer to the standard library's ``strutils`` module.
+library. For example, the syntax ``import std / strutils`` is used to unambiguously
+refer to the standard library's ``strutils`` module.
 2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to a Nimble
-  package. However, for technical details that lie outside of the scope of this document
-  its semantics are: *Use the search path to look for module name but ignore the standard
-  library locations*. In other words, it is the opposite of ``std``.
+package. However, for technical details that lie outside of the scope of this document
+its semantics are: *Use the search path to look for module name but ignore the standard
+library locations*. In other words, it is the opposite of ``std``.
 
 
 From import statement
@@ -6415,6 +6593,111 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
 
+Code reordering
+~~~~~~~~~~~~~~~
+
+**Note**: Code reordering is experimental and must be enabled via the
+``{.experimental.}`` pragma.
+
+The code reordering feature can implicitly rearrange procedure, template, and
+macro definitions along with variable declarations and initializations at the top
+level scope so that, to a large extent, a programmer should not have to worry
+about ordering definitions correctly or be forced to use forward declarations to
+preface definitions inside a module.
+
+..
+   NOTE: The following was documentation for the code reordering precursor,
+   which was {.noForward.}.
+
+   In this mode, procedure definitions may appear out of order and the compiler
+   will postpone their semantic analysis and compilation until it actually needs
+   to generate code using the definitions. In this regard, this mode is similar
+   to the modus operandi of dynamic scripting languages, where the function
+   calls are not resolved until the code is executed. Here is the detailed
+   algorithm taken by the compiler:
+
+   1. When a callable symbol is first encountered, the compiler will only note
+   the symbol callable name and it will add it to the appropriate overload set
+   in the current scope. At this step, it won't try to resolve any of the type
+   expressions used in the signature of the symbol (so they can refer to other
+   not yet defined symbols).
+
+   2. When a top level call is encountered (usually at the very end of the
+   module), the compiler will try to determine the actual types of all of the
+   symbols in the matching overload set. This is a potentially recursive process
+   as the signatures of the symbols may include other call expressions, whose
+   types will be resolved at this point too.
+
+   3. Finally, after the best overload is picked, the compiler will start
+   compiling the body of the respective symbol. This in turn will lead the
+   compiler to discover more call expressions that need to be resolved and steps
+   2 and 3 will be repeated as necessary.
+
+   Please note that if a callable symbol is never used in this scenario, its
+   body will never be compiled. This is the default behavior leading to best
+   compilation times, but if exhaustive compilation of all definitions is
+   required, using ``nim check`` provides this option as well.
+
+Example:
+
+.. code-block:: nim
+
+  {.experimental: "codeReordering".}
+
+  proc foo(x: int) =
+    bar(x)
+
+  proc bar(x: int) =
+    echo(x)
+
+  foo(10)
+
+Variables can also be reordered as well. Variables that are *initialized* (i.e.
+variables that have their declaration and assignment combined in a single
+statement) can have their entire initialization statement reordered. Be wary of
+what code is executed at the top level:
+
+.. code-block:: nim
+  {.experimental: "codeReordering".}
+
+  proc a() =
+    echo(foo)
+
+  var foo = 5
+
+  a() # outputs: "5"
+
+..
+   TODO: Let's table this for now. This is an *experimental feature* and so the
+   specific manner in which ``declared`` operates with it can be decided in
+   eventuality, because right now it works a bit weirdly.
+
+   The values of expressions involving ``declared`` are decided *before* the
+   code reordering process, and not after. As an example, the output of this
+   code is the same as it would be with code reordering disabled.
+
+   .. code-block:: nim
+     {.experimental: "codeReordering".}
+
+     proc x() =
+       echo(declared(foo))
+
+     var foo = 4
+
+     x() # "false"
+
+It is important to note that reordering *only* works for symbols at top level
+scope. Therefore, the following will *fail to compile:*
+
+.. code-block:: nim
+  {.experimental: "codeReordering".}
+
+  proc a() =
+    b()
+    proc b() =
+      echo("Hello!")
+
+  a()
 
 Compiler Messages
 =================
@@ -6445,17 +6728,15 @@ The deprecated pragma is used to mark a symbol as deprecated:
   proc p() {.deprecated.}
   var x {.deprecated.}: char
 
-It can also be used as a statement, in that case it takes a list of *renamings*.
+This pragma can also take in an optional warning string to relay to developers.
 
 .. code-block:: nim
-  type
-    File = object
-    Stream = ref object
-  {.deprecated: [TFile: File, PStream: Stream].}
+  proc thing(x: bool) {.deprecated: "use thong instead".}
 
 
 noSideEffect pragma
 -------------------
+
 The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
 effects. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
@@ -6472,6 +6753,16 @@ routines marked as ``noSideEffect``.
 
 .. code-block:: nim
   func `+` (x, y: int): int
+
+
+To override the compiler's side effect analysis a ``{.noSideEffect.}``
+pragma block can be used:
+
+.. code-block:: nim
+
+  func f() =
+    {.noSideEffect.}:
+      echo "test"
 
 
 compileTime pragma
@@ -6820,55 +7111,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-
-..
-  NoForward pragma
-  ----------------
-  The ``noforward`` pragma can be used to turn on and off a special compilation
-  mode that to large extent eliminates the need for forward declarations. In this
-  mode, the proc definitions may appear out of order and the compiler will postpone
-  their semantic analysis and compilation until it actually needs to generate code
-  using the definitions. In this regard, this mode is similar to the modus operandi
-  of dynamic scripting languages, where the function calls are not resolved until
-  the code is executed. Here is the detailed algorithm taken by the compiler:
-
-  1. When a callable symbol is first encountered, the compiler will only note the
-  symbol callable name and it will add it to the appropriate overload set in the
-  current scope. At this step, it won't try to resolve any of the type expressions
-  used in the signature of the symbol (so they can refer to other not yet defined
-  symbols).
-
-  2. When a top level call is encountered (usually at the very end of the module),
-  the compiler will try to determine the actual types of all of the symbols in the
-  matching overload set. This is a potentially recursive process as the signatures
-  of the symbols may include other call expressions, whose types will be resolved
-  at this point too.
-
-  3. Finally, after the best overload is picked, the compiler will start
-  compiling the body of the respective symbol. This in turn will lead the
-  compiler to discover more call expressions that need to be resolved and steps
-  2 and 3 will be repeated as necessary.
-
-  Please note that if a callable symbol is never used in this scenario, its body
-  will never be compiled. This is the default behavior leading to best compilation
-  times, but if exhaustive compilation of all definitions is required, using
-  ``nim check`` provides this option as well.
-
-  Example:
-
-  .. code-block:: nim
-
-    {.noforward: on.}
-
-    proc foo(x: int) =
-      bar x
-
-    proc bar(x: int) =
-      echo x
-
-    foo(10)
-
-
 pragma pragma
 -------------
 
@@ -6939,10 +7181,34 @@ Example:
 .. code-block:: nim
   {.experimental: "parallel".}
 
-  proc useUsing(bar, foo) =
+  proc useParallel() =
     parallel:
       for i in 0..4:
         echo "echo in parallel"
+
+
+As a top level statement, the experimental pragma enables a feature for the
+rest of the module it's enabled in. This is problematic for macro and generic
+instantiations that cross a module scope. Currently these usages have to be
+put into a ``.push/pop`` environment:
+
+.. code-block:: nim
+
+  # client.nim
+  proc useParallel*[T](unused: T) =
+    # use a generic T here to show the problem.
+    {.push experimental: "parallel".}
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
+
+    {.pop.}
+
+
+.. code-block:: nim
+
+  import client
+  useParallel(1)
 
 
 Implementation Specific Pragmas
@@ -7099,6 +7365,17 @@ Example:
 
   embedsC()
 
+``nimbase.h`` defines ``NIM_EXTERNC`` C macro that can be used for
+``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, eg:
+
+.. code-block:: Nim
+  proc foobar() {.importc:"$1".}
+  {.emit: """
+  #include <stdio.h>
+  NIM_EXTERNC
+  void fun(){}
+  """.}
+
 For backwards compatibility, if the argument to the ``emit`` statement
 is a single string literal, Nim symbols can be referred to via backticks.
 This usage is however deprecated.
@@ -7126,7 +7403,7 @@ prefixes ``/*TYPESECTION*/`` or ``/*VARSECTION*/`` or ``/*INCLUDESECTION*/``:
 ImportCpp pragma
 ----------------
 
-**Note**: `c2nim <c2nim.html>`_ can parse a large subset of C++ and knows
+**Note**: `c2nim <https://nim-lang.org/docs/c2nim.html>`_ can parse a large subset of C++ and knows
 about the ``importcpp`` pragma pattern language. It is not necessary
 to know all the details described here.
 
@@ -7528,20 +7805,21 @@ documentation for details. These macros are no magic, they don't do anything
 you cannot do yourself by walking AST object representation.
 
 More examples with custom pragmas:
-  - Better serialization/deserialization control:
 
-  .. code-block:: nim
-    type MyObj = object
-      a {.dontSerialize.}: int
-      b {.defaultDeserialize: 5.}: int
-      c {.serializationKey: "_c".}: string
+- Better serialization/deserialization control:
 
-  - Adopting type for gui inspector in a game engine:
+.. code-block:: nim
+  type MyObj = object
+    a {.dontSerialize.}: int
+    b {.defaultDeserialize: 5.}: int
+    c {.serializationKey: "_c".}: string
 
-  .. code-block:: nim
-    type MyComponent = object
-      position {.editable, animatable.}: Vector3
-      alpha {.editRange: [0.0..1.0], animatable.}: float32
+- Adopting type for gui inspector in a game engine:
+
+.. code-block:: nim
+  type MyComponent = object
+    position {.editable, animatable.}: Vector3
+    alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
 
@@ -7671,36 +7949,6 @@ defined, and it should not be used with GC'ed memory (ref's).
 **Future directions**: Using GC'ed memory in packed pragma will result in
 compile-time error. Usage with inheritance should be defined and documented.
 
-Unchecked pragma
-----------------
-The ``unchecked`` pragma can be used to mark a named array as ``unchecked``
-meaning its bounds are not checked. This is often useful to
-implement customized flexibly sized arrays. Additionally an unchecked array is
-translated into a C array of undetermined size:
-
-.. code-block:: nim
-  type
-    ArrayPart{.unchecked.} = array[0, int]
-    MySeq = object
-      len, cap: int
-      data: ArrayPart
-
-Produces roughly this C code:
-
-.. code-block:: C
-  typedef struct {
-    NI len;
-    NI cap;
-    NI data[];
-  } MySeq;
-
-The base type of the unchecked array may not contain any GC'ed memory but this
-is currently not checked.
-
-**Future directions**: GC'ed memory should be allowed in unchecked arrays and
-there should be an explicit annotation of how the GC is to determine the
-runtime size of the array.
-
 
 Dynlib pragma for import
 ------------------------
@@ -7784,7 +8032,7 @@ To enable thread support the ``--threads:on`` command line switch needs to
 be used. The ``system`` module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the low level thread API. There are also high level parallelism constructs
-available. See `spawn <#parallel-spawn>`_ for further details.
+available. See `spawn <#parallel-amp-spawn>`_ for further details.
 
 Nim's memory model for threads is quite different than that of other common
 programming languages (C, Pascal, Java): Each thread has its own (garbage
@@ -7931,7 +8179,7 @@ that ``spawn`` takes is restricted:
 
 ``spawn`` executes the passed expression on the thread pool and returns
 a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``awaitAny`` to
+with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -7942,10 +8190,10 @@ wait on multiple flow variables at the same time:
     var responses = newSeq[FlowVarBase](3)
     for i in 0..2:
       responses[i] = spawn tellServer(Update, "key", "value")
-    var index = awaitAny(responses)
+    var index = blockUntilAny(responses)
     assert index >= 0
     responses.del(index)
-    discard awaitAny(responses)
+    discard blockUntilAny(responses)
 
 Data flow variables ensure that no data races
 are possible. Due to technical limitations not every type ``T`` is possible in

@@ -11,7 +11,7 @@
 import
   ast, astalgo, modules, passes, condsyms,
   options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os
+  modulegraphs, idents, os, pathutils
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -89,6 +89,13 @@ proc findNimStdLib*(): string =
   except OSError, ValueError:
     return ""
 
+proc findNimStdLibCompileTime*(): string =
+  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## and asserts on error.
+  const sourcePath = currentSourcePath()
+  result = sourcePath.parentDir.parentDir / "lib"
+  doAssert fileExists(result / "system.nim"), "result:" & result
+
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
                         flags: TSandboxFlags = {}): Interpreter =
@@ -103,8 +110,8 @@ proc createInterpreter*(scriptName: string;
   registerPass(graph, evalPass)
 
   for p in searchPaths:
-    conf.searchPaths.add(p)
-    if conf.libpath.len == 0: conf.libpath = p
+    conf.searchPaths.add(AbsoluteDir p)
+    if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)

@@ -1,5 +1,4 @@
 discard """
-  file: "tvardecl.nim"
   output: "44"
 """
 # Test the new variable declaration syntax
@@ -10,6 +9,4 @@ var
   a, b: int = 4
 
 write(stdout, a)
-write(stdout, b) #OUT 44
-
-
+writeLine(stdout, b) #OUT 44

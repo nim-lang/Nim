@@ -1,5 +1,6 @@
 discard """
-  msg: '''letters
+  nimout: '''
+letters
 aa
 bb
 numbers
@@ -8,7 +9,7 @@ numbers
 AST a
 [(11, 22), (33, 44)]
 AST b
-(e: [55, 66], f: [77, 88])
+([55, 66], [77, 88])
 55
 10
 20Test
@@ -44,10 +45,10 @@ const
   b : Tb = (@[55,66], @[77, 88])
 
 macro mA(data: static[Ta]): untyped =
-  echo "AST a \n", repr(data)
+  echo "AST a\n", repr(data)
 
 macro mB(data: static[Tb]): untyped =
-  echo "AST b \n", repr(data)
+  echo "AST b\n", repr(data)
   echo data.e[0]
 
 mA(a)

@@ -1,5 +1,4 @@
 discard """
-  file: "tstreams3.nim"
   output: "threw exception"
 """
 import streams

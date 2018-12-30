@@ -1,3 +1,8 @@
+discard """
+outputsub: ""
+"""
+
+# output not testable because repr prints pointer adresses
 # test the new "repr" built-in proc
 
 type

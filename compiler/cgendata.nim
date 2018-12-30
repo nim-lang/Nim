@@ -11,9 +11,9 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos
+  tables, ndi, lineinfos, pathutils
 
-from modulegraphs import ModuleGraph
+from modulegraphs import ModuleGraph, PPassContext
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -32,6 +32,7 @@ type
     cfsData,                  # section for C constant data
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
+    cfsDatInitProc,           # section for the C datInit proc
     cfsTypeInit1,             # section 1 for declarations of type information
     cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
@@ -112,7 +113,8 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
-    forwardedProcsCounter*: int
+    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
+    forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
@@ -132,12 +134,12 @@ type
                             # nimtvDeps is VERY hard to cache because it's
                             # not a list of IDs nor can it be made to be one.
 
-  TCGen = object of TPassContext # represents a C source file
+  TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
     module*: PSym
-    filename*: string
-    cfilename*: string        # filename of the module (including path,
+    filename*: AbsoluteFile
+    cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
@@ -147,11 +149,9 @@ type
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
-    postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
-    forwardedProcs*: TSymSeq  # keep forwarded procs here
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
@@ -189,12 +189,10 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
-    graph: g, nimtvDeps: @[], nimtvDeclared: initIntSet())
+  BModuleList(typeInfoMarker: initTable[SigHash, Rope](), config: g.config,
+    graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for i in 0..high(g.modules):
-    # ultimately, we are iterating over the file ids here.
-    # some "files" won't have an associated cgen module (like stdin)
-    # and we must skip over them.
-    if g.modules[i] != nil: yield g.modules[i]
+  for m in g.modules_closed:
+    # iterate modules in the order they were closed
+    yield m

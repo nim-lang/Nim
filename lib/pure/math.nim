@@ -24,7 +24,10 @@ include "system/inclrtl"
 import bitops
 
 proc binom*(n, k: int): int {.noSideEffect.} =
-  ## Computes the binomial coefficient
+  ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
+  ##
+  ## .. code-block:: nim
+  ##  echo binom(6, 2) ## 15
   if k <= 0: return 1
   if 2*k > n: return binom(n, n-k)
   result = n
@@ -37,7 +40,10 @@ proc createFactTable[N: static[int]]: array[N, int] =
     result[i] = result[i - 1] * i
 
 proc fac*(n: int): int =
-  ## Computes the faculty/factorial function.
+  ## Computes the `factorial <https://en.wikipedia.org/wiki/Factorial>`_ of a non-negative integer ``n``
+  ##
+  ## .. code-block:: nim
+  ##  echo fac(4) ## 24
   const factTable =
     when sizeof(int) == 4:
       createFactTable[13]()
@@ -49,7 +55,7 @@ proc fac*(n: int): int =
 
 {.push checks:off, line_dir:off, stack_trace:off.}
 
-when defined(Posix) and not defined(haiku):
+when defined(Posix):
   {.passl: "-lm".}
 
 const
@@ -81,8 +87,13 @@ type
     fcNegInf     ## value is negative infinity
 
 proc classify*(x: float): FloatClass =
-  ## Classifies a floating point value. Returns `x`'s class as specified by
+  ## Classifies a floating point value. Returns ``x``'s class as specified by
   ## `FloatClass`.
+  ##
+  ## .. code-block:: nim
+  ##  echo classify(0.3) ## fcNormal
+  ##  echo classify(0.0) ## fcZero
+  ##  echo classify(0.3/0.0) ## fcInf
 
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
@@ -98,13 +109,21 @@ proc classify*(x: float): FloatClass =
   # XXX: fcSubnormal is not detected!
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
-  ## Returns true, if `x` is a power of two, false otherwise.
+  ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
   ## Zero and negative numbers are not a power of two.
+  ##
+  ## .. code-block:: nim
+  ##  echo isPowerOfTwo(5) ## false
+  ##  echo isPowerOfTwo(8) ## true
   return (x > 0) and ((x and (x - 1)) == 0)
 
 proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
-  ## Returns `x` rounded up to the nearest power of two.
+  ## Returns ``x`` rounded up to the nearest power of two.
   ## Zero and negative numbers get rounded up to 1.
+  ##
+  ## .. code-block:: nim
+  ##  echo nextPowerOfTwo(8) ## 8
+  ##  echo nextPowerOfTwo(9) ## 16
   result = x - 1
   when defined(cpu64):
     result = result or (result shr 32)
@@ -118,20 +137,29 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result += 1 + ord(x<=0)
 
 proc countBits32*(n: int32): int {.noSideEffect.} =
-  ## Counts the set bits in `n`.
+  ## Counts the set bits in ``n``.
+  ##
+  ## .. code-block:: nim
+  ##  echo countBits32(13'i32) ## 3
   var v = n
   v = v -% ((v shr 1'i32) and 0x55555555'i32)
   v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
   result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
-  ## Computes the sum of the elements in `x`.
-  ## If `x` is empty, 0 is returned.
+  ## Computes the sum of the elements in ``x``.
+  ## If ``x`` is empty, 0 is returned.
+  ##
+  ## .. code-block:: nim
+  ##  echo sum([1.0, 2.5, -3.0, 4.3]) ## 4.8
   for i in items(x): result = result + i
 
 proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the product of the elements in ``x``.
   ## If ``x`` is empty, 1 is returned.
+  ##
+  ## .. code-block:: nim
+  ##  echo prod([1.0, 3.0, -0.2]) ## -0.6
   result = 1.T
   for i in items(x): result = result * i
 
@@ -139,14 +167,22 @@ proc prod*[T](x: openArray[T]): T {.noSideEffect.} =
 when not defined(JS): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
-    ## Computes the square root of `x`.
+    ## Computes the square root of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo sqrt(1.44) ## 1.2
   proc cbrt*(x: float32): float32 {.importc: "cbrtf", header: "<math.h>".}
   proc cbrt*(x: float64): float64 {.importc: "cbrt", header: "<math.h>".}
-    ## Computes the cubic root of `x`
-
+    ## Computes the cubic root of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo cbrt(2.197) ## 1.3
   proc ln*(x: float32): float32 {.importc: "logf", header: "<math.h>".}
   proc ln*(x: float64): float64 {.importc: "log", header: "<math.h>".}
-    ## Computes the natural log of `x`
+    ## Computes the `natural logarithm <https://en.wikipedia.org/wiki/Natural_logarithm>`_ of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo ln(exp(4.0)) ## 4.0
 else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
@@ -155,65 +191,101 @@ else: # JS
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
 
 proc log*[T: SomeFloat](x, base: T): T =
-  ## Computes the logarithm ``base`` of ``x``
+  ## Computes the logarithm of ``x`` to base ``base``.
+  ##
+  ## .. code-block:: nim
+  ##  echo log(9.0, 3.0) ## 2.0
   ln(x) / ln(base)
 
 when not defined(JS): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
-    ## Computes the common logarithm (base 10) of `x`
-  proc log2*(x: float32): float32 {.importc: "log2f", header: "<math.h>".}
-  proc log2*(x: float64): float64 {.importc: "log2", header: "<math.h>".}
-    ## Computes the binary logarithm (base 2) of `x`
+    ## Computes the common logarithm (base 10) of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo log10(100.0) ## 2.0
   proc exp*(x: float32): float32 {.importc: "expf", header: "<math.h>".}
   proc exp*(x: float64): float64 {.importc: "exp", header: "<math.h>".}
-    ## Computes the exponential function of `x` (pow(E, x))
-
+    ## Computes the exponential function of ``x`` (pow(E, x)).
+    ##
+    ## .. code-block:: nim
+    ##  echo exp(1.0) ## 2.718281828459045
+    ##  echo ln(exp(4.0)) ## 4.0
   proc sin*(x: float32): float32 {.importc: "sinf", header: "<math.h>".}
   proc sin*(x: float64): float64 {.importc: "sin", header: "<math.h>".}
-    ## Computes the sine of `x`
+    ## Computes the sine of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo sin(PI / 6) ## 0.4999999999999999
+    ##  echo sin(degToRad(90.0)) ## 1.0
   proc cos*(x: float32): float32 {.importc: "cosf", header: "<math.h>".}
   proc cos*(x: float64): float64 {.importc: "cos", header: "<math.h>".}
-    ## Computes the cosine of `x`
+    ## Computes the cosine of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo cos(2 * PI) ## 1.0
+    ##  echo cos(degToRad(60.0)) ## 0.5000000000000001
   proc tan*(x: float32): float32 {.importc: "tanf", header: "<math.h>".}
   proc tan*(x: float64): float64 {.importc: "tan", header: "<math.h>".}
-    ## Computes the tangent of `x`
-
+    ## Computes the tangent of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo tan(degToRad(45.0)) ## 0.9999999999999999
+    ##  echo tan(PI / 4) ## 0.9999999999999999
   proc sinh*(x: float32): float32 {.importc: "sinhf", header: "<math.h>".}
   proc sinh*(x: float64): float64 {.importc: "sinh", header: "<math.h>".}
-    ## Computes the hyperbolic sine of `x`
+    ## Computes the `hyperbolic sine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo sinh(1.0) ## 1.175201193643801
   proc cosh*(x: float32): float32 {.importc: "coshf", header: "<math.h>".}
   proc cosh*(x: float64): float64 {.importc: "cosh", header: "<math.h>".}
-    ## Computes the hyperbolic cosine of `x`
+    ## Computes the `hyperbolic cosine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo cosh(1.0) ## 1.543080634815244
   proc tanh*(x: float32): float32 {.importc: "tanhf", header: "<math.h>".}
   proc tanh*(x: float64): float64 {.importc: "tanh", header: "<math.h>".}
-    ## Computes the hyperbolic tangent of `x`
+    ## Computes the `hyperbolic tangent <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo tanh(1.0) ## 0.7615941559557649
 
   proc arccos*(x: float32): float32 {.importc: "acosf", header: "<math.h>".}
   proc arccos*(x: float64): float64 {.importc: "acos", header: "<math.h>".}
-    ## Computes the arc cosine of `x`
+    ## Computes the arc cosine of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo arccos(1.0) ## 0.0
   proc arcsin*(x: float32): float32 {.importc: "asinf", header: "<math.h>".}
   proc arcsin*(x: float64): float64 {.importc: "asin", header: "<math.h>".}
-    ## Computes the arc sine of `x`
+    ## Computes the arc sine of ``x``.
   proc arctan*(x: float32): float32 {.importc: "atanf", header: "<math.h>".}
   proc arctan*(x: float64): float64 {.importc: "atan", header: "<math.h>".}
-    ## Calculate the arc tangent of `y` / `x`
+    ## Calculate the arc tangent of ``x``.
+    ##
+    ## .. code-block:: nim
+    ##  echo arctan(1.0) ## 0.7853981633974483
+    ##  echo radToDeg(arctan(1.0)) ## 45.0
   proc arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
-    ## Calculate the arc tangent of `y` / `x`.
-    ## `atan2` returns the arc tangent of `y` / `x`; it produces correct
+    ## Calculate the arc tangent of ``y`` / ``x``.
+    ## `arctan2` returns the arc tangent of ``y`` / ``x``; it produces correct
     ## results even when the resulting angle is near pi/2 or -pi/2
-    ## (`x` near 0).
-
+    ## (``x`` near 0).
+    ##
+    ## .. code-block:: nim
+    ##  echo arctan2(1.0, 0.0) ## 1.570796326794897
+    ##  echo radToDeg(arctan2(1.0, 0.0)) ## 90.0
   proc arcsinh*(x: float32): float32 {.importc: "asinhf", header: "<math.h>".}
   proc arcsinh*(x: float64): float64 {.importc: "asinh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic sine of `x`
+    ## Computes the inverse hyperbolic sine of ``x``.
   proc arccosh*(x: float32): float32 {.importc: "acoshf", header: "<math.h>".}
   proc arccosh*(x: float64): float64 {.importc: "acosh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic cosine of `x`
+    ## Computes the inverse hyperbolic cosine of ``x``.
   proc arctanh*(x: float32): float32 {.importc: "atanhf", header: "<math.h>".}
   proc arctanh*(x: float64): float64 {.importc: "atanh", header: "<math.h>".}
-    ## Computes the inverse hyperbolic tangent of `x`
+    ## Computes the inverse hyperbolic tangent of ``x``.
 
 else: # JS
   proc log10*(x: float32): float32 {.importc: "Math.log10", nodecl.}
@@ -241,80 +313,88 @@ else: # JS
   proc arctanh*[T: float32|float64](x: T): T {.importc: "Math.atanh", nodecl.}
 
 proc cot*[T: float32|float64](x: T): T = 1.0 / tan(x)
-  ## Computes the cotangent of `x`
+  ## Computes the cotangent of ``x``.
 proc sec*[T: float32|float64](x: T): T = 1.0 / cos(x)
-  ## Computes the secant of `x`.
+  ## Computes the secant of ``x``.
 proc csc*[T: float32|float64](x: T): T = 1.0 / sin(x)
-  ## Computes the cosecant of `x`
+  ## Computes the cosecant of ``x``.
 
 proc coth*[T: float32|float64](x: T): T = 1.0 / tanh(x)
-  ## Computes the hyperbolic cotangent of `x`
+  ## Computes the hyperbolic cotangent of ``x``.
 proc sech*[T: float32|float64](x: T): T = 1.0 / cosh(x)
-  ## Computes the hyperbolic secant of `x`
+  ## Computes the hyperbolic secant of ``x``.
 proc csch*[T: float32|float64](x: T): T = 1.0 / sinh(x)
-  ## Computes the hyperbolic cosecant of `x`
+  ## Computes the hyperbolic cosecant of ``x``.
 
 proc arccot*[T: float32|float64](x: T): T = arctan(1.0 / x)
-  ## Computes the inverse cotangent of `x`
+  ## Computes the inverse cotangent of ``x``.
 proc arcsec*[T: float32|float64](x: T): T = arccos(1.0 / x)
-  ## Computes the inverse secant of `x`
+  ## Computes the inverse secant of ``x``.
 proc arccsc*[T: float32|float64](x: T): T = arcsin(1.0 / x)
-  ## Computes the inverse cosecant of `x`
+  ## Computes the inverse cosecant of ``x``.
 
 proc arccoth*[T: float32|float64](x: T): T = arctanh(1.0 / x)
-  ## Computes the inverse hyperbolic cotangent of `x`
+  ## Computes the inverse hyperbolic cotangent of ``x``.
 proc arcsech*[T: float32|float64](x: T): T = arccosh(1.0 / x)
-  ## Computes the inverse hyperbolic secant of `x`
+  ## Computes the inverse hyperbolic secant of ``x``.
 proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
-  ## Computes the inverse hyperbolic cosecant of `x`
+  ## Computes the inverse hyperbolic cosecant of ``x``.
+
+const windowsCC89 = defined(windows) and defined(bcc)
 
 when not defined(JS): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
-    ## Computes the hypotenuse of a right-angle triangle with `x` and
-    ## `y` as its base and height. Equivalent to ``sqrt(x*x + y*y)``.
-
+    ## Computes the hypotenuse of a right-angle triangle with ``x`` and
+    ## ``y`` as its base and height. Equivalent to ``sqrt(x*x + y*y)``.
+    ##
+    ## .. code-block:: nim
+    ##  echo hypot(4.0, 3.0) ## 5.0
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
     ##
-    ## To compute power between integers, use `^` e.g. 2 ^ 6
+    ## To compute power between integers, use ``^`` e.g. 2 ^ 6
+    ##
+    ## .. code-block:: nim
+    ##  echo pow(16.0, 0.5) ## 4.0
 
-  proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
-  proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
-    ## The error function
-  proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
-  proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
-    ## The complementary error function
-
-  proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
-  proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
-    ## The gamma function
-  proc tgamma*(x: float32): float32
-    {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
-  proc tgamma*(x: float64): float64
-    {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
-    ## The gamma function
-    ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
-  proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
-  proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
-    ## Natural log of the gamma function
+  # TODO: add C89 version on windows
+  when not windowsCC89:
+    proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
+    proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
+      ## Computes the `error function <https://en.wikipedia.org/wiki/Error_function>`_ for ``x``.
+    proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
+    proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
+      ## Computes the `complementary error function <https://en.wikipedia.org/wiki/Error_function#Complementary_error_function>`_ for ``x``.
+    proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
+    proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
+      ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
+    proc tgamma*(x: float32): float32
+      {.deprecated: "use gamma instead", importc: "tgammaf", header: "<math.h>".}
+    proc tgamma*(x: float64): float64
+      {.deprecated: "use gamma instead", importc: "tgamma", header: "<math.h>".}
+      ## The gamma function
+      ## **Deprecated since version 0.19.0**: Use ``gamma`` instead.
+    proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
+    proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
+      ## Computes the natural log of the gamma function for ``x``.
 
   proc floor*(x: float32): float32 {.importc: "floorf", header: "<math.h>".}
   proc floor*(x: float64): float64 {.importc: "floor", header: "<math.h>".}
-    ## Computes the floor function (i.e., the largest integer not greater than `x`)
+    ## Computes the floor function (i.e., the largest integer not greater than ``x``).
     ##
     ## .. code-block:: nim
     ##  echo floor(-3.5) ## -4.0
 
   proc ceil*(x: float32): float32 {.importc: "ceilf", header: "<math.h>".}
   proc ceil*(x: float64): float64 {.importc: "ceil", header: "<math.h>".}
-    ## Computes the ceiling function (i.e., the smallest integer not less than `x`)
+    ## Computes the ceiling function (i.e., the smallest integer not less than ``x``).
     ##
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
 
-  when defined(windows) and (defined(vcc) or defined(bcc)):
+  when windowsCC89:
     # MSVC 2010 don't have trunc/truncf
     # this implementation was inspired by Go-lang Math.Trunc
     proc truncImpl(f: float64): float64 =
@@ -365,76 +445,103 @@ when not defined(JS): # C
       if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
       result = truncImpl(x)
 
-    proc round0[T: float32|float64](x: T): T =
+    proc round*[T: float32|float64](x: T): T =
       ## Windows compilers prior to MSVC 2012 do not implement 'round',
       ## 'roundl' or 'roundf'.
       result = if x < 0.0: ceil(x - T(0.5)) else: floor(x + T(0.5))
   else:
-    proc round0(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
-    proc round0(x: float64): float64 {.importc: "round", header: "<math.h>".}
+    proc round*(x: float32): float32 {.importc: "roundf", header: "<math.h>".}
+    proc round*(x: float64): float64 {.importc: "round", header: "<math.h>".}
       ## Rounds a float to zero decimal places.  Used internally by the round
       ## function when the specified number of places is 0.
 
     proc trunc*(x: float32): float32 {.importc: "truncf", header: "<math.h>".}
     proc trunc*(x: float64): float64 {.importc: "trunc", header: "<math.h>".}
-      ## Truncates `x` to the decimal point
+      ## Truncates ``x`` to the decimal point.
       ##
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
+      ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated, importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated, importc: "fmod", header: "<math.h>".}
-    ## Computes the remainder of `x` divided by `y`
-    ##
-    ## .. code-block:: nim
-    ##  echo fmod(-2.5, 0.3) ## -0.1
+  proc fmod*(x, y: float32): float32 {.deprecated: "use mod instead", importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated: "use mod instead", importc: "fmod", header: "<math.h>".}
+    ## Computes the remainder of ``x`` divided by ``y``.
+    ## **Deprecated since version 0.19.0**: Use the ``mod`` operator instead.
 
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
-    ## Computes the modulo operation for float operators.
+    ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
+    ##
+    ## .. code-block:: nim
+    ##  ( 6.5 mod  2.5) ==  1.5
+    ##  (-6.5 mod  2.5) == -1.5
+    ##  ( 6.5 mod -2.5) ==  1.5
+    ##  (-6.5 mod -2.5) == -1.5
+
 else: # JS
-  proc hypot*[T: float32|float64](x, y: T): T = return sqrt(x*x + y*y)
+  proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
+  proc hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
   proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
   proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   proc ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-  proc round0(x: float): float {.importc: "Math.round", nodecl.}
+  proc round*(x: float): float {.importc: "Math.round", nodecl.}
   proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 
   proc `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
   proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
-  ## Computes the modulo operation for float operators.
+    ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
+    ##
+    ## .. code-block:: nim
+    ##  ( 6.5 mod  2.5) ==  1.5
+    ##  (-6.5 mod  2.5) == -1.5
+    ##  ( 6.5 mod -2.5) ==  1.5
+    ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int = 0): T =
-  ## Round a floating point number.
+proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use format instead".} =
+  ## Decimal rounding on a binary floating point number.
   ##
-  ## If `places` is 0 (or omitted), round to the nearest integral value
-  ## following normal mathematical rounding rules (e.g. `round(54.5) -> 55.0`).
-  ## If `places` is greater than 0, round to the given number of decimal
-  ## places, e.g. `round(54.346, 2) -> 54.35`.
-  ## If `places` is negative, round to the left of the decimal place, e.g.
-  ## `round(537.345, -1) -> 540.0`
+  ## This function is NOT reliable. Floating point numbers cannot hold
+  ## non integer decimals precisely.  If ``places`` is 0 (or omitted),
+  ## round to the nearest integral value following normal mathematical
+  ## rounding rules (e.g.  ``round(54.5) -> 55.0``).  If ``places`` is
+  ## greater than 0, round to the given number of decimal places,
+  ## e.g. ``round(54.346, 2) -> 54.350000000000001421...``.  If ``places`` is negative, round
+  ## to the left of the decimal place, e.g.  ``round(537.345, -1) ->
+  ## 540.0``
   if places == 0:
-    result = round0(x)
+    result = round(x)
   else:
     var mult = pow(10.0, places.T)
-    result = round0(x*mult)/mult
+    result = round(x*mult)/mult
 
 proc floorDiv*[T: SomeInteger](x, y: T): T =
   ## Floor division is conceptually defined as ``floor(x / y)``.
   ## This is different from the ``div`` operator, which is defined
   ## as ``trunc(x / y)``. That is, ``div`` rounds towards ``0`` and ``floorDiv``
   ## rounds down.
+  ##
+  ## .. code-block:: nim
+  ##  echo floorDiv( 13,  3) #  4
+  ##  echo floorDiv(-13,  3) # -5
+  ##  echo floorDiv( 13, -3) # -5
+  ##  echo floorDiv(-13, -3) #  4
   result = x div y
   let r = x mod y
   if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
 
 proc floorMod*[T: SomeNumber](x, y: T): T =
-  ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y).
-  ## This proc behaves the same as the ``%`` operator in python.
+  ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y)``.
+  ## This proc behaves the same as the ``%`` operator in Python.
+  ##
+  ## .. code-block:: nim
+  ##  echo floorMod( 13,  3) #  1
+  ##  echo floorMod(-13,  3) #  2
+  ##  echo floorMod( 13, -3) # -2
+  ##  echo floorMod(-13, -3) # -1
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
@@ -445,13 +552,40 @@ when not defined(JS):
     importc: "frexp", header: "<math.h>".}
   proc frexp*[T, U](x: T, exponent: var U): T =
     ## Split a number into mantissa and exponent.
-    ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value n such that `x` (the original
-    ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
+    ## ``frexp`` calculates the mantissa m (a float greater than or equal to 0.5
+    ## and less than 1) and the integer value n such that ``x`` (the original
+    ## float value) equals ``m * 2**n``. frexp stores n in `exponent` and returns
     ## m.
+    ##
+    ## .. code-block:: nim
+    ##  var x : int
+    ##  echo frexp(5.0, x) # 0.625
+    ##  echo x # 3
     var exp: int32
     result = c_frexp(x, exp)
     exponent = exp
+
+  when windowsCC89:
+    # taken from Go-lang Math.Log2
+    const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
+    template log2Impl[T](x: T): T =
+      var exp: int32
+      var frac = frexp(x, exp)
+      # Make sure exact powers of two give an exact answer.
+      # Don't depend on Log(0.5)*(1/Ln2)+exp being exactly exp-1.
+      if frac == 0.5: return T(exp - 1)
+      log10(frac)*(1/ln2) + T(exp)
+
+    proc log2*(x: float32): float32 = log2Impl(x)
+    proc log2*(x: float64): float64 = log2Impl(x)
+      ## Log2 returns the binary logarithm of x.
+      ## The special cases are the same as for Log.
+
+  else:
+    proc log2*(x: float32): float32 {.importc: "log2f", header: "<math.h>".}
+    proc log2*(x: float64): float64 {.importc: "log2", header: "<math.h>".}
+      ## Computes the binary logarithm (base 2) of ``x``
+
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -470,13 +604,16 @@ else:
         result = 0.99999999999999988898
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
-  ## Breaks `x` into an integral and a fractional part.
+  ## Breaks ``x`` into an integer and a fractional part.
   ##
-  ## Returns a tuple containing intpart and floatpart representing
+  ## Returns a tuple containing ``intpart`` and ``floatpart`` representing
   ## the integer part and the fractional part respectively.
   ##
-  ## Both parts have the same sign as `x`.  Analogous to the `modf`
+  ## Both parts have the same sign as ``x``.  Analogous to the ``modf``
   ## function in C.
+  ##
+  ## .. code-block:: nim
+  ##  echo splitDecimal(5.25) # (intpart: 5.0, floatpart: 0.25)
   var
     absolute: T
   absolute = abs(x)
@@ -490,24 +627,37 @@ proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
 
 proc degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from degrees to radians
+  ##
+  ## .. code-block:: nim
+  ##  echo degToRad(180.0) # 3.141592653589793
   result = T(d) * RadPerDeg
 
 proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees
+
+  ## .. code-block:: nim
+  ##  echo degToRad(2 * PI) # 360.0
   result = T(d) / RadPerDeg
 
 proc sgn*[T: SomeNumber](x: T): int {.inline.} =
-  ## Sign function. Returns -1 for negative numbers and `NegInf`, 1 for
-  ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
-  ## `NaN`.
+  ## Sign function. Returns -1 for negative numbers and ``NegInf``, 1 for
+  ## positive numbers and ``Inf``, and 0 for positive zero, negative zero and
+  ## ``NaN``.
+  ##
+  ## .. code-block:: nim
+  ##  echo sgn(-5) # 1
+  ##  echo sgn(-4.1) # -1
   ord(T(0) < x) - ord(x < T(0))
 
 {.pop.}
 {.pop.}
 
 proc `^`*[T](x: T, y: Natural): T =
-  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
-  ## `pow <#pow,float,float>` for negative exponents.
+  ## Computes ``x`` to the power ``y``. ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>`_ for negative exponents.
+  ##
+  ## .. code-block:: nim
+  ##  echo 2 ^ 3 # 8
   when compiles(y >= T(0)):
     assert y >= T(0)
   else:
@@ -537,6 +687,9 @@ proc gcd*[T](x, y: T): T =
 proc gcd*(x, y: SomeInteger): SomeInteger =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ## Using binary GCD (aka Stein's) algorithm.
+  ##
+  ## .. code-block:: nim
+  ##  echo gcd(24, 30) # 6
   when x is SomeSignedInt:
     var x = abs(x)
   else:
@@ -562,9 +715,12 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
 
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
+  ##
+  ## .. code-block:: nim
+  ##  echo lcm(24, 30) # 120
   x div gcd(x, y) * y
 
-when isMainModule and not defined(JS):
+when isMainModule and not defined(JS) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
@@ -692,3 +848,14 @@ when isMainModule:
 
   block: # log
     doAssert log(4.0, 3.0) == ln(4.0) / ln(3.0)
+    doAssert log2(8.0'f64) == 3.0'f64
+    doAssert log2(4.0'f64) == 2.0'f64
+    doAssert log2(2.0'f64) == 1.0'f64
+    doAssert log2(1.0'f64) == 0.0'f64
+    doAssert classify(log2(0.0'f64)) == fcNegInf
+
+    doAssert log2(8.0'f32) == 3.0'f32
+    doAssert log2(4.0'f32) == 2.0'f32
+    doAssert log2(2.0'f32) == 1.0'f32
+    doAssert log2(1.0'f32) == 0.0'f32
+    doAssert classify(log2(0.0'f32)) == fcNegInf

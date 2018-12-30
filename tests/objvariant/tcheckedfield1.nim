@@ -1,6 +1,8 @@
 discard """
-  msg: "Warning: cannot prove that field 'x.s' is accessible [ProveField]"
+  nimout: "Warning: cannot prove that field 'x.s' is accessible [ProveField]"
   line:51
+  action: run
+  output: "abc abc"
 """
 
 import strutils

@@ -129,8 +129,8 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseIdent*(s: string, start = 0): string =
-  ## parses an identifier and stores it in ``ident``.
-  ## Returns the parsed identifier or an empty string in case of an error.
+  ## parses an identifier and returns it or an empty string in
+  ## case of an error.
   result = ""
   var i = start
   if i < s.len and s[i] in IdentStartChars:
@@ -267,7 +267,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
-  ## `EOverflow` is raised if an overflow occurs.
+  ## `OverflowError` is raised if an overflow occurs.
   var res: BiggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -278,7 +278,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   rtl, extern: "npuParseInt", noSideEffect.} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
-  ## `EOverflow` is raised if an overflow occurs.
+  ## `OverflowError` is raised if an overflow occurs.
   var res: BiggestInt
   result = parseBiggestInt(s, res, start)
   if (sizeof(int) <= 4) and
@@ -289,7 +289,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
 
 proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
   ## parses a natural number into ``b``. This cannot raise an overflow
-  ## error. Instead of an ``Overflow`` exception ``high(int)`` is returned.
+  ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
   ## Example:

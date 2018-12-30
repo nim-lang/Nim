@@ -100,7 +100,6 @@ else:
   include posix_other
 
 # There used to be this name in posix.nim a long time ago, not sure why!
-{.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =
@@ -824,6 +823,12 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
+proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_LEN*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
 const
   INVALID_SOCKET* = SocketHandle(-1)
 
@@ -985,14 +990,21 @@ proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
 proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
 
 template onSignal*(signals: varargs[cint], body: untyped) =
-  ## Setup code to be executed when Unix signals are received. Example:
-  ## from posix import SIGINT, SIGTERM
-  ## onSignal(SIGINT, SIGTERM):
-  ##   echo "bye"
+  ## Setup code to be executed when Unix signals are received. The
+  ## currently handled signal is injected as ``sig`` into the calling
+  ## scope.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   from posix import SIGINT, SIGTERM
+  ##   onSignal(SIGINT, SIGTERM):
+  ##     echo "bye from signal ", sig
 
   for s in signals:
     handle_signal(s,
-      proc (sig: cint) {.noconv.} =
+      proc (signal: cint) {.noconv.} =
+        let sig {.inject.} = signal
         body
     )
 

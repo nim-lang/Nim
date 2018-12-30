@@ -1,5 +1,4 @@
 discard """
-  file: "tstaticparams.nim"
   output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang\n2\n4\n4\n2\n3"
 """
 
@@ -140,7 +139,7 @@ dontBind1 bb_2
 dontBind2 bb_1
 dontBind2 bb_2
 
-# https://github.com/nim-lang/Nim/issues/4524 
+# https://github.com/nim-lang/Nim/issues/4524
 const
   size* = 2
 
@@ -172,4 +171,3 @@ echo inSize([
   [1, 2, 3],
   [4, 5, 6]
 ])
-

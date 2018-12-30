@@ -106,7 +106,7 @@ proc readChar*(buffer: PBuffer): char {.inline.} = return readInt8(buffer).char
 proc readBool*(buffer: PBuffer): bool {.inline.} = return readInt8(buffer).bool
 
 
-when isMainModule:
+when false:
   var b = newBuffer(100)
   var str = "hello there"
   b.write str

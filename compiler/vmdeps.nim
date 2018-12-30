@@ -13,7 +13,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
   try:
     var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
-      filename = findFile(conf, file)
+      filename = findFile(conf, file).string
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
@@ -82,12 +82,9 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
-  if inst:
-    if t.sym != nil:  # if this node has a symbol
-      if not allowRecursion:  # getTypeInst behavior: return symbol
-        return atomicType(t.sym)
-      #else:  # getTypeImpl behavior: turn off recursion
-      #  allowRecursion = false
+  if inst and not allowRecursion and t.sym != nil:
+    # getTypeInst behavior: return symbol
+    return atomicType(t.sym)
 
   case t.kind
   of tyNone: result = atomicType("none", mNone)
@@ -98,6 +95,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyStmt: result = atomicType("stmt", mStmt)
   of tyVoid: result = atomicType("void", mVoid)
   of tyEmpty: result = atomicType("empty", mNone)
+  of tyUncheckedArray:
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+    result.add atomicType("UncheckedArray", mUncheckedArray)
+    result.add mapTypeToAst(t.sons[0], info)
   of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)
@@ -156,9 +157,13 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
-      result.add newNodeI(nkEmpty, info)  # pragmas not reconstructed yet
-      if t.sons[0] == nil: result.add newNodeI(nkEmpty, info)  # handle parent object
+      if t.sym.ast != nil:
+        result.add t.sym.ast[2][0].copyTree  # copy object pragmas
       else:
+        result.add newNodeI(nkEmpty, info)
+      if t.sons[0] == nil:
+        result.add newNodeI(nkEmpty, info)
+      else:  # handle parent object
         var nn = newNodeX(nkOfInherit)
         nn.add mapTypeToAst(t.sons[0], info)
         result.add nn
@@ -229,15 +234,23 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       for i in 1..<t.sons.len:
         fp.add newIdentDefs(t.n[i], t.sons[i])
       result.add fp
-      result.add newNodeI(nkEmpty, info)  # pragmas aren't reconstructed yet
+      result.add if t.n[0].len > 0: t.n[0][pragmasEffects].copyTree
+                 else: newNodeI(nkEmpty, info)
     else:
       result = mapTypeToBracket("proc", mNone, t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)
   of tyRange:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("range", mRange)
-    result.add t.n.sons[0].copyTree
-    result.add t.n.sons[1].copyTree
+    if inst:
+      let rng = newNodeX(nkInfix)
+      rng.add newIdentNode(getIdent(cache, ".."), info)
+      rng.add t.n.sons[0].copyTree
+      rng.add t.n.sons[1].copyTree
+      result.add rng
+    else:
+      result.add t.n.sons[0].copyTree
+      result.add t.n.sons[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
   of tyString: result = atomicType("string", mString)
   of tyCString: result = atomicType("cstring", mCString)
@@ -281,7 +294,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef: assert(false, "mapTypeToAstX")
+  of tyOptAsRef: assert(false, "mapTypeToAstX")
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(cache, t, info, false, true)

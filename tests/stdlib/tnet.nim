@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 import net, nativesockets
 import unittest
 
@@ -66,11 +70,11 @@ block: # "IpAddress/Sockaddr conversion"
     doAssert(ipaddr_1 == ipaddr_2)
     doAssert($ipaddr_1 == $ipaddr_2)
 
-    if sockaddr.ss_family == AF_INET.toInt:
+    if sockaddr.ss_family.cint == AF_INET.toInt:
       var sockaddr4: Sockaddr_in
       copyMem(addr sockaddr4, addr sockaddr, sizeof(sockaddr4))
       fromSockAddr(sockaddr4, socklen, ipaddr_2, port_2)
-    elif sockaddr.ss_family == AF_INET6.toInt:
+    elif sockaddr.ss_family.cint == AF_INET6.toInt:
       var sockaddr6: Sockaddr_in6
       copyMem(addr sockaddr6, addr sockaddr, sizeof(sockaddr6))
       fromSockAddr(sockaddr6, socklen, ipaddr_2, port_2)

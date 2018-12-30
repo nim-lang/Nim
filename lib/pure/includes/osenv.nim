@@ -1,7 +1,9 @@
 ## Include file that implements 'getEnv' and friends. Do not import it!
 
-when not declared(ospaths):
-  {.error: "This is an include file for ospaths.nim!".}
+when not declared(os):
+  {.error: "This is an include file for os.nim!".}
+
+from parseutils import skipIgnoreCase
 
 proc c_getenv(env: cstring): cstring {.
   importc: "getenv", header: "<stdlib.h>".}
@@ -91,7 +93,10 @@ proc findEnvVar(key: string): int =
   getEnvVarsC()
   var temp = key & '='
   for i in 0..high(environment):
-    if startsWith(environment[i], temp): return i
+    when defined(windows):
+      if skipIgnoreCase(environment[i], temp) == len(temp): return i
+    else:
+      if startsWith(environment[i], temp): return i
   return -1
 
 proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =

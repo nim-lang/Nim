@@ -11,7 +11,6 @@
 
 type
   NimSet = array[0..4*2048-1, uint8]
-{.deprecated: [TNimSet: NimSet].}
 
 proc countBits32(n: int32): int {.compilerproc.} =
   var v = n

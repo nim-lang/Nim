@@ -53,19 +53,35 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string): Rope =
   result = getTempName(m)
-  addf(m.s[cfsData], " static const NIM_CHAR $1[$2] = $3;$n",
-       [result, rope(len(s)+1), makeCString(s)])
+  addf(m.s[cfsData], "static const struct {$n" &
+       "  NI cap; void* allocator; NIM_CHAR data[$2+1];$n" &
+       "} $1 = { $2, NIM_NIL, $3 };$n",
+       [result, rope(len(s)), makeCString(s)])
 
 proc genStringLiteralV2(m: BModule; n: PNode): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   if id == m.labels:
+    discard cgsym(m, "NimStrPayload")
+    discard cgsym(m, "NimStringV2")
     # string literal not found in the cache:
     let pureLit = genStringLiteralDataOnlyV2(m, n.strVal)
     result = getTempName(m)
-    addf(m.s[cfsData], "static const #NimStringV2 $1 = {$2, $2, $3};$n",
-        [result, rope(len(n.strVal)+1), pureLit])
+    addf(m.s[cfsData], "static const NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
+          [result, rope(len(n.strVal)), pureLit])
   else:
-    result = m.tmpBase & rope(id)
+    result = m.tmpBase & rope(id+1)
+
+proc genStringLiteralV2Const(m: BModule; n: PNode): Rope =
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
+  var pureLit: Rope
+  if id == m.labels:
+    discard cgsym(m, "NimStrPayload")
+    discard cgsym(m, "NimStringV2")
+    # string literal not found in the cache:
+    pureLit = genStringLiteralDataOnlyV2(m, n.strVal)
+  else:
+    pureLit = m.tmpBase & rope(id)
+  result = "{$1, (NimStrPayload*)&$2}" % [rope(len(n.strVal)), pureLit]
 
 # ------ Version selector ---------------------------------------------------
 

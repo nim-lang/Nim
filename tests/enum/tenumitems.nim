@@ -1,9 +1,7 @@
 discard """
+  errormsg: "attempting to call routine: 'items'"
   line: 7
-  errormsg: "attempting to call undeclared routine: 'items'"
 """
 
 type a = enum b,c,d
 a.items()
-
-

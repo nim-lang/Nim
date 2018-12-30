@@ -1,7 +1,8 @@
 discard """
-  file: "tfinally3.nim"
-  outputsub: '''false
-Within finally->try'''
+  outputsub: '''
+false
+Within finally->try
+'''
   exitCode: 1
 """
 # Test break in try statement:

@@ -1,3 +1,7 @@
+discard """
+output: "[Suite] object basic methods"
+"""
+
 import unittest
 
 type Obj = object

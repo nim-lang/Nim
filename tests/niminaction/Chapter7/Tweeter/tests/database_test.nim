@@ -1,6 +1,10 @@
+discard """
+outputsub: "All tests finished successfully!"
+"""
+
 import database, os, times
 
-when isMainModule:
+when true:
   removeFile("tweeter_test.db")
   var db = newDatabase("tweeter_test.db")
   db.setup()

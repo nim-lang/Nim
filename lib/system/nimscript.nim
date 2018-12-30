@@ -32,7 +32,7 @@ proc listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   builtin
 
-proc removeDir(dir: string){.
+proc removeDir(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -73,12 +73,12 @@ proc switch*(key: string, val="") =
 proc warning*(name: string; val: bool) =
   ## Disables or enables a specific warning.
   let v = if val: "on" else: "off"
-  warningImpl(name & "]:" & v, "warning[" & name & "]:" & v)
+  warningImpl(name & ":" & v, "warning:" & name & ":" & v)
 
 proc hint*(name: string; val: bool) =
   ## Disables or enables a specific hint.
   let v = if val: "on" else: "off"
-  hintImpl(name & "]:" & v, "hint[" & name & "]:" & v)
+  hintImpl(name & ":" & v, "hint:" & name & ":" & v)
 
 proc patchFile*(package, filename, replacement: string) =
   ## Overrides the location of a given file belonging to the
@@ -143,6 +143,7 @@ proc existsDir*(dir: string): bool =
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
+  # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
 proc toExe*(filename: string): string =
@@ -269,8 +270,22 @@ proc nimcacheDir*(): string =
   ## Retrieves the location of 'nimcache'.
   builtin
 
+proc projectName*(): string =
+  ## Retrieves the name of the current project
+  builtin
+
+proc projectDir*(): string =
+  ## Retrieves the absolute directory of the current project
+  builtin
+
+proc projectPath*(): string =
+  ## Retrieves the absolute path of the current project
+  builtin
+
 proc thisDir*(): string =
-  ## Retrieves the location of the current ``nims`` script file.
+  ## Retrieves the directory of the current ``nims`` script file. Its path is
+  ## obtained via ``currentSourcePath`` (although, currently,
+  ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
   builtin
 
 proc cd*(dir: string) {.raises: [OSError].} =
@@ -305,7 +320,6 @@ template withDir*(dir: string; body: untyped): untyped =
   finally:
     cd(curDir)
 
-template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
 
 proc writeTask(name, desc: string) =
   if desc.len > 0:
@@ -313,29 +327,30 @@ proc writeTask(name, desc: string) =
     for i in 0 ..< 20 - name.len: spaces.add ' '
     echo name, spaces, desc
 
-template task*(name: untyped; description: string; body: untyped): untyped =
-  ## Defines a task. Hidden tasks are supported via an empty description.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##  task build, "default build is via the C backend":
-  ##    setCommand "c"
-  proc `name Task`*() = body
-
-  let cmd = getCommand()
-  if cmd.len == 0 or cmd ==? "help":
-    setCommand "help"
-    writeTask(astToStr(name), description)
-  elif cmd ==? astToStr(name):
-    setCommand "nop"
-    `name Task`()
-
 proc cppDefine*(define: string) =
   ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
   ## needs to be mangled.
   builtin
 
 when not defined(nimble):
+  template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+  template task*(name: untyped; description: string; body: untyped): untyped =
+    ## Defines a task. Hidden tasks are supported via an empty description.
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task build, "default build is via the C backend":
+    ##    setCommand "c"
+    proc `name Task`*() = body
+
+    let cmd = getCommand()
+    if cmd.len == 0 or cmd ==? "help":
+      setCommand "help"
+      writeTask(astToStr(name), description)
+    elif cmd ==? astToStr(name):
+      setCommand "nop"
+      `name Task`()
+
   # nimble has its own implementation for these things.
   var
     packageName* = ""    ## Nimble support: Set this to the package name. It

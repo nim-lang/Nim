@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 # tests for rstgen module.
 
 import ../../lib/packages/docutils/rstgen
@@ -27,7 +31,7 @@ suite "YAML syntax highlighting":
 <span class="Punctuation">?</span> <span class="StringLit">key</span>
 <span class="Punctuation">:</span> <span class="StringLit">value</span>
 <span class="Keyword">...</span></pre>"""
-  
+
   test "Block scalars":
     let input = """.. code-block:: yaml
     a literal block scalar: |
@@ -55,7 +59,7 @@ suite "YAML syntax highlighting":
 <span class="StringLit">another literal block scalar</span><span class="Punctuation">:</span>
   <span class="Command">|+</span> <span class="Comment"># comment after header</span><span class="LongStringLit">
  allowed, since more indented than parent</span></pre>"""
- 
+
   test "Directives":
     let input = """.. code-block:: yaml
     %YAML 1.2
@@ -97,7 +101,7 @@ suite "YAML syntax highlighting":
   <span class="StringLit">more numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span><span class="DecNumber">-783</span><span class="Punctuation">,</span> <span class="FloatNumber">11e78</span><span class="Punctuation">]</span><span class="Punctuation">,</span>
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
-  
+
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
     --- !!map

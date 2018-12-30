@@ -1,5 +1,4 @@
 discard """
-  file: "tregex.nim"
   output: "key: keyAYes!"
 """
 # Test the new regular expression module
@@ -27,5 +26,3 @@ else:
     echo("Bug!")
 
   #OUT key: keyAYes!
-
-

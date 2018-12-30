@@ -102,7 +102,7 @@ handlers[HZoneJoinReq] = proc(client: PClient; buffer: PBuffer) =
 
 
 
-when isMainModule:
+when true:
   import parseopt, matchers, os, json
 
 

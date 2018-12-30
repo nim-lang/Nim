@@ -68,6 +68,8 @@ else:
     toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+  proc `&=`(c: var MD5Context, r: Rope) =
+    for l in leaves(r): md5Update(c, l, l.len)
   proc `&=`(c: var MD5Context, i: BiggestInt) =
     md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 
@@ -163,7 +165,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashType t.sons[i], flags
     else:
       c.hashType t.lastSon, flags
-  of tyAlias, tySink, tyUserTypeClasses:
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
@@ -173,19 +175,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
-      assert t.typeInst.kind == tyGenericInst
-      for i in countup(0, sonsLen(t.typeInst) - 2):
-        c.hashType t.typeInst.sons[i], flags
+      # prevent against infinite recursions here, see bug #8883:
+      let inst = t.typeInst
+      t.typeInst = nil
+      assert inst.kind == tyGenericInst
+      for i in countup(0, inst.len - 2):
+        c.hashType inst.sons[i], flags
+      t.typeInst = inst
       return
     c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
-      #if "Future:" in t.sym.name.s and t.typeInst == nil:
-      #  writeStackTrace()
-      #  echo "yes ", t.sym.name.s
-      #  #quit 1
-      if CoOwnerSig in flags:
+      if {sfCompilerProc} * t.sym.flags != {}:
+        doAssert t.sym.loc.r != nil
+        # The user has set a specific name for this type
+        c &= t.sym.loc.r
+      elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
