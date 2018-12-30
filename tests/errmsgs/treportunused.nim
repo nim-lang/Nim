@@ -27,4 +27,3 @@ let s8 = 0
 var s9: int
 type s10 = object
 type s11 = type(1.2)
-

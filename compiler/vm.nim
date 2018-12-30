@@ -67,7 +67,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     var info = c.debug[pc]
     # we now use a format similar to the one in lib/system/excpt.nim
     var s = ""
-    # TODO: factor with quotedFilename
+    # todo: factor with quotedFilename
     if optExcessiveStackTrace in c.config.globalOptions:
       s = toFullPath(c.config, info)
     else:

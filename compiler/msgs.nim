@@ -217,7 +217,7 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   # consider factoring with `lineInfoToString`
   result = toFilename(conf, info) & "(" & $info.line & ", " &
-    # TODO: should be: $(info.col + ColOffset) & ")"
+    # todo: should be: $(info.col + ColOffset) & ")"
     $(info.col) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
