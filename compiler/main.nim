@@ -284,6 +284,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
         (key: "out", val: %conf.outFile.string),
+        (key: "nimcache", val: %getNimcacheDir(conf).string),
         (key: "hints", val: hints),
         (key: "warnings", val: warnings),
       ]
