@@ -10,6 +10,7 @@
 ## Computes hash values for routine (proc, method etc) signatures.
 
 import ast, md5, tables, ropes
+import intsets
 from hashes import Hash
 from astalgo import debug
 import types
@@ -91,7 +92,7 @@ type
     CoOwnerSig
     CoIgnoreRange
 
-proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag], cycleDetector: var IntSet)
 
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
@@ -103,7 +104,7 @@ proc hashSym(c: var MD5Context, s: PSym) =
       c &= "."
       it = it.owner
 
-proc hashTypeSym(c: var MD5Context, s: PSym) =
+proc hashTypeSym(c: var MD5Context, s: PSym, cycleDetector: var IntSet)=
   if sfAnon in s.flags or s.kind == skGenericParam:
     c &= ":anon"
   else:
@@ -111,7 +112,7 @@ proc hashTypeSym(c: var MD5Context, s: PSym) =
     while it != nil:
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
-        hashType c, it.typ, {CoProc}
+        hashType c, it.typ, {CoProc}, cycleDetector
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -141,7 +142,8 @@ proc hashTree(c: var MD5Context, n: PNode) =
   else:
     for i in 0..<n.len: hashTree(c, n.sons[i])
 
-proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag], cycleDetector: var IntSet) =
+
   if t == nil:
     c &= "\254"
     return
@@ -149,10 +151,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   case t.kind
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
-      c.hashType t.sons[i], flags
+      c.hashType t.sons[i], flags, cycleDetector
   of tyDistinct:
     if CoType in flags:
-      c.hashType t.lastSon, flags
+      c.hashType t.lastSon, flags, cycleDetector
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
@@ -162,11 +164,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       # value for each instantiation, so we hash the generic parameters here:
       let normalizedType = t.skipGenericAlias
       for i in 0 .. normalizedType.len - 2:
-        c.hashType t.sons[i], flags
+        c.hashType t.sons[i], flags, cycleDetector
     else:
-      c.hashType t.lastSon, flags
+      c.hashType t.lastSon, flags, cycleDetector
   of tyAlias, tySink, tyUserTypeClasses, tyInferred:
-    c.hashType t.lastSon, flags
+    c.hashType t.lastSon, flags, cycleDetector
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -180,7 +182,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       t.typeInst = nil
       assert inst.kind == tyGenericInst
       for i in countup(0, inst.len - 2):
-        c.hashType inst.sons[i], flags
+        c.hashType inst.sons[i], flags, cycleDetector
       t.typeInst = inst
       return
     c &= char(t.kind)
@@ -192,7 +194,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         # The user has set a specific name for this type
         c &= t.sym.loc.r
       elif CoOwnerSig in flags:
-        c.hashTypeSym(t.sym)
+        c.hashTypeSym(t.sym, cycleDetector)
       else:
         c.hashSym(t.sym)
       if {sfAnon, sfGenSym} * t.sym.flags != {}:
@@ -206,20 +208,22 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
-          c.hashType s.typ, flags
+          c.hashType s.typ, flags, cycleDetector
         t.sym.flags = oldFlags
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
-      hashType c, t.sons[0], flags
+      hashType c, t.sons[0], flags, cycleDetector
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
-    c.hashType t.lastSon, flags
+    c.hashType t.lastSon, flags, cycleDetector
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
     c &= char(t.kind)
     c.hashTree(t.n)
   of tyTuple:
+    if cycleDetector.containsOrIncl(t.id):
+      return
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
       assert(sonsLen(t.n) == sonsLen(t))
@@ -227,19 +231,19 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         assert(t.n.sons[i].kind == nkSym)
         c &= t.n.sons[i].sym.name.s
         c &= ':'
-        c.hashType(t.sons[i], flags+{CoIgnoreRange})
+        c.hashType(t.sons[i], flags+{CoIgnoreRange}, cycleDetector)
         c &= ','
     else:
-      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags+{CoIgnoreRange}
+      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags+{CoIgnoreRange}, cycleDetector
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
       c.hashTree(t.n)
-    c.hashType(t.sons[0], flags)
+    c.hashType(t.sons[0], flags, cycleDetector)
   of tyStatic:
     c &= char(t.kind)
     c.hashTree(t.n)
-    c.hashType(t.sons[0], flags)
+    c.hashType(t.sons[0], flags, cycleDetector)
   of tyProc:
     c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
@@ -249,11 +253,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         let param = params[i].sym
         c &= param.name.s
         c &= ':'
-        c.hashType(param.typ, flags)
+        c.hashType(param.typ, flags, cycleDetector)
         c &= ','
-      c.hashType(t.sons[0], flags)
+      c.hashType(t.sons[0], flags, cycleDetector)
     else:
-      for i in 0..<t.len: c.hashType(t.sons[i], flags)
+      for i in 0..<t.len: c.hashType(t.sons[i], flags, cycleDetector)
     c &= char(t.callConv)
     if CoType notin flags:
       if tfNoSideEffect in t.flags: c &= ".noSideEffect"
@@ -261,10 +265,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if tfVarargs in t.flags: c &= ".varargs"
   of tyArray:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t.sons[i], flags-{CoIgnoreRange})
+    for i in 0..<t.len: c.hashType(t.sons[i], flags-{CoIgnoreRange}, cycleDetector)
   else:
     c &= char(t.kind)
-    for i in 0..<t.len: c.hashType(t.sons[i], flags)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags, cycleDetector)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
 when defined(debugSigHashes):
@@ -284,7 +288,8 @@ when defined(debugSigHashes):
 proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, t, flags+{CoOwnerSig}
+  var cycleDetector = initIntSet()
+  hashType c, t, flags+{CoOwnerSig}, cycleDetector
   md5Final c, result.Md5Digest
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
@@ -293,7 +298,8 @@ proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
 proc hashProc*(s: PSym): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, s.typ, {CoProc}
+  var cycleDetector = initIntSet()
+  hashType c, s.typ, {CoProc}, cycleDetector
 
   var m = s
   while m.kind != skModule: m = m.owner
