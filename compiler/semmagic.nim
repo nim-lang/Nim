@@ -129,7 +129,8 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
-  case trait.sym.name.s
+  let s = trait.sym.name.s
+  case s
   of "or", "|":
     return typeWithSonsResult(tyOr, @[operand, operand2])
   of "and":
@@ -160,7 +161,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(c.config, traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =

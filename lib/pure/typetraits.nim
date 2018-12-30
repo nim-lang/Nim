@@ -10,6 +10,8 @@
 ## This module defines compile-time reflection procs for
 ## working with types
 
+export system.`$`
+
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Alias for system.`$`(t) since Nim v0.20.0.
 
