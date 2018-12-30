@@ -9,8 +9,8 @@ treportunused.nim(23, 6) Hint: 's5' is declared but not used [XDeclaredButNotUse
 treportunused.nim(20, 10) Hint: 's2' is declared but not used [XDeclaredButNotUsed]
 treportunused.nim(29, 6) Hint: 's11' is declared but not used [XDeclaredButNotUsed]
 treportunused.nim(27, 5) Hint: 's9' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(21, 10) Hint: 'treportunused.s3()[declared in treportunused.nim(21, 9)]' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(28, 6) Hint: 'treportunused.s10[declared in treportunused.nim(28, 5)]' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(21, 10) Hint: 's3' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(28, 6) Hint: 's10' is declared but not used [XDeclaredButNotUsed]
 '''
 action: compile
 """
