@@ -104,6 +104,12 @@ var
   jsFilename* {.importc: "__filename", nodecl.}: cstring
     ## JavaScript's __filename pseudo-variable
 
+proc isNull*[T](x: T): bool {.noSideEffect, importcpp: "(# === null)".}
+  ## check if a value is exactly null
+
+proc isUndefined*[T](x: T): bool {.noSideEffect, importcpp: "(# === undefined)".}
+  ## check if a value is exactly undefined
+
 # Exceptions
 type
   JsError* {.importc: "Error".} = object of JsRoot
