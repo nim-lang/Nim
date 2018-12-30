@@ -217,14 +217,13 @@ proc initIntSet*: IntSet =
 
   # newSeq(result.data, InitIntSetSize)
   # result.max = InitIntSetSize-1
-  when defined(nimNoNilSeqs):
-    result.data = @[]
-  else:
-    result.data = nil
-  result.max = 0
-  result.counter = 0
-  result.head = nil
-  result.elems = 0
+  result = IntSet(
+    elems: 0,
+    counter: 0,
+    max: 0,
+    head: nil,
+    data: when defined(nimNoNilSeqs): @[] else: nil)
+  #  a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc clear*(result: var IntSet) =
   ## Clears the IntSet back to an empty state.
