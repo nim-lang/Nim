@@ -464,7 +464,7 @@ proc extractPragma(s: PSym): PNode =
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let pragmaNode = if s.kind == skEnumField: extractPragma(s.owner) else: extractPragma(s)
   let name =
-    if s.kind == skEnumField: "enum '" & s.owner.name.s & "' which contains field '" & s.name.s & "'"
+    if s.kind == skEnumField and sfDeprecated notin s.flags: "enum '" & s.owner.name.s & "' which contains field '" & s.name.s & "'"
     else: s.name.s
   if pragmaNode != nil:
     for it in pragmaNode:
@@ -490,7 +490,7 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
     if sfDeprecated in s.owner.flags:
-      incl(s.flags, sfDeprecated)
+      warnAboutDeprecated(conf, info, s)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: userError(conf, info, s)
