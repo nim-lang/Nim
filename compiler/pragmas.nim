@@ -64,10 +64,10 @@ const
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed, wRaises}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore}
+    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore, wRaises}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -740,7 +740,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
       result.kind = n.kind # pragma(arg) -> pragma: arg
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
-                  validPragmas: TSpecialWords): bool =
+                  validPragmas: TSpecialWords, comesFromPush: bool) : bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
   if key.kind == nkBracketExpr:
@@ -1053,7 +1053,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
       of wLine: pragmaLine(c, it)
-      of wRaises, wTags: pragmaRaisesOrTags(c, it)
+      of wRaises, wTags:
+        if not sym.isNil and sym.kind in {skVar, skLet, skConst}:
+          if comesFromPush:
+            return
+          else:
+            invalidPragma(c, it)
+        else:
+          pragmaRaisesOrTags(c, it)
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)
@@ -1134,7 +1141,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
         pushInfoContext(c.config, n.info)
         var i = 0
         while i < o.len:
-          if singlePragma(c, sym, o, i, validPragmas):
+          if singlePragma(c, sym, o, i, validPragmas, true):
             internalError(c.config, n.info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
@@ -1163,7 +1170,7 @@ proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
   var i = 0
   while i < n.len:
-    if singlePragma(c, sym, n, i, validPragmas): break
+    if singlePragma(c, sym, n, i, validPragmas, false): break
     inc i
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
