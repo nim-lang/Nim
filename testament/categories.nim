@@ -425,15 +425,12 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     let contents = readFile(testFile).string
     var testObj = makeTest(testFile, options, cat)
     #[
-    TODO:
+    todo:
     this logic is fragile:
     false positives (if appears in a comment), or false negatives, eg
     `when defined(osx) and isMainModule`.
-    Instead of fixing this, a much better way, is to extend
-    https://github.com/nim-lang/Nim/issues/9581 to stdlib modules as follows:
-    * add these to megatest
-    * patch compiler so `isMainModule` is true when -d:isMainModuleIsAlwaysTrue
-    That'll give speedup benefit, and we don't have to patch stdlib files.
+    Instead of fixing this, see https://github.com/nim-lang/Nim/issues/10045
+    for a much better way.
     ]#
     if "when isMainModule" notin contents:
       testObj.spec.action = actionCompile
@@ -571,7 +568,7 @@ proc isTestFile*(file: string): bool =
   result = ext == ".nim" and name.startsWith("t")
 
 proc quoted(a: string): string =
-  # TODO: consider moving to system.nim
+  # todo: consider moving to system.nim
   result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
