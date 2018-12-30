@@ -167,6 +167,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
