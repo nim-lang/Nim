@@ -173,14 +173,6 @@ proc cumsum*[T](x: openArray[T]): seq[T] =
   result[0] = x[0]
   for i in 1 ..< x.len: result[i] = result[i-1] + x[i]
 
-proc cumsum*[T](x: var openArray[T]) =
-  ## Transforms ``x`` in-place into its cumulative aka prefix summation.
-  ##
-  ## .. code-block:: nim
-  ##   var x = [1, 2, 3, 4]
-  ##   x.cumsum;  echo x    # [1, 3, 6, 10]
-  for i in 1 ..< x.len: x[i] = x[i-1] + x[i]
-
 {.push noSideEffect.}
 when not defined(JS): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}

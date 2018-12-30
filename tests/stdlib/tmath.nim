@@ -78,14 +78,12 @@ suite "random float":
 
 suite "cumsum":
   test "cumsum int":
-    var counts = [ 1, 2, 3, 4 ]
-    counts.cumsum
-    check counts == [ 1, 3, 6, 10 ]
+    let counts = [ 1, 2, 3, 4 ]
+    check counts.cumsum == [ 1, 3, 6, 10 ]
 
   test "cumsum float":
-    var counts = [ 1.0, 2.0, 3.0, 4.0 ]
-    counts.cumsum
-    check counts == [ 1.0, 3.0, 6.0, 10.0 ]
+    let counts = [ 1.0, 2.0, 3.0, 4.0 ]
+    check counts.cumsum == [ 1.0, 3.0, 6.0, 10.0 ]
 
 suite "random sample":
   test "non-uniform array sample unnormalized int CDF":
