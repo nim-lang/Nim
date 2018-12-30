@@ -1,7 +1,7 @@
 discard """
-  nimout: '''tenumfieldpragma.nim(20, 10) Warning: d is deprecated [Deprecated]
-tenumfieldpragma.nim(21, 10) Warning: e is deprecated [Deprecated]
-tenumfieldpragma.nim(22, 10) Warning: f is deprecated [Deprecated]
+  nimout: '''tenumfieldpragma.nim(20, 10) Warning: enum 'A' which contains field 'd' is deprecated [Deprecated]
+tenumfieldpragma.nim(21, 10) Warning: enum 'A' which contains field 'e' is deprecated [Deprecated]
+tenumfieldpragma.nim(22, 10) Warning: enum 'A' which contains field 'f' is deprecated [Deprecated]
 '''
 """
 
@@ -20,3 +20,4 @@ var v3 = c
 var v4 = d
 var v5 = e
 var v6 = f
+
