@@ -4431,3 +4431,12 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
+  ## Returns the name of the given type.
+  ##
+  ## For more procedures dealing with ``typedesc``, see ``typetraits.nim``.
+  runnableExamples:
+    doAssert $(type(42)) == "int"
+    doAssert $(type("Foo")) == "string"
+    static: doAssert $(type(@['A', 'B'])) == "seq[char]"
