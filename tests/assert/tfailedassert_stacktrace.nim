@@ -3,11 +3,11 @@ discard """
 """
 
 const expected = """
-tfailedassert_stacktrace.nim(34) tfailedassert_stacktrace
-tfailedassert_stacktrace.nim(33) foo
-system.nim(*)         failedAssertImpl
-system.nim(*)         raiseAssert
-system.nim(*)         sysFatal"""
+tfailedassert_stacktrace.nim(34, 6) tfailedassert_stacktrace
+tfailedassert_stacktrace.nim(33, 11) foo
+system.nim(*, *)     failedAssertImpl
+system.nim(*, *)     raiseAssert
+system.nim(*, *)      sysFatal"""
 
 proc tmatch(x, p: string): bool =
   var i = 0
@@ -24,10 +24,10 @@ proc tmatch(x, p: string): bool =
       inc k
     else:
       return false
-  while k < x.len and x[k] in {' ', '\L', '\C'}: inc k
+  while k < x.len and x[k] in {' ', ',', '\L', '\C'}: inc k
   result = i >= p.len and k >= x.len
 
-
+## line 30
 try:
   proc foo() =
     assert(false)

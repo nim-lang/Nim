@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''tproper_stacktrace2.nim(20) main'''
+  outputsub: '''tproper_stacktrace2.nim(20, 35) main'''
   exitcode: 1
 """
 

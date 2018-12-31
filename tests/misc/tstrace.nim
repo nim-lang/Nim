@@ -2,18 +2,18 @@ discard """
 exitcode: 1
 output: '''
 Traceback (most recent call last)
-tstrace.nim(36)          tstrace
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(28)          recTest
-tstrace.nim(31)          recTest
+tstrace.nim(36, 8)       tstrace
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(28, 14)      recTest
+tstrace.nim(31, 11)      recTest
 SIGSEGV: Illegal storage access. (Attempt to read from nil?)
 '''
 """
