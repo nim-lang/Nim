@@ -106,9 +106,6 @@ when defineSsl:
       serverGetPskFunc: SslServerGetPskFunc
       clientGetPskFunc: SslClientGetPskFunc
 
-else:
-  type
-    SslContext* = void # TODO: Workaround #4797.
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
