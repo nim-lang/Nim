@@ -548,6 +548,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
+  inc c.inStaticContext
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
@@ -607,6 +608,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         v.ast = def[j]
         b.sons[j] = newSymNode(v)
     addSon(result,b)
+  dec c.inStaticContext
 
 include semfields
 
