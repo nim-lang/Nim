@@ -220,7 +220,7 @@ proc genLineDir(p: BProc, t: PNode) =
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, t.info):
-      linefmt(p, cpsStmts, "nimln_($1, $2, $3);$n",
+      linefmt(p, cpsStmts, "nimln2_($1, $2, $3);$n",
               line.rope, col.rope, quotedFilename(p.config, t.info))
 
 proc postStmtActions(p: BProc) {.inline.} =
