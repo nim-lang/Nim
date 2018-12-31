@@ -875,9 +875,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             var y = $x.d_name.cstring
           if y != "." and y != "..":
             var s: Stat
-            let path = dir / y
             if not relative:
-              y = path
+              y = dir / y
             var k = pcFile
 
             when defined(linux) or defined(macosx) or
@@ -885,16 +884,16 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
-                  if dirExists(path): k = pcLinkToDir
+                  if dirExists(y): k = pcLinkToDir
                   else: k = pcLinkToFile
                 yield (k, y)
                 continue
 
-            if lstat(path, s) < 0'i32: break
+            if lstat(y, s) < 0'i32: break
             if S_ISDIR(s.st_mode):
               k = pcDir
             elif S_ISLNK(s.st_mode):
-              k = getSymlinkFileKind(path)
+              k = getSymlinkFileKind(y)
             yield (k, y)
 
 iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
