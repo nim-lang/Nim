@@ -1257,7 +1257,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
     addf(g.mainDatInit, "\t$1();$N", [datInit])
 
-  # Initialization of TLS and GC is should be done in between
+  # Initialization of TLS and GC should be done in between
   # systemDatInit and systemInit calls if any
   if sfSystemModule in m.module.flags:
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
