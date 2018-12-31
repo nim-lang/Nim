@@ -1214,11 +1214,6 @@ proc wordWrap*(s: string, maxLineWidth = 80,
                noSideEffect, rtl, extern: "nsuWordWrap",
                deprecated: "use wrapWords in std/wordwrap instead".} =
   ## Word wraps `s`.
-  runnableExamples:
-    doAssert "1234567890".repeat(2).wordWrap() == "12345678901234567890"
-    doAssert "1234567890".repeat(3).wordWrap(20) == "12345678901234567890\n1234567890"
-    doAssert "Hello Bob. Hello John.".wordWrap(13, false) == "Hello Bob.\nHello John."
-    doAssert "Hello Bob. Hello John.".wordWrap(13, true, {';'}) == "Hello Bob. He\nllo John."
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
   var lastSep = ""
