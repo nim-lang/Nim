@@ -660,25 +660,14 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       case it.kind
       of nkElifBranch:
         checkSonsLen(it, 2, c.config)
-        if c.inGenericContext == 0:
-          var e = semConstBoolExpr(c, it.sons[0])
-          if e.kind != nkIntLit: internalError(c.config, e.info, "semRecordNodeAux")
-          elif e.intVal != 0 and branch == nil: branch = it.sons[1]
-        else:
-          it.sons[0] = forceBool(c, semExprWithType(c, it.sons[0]))
+        var e = semConstBoolExpr(c, it.sons[0])
+        if e.kind != nkIntLit: internalError(c.config, e.info, "semRecordNodeAux")
+        elif e.intVal != 0 and branch == nil: branch = it.sons[1]
       of nkElse:
         checkSonsLen(it, 1, c.config)
         if branch == nil: branch = it.sons[0]
         idx = 0
       else: illFormedAst(n, c.config)
-      if c.inGenericContext > 0:
-        # use a new check intset here for each branch:
-        var newCheck: IntSet
-        assign(newCheck, check)
-        var newPos = pos
-        var newf = newNodeI(nkRecList, n.info)
-        semRecordNodeAux(c, it.sons[idx], newCheck, newPos, newf, rectype)
-        it.sons[idx] = if newf.len == 1: newf[0] else: newf
     if c.inGenericContext > 0:
       addSon(father, n)
     elif branch != nil:
