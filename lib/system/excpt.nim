@@ -229,16 +229,20 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
+                              col: it.col,
                               filename: it.filename)
     it = it.prev
     dec last
 
-template addFrameEntry(s, f: untyped) =
+template addFrameEntry(s: var string, f: PFrame|StackTraceEntry) =
   var oldLen = s.len
   add(s, f.filename)
   if f.line > 0:
     add(s, '(')
+    # todo: reuse `lineInfoToString`
     add(s, $f.line)
+    add(s, ", ")
+    add(s, $(f.col+1))
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)

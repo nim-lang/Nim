@@ -431,6 +431,7 @@ struct TFrame_ {
   TFrame* prev;
   NCSTRING procname;
   NI line;
+  NI col;
   NCSTRING filename;
   NI16 len;
   NI16 calldepth;
@@ -439,15 +440,15 @@ struct TFrame_ {
 #ifdef NIM_NEW_MANGLING_RULES
   #define nimfr_(proc, file) \
     TFrame FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.col = 0; FR_.len = 0; nimFrame(&FR_);
 
   #define nimfrs_(proc, file, slots, length) \
-    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
+    struct {TFrame* prev;NCSTRING procname;NI line;NI col;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.col = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
 
-  #define nimln_(n, file) \
-    FR_.line = n; FR_.filename = file;
-#else
+  #define nimln_(line2, col2, file) \
+    FR_.line = line2; FR_.col = col2; FR_.filename = file;
+#else // todo: time to cleanup this branch?
   #define nimfr(proc, file) \
     TFrame FR; \
     FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);

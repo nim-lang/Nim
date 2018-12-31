@@ -551,6 +551,7 @@ type
                             ## stack trace.
     procname*: cstring  ## name of the proc that is currently executing
     line*: int          ## line number of the proc that is currently executing
+    col*: int           ## col number of the proc that is currently executing
     filename*: cstring  ## filename of the proc that is currently executing
 
   Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
@@ -2932,6 +2933,7 @@ type
     prev*: PFrame       ## previous frame; used for chaining the call stack
     procname*: cstring  ## name of the proc that is currently executing
     line*: int          ## line number of the proc that is currently executing
+    col*: int          ## col number of the proc that is currently executing
     filename*: cstring  ## filename of the proc that is currently executing
     len*: int16         ## length of the inspectable slots
     calldepth*: int16   ## used for max call depth checking

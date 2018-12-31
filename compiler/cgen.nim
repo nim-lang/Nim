@@ -197,13 +197,16 @@ proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
+     p.lastLineInfo.col != info.col or
      p.lastLineInfo.fileIndex != info.fileIndex:
     p.lastLineInfo.line = info.line
+    p.lastLineInfo.col = info.col
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
 
 proc genLineDir(p: BProc, t: PNode) =
   let line = t.info.safeLineNm
+  let col = t.info.toColumn # no need for safeColNm, not shown in #line
 
   if optEmbedOrigSrc in p.config.globalOptions:
     add(p.s(cpsStmts), ~"//" & sourceLine(p.config, t.info) & "\L")
@@ -217,8 +220,8 @@ proc genLineDir(p: BProc, t: PNode) =
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, t.info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              line.rope, quotedFilename(p.config, t.info))
+      linefmt(p, cpsStmts, "nimln_($1, $2, $3);$n",
+              line.rope, col.rope, quotedFilename(p.config, t.info))
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
@@ -522,12 +525,12 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
   else:
     result = ropecg(p.module, "\tnimfr_($1, $2);$n", procname, filename)
 
-proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
+proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int; col: int): Rope =
   discard cgsym(p.module, "nimFrame")
   addf(p.blocks[0].sections[cpsLocals], "TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &
-                      " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
-                      frame, procname, filename, rope(line))
+                      " $1.line = $4; $1.col = $5; $1.len = -1; nimFrame(&$1);$n",
+                      frame, procname, filename, rope(line), rope(col))
 
 proc deinitFrameNoDebug(p: BProc; frame: Rope): Rope =
   result = ropecg(p.module, "\t#popFrameOfAddr(&$1);$n", frame)
