@@ -1080,7 +1080,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let prcValue = c.globals.sons[prc.position-1]
           if prcValue.kind == nkEmpty:
             globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
-          let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
+          var slots2: TNodeSeq
+          slots2.setLen(tos.slots.len)
+          for i in 0..<tos.slots.len:
+            slots2[i] = regToNode(tos.slots[i])
+          let newValue = callForeignFunction(c.config, prcValue, prc.typ, slots2,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
@@ -1633,8 +1637,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
-        let dest = fficast(regs[rb], desttyp)
-        asgnRef(regs[ra], dest)
+        let dest = fficast(c.config, regs[rb].node, desttyp)
+        putIntoReg(regs[ra], dest)
       else:
         globalError(c.config, c.debug[pc], "cannot evaluate cast")
     of opcNSetIntVal:
@@ -1922,13 +1926,14 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
+  # c.features = {allowFFI}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, graph)
   result = PCtx graph.vm
-  when hasFFI:
-    PCtx(graph.vm).features = {allowFFI, allowCast}
+  # when hasFFI:
+  #   PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
