@@ -345,20 +345,27 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
-  if sonsLen(n) == 3:
+  if sonsLen(n) == 3 or sonsLen(n) == 2:
     # 3 = length(array indx base)
-    let indx = semArrayIndex(c, n[1])
-    var indxB = indx
-    if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
-    if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
-      if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
-        discard
-      elif not isOrdinalType(indxB):
-        localError(c.config, n.sons[1].info, errOrdinalTypeExpected)
-      elif enumHasHoles(indxB):
-        localError(c.config, n.sons[1].info, "enum '$1' has holes" %
-                   typeToString(indxB.skipTypes({tyRange})))
-    base = semTypeNode(c, n.sons[2], nil)
+    var indx: PType
+    if sonsLen(n) == 3:
+      indx = semArrayIndex(c, n[1])
+      var indxB = indx
+      if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
+      if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
+        if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
+          discard
+        elif not isOrdinalType(indxB):
+          localError(c.config, n.sons[1].info, errOrdinalTypeExpected)
+        elif enumHasHoles(indxB):
+          localError(c.config, n.sons[1].info, "enum '$1' has holes" %
+                     typeToString(indxB.skipTypes({tyRange})))
+    base =
+      if sonsLen(n) == 3:
+        semTypeNode(c, n.sons[2], nil)
+      else:
+        semTypeNode(c, n.sons[1], nil)
+
     # ensure we only construct a tyArray when there was no error (bug #3048):
     result = newOrPrevType(tyArray, prev, c)
     # bug #6682: Do not propagate initialization requirements etc for the

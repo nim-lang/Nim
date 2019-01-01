@@ -454,6 +454,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           def = inferWithMetatype(c, typ, def)
           typ = def.typ
         else:
+          if typ.kind == tyArray and sonsLen(a[length-2]) == 2:
+            let idx = semArrayIndex(c, newIntNode(nkIntLit, sonsLen(def)))
+            typ.sons[0] = idx
+
           # BUGFIX: ``fitNode`` is needed here!
           # check type compatibility between def.typ and typ
           def = fitNode(c, typ, def, def.info)
