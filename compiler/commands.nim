@@ -442,7 +442,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "refc":
       conf.selectedGC = gcRefc
     of "v2":
-      message(conf, info, warnDeprecatedCustom, "--gc:v2 is deprecated; using default gc")
+      message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
     of "markandsweep":
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")

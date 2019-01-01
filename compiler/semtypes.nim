@@ -210,7 +210,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
         else:
-          message(c.config, n.info, warnDeprecated, "region for pointer types")
+          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
         addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, t)
     if tfPartial in result.flags:

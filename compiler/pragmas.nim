@@ -242,7 +242,7 @@ proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   # deprecated as of 0.18.1
   message(c.config, n.info, warnDeprecated,
           "use {.experimental: \"codeReordering.\".} instead; " &
-          (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}"))
+          (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n.sons[1].kind == nkIdent:
@@ -447,14 +447,14 @@ proc processPop(c: PContext, n: PNode) =
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     defineSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "define")
+    message(c.config, n.info, warnDeprecated, "define is deprecated")
   else:
     invalidPragma(c, n)
 
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     undefSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "undef")
+    message(c.config, n.info, warnDeprecated, "undef is deprecated")
   else:
     invalidPragma(c, n)
 
@@ -784,7 +784,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.kind in {skTemplate, skMacro}:
           incl(sym.flags, sfImmediate)
           incl(sym.flags, sfAllUntyped)
-          message(c.config, n.info, warnDeprecated, "use 'untyped' parameters instead; immediate")
+          message(c.config, n.info, warnDeprecated, "use 'untyped' parameters instead; immediate is deprecated")
         else: invalidPragma(c, it)
       of wDirty:
         if sym.kind == skTemplate: incl(sym.flags, sfDirty)
@@ -1098,10 +1098,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma")
+          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:
