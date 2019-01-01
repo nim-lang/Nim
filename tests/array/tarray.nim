@@ -27,6 +27,11 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajs
 dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
+[1.0, 2.0, 3.0]
+3
+1.0
+2.0
+3.0
 '''
 joinable: false
 """
@@ -538,3 +543,11 @@ block trelaxedindextyp:
   proc foo(x: seq[int]; idx: uint64) = echo x[idx]
   proc foo(x: string|cstring; idx: uint64) = echo x[idx]
   proc foo(x: openArray[int]; idx: uint64) = echo x[idx]
+
+block inferredLength:
+  var a1: array[float64] = [1.0, 2.0, 3.0]
+  echo a1
+  echo a1.len
+  echo a1[0]
+  echo a1[1]
+  echo a1[2]
