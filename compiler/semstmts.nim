@@ -665,28 +665,46 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3:
     if length == 3:
-      var v = symForVar(c, n.sons[0])
-      if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-      # BUGFIX: don't use `iter` here as that would strip away
-      # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
-      # for an example:
-      v.typ = iterBase
-      n.sons[0] = newSymNode(v)
-      if sfGenSym notin v.flags: addForVarDecl(c, v)
-      elif v.owner == nil: v.owner = getCurrOwner(c)
+      if n.sons[0].kind == nkVarTuple:
+        for i in 0 ..< sonsLen(n[0]):
+          var v = symForVar(c, n[0][i])
+          if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
+          v.typ = iter.sons[i]
+          n.sons[0][i] = newSymNode(v)
+          if sfGenSym notin v.flags: addForVarDecl(c, v)
+          elif v.owner == nil: v.owner = getCurrOwner(c)
+      else:
+        var v = symForVar(c, n.sons[0])
+        if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
+        # BUGFIX: don't use `iter` here as that would strip away
+        # the ``tyGenericInst``! See ``tests/compile/tgeneric.nim``
+        # for an example:
+        v.typ = iterBase
+        n.sons[0] = newSymNode(v)
+        if sfGenSym notin v.flags: addForVarDecl(c, v)
+        elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
   elif length-2 != sonsLen(iter):
     localError(c.config, n.info, errWrongNumberOfVariables)
   else:
     for i in countup(0, length - 3):
-      var v = symForVar(c, n.sons[i])
-      if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-      v.typ = iter.sons[i]
-      n.sons[i] = newSymNode(v)
-      if sfGenSym notin v.flags:
-        if not isDiscardUnderscore(v): addForVarDecl(c, v)
-      elif v.owner == nil: v.owner = getCurrOwner(c)
+      if n.sons[i].kind == nkVarTuple:
+        for j in 0 ..< sonsLen(n[i]):
+          var v = symForVar(c, n[i][j])
+          if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
+          v.typ = iter[i][j]
+          n.sons[i][j] = newSymNode(v)
+          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+          elif v.owner == nil: v.owner = getCurrOwner(c)
+      else:
+        var v = symForVar(c, n.sons[i])
+        if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
+        v.typ = iter.sons[i]
+        n.sons[i] = newSymNode(v)
+        if sfGenSym notin v.flags:
+          if not isDiscardUnderscore(v): addForVarDecl(c, v)
+        elif v.owner == nil: v.owner = getCurrOwner(c)
   inc(c.p.nestedLoopCounter)
   openScope(c)
   n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)

@@ -346,9 +346,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
       for i in countup(0, sonsLen(e) - 1):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
-        let lhs = c.transCon.forStmt.sons[i]
-        let rhs = transform(c, v)
-        add(result, asgnTo(lhs, rhs))
+        if c.transCon.forStmt[i].kind == nkVarTuple:
+          for j in 0 ..< sonsLen(c.transCon.forStmt[i]):
+            let lhs = c.transCon.forStmt[i][j]
+            let rhs = transform(c, newTupleAccess(c.graph, v, j))
+            add(result, asgnTo(lhs, rhs))
+        else:
+          let lhs = c.transCon.forStmt.sons[i]
+          let rhs = transform(c, v)
+          add(result, asgnTo(lhs, rhs))
     else:
       # Unpack the tuple into the loop variables
       # XXX: BUG: what if `n` is an expression with side-effects?
@@ -357,9 +363,15 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
   else:
-    let lhs = c.transCon.forStmt.sons[0]
-    let rhs = transform(c, e)
-    add(result, asgnTo(lhs, rhs))
+    if c.transCon.forStmt.sons[0].kind == nkVarTuple:
+      for i in 0 ..< sonsLen(c.transCon.forStmt):
+        let lhs = c.transCon.forStmt[0][i]
+        let rhs = transform(c, newTupleAccess(c.graph, e, i))
+        add(result, asgnTo(lhs, rhs))
+    else:
+      let lhs = c.transCon.forStmt.sons[0]
+      let rhs = transform(c, e)
+      add(result, asgnTo(lhs, rhs))
 
   inc(c.transCon.yieldStmts)
   if c.transCon.yieldStmts <= 1:
@@ -577,7 +589,11 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
 
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3):
-    addVar(v, copyTree(n.sons[i])) # declare new vars
+    if n[i].kind == nkVarTuple:
+      for j in 0 ..< sonsLen(n[i]):
+        addVar(v, copyTree(n[i][j])) # declare new vars
+    else:
+      addVar(v, copyTree(n.sons[i])) # declare new vars
   add(stmtList, v.PTransNode)
 
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked

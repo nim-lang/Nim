@@ -1157,22 +1157,47 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     result.addSon list
     parseSymbolList(p, list)
 
-proc parseFor(p: var TParser): PNode =
-  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
-  #| forExpr = forStmt
-  result = newNodeP(nkForStmt, p)
+proc parseForTuple(p: var TParser, existingParsed: PNode): PNode =
   getTokNoInd(p)
-  var a = identWithPragma(p)
-  addSon(result, a)
-  while p.tok.tokType == tkComma:
-    getTok(p)
-    optInd(p, a)
-    a = identWithPragma(p)
-    addSon(result, a)
+  if existingParsed.isNil:
+    result = newNodeP(nkForStmt, p)
+  else:
+    result = existingParsed
+  var tup = newNodeP(nkVarTuple, p)
+  while p.tok.tokType in {tkSymbol, tkAccent}:
+    var a = identWithPragma(p)
+    addSon(tup, a)
+    while p.tok.tokType == tkComma:
+      getTok(p)
+      optInd(p, a)
+      a = identWithPragma(p)
+      addSon(tup, a)
+  addSon(result, tup)
+  eat(p, tkParRi)
   eat(p, tkIn)
   addSon(result, parseExpr(p))
   colcom(p, result)
   addSon(result, parseStmt(p))
+
+proc parseFor(p: var TParser): PNode =
+  #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
+  #| forExpr = forStmt
+  getTokNoInd(p)
+  if p.tok.tokType == tkParLe: result = parseForTuple(p, nil)
+  else:
+    result = newNodeP(nkForStmt, p)
+    var a = identWithPragma(p)
+    addSon(result, a)
+    while p.tok.tokType == tkComma:
+      getTok(p)
+      optInd(p, a)
+      if p.tok.tokType == tkParLe: return parseForTuple(p, result)
+      a = identWithPragma(p)
+      addSon(result, a)
+    eat(p, tkIn)
+    addSon(result, parseExpr(p))
+    colcom(p, result)
+    addSon(result, parseStmt(p))
 
 proc parseExpr(p: var TParser): PNode =
   #| expr = (blockExpr
