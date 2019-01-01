@@ -9,6 +9,9 @@ js 3.14
 
 # This file tests the JavaScript generator
 
+doAssert getCurrentException() == nil
+doAssert getCurrentExceptionMsg() == ""
+
 #  #335
 proc foo() =
   var bar = "foo"
