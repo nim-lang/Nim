@@ -470,9 +470,9 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
     for it in pragmaNode:
       if whichPragma(it) == wDeprecated and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        message(conf, info, warnDeprecated, it[1].strVal & "; " & name)
+        message(conf, info, warnDeprecated, it[1].strVal & "; " & name & " is deprecated")
         return
-  message(conf, info, warnDeprecated, name)
+  message(conf, info, warnDeprecated, name & " is deprecated")
 
 proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let pragmaNode = extractPragma(s)
