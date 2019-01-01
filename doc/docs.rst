@@ -6,6 +6,9 @@ The documentation consists of several documents:
 - | `Tutorial (part II) <tut2.html>`_
   | The Nim tutorial part two deals with the advanced language constructs.
 
+- | `Tutorial (part III) <tut3.html>`_
+  | The Nim tutorial part three about Nim's macro system.
+
 - | `Language Manual <manual.html>`_
   | The Nim manual is a draft that will evolve into a proper specification.
 
