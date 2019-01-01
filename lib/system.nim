@@ -2670,6 +2670,7 @@ proc `$`*[T: tuple|object](x: T): string =
       firstElement = false
     else:
       result.add("...")
+      firstElement = false
   result.add(")")
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
