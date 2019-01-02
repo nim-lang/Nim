@@ -128,6 +128,8 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    allowFFI, ## allow FFI at compile time; requires building nim with `-d:useFFI`
+              ## which itself requires `nimble install libffi`, see #10150
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf

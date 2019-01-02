@@ -166,7 +166,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 
@@ -227,15 +226,11 @@ type
   PEvalContext* = PCtx
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
-  result = PCtx(code: @[], debug: @[],
+  PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
-  when hasFFI:
-    result.features.incl allowFFI
-    # result.features.incl = {allowFFI, allowCast}
-    # PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module

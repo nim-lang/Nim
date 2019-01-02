@@ -227,6 +227,7 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
+  # echo2 n.kind, dest.kind
   case n.kind
   of nkStrLit..nkTripleStrLit:
     dest.kind = rkNode
@@ -483,6 +484,8 @@ const
     "compiler/vmdef.MaxLoopIterations and rebuild the compiler"
   errFieldXNotFound = "node lacks field: "
 
+import strformat
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -498,7 +501,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     let ra = instr.regA
 
     when traceCode:
-      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+      # echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
+      let rb = instr.regB
+      let rbk = if rb<regs.len: $regs[rb].kind else: ""
+      let rc = instr.regC
+      let rck = if rc<regs.len: $regs[rc].kind else: ""
+      echo fmt"""PC:{pc} opcode:{c.code[pc].opcode} ra:{ra},{regs[ra].kind} rb:{rb},{rbk} rc:{rc},{rck}"""
+      # echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " "," rb ", instr.regB, " rc ", instr.regC
+      # message(c.config, c.debug[pc], warnUser, "Trace")
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -1072,8 +1082,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif sfImportc in prc.flags:
-        if allowFFI notin c.features:
-          globalError(c.config, c.debug[pc], "VM not allowed to do FFI")
+        if allowFFI notin c.config.features:
+          globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `allowFFI`")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:
@@ -1615,9 +1625,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
         regs[ra].node.flags.incl nfIsRef
     of opcSetType:
+      let typ = c.types[instr.regBx - wordExcess]
       if regs[ra].kind != rkNode:
-        internalError(c.config, c.debug[pc], "cannot set type")
-      regs[ra].node.typ = c.types[instr.regBx - wordExcess]
+        let temp = regToNode(regs[ra])
+        ensureKind(rkNode)
+        regs[ra].node = temp
+        regs[ra].node.info = c.debug[pc]
+      regs[ra].node.typ = typ
     of opcConv:
       let rb = instr.regB
       inc pc
@@ -1637,10 +1651,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
-        let dest = fficast(c.config, regs[rb].node, desttyp)
+        # let dest = fficast(c.config, regs[rb].node, desttyp)
+        # echo (k:regs[rb].kind)
+        echo (msg:"D20190211T154842", k: regs[rb].kind)
+        let dest = fficast(
+          c.config,
+          regs[rb].node,
+           desttyp)
         putIntoReg(regs[ra], dest)
       else:
-        globalError(c.config, c.debug[pc], "cannot evaluate cast")
+        # globalError(c.config, c.debug[pc], "cannot evaluate cast")
+        globalError(
+          c.config,
+          c.debug[pc],
+          "cannot evaluate cast")
     of opcNSetIntVal:
       decodeB(rkNode)
       var dest = regs[ra].node
@@ -1925,15 +1949,12 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
-  #c.features = {allowCast, allowFFI, allowInfiniteLoops}
-  # c.features = {allowFFI}
+  #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, graph)
   result = PCtx graph.vm
-  # when hasFFI:
-  #   PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)

@@ -457,14 +457,20 @@ proc xtemp(cmd: string) =
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI:", cmd
+
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
+
+  # boot without -d:useFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
-  ## build nimble early on to enable remainder to depend on it if needed
+  # steps to boot with -d:useFFI
   kochExecFold("Build Nimble", "nimble")
+  execFold("nimble install libffi", "nimble install -y libffi")
+
+  when defined(posix): # appveyor (on windows) didn't run this
+    kochExecFold("Boot", "boot")
+  kochExecFold("boot -d:release -d:useFFI", "boot -d:release -d:useFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-extra")

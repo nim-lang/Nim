@@ -9,8 +9,8 @@
 
 ## This file implements the FFI part of the evaluator for Nim code.
 
-import ast, astalgo, ropes, types, options, tables, dynlib, libffi, msgs, os
-import compiler/lineinfos
+import ast, astalgo, ropes, types, options, tables, dynlib, msgs, os, lineinfos
+import pkg/libffi
 
 when defined(windows):
   const libcDll = "msvcrt.dll"
@@ -19,7 +19,7 @@ elif defined(linux):
 elif defined(osx):
   const libcDll = "/usr/lib/libSystem.dylib"
 else:
-  static: doAssert false
+  {.error: "`libcDll` not implemented on this platform".}
 
 type
   TDllCache = tables.Table[string, LibHandle]
@@ -32,7 +32,8 @@ else:
   var gExeHandle = loadLib()
 
 proc getDll(conf: ConfigRef, cache: var TDllCache; dll: string; info: TLineInfo): pointer =
-  if dll in cache: return cache[dll]
+  if dll in cache:
+    return cache[dll]
   var libs: seq[string]
   libCandidates(dll, libs)
   for c in libs:
@@ -49,7 +50,6 @@ var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
 
 proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
   let name = $sym.loc.r
-
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
@@ -61,9 +61,9 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
   else:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
-      globalError(conf, sym.info, "dynlib needs to be a string lit for the REPL")
+      globalError(conf, sym.info, "dynlib needs to be a string lit")
     var theAddr: pointer
-    if lib.isNil and not gExehandle.isNil:
+    if (lib.isNil or lib.kind == libHeader) and not gExehandle.isNil:
       # first try this exe itself:
       theAddr = gExehandle.symAddr(name)
       # then try libc:
@@ -71,8 +71,8 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
         let dllhandle = getDll(conf, gDllCache, libcDll, sym.info)
         theAddr = dllhandle.symAddr(name)
     elif not lib.isNil:
-      let dllhandle = getDll(conf, gDllCache, if lib.kind == libHeader: libcDll
-                                       else: lib.path.strVal, sym.info)
+      let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
+      let dllhandle = getDll(conf, gDllCache, dll, sym.info)
       theAddr = dllhandle.symAddr(name)
     if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & sym.name.s)
     result.intVal = cast[ByteAddress](theAddr)
