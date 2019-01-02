@@ -133,7 +133,6 @@ proc enumToString*(enums: openArray[enum]): string =
 - User defined pragmas are now allowed in the pragma blocks
 - Pragma blocks are no longer eliminated from the typed AST tree to preserve
   pragmas for further analysis by macros
-- Recursive tuples are now allowed
 
 ### Language changes
 
