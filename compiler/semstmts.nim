@@ -1101,6 +1101,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner(c)
+    if sfExportc in s.flags and s.typ.kind == tyAlias:
+      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa.sons[0].kind == nkObjectTy:
