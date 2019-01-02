@@ -32,6 +32,7 @@ type
     cfsData,                  # section for C constant data
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
+    cfsDatInitProc,           # section for the C datInit proc
     cfsTypeInit1,             # section 1 for declarations of type information
     cfsTypeInit2,             # section 2 for init of type information
     cfsTypeInit3,             # section 3 for init of type information
@@ -112,6 +113,7 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
+    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     breakPointId*: int
@@ -191,8 +193,6 @@ proc newModuleList*(g: ModuleGraph): BModuleList =
     graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for m in g.modules:
-    # ultimately, we are iterating over the file ids here.
-    # some "files" won't have an associated cgen module (like stdin)
-    # and we must skip over them.
-    if m != nil: yield m
+  for m in g.modules_closed:
+    # iterate modules in the order they were closed
+    yield m

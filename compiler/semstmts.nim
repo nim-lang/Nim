@@ -548,6 +548,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
+  inc c.inStaticContext
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
@@ -607,6 +608,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         v.ast = def[j]
         b.sons[j] = newSymNode(v)
     addSon(result,b)
+  dec c.inStaticContext
 
 include semfields
 
@@ -1580,7 +1582,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
           foundObj = true
           x.methods.add((col,s))
     if not foundObj:
-      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type")
+      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
   else:
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.

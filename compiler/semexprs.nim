@@ -710,16 +710,20 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       let a = getConstExpr(c.module, n.sons[i], c.graph)
       if a == nil: return n
       call.add(a)
+
     #echo "NOW evaluating at compile time: ", call.renderTree
-    if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, c.graph, call, c.p.owner)
-      if result.isNil:
-        localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
-      else: result = fixupTypeAfterEval(c, result, n)
+    if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
+      if sfCompileTime in callee.flags:
+        result = evalStaticExpr(c.module, c.graph, call, c.p.owner)
+        if result.isNil:
+          localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
+        else: result = fixupTypeAfterEval(c, result, n)
+      else:
+        result = evalConstExpr(c.module, c.graph, call)
+        if result.isNil: result = n
+        else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, c.graph, call)
-      if result.isNil: result = n
-      else: result = fixupTypeAfterEval(c, result, n)
+      result = n
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
@@ -2430,7 +2434,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result.kind = nkCall
       result = semExpr(c, result, flags)
   of nkBind:
-    message(c.config, n.info, warnDeprecated, "bind")
+    message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
     if c.matchedConcept != nil and n.len == 1:

@@ -167,6 +167,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
@@ -283,6 +284,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
         (key: "out", val: %conf.outFile.string),
+        (key: "nimcache", val: %getNimcacheDir(conf).string),
         (key: "hints", val: hints),
         (key: "warnings", val: warnings),
       ]

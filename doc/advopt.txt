@@ -82,7 +82,7 @@ Advanced options:
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
   --skipProjCfg             do not read the project's configuration file
-  --gc:refc|v2|markAndSweep|boehm|go|none|regions
+  --gc:refc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
@@ -108,3 +108,6 @@ Advanced options:
   --experimental:$1
                             enable experimental language feature
   -v, --version             show detailed version information
+  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+                            works better with `--stackTrace:on`
+                            see also https://nim-lang.github.io/Nim/estp.html

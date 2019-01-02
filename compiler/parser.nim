@@ -1765,7 +1765,7 @@ proc parseSection(p: var TParser, kind: TNodeKind,
     parMessage(p, errIdentifierExpected, p.tok)
 
 proc parseEnum(p: var TParser): PNode =
-  #| enum = 'enum' optInd (symbol optInd ('=' optInd expr COMMENT?)? comma?)+
+  #| enum = 'enum' optInd (symbol optPragmas optInd ('=' optInd expr COMMENT?)? comma?)+
   result = newNodeP(nkEnumTy, p)
   getTok(p)
   addSon(result, p.emptyNode)
@@ -1775,25 +1775,35 @@ proc parseEnum(p: var TParser): PNode =
   while true:
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
+
+    var symPragma = a
+    var pragma: PNode
+    if p.tok.tokType == tkCurlyDotLe:
+      pragma = optPragmas(p)
+      symPragma = newNodeP(nkPragmaExpr, p)
+      addSon(symPragma, a)
+      addSon(symPragma, pragma)
+
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
-      add(result, a)
+      add(result, symPragma)
       break
+
     if p.tok.tokType == tkEquals and p.tok.indent < 0:
       getTok(p)
-      optInd(p, a)
-      var b = a
-      a = newNodeP(nkEnumFieldDef, p)
-      addSon(a, b)
-      addSon(a, parseExpr(p))
+      optInd(p, symPragma)
+      var b = symPragma
+      symPragma = newNodeP(nkEnumFieldDef, p)
+      addSon(symPragma, b)
+      addSon(symPragma, parseExpr(p))
       if p.tok.indent < 0 or p.tok.indent >= p.currInd:
-        rawSkipComment(p, a)
+        rawSkipComment(p, symPragma)
     if p.tok.tokType == tkComma and p.tok.indent < 0:
       getTok(p)
-      rawSkipComment(p, a)
+      rawSkipComment(p, symPragma)
     else:
       if p.tok.indent < 0 or p.tok.indent >= p.currInd:
-        rawSkipComment(p, a)
-    addSon(result, a)
+        rawSkipComment(p, symPragma)
+    addSon(result, symPragma)
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
         p.tok.tokType == tkEof:
       break
@@ -1906,7 +1916,7 @@ proc parseObject(p: var TParser): PNode =
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     # Deprecated since v0.20.0
-    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas")
+    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas is deprecated")
     addSon(result, parsePragma(p))
   else:
     addSon(result, p.emptyNode)
@@ -1998,7 +2008,7 @@ proc parseTypeDef(p: var TParser): PNode =
   if p.tok.tokType == tkBracketLe and p.validInd:
     if not noPragmaYet:
       # Deprecated since v0.20.0
-      parMessage(p, warnDeprecated, "pragma before generic parameter list")
+      parMessage(p, warnDeprecated, "pragma before generic parameter list is deprecated")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode

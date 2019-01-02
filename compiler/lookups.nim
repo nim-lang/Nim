@@ -89,7 +89,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       prettybase.replaceDeprecated(conf, n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s)
+              s.name.s & " is deprecated")
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)

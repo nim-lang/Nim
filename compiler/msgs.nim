@@ -208,7 +208,7 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = toFilename(conf, info) & ":" & $info.line
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
+  result = toFilename(conf, info) & "(" & $info.line & ", " & $(info.col+1) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 

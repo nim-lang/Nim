@@ -65,7 +65,7 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "'$1' is never read",
     warnXmightNotBeenInit: "'$1' might not have been initialized",
-    warnDeprecated: "$1 is deprecated",
+    warnDeprecated: "$1",
     warnConfigDeprecated: "config file '$1' is deprecated",
     warnSmallLshouldNotBeUsed: "'l' should not be used as an identifier; may look like '1' (one)",
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",

@@ -1479,12 +1479,9 @@ const
   # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
-when defined(nimKnowsNimvm):
-  let nimvm* {.magic: "Nimvm".}: bool = false
-    ## may be used only in "when" expression.
-    ## It is true in Nim VM context and false otherwise
-else:
-  const nimvm*: bool = false
+let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
+  ## may be used only in "when" expression.
+  ## It is true in Nim VM context and false otherwise
 {.pop.}
 
 proc compileOption*(option: string): bool {.
@@ -4431,3 +4428,12 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
+  ## Returns the name of the given type.
+  ##
+  ## For more procedures dealing with ``typedesc``, see ``typetraits.nim``.
+  runnableExamples:
+    doAssert $(type(42)) == "int"
+    doAssert $(type("Foo")) == "string"
+    static: doAssert $(type(@['A', 'B'])) == "seq[char]"
