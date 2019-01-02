@@ -462,11 +462,17 @@ proc isVisible(d: PDoc; n: PNode): bool =
       result = false
   elif n.kind == nkPragmaExpr:
     result = isVisible(d, n.sons[0])
+  elif n.kind == nkExportDoc:
+    if n[1].kind == nkIdent:
+      var v = n.sons[1].ident
+      result = v.id == ord(wStar) or v.id == ord(wMinus)
+    else:
+      result = isVisible(d, n[0])
 
 proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   case n.kind
   of nkPostfix: result = getName(d, n.sons[1], splitAfter)
-  of nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
+  of nkExportDoc, nkPragmaExpr: result = getName(d, n.sons[0], splitAfter)
   of nkSym: result = esc(d.target, n.sym.renderDefinitionName, splitAfter)
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted:
@@ -481,7 +487,7 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
 proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
   case n.kind
   of nkPostfix: result = getNameIdent(cache, n.sons[1])
-  of nkPragmaExpr: result = getNameIdent(cache, n.sons[0])
+  of nkExportDoc, nkPragmaExpr: result = getNameIdent(cache, n.sons[0])
   of nkSym: result = n.sym.name
   of nkIdent: result = n.ident
   of nkAccQuoted:
@@ -496,7 +502,7 @@ proc getNameIdent(cache: IdentCache; n: PNode): PIdent =
 proc getRstName(n: PNode): PRstNode =
   case n.kind
   of nkPostfix: result = getRstName(n.sons[1])
-  of nkPragmaExpr: result = getRstName(n.sons[0])
+  of nkExportDoc, nkPragmaExpr, : result = getRstName(n.sons[0])
   of nkSym: result = newRstNode(rnLeaf, n.sym.renderDefinitionName)
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:

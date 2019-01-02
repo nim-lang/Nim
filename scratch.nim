@@ -44,7 +44,7 @@ type
 proc foobar(arg: MyEnum): void =
   case arg
   of val1:
-    echo "foo1" ## wrong doc comment
+    echo "foo1" # ## wrong doc comment
   of val2:
     echo "foo2"
   of val3:

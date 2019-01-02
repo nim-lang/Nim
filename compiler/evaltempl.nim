@@ -64,8 +64,9 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in countup(0, sonsLen(templ) - 1):
-        evalTemplateAux(templ.sons[i], actual, c, res)
+      # TODO: copied from araq-nkdoccomment, but is this correct? Should be removed or reintroduced.
+      # for i in countup(0, sonsLen(templ) - 1):
+      #  evalTemplateAux(templ.sons[i], actual, c, res)
       result.add res
     else:
       result.add newNodeI(nkEmpty, templ.info)
@@ -196,4 +197,3 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
-

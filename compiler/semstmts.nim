@@ -585,7 +585,6 @@ proc semConst(c: PContext, n: PNode): PNode =
         setVarType(c, v, typ)
         v.ast = def               # no need to copy
         b = newNodeI(nkConstDef, a.info)
-        if importantComments(c.config): b.comment = a.comment
         addSon(b, newSymNode(v))
         addSon(b, a.sons[1])
         addSon(b, copyTree(def))
@@ -1698,8 +1697,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[pragmasPos] = proto.ast.sons[pragmasPos]
     if n.sons[namePos].kind != nkSym: internalError(c.config, n.info, "semProcAux")
     n.sons[namePos].sym = proto
-    if importantComments(c.config) and proto.ast.comment.len > 0:
-      n.comment = proto.ast.comment
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)
