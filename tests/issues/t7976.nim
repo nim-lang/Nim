@@ -45,19 +45,14 @@ when defined(case5):
 
 when not defined(case_any_testcase): # main driver
   import os, strutils, osproc, strformat
-  proc assertEquals[T](lhs: T, rhs: T) =
-    if lhs!=rhs:
-      echo "lhs:{\n", lhs, "}\nrhs:{", rhs, "}"
-      echo "lhs:\n", lhs, "\nrhs:", rhs
-      doAssert false
-
-  var output = ""
+  from "../helper_testament" import assertEquals
   proc main() =
     const nim = getCurrentCompilerExe()
     const self = currentSourcePath
     let cases = "case1 case2 case3 case4 case5".split
+    var output = ""
     for opt in cases:
-      let cmd = fmt"{nim} c -r --colors:off --hints:off -d:case_any_testcase -d:{opt} {self}"
+      let cmd = fmt"{nim} c -r --verbosity:0 --colors:off --hints:off -d:case_any_testcase -d:{opt} {self}"
       output.add "test case: " & opt & "\n"
       let ret = execCmdEx(cmd, {poStdErrToStdOut, poEvalCommand})
       doAssert ret.exitCode == 0
