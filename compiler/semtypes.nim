@@ -448,6 +448,11 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       styleCheckDef(c.config, a.sons[j].info, field)
       onDef(field.info, field)
   if result.n.len == 0: result.n = nil
+  var cycleDetectorInType = initIntSet()
+  if isTupleRecursive(result, cycleDetectorInType):
+    localError(c.config, n.info, errIllegalRecursionInTypeX % typeToString(result))
+
+ 
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym =
