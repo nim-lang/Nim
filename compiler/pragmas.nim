@@ -864,7 +864,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfSideEffect)
       of wNoreturn:
         noVal(c, it)
-        incl(sym.flags, sfNoReturn)
+        # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
+        if not isDefined(c.config, "nimQuirky"):
+          incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
             ".noreturn with return type not allowed")
@@ -1119,7 +1121,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam, 
+    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam,
                       skField, skProc, skFunc, skConverter, skMethod, skType}):
       n.sons[i] = semCustomPragma(c, it)
     elif sym != nil:

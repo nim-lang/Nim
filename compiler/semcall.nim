@@ -239,6 +239,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   if c.config.m.errorOutputs == {}:
     # fail fast:
     globalError(c.config, n.info, "type mismatch")
+    return
   if errors.len == 0:
     localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
     return

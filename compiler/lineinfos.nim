@@ -224,7 +224,7 @@ type
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
-proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
+proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)
 
 const
