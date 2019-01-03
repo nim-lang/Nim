@@ -1522,7 +1522,8 @@ proc isTupleRecursive*(t: PType, cycleDetector: var IntSet): bool =
       if cycleDetector.containsOrIncl(t.id):
         return true
       for i in  0..<t.len:
-        if isTupleRecursive(t[i], cycleDetector):
+        var copy = cycleDetector
+        if isTupleRecursive(t[i], copy):
           return true
     of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink:
       return isTupleRecursive(t.lastSon, cycleDetector)
