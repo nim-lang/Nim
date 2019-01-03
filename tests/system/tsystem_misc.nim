@@ -112,6 +112,8 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+doAssertRaises(Exception):
+  raise newException(Exception, "foo")
 
 type seqqType = ptr UncheckedArray[int]
 let qData = cast[seqqType](addr seqq[0])
