@@ -68,7 +68,7 @@ proc loadLib*(): LibHandle {.gcsafe.}
   ## library could not be loaded.
 
 proc unloadLib*(lib: LibHandle) {.gcsafe.}
-  ## unloads the library `lib`
+  ## unloads the library `lib`. throws `InvalidLibrary` on error.
 
 proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   ## raises an `EInvalidLibrary` exception.
@@ -83,7 +83,7 @@ proc symAddr*(lib: LibHandle, name: cstring): pointer {.gcsafe.}
 
 proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
   ## retrieves the address of a procedure/variable from `lib`. Raises
-  ## `EInvalidLibrary` if the symbol could not be found.
+  ## `LibraryError` if the symbol could not be found.
   result = symAddr(lib, name)
   if result == nil: raiseInvalidLibrary(name)
 
@@ -122,18 +122,21 @@ when defined(posix):
     RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
     RTLD_GLOBAL {.importc: "RTLD_GLOBAL", header: "<dlfcn.h>".}: int
 
-  proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
+  proc dlclose(lib: LibHandle): cint {.importc, header: "<dlfcn.h>".}
   proc dlopen(path: cstring, mode: int): LibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: LibHandle, name: cstring): pointer {.
       importc, header: "<dlfcn.h>".}
+  proc dlerror(): cstring {.importc, header: "<dlfcn.h>".}
 
   proc loadLib(path: string, global_symbols=false): LibHandle =
     var flags = RTLD_NOW
     if global_symbols: flags = flags or RTLD_GLOBAL
     return dlopen(path, flags)
   proc loadLib(): LibHandle = return dlopen(nil, RTLD_NOW)
-  proc unloadLib(lib: LibHandle) = dlclose(lib)
+  proc unloadLib(lib: LibHandle) =
+    if dlclose(lib) != 0:
+      raise newException(LibraryError, $dlerror())
   proc symAddr(lib: LibHandle, name: cstring): pointer =
     return dlsym(lib, name)
 
@@ -165,6 +168,12 @@ elif defined(windows) or defined(dos):
   # Native Windows Implementation
   # =======================================================================
   #
+  type
+    # todo: merge with winlean.WINBOOL after making it `distinct` there too.
+    # `WINBOOL` as a raw `int32` is error-prone since its meaning is opposite
+    # from posix status codes (in which 0 means success).
+    WINBOOL = distinct int32
+  template isOK(success: WINBOOL): bool = success.int32 != 0
   when defined(cpp):
     type
       THINSTANCE {.importc: "HINSTANCE".} = object
@@ -173,7 +182,7 @@ elif defined(windows) or defined(dos):
     type
       THINSTANCE {.importc: "HINSTANCE".} = pointer
 
-  proc FreeLibrary(lib: THINSTANCE) {.importc, header: "<windows.h>", stdcall.}
+  proc FreeLibrary(lib: THINSTANCE): WINBOOL {.importc, header: "<windows.h>", stdcall.}
   proc winLoadLibrary(path: cstring): THINSTANCE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
   proc getProcAddress(lib: THINSTANCE, name: cstring): pointer {.
@@ -183,7 +192,10 @@ elif defined(windows) or defined(dos):
     result = cast[LibHandle](winLoadLibrary(path))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))
-  proc unloadLib(lib: LibHandle) = FreeLibrary(cast[THINSTANCE](lib))
+  proc unloadLib(lib: LibHandle) =
+    if not isOK FreeLibrary(cast[THINSTANCE](lib)):
+      # consider using `getLastError()` in msg.
+      raise newException(LibraryError, "unloadLib")
 
   proc symAddr(lib: LibHandle, name: cstring): pointer =
     result = getProcAddress(cast[THINSTANCE](lib), name)
