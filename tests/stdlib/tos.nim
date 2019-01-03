@@ -189,6 +189,13 @@ when defined(posix):
       doAssert normalizedPath("/a/b/c/..") == "/a/b"
       doAssert normalizedPath("/a/b/c/../") == "/a/b"
 
+  block walkDirRelative:
+    createDir("walkdir_test")
+    createSymlink(".", "walkdir_test/c")
+    for k, p in walkDir("walkdir_test", true):
+      doAssert k == pcLinkToDir
+    removeDir("walkdir_test")
+
 else:
 
   block normalizedPath:
