@@ -20,7 +20,7 @@ include "system/inclrtl"
 
 type
   RuneImpl = int32 # underlying type of Rune
-  Rune* = distinct RuneImpl   ## type that can hold any Unicode character
+  Rune* = distinct RuneImpl ## Unicode code point. Can hold any Unicode character.
   Rune16* = distinct int16 ## 16 bit Unicode character
 
 proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
@@ -30,7 +30,7 @@ proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
-  ## Returns the number of Unicode characters of the string ``s``.
+  ## Returns the number of runes of the string ``s``.
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeLen == 6
@@ -65,7 +65,7 @@ proc runeLenAt*(s: string, i: Natural): int =
 const replRune = Rune(0xFFFD)
 
 template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
-  ## Returns the Unicode character ``s[i]`` in ``result``. If ``doInc == true``
+  ## Returns the rune ``s[i]`` in ``result``. If ``doInc == true``
   ## ``i`` is incremented by the number of bytes that have been processed.
   bind ones
   if ord(s[i]) <=% 127:
@@ -167,7 +167,7 @@ proc validateUtf8*(s: string): int =
   return -1
 
 proc runeAt*(s: string, i: Natural): Rune =
-  ## Returns the unicode character in ``s`` at **byte index** ``i``.
+  ## Returns the rune in ``s`` at **byte index** ``i``.
   runnableExamples:
     let a = "añyóng"
     doAssert a.runeAt(1) == "ñ".runeAt(0)
@@ -246,7 +246,7 @@ proc add*(s: var string; c: Rune) =
   fastToUTF8Copy(c, s, pos, false)
 
 proc `$`*(rune: Rune): string =
-  ## Converts a Rune to a string.
+  ## An alias for `toUTF8 <#toUTF8%2CRune>`_.
   rune.toUTF8
 
 proc `$`*(runes: seq[Rune]): string =
@@ -256,7 +256,7 @@ proc `$`*(runes: seq[Rune]): string =
     result.add rune
 
 proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
-  ## Returns the byte position of unicode character
+  ## Returns the byte position of rune
   ## at position ``pos`` in ``s`` with an optional start byte position.
   ## Returns the special value -1 if it runs out of the string.
   ##
@@ -274,7 +274,7 @@ proc runeOffset*(s: string, pos:Natural, start: Natural = 0): int =
   return o
 
 proc runeAtPos*(s: string, pos: int): Rune =
-  ## Returns the unicode character at position ``pos``.
+  ## Returns the rune at position ``pos``.
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
   ## Most problems can be solved more efficiently by using an iterator
@@ -282,7 +282,7 @@ proc runeAtPos*(s: string, pos: int): Rune =
   fastRuneAt(s, runeOffset(s, pos), result, false)
 
 proc runeStrAtPos*(s: string, pos: Natural): string =
-  ## Returns the unicode character at position ``pos`` as UTF8 String.
+  ## Returns the rune at position ``pos`` as UTF8 String.
   ##
   ## Beware: This can lead to unoptimized code and slow execution!
   ## Most problems can be solved more efficiently by using an iterator
@@ -292,7 +292,7 @@ proc runeStrAtPos*(s: string, pos: Natural): string =
 
 proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
   ## Returns a tuple with the the byte offset of the
-  ## unicode character at position ``rev`` in ``s``, counting
+  ## rune at position ``rev`` in ``s``, counting
   ## from the end (starting with 1) and the total
   ## number of runes in the string. Returns a negative value
   ## for offset if there are to few runes in the string to
@@ -1359,7 +1359,7 @@ proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
   return -1
 
 proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts ``c`` into lower case. This works for any Unicode character.
+  ## Converts ``c`` into lower case. This works for any rune.
   ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
@@ -1371,7 +1371,7 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
-  ## Converts ``c`` into upper case. This works for any Unicode character.
+  ## Converts ``c`` into upper case. This works for any rune.
   ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
@@ -1391,7 +1391,7 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a lower case Unicode character.
+  ## Returns true iff ``c`` is a lower case rune.
   ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
@@ -1403,7 +1403,7 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a upper case Unicode character.
+  ## Returns true iff ``c`` is a upper case rune.
   ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
@@ -1415,7 +1415,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
+  ## Returns true iff ``c`` is an *alpha* rune (i.e., a letter)
   if isUpper(c) or isLower(c):
     return true
   var c = RuneImpl(c)
@@ -1462,12 +1462,12 @@ template runeCheck(s, runeProc) =
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff ``s`` contains all alphabetic unicode characters.
+  ## Returns true iff ``s`` contains all alphabetic runes.
   runeCheck(s, isAlpha)
 
 proc isSpace*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff ``s`` contains all whitespace unicode characters.
+  ## Returns true iff ``s`` contains all whitespace runes.
   runeCheck(s, isWhiteSpace)
 
 template runeCaseCheck(s, runeProc, skipNonAlpha) =
@@ -1540,19 +1540,19 @@ template convertRune(s, runeProc) =
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Converts ``s`` into upper-case unicode characters.
+  ## Converts ``s`` into upper-case runes.
   convertRune(s, toUpper)
 
 proc toLower*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Converts ``s`` into lower-case unicode characters.
+  ## Converts ``s`` into lower-case runes.
   convertRune(s, toLower)
 
 proc swapCase*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
-  ## Swaps the case of unicode characters in ``s``.
+  ## Swaps the case of runes in ``s``.
   ##
-  ## Returns a new string such that the cases of all unicode characters
+  ## Returns a new string such that the cases of all runes
   ## are swapped if possible.
 
   var
@@ -1576,7 +1576,7 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
 
 proc capitalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1".} =
-  ## Converts the first character of ``s`` into an upper-case unicode character.
+  ## Converts the first character of ``s`` into an upper-case rune.
   if len(s) == 0:
     return s
 
@@ -1694,7 +1694,7 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar,
       firstRune = true
 
 iterator runes*(s: string): Rune =
-  ## Iterates over any unicode character of the string ``s`` returning runes.
+  ## Iterates over any rune of the string ``s`` returning runes.
   var
     i = 0
     result: Rune
@@ -1703,7 +1703,7 @@ iterator runes*(s: string): Rune =
     yield result
 
 iterator utf8*(s: string): string =
-  ## Iterates over any unicode character of the string ``s`` returning utf8 values.
+  ## Iterates over any rune of the string ``s`` returning utf8 values.
   var o = 0
   while o < s.len:
     let n = runeLenAt(s, o)
@@ -1734,7 +1734,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
   result = a.len - b.len
 
 proc reversed*(s: string): string =
-  ## Returns the reverse of ``s``, interpreting it as Unicode characters.
+  ## Returns the reverse of ``s``, interpreting it as runes.
   ## Unicode combining characters are correctly interpreted as well.
   runnableExamples:
     assert reversed("Reverse this!") == "!siht esreveR"
