@@ -52,6 +52,8 @@
 
 - splitFile now correctly handles edge cases, see #10047
 
+- `isNil` is no longer false for undefined in the JavaScript backend: now it's true for both nil and undefined. Use `isNull` or `isUndefined` if you need exact equallity: `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
