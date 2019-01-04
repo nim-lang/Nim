@@ -34,6 +34,9 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
     putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
+  when defined(windows):
+    var cmd = cmd
+    if cmd.startsWith "./": cmd = cmd[2..^1]
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
