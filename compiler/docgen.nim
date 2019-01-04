@@ -433,7 +433,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      dest.add(d.config.getOrDefault"doc.runnable_start" % [id, "langNim"])
       # this is a rather hacky way to get rid of the initial indentation
       # that the renderer currently produces:
       var i = 0
@@ -445,7 +445,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
         if i > 0: dest.add "\n"
         inc i
         nodeToHighlightedHtml(d, b, dest, {})
-      dest.add(d.config.getOrDefault"doc.listing_end" % id)
+      dest.add(d.config.getOrDefault"doc.runnable_end" % id)
   else: discard
   for i in 0 ..< n.safeLen:
     getAllRunnableExamplesRec(d, n[i], orig, dest)

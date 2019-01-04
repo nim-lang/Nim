@@ -889,7 +889,7 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   if result.langStr != "":
     result.lang = getSourceLanguage(result.langStr)
 
-proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
+proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string; isTestable = false):
     tuple[beginTable, endTable: string] =
   ## Returns the necessary tags to start/end a code block in HTML.
   ##
@@ -899,10 +899,11 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
   ## how many lines have to be generated (and starting at which point!).
   inc d.listingCounter
   let id = $d.listingCounter
+  let sectionKind = if isTestable: "runnable" else: "listing"
   if not params.numberLines:
-    result = (d.config.getOrDefault"doc.listing_start" %
+    result = (d.config.getOrDefault("doc." & sectionKind & "_start") %
                 [id, sourceLanguageToStr[params.lang]],
-              d.config.getOrDefault"doc.listing_end" % id)
+              d.config.getOrDefault"doc." & sectionKind & "_end" % id)
     return
 
   var codeLines = code.strip.countLines
@@ -914,9 +915,9 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
     line.inc
     codeLines.dec
   result.beginTable.add("</pre></td><td>" & (
-      d.config.getOrDefault"doc.listing_start" %
+      d.config.getOrDefault("doc." & sectionKind & "_start") %
         [id, sourceLanguageToStr[params.lang]]))
-  result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
+  result.endTable = (d.config.getOrDefault("doc." & sectionKind & "_end") % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
 
@@ -939,7 +940,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   if params.testCmd.len > 0 and d.onTestSnippet != nil:
     d.onTestSnippet(d, params.filename, params.testCmd, params.status, m.text)
 
-  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
+  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text, isTestable = params.testCmd.len > 0)
 
   dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
   if params.lang == langNone:
