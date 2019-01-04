@@ -56,12 +56,8 @@ proc nimexec*(cmd: string) =
   exec findNim() & " " & cmd
 
 proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
-  # TODO: simplify pending https://github.com/nim-lang/Nim/issues/9513
-  var cmd = findNim() & " " & mode
   let output = outputDir / input.splitFile.name.exe
-  cmd.add " -o:" & output
-  cmd.add " " & options
-  cmd.add " " & input
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
 const
