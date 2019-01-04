@@ -347,7 +347,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
         if c.transCon.forStmt[i].kind == nkVarTuple:
-          for j in 0 ..< sonsLen(c.transCon.forStmt[i]):
+          for j in 0 ..< sonsLen(c.transCon.forStmt[i])-1:
             let lhs = c.transCon.forStmt[i][j]
             let rhs = transform(c, newTupleAccess(c.graph, v, j))
             add(result, asgnTo(lhs, rhs))
@@ -364,7 +364,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
         add(result, asgnTo(lhs, rhs))
   else:
     if c.transCon.forStmt.sons[0].kind == nkVarTuple:
-      for i in 0 ..< sonsLen(c.transCon.forStmt):
+      for i in 0 ..< sonsLen(c.transCon.forStmt[0])-1:
         let lhs = c.transCon.forStmt[0][i]
         let rhs = transform(c, newTupleAccess(c.graph, e, i))
         add(result, asgnTo(lhs, rhs))
@@ -590,7 +590,7 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   var v = newNodeI(nkVarSection, n.info)
   for i in countup(0, length - 3):
     if n[i].kind == nkVarTuple:
-      for j in 0 ..< sonsLen(n[i]):
+      for j in 0 ..< sonsLen(n[i])-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
       addVar(v, copyTree(n.sons[i])) # declare new vars

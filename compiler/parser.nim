@@ -1157,47 +1157,30 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     result.addSon list
     parseSymbolList(p, list)
 
-proc parseForTuple(p: var TParser, existingParsed: PNode): PNode =
-  getTokNoInd(p)
-  if existingParsed.isNil:
-    result = newNodeP(nkForStmt, p)
-  else:
-    result = existingParsed
-  var tup = newNodeP(nkVarTuple, p)
-  while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p)
-    addSon(tup, a)
-    while p.tok.tokType == tkComma:
-      getTok(p)
-      optInd(p, a)
-      a = identWithPragma(p)
-      addSon(tup, a)
-  addSon(result, tup)
-  eat(p, tkParRi)
-  eat(p, tkIn)
-  addSon(result, parseExpr(p))
-  colcom(p, result)
-  addSon(result, parseStmt(p))
+proc parseVarTuple(p: var TParser): PNode
 
 proc parseFor(p: var TParser): PNode =
   #| forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
   #| forExpr = forStmt
   getTokNoInd(p)
-  if p.tok.tokType == tkParLe: result = parseForTuple(p, nil)
+  result = newNodeP(nkForStmt, p)
+  if p.tok.tokType == tkParLe:
+    addSon(result, parseVarTuple(p))
   else:
-    result = newNodeP(nkForStmt, p)
     var a = identWithPragma(p)
     addSon(result, a)
     while p.tok.tokType == tkComma:
       getTok(p)
       optInd(p, a)
-      if p.tok.tokType == tkParLe: return parseForTuple(p, result)
+      if p.tok.tokType == tkParLe:
+        addSon(result, parseVarTuple(p))
+        break
       a = identWithPragma(p)
       addSon(result, a)
-    eat(p, tkIn)
-    addSon(result, parseExpr(p))
-    colcom(p, result)
-    addSon(result, parseStmt(p))
+  eat(p, tkIn)
+  addSon(result, parseExpr(p))
+  colcom(p, result)
+  addSon(result, parseStmt(p))
 
 proc parseExpr(p: var TParser): PNode =
   #| expr = (blockExpr
@@ -2077,14 +2060,15 @@ proc parseVarTuple(p: var TParser): PNode =
   addSon(result, p.emptyNode)         # no type desc
   optPar(p)
   eat(p, tkParRi)
-  eat(p, tkEquals)
-  optInd(p, result)
-  addSon(result, parseExpr(p))
 
 proc parseVariable(p: var TParser): PNode =
   #| colonBody = colcom stmt doBlocks?
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
-  if p.tok.tokType == tkParLe: result = parseVarTuple(p)
+  if p.tok.tokType == tkParLe:
+    result = parseVarTuple(p)
+    eat(p, tkEquals)
+    optInd(p, result)
+    addSon(result, parseExpr(p))
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
@@ -2101,10 +2085,10 @@ proc parseConstant(p: var TParser): PNode =
       addSon(result, parseTypeDesc(p))
     else:
       addSon(result, p.emptyNode)
-    eat(p, tkEquals)
-    optInd(p, result)
-    addSon(result, parseExpr(p))
-    indAndComment(p, result)
+  eat(p, tkEquals)
+  optInd(p, result)
+  addSon(result, parseExpr(p))
+  indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
   #| bindStmt = 'bind' optInd qualifiedIdent ^+ comma
