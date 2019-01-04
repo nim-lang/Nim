@@ -2712,8 +2712,8 @@ when not defined(nimscript) and hasAlloc:
 
     when not defined(JS) and not defined(nimscript) and hasAlloc:
       proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
-      ## Expands operating GC stack range to `theStackBottom`. Does nothing
-      ## if current stack bottom is already lower than `theStackBottom`.
+        ## Expands operating GC stack range to `theStackBottom`. Does nothing
+        ## if current stack bottom is already lower than `theStackBottom`.
 
   else:
     template GC_disable* =

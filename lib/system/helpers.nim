@@ -1,5 +1,5 @@
-## helpers used system.nim and other modules, avoids code duplication while
-## also minimizing symbols exposed in system.nim
+# helpers used system.nim and other modules, avoids code duplication while
+# also minimizing symbols exposed in system.nim
 #
 # TODO: move other things here that should not be exposed in system.nim
 
