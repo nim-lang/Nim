@@ -361,6 +361,7 @@ proc testExample(d: PDoc; ex: PNode) =
   d.examples.add "import r\"" & outp.string & "\"\n"
 
 proc runAllExamples(d: PDoc) =
+  if d.examples.len == 0: return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
