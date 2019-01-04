@@ -112,6 +112,18 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+doAssertRaises(Exception):
+  raise newException(Exception, "foo")
+
+block:
+  var didThrow = false
+  try:
+    doAssertRaises(IndexError): # should fail since it's wrong exception
+      raise newException(FieldError, "foo")
+  except AssertionError:
+    # ok, throwing was correct behavior
+    didThrow = true
+  doAssert didThrow
 
 type seqqType = ptr UncheckedArray[int]
 let qData = cast[seqqType](addr seqq[0])

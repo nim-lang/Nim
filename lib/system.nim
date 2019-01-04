@@ -4353,7 +4353,7 @@ else:
   template runnableExamples*(body: untyped) =
     discard
 
-template doAssertRaises*(exception, code: untyped): typed =
+template doAssertRaises*(exception: typedesc, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##
@@ -4361,16 +4361,24 @@ template doAssertRaises*(exception, code: untyped): typed =
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
   var wrong = false
-  try:
-    if true:
-      code
-    wrong = true
-  except exception:
-    discard
-  except Exception as exc:
-    raiseAssert(astToStr(exception) &
-                " wasn't raised, another error was raised instead by:\n"&
-                astToStr(code))
+  when Exception is exception:
+    try:
+      if true:
+        code
+      wrong = true
+    except Exception:
+      discard
+  else:
+    try:
+      if true:
+        code
+      wrong = true
+    except exception:
+      discard
+    except Exception as exc:
+      raiseAssert(astToStr(exception) &
+                  " wasn't raised, another error was raised instead by:\n"&
+                  astToStr(code))
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
