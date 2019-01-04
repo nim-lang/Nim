@@ -482,16 +482,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
-  # case corrections, so we have to use this convoluted way of retrieving
-  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
-  # of 'import uri'):
-  when defined(windows):
-    result = AbsoluteFile path.string.expandFilename
-    for x in walkFiles(result.string):
-      return AbsoluteFile x
-  else:
-    result = AbsoluteFile path.string.expandFilename
+  result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =
