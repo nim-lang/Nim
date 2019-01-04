@@ -1800,14 +1800,14 @@ proc toInt*(f: float): int {.
   magic: "ToInt", noSideEffect, importc: "toInt".}
   ## converts a floating point number `f` into an ``int``. Conversion
   ## rounds `f` if it does not contain an integer value.
-  ## Note that some floating point numbers (e.g. infinty) cannot be
+  ## Note that some floating point numbers (e.g. infinity) cannot be
   ## accurately converted.
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
   ## converts a biggestfloat `f` into a ``biggestint``. Conversion
   ## rounds `f` if it does not contain an integer value.
-  ## Note that some floating point numbers (e.g. infinty) cannot be
+  ## Note that some floating point numbers (e.g. infinity) cannot be
   ## accurately converted.
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
