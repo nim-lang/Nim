@@ -1,11 +1,11 @@
 import compiler/unittest_light
 
-proc test_assertEquals() =
+proc testAssertEquals() =
   assertEquals("foo", "foo")
   doAssertRaises(AssertionError):
     assertEquals("foo", "foo ")
 
-proc test_mismatch() =
+proc testMismatch() =
   assertEquals(1+1, 2*1)
 
   let a = """
@@ -51,5 +51,5 @@ rhs[0..<i]:{
 \n
   can be hard to spot differences when diffing in a terminal  }"""
 
-test_mismatch()
-test_assertEquals()
+testMismatch()
+testAssertEquals()
