@@ -336,7 +336,7 @@ proc searchExtPos*(path: string): int =
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a filename into (dir, filename, extension).
+  ## Splits a filename into (dir, name, extension).
   ## `dir` does not end in `DirSep`.
   ## `extension` includes the leading dot.
   ##
