@@ -221,10 +221,10 @@ elif defined(posix):
 
   type CTime = posix.Time
 
-  var
-    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: ClockId
-    cpuClockId
-      {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: ClockId
+  let realTimeClockId = CLOCK_REALTIME.ClockId
+
+  when declared(CLOCK_THREAD_CPUTIME_ID):
+    let cpuClockId = CLOCK_THREAD_CPUTIME_ID.ClockId
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
@@ -2509,7 +2509,7 @@ when not defined(JS):
         fib.add(fib[^1] + fib[^2])
       echo "CPU time [s] ", cpuTime() - t0
       echo "Fib is [s] ", fib
-    when defined(posix) and not defined(osx):
+    when defined(posix) and not defined(osx) and declared(cpuClockId):
       # 'clocksPerSec' is a compile-time constant, possibly a
       # rather awful one, so use clock_gettime instead
       var ts: Timespec
