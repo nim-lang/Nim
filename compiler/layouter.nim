@@ -56,9 +56,14 @@ proc openEmitter*(em: var Emitter, cache: IdentCache;
   em.lastLineNumber = 1
 
 proc closeEmitter*(em: var Emitter) =
-  if fileExists(em.config.outFile) and readFile(em.config.outFile.string) == em.content:
-    discard "do nothing, see #9499"
-    return
+  if fileExists(em.config.outFile):
+    if readFile(em.config.outFile.string) == em.content:
+      discard "do nothing, see #9499"
+      return
+    if em.config.outFileBackup.string.len > 0:
+      rawMessage(em.config, hintUser,
+        "writing backup " & $em.config.outFile & " > " & $em.config.outFileBackup)
+      os.copyFile(source = $em.config.outFile, dest = $em.config.outFileBackup)
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)

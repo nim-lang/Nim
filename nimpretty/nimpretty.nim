@@ -25,11 +25,11 @@ const
 Usage:
   nimpretty [options] file.nim
 Options:
-  --backup:on|off     create a backup file before overwritting (default: ON)
-  --output:file       set the output file (default: overwrite the .nim file)
-  --indent:N          set the number of spaces that is used for indentation
-  --version           show the version
-  --help              show this help
+  --backup:on|off[=on]  when on, create a backup file if input is overwritten
+  --output:file[=input] set the output file
+  --indent:N[=2]        set the number of spaces that is used for indentation
+  --version             show the version
+  --help                show this help
 """
 
 proc writeHelp() =
@@ -46,8 +46,7 @@ type
   PrettyOptions = object
     indWidth: int
 
-proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
-  var conf = newConfigRef()
+proc prettyPrint(conf: ConfigRef, infile, outfile: string, opt: PrettyOptions) =
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   conf.outFile = AbsoluteFile outfile
   when defined(nimpretty2):
@@ -61,6 +60,7 @@ proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
     renderModule(tree, infile, outfile, {}, fileIdx, conf)
 
 proc main =
+  var conf = newConfigRef()
   var infile, outfile: string
   var backup = true
   var opt: PrettyOptions
@@ -79,9 +79,13 @@ proc main =
     of cmdEnd: assert(false) # cannot happen
   if infile.len == 0:
     quit "[Error] no input file."
+  if outfile.len == 0:
+    outfile = infile
+  if not existsFile(outfile) or not sameFile(infile, outfile):
+    backup = false # no backup needed since won't be over-written
   if backup:
-    os.copyFile(source=infile, dest=changeFileExt(infile, ".nim.backup"))
-  if outfile.len == 0: outfile = infile
-  prettyPrint(infile, outfile, opt)
+    # works with other ext, eg .nims
+    conf.outFileBackup = AbsoluteFile($infile & ".backup")
+  prettyPrint(conf, infile, outfile, opt)
 
 main()
