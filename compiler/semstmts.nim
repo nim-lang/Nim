@@ -667,7 +667,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if length == 3:
       if n.sons[0].kind == nkVarTuple:
         if sonsLen(n[0])-1 != sonsLen(iter):
-          localError(c.config, n[0].info, "required number of tuple variables: " & $sonsLen(iter) & "; given: " & $sonsLen(n[0]))
+          localError(c.config, n[0].info, "required number of tuple variables: " & $sonsLen(iter) & "; given: " & $(sonsLen(n[0])-1))
         for i in 0 ..< sonsLen(n[0])-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
@@ -693,7 +693,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
     for i in countup(0, length - 3):
       if n.sons[i].kind == nkVarTuple:
         if sonsLen(n[i])-1 != sonsLen(iter[i]):
-          localError(c.config, n[i].info, "required number of tuple variables: " & $sonsLen(iter[i]) & "; given: " & $sonsLen(n[i]))
+          localError(c.config, n[i].info, "required number of tuple variables: " & $sonsLen(iter[i]) & "; given: " & $(sonsLen(n[i])-1))
         for j in 0 ..< sonsLen(n[i])-1:
           var v = symForVar(c, n[i][j])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
