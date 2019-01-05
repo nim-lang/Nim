@@ -40,7 +40,8 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optHotCodeReloading,
     optLaxStrings,
-    optNilSeqs
+    optNilSeqs,
+    optOldAst
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
