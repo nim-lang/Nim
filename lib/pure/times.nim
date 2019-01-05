@@ -154,9 +154,9 @@ when defined(posix):
 
   type CTime = posix.Time
 
-  var
-    realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
-    cpuClockId {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: Clockid
+  let
+    realTimeClockId = CLOCK_REALTIME.ClockId
+    cpuClockId = CLOCK_THREAD_CPUTIME_ID.ClockId
 
   proc gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
