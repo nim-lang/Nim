@@ -157,7 +157,7 @@ proc poll*(timeout: int = 250) =
       c.outputBuf.flush()
 
 when true:
-  import parseopt, matchers, strutils
+  import parseopt, strutils
   var cfgFile = "dirserver_settings.json"
   for kind, key, val in getOpt():
     case kind

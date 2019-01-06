@@ -9,7 +9,7 @@
 
 ## This module implements a simple HTTP-Server.
 ##
-## **Warning**: This module will soon be deprecated in favour of
+## **Warning**: This module is deprecated in favour of
 ## the ``asyncdispatch`` module, you should use it instead.
 ##
 ## Example:

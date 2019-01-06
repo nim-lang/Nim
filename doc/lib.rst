@@ -141,9 +141,6 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `matchers <matchers.html>`_
-  This module contains various string matchers for email addresses, etc.
-
 * `subexes <subexes.html>`_
   This module implements advanced string substitution operations.
 
@@ -455,13 +452,6 @@ Database support
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
-
-Other
------
-
-* `ssl <ssl.html>`_
-  This module provides an easy to use sockets-style
-  Nim interface to the OpenSSL library.
 
 
 Wrappers
