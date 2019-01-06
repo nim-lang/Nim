@@ -160,7 +160,6 @@ lib/impure/db_mysql.nim
 lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
-lib/deprecated/pure/httpserver.nim
 lib/pure/httpclient.nim
 lib/pure/smtp.nim
 lib/pure/ropes.nim
