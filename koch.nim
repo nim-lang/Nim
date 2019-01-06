@@ -57,7 +57,7 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
-  runci                    runs continuous integration (CI), eg from travis
+  runCI                    runs continuous integration (CI), eg from travis
   docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -276,6 +276,7 @@ proc boot(args: string) =
   # default to use the 'c' command:
   let defaultCommand = if getEnv(env_NIM_COMPILE_TO_CPP, "false") == "true": "cpp" else: "c"
   let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
+  echo "boot: defaultCommand: ", defaultCommand, " bootOptions: ", bootOptions
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
@@ -354,8 +355,8 @@ proc winReleaseArch(arch: string) =
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --cpu:$# koch" % cpu
-    exec "./koch boot -d:release --cpu:$#" % cpu
-    exec "./koch --latest zip -d:release"
+    kochExec "boot -d:release --cpu:$#" % cpu
+    kochExec "--latest zip -d:release"
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -433,20 +434,13 @@ proc xtemp(cmd: string) =
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI:", cmd
-  # todo: consider replacing ./koch commands below with direct proc call, eg:
-  # exec "./koch boot -d:release" => boot("-d:release")
-  # or, using `quoteShell(getAppFilename())` instead of koch
-
-  when defined(posix): # appveyor didn't run this
-    # todo: pending https://github.com/nim-lang/Nim/issues/7999 ; instead of this hack, use `execCmd` with env
-    # runs: env NIM_COMPILE_TO_CPP=false ./koch boot
-    let oldEnvi = getEnv(env_NIM_COMPILE_TO_CPP, "false")
-    defer: putEnv(env_NIM_COMPILE_TO_CPP, oldEnvi)
-    putEnv env_NIM_COMPILE_TO_CPP, "false"
-    exec "./koch boot"
-
-  exec "./koch boot -d:release"
-  exec "./koch nimble"
+  # note(@araq): Do not replace these commands with direct calls (eg boot())
+  # as that would weaken our testing efforts.
+  when defined(posix): # appveyor (on windows) didn't run this
+    # todo: implement `execWithEnv`
+    exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
+  kochExec "boot -d:release"
+  kochExec "nimble"
   exec "nim e tests/test_nimscript.nims"
 
   when false:
@@ -456,8 +450,9 @@ proc runCI(cmd: string) =
   when defined(windows):
     # note: will be over-written below
     exec "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester"
-    # exec "./koch csource"
-    # exec "./koch zip"
+    when false:
+      kochExec "csource"
+      kochExec "zip"
 
   # main bottleneck: runs all main tests
   exec "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines"
@@ -467,9 +462,9 @@ proc runCI(cmd: string) =
   exec "nim c -r nimpretty/tester.nim"
 
   when defined(posix):
-    exec "./koch docs --git.commit:devel"
-    exec "./koch csource"
-    exec "./koch nimsuggest"
+    kochExec "docs --git.commit:devel"
+    kochExec "csource"
+    kochExec "nimsuggest"
     exec "nim c -r nimsuggest/tester"
 
 proc pushCsources() =

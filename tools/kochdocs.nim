@@ -34,9 +34,6 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
     putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
-  when defined(windows):
-    var cmd = cmd
-    if cmd.startsWith "./": cmd = cmd[2..^1]
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
@@ -53,6 +50,13 @@ proc execCleanPath*(cmd: string,
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
+
+let kochExe* = "koch".absolutePath
+  # designed so that it also means ./koch on windows, as opposed to another one
+  # in PATH (otherwise would be inconsistent with posix).
+
+proc kochExec*(cmd: string) =
+  exec kochExe.quoteShell & " " & cmd
 
 proc nimexec*(cmd: string) =
   # Consider using `nimCompile` instead
