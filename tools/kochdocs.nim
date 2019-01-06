@@ -51,9 +51,8 @@ proc execCleanPath*(cmd: string,
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
-let kochExe* = "koch".absolutePath
-  # designed so that it also means ./koch on windows, as opposed to another one
-  # in PATH (otherwise would be inconsistent with posix).
+let kochExe* = os.getAppFilename()
+  # note: assumes `kochdocs` is only used by koch.nim
 
 proc kochExec*(cmd: string) =
   exec kochExe.quoteShell & " " & cmd
