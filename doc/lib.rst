@@ -272,8 +272,8 @@ Internet Protocols and Support
   module.
 
 * `net <net.html>`_
-  This module implements a high-level sockets API. It will replace the
-  ``sockets`` module in the future.
+  This module implements a high-level sockets API. It replaces the
+  ``sockets`` module.
 
 * `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
