@@ -221,7 +221,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len)
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len))
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
   else: assert false
