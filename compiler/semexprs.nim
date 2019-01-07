@@ -2335,7 +2335,6 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
 
 proc semExport(c: PContext, n: PNode): PNode =
   result = newNodeI(nkExportStmt, n.info)
-
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2354,6 +2353,9 @@ proc semExport(c: PContext, n: PNode): PNode =
         it = nextIter(ti, s.tab)
     else:
       while s != nil:
+        if s.kind == skEnumField:
+          localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a) &
+            "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule}:
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
