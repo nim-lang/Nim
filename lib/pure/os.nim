@@ -1298,7 +1298,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
   when defined(posix):
-    result = c_system(command) shr 8
+    result = WEXITSTATUS(c_system(command))
   else:
     result = c_system(command)
 
