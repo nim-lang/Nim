@@ -44,6 +44,7 @@ type
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
+    docTarget: ptr PNode       # when the parser encounters a documentation comment, it should be attached here
     when defined(nimpretty2):
       em*: Emitter
 
@@ -171,19 +172,32 @@ proc withComment(p: TParser; node: PNode; comment: string): PNode =
     commentNode.strVal = comment
     result = newNodeP(nkExportDoc, p)
     result.add node
-    result.add newNodeP(nkEmpty, p)
+    result.add p.emptyNode
     result.add commentNode
   of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr, nkTemplateDef, nkMacroDef, nkRecCase, nkEnumFieldDef:
     result = node
     result[0] = p.withComment(node[0], comment)
 
   of nkEnumTy, nkObjectTy, nkTupleTy, nkRecList:
-    # It is not possible to put the comment node at the correct
-    # location right now, so it just put it at the beginning and fix it later.
-    result = node
-    var commentNode = newNodeP(nkCommentStmt, p)
-    commentNode.strVal = comment
-    result.sons.insert(commentNode, 0)
+
+    if p.docTarget == nil:
+      # Parser encountered legal doc comment, but no target is
+      # specified. This doccomment needs to be discarded, hence the
+      # warning.
+      var info  = TLineInfo(
+        line: p.tok.line.uint16,
+        col: p.tok.col.int16,
+        fileIndex: p.lex.fileIdx
+      )
+      localWarning(p.lex.config, info, "cannot attach documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
+    else:
+      let target = p.docTarget
+      target[] = p.withComment(target[], comment)
+
+    #result = node
+    #var commentNode = newNodeP(nkCommentStmt, p)
+    #commentNode.strVal = comment
+    #result.sons.insert(commentNode, 0)
 
   else:
     #p.currInd
@@ -2100,9 +2114,15 @@ proc parseTypeDef(p: var TParser): PNode =
     result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
-    var newSon = parseTypeDefAux(p)
 
+    # at the moment of writing this, doc target is only set as a target here.
+    assert p.docTarget == nil
+    p.docTarget = result.addr
+    let newSon = parseTypeDefAux(p)
+    p.docTarget = nil
+    result.addSon newSon
 
+    #[
     var n = newSon
     while n.kind in {nkRefTy, nkPtrTy} and n.len == 1:
       n = n[0]
@@ -2113,8 +2133,8 @@ proc parseTypeDef(p: var TParser): PNode =
       let commentNode = n[0]
       n.sons.delete(0)
       result = p.withComment(result, commentNode.strVal)
-
     addSon(result, newSon)
+    ]#
   else:
     addSon(result, p.emptyNode)
   indAndComment(p, result)    # special extension!
