@@ -2116,10 +2116,16 @@ proc parseTypeDef(p: var TParser): PNode =
     optInd(p, result)
 
     # at the moment of writing this, doc target is only set as a target here.
-    assert p.docTarget == nil
-    p.docTarget = result.addr
+    let oldDocTarget = p.docTarget
+    if oldDocTarget == nil:
+      # only outer most type type def may have doc comment
+      # three level recursion of types doesn't exist.
+      p.docTarget = result.addr
+    else:
+      p.docTarget = nil
     let newSon = parseTypeDefAux(p)
-    p.docTarget = nil
+    p.docTarget = oldDocTarget
+
     result.addSon newSon
 
     #[
