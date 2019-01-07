@@ -76,6 +76,7 @@ Advanced options:
                             strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
+  --oldast:on|off           use old AST for backwards compatibility
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
