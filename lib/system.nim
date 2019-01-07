@@ -2669,19 +2669,7 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ##     echo "'+' for integers is available"
   discard
 
-proc isNamedTuple*(T: type): bool =
-  ## return true for named tuples, false for any other type.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    # empty tuple should be un-named,
-    # see https://github.com/nim-lang/Nim/issues/8861#issue-356631191
-    return false
+include "system/helpers" # for `lineInfoToString`, `isNamedTuple`
 
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
@@ -3982,8 +3970,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
   Hide(raiseAssert)(msg)
-
-include "system/helpers" # for `lineInfoToString`
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
