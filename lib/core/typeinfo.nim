@@ -20,6 +20,8 @@
 include "system/inclrtl.nim"
 include "system/hti.nim"
 
+import system/helpers2
+
 {.pop.}
 
 type
@@ -194,14 +196,14 @@ proc `[]`*(x: Any, i: int): Any =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
   else: assert false
 
@@ -211,7 +213,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
@@ -219,7 +221,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, "index out of bounds")
+      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
   else: assert false
