@@ -626,7 +626,7 @@ proc arrayConstr(len: int, value: JSRef, typ: PNimType): JSRef {.
 
 proc chckIndx(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i
-  else: raiseIndexError()
+  else: raiseIndexError3(i, a, b)
 
 proc chckRange(i, a, b: int): int {.compilerproc.} =
   if i >= a and i <= b: return i
