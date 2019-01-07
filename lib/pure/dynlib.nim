@@ -137,28 +137,6 @@ when defined(posix):
   proc symAddr(lib: LibHandle, name: cstring): pointer =
     return dlsym(lib, name)
 
-elif defined(nintendoswitch):
-  #
-  # =========================================================================
-  # Nintendo switch DevkitPro sdk does not have these. Raise an error if called.
-  # =========================================================================
-  #
-
-  proc dlclose(lib: LibHandle) =
-    raise newException(OSError, "dlclose not implemented on Nintendo Switch!")
-  proc dlopen(path: cstring, mode: int): LibHandle =
-    raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
-  proc dlsym(lib: LibHandle, name: cstring): pointer =
-    raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
-  proc loadLib(path: string, global_symbols=false): LibHandle =
-    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
-  proc loadLib(): LibHandle =
-    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
-  proc unloadLib(lib: LibHandle) =
-    raise newException(OSError, "unloadLib not implemented on Nintendo Switch!")
-  proc symAddr(lib: LibHandle, name: cstring): pointer =
-    raise newException(OSError, "symAddr not implemented on Nintendo Switch!")
-
 elif defined(windows) or defined(dos):
   #
   # =======================================================================
