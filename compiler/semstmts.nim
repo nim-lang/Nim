@@ -1529,6 +1529,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
+        echo "ATTACHING TO ", obj.id
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s

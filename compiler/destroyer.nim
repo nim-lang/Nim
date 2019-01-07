@@ -299,6 +299,7 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
+    echo "this one ", op.id
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
