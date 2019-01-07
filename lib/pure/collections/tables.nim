@@ -963,7 +963,7 @@ proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
   ctget(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A): int =
-  ## retrieves the value at ``t[key]`` if ``key`` is in ``t``. Otherwise, 0 (the
+  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, 0 (the
   ## default initialization value of ``int``), is returned.
   ctgetOrDefault(t, key)
 
