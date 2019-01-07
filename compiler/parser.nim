@@ -147,7 +147,7 @@ template sameOrNoInd(p): bool = p.tok.indent == p.currInd or p.tok.indent < 0
 
 import renderer, msgs
 
-proc withComment(node: PNode, comment: string, p: TParser): PNode =
+proc withComment(p: TParser; node: PNode; comment: string): PNode =
 
   #if "Timezone interface for supporting" in comment:
   #  echo "Timezone interface comment"
@@ -175,7 +175,7 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     result.add commentNode
   of nkProcDef, nkIteratorDef, nkTypeDef, nkIdentDefs, nkConstDef, nkPragmaExpr, nkTemplateDef, nkMacroDef, nkRecCase, nkEnumFieldDef:
     result = node
-    result[0] = node[0].withComment(comment, p)
+    result[0] = p.withComment(node[0], comment)
 
   of nkEnumTy, nkObjectTy, nkTupleTy, nkRecList:
     # It is not possible to put the comment node at the correct
@@ -194,6 +194,26 @@ proc withComment(node: PNode, comment: string, p: TParser): PNode =
     )
     localWarning(p.lex.config, info, "cannot attach documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
 
+proc docComment(p: var TParser; d: PNode) =
+  if p.tok.tokType == tkComment:
+    if p.tok.indent < 0 or realInd(p):
+      if d == nil:
+        parMessage(p, "there is no declaration the doc comment could refer to")
+      else:
+        var decl = if d.kind == nkPragmaExpr: d[0] else: d
+        assert decl.kind == nkExportDoc
+        assert decl.len == 3
+        if decl[2].kind == nkEmpty:
+          decl[2] = newNodeP(nkCommentStmt, p)
+        when defined(nimpretty):
+          if p.tok.commentOffsetA < p.tok.commentOffsetB:
+            decl[2].strVal.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+          else:
+            decl[2].strVal.add p.tok.literal
+        else:
+          decl[2].strVal.add p.tok.literal
+      getTok(p)
+
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
@@ -206,7 +226,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
           add node.comment, p.tok.literal
       else:
 
-        discard withComment(node, p.tok.literal, p)
+        discard p.withComment(node, p.tok.literal)
 
     else:
       parMessage(p, errInternal, "skipComment")
@@ -2092,7 +2112,7 @@ proc parseTypeDef(p: var TParser): PNode =
       # can be put at the right location.
       let commentNode = n[0]
       n.sons.delete(0)
-      result = withComment(result, commentNode.strVal, p)
+      result = p.withComment(result, commentNode.strVal)
 
     addSon(result, newSon)
   else:
