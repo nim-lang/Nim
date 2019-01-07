@@ -98,8 +98,9 @@ proc cgsym(m: BModule, name: string): Rope
 proc getCFile(m: BModule): AbsoluteFile
 
 proc getModuleDllPath(g: BModuleList, s: PSym): Rope =
-  let cfile = getCFile(g.modules[getModule(s).position]).string.rope
-  return makeCString($(platform.OS[g.config.target.targetOS].dllFrmt % [cfile]))
+  let path = strutils.`%`(platform.OS[g.config.target.targetOS].dllFrmt,
+                          [getCFile(g.modules[getModule(s).position]).string])
+  return makeCString(path)
 
 # TODO: please document
 proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
@@ -1518,13 +1519,15 @@ proc genInitCode(m: BModule) =
       # loading the HCR runtime from the main module before loading anything else - through it
       let n = newStrNode(nkStrLit, prcForDynlib.annex.path.strVal)
       n.info = prcForDynlib.annex.path.info
-      appcg(m, m.s[cfsInitProc], "\tif (!(hcr_handle = #nimLoadLibrary($1)))$n\t\t#nimLoadLibraryError($1);$n\thandle = hcr_handle;$n", [genStringLiteral(m, n)])
+      appcg(m, m.s[cfsInitProc], "\tif (!(hcr_handle = #nimLoadLibrary($1)))$n" &
+                                 "\t\t#nimLoadLibraryError($1);$n" &
+                                 "\thandle = hcr_handle;$n", [genStringLiteral(m, n)])
       # additional procs to load
       procsToLoad = concat(procsToLoad, @["loadDll", "initPointerData", "initGlobalScope", "initRuntime"])
     # load procs
     for curr in procsToLoad:
       add(m.s[cfsInitProc], hcrGetProcLoadCode(m, curr))
-    addf(m.s[cfsInitProc], "}$n$n", [])
+    addf(m.s[cfsInitProc], "}$N$N", [])
 
   for i, el in pairs(m.extensionLoaders):
     if el != nil:

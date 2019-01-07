@@ -318,8 +318,8 @@ proc genSingleVar(p: BProc, a: PNode) =
 
   # If the var is in a block (perhaps of a control flow statement like if (not loops!)) -
   # just register the so called "global" so it can be used later on - otherwise the
-  # closing and reopening of if (nim_hcr_do_init) blocks would be messed up, and
-  # this code should already be inside of such if (nim_hcr_do_init) block anyway
+  # closing and reopening of if (nim_hcr_do_init_) blocks would be messed up, and
+  # this code should already be inside of such if (nim_hcr_do_init_) block anyway
   # In the case of loops - such a line is already inserted earlier because the variable needs
   # to be "registered" ("created") before it is reset in assignGlobalVar() with resetLoc()
   var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
@@ -328,7 +328,7 @@ proc genSingleVar(p: BProc, a: PNode) =
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module.g, v))
     forHcr = false
   
-  # we close and reopen the global if (nim_hcr_do_init) blocks in the main Init function
+  # we close and reopen the global if (nim_hcr_do_init_) blocks in the main Init function
   # for the module so we can have globals and top-level code be interleaved and still
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
@@ -338,7 +338,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   defer:
     if forHcr:
       endBlock(targetProc)
-      lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init) {$n")
+      lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_) {$n")
   
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)

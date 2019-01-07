@@ -135,7 +135,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimrtl.nim", options & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
 

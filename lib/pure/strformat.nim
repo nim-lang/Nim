@@ -285,7 +285,11 @@ macro `&`*(pattern: string): untyped =
   var i = 0
   let res = genSym(nskVar, "fmtRes")
   result = newNimNode(nnkStmtListExpr, lineInfoFrom=pattern)
-  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + count(f, '{')*10)))
+  # XXX: https://github.com/nim-lang/Nim/issues/8405
+  # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
+  # module are not accessible at compile-time:
+  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
+  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + expectedGrowth)))
   var strlit = ""
   while i < f.len:
     if f[i] == '{':

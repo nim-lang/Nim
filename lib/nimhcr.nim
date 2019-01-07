@@ -19,25 +19,23 @@
 ## here with ``registerGlobal`` and ``registerProc`` and then the returned
 ## permanent locations are used in every reference to these symbols onwards.
 
-when defined(hotcodereloading) or defined(createNimHcr):
+when defined(hotcodereloading) or defined(createNimHcr) or defined(useNimHcr):
   const
     nimhcrExports = "nimhcr_$1"
     dllExt = when defined(windows): "dll"
             elif defined(macosx): "dylib"
             else: "so"
   type
-    GetProcAddrType = proc (h: pointer, sym: cstring): pointer {.nimcall.}
+    ProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
 
 when defined(createNimHcr):
   when system.appType != "lib":
     {.error: "This file has to be compiled as a library!".}
 
-  import tables, os, strutils, reservedmem, dynlib, times, sets
+  import os, tables, sets, times, strutils, reservedmem, dynlib
 
-  when false:
-    proc trace(input: string): void = echo input
-  else:
-    proc trace(input: string): void = discard
+  template trace(args: varargs[untyped]) =
+    when false: echo args
 
   {.pragma: nimhcr, compilerProc, exportc: nimhcrExports, dynlib.}
 
@@ -94,25 +92,26 @@ when defined(createNimHcr):
     accessFlags = memExecReadWrite)
 
   type
-    SKind = enum
-      sProc,
-      sGlobal
-    Symbol = object
-      case kind*: SKind
-      of sProc:
-        jump: ptr LongJumpInstruction
-      of sGlobal:
-        p: pointer
+    ProcSym = object
+      jump: ptr LongJumpInstruction
       gen: int
+
+    GlobalVarSym = object
+      p: pointer
+      gen: int
+
     ModuleDesc = object
-      symbols: Table[string, Symbol]
+      procs: Table[string, ProcSym]
+      globals: Table[string, GlobalVarSym]
       imports: seq[string]
       handle: LibHandle
       gen: int
       lastModification: Time
-      callbacks: seq[tuple[isBefore: bool, globalVar: string, cb: proc (): void]]
+      callbacks: seq[tuple[isBefore: bool, globalVar: string, cb: proc ()]]
 
-  proc newModuleDesc(): ModuleDesc = result.symbols = initTable[string, Symbol]()
+  proc newModuleDesc(): ModuleDesc =
+    result.procs = initTable[string, ProcSym]()
+    result.globals = initTable[string, GlobalVarSym]()
 
   # the global state necessary for traversing and reloading the module import tree
   var modules = initTable[string, ModuleDesc]()
@@ -124,10 +123,10 @@ when defined(createNimHcr):
   var lastRegisteredGlobal: string
 
   var hcrDynlibHandle: pointer
-  var getProcAddr: GetProcAddrType
+  var getProcAddr: ProcGetter
 
   proc registerProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.} =
-    trace "  register proc: " & $module & " " & $name
+    trace "  register proc: ", module, " ", name
     # Please note: We must allocate a local copy of the strings, because the supplied
     # `cstring` will reside in the data segment of a DLL that will be later unloaded.
     let name = $name
@@ -135,26 +134,28 @@ when defined(createNimHcr):
 
     var jumpTableEntryAddr: ptr LongJumpInstruction
 
-    modules[module].symbols.withValue(name, trampoline):
-      jumpTableEntryAddr = trampoline[].jump
-      trace "    update proc: " & name
-      trampoline[].gen = generation
+    modules[module].procs.withValue(name, p):
+      trace "    update proc: ", name
+      jumpTableEntryAddr = p.jump
+      p.gen = generation
     do:
       let len = jumpTable.len
       jumpTable.setLen(len + 1)
       jumpTableEntryAddr = addr jumpTable[len]
-      modules[module].symbols[name] = Symbol(kind: sProc, jump: jumpTableEntryAddr, gen: generation)
+      modules[module].procs[name] = ProcSym(jump: jumpTableEntryAddr, gen: generation)
 
     writeJump jumpTableEntryAddr, fn
     return jumpTableEntryAddr
 
   proc getProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
-    trace "  get proc: " & $module & " " & $name
-    return modules[$module].symbols[$name].jump
+    trace "  get proc: ", module, " ", name
+    return modules[$module].procs[$name].jump
 
-  proc registerGlobal*(module: cstring, name: cstring, size: Natural, outPtr: ptr pointer): bool {.nimhcr.} =
-    lastRegisteredGlobal = $name
-    trace "  register global: " & $module & " " & $name
+  proc registerGlobal*(module: cstring,
+                       name: cstring,
+                       size: Natural,
+                       outPtr: ptr pointer): bool {.nimhcr.} =
+    trace "  register global: ", module, " ", name
     # Please note: We must allocate local copies of the strings, because the supplied
     # `cstring` will reside in the data segment of a DLL that will be later unloaded.
     # Also using a ptr pointer instead of a var pointer (an output parameter)
@@ -163,45 +164,52 @@ when defined(createNimHcr):
     # to void*& since the casting yields an rvalue and references bind only to lvalues.
     let name = $name
     let module = $module
+    lastRegisteredGlobal = name
 
-    modules[module].symbols.withValue(name, global):
-      outPtr[] = global[].p
-      trace "    update global: " & name
-      global[].gen = generation
+    modules[module].globals.withValue(name, global):
+      trace "    update global: ", name
+      outPtr[] = global.p
+      global.gen = generation
       return false
     do:
       outPtr[] = alloc0(size)
-      zeroMem(outPtr[], size)
-      modules[module].symbols[name] = Symbol(kind: sGlobal, p: outPtr[], gen: generation)
+      modules[module].globals[name] = GlobalVarSym(p: outPtr[], gen: generation)
       return true
 
   proc getGlobal*(module: cstring, name: cstring): pointer {.nimhcr.} =
-    trace "  get global: " & $module & " " & $name
-    return modules[$module].symbols[$name].p
+    trace "  get global: ", module, " ", name
+    return modules[$module].globals[$name].p
 
   proc getListOfModules(cstringArray: ptr pointer): seq[string] =
     var curr = cast[ptr cstring](cstringArray)
     while len(curr[]) > 0:
       result.add($curr[])
-      curr = cast[ptr cstring](cast[int64](curr) + sizeof(ptr string))
+      curr = cast[ptr cstring](cast[int64](curr) + sizeof(ptr cstring))
 
-  proc cleanupSymbol(module: string, name: string): void =
-    if modules[module].symbols[name].kind == sGlobal:
-      dealloc(modules[module].symbols[name].p)
-    modules[module].symbols.del(name)
-
-  proc cleanupSymbols(module: string): void =
+  template cleanup(collection, body) =
     var toDelete: seq[string]
-    for name, data in modules[module].symbols.pairs:
+    for name, data in collection.pairs:
       if data.gen < generation:
         toDelete.add(name)
-        trace "HCR delete symbol: " & name & " " & $data.gen
-    for curr in toDelete:
-      cleanupSymbol(module, curr)
+        trace "HCR Cleaning ", astToStr(collection), " :: ", name, " ", data.gen
+    for name {.inject.} in toDelete:
+      body
 
-  proc loadDll*(name: cstring): void {.nimhcr.} =
+  proc cleanupGlobal(module: string, name: string) =
+    var g: GlobalVarSym
+    if modules[module].globals.take(name, g):
+      dealloc g.p
+
+  proc cleanupSymbols(module: string) =
+    cleanup modules[module].globals:
+      cleanupGlobal(module, name)
+
+    cleanup modules[module].procs:
+      modules[module].procs.del(name)
+
+  proc loadDll*(name: cstring) {.nimhcr.} =
     let name = $name
-    trace "HCR LOADING: " & name
+    trace "HCR LOADING: ", name
     if modules.contains(name):
       unloadLib(modules[name].handle)
     else:
@@ -217,43 +225,44 @@ when defined(createNimHcr):
     modules[name].lastModification = getLastModificationTime(name)
 
     # update the list of imports by the module
-    let getModuleListProc = cast[proc (): ptr pointer {.noconv.}](
+    let getImportsProc = cast[proc (): ptr pointer {.noconv.}](
       checkedSymAddr(lib, "HcrGetImportedModules"))
-    modules[name].imports = getListOfModules(getModuleListProc())
+    modules[name].imports = getListOfModules(getImportsProc())
 
     # Remove callbacks for this module if reloading - they will be re-registered.
     # In order for them to be re-registered we need to de-register all globals
     # that trigger the registering of callbacks through calls to registerCallbackHCR
     for curr in modules[name].callbacks:
-      cleanupSymbol(name, curr.globalVar)
+      cleanupGlobal(name, curr.globalVar)
     modules[name].callbacks.setLen(0)
 
-  proc initPointerData*(name: cstring): void {.nimhcr.} =
-    trace "HCR Hcr/Dat init: " & $name
-    cast[proc (h: pointer, gpa: GetProcAddrType): void {.noconv.}](
+  proc initPointerData*(name: cstring) {.nimhcr.} =
+    trace "HCR Hcr/Dat init: ", name
+    cast[proc (h: pointer, gpa: ProcGetter) {.noconv.}](
       checkedSymAddr(modules[$name].handle, "HcrInit000"))(hcrDynlibHandle, getProcAddr)
-    cast[proc (): void {.noconv.}](checkedSymAddr(modules[$name].handle, "DatInit000"))()
+    cast[proc () {.noconv.}](checkedSymAddr(modules[$name].handle, "DatInit000"))()
 
-  proc initGlobalScope*(name: cstring): void {.nimhcr.} =
-    trace "HCR Init000: " & $name
+  proc initGlobalScope*(name: cstring) {.nimhcr.} =
+    trace "HCR Init000: ", name
     # set the currently inited module - necessary for registering the before/after HCR callbacks
-    currentModule = $name  
-    cast[proc (): void {.noconv.}](checkedSymAddr(modules[$name].handle, "Init000"))()
+    currentModule = $name
+    cast[proc () {.noconv.}](checkedSymAddr(modules[$name].handle, "Init000"))()
 
-  proc recursiveInit(dlls: seq[string]): void =
+  proc recursiveInit(dlls: seq[string]) =
     for curr in dlls:
       # skip updating the root or a module that has already been updated to the latest generation
-      if modules.contains(curr) and modules[curr].gen >= generation:
-        trace "HCR SKIP: " & curr & " gen is already: " & $modules[curr].gen
-        continue
-      # skip updating an unmodified module but continue traversing its dependencies
-      if modules.contains(curr) and modules[curr].lastModification >= getLastModificationTime(curr):
-        trace "HCR SKIP (not modified): " & curr & " " & $modules[curr].lastModification
-        # update generation so module doesn't get collected
-        modules[curr].gen = generation
-        # recurse to imported modules - they might be changed
-        recursiveInit(modules[curr].imports)
-        continue
+      if modules.contains(curr):
+        if modules[curr].gen >= generation:
+          trace "HCR SKIP: ", curr, " gen is already: ", modules[curr].gen
+          continue
+        # skip updating an unmodified module but continue traversing its dependencies
+        if modules[curr].lastModification >= getLastModificationTime(curr):
+          trace "HCR SKIP (not modified): ", curr, " ", modules[curr].lastModification
+          # update generation so module doesn't get collected
+          modules[curr].gen = generation
+          # recurse to imported modules - they might be changed
+          recursiveInit(modules[curr].imports)
+          continue
       loadDll(curr)
       # first load all dependencies of the current module and init it after that
       recursiveInit(modules[curr].imports)
@@ -265,9 +274,10 @@ when defined(createNimHcr):
 
   var traversedModules: HashSet[string]
 
-  proc recursiveExecuteCallbacks(isBefore: bool, module: string): void =
+  proc recursiveExecuteCallbacks(isBefore: bool, module: string) =
     # do not process an already traversed module
     if traversedModules.containsOrIncl(module): return
+    traversedModules.incl module
     # first recurse to do a DFS traversal
     for curr in modules[module].imports:
       recursiveExecuteCallbacks(isBefore, curr)
@@ -276,16 +286,17 @@ when defined(createNimHcr):
       if curr.isBefore == isBefore:
        curr.cb()
 
-  proc initRuntime*(list_of_dlls: ptr pointer, main: cstring, handle: pointer,
-    gpa: GetProcAddrType): void {.nimhcr.} =
-    trace "HCR INITING: " & $main
+  proc initRuntime*(moduleList: ptr pointer,
+                    main: cstring, handle: pointer,
+                    gpa: ProcGetter) {.nimhcr.} =
+    trace "HCR INITING: ", main
     root = $main
     hcrDynlibHandle = handle
     getProcAddr = gpa
     # we need the root to be added as well because symbols from it will also be registered in the HCR system
     modules.add(root, newModuleDesc())
-    modules[root].imports = getListOfModules(list_of_dlls)
-    modules[root].gen = 1000000 # something huge so it doesn't get collected
+    modules[root].imports = getListOfModules(moduleList)
+    modules[root].gen = high(int) # something huge so it doesn't get collected
     # recursively initialize all modules
     recursiveInit(modules[root].imports)
     # the next module to be inited will be the root
@@ -294,18 +305,23 @@ when defined(createNimHcr):
 
   proc hasAnyModuleChanged*(): bool {.nimhcr.} =
     proc recursiveChangeScan(dlls: seq[string]): bool =
-      result = false
       for curr in dlls:
-        if modules[curr].lastModification < getLastModificationTime(curr) or recursiveChangeScan(modules[curr].imports):
-          return true
+        if modules[curr].lastModification < getLastModificationTime(curr) or
+           recursiveChangeScan(modules[curr].imports): return true
+      return false
     return recursiveChangeScan(modules[root].imports)
 
-  proc performCodeReload*(): void {.nimhcr.} =
+  proc cleanupModule(module: string) =
+    cleanupSymbols(module)
+    unloadLib(modules[module].handle)
+    modules.del(module)
+
+  proc performCodeReload*() {.nimhcr.} =
     if not hasAnyModuleChanged():
       return
 
     inc(generation)
-    trace "HCR RELOADING: " & $generation
+    trace "HCR RELOADING: ", generation
 
     # first execute the before reload callbacks
     traversedModules.clear()
@@ -319,24 +335,18 @@ when defined(createNimHcr):
     recursiveExecuteCallbacks(false, root)
 
     # collecting no longer referenced modules - based on their generation
-    var toDelete: seq[string]
-    for key, val in modules.pairs:
-      if val.gen < generation:
-        toDelete.add(key)
-    for curr in toDelete:
-      trace "HCR REMOVING: " & curr
-      cleanupSymbols(curr)
-      unloadLib(modules[curr].handle)
-      modules.del(curr)
+    cleanup modules:
+      cleanupModule name
 
-  proc registerCallbackHCR*(isBefore: bool, cb: proc (): void): bool {.nimhcr.} =
+  proc registerCallbackHCR*(isBefore: bool, cb: proc ()): bool {.nimhcr.} =
     modules[currentModule].callbacks.add((isBefore: isBefore, globalVar: lastRegisteredGlobal, cb: cb))
     return true
 
-  proc addDummyModule*(module: cstring): void {.nimhcr.} = modules.add($module, newModuleDesc())
+  proc addDummyModule*(module: cstring) {.nimhcr.} =
+    modules.add($module, newModuleDesc())
 
 else:
-  when defined(hotcodereloading):
+  when defined(hotcodereloading) or defined(useNimHcr):
     const
       nimhcrLibname = when defined(windows): "nimhcr." & dllExt
                       elif defined(macosx): "libnimhcr." & dllExt
@@ -349,29 +359,30 @@ else:
     proc registerGlobal*(module: cstring, name: cstring, size: Natural, outPtr: ptr pointer): bool {.nimhcr.}
     proc getGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
 
-    proc loadDll*(name: cstring): void {.nimhcr.}
-    proc initPointerData*(name: cstring): void {.nimhcr.}
-    proc initGlobalScope*(name: cstring): void {.nimhcr.}
-    proc initRuntime*(list_of_dlls: ptr pointer, main: cstring, handle: pointer, gpa: GetProcAddrType): void {.nimhcr.}
-    proc registerCallbackHCR*(isBefore: bool, cb: proc (): void): bool {.nimhcr.}
+    proc loadDll*(name: cstring) {.nimhcr.}
+    proc initPointerData*(name: cstring) {.nimhcr.}
+    proc initGlobalScope*(name: cstring) {.nimhcr.}
+    proc initRuntime*(moduleList: ptr pointer, main: cstring, handle: pointer, gpa: ProcGetter) {.nimhcr.}
+    proc registerCallbackHCR*(isBefore: bool, cb: proc ()): bool {.nimhcr.}
 
     # used only for testing purposes so the register/get proc/global functions don't crash
-    proc addDummyModule*(module: cstring): void {.nimhcr.}
+    proc addDummyModule*(module: cstring) {.nimhcr.}
 
     # the following functions/templates are intended to be used by the user
-    proc performCodeReload*(): void {.nimhcr.}
+    proc performCodeReload*() {.nimhcr.}
     proc hasAnyModuleChanged*(): bool {.nimhcr.}
 
     # We use a "global" to force execution while top-level statements are evaluated - this way new blocks can
     # be added when reloading (new globals can be introduced but newly written top-level code is not executed)
     template beforeCodeReload*(body: untyped) =
-      let dummy = registerCallbackHCR(true, proc (): void = body)
+      let dummy = registerCallbackHCR(true, proc = body)
+
     template afterCodeReload*(body: untyped) =
-      let dummy = registerCallbackHCR(false, proc (): void = body)
+      let dummy = registerCallbackHCR(false, proc = body)
 
   else:
     # we need these stubs so code continues to compile even when HCR is off
-    proc performCodeReload*(): void = discard
-    proc hasAnyModuleChanged*(): bool = discard
+    template performCodeReload* = discard
+    template hasAnyModuleChanged*: bool = false
     template beforeCodeReload*(body: untyped) = discard
     template afterCodeReload*(body: untyped) = discard
