@@ -344,8 +344,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       headerAlign = 1
     let (offset, align) =
       if tfPacked in typ.flags:
-        let debug = typ.kind == tyObject and typ.sym.name.s == "MyObject"
-        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, debug), BiggestInt(1))
+        (computePackedObjectOffsetsFoldFunction(conf, typ.n, headerSize, false), BiggestInt(1))
       else:
         computeObjectOffsetsFoldFunction(conf, typ.n, headerSize)
     if offset == szIllegalRecursion:
