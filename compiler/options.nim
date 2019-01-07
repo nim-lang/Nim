@@ -211,7 +211,6 @@ type
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: AbsoluteFile
-    outFileBackup*: AbsoluteFile ## when nonempty, copy to this before overwriting
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*: StringTableRef
     projectName*: string # holds a name like 'nim'
