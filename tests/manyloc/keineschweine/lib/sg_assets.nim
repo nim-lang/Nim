@@ -500,8 +500,8 @@ proc importAnim(data: JsonNode, errors: var seq[string]): PAnimationRecord =
     elif data["anim"].kind == JString:
       result.spriteSheet = newSprite(anim.str, errors)
 
-  result.angle = radians(result.angle) ## comes in as degrees
-  result.delay /= 1000 ## delay comes in as milliseconds
+  result.angle = radians(result.angle) # comes in as degrees
+  result.delay /= 1000 # delay comes in as milliseconds
 proc importSoul(data: JsonNode): TSoulRecord =
   result.energy = 10000
   result.health = 1
@@ -558,7 +558,7 @@ proc importItem(data: JsonNode; errors: var seq[string]): PItemRecord =
 
   result.cooldown = 100.0
   data[2].getField("cooldown", result.cooldown)
-  result.cooldown /= 1000.0  ##cooldown is stored in ms
+  result.cooldown /= 1000.0  # cooldown is stored in ms
 
   result.useSound = importSound(data[2], errors, "useSound")
 
@@ -603,7 +603,7 @@ proc importBullet(data: JsonNode; errors: var seq[string]): PBulletRecord =
   getField(bdata, "lifetime", result.lifetime)
   getField(bdata, "inheritVelocity", result.inheritVelocity)
   getField(bdata, "baseVelocity", result.baseVelocity)
-  result.lifetime /= 1000.0 ## lifetime is stored as milliseconds
-  result.inheritVelocity /= 1000.0 ## inherit velocity 1000 = 1.0 (100%)
+  result.lifetime /= 1000.0 # lifetime is stored as milliseconds
+  result.inheritVelocity /= 1000.0 # inherit velocity 1000 = 1.0 (100%)
   result.explosion = importExplosion(bdata, errors)
   result.trail = importTrail(bdata, errors)

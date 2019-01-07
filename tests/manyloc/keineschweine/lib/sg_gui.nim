@@ -222,7 +222,7 @@ proc newMessageArea*(container: PGuiContainer; position: TVector2f): PMessageAre
   result.pos = position + container.position
   result.sizeVisible = 10
   result.scrollBack = 0
-  result.direction = -1 ## to push old messages up
+  result.direction = -1 # to push old messages up
   container.add(result)
 
 proc add*(m: PMessageArea, msg: ScChat) =
@@ -278,4 +278,3 @@ proc draw*(window: PRenderWindow; m: PMessageArea) =
   if nmsgs == 0: return
   for i in countdown(nmsgs - 1, max(nmsgs - m.sizeVisible, 0)):
     window.draw m.texts[i]
-
