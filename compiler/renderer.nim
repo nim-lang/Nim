@@ -1428,7 +1428,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkElse, "else")
     putWithSpace(g, tkColon, ":")
     gcoms(g)
-    gstmts(g, n.sons[0], c)
+    if n.safeLen > 0:
+      gstmts(g, n.sons[0], c)
   of nkFinally, nkDefer:
     optNL(g)
     if n.kind == nkFinally:
