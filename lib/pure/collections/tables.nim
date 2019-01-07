@@ -942,11 +942,14 @@ template ctget(t, key: untyped): untyped =
     else:
       raise newException(KeyError, "key not found")
 
+template ctGetOrDefault(t, key: untyped, default=0): untyped =
+  var index = rawGet(t, key)
+  result = if index >= 0: t.data[index].val else: default
+
 proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. If ``key`` is not in ``t``,
-  ## the ``KeyError`` exception is raised. One can check with ``hasKey``
-  ## whether the key exists.
-  ctget(t, key)
+  ## Otherwise, 0 is returned
+  ctgetOrDefault(t, key)
 
 proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
@@ -960,16 +963,14 @@ proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
   ctget(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A): int =
-  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, 0 (the
+  ## retrieves the value at ``t[key]`` if ``key`` is in ``t``. Otherwise, 0 (the
   ## default initialization value of ``int``), is returned.
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
+  ctgetOrDefault(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A, default: int): int =
   ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, the
   ## integer value of ``default`` is returned.
-  var index = rawGet(t, key)
-  result = if index >= 0: t.data[index].val else: default
+  ctGetOrDefault(t, key, default)
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff ``key`` is in the table ``t``.
@@ -1393,6 +1394,10 @@ when isMainModule:
   block: # CountTable.smallest
     let t = toCountTable([0, 0, 5, 5, 5])
     doAssert t.smallest == (0, 2)
+
+  block: #10065
+    let t = toCountTable("abracadabra")
+    doAssert t['z'] == 0
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
