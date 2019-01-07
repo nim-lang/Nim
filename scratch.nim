@@ -12,11 +12,10 @@ template idpacket(pktName, id, s2c, c2s: untyped) =
   defPacket(`Cs pktName`, c2s)
 
 idPacket(ZoneQuery, 'Q',
-  tuple[playerCount: uint16], ##i should include a time here or something
+  tuple[playerCount: uint16], ## i should include a time here or something
   tuple[pad: char = '\0'])
 
-# output:
-#
+# output was:
 #  AccQuoted
 #    Ident "Sc"
 #    Ident "ZoneQuery"
@@ -35,6 +34,25 @@ idPacket(ZoneQuery, 'Q',
 #      Ident "char"
 #      CharLit 0
 
+# output is:
+#  AccQuoted
+#    Ident "Sc"
+#    Ident "ZoneQuery"
+#  TupleTy
+#    IdentDefs
+#      Ident "playerCount"
+#      Ident "uint16"
+#      Empty
+#  AccQuoted
+#    Ident "Cs"
+#    Ident "ZoneQuery"
+#  TupleTy
+#    IdentDefs
+#      Ident "pad"
+#      Ident "char"
+#      CharLit 0
+
+
 type
   MyEnum = enum
     val1
@@ -44,7 +62,7 @@ type
 proc foobar(arg: MyEnum): void =
   case arg
   of val1:
-    echo "foo1" # ## wrong doc comment
+    echo "foo1" ## wrong doc comment
   of val2:
     echo "foo2"
   of val3:
