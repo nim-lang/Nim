@@ -419,7 +419,11 @@ when not defined(nimunion):
   {.pragma: unchecked.}
 when not defined(nimHasHotCodeReloading):
   {.pragma: nonReloadable.}
-  
+when defined(hotCodeReloading):
+  {.pragma: hcrInline, inline.}
+else:
+  {.pragma: hcrInline.}
+
 # comparison operators:
 proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
   ## Checks whether values within the *same enum* have the same underlying value

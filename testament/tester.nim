@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, times, sets, md5
+  algorithm, compiler/nodejs, times, sets, md5, sequtils
 
 var useColors = true
 var backendLogging = true
@@ -58,6 +58,7 @@ type
     name: string
     cat: Category
     options: string
+    args: seq[string]
     spec: TSpec
     startTime: float
 
@@ -127,13 +128,17 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
   let hashInput = options & $target
   return "nimcache" / (filename & '_' & hashInput.getMD5)
 
-proc callCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget, extraOptions=""): TSpec =
+proc prepareTestArgs(cmdTemplate, filename, options: string,
+                     target: TTarget, extraOptions=""): seq[string] =
   let nimcache = nimcacheDir(filename, options, target)
   let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
-  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell,
-                       "filedir", filename.getFileDir()])
+  return parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+                      "options", options, "file", filename.quoteShell,
+                      "filedir", filename.getFileDir()])
+
+proc callCompiler(cmdTemplate, filename, options: string,
+                  target: TTarget, extraOptions=""): TSpec =
+  let c = prepareTestArgs(cmdTemplate, filename, options, target, extraOptions)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -368,6 +373,12 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
+proc getTestSpecTarget(): TTarget =
+  if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
+    return targetCpp
+  else:
+    return targetC
+
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
@@ -384,10 +395,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   expected.targets.incl targets
   # still no target specified at all
   if expected.targets == {}:
-    if getEnv("NIM_COMPILE_TO_CPP", "false").string == "true":
-      expected.targets = {targetCpp}
-    else:
-      expected.targets = {targetC}
+    expected.targets = {getTestSpecTarget()}
   for target in expected.targets:
     inc(r.total)
     if target notin gTargets:
@@ -409,8 +417,7 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     of actionRun:
       # In this branch of code "early return" pattern is clearer than deep
       # nested conditionals - the empty rows in between to clarify the "danger"
-      var given = callCompiler(expected.getCmd, test.name, test.options,
-                               target)
+      var given = callCompiler(expected.getCmd, test.name, test.options, target)
       if given.err != reSuccess:
         r.addResult(test, target, "", given.msg, given.err)
         continue
@@ -432,10 +439,10 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
                     reExeNotFound)
         continue
       var exeCmd: string
-      var args: seq[string]
+      var args = test.args
       if isJsTarget:
         exeCmd = nodejs
-        args.add exeFile
+        args = concat(@[exeFile], args)
       else:
         exeCmd = exeFile
       var (buf, exitCode) = execCmdEx2(exeCmd, args, options = {poStdErrToStdOut}, input = expected.input)

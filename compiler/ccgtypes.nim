@@ -1010,6 +1010,14 @@ proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   var tmp = discriminatorTableName(m, objtype, d)
   result = "TNimNode* $1[$2];$n" % [tmp, rope(lengthOrd(m.config, d.typ)+1)]
 
+proc genTNimNodeArray(m: BModule, name: Rope, size: Rope) =
+  if m.hcrOn:
+    addf(m.s[cfsTypeInit1], "\tTNimNode** $1;$n", [name])
+    addf(m.s[cfsTypeInit1], "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
+         [name, size, getModuleDllPath(m.g, m.module)])
+  else:
+    addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [name, size])
+
 proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
                      info: TLineInfo) =
   case n.kind
@@ -1019,12 +1027,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       genObjectFields(m, typ, origType, n.sons[0], expr, info)
     elif L > 0:
       var tmp = getTempName(m)
-      if m.hcrOn:
-        appcg(m, m.s[cfsTypeInit1], "\t#TNimNode** $1;$n", [tmp])
-        appcg(m, m.s[cfsTypeInit1], "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
-              [tmp, rope(L), getModuleDllPath(m.g, m.module)])
-      else:
-        addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(L)])
+      genTNimNodeArray(m, tmp, rope(L))
       for i in countup(0, L-1):
         var tmp2 = getNimNode(m)
         addf(m.s[cfsTypeInit3], "$1[$2] = &$3;$n", [tmp, rope(i), tmp2])
@@ -1110,12 +1113,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
   var length = sonsLen(typ)
   if length > 0:
     var tmp = getTempName(m)
-    if m.hcrOn:
-      addf(m.s[cfsTypeInit1], "\tTNimNode** $1;$n", [tmp])
-      addf(m.s[cfsTypeInit1], "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
-          [tmp, rope(length), getModuleDllPath(m.g, m.module)])
-    else:
-      addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [tmp, rope(length)])
+    genTNimNodeArray(m, tmp, rope(length))
     for i in countup(0, length - 1):
       var a = typ.sons[i]
       var tmp2 = getNimNode(m)
@@ -1140,13 +1138,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   genTypeInfoAux(m, typ, typ, name, info)
   var nodePtrs = getTempName(m)
   var length = sonsLen(typ.n)
-  if m.hcrOn:
-    addf(m.s[cfsTypeInit1], "\tTNimNode** $1;$n", [nodePtrs])
-    addf(m.s[cfsTypeInit1], "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
-        [nodePtrs, rope(length), getModuleDllPath(m.g, m.module)])
-  else:
-    addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n",
-         [nodePtrs, rope(length)])
+  genTNimNodeArray(m, nodePtrs, rope(length))
   var enumNames, specialCases: Rope
   var firstNimNode = m.typeNodes
   var hasHoles = false
@@ -1178,7 +1170,7 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
        [getNimNode(m), rope(length), nodePtrs, TINameForHcr(m, name)])
   if hasHoles:
     # 1 << 2 is {ntfEnumHole}
-    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [name])
+    addf(m.s[cfsTypeInit3], "$1.flags = 1<<2;$n", [TINameForHcr(m, name)])
 
 proc genSetInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   assert(typ.sons[0] != nil)

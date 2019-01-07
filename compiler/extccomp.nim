@@ -551,14 +551,14 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
            elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
   var c = conf.cCompiler
   var options = cFileSpecificOptions(conf, cfile.cname)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
-  if optGenDynLib in conf.globalOptions and
+  if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     add(options, ' ' & CC[c].pic)
 
@@ -648,12 +648,14 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
+proc compileCFiles(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
+  var currIdx = 0  
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1)
+    inc currIdx
     if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
@@ -707,6 +709,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
     when false:
       if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
+    # add an additional .exe to prevent overwriting the main source file in nimcache
+    # of the project on unix (where there is no extension) with the executable later on
+    if conf.hcrOn and not forceDynLib and optGenDynLib notin conf.globalOptions:
+      exefile.add ".exe"
     exefile = quoteShell(exefile)
 
     # Map files are required by Nintendo Switch compilation. They are a list
@@ -819,7 +825,7 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
     when declared(echo):
       let cmd = prettyCmds[idx]
       if cmd != "": echo cmd
-  compileCFile(conf, conf.toCompile, script, cmds, prettyCmds)
+  compileCFiles(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
   if optNoLinking notin conf.globalOptions:
@@ -856,14 +862,9 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx]).AbsoluteFile
         var (src, _) = getLinkTarget(conf, mainObjFile)
         var (dst, _) = getLinkTarget(conf, projectfile)
-        #try:
+        # mimic what is being done to the main file in getLinkCmd()
+        if optGenDynLib notin conf.globalOptions: src.add ".exe"
         copyFile(src, dst)
-        #except OSError:
-        #  # not a problem if the main file isn't copied while the program is running
-        #  # (assuming that it is) - it shouldn't be reloadable anyway since most
-        #  # probably a function from this binary is part of the callstack at the point
-        #  # where performCodeReload() has been called (since it is the entry point)
-        #  echo "[IGNORED OSError] hopefully the file copy failed because the HCR functionality is being used as intended!"
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string

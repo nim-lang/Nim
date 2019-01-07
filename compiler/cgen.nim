@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, sequtils
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf
 
 include system/indexerrors
 
@@ -98,9 +98,9 @@ proc cgsym(m: BModule, name: string): Rope
 proc getCFile(m: BModule): AbsoluteFile
 
 proc getModuleDllPath(g: BModuleList, s: PSym): Rope =
-  let path = strutils.`%`(platform.OS[g.config.target.targetOS].dllFrmt,
-                          [getCFile(g.modules[getModule(s).position]).string])
-  return makeCString(path)
+  let (dir, name, ext) = splitFile(getCFile(g.modules[getModule(s).position]))
+  let filename = strutils.`%`(platform.OS[g.config.target.targetOS].dllFrmt, [name & ext])
+  return makeCString(dir.string & "/" & filename)
 
 # TODO: please document
 proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
@@ -1523,7 +1523,7 @@ proc genInitCode(m: BModule) =
                                  "\t\t#nimLoadLibraryError($1);$n" &
                                  "\thandle = hcr_handle;$n", [genStringLiteral(m, n)])
       # additional procs to load
-      procsToLoad = concat(procsToLoad, @["loadDll", "initPointerData", "initGlobalScope", "initRuntime"])
+      procsToLoad.add("initRuntime")
     # load procs
     for curr in procsToLoad:
       add(m.s[cfsInitProc], hcrGetProcLoadCode(m, curr))
@@ -1802,19 +1802,15 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 
   if sfMainModule in m.module.flags:
     if m.hcrOn:
-      # pull (define) these functions in the main file so it can load the HCR runtime
-      # and later pass the library handle to the HCR runtime which will in turn pass it
-      # to the other modules it initializes so they can initialize the register/get procs
-      proc explicitProcDef(m: BModule, name: string): void =
-        let prc = magicsys.getCompilerProc(m.g.graph, name)
-        if not containsOrIncl(m.declaredThings, prc.id):
-          fillProcLoc(m, prc.ast[namePos])
-          genProcAux(m, prc)
-      explicitProcDef(m, "nimLoadLibrary")
-      explicitProcDef(m, "nimLoadLibraryError")
-      explicitProcDef(m, "nimGetProcAddr")
-      explicitProcDef(m, "procAddrError")
-      explicitProcDef(m, "rawWrite")
+      # pull ("define" since they are inline when HCR is on) these functions in the main file
+      # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
+      # will in turn pass it to the other modules it initializes so they can initialize the
+      # register/get procs so they don't have to have the definitions of these functions as well
+      discard cgsym(m, "nimLoadLibrary")
+      discard cgsym(m, "nimLoadLibraryError")
+      discard cgsym(m, "nimGetProcAddr")
+      discard cgsym(m, "procAddrError")
+      discard cgsym(m, "rawWrite")
 
     # raise dependencies on behalf of genMainProc
     if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:

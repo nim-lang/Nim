@@ -129,10 +129,10 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     else:
       ""
 
-  var test1 = makeTest("lib/nimrtl.nim", options & " --app:lib -d:createNimRtl --threads:on", cat)
+  var test1 = makeTest("lib/nimrtl.nim", options & " --threads:on", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
-  var test2 = makeTest("tests/dll/server.nim", options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
+  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
   var test3 = makeTest("lib/nimhcr.nim", options & rpath, cat)
@@ -155,10 +155,15 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var fullDllName = DynlibFormat % dllName
     safeCopyFile("lib" / fullDllName, "tests/dll" / fullDllName)
 
-  testSpec r, makeTest("tests/dll/client.nim",
-    options & " -d:useNimRtl --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
 
-  testSpec r, makeTest("tests/dll/nimhcr_usage.nim", options & rpath, cat)
+  testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
+
+  var hcr_integration = makeTest("tests/dll/nimhcr_integration.nim",
+                                 options & " --hotCodeReloading:on" & rpath, cat)
+  hcr_integration.args = prepareTestArgs(hcr_integration.spec.getCmd,
+    hcr_integration.name, hcr_integration.options, getTestSpecTarget())
+  testSpec r, hcr_integration
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
@@ -655,17 +660,17 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
     onStdout = if verboseMegatest: onStdout else: nil)
   if exitCode != 0:
-    echo buf
+    echo buf.string
     quit("megatest compilation failed")
 
   # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
-    echo buf
+    echo buf.string
     quit("megatest execution failed")
 
-  norm buf
-  writeFile("outputGotten.txt", buf)
+  norm buf.string
+  writeFile("outputGotten.txt", buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -673,7 +678,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     outputExpected.add '\n'
   norm outputExpected
 
-  if buf != outputExpected:
+  if buf.string != outputExpected:
     writeFile("outputExpected.txt", outputExpected)
     discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
     echo "output different!"
