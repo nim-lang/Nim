@@ -1084,6 +1084,10 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.owner = owner
   result.offset = -1
   result.id = getID()
+  if result.id == 344039:
+    echo "---------------- BEGIN"
+    writeStackTrace()
+    echo "---------------- END"
   when debugIds:
     registerId(result)
 
@@ -1350,9 +1354,12 @@ proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
+  if result.id == 344041:
+    echo "comes from ", s.id
+    writeStackTrace()
+
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
-  result.id = getID()
   when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic

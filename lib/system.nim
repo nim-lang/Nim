@@ -3144,7 +3144,7 @@ when not defined(JS): #and not defined(nimscript):
   # ----------------- IO Part ------------------------------------------------
   type
     CFile {.importc: "FILE", header: "<stdio.h>",
-            final, incompletestruct.} = object
+            incompletestruct.} = object
     File* = ptr CFile ## The type representing a file handle.
 
     FileMode* = enum           ## The file mode when opening a file.
@@ -3392,6 +3392,10 @@ when not defined(JS): #and not defined(nimscript):
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 
+  when defined(gcDestructors) and not defined(nimscript):
+    include "core/strs"
+    include "core/seqs"
+
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -3482,10 +3486,6 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
-
-    when defined(gcDestructors):
-      include "core/strs"
-      include "core/seqs"
 
     when hostOS == "standalone":
       include "system/embedded"

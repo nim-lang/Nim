@@ -316,6 +316,10 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
   if typ.kind == tyDistinct:
     return liftBodyDistinctType(g, typ, kind, info)
+  var typ = typ
+  if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
+    # use the canonical type to access the =sink and =destroy etc.
+    typ = c.graph.sysTypes[tySequence]
 
   var a: TLiftCtx
   a.info = info
@@ -348,10 +352,14 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
   if g.config.selectedGC == gcDestructors and
       typ.kind in {tySequence, tyString} and body.len == 0:
     discard "do not cache it yet"
+    if kind == attachedSink:
+      echo "Not available yet ", typ.kind, " ", c.config$info
   else:
     case kind
     of attachedAsgn: typ.assignment = result
-    of attachedSink: typ.sink = result
+    of attachedSink:
+      typ.sink = result
+      echo "created ", result.id
     of attachedDeepCopy: typ.deepCopy = result
     of attachedDestructor: typ.destructor = result
 
