@@ -62,8 +62,10 @@ proc closeEmitter*(em: var Emitter) =
       return
     if em.config.outFileBackup.string.len > 0:
       rawMessage(em.config, hintUser,
-        "writing backup " & $em.config.outFile & " > " & $em.config.outFileBackup)
-      os.copyFile(source = $em.config.outFile, dest = $em.config.outFileBackup)
+        "writing backup " & em.config.outFile.string & " > " &
+          em.config.outFileBackup.string)
+      os.copyFile(source = em.config.outFile.string,
+        dest = em.config.outFileBackup.string)
   var f = llStreamOpen(em.config.outFile, fmWrite)
   if f == nil:
     rawMessage(em.config, errGenerated, "cannot open file: " & em.config.outFile.string)

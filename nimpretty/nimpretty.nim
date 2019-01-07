@@ -26,7 +26,7 @@ Usage:
   nimpretty [options] file.nim
 Options:
   --backup:on|off[=on]  when on, create a backup file if input is overwritten
-  --output:file[=input] set the output file
+  --output:file         set the output file (default: overwrite the input file)
   --indent:N[=2]        set the number of spaces that is used for indentation
   --version             show the version
   --help                show this help
