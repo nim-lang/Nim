@@ -156,6 +156,8 @@ proc enumToString*(enums: openArray[enum]): string =
 - `jsondoc` now include a `moduleDescription` field with the module
   description. `jsondoc0` shows comments as it's own objects as shown in the
   documentation.
+- `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
+  un-documented; use `git` instead of relying on backup files.
 
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.
