@@ -314,10 +314,8 @@ proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: 
 
 proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
-
-  let typ2 = typ.skipTypes({tyAlias, tyGenericInst, tyVar, tyLent, tySink})
-  if typ2.kind == tyDistinct:
-    return liftBodyDistinctType(c, typ2, kind, info)
+  if typ.kind == tyDistinct:
+    return liftBodyDistinctType(c, typ, kind, info)
 
   var a: TLiftCtx
   a.info = info
