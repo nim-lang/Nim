@@ -881,7 +881,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if sym != nil and sym.kind in routineKinds + {skType}:
+        if sym != nil and sym.kind in routineKinds + {skType, skVar, skLet}:
           if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
           incl(sym.flags, sfDeprecated)
         elif sym != nil and sym.kind != skModule:
