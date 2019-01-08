@@ -7,21 +7,27 @@ mygeneric1 constructed
 mygeneric1 destroyed
 ----
 mygeneric2 constructed
-mygeneric2 destroyed
 myobj destroyed
+mygeneric2 destroyed
 ----
 mygeneric3 constructed
 mygeneric1 destroyed
 ----
-mygeneric1 destroyed
+mydistinctObj constructed
+myobj destroyed
+mygeneric2 destroyed
+------------------
+----
 ----
 myobj destroyed
-----
-----
+mygeneric1 destroyed
+myobj destroyed
+myobj destroyed
+myobj destroyed
+---
+myobj destroyed
 myobj destroyed
 '''
-  cmd: '''nim c --newruntime $file'''
-  disabled: "true"
 """
 
 type
@@ -29,6 +35,11 @@ type
     x, y: int
     p: pointer
 
+proc `=destroy`(o: var TMyObj) =
+  if o.p != nil: dealloc o.p
+  echo "myobj destroyed"
+
+type
   TMyGeneric1[T] = object
     x: T
 
@@ -36,36 +47,39 @@ type
     x: A
     y: B
 
+proc `=destroy`(o: var TMyGeneric1[int]) =
+  echo "mygeneric1 destroyed"
+
+proc `=destroy`[A, B](o: var TMyGeneric2[A, B]) =
+  echo "mygeneric2 destroyed"
+
+type
   TMyGeneric3[A, B, C] = object
     x: A
     y: B
     z: C
 
-  TObjKind = enum A, B, C, D
+  TDistinctObjX = distinct TMyGeneric3[TMyObj, TMyGeneric2[int, int], int]
+  TDistinctObj = TDistinctObjX
+
+  TObjKind = enum Z, A, B, C, D
 
   TCaseObj = object
+    z: TMyGeneric3[TMyObj, float, int]
     case kind: TObjKind
+    of Z: discard
     of A:
       x: TMyGeneric1[int]
     of B, C:
       y: TMyObj
     else:
       case innerKind: TObjKind
+      of Z: discard
       of A, B, C:
         p: TMyGeneric3[int, float, string]
       of D:
         q: TMyGeneric3[TMyObj, int, int]
       r: string
-
-proc `=destroy`(o: var TMyObj) =
-  if o.p != nil: dealloc o.p
-  echo "myobj destroyed"
-
-proc `=destroy`(o: var TMyGeneric1[int]) =
-  echo "mygeneric1 destroyed"
-
-proc `=destroy`[A, B](o: var TMyGeneric2[A, B]) =
-  echo "mygeneric2 destroyed"
 
 proc open: TMyObj =
   # allow for superfluous ()
@@ -95,6 +109,12 @@ proc mygeneric3 =
 
   echo "mygeneric3 constructed"
 
+proc mydistinctObj =
+  var x = TMyGeneric3[TMyObj, TMyGeneric2[int, int], int](
+    x: open(), y: TMyGeneric2[int, int](x: 5, y: 15), z: 20)
+
+  echo "mydistinctObj constructed"
+
 echo "----"
 myobj()
 
@@ -107,9 +127,11 @@ mygeneric2[int](10)
 echo "----"
 mygeneric3()
 
+echo "----"
+mydistinctObj()
+
 proc caseobj =
   block:
-    echo "----"
     var o1 = TCaseObj(kind: A, x: TMyGeneric1[int](x: 10))
 
   block:
@@ -121,10 +143,14 @@ proc caseobj =
     var o3 = TCaseObj(kind: D, innerKind: B, r: "test",
                       p: TMyGeneric3[int, float, string](x: 10, y: 1.0, z: "test"))
 
-  block:
-    echo "----"
-    var o4 = TCaseObj(kind: D, innerKind: D, r: "test",
-                      q: TMyGeneric3[TMyObj, int, int](x: open(), y: 1, z: 0))
 
+echo "------------------"
 caseobj()
 
+proc caseobj_sink: TCaseObj =
+  result = TCaseObj(kind: D, innerKind: D, r: "test",
+                      q: TMyGeneric3[TMyObj, int, int](x: open(), y: 1, z: 0))
+
+
+echo "---"
+discard caseobj_sink()
