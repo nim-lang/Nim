@@ -238,9 +238,6 @@ Internet Protocols and Support
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
 
-* `smtp <smtp.html>`_
-  This module implement a simple SMTP client.
-
 * `cookies <cookies.html>`_
   This module contains helper procs for parsing and generating cookies.
 
