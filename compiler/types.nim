@@ -107,7 +107,6 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
-  # todo: merge with getSymRepr
   assert sym != nil
   result = sym.owner.name.s & '.' & sym.name.s
   if sym.kind in routineKinds:
