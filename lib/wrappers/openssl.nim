@@ -38,7 +38,7 @@ when useWinVersion:
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.1.1|.46|.45|.44|.43|.41|.39|.38|.10|)"
+  const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.46|.45|.44|.43|.41|.39|.38|.10|)"
 
   when defined(macosx):
     const
