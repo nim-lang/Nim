@@ -196,7 +196,6 @@ lib/pure/memfiles.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
-lib/pure/oids.nim
 lib/pure/endians.nim
 lib/pure/uri.nim
 lib/pure/nimprof.nim
