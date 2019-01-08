@@ -230,9 +230,6 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
 
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.

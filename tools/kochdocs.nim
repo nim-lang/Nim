@@ -177,7 +177,6 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
