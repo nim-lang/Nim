@@ -756,7 +756,7 @@ type
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
-  TSameTypeClosure = object {.pure.}
+  TSameTypeClosure = object
     cmp: TDistinctCompare
     recCheck: int
     flags: TTypeCmpFlags
