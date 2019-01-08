@@ -195,7 +195,6 @@ lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim

@@ -141,9 +141,6 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
-
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
   Unicode strings.
