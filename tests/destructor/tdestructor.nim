@@ -27,6 +27,7 @@ myobj destroyed
 ---
 myobj destroyed
 myobj destroyed
+myobj destroyed
 '''
 """
 
@@ -147,10 +148,12 @@ proc caseobj =
 echo "------------------"
 caseobj()
 
-proc caseobj_sink: TCaseObj =
+proc caseobj_test_sink: TCaseObj =
+  # check that lifted sink can destroy case val correctly
   result = TCaseObj(kind: D, innerKind: D, r: "test",
                       q: TMyGeneric3[TMyObj, int, int](x: open(), y: 1, z: 0))
+  result = TCaseObj(kind: B, y: open())
 
 
 echo "---"
-discard caseobj_sink()
+discard caseobj_test_sink()
