@@ -107,20 +107,23 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
-  result = sym.owner.name.s & '.' & sym.name.s & '('
-  var n = sym.typ.n
-  for i in countup(1, sonsLen(n) - 1):
-    let p = n.sons[i]
-    if p.kind == nkSym:
-      add(result, p.sym.name.s)
-      add(result, ": ")
-      add(result, typeToString(p.sym.typ, prefer))
-      if i != sonsLen(n)-1: add(result, ", ")
-    else:
-      result.add renderTree(p)
-  add(result, ')')
-  if n.sons[0].typ != nil:
-    result.add(": " & typeToString(n.sons[0].typ, prefer))
+  assert sym != nil
+  result = sym.owner.name.s & '.' & sym.name.s
+  if sym.kind in routineKinds:
+    result.add '('
+    var n = sym.typ.n
+    for i in countup(1, sonsLen(n) - 1):
+      let p = n.sons[i]
+      if p.kind == nkSym:
+        add(result, p.sym.name.s)
+        add(result, ": ")
+        add(result, typeToString(p.sym.typ, prefer))
+        if i != sonsLen(n)-1: add(result, ", ")
+      else:
+        result.add renderTree(p)
+    add(result, ')')
+    if n.sons[0].typ != nil:
+      result.add(": " & typeToString(n.sons[0].typ, prefer))
   result.add "[declared in "
   result.add(conf$sym.info)
   result.add "]"

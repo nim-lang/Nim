@@ -150,7 +150,7 @@ type
 
 proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
-  of skProc, skFunc, skMethod, skConverter, skIterator:
+  of routineKinds, skType:
     result = getProcHeader(conf, s)
   else:
     result = s.name.s

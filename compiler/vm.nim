@@ -65,15 +65,20 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
-    # we now use the same format as in system/except.nim
-    var s = substr(toFilename(c.config, info), 0)
-    # this 'substr' prevents a strange corruption. XXX This needs to be
-    # investigated eventually but first attempts to fix it broke everything
-    # see the araq-wip-fixed-writebarrier branch.
+    # we now use a format similar to the one in lib/system/excpt.nim
+    var s = ""
+    # todo: factor with quotedFilename
+    if optExcessiveStackTrace in c.config.globalOptions:
+      s = toFullPath(c.config, info)
+    else:
+      s = toFilename(c.config, info)
     var line = toLinenumber(info)
+    var col = toColumn(info)
     if line > 0:
       add(s, '(')
       add(s, $line)
+      add(s, ", ")
+      add(s, $(col + ColOffset))
       add(s, ')')
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
