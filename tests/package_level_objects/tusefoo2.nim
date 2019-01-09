@@ -1,6 +1,9 @@
 discard """
   output: '''compiles'''
+  joinable: false
 """
+
+# importing both usefoo and usefoo2 at the same time causes a bug. Importing only one is OK.
 
 # Test that the object type does not need to be resolved at all:
 
