@@ -1013,16 +1013,17 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
+proc len*(n: PNode): int {.inline.} =
+  when defined(nimNoNilSeqs):
+    result = len(n.sons)
+  else:
+    if isNil(n.sons): result = 0
+    else: result = len(n.sons)
+
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
   if n.kind in {nkNone..nkNilLit}: result = 0
-  else: result = len(n.sons)
-
-proc len*(n: PNode): int {.inline.} =
-  safeLen(n)
-
-proc sonsLen*(n: PNode): int {.inline.} =
-  safeLen(n)
+  else: result = len(n)
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
@@ -1359,8 +1360,8 @@ proc newSons*(father: PType, length: int) =
       setLen(father.sons, length)
 
 proc sonsLen*(n: PType): int = n.sons.len
-proc len*(n: PType): int = sonsLen(n)
-
+proc len*(n: PType): int = n.sons.len
+proc sonsLen*(n: PNode): int = n.sons.len
 proc lastSon*(n: PNode): PNode = n.sons[^1]
 proc lastSon*(n: PType): PType = n.sons[^1]
 
