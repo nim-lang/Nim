@@ -85,12 +85,11 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 
 proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
-  when false: # what should I do here? nkCommentStmt does not allow children anymore
-    var recorded = newNodeI(nkCommentStmt, n.info)
-    recorded.add newStrNode(key, n.info)
-    recorded.add newStrNode(val, n.info)
-    if val2.len > 0: recorded.add newStrNode(val2, n.info)
-    c.graph.recordStmt(c.graph, c.module, recorded)
+  var recorded = newNodeI(nkCommentStmt, n.info)
+  recorded.add newStrNode(key, n.info)
+  recorded.add newStrNode(val, n.info)
+  if val2.len > 0: recorded.add newStrNode(val2, n.info)
+  c.graph.recordStmt(c.graph, c.module, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"

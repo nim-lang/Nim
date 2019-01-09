@@ -283,7 +283,8 @@ const
 
 proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
   result = false
-  if n.kind == nkCommentStmt and n.strVal.len > 0:
+  if n.kind == nkCommentStmt and n.sons.len == 1 and
+     n.sons[0].kind == nkStrLit and n.sons[0].strVal.len > 0:
     result = (renderNoComments notin g.flags) or
         (renderDocComments in g.flags)
 
@@ -406,10 +407,11 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   result = 0
   for i in countup(start, sonsLen(n) + theEnd): inc(result, lsub(g, n.sons[i]))
 
+
+
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.kind == nkCommentStmt and n.strVal.len > 0: return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -507,7 +509,16 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkBreakStmt: result = lsub(g, n.sons[0]) + len("break_")
   of nkContinueStmt: result = lsub(g, n.sons[0]) + len("continue_")
   of nkPragma: result = lcomma(g, n) + 4
-  of nkCommentStmt: result = len(n.strVal)
+  of nkCommentStmt:
+    if n.sons.len == 1 and n.sons[0].kind == nkStrLit and n.sons[0].strVal.len > 0:
+      result = n.sons[0].strVal.len
+  of nkExportDoc:
+    if n.sons[2].kind != nkEmpty:
+      result = MaxLineLen + 1
+    elif n.sons[1].kind != nkEmpty:
+      result = lsub(g, n.sons[0]) + 1
+    else:
+      result = lsub(g, n.sons[0])
   of nkOfBranch: result = lcomma(g, n, 0, - 2) + lsub(g, lastSon(n)) + len("of_:_")
   of nkImportAs: result = lsub(g, n.sons[0]) + len("_as_") + lsub(g, n.sons[1])
   of nkElifBranch: result = lsons(g, n) + len("elif_:_")
@@ -546,9 +557,11 @@ proc gsub(g: var TSrcGen, n: PNode) =
 proc hasCom(n: PNode): bool =
   result = false
   if n.isNil: return false
-  if n.kind == nkCommentStmt and n.strVal.len > 0:
-    return true
   case n.kind
+  of nkExportDoc:
+    return n.sons[2].kind != nkEmpty
+  of nkCommentStmt:
+    return true
   of nkEmpty..nkNilLit: discard
   else:
     for i in countup(0, sonsLen(n) - 1):
@@ -610,7 +623,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.kind == nkCommentStmt and n.strVal.len > 0
+  result = n.kind == nkCommentStmt
   if not result:
     # check further
     for i in countup(start, sonsLen(n) + theEnd):

@@ -1304,7 +1304,6 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkObject:
     if mode == pmTypeDef:
       result = parseObject(p)
-      # debug result
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
@@ -1773,15 +1772,6 @@ proc parsePattern(p: var TParser): PNode =
 proc validInd(p: var TParser): bool =
   result = p.tok.indent < 0 or p.tok.indent > p.currInd
 
-
-proc findComment(arg: PNode): string =
-  if arg.kind == nkCommentStmt and arg.strVal != "":
-    result.add $arg.kind
-    result.add ""
-    result.add arg.strVal
-  for child in arg:
-    result.add child.findComment
-
 proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
   #| indAndComment = (IND{>} COMMENT)? | COMMENT?
   #| routine = optInd identVis pattern? genericParamList?
@@ -1828,7 +1818,6 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  newStrLit
   let strLit = newNodeP(nkStrLit, p)
   strLit.strVal = p.tok.literal
   result.add  strLit

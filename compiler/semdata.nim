@@ -399,7 +399,6 @@ proc markIndirect*(c: PContext, s: PSym) {.inline.} =
     # XXX add to 'c' for global analysis
 
 proc illFormedAst*(n: PNode; conf: ConfigRef) =
-  # debug(n)
   globalError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc illFormedAstLocal*(n: PNode; conf: ConfigRef) =

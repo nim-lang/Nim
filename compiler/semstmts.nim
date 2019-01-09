@@ -1047,7 +1047,6 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       s.ast = a
       inc c.inGenericContext
       var body = semTypeNode(c, a.sons[2], nil)
-
       dec c.inGenericContext
       if body != nil:
         body.sym = s # <-- BUG!!! `typedesc.typ.sym` is changed from `typedesc` to `Value`

@@ -47,8 +47,11 @@ template origModuleName(m: PSym): string = m.name.s
 
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
-  if n.strVal.len > 0: return n
-  if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
+  if n.kind == nkExportDoc:
+    result = n.sons[2]
+    if result.kind == nkEmpty:
+      result = nil
+  elif n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
     result = findDocComment(n.sons[0])
     if result != nil: return
     if n.len > 1:
