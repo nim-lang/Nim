@@ -99,7 +99,7 @@ type
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
-  if cmd[i] == '"':
+  if i < cmd.len and cmd[i] == '"':
     i += parseUntil(cmd, outp, '"', i+1)+2
   else:
     i += parseUntil(cmd, outp, seps, i)
@@ -428,7 +428,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   var dirtyfile = ""
   var orig = ""
   i = parseQuoted(cmd, orig, i)
-  if cmd[i] == ';':
+  if i < cmd.len and cmd[i] == ';':
     i = parseQuoted(cmd, dirtyfile, i+1)
   i += skipWhile(cmd, seps, i)
   var line = -1

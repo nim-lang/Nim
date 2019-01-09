@@ -80,9 +80,14 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
   if isPure: initStrTable(symbols)
   var hasNull = false
   for i in countup(1, sonsLen(n) - 1):
+    if n.sons[i].kind == nkEmpty: continue
     case n.sons[i].kind
     of nkEnumFieldDef:
-      e = newSymS(skEnumField, n.sons[i].sons[0], c)
+      if n.sons[i].sons[0].kind == nkPragmaExpr:
+        e = newSymS(skEnumField, n.sons[i].sons[0].sons[0], c)
+        pragma(c, e, n.sons[i].sons[0].sons[1], enumFieldPragmas)
+      else:
+        e = newSymS(skEnumField, n.sons[i].sons[0], c)
       var v = semConstExpr(c, n.sons[i].sons[1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
@@ -115,6 +120,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = n.sons[i].sym
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n.sons[i], c)
+    of nkPragmaExpr:
+      e = newSymS(skEnumField, n.sons[i].sons[0], c)
+      pragma(c, e, n.sons[i].sons[1], enumFieldPragmas)
     else:
       illFormedAst(n[i], c.config)
     e.typ = result
@@ -133,7 +141,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
-  if not hasNull: incl(result.flags, tfNeedsInit)
+  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfNeedsInit)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -202,7 +210,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
         else:
-          message(c.config, n.info, warnDeprecated, "region for pointer types")
+          message(c.config, n.info, warnDeprecated, "region for pointer types is deprecated")
         addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, t)
     if tfPartial in result.flags:

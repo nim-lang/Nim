@@ -542,7 +542,13 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
           # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
           # generated function will be below declared Exception type and circular dependency
           # between Exception and popCurrentExceptionEx function
-          result = genProcHeader(m, magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")) & ";" & result
+
+          let popExSym = magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")
+          if lfDynamicLib in popExSym.loc.flags and sfImportc in popExSym.flags:
+            #  echo popExSym.flags, " ma flags ", popExSym.loc.flags
+            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " & mangleName(m, popExSym) & ";\L" & result
+          else:
+            result = genProcHeader(m, popExSym) & ";\L" & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -964,9 +970,9 @@ proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
 
 proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
   # bugfix: we need to search the type that contains the discriminator:
-  var objtype = objtype
+  var objtype = objtype.skipTypes(abstractPtrs)
   while lookupInRecord(objtype.n, d.name) == nil:
-    objtype = objtype.sons[0]
+    objtype = objtype.sons[0].skipTypes(abstractPtrs)
   if objtype.sym == nil:
     internalError(m.config, d.info, "anonymous obj with discriminator")
   result = "NimDT_$1_$2" % [rope($hashType(objtype)), rope(d.name.s.mangle)]

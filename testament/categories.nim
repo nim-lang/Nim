@@ -97,7 +97,7 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
 
 proc flagTests(r: var TResults, cat: Category, options: string) =
   # --genscript
-  const filename = "tests"/"flags"/"tgenscript"
+  const filename = testsDir/"flags"/"tgenscript"
   const genopts = " --genscript"
   let nimcache = nimcacheDir(filename, genopts, targetC)
   testSpec r, makeTest(filename, genopts, cat)
@@ -356,7 +356,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   ]
 
   for i, test in tests:
-    let filename = "tests" / test.addFileExt("nim")
+    let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
     doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
   # Run the tests.
@@ -425,15 +425,12 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     let contents = readFile(testFile).string
     var testObj = makeTest(testFile, options, cat)
     #[
-    TODO:
+    todo:
     this logic is fragile:
     false positives (if appears in a comment), or false negatives, eg
     `when defined(osx) and isMainModule`.
-    Instead of fixing this, a much better way, is to extend
-    https://github.com/nim-lang/Nim/issues/9581 to stdlib modules as follows:
-    * add these to megatest
-    * patch compiler so `isMainModule` is true when -d:isMainModuleIsAlwaysTrue
-    That'll give speedup benefit, and we don't have to patch stdlib files.
+    Instead of fixing this, see https://github.com/nim-lang/Nim/issues/10045
+    for a much better way.
     ]#
     if "when isMainModule" notin contents:
       testObj.spec.action = actionCompile
@@ -534,7 +531,7 @@ proc `&.?`(a, b: string): string =
   result = if b.startswith(a): b else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
-  let test = "tests" & DirSep &.? cat.string / test
+  let test = testsDir &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
@@ -559,6 +556,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     (spec.targets == {} or spec.targets == {targetC})
 
 proc norm(s: var string) =
+  # equivalent of s/\n+/\n/g (could use a single pass over input if needed)
   while true:
     let tmp = s.replace("\n\n", "\n")
     if tmp == s: break
@@ -566,8 +564,12 @@ proc norm(s: var string) =
   s = s.strip
 
 proc isTestFile*(file: string): bool =
-  let (dir, name, ext) = splitFile(file)
+  let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
+
+proc quoted(a: string): string =
+  # todo: consider moving to system.nim
+  result.addQuoted(a)
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returs a list of tests that have problems
@@ -582,6 +584,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
         if isJoinableSpec(spec):
           specs.add spec
 
+  proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
+  sort(specs, cmp=cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
@@ -591,19 +595,36 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  for runSpec in specs:
-    megatest.add "import r\""
-    megatest.add runSpec.file
-    megatest.add "\"\n"
+  #[
+  TODO(minor):
+  get from Nim cmd
+  put outputGotten.txt, outputGotten.txt, megatest.nim there too
+  delete upon completion, maybe
+  ]# 
+  var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
+  const marker = "megatest:processing: "
+
+  for i, runSpec in specs:
+    let file = runSpec.file
+    let file2 = outDir / ("megatest_" & $i & ".nim")
+    # `include` didn't work with `trecmod2.nim`, so using `import`
+    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
+    createDir(file2.parentDir)
+    writeFile(file2, code)
+    megatest.add "import " & quoted(file2) & "\n"
+    megatest.add "import " & quoted(file) & "\n"
 
   writeFile("megatest.nim", megatest)
 
-  const args = ["c", "-d:testing", "--listCmd", "megatest.nim"]
-  var (buf, exitCode) = execCmdEx2(command = "nim", args = args, options = {poStdErrToStdOut, poUsePath}, input = "")
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  proc onStdout(line: string) = echo line
+  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
+    onStdout = if verboseMegatest: onStdout else: nil)
   if exitCode != 0:
     echo buf
     quit("megatest compilation failed")
 
+  # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")
   if exitCode != 0:
     echo buf
@@ -613,6 +634,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile("outputGotten.txt", buf)
   var outputExpected = ""
   for i, runSpec in specs:
+    outputExpected.add marker & runSpec.file & "\n"
     outputExpected.add runSpec.output.strip
     outputExpected.add '\n'
   norm outputExpected
@@ -621,6 +643,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     writeFile("outputExpected.txt", outputExpected)
     discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
     echo "output different!"
+    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
     quit 1
   else:
     echo "output OK"
@@ -686,7 +709,7 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     var testsRun = 0
 
     var files: seq[string]
-    for file in walkDirRec("tests" & DirSep &.? cat.string):
+    for file in walkDirRec(testsDir &.? cat.string):
         if isTestFile(file): files.add file
     files.sort # give reproducible order
 

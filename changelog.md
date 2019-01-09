@@ -23,7 +23,8 @@
 - The undocumented ``#? strongSpaces`` parsing mode has been removed.
 - The `not` operator is now always a unary operator, this means that code like
   ``assert not isFalse(3)`` compiles.
-
+- `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
+  tree from the symbol declaration instead of just the initializer portion.
 
 #### Breaking changes in the standard library
 
@@ -51,6 +52,8 @@
   `RegexMatch.{captureBounds,captures}[]`.
 
 - splitFile now correctly handles edge cases, see #10047
+
+- `isNil` is no longer false for undefined in the JavaScript backend: now it's true for both nil and undefined. Use `isNull` or `isUndefined` if you need exact equallity: `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
 
 #### Breaking changes in the compiler
 
@@ -131,8 +134,9 @@ proc enumToString*(enums: openArray[enum]): string =
   the `gcsafe` pragma block.
 - added os.getCurrentProcessId()
 - User defined pragmas are now allowed in the pragma blocks
-- Pragma blocks are now longer eliminated from the typed AST tree to preserve
+- Pragma blocks are no longer eliminated from the typed AST tree to preserve
   pragmas for further analysis by macros
+- Custom pragmas are now supported for `var` and `let` symbols.
 
 ### Language changes
 
@@ -141,11 +145,19 @@ proc enumToString*(enums: openArray[enum]): string =
   it's more recognizable and allows tools like github to recognize it as Nim,
   see [#9647](https://github.com/nim-lang/Nim/issues/9647).
   The previous extension will continue to work.
+- Pragma syntax is now consistent. Previous syntax where type pragmas did not
+  follow the type name is now deprecated. Also pragma before generic parameter
+  list is deprecated to be consistent with how pragmas are used with a proc. See
+  [#8514](https://github.com/nim-lang/Nim/issues/8514) and
+  [#1872](https://github.com/nim-lang/Nim/issues/1872) for further details.
+
 
 ### Tool changes
 - `jsondoc` now include a `moduleDescription` field with the module
   description. `jsondoc0` shows comments as it's own objects as shown in the
   documentation.
+- `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
+  un-documented; use `git` instead of relying on backup files.
 
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.

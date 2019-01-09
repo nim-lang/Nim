@@ -2231,14 +2231,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         m.state = csNoMatch
         return
-    
+
     if formal.typ.kind == tyVar:
-      let arg_converter = if arg.kind == nkHiddenDeref: arg[0] else: arg
-      if arg_converter.kind == nkHiddenCallConv:
-        if arg_converter.typ.kind != tyVar:
+      let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
+      if argConverter.kind == nkHiddenCallConv:
+        if argConverter.typ.kind != tyVar:
           m.state = csNoMatch
           m.mutabilityProblem = uint8(f-1)
-          return  
+          return
       elif not n.isLValue:
         m.state = csNoMatch
         m.mutabilityProblem = uint8(f-1)

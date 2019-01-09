@@ -55,8 +55,6 @@ Advanced options:
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
-  --genMapping              generate a mapping file containing
-                            (Nim, mangled) identifier pairs
   --project                 document the whole project (doc2)
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
@@ -78,11 +76,12 @@ Advanced options:
                             strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
+  --oldast:on|off           use old AST for backwards compatibility
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
   --skipProjCfg             do not read the project's configuration file
-  --gc:refc|v2|markAndSweep|boehm|go|none|regions
+  --gc:refc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
@@ -108,3 +107,6 @@ Advanced options:
   --experimental:$1
                             enable experimental language feature
   -v, --version             show detailed version information
+  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+                            works better with `--stackTrace:on`
+                            see also https://nim-lang.github.io/Nim/estp.html

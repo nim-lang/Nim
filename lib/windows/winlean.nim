@@ -516,9 +516,6 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  Timeval* = object
-    tv_sec*, tv_usec*: int32
-
   AddrInfo* = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
@@ -531,6 +528,14 @@ type
 
   SockLen* = cuint
 
+when defined(cpp):
+  type
+    Timeval* {.importc: "timeval", header: "<time.h>".} = object
+      tv_sec*, tv_usec*: int32
+else:
+  type
+    Timeval* = object
+      tv_sec*, tv_usec*: int32
 
 var
   SOMAXCONN* {.importc, header: "winsock2.h".}: cint

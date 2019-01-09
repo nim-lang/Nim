@@ -122,12 +122,8 @@
   only for years in the range 1..9999).
 ]##
 
-
-{.push debugger:off.} # the user does not want to trace a part
-                      # of the standard library!
-
 import
-  strutils, parseutils, algorithm, math, options, strformat
+  strutils, algorithm, math, options, strformat
 
 include "system/inclrtl"
 
@@ -167,7 +163,8 @@ when defined(posix):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
-    tzset()
+    when not defined(valgrind_workaround_10121):
+      tzset()
 
 elif defined(windows):
   import winlean
@@ -304,7 +301,6 @@ const
   secondsInMin = 60
   secondsInHour = 60*60
   secondsInDay = 60*60*24
-  minutesInHour = 60
   rateDiff = 10000000'i64 # 100 nsecs
   # The number of hectonanoseconds between 1601/01/01 (windows epoch)
   # and 1970/01/01 (unix epoch).
@@ -1602,6 +1598,12 @@ type
       ## be encoded as ``@[Lit.byte, 3.byte, 'f'.byte, 'o'.byte, 'o'.byte]``.
     formatStr: string
 
+  TimeParseError* = object of ValueError ## \
+    ## Raised when parsing input using a ``TimeFormat`` fails.
+
+  TimeFormatParseError* = object of ValueError ## \
+    ## Raised when parsing a ``TimeFormat`` string fails.
+
 const FormatLiterals = { ' ', '-', '/', ':', '(', ')', '[', ']', ',' }
 
 proc `$`*(f: TimeFormat): string =
@@ -1612,8 +1614,33 @@ proc `$`*(f: TimeFormat): string =
   f.formatStr
 
 proc raiseParseException(f: TimeFormat, input: string, msg: string) =
-  raise newException(ValueError,
+  raise newException(TimeParseError,
                      &"Failed to parse '{input}' with format '{f}'. {msg}")
+
+proc parseInt(s: string, b: var int, start = 0, maxLen = int.high,
+              allowSign = false): int =
+  var sign = -1
+  var i = start
+  let stop = start + min(s.high - start + 1, maxLen) - 1
+  if allowSign and i <= stop:
+    if s[i] == '+':
+      inc(i)
+    elif s[i] == '-':
+      inc(i)
+      sign = 1
+  if i <= stop and s[i] in {'0'..'9'}:
+    b = 0
+    while i <= stop and s[i] in {'0'..'9'}:
+      let c = ord(s[i]) - ord('0')
+      if b >= (low(int) + c) div 10:
+        b = b * 10 - c
+      else:
+        return 0
+      inc(i)
+    if sign == -1 and b == low(int):
+      return 0
+    b = b * sign
+    result = i - start
 
 iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
   var i = 0
@@ -1639,7 +1666,7 @@ iterator tokens(f: string): tuple[kind: FormatTokenKind, token: string] =
           i.inc
 
         if i > f.high:
-          raise newException(ValueError,
+          raise newException(TimeFormatParseError,
                              &"Unclosed ' in time format string. " &
                              "For a literal ', use ''.")
         i.inc
@@ -1696,7 +1723,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "zzz": result = zzz
   of "zzzz": result = zzzz
   of "g": result = g
-  else: raise newException(ValueError, &"'{str}' is not a valid pattern")
+  else: raise newException(TimeFormatParseError,
+                           &"'{str}' is not a valid pattern")
 
 proc initTimeFormat*(format: string): TimeFormat =
   ## Construct a new time format for parsing & formatting time types.
@@ -1715,7 +1743,7 @@ proc initTimeFormat*(format: string): TimeFormat =
       else:
         result.patterns.add(FormatPattern.Lit.byte)
         if token.len > 255:
-          raise newException(ValueError,
+          raise newException(TimeFormatParseError,
                              "Format literal is to long:" & token)
         result.patterns.add(token.len.byte)
         for c in token:
@@ -1833,15 +1861,10 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string) =
 
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
                   parsed: var ParsedTime): bool =
-  template takeInt(allowedWidth: Slice[int]): int =
+  template takeInt(allowedWidth: Slice[int], allowSign = false): int =
     var sv: int
-    let max = i + allowedWidth.b - 1
-    var pd =
-      if max > input.high:
-        parseInt(input, sv, i)
-      else:
-        parseInt(input[i..max], sv)
-    if pd notin allowedWidth:
+    var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
+    if pd < allowedWidth.a:
       return false
     i.inc pd
     sv
@@ -1853,11 +1876,13 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
 
   case pattern
   of d:
-    parsed.monthday = some(takeInt(1..2))
-    result = parsed.monthday.get() in MonthdayRange
+    let monthday = takeInt(1..2)
+    parsed.monthday = some(monthday)
+    result = monthday in MonthdayRange
   of dd:
-    parsed.monthday = some(takeInt(2..2))
-    result = parsed.monthday.get() in MonthdayRange
+    let monthday = takeInt(2..2)
+    parsed.monthday = some(monthday)
+    result = monthday in MonthdayRange
   of ddd:
     result = input.substr(i, i+2).toLowerAscii() in [
       "sun", "mon", "tue", "wed", "thu", "fri", "sat"]
@@ -1993,7 +2018,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
   of yyyy:
     let year =
       if input[i] in { '+', '-' }:
-        takeInt(4..high(int))
+        takeInt(4..high(int), allowSign = true)
       else:
         takeInt(4..4)
     result = year > 0
@@ -2005,12 +2030,12 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
   of uuuu:
     let year =
       if input[i] in { '+', '-' }:
-        takeInt(4..high(int))
+        takeInt(4..high(int), allowSign = true)
       else:
         takeInt(4..4)
     parsed.year = some(year)
   of UUUU:
-    parsed.year = some(takeInt(1..high(int)))
+    parsed.year = some(takeInt(1..high(int), allowSign = true))
   of z, zz, zzz, zzzz:
     case input[i]
     of '+', '-':
@@ -2055,9 +2080,8 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     else:
       result = false
   of y, yyy, yyyyy:
-    raise newException(ValueError,
-                      &"The pattern '{pattern}' is only valid for formatting")
-  of Lit: assert false # Can't happen
+    raiseAssert "Pattern is invalid for parsing: " & $pattern
+  of Lit: doAssert false, "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
@@ -2147,7 +2171,8 @@ proc format*(dt: DateTime, f: TimeFormat): string {.raises: [].} =
       formatPattern(dt, f.patterns[idx].FormatPattern, result = result)
       idx.inc
 
-proc format*(dt: DateTime, f: string): string =
+proc format*(dt: DateTime, f: string): string
+    {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format ``dt``.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
@@ -2163,7 +2188,8 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: string, zone: Timezone = local()): string
+    {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to format
   ## ``time``. Will use the timezone specified by ``zone``.
   ##
@@ -2175,13 +2201,14 @@ proc format*(time: Time, f: string, zone: Timezone = local()): string {.tags: []
     doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc()) == "1970-01-01T00:00:00"
   time.inZone(zone).format(f)
 
-proc format*(time: Time, f: static[string],
-             zone: Timezone = local()): string {.tags: [].} =
+proc format*(time: Time, f: static[string], zone: Timezone = local()): string
+    {.raises: [].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
   result = time.inZone(zone).format(f2)
 
-proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime =
+proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime
+    {.raises: [TimeParseError, Defect].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
@@ -2221,7 +2248,8 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local()): DateTime =
 
   result = toDateTime(parsed, zone, f, input)
 
-proc parse*(input, f: string, tz: Timezone = local()): DateTime =
+proc parse*(input, f: string, tz: Timezone = local()): DateTime
+    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
   ##
@@ -2233,12 +2261,14 @@ proc parse*(input, f: string, tz: Timezone = local()): DateTime =
   let dtFormat = initTimeFormat(f)
   result = input.parse(dtFormat, tz)
 
-proc parse*(input: string, f: static[string], zone: Timezone = local()): DateTime =
+proc parse*(input: string, f: static[string], zone: Timezone = local()): DateTime
+    {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone)
 
-proc parseTime*(input, f: string, zone: Timezone): Time =
+proc parseTime*(input, f: string, zone: Timezone): Time
+    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``, then converting it a ``Time``.
   ##
@@ -2249,7 +2279,8 @@ proc parseTime*(input, f: string, zone: Timezone): Time =
     doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", utc()) == fromUnix(0)
   parse(input, f, zone).toTime()
 
-proc parseTime*(input: string, f: static[string], zone: Timezone): Time =
+proc parseTime*(input: string, f: static[string], zone: Timezone): Time
+    {.raises: [TimeParseError, Defect].} =
   ## Overload that validates ``format`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()
@@ -2274,8 +2305,6 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
     let tm = dt.toTime()
     doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
   $time.local
-
-{.pop.}
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.

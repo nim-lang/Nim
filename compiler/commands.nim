@@ -224,7 +224,7 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     case arg.normalize
     of "boehm":        result = conf.selectedGC == gcBoehm
     of "refc":         result = conf.selectedGC == gcRefc
-    of "v2":           result = conf.selectedGC == gcV2
+    of "v2":           result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
     of "destructors":  result = conf.selectedGC == gcDestructors
@@ -291,6 +291,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "patterns": result = contains(conf.options, optPatterns)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs": result = contains(conf.options, optNilSeqs)
+  of "oldast": result = contains(conf.options, optOldAst)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -442,7 +443,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "refc":
       conf.selectedGC = gcRefc
     of "v2":
-      conf.selectedGC = gcV2
+      message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
     of "markandsweep":
       conf.selectedGC = gcMarkAndSweep
       defineSymbol(conf.symbols, "gcmarkandsweep")
@@ -508,6 +509,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, errOnOrOffExpectedButXFound % arg)
   of "laxstrings": processOnOffSwitch(conf, {optLaxStrings}, arg, pass, info)
   of "nilseqs": processOnOffSwitch(conf, {optNilSeqs}, arg, pass, info)
+  of "oldast": processOnOffSwitch(conf, {optOldAst}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(conf, ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch(conf, {optNaNCheck, optInfCheck}, arg, pass, info)

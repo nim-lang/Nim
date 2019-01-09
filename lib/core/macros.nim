@@ -1403,8 +1403,14 @@ proc customPragmaNode(n: NimNode): NimNode =
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
+    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
     else:
-      return typ.getImpl()[0][1]
+      let timpl = typ.getImpl()
+      if timpl.len>0 and timpl[0].len>1:
+        return timpl[0][1]
+      else:
+        return timpl
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])

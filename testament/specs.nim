@@ -9,7 +9,7 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-var compilerPrefix* = "compiler" / "nim"
+var compilerPrefix* = "compiler" / "nim"  ## built via ./koch tests
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")

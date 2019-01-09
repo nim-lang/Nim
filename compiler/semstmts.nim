@@ -315,14 +315,24 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
-  suggestSym(c.config, n.info, result, c.graph.usageSym)
+  let info = case n.kind
+             of nkPostfix:
+               n.sons[1].info
+             of nkPragmaExpr:
+               if n.sons[0].kind == nkPostfix:
+                 n.sons[0].sons[1].info
+               else:
+                 n.sons[0].info
+             else:
+               n.info
+  suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportC} * v.flags == {sfGlobal} and
       {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
-    if v.ast.isNil:
+    if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
-    elif tfNotNil in v.typ.flags and tfNotNil notin v.ast.typ.flags:
+    elif tfNotNil in v.typ.flags and tfNotNil notin v.astdef.typ.flags:
       message(c.config, v.info, warnProveInit, v.name.s)
 
 include semasgn
@@ -508,8 +518,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
               message(c.config, a.info, warnShadowIdent, v.name.s)
       if a.kind != nkVarTuple:
         if def.kind != nkEmpty:
-          # this is needed for the evaluation pass and for the guard checking:
-          v.ast = def
           if sfThread in v.flags: localError(c.config, def.info, errThreadvarCannotInit)
         setVarType(c, v, typ)
         b = newNodeI(nkIdentDefs, a.info)
@@ -518,6 +526,23 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(b, a.sons[length-2])
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
+        if optOldAst in c.config.options:
+          if def.kind != nkEmpty:
+            v.ast = def
+        else:
+          # this is needed for the evaluation pass, guard checking
+          #  and custom pragmas:
+          var ast = newNodeI(nkIdentDefs, a.info)
+          if a[j].kind == nkPragmaExpr:
+            var p = newNodeI(nkPragmaExpr, a.info)
+            p.add newSymNode(v)
+            p.add a[j][1].copyTree
+            ast.add p
+          else:
+            ast.add newSymNode(v)
+          ast.add a.sons[length-2].copyTree
+          ast.add def
+          v.ast = ast
       else:
         if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
         # bug #7663, for 'nim check' this can be a non-tuple:
@@ -535,6 +560,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
+  inc c.inStaticContext
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
@@ -567,7 +593,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.kind == nkVarTuple:
       if typ.kind != tyTuple:
         localError(c.config, a.info, errXExpected, "tuple")
-      elif int(length/2) != sonsLen(typ):
+      elif length-2 != sonsLen(typ):
         localError(c.config, a.info, errWrongNumberOfVariables)
       b = newNodeI(nkVarTuple, a.info)
       newSons(b, length)
@@ -593,6 +619,7 @@ proc semConst(c: PContext, n: PNode): PNode =
         v.ast = def[j]
         b.sons[j] = newSymNode(v)
     addSon(result,b)
+  dec c.inStaticContext
 
 include semfields
 
@@ -1085,6 +1112,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner(c)
+    if sfExportc in s.flags and s.typ.kind == tyAlias:
+      localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
     if aa.kind in {nkRefTy, nkPtrTy} and aa.len == 1 and
        aa.sons[0].kind == nkObjectTy:
@@ -1566,7 +1595,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
           foundObj = true
           x.methods.add((col,s))
     if not foundObj:
-      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type")
+      message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
   else:
     # why check for the body? bug #2400 has none. Checking for sfForward makes
     # no sense either.

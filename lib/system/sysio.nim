@@ -74,10 +74,21 @@ proc raiseEIO(msg: string) {.noinline, noreturn.} =
 proc raiseEOF() {.noinline, noreturn.} =
   sysFatal(EOFError, "EOF reached")
 
+proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
+
+when not defined(NimScript):
+  var
+    errno {.importc, header: "<errno.h>".}: cint ## error variable
+
 proc checkErr(f: File) =
-  if c_ferror(f) != 0:
-    c_clearerr(f)
-    raiseEIO("Unknown IO Error")
+  when not defined(NimScript):
+    if c_ferror(f) != 0:
+      let msg = "errno: " & $errno & " `" & $strerror(errno) & "`"
+      c_clearerr(f)
+      raiseEIO(msg)
+  else:
+    # shouldn't happen
+    quit(1)
 
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =

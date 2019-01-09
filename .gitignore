@@ -71,3 +71,7 @@ test.txt
 tweeter.db
 tweeter_test.db
 megatest.nim
+
+/outputExpected.txt
+/outputGotten.txt
+

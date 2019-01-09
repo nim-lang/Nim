@@ -17,8 +17,10 @@ import
 var useColors = true
 var backendLogging = true
 var simulate = false
+var verboseMegatest = false # very verbose but can be useful
 
 const
+  testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
@@ -34,6 +36,7 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --verboseMegatest         log to stdout megatetest compilation
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
@@ -83,7 +86,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, onStdout: proc(line: string) = nil): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
@@ -103,6 +106,7 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
     if outp.readLine(line):
       result[0].string.add(line.string)
       result[0].string.add("\n")
+      if onStdout != nil: onStdout(line.string)
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break
@@ -517,8 +521,6 @@ else:
 
 include categories
 
-const testsDir = "tests" & DirSep
-
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
@@ -533,6 +535,7 @@ proc main() =
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
+    of "verbosemegatest": verboseMegatest = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":

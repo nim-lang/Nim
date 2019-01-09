@@ -26,6 +26,6 @@ build_nim_csources(){
 
 [ -f $nim_csources ] || echo_run build_nim_csources
 
-echo_run bin/nim c koch
+echo_run bin/nim c koch # Note: if fails, may need to `cd csources && git pull`
 echo_run ./koch boot -d:release
 echo_run ./koch tools # Compile Nimble and other tools.

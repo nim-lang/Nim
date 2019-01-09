@@ -111,7 +111,7 @@
 ##     dict.writeConfig("config.ini")
 
 import
-  hashes, strutils, lexbase, streams, tables
+  strutils, lexbase, streams, tables
 
 include "system/inclrtl"
 

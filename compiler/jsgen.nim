@@ -1884,12 +1884,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLtStr:
     binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
   of mIsNil:
+    # we want to accept undefined, so we ==
     if mapType(n[1].typ) != etyBaseIndex:
-      unaryExpr(p, n, r, "", "($1 === null)")
+      unaryExpr(p, n, r, "", "($1 == null)")
     else:
       var x: TCompRes
       gen(p, n[1], x)
-      r.res = "($# === null && $# === 0)" % [x.address, x.res]
+      r.res = "($# == null && $# === 0)" % [x.address, x.res]
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n.sons[1], r)
@@ -1922,7 +1923,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1 === null ? $3 = mnewString($2) : $3.length = $2)")
+    binaryExpr(p, n, r, "mnewString", "($1 == null ? $3 = mnewString($2) : $3.length = $2)")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)

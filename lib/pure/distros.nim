@@ -141,8 +141,8 @@ template unameRelease(cmd, cache): untyped =
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -a", unameRes)
-template release(): untyped = unameRelease("lsb_release -a", releaseRes)
+template uname(): untyped = unameRelease("uname -o", unameRes)
+template release(): untyped = unameRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsImpl(d: Distribution): bool =
@@ -173,7 +173,7 @@ proc detectOsImpl(d: Distribution): bool =
     result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or dd in toLowerAscii(hostnamectl())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the

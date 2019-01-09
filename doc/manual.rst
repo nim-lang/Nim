@@ -480,7 +480,6 @@ The type suffixes are:
   ``'d``             float64
   ``'f32``           float32
   ``'f64``           float64
-  ``'f128``          float128
 =================    =========================
 
 Floating point literals may also be in binary, octal or hexadecimal
@@ -1587,7 +1586,7 @@ details like this when mixing garbage collected data with unmanaged memory.
 Not nil annotation
 ------------------
 
-All types for that ``nil`` is a valid value can be annotated to
+All types for which ``nil`` is a valid value can be annotated to
 exclude ``nil`` as a valid value with the ``not nil`` annotation:
 
 .. code-block:: nim
@@ -1664,12 +1663,12 @@ Nim supports these `calling conventions`:idx:\:
     and another one for the pointer to implicitly passed environment.
 
 `stdcall`:idx:
-    This the stdcall convention as specified by Microsoft. The generated C
+    This is the stdcall convention as specified by Microsoft. The generated C
     procedure is declared with the ``__stdcall`` keyword.
 
 `cdecl`:idx:
     The cdecl convention means that a procedure shall use the same convention
-    as the C compiler. Under windows the generated C procedure is declared with
+    as the C compiler. Under Windows the generated C procedure is declared with
     the ``__cdecl`` keyword.
 
 `safecall`:idx:

@@ -40,7 +40,8 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optHotCodeReloading,
     optLaxStrings,
-    optNilSeqs
+    optNilSeqs,
+    optOldAst
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -77,7 +78,7 @@ type                          # please make sure we have under 32 options
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths
+    optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
     optDynlibOverrideAll
 
@@ -252,84 +253,6 @@ template depConfigFields*(fn) {.dirty.} =
   fn(options)
   fn(globalOptions)
   fn(selectedGC)
-
-proc mergeConfigs*(dest, src: ConfigRef; mergeSymbols: bool) =
-  template merge[T: enum](a, b: T) =
-    a = b
-  template merge[T](a, b: set[T]) =
-    a = a + b
-  template merge(a, b: int) =
-    inc a, b
-  template merge[T](a, b: seq[T]) =
-    for bb in b: a.add b
-  template merge(a, b: string) =
-    a = b
-  template merge[T: AbsoluteFile|AbsoluteDir](a, b: T) =
-    if a.isEmpty and not b.isEmpty: a = b
-
-  template merge[T](a, b: HashSet[T]) =
-    for bb in b: a.incl b
-  template merge(a, b: StringTableRef) =
-    for k, v in b: a[k] = v
-  template merge[T: object](a, b: T) =
-    a = b
-
-  template m(field) =
-    merge(dest.field, src.field)
-
-  m target
-  m options
-  m globalOptions
-  m cmd
-  m selectedGC
-  dest.verbosity = src.verbosity
-  m numberOfProcessors
-  m evalExpr
-  m symbolFiles
-  m cppDefines
-  m headerFile
-  m features
-  m arguments
-  m ideCmd
-  m cCompiler
-  m enableNotes
-  m disableNotes
-  m foreignPackageNotes
-  m notes
-  m errorCounter
-  m hintCounter
-  m warnCounter
-  m errorMax
-  m configVars
-  if mergeSymbols:
-    m symbols
-  m projectName
-  m projectPath
-  m projectFull
-  m searchPaths
-  m lazyPaths
-  m outFile
-  m prefixDir
-  m libpath
-  m nimcacheDir
-  m dllOverrides
-  m moduleOverrides
-  m command
-  m commandArgs
-  m implicitImports
-  m implicitIncludes
-  m docSeeSrcUrl
-  m cIncludes
-  m cLibs
-  m cLinkedLibs
-  m externalToLink
-  m linkOptionsCmd
-  m compileOptionsCmd
-  m linkOptions
-  m compileOptions
-  m ccompilerpath
-  m toCompile
-  m cppCustomNamespace
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -559,16 +482,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
-  # case corrections, so we have to use this convoluted way of retrieving
-  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
-  # of 'import uri'):
-  when defined(windows):
-    result = AbsoluteFile path.string.expandFilename
-    for x in walkFiles(result.string):
-      return AbsoluteFile x
-  else:
-    result = AbsoluteFile path.string.expandFilename
+  result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =

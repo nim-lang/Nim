@@ -6,6 +6,7 @@ Multiple idents in except
 Multiple except branches
 Multiple except branches 2
 '''
+targets: "c"
 """
 import asyncdispatch, strutils
 
