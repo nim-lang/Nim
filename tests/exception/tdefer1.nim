@@ -1,6 +1,5 @@
 discard """
   output: '''hi
-hi
 1
 hi
 2
@@ -9,13 +8,6 @@ A'''
 """
 
 # bug #1742
-
-template test(): untyped =
-    let a = 0
-    defer: echo "hi"
-    a
-
-let i = test()
 
 import strutils
 let x = try: parseInt("133a")
@@ -31,7 +23,7 @@ template atFuncEnd =
 
 template testB(): untyped =
     let a = 0
-    defer: echo "hi" # Delete this line to make it work
+    defer: echo "hi"
     a
 
 proc main =

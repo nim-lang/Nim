@@ -26,6 +26,7 @@ import
 import tools / kochdocs
 
 const VersionAsString = system.NimVersion
+const env_NIM_COMPILE_TO_CPP = "NIM_COMPILE_TO_CPP"
 
 const
   HelpText = """
@@ -56,6 +57,7 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
+  runCI                    runs continuous integration (CI), eg from travis
   docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -272,8 +274,9 @@ proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let defaultCommand = if getEnv("NIM_COMPILE_TO_CPP", "false") == "true": "cpp" else: "c"
+  let defaultCommand = if getEnv(env_NIM_COMPILE_TO_CPP, "false") == "true": "cpp" else: "c"
   let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
+  echo "boot: defaultCommand: ", defaultCommand, " bootOptions: ", bootOptions
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
@@ -352,8 +355,8 @@ proc winReleaseArch(arch: string) =
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --cpu:$# koch" % cpu
-    exec "koch boot -d:release --cpu:$#" % cpu
-    exec "koch --latest zip -d:release"
+    kochExec "boot -d:release --cpu:$#" % cpu
+    kochExec "--latest zip -d:release"
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -428,6 +431,42 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+proc runCI(cmd: string) =
+  doAssert cmd.len == 0, cmd # avoid silently ignoring
+  echo "runCI:", cmd
+  # note(@araq): Do not replace these commands with direct calls (eg boot())
+  # as that would weaken our testing efforts.
+  when defined(posix): # appveyor (on windows) didn't run this
+    # todo: implement `execWithEnv`
+    exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
+  kochExec "boot -d:release"
+  kochExec "nimble"
+  exec "nim e tests/test_nimscript.nims"
+
+  when false:
+    for pkg in "zip opengl sdl1 jester@#head niminst".split:
+      exec "nimble install -y" & pkg
+
+  when defined(windows):
+    # note: will be over-written below
+    exec "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester"
+    when false:
+      kochExec "csource"
+      kochExec "zip"
+
+  # main bottleneck: runs all main tests
+  exec "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines"
+  exec "nim c -r nimdoc/tester"
+
+  nimCompile "nimpretty/nimpretty.nim"
+  exec "nim c -r nimpretty/tester.nim"
+
+  when defined(posix):
+    kochExec "docs --git.commit:devel"
+    kochExec "csource"
+    kochExec "nimsuggest"
+    exec "nim c -r nimsuggest/tester"
+
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
@@ -475,8 +514,7 @@ proc testUnixInstall(cmdLineRest: string) =
       execCleanPath("./koch --latest tools")
       # check the tests work:
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
-      execCleanPath("./koch tests", destDir / "bin")
-      #execCleanPath("./koch tests cat newconfig", destDir / "bin")
+      execCleanPath("./koch tests cat megatest", destDir / "bin")
     else:
       echo "Version check: failure"
   finally:
@@ -537,6 +575,7 @@ when isMainModule:
       of "distrohelper": geninstall()
       of "install": install(op.cmdLineRest)
       of "testinstall": testUnixInstall(op.cmdLineRest)
+      of "runci": runCI(op.cmdLineRest)
       of "test", "tests": tests(op.cmdLineRest)
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
