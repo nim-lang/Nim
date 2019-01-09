@@ -207,26 +207,6 @@ proc withComment(p: TParser; node: PNode; comment: string): PNode =
     )
     localWarning(p.lex.config, info, "cannot attach documentation comment \"$1\" to node \"$2\"" % [comment, renderTree(node)])
 
-proc docComment(p: var TParser; d: PNode) =
-  if p.tok.tokType == tkComment:
-    if p.tok.indent < 0 or realInd(p):
-      if d == nil:
-        parMessage(p, "there is no declaration the doc comment could refer to")
-      else:
-        var decl = if d.kind == nkPragmaExpr: d[0] else: d
-        assert decl.kind == nkExportDoc
-        assert decl.len == 3
-        if decl[2].kind == nkEmpty:
-          decl[2] = newNodeP(nkCommentStmt, p)
-        when defined(nimpretty):
-          if p.tok.commentOffsetA < p.tok.commentOffsetB:
-            decl[2].strVal.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
-          else:
-            decl[2].strVal.add p.tok.literal
-        else:
-          decl[2].strVal.add p.tok.literal
-      getTok(p)
-
 proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
