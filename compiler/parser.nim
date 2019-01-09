@@ -85,9 +85,8 @@ proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc parseExprStmt(p: var TParser): PNode
 proc parseBlock(p: var TParser): PNode
-proc primary(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode
-proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode;
-                   typename: PNode): PNode
+proc primary(p: var TParser, mode: TPrimaryMode): PNode
+proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode
 
 # implementation
 
@@ -587,7 +586,7 @@ proc parseGStrLit(p: var TParser, a: PNode): PNode =
     result = a
 
 proc complexOrSimpleStmt(p: var TParser): PNode
-proc simpleExpr(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode
+proc simpleExpr(p: var TParser, mode: TPrimaryMode): PNode
 
 proc semiStmtList(p: var TParser, result: PNode) =
   inc p.inSemiStmtList
@@ -633,7 +632,7 @@ proc parsePar(p: var TParser): PNode =
   elif p.tok.tokType == tkCurlyDotLe:
     result.add(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
-    var a = simpleExpr(p, pmNormal, nil)
+    var a = simpleExpr(p, pmNormal)
     if p.tok.tokType == tkDo:
       result = postExprBlocks(p, a)
     elif p.tok.tokType == tkEquals:
@@ -790,7 +789,7 @@ proc namedParams(p: var TParser, callee: PNode,
 
 proc commandParam(p: var TParser, isFirstParam: var bool; mode: TPrimaryMode): PNode =
   if mode == pmTypeDesc:
-    result = simpleExpr(p, mode, nil)
+    result = simpleExpr(p, mode)
   else:
     result = parseExpr(p)
   if p.tok.tokType == tkDo:
@@ -808,8 +807,7 @@ const
                    tkEnum, tkTuple, tkObject, tkProc}
 
 proc primarySuffix(p: var TParser, r: PNode,
-                   baseIndent: int, mode: TPrimaryMode;
-                  typename: PNode): PNode =
+                   baseIndent: int, mode: TPrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|       | doBlocks
   #|       | '.' optInd symbol generalizedLit?
@@ -832,7 +830,7 @@ proc primarySuffix(p: var TParser, r: PNode,
         if mode == pmTypeDef:
           result = newNodeP(nkCommand, p)
           result.addSon r
-          result.addSon primary(p, pmNormal, typename)
+          result.addSon primary(p, pmNormal)
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
@@ -881,8 +879,7 @@ proc primarySuffix(p: var TParser, r: PNode,
       break
 
 proc parseOperators(p: var TParser, headNode: PNode,
-                    limit: int, mode: TPrimaryMode;
-                    typename: PNode): PNode =
+                    limit: int, mode: TPrimaryMode): PNode =
   result = headNode
   # expand while operators have priorities higher than 'limit'
   var opPrec = getPrecedence(p.tok, false)
@@ -897,28 +894,27 @@ proc parseOperators(p: var TParser, headNode: PNode,
     getTok(p)
     optInd(p, a)
     # read sub-expression with higher priority:
-    var b = simpleExprAux(p, opPrec + leftAssoc, modeB, typename)
+    var b = simpleExprAux(p, opPrec + leftAssoc, modeB)
     addSon(a, opNode)
     addSon(a, result)
     addSon(a, b)
     result = a
     opPrec = getPrecedence(p.tok, false)
 
-proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode;
-                   typename: PNode): PNode =
-  result = primary(p, mode, typename)
+proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
+  result = primary(p, mode)
   if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
      mode == pmNormal:
     var pragmaExp = newNodeP(nkPragmaExpr, p)
     pragmaExp.addSon result
     pragmaExp.addSon p.parsePragma
     result = pragmaExp
-  result = parseOperators(p, result, limit, mode, typename)
+  result = parseOperators(p, result, limit, mode)
 
-proc simpleExpr(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode =
+proc simpleExpr(p: var TParser, mode: TPrimaryMode): PNode =
   when defined(nimpretty2):
     inc p.em.doIndentMore
-  result = simpleExprAux(p, -1, mode, typename)
+  result = simpleExprAux(p, -1, mode)
   when defined(nimpretty2):
     dec p.em.doIndentMore
 
@@ -1231,7 +1227,7 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
   if p.tok.indent != -1 and p.tok.indent <= p.currInd: return
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
-    addSon(result, primary(p, mode, nil))
+    addSon(result, primary(p, mode))
   if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
     # XXX document this feature!
     var nodeKind: TNodeKind
@@ -1278,13 +1274,13 @@ proc parseExpr(p: var TParser): PNode =
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=true)
-  else: result = simpleExpr(p, pmNormal, nil)
+  else: result = simpleExpr(p, pmNormal)
 
 proc parseEnum(p: var TParser): PNode
 proc parseObject(p: var TParser): PNode
 proc parseTypeClass(p: var TParser): PNode
 
-proc primary(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode =
+proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   #| typeKeyw = 'var' | 'out' | 'ref' | 'ptr' | 'shared' | 'tuple'
   #|          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
   #| primary = typeKeyw typeDescK
@@ -1300,10 +1296,10 @@ proc primary(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode =
     if isSigil:
       #XXX prefix operators
       let baseInd = p.lex.currLineIndent
-      addSon(result, primary(p, pmSkipSuffix, typename))
-      result = primarySuffix(p, result, baseInd, mode, typename)
+      addSon(result, primary(p, pmSkipSuffix))
+      result = primarySuffix(p, result, baseInd, mode)
     else:
-      addSon(result, primary(p, pmNormal, typename))
+      addSon(result, primary(p, pmNormal))
     return
 
   case p.tok.tokType:
@@ -1336,7 +1332,7 @@ proc primary(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode =
     result = newNodeP(nkBind, p)
     getTok(p)
     optInd(p, result)
-    addSon(result, primary(p, pmNormal, typename))
+    addSon(result, primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
@@ -1345,7 +1341,7 @@ proc primary(p: var TParser, mode: TPrimaryMode; typename: PNode): PNode =
     let baseInd = p.lex.currLineIndent
     result = identOrLiteral(p, mode)
     if mode != pmSkipSuffix:
-      result = primarySuffix(p, result, baseInd, mode, typename)
+      result = primarySuffix(p, result, baseInd, mode)
 
 proc binaryNot(p: var TParser; a: PNode): PNode =
   if p.tok.tokType == tkNot:
@@ -1362,13 +1358,13 @@ proc binaryNot(p: var TParser; a: PNode): PNode =
 
 proc parseTypeDesc(p: var TParser): PNode =
   #| typeDesc = simpleExpr ('not' expr)?
-  result = simpleExpr(p, pmTypeDesc, nil)
+  result = simpleExpr(p, pmTypeDesc)
   result = binaryNot(p, result)
 
 proc parseTypeDefAux(p: var TParser): PNode =
   #| typeDefAux = simpleExpr ('not' expr)?
   #|            | 'concept' typeClass
-  result = simpleExpr(p, pmTypeDef, nil)
+  result = simpleExpr(p, pmTypeDef)
   result = binaryNot(p, result)
 
 proc makeCall(n: PNode): PNode =
@@ -1460,7 +1456,7 @@ proc parseExprStmt(p: var TParser): PNode =
   #|              doBlocks
   #|               / macroColon
   #|            ))?
-  var a = simpleExpr(p, pmNormal, nil)
+  var a = simpleExpr(p, pmNormal)
   if p.tok.tokType == tkEquals:
     result = newNodeP(nkAsgn, p)
     getTok(p)
@@ -2275,9 +2271,9 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
     if p.tok.tokType == tkParLe:
       getTok(p)
       result = newNodeP(nkTypeOfExpr, p)
-      result.addSon(primary(p, pmTypeDesc, nil))
+      result.addSon(primary(p, pmTypeDesc))
       eat(p, tkParRi)
-      result = parseOperators(p, result, -1, pmNormal, nil)
+      result = parseOperators(p, result, -1, pmNormal)
     else:
       result = parseSection(p, nkTypeSection, parseTypeDef)
   of tkConst: result = parseSection(p, nkConstSection, parseConstant)
