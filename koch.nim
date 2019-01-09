@@ -73,6 +73,11 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
+let kochExe* = os.getAppFilename()
+
+proc kochExec*(cmd: string) =
+  exec kochExe.quoteShell & " " & cmd
+
 template withDir(dir, body) =
   let old = getCurrentDir()
   try:

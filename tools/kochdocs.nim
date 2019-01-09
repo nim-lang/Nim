@@ -51,12 +51,6 @@ proc execCleanPath*(cmd: string,
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
-let kochExe* = os.getAppFilename()
-  # note: assumes `kochdocs` is only used by koch.nim
-
-proc kochExec*(cmd: string) =
-  exec kochExe.quoteShell & " " & cmd
-
 proc nimexec*(cmd: string) =
   # Consider using `nimCompile` instead
   exec findNim() & " " & cmd
