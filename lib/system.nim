@@ -1821,7 +1821,7 @@ proc toInt*(f: float): int {.
   runnableExamples:
     doAssert toInt(0.49) == 0
     doAssert toInt(0.5) == 1
-    doAssert toInt(-0.5) == -1 ## rounding is symmetrical
+    doAssert toInt(-0.5) == -1 # rounding is symmetrical
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
   magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".} =
