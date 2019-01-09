@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Compilerprocs for strings that do not depend on the string implementation.
+# Compilerprocs for strings that do not depend on the string implementation.
 
 proc cmpStrings(a, b: string): int {.inline, compilerProc.} =
   let alen = a.len

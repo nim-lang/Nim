@@ -1043,7 +1043,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skConst:
     markUsed(c.config, n.info, s, c.graph.usageSym)
     onUse(n.info, s)
-    case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
+    let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
+    case typ.kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(c, n, s)
@@ -1061,6 +1062,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # deal with two different ``[]``.
       if s.ast.len == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
+    of tyStatic:
+      if typ.n != nil:
+        result = typ.n
+        result.typ = typ.base
+      else:
+        result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
   of skMacro:
@@ -2328,7 +2335,6 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
 
 proc semExport(c: PContext, n: PNode): PNode =
   result = newNodeI(nkExportStmt, n.info)
-
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2347,6 +2353,9 @@ proc semExport(c: PContext, n: PNode): PNode =
         it = nextIter(ti, s.tab)
     else:
       while s != nil:
+        if s.kind == skEnumField:
+          localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a) &
+            "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule}:
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
@@ -2624,6 +2633,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticStmt:
     result = semStaticStmt(c, n)
   of nkDefer:
+    if c.currentScope == c.topLevelScope:
+      localError(c.config, n.info, "defer statement not supported at top level")
     n.sons[0] = semExpr(c, n.sons[0])
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(c.config, n.info, "'defer' takes a 'void' expression")

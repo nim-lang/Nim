@@ -336,7 +336,7 @@ proc searchExtPos*(path: string): int =
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a filename into (dir, filename, extension).
+  ## Splits a filename into (dir, name, extension).
   ## `dir` does not end in `DirSep`.
   ## `extension` includes the leading dot.
   ##
@@ -945,48 +945,6 @@ when not weirdTarget:
         raise newException(ValueError, "The specified root is not absolute: " & root)
       joinPath(root, path)
 
-proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noNimScript.} =
-  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
-  ## raises OSError in case of an error. Follows symlinks.
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var unused: WideCString = nil
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
-    else:
-      var unused: cstring = nil
-      result = newString(bufsize)
-      while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
-  else:
-    # according to Posix we don't need to allocate space for result pathname.
-    # But we need to free return value with free(3).
-    var r = realpath(filename, nil)
-    if r.isNil:
-      raiseOSError(osLastError())
-    else:
-      result = $r
-      c_free(cast[pointer](r))
-
 proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Normalize a path.
   ##
@@ -1339,8 +1297,10 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(posix):
+  when defined(macosx):
     result = c_system(command) shr 8
+  elif defined(posix):
+    result = WEXITSTATUS(c_system(command))
   else:
     result = c_system(command)
 
@@ -1424,6 +1384,54 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noNimScript
   ## `pattern` is OS dependent, but at least the "\*.ext"
   ## notation is supported.
   walkCommon(pattern, isDir)
+
+proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
+  tags: [ReadDirEffect], noNimScript.} =
+  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
+  ## raises OSError in case of an error. Follows symlinks.
+  when defined(windows):
+    var bufsize = MAX_PATH.int32
+    when useWinUnicode:
+      var unused: WideCString = nil
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
+    else:
+      var unused: cstring = nil
+      result = newString(bufsize)
+      while true:
+        var L = getFullPathNameA(filename, bufsize, result, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
+    # getFullPathName doesn't do case corrections, so we have to use this convoluted
+    # way of retrieving the true filename
+    for x in walkFiles(result.string):
+      result = x
+    if not existsFile(result) and not existsDir(result):
+      raise newException(OSError, "file does not exist")
+  else:
+    # according to Posix we don't need to allocate space for result pathname.
+    # But we need to free return value with free(3).
+    var r = realpath(filename, nil)
+    if r.isNil:
+      raiseOSError(osLastError())
+    else:
+      result = $r
+      c_free(cast[pointer](r))
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.

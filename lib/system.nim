@@ -118,6 +118,22 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
+
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
@@ -1792,21 +1808,26 @@ proc toFloat*(i: int): float {.
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
-  ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
+  ## converts a biggestint `i` into a ``biggestfloat``. If the conversion
   ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
-  magic: "ToInt", noSideEffect, importc: "toInt".}
+  magic: "ToInt", noSideEffect, importc: "toInt".} =
   ## converts a floating point number `f` into an ``int``. Conversion
-  ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `ValueError` is raised.
+  ## rounds `f` half away from 0, see https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
+  ## Note that some floating point numbers (e.g. infinity or even 1e19)
+  ## cannot be accurately converted.
+  runnableExamples:
+    doAssert toInt(0.49) == 0
+    doAssert toInt(0.5) == 1
+    doAssert toInt(-0.5) == -1 ## rounding is symmetrical
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
-  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
-  ## converts a biggestfloat `f` into a ``biggestint``. Conversion
-  ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `ValueError` is raised.
+  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".} =
+  ## Same as `toInt` but for BiggestFloat to ``BiggestInt``.
+  runnableExamples:
+    doAssert toBiggestInt(0.49) == 0
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -2767,8 +2788,8 @@ when not defined(nimscript) and hasAlloc:
 
     when not defined(JS) and not defined(nimscript) and hasAlloc:
       proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
-      ## Expands operating GC stack range to `theStackBottom`. Does nothing
-      ## if current stack bottom is already lower than `theStackBottom`.
+        ## Expands operating GC stack range to `theStackBottom`. Does nothing
+        ## if current stack bottom is already lower than `theStackBottom`.
 
   else:
     template GC_disable* =
@@ -3082,7 +3103,7 @@ when not defined(JS): #and not defined(nimscript):
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
-      # way round.
+      # way around.
       when declared(nimGC_setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
@@ -4334,24 +4355,7 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
-
-when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
-    ## A section you should use to mark `runnable example`:idx: code with.
-    ##
-    ## - In normal debug and release builds code within
-    ##   a ``runnableExamples`` section is ignored.
-    ## - The documentation generator is aware of these examples and considers them
-    ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation the examples are put into an ``$file_example.nim`` file,
-    ##   compiled and tested. The collected examples are
-    ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols.
-else:
-  template runnableExamples*(body: untyped) =
-    discard
-
-template doAssertRaises*(exception, code: untyped): typed =
+template doAssertRaises*(exception: typedesc, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##
@@ -4359,16 +4363,24 @@ template doAssertRaises*(exception, code: untyped): typed =
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
   var wrong = false
-  try:
-    if true:
-      code
-    wrong = true
-  except exception:
-    discard
-  except Exception as exc:
-    raiseAssert(astToStr(exception) &
-                " wasn't raised, another error was raised instead by:\n"&
-                astToStr(code))
+  when Exception is exception:
+    try:
+      if true:
+        code
+      wrong = true
+    except Exception:
+      discard
+  else:
+    try:
+      if true:
+        code
+      wrong = true
+    except exception:
+      discard
+    except Exception as exc:
+      raiseAssert(astToStr(exception) &
+                  " wasn't raised, another error was raised instead by:\n"&
+                  astToStr(code))
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 

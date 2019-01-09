@@ -353,7 +353,7 @@ Define                   Effect
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, ableit prefixing each allocation with
+                         own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
                          This only works with ``gc:none``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime

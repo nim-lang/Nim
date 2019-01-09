@@ -402,6 +402,18 @@ type
 
 assert sizeof(C) == 3
 
+
+type
+  MixedBitsize = object {.packed.}
+    a: uint32
+    b {.bitsize:  8.}: uint8
+    c {.bitsize:  1.}: uint8
+    d {.bitsize:  7.}: uint8
+    e {.bitsize: 16.}: uint16
+    f: uint32
+
+doAssert sizeof(MixedBitsize) == 12
+
 if failed:
   quit("FAIL")
 else:
