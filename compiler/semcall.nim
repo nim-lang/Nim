@@ -290,13 +290,11 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     let sym = n.sons[1].typ.sym
     var typeHint = ""
     if sym == nil:
-      #[
-      Perhaps we're in a `compiles(foo.bar)` expression, or
-      in a concept, eg:
-        ExplainedConcept {.explain.} = concept o
-          o.foo is int
-      We coudl use: `(c.config $ n.sons[1].info)` to get more context.
-      ]#
+      # Perhaps we're in a `compiles(foo.bar)` expression, or
+      # in a concept, eg:
+      #   ExplainedConcept {.explain.} = concept x
+      #     x.foo is int
+      # We coudl use: `(c.config $ n.sons[1].info)` to get more context.
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
