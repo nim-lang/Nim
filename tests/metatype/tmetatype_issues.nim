@@ -9,7 +9,10 @@ asd
 Foo
 Bar
 '''
+joinable: false
 """
+
+# TODO not joinable because of bug mentioned below.
 
 import typetraits, macros
 
@@ -68,8 +71,6 @@ block t3706:
     b = 5.modulo(7)
   echo a + b
 
-
-
 block t3144:
   type IntArray[N: static[int]] = array[N, int]
 
@@ -98,10 +99,13 @@ block t3144:
 
 block t6533:
   type Value[T: static[int]] = typedesc
+  #    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  # BUG!!! typedesc.typ.sym is changed from `typedesc` to `Value`. The
+  # typedesc type itself is changed. the bug is in
+  # `typeSectionRightSidePass` right after `if body != nil`.
+
   proc foo(order: Value[1]): auto = 0
   doAssert foo(Value[1]) == 0
-
-
 
 block t2266:
   proc impl(op: static[int]) = echo "impl 1 called"
