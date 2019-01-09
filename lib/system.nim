@@ -2669,19 +2669,28 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ##     echo "'+' for integers is available"
   discard
 
+include "system/helpers" # for `lineInfoToString`, `isNamedTuple`
+
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: nim
-  ##   $(23, 45) == "(Field0: 23, Field1: 45)"
+  ##   $(23, 45) == "(23, 45)"
+  ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
   var firstElement = true
+  const isNamed = T is object or isNamedTuple(T)
+  when not isNamed:
+    var count = 0
   for name, value in fieldPairs(x):
     if not firstElement: result.add(", ")
-    result.add(name)
-    result.add(": ")
+    when isNamed:
+      result.add(name)
+      result.add(": ")
+    else:
+      count.inc
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
@@ -2691,6 +2700,10 @@ proc `$`*[T: tuple|object](x: T): string =
       firstElement = false
     else:
       result.add("...")
+  when not isNamed:
+    if count == 1:
+      result.add(",") # $(1,) should print as the semantically legal (1,)
+
   result.add(")")
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
@@ -3957,8 +3970,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
   Hide(raiseAssert)(msg)
-
-include "system/helpers" # for `lineInfoToString`
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)

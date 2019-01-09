@@ -1,9 +1,17 @@
 discard """
 errormsg: "generic instantiation too nested"
-file: "system.nim"
 """
 
-# bug #4766
+#[
+bug #4766
+see also: tnested_generic_instantiation.nim
+]#
+
+proc toString*[T](x: T) =
+  for name, value in fieldPairs(x):
+    when compiles(toString(value)):
+      discard
+    toString(value)
 
 type
   Plain = ref object
@@ -16,10 +24,4 @@ converter toWrapped[T](value: T): Wrapped[T] =
   Wrapped[T](value: value)
 
 let result = Plain()
-discard $result
-
-proc foo[T2](a: Wrapped[T2]) =
-  # Error: generic instantiation too nested
-  discard $a
-
-foo(result)
+toString(result)
