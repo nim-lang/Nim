@@ -26,7 +26,6 @@ import
 import tools / kochdocs
 
 const VersionAsString = system.NimVersion
-const env_NIM_COMPILE_TO_CPP = "NIM_COMPILE_TO_CPP"
 
 const
   HelpText = """
@@ -275,7 +274,7 @@ proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let defaultCommand = if getEnv(env_NIM_COMPILE_TO_CPP, "false") == "true": "cpp" else: "c"
+  let defaultCommand = if getEnv("NIM_COMPILE_TO_CPP", "false") == "true": "cpp" else: "c"
   let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
   echo "boot: defaultCommand: ", defaultCommand, " bootOptions: ", bootOptions
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
