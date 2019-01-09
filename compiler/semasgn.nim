@@ -293,22 +293,22 @@ proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: 
   case kind
     of attachedAsgn:
       if baseType.assignment == nil:
-        discard liftBody(c, typ, kind, info)
+        discard liftBody(c, baseType, kind, info)
       typ.assignment = baseType.assignment
       result = typ.assignment
     of attachedSink:
       if baseType.sink == nil:
-        discard liftBody(c, typ, kind, info)
+        discard liftBody(c, baseType, kind, info)
       typ.sink = baseType.sink
       result = typ.sink
     of attachedDeepCopy:
       if baseType.deepCopy == nil:
-        discard liftBody(c, typ, kind, info)
+        discard liftBody(c, baseType, kind, info)
       typ.deepCopy = baseType.deepCopy
       result = typ.deepCopy
     of attachedDestructor:
       if baseType.destructor == nil:
-        discard liftBody(c, typ, kind, info)
+        discard liftBody(c, baseType, kind, info)
       typ.destructor = baseType.destructor
       result = typ.destructor
 
