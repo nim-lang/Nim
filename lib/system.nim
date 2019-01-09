@@ -3237,14 +3237,15 @@ when not defined(JS): #and not defined(nimscript):
 
     proc open*(f: var File, filename: string,
                mode: FileMode = fmRead, bufSize: int = -1): bool {.tags: [],
-               benign.}
+               raises: [], benign.}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
     proc open*(f: var File, filehandle: FileHandle,
-               mode: FileMode = fmRead): bool {.tags: [], benign.}
+               mode: FileMode = fmRead): bool {.tags: [], raises: [],
+               benign.}
       ## Creates a ``File`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
@@ -3253,7 +3254,7 @@ when not defined(JS): #and not defined(nimscript):
                mode: FileMode = fmRead, bufSize: int = -1): File =
       ## Opens a file named `filename` with given `mode`.
       ##
-      ## Default mode is readonly. Raises an ``IO`` exception if the file
+      ## Default mode is readonly. Raises an ``IOError`` if the file
       ## could not be opened.
       if not open(result, filename, mode, bufSize):
         sysFatal(IOError, "cannot open: ", filename)
