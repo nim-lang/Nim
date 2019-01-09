@@ -933,44 +933,74 @@ proc rawGet[A](t: CountTable[A], key: A): int =
     h = nextTry(h, high(t.data))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template ctget(t, key: untyped): untyped =
-  var index = rawGet(t, key)
-  if index >= 0: result = t.data[index].val
-  else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
+                  key: A, val: int): Hash {.discardable.}=
+  var h: Hash = hash(key) and high(data)
+  while data[h].val != 0: h = nextTry(h, high(data))
+  data[h].key = key
+  data[h].val = val
+  return h
 
-template ctGetOrDefault(t, key: untyped, default=0): untyped =
+proc enlarge[A](t: var CountTable[A]) =
+  var n: seq[tuple[key: A, val: int]]
+  newSeq(n, len(t.data) * growthFactor)
+  for i in countup(0, high(t.data)):
+    if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
+    swap(t.data, n)
+
+proc ctInsert[A](t: var CountTable[A], key: A, val: int): Hash {.discardable.}=
+  ## puts a ``(key, value)`` pair into ``t``.
+  assert val >= 0
+  var h = rawGet(t, key)
+  if h >= 0:
+    t.data[h].val = val
+  else:
+    if mustRehash(len(t.data), t.counter): enlarge(t)
+    h = rawInsert(t, t.data, key, val)
+    inc(t.counter)
+    #h = -1 - h
+    #t.data[h].key = key
+    #t.data[h].val = val
+  result = h
+
+template ctget(t, key: untyped, default=0): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
-  ## retrieves the value at ``t[key]``. If ``key`` is not in ``t``,
-  ## Otherwise, 0 is returned
-  ctgetOrDefault(t, key)
+template ctGetOrInsert(t, key: untyped, default=0): untyped =
+  var index = rawGet(t, key)
+  # if key not found
+  if index < 0:
+    index = ctInsert(t, key, default)
+  result = t.data[index].val
 
-proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.} =
-  ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
+proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
+  ## retrieves the value at ``t[key]``.
+  ## If ``key`` is not in ``t``, 0 (the default initialization
+  ## value of ``int``), is returned
   ctget(t, key)
+
+proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.}=
+  ## retrieves the value at ``t[key]``. The value can be modified.
+  ## If ``key`` is not in ``t``, 0 (the default initialization
+  ## value of ``int``), is returned
+  ctGetOrInsert(t, key)
 
 proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
   ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  ## Use ``[]`` instead.
-  ctget(t, key)
+  ## If ``key`` is not in ``t``, 0 (the default initialization
+  ## value of ``int``), is returned
+  ctGetOrInsert(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A): int =
-  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, 0 (the
+  ## retrieves the value at ``t[key]`` if ``key`` is in ``t``. Otherwise, 0 (the
   ## default initialization value of ``int``), is returned.
-  ctgetOrDefault(t, key)
+  ctget(t, key)
 
 proc getOrDefault*[A](t: CountTable[A], key: A, default: int): int =
-  ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, the
+  ## retrieves the value at ``t[key]`` if``key`` is in ``t``. Otherwise, the
   ## integer value of ``default`` is returned.
-  ctGetOrDefault(t, key, default)
+  ctget(t, key, default)
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
   ## returns true iff ``key`` is in the table ``t``.
@@ -980,33 +1010,9 @@ proc contains*[A](t: CountTable[A], key: A): bool =
   ## Alias of ``hasKey`` for use with the ``in`` operator.
   return hasKey[A](t, key)
 
-proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
-                  key: A, val: int) =
-  var h: Hash = hash(key) and high(data)
-  while data[h].val != 0: h = nextTry(h, high(data))
-  data[h].key = key
-  data[h].val = val
-
-proc enlarge[A](t: var CountTable[A]) =
-  var n: seq[tuple[key: A, val: int]]
-  newSeq(n, len(t.data) * growthFactor)
-  for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
-  swap(t.data, n)
-
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a ``(key, value)`` pair into ``t``.
-  assert val >= 0
-  var h = rawGet(t, key)
-  if h >= 0:
-    t.data[h].val = val
-  else:
-    if mustRehash(len(t.data), t.counter): enlarge(t)
-    rawInsert(t, t.data, key, val)
-    inc(t.counter)
-    #h = -1 - h
-    #t.data[h].key = key
-    #t.data[h].val = val
+  ctInsert(t, key, val)
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments ``t[key]`` by ``val``.
@@ -1398,6 +1404,12 @@ when isMainModule:
   block: #10065
     let t = toCountTable("abracadabra")
     doAssert t['z'] == 0
+
+  block: #10065
+    var t_mut = toCountTable("abracadabra")
+    doAssert t_mut['z'] == 0
+    t_mut['z'] = 1
+    doAssert t_mut['z'] == 1
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
