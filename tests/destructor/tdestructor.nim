@@ -1,4 +1,5 @@
 discard """
+  joinable: false
   output: '''----
 myobj constructed
 myobj destroyed
