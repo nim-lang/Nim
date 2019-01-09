@@ -187,7 +187,7 @@ proc copyValue(src: PNode): PNode =
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
@@ -1396,7 +1396,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       case a.kind
-      of {nkStrLit..nkTripleStrLit, nkCommentStmt}:
+      of nkCommentStmt:
+        if a.sonsLen == 0:
+          regs[ra].node.strVal = ""
+        elif a.sonsLen == 1:
+          regs[ra].node.strVal = a.sons[0].strVal
+        else:
+          stackTrace(c, tos, pc, "strVal is ambiguous, comment has $1 children" % $a.sonsLen)
+      of {nkStrLit..nkTripleStrLit}:
         regs[ra].node.strVal = a.strVal
       of nkIdent:
         regs[ra].node.strVal = a.ident.s
@@ -1598,10 +1605,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(rkNode)
-      var dest = regs[ra].node
-      if dest.kind in {nkStrLit..nkTripleStrLit, nkCommentStmt} and
+      let dest = regs[ra].node
+      let strVal = regs[rb].node.strVal
+      if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
-        dest.strVal = regs[rb].node.strVal
+        dest.strVal = strVal
+      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
+        if dest.sonsLen == 0:
+          dest.addSon newStrNode(strVal, dest.info)
+        elif dest.sonsLen == 1:
+          dest.sons[0].strVal = strVal
+        else:
+          stackTrace(c, tos, pc, "strVal is ambiguous, comment has $1 children" % $dest.sonsLen)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
     of opcNNewNimNode:

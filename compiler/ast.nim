@@ -714,7 +714,7 @@ type
       intVal*: BiggestInt
     of nkFloatLit..nkFloat128Lit:
       floatVal*: BiggestFloat
-    of nkStrLit..nkTripleStrLit, nkCommentStmt:
+    of nkStrLit..nkTripleStrLit:
       strVal*: string
     of nkSym:
       sym*: PSym
@@ -1015,7 +1015,7 @@ proc discardSons*(father: PNode)
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
-  if n.kind in {nkNone..nkNilLit, nkCommentStmt}: result = 0
+  if n.kind in {nkNone..nkNilLit}: result = 0
   else: result = len(n.sons)
 
 proc len*(n: PNode): int {.inline.} =
@@ -1283,7 +1283,7 @@ proc treeTraverse(n: PNode; res: var string; level = 0; isLisp = false, indented
     res.add(" " & $n.intVal)
   of nkFloatLit .. nkFloat64Lit:
     res.add(" " & $n.floatVal)
-  of nkStrLit .. nkTripleStrLit, nkCommentStmt:
+  of nkStrLit .. nkTripleStrLit:
     res.add(" " & $n.strVal)
   of nkIdent:
     res.add(" " & $n.ident.s)
@@ -1554,7 +1554,7 @@ proc copyNode*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
 
 proc shallowCopy*(src: PNode): PNode =
@@ -1572,7 +1572,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: newSeq(result.sons, sonsLen(src))
 
 proc copyTree*(src: PNode): PNode =
@@ -1591,7 +1591,7 @@ proc copyTree*(src: PNode): PNode =
   of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):

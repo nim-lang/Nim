@@ -156,18 +156,23 @@ proc withComment(p: TParser; node: PNode; comment: string): PNode =
   case node.kind
   of nkExportDoc:
     assert node.len == 3
-    assert node[2].kind in {nkCommentStmt, nkEmpty}
+    assert node[2].kind in {nkStrLit, nkEmpty}
     if node[2].kind == nkEmpty:
-      node[2] = newNodeP(nkCommentStmt, p)
+      node[2] = newNodeP(nkStrLit, p)
       node[2].strVal = comment
     else:
       node[2].strVal.add comment
     result = node
   of nkCommentStmt:
-    node.strVal.add comment
+    if node.len == 0:
+      let strLit = newNodeP(nkStrLit, p)
+      strLit.strVal = comment
+      node.add strLit
+    else:
+      node.lastSon.strVal.add comment
     result = node
   of nkIdent:
-    var commentNode = newNodeP(nkCommentStmt, p)
+    var commentNode = newNodeP(nkStrLit, p)
     commentNode.strVal = comment
     result = newNodeP(nkExportDoc, p)
     result.add node
@@ -183,7 +188,7 @@ proc withComment(p: TParser; node: PNode; comment: string): PNode =
       # Parser encountered legal doc comment, but no target is
       # specified. This doccomment needs to be discarded, hence the
       # warning.
-      var info  = TLineInfo(
+      var info = TLineInfo(
         line: p.tok.line.uint16,
         col: p.tok.col.int16,
         fileIndex: p.lex.fileIdx
@@ -1820,11 +1825,13 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
     )
     localError(p.lex.config, info, "illegal documentation comment \"$1\" terminates parsing of \"$2\"" % [p.tok.literal, renderTree(result[0])])
 
-
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.strVal = p.tok.literal
+  newStrLit
+  let strLit = newNodeP(nkStrLit, p)
+  strLit.strVal = p.tok.literal
+  result.add  strLit
   getTok(p)
 
 type

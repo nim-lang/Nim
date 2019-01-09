@@ -16,7 +16,7 @@ proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return
   for v in visited:
     if v == n: return true
-  if not (n.kind in {nkEmpty..nkNilLit, nkCommentStmt}):
+  if not (n.kind in {nkEmpty..nkNilLit}):
     visited.add(n)
     for nSon in n.sons:
       if cyclicTreeAux(nSon, visited): return true
