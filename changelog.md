@@ -29,7 +29,9 @@
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
 
-- `options.UnpackError` is no longer a ref type and inherits from `System.Defect` instead of `System.ValueError`.
+- `options.UnpackError` is no longer a ref type and inherits from `system.Defect` instead of `system.ValueError`.
+
+- `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
 - nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
   `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
