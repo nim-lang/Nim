@@ -19,7 +19,7 @@ type
     c: PContext
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
-  if c.field != nil and c.field.typ != nil and c.field.typ.kind == tyVoid:
+  if c.field != nil and isEmptyType(c.field.typ):
     result = newNode(nkEmpty)
     return
   case n.kind

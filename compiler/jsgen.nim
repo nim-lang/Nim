@@ -1503,7 +1503,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
       createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
     # Do not produce code for void types
-    if rec.sym.typ.kind == tyVoid: return
+    if isEmptyType(rec.sym.typ): return
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       output.addf("$#: ", [mangleName(p.module, rec.sym)])
