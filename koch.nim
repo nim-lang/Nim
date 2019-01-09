@@ -437,40 +437,71 @@ proc xtemp(cmd: string) =
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
 
-type CIResult = object
-  numSeen: int
-  numCompileOK: int
-  numCompileFail: int
-  numFail: int
+type Outcome = enum
+  kInvalid,
+  kCompileFail,
+  kCloneFail,
+  kTestFail,
+  kSucces,
 
-proc runCIPackage(data: var CIResult, pkg: string) =
-  echo "runCIPackage:", pkg
-  let pkgOutDir = "nimbleRoot"
-  data.numSeen.inc
-  let cmd = "nimble install --nimbleDir:$# -y $# " % [pkgOutDir, pkg]
-  echo cmd
-  # if true: return
+type TestResult = ref object
+  # we can add further test fields here (eg running time, mem usage etc)
+  pkg: string
+  outcome: Outcome
+
+proc execEcho(cmd: string): bool =
+  echo "running:", cmd
   let status = execShellCmd(cmd)
   if status != 0:
-    data.numCompileFail.inc
-    return
-  data.numCompileOK.inc
+    echo "failed: cmd: ", cmd, " status:", status
+  result = status == 0
 
-  # todo: run `nimble test` for pkg
-  # Note: `nimble test foo` isn't supported
-  # Note: `nimble test` can't be run from `nimble install`' d location
+proc runCIPackage(data: var TestResult) =
+  let pkg = data.pkg
+  echo "runCIPackage:", pkg
+  let pkgInstall = "nimbleRoot"
+  let pkgClone = "nimbleRoot"
+
+  data.outcome = kInvalid
+  let cmd = "nimble install --nimbleDir:$# -y $# " % [pkgInstall, pkg]
+  if not execEcho(cmd):
+    echo "FAILURE: runCIPackage:", pkg
+    data.outcome = kCompileFail
+    return
+
+  withDir pkgClone:
+    let cmd = "nimble develop -y $#" % [pkg]
+    if not execEcho(cmd):
+      data.outcome = kCloneFail
+      return
+
+  withDir pkgClone / pkg:
+    # note: see caveat https://github.com/nim-lang/nimble/issues/558
+    # where `nimble test` suceeds even if no tests are defined.
+    let cmd = "nimble test"
+    if not execEcho(cmd):
+      # data.numTestFail.inc
+      data.outcome = kTestFail
+      return
+
+  data.outcome = kSucces
 
 proc runCIPackages(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCIPackages:", cmd
 
-  var data: CIResult
+  var data: TestResult
+  let pkgs0 = """
+# add more packages here; lines starting with `#` are skipped
 
-  #TODO: jester@#head or jester? etc
-  let pkgs = """
+#TODO: jester@#head or jester? etc
 jester
+
 cligen
+
+# CT failures
 libffi
+
 glob
 nimongo
 nimx
@@ -488,17 +519,43 @@ gnuplot
 nimpb
 lazy
 choosenim
-""".split[0..^2] # remove last (empty) entry
-  
-  echo pkgs
+"""
+
+  var pkgs: seq[string]
+  for a in pkgs0.splitLines:
+    var a = a.strip
+    if a.len == 0: continue
+    if a.startsWith '#': continue
+    pkgs.add a
+
+  echo (pkgs: pkgs)
+
+  var tests: seq[TestResult]
+  type Stats = array[Outcome, int]
+  var stats: Stats
+  proc toStr(a: Stats): string = 
+    result = $(
+        kCompileFail:a[kCompileFail],
+        kCloneFail:a[kCloneFail],
+        kTestFail:a[kTestFail],
+        kSucces:a[kSucces],
+      )
 
   for i,pkg in pkgs:
-    if pkg == "": continue
-    runCIPackage(data, pkg)
-    echo (count:i, n: pkgs.len, data:data)
-
-  echo (final: data)
-  # todo: send a notification, gather stats on failed packages
+    var data = TestResult(pkg:pkg)
+    runCIPackage(data)
+    tests.add data
+    stats[data.outcome].inc
+    if data.outcome != kSucces:
+      echo "FAILURE:CI"
+    echo (count:i, n: pkgs.len, stats:stats.toStr, pkg: pkg, outcome: data.outcome)
+  
+  var failures: seq[string]
+  for a in tests:
+    if a.outcome != kSucces:
+      failures.add a.pkg
+  echo (finalStats:stats.toStr, failures:failures)
+  # consider sending a notification, gather stats on failed packages
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
