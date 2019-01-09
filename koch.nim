@@ -204,8 +204,8 @@ proc buildTools(latest: bool) =
   nimCompile("tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
   nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
-  buildNimble(latest)
   buildNimfind()
+  buildNimble(latest)
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
