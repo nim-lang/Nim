@@ -58,7 +58,10 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
-  runCI                    runs continuous integration (CI), eg from travis
+  runCI                    runs CI (continuous integration)
+                             on travis/appveyor
+                             on select nimble packages
+  runcipackages            runs CI on nimble packages
   docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -433,6 +436,70 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+
+type CIResult = object
+  numSeen: int
+  numCompileOK: int
+  numCompileFail: int
+  numFail: int
+
+proc runCIPackage(data: var CIResult, pkg: string) =
+  echo "runCIPackage:", pkg
+  let pkgOutDir = "nimbleRoot"
+  data.numSeen.inc
+  let cmd = "nimble install --nimbleDir:$# -y $# " % [pkgOutDir, pkg]
+  echo cmd
+  # if true: return
+  let status = execShellCmd(cmd)
+  if status != 0:
+    data.numCompileFail.inc
+    return
+  data.numCompileOK.inc
+
+  # todo: run `nimble test` for pkg
+  # Note: `nimble test foo` isn't supported
+  # Note: `nimble test` can't be run from `nimble install`' d location
+
+proc runCIPackages(cmd: string) =
+  doAssert cmd.len == 0, cmd # avoid silently ignoring
+  echo "runCIPackages:", cmd
+
+  var data: CIResult
+
+  #TODO: jester@#head or jester? etc
+  let pkgs = """
+jester
+cligen
+libffi
+glob
+nimongo
+nimx
+karax
+freeimage
+regex
+nimpy
+zero_functional
+arraymancer
+inim
+c2nim
+sdl1
+iterutils
+gnuplot
+nimpb
+lazy
+choosenim
+""".split[0..^2] # remove last (empty) entry
+  
+  echo pkgs
+
+  for i,pkg in pkgs:
+    if pkg == "": continue
+    runCIPackage(data, pkg)
+    echo (count:i, n: pkgs.len, data:data)
+
+  echo (final: data)
+  # todo: send a notification, gather stats on failed packages
+
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI:", cmd
@@ -474,6 +541,9 @@ proc runCI(cmd: string) =
     when false:
       kochExec "csource"
       kochExec "zip"
+
+  # nimble wide CI; another time bottleneck, that is expected to become more so
+  runCIPackages("")
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -588,6 +658,7 @@ when isMainModule:
       of "install": install(op.cmdLineRest)
       of "testinstall": testUnixInstall(op.cmdLineRest)
       of "runci": runCI(op.cmdLineRest)
+      of "runcipackages": runCIPackages(op.cmdLineRest)
       of "test", "tests": tests(op.cmdLineRest)
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
