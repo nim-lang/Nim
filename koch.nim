@@ -128,9 +128,6 @@ proc bundleNimbleExe(latest: bool) =
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim", options = "-d:release --nilseqs:on")
 
-proc buildNimfind() =
-  nimCompile("tools/nimfind.nim", options = "-d:release")
-
 proc buildNimble(latest: bool) =
   # old installations created nim/nimblepkg/*.nim files. We remove these
   # here so that it cannot cause problems (nimble bug #306):
@@ -204,13 +201,12 @@ proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
-proc buildTools(latest: bool) =
+proc buildTools() =
   bundleNimsuggest()
   nimCompile("tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
   nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
-  buildNimble(latest)
-  buildNimfind()
+  nimCompile("tools/nimfind.nim", options = "-d:release")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
@@ -445,32 +441,38 @@ proc runCI(cmd: string) =
     # todo: implement `execWithEnv`
     exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
   kochExec "boot -d:release"
+
+  ## build nimble early on to enable remainder to depend on it if needed
   kochExec "nimble"
-  exec "nim e tests/test_nimscript.nims"
 
   when false:
     for pkg in "zip opengl sdl1 jester@#head niminst".split:
       exec "nimble install -y" & pkg
 
+  buildTools() # altenatively, kochExec "tools --skipNimble"
+
+  ## run tests
+  exec "nim e tests/test_nimscript.nims"
   when defined(windows):
     # note: will be over-written below
     exec "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester"
-    when false:
-      kochExec "csource"
-      kochExec "zip"
 
-  # main bottleneck: runs all main tests
+  # main bottleneck here
   exec "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines"
+
   exec "nim c -r nimdoc/tester"
-
-  nimCompile "nimpretty/nimpretty.nim"
   exec "nim c -r nimpretty/tester.nim"
+  when defined(posix):
+    exec "nim c -r nimsuggest/tester"
 
+  ## remaining actions
   when defined(posix):
     kochExec "docs --git.commit:devel"
     kochExec "csource"
-    kochExec "nimsuggest"
-    exec "nim c -r nimsuggest/tester"
+  elif defined(windows):
+    when false:
+      kochExec "csource"
+      kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -555,6 +557,10 @@ when isMainModule:
   var op = initOptParser()
   var latest = false
   var stable = false
+  template isLatest(): bool =
+    if stable: false
+    else:
+      existsDir(".git") or latest
   while true:
     op.next()
     case op.kind
@@ -585,13 +591,11 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools()
-      of "nimble":
-        if stable: buildNimble(false)
-        else: buildNimble(existsDir(".git") or latest)
+      of "nimble": buildNimble(isLatest())
       of "nimsuggest": bundleNimsuggest()
       of "tools":
-        if stable: buildTools(false)
-        else: buildTools(existsDir(".git") or latest)
+        buildNimble(isLatest())
+        buildTools()
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       else: showHelp()
