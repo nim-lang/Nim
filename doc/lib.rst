@@ -141,9 +141,6 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
-
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
   Unicode strings.
@@ -233,9 +230,6 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
 
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
@@ -243,9 +237,6 @@ Internet Protocols and Support
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
-
-* `smtp <smtp.html>`_
-  This module implement a simple SMTP client.
 
 * `cookies <cookies.html>`_
   This module contains helper procs for parsing and generating cookies.
@@ -380,12 +371,6 @@ Multimedia support
 
 Miscellaneous
 -------------
-
-* `oids <oids.html>`_
-  An OID is a global ID that consists of a timestamp,
-  a unique counter and a random value. This combination should suffice to
-  produce a globally distributed unique ID. This implementation was extracted
-  from the Mongodb interface and it thus binary compatible with a Mongo OID.
 
 * `endians <endians.html>`_
   This module contains helpers that deal with different byte orders.
