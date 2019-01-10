@@ -98,17 +98,6 @@ Task          Description
 =========     ===================================================
 
 
-If the task runs an external command via ``exec`` it should afterwards call
-``setCommand "nop"`` to tell the Nim compiler that nothing else needs to be
-done:
-
-.. code-block:: nim
-
-  task tests, "test regular expressions":
-    exec "nim c -r tests"
-    setCommand "nop"
-
-
 Look at the module `distros <distros.html>`_ for some support of the
 OS's native package managers.
 
