@@ -46,6 +46,8 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
+  toolsNoNimble            builds Nim related tools (except nimble)
+                           doesn't require network connectivity
   nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
@@ -448,7 +450,7 @@ proc runCI(cmd: string) =
     for pkg in "zip opengl sdl1 jester@#head niminst".split:
       exec "nimble install -y" & pkg
 
-  buildTools() # altenatively, kochExec "tools --skipNimble"
+  buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 
   ## run tests
   exec "nim e tests/test_nimscript.nims"
@@ -592,9 +594,11 @@ when isMainModule:
       of "wintools": bundleWinTools()
       of "nimble": buildNimble(isLatest())
       of "nimsuggest": bundleNimsuggest()
-      of "tools":
-        buildNimble(isLatest())
+      of "toolsnonimble":
         buildTools()
+      of "tools":
+        buildTools()
+        buildNimble(isLatest())
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       else: showHelp()
