@@ -146,12 +146,12 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   for str in args: write(s, str)
   write(s, "\n")
 
-proc read[T](s: Stream, result: var T) =
+proc read*[T](s: Stream, result: var T) =
   ## generic read procedure. Reads `result` from the stream `s`.
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
-proc peek[T](s: Stream, result: var T) =
+proc peek*[T](s: Stream, result: var T) =
   ## generic peek procedure. Peeks `result` from the stream `s`.
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")

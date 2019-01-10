@@ -51,12 +51,6 @@ proc execCleanPath*(cmd: string,
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
-let kochExe* = os.getAppFilename()
-  # note: assumes `kochdocs` is only used by koch.nim
-
-proc kochExec*(cmd: string) =
-  exec kochExe.quoteShell & " " & cmd
-
 proc nimexec*(cmd: string) =
   # Consider using `nimCompile` instead
   exec findNim() & " " & cmd
@@ -167,7 +161,6 @@ lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
 lib/pure/httpclient.nim
-lib/pure/smtp.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
 lib/pure/xmlparser.nim
@@ -177,7 +170,6 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
@@ -195,11 +187,9 @@ lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
-lib/pure/oids.nim
 lib/pure/endians.nim
 lib/pure/uri.nim
 lib/pure/nimprof.nim
