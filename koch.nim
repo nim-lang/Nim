@@ -285,8 +285,13 @@ proc boot(args: string) =
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " $# $# --nimcache:$# compiler" / "nim.nim" % [bootOptions, args,
-        smartNimcache]
+    let extraOption = if i == 0:
+      "--skipUserCfg"
+        # forward compatibility: for bootstrap (1st iteration), avoid user flags
+        # that could break things, see #10030
+    else: ""
+    exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
+      [bootOptions, extraOption, args, smartNimcache]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
