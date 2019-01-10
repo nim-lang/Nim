@@ -26,9 +26,28 @@ previous settings):
    ``$project.nim``. This file can be skipped with the same
    ``--skipProjCfg`` command line option.
 
-The VM cannot deal with ``importc`` because the FFI is not
-available. So the stdlib modules using ``importc`` cannot be used with
-Nim's VM. However, at least the following modules are available:
+Limitations
+=================================
+
+NimScript is subject to some limitations caused by the implementation of the VM
+(virtual machine):
+
+* Nim's FFI (foreign function interface) is not available in NimScript. This
+  means that any stdlib module which relies on ``importc`` can not be used in
+  the VM.
+
+* ``ptr`` operations are are hard to emulate with the symbolic representation
+  the VM uses. They are available and tested extensively but there are bugs left.
+
+* ``var T`` function arguments rely on ``ptr`` operations internally and might
+  also be problematic in some cases.
+
+* More than one level of `ref` is generally not supported (for example, the type 
+  `ref ref int`).
+
+* multimethods are not available.
+
+Given the above restrictions, at least the following modules are available:
 
 * `macros <macros.html>`_
 * `os <os.html>`_
