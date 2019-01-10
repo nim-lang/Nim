@@ -431,7 +431,7 @@ proc xtemp(cmd: string) =
 
 proc runCIPackages(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
-  runCIPackages()
+  runCIPackages(dirOutput = kochExe.parentDir / "build_nimbleci")
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
