@@ -2700,6 +2700,7 @@ proc `$`*[T: tuple|object](x: T): string =
       firstElement = false
     else:
       result.add("...")
+      firstElement = false
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)
