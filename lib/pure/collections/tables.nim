@@ -157,7 +157,8 @@ template get(t, key): untyped =
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
+  if index >= 0:
+    return t.data[index].val
   else:
     when compiles($key):
       raise newException(KeyError, "key not found: " & $key)
@@ -963,7 +964,7 @@ proc ctInsert[A](t: var CountTable[A], key: A, val: int): Hash {.discardable.}=
     #t.data[h].val = val
   result = h
 
-template ctget(t, key: untyped, default=0): untyped =
+template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
@@ -974,31 +975,18 @@ template ctGetOrInsert(t, key: untyped, default=0): untyped =
     index = ctInsert(t, key, default)
   result = t.data[index].val
 
-proc `[]`*[A](t: CountTable[A], key: A): int {.deprecatedGet.} =
-  ## retrieves the value at ``t[key]``.
-  ## If ``key`` is not in ``t``, 0 (the default initialization
-  ## value of ``int``), is returned
-  ctget(t, key)
+proc `[]`*[A](t: CountTable[A], key: A): int =
+  ## Retrieves the value at ``t[key]`` if ``key`` is in ``t``.
+  ## Otherwise ``0`` is returned.
+  ctget(t, key, 0)
 
-proc `[]`*[A](t: var CountTable[A], key: A): var int {.deprecatedGet.}=
-  ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If ``key`` is not in ``t``, 0 (the default initialization
-  ## value of ``int``), is returned
-  ctGetOrInsert(t, key)
+proc mget*[A](t: var CountTable[A], key: A): var int =
+  ## Retrieves the value at ``t[key]``. The value can be modified.
+  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
+  get(t, key)
 
-proc mget*[A](t: var CountTable[A], key: A): var int {.deprecated.} =
-  ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If ``key`` is not in ``t``, 0 (the default initialization
-  ## value of ``int``), is returned
-  ctGetOrInsert(t, key)
-
-proc getOrDefault*[A](t: CountTable[A], key: A): int =
-  ## retrieves the value at ``t[key]`` if ``key`` is in ``t``. Otherwise, 0 (the
-  ## default initialization value of ``int``), is returned.
-  ctget(t, key)
-
-proc getOrDefault*[A](t: CountTable[A], key: A, default: int): int =
-  ## retrieves the value at ``t[key]`` if``key`` is in ``t``. Otherwise, the
+proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
+  ## Retrieves the value at ``t[key]`` if``key`` is in ``t``. Otherwise, the
   ## integer value of ``default`` is returned.
   ctget(t, key, default)
 
@@ -1120,16 +1108,15 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
   for h in 0..high(t.data):
     if t.data[h].val != 0: yield t.data[h].val
 
-proc `[]`*[A](t: CountTableRef[A], key: A): var int {.deprecatedGet.} =
+proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
   result = t[][key]
 
-proc mget*[A](t: CountTableRef[A], key: A): var int {.deprecated.} =
+proc mget*[A](t: CountTableRef[A], key: A): var int =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  ## Use ``[]`` instead.
-  result = t[][key]
+  mget(t[], key)
 
 proc getOrDefault*[A](t: CountTableRef[A], key: A): int =
   ## retrieves the value at ``t[key]`` iff ``key`` is in ``t``. Otherwise, 0 (the
