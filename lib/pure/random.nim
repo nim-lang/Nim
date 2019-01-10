@@ -158,9 +158,13 @@ proc rand*[T](x: HSlice[T, T]): T =
   result = rand(state, x)
 
 proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
-  ## returns a random element from the openarray `a`.
+  ## Returns a random element from the openarray `a`.
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
+
+proc rand*[T: SomeInteger](t: typedesc[T]): T =
+  ## Returns a random integer in the range `low(T)..high(T)`.
+  result = cast[T](state.next)
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
