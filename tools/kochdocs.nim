@@ -161,6 +161,7 @@ lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
 lib/pure/httpclient.nim
+lib/pure/smtp.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
 lib/pure/xmlparser.nim
@@ -190,6 +191,7 @@ lib/pure/memfiles.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
+lib/pure/oids.nim
 lib/pure/endians.nim
 lib/pure/uri.nim
 lib/pure/nimprof.nim

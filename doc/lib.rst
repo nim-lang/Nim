@@ -238,6 +238,9 @@ Internet Protocols and Support
   This module implements a simple HTTP client which supports both synchronous
   and asynchronous retrieval of web pages.
 
+* `smtp <smtp.html>`_
+  This module implement a simple SMTP client.
+
 * `cookies <cookies.html>`_
   This module contains helper procs for parsing and generating cookies.
 
@@ -371,6 +374,12 @@ Multimedia support
 
 Miscellaneous
 -------------
+
+* `oids <oids.html>`_
+  An OID is a global ID that consists of a timestamp,
+  a unique counter and a random value. This combination should suffice to
+  produce a globally distributed unique ID. This implementation was extracted
+  from the Mongodb interface and it thus binary compatible with a Mongo OID.
 
 * `endians <endians.html>`_
   This module contains helpers that deal with different byte orders.
