@@ -30,7 +30,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
       for curr in globalsToInitBeforeAnything:
         appcg(p.module, p.module.initProc.procSec(cpsLocals),
           "\tregisterGlobal($2, \"$1\", sizeof((*$1)), (void**)&$1);$n",
-          rope(curr), getModuleDllPath(p.module.g, v))
+          rope(curr), getModuleDllPath(p.module, v))
 
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
@@ -325,7 +325,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
   if forHcr and targetProc.blocks.len != 1:
     lineCg(targetProc, cpsStmts, "registerGlobal($3, \"$1\", sizeof($2), (void**)&$1);$n",
-           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module.g, v))
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v))
     forHcr = false
   
   # we close and reopen the global if (nim_hcr_do_init_) blocks in the main Init function
@@ -333,7 +333,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
     lineCg(targetProc, cpsStmts, "} if (registerGlobal($3, \"$1\", sizeof($2), (void**)&$1))",
-           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module.g, v))
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v))
     startBlock(targetProc)
   defer:
     if forHcr:

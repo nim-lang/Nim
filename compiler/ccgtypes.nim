@@ -59,7 +59,23 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     var res = s.name.s.mangle
-    if isKeyword(s.name) or m.g.config.cppDefines.contains(res):
+    # Take into account if HCR is on because of the following scenario:
+    #   if a module gets imported and it has some more importc symbols in it,
+    # some param names might recieve the "_0" suffix to distinguish from what
+    # is newly available. That might lead to changes in the C code in nimcache
+    # that contain only a parameter name change, but that is enough to mandate
+    # recompilation of that source file and thus a new shared object will be
+    # relinked. That may lead to a module getting reloaded which wasn't intended
+    # and that may be fatal when parts of the current active callstack when
+    # performCodeReload() was called are from the module being reloaded
+    # unintentionally - example (3 modules which import one another):
+    #   main => proxy => reloadable
+    # we call performCodeReload() in proxy to reload only changes in reloadable
+    # but there is a new import which introduces an importc symbol `socket`
+    # and a function called in main or proxy uses `socket` as a parameter name.
+    # That would lead to either needing to reload `proxy` or to overwrite the
+    # executable file for the main module, which is running (or both!) -> error.
+    if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
       res.add "_0"
     result = res.rope
     s.loc.r = result
@@ -977,8 +993,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   
   if m.hcrOn:
     addf(m.s[cfsVars], "static TNimType* $1;$n", [name])
-    addf(m.s[cfsTypeInit1], "\tregisterGlobal($2, \"$1\", sizeof(TNimType), (void**)&$1);$n",
-         [name, getModuleDllPath(m.g, m.module)])
+    addf(m.hcrCreateTypeInfosProc, "\tregisterGlobal($2, \"$1\", sizeof(TNimType), (void**)&$1);$n",
+         [name, getModuleDllPath(m, m.module)])
   else:
     addf(m.s[cfsVars], "TNimType $1;$n", [name])
 
@@ -1012,9 +1028,9 @@ proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
 
 proc genTNimNodeArray(m: BModule, name: Rope, size: Rope) =
   if m.hcrOn:
-    addf(m.s[cfsTypeInit1], "\tTNimNode** $1;$n", [name])
-    addf(m.s[cfsTypeInit1], "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
-         [name, size, getModuleDllPath(m.g, m.module)])
+    addf(m.s[cfsVars], "static TNimNode** $1;$n", [name])
+    addf(m.hcrCreateTypeInfosProc, "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
+         [name, size, getModuleDllPath(m, m.module)])
   else:
     addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [name, size])
 
@@ -1026,7 +1042,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
     if L == 1:
       genObjectFields(m, typ, origType, n.sons[0], expr, info)
     elif L > 0:
-      var tmp = getTempName(m)
+      var tmp = getTempName(m) & "_" & $L
       genTNimNodeArray(m, tmp, rope(L))
       for i in countup(0, L-1):
         var tmp2 = getNimNode(m)
@@ -1112,7 +1128,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
   var expr = getNimNode(m)
   var length = sonsLen(typ)
   if length > 0:
-    var tmp = getTempName(m)
+    var tmp = getTempName(m) & "_" & $length
     genTNimNodeArray(m, tmp, rope(length))
     for i in countup(0, length - 1):
       var a = typ.sons[i]
@@ -1136,8 +1152,8 @@ proc genEnumInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
   # anyway. We generate a cstring array and a loop over it. Exceptional
   # positions will be reset after the loop.
   genTypeInfoAux(m, typ, typ, name, info)
-  var nodePtrs = getTempName(m)
   var length = sonsLen(typ.n)
+  var nodePtrs = getTempName(m) & "_" & $length
   genTNimNodeArray(m, nodePtrs, rope(length))
   var enumNames, specialCases: Rope
   var firstNimNode = m.typeNodes
@@ -1212,8 +1228,8 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
     if m.hcrOn:
       addf(m.s[cfsVars], "static TNimType* $1;$n", [str])
-      addf(m.s[cfsTypeInit1], "$1 = (TNimType*)getGlobal($2, \"$1\");$n",
-           [str, getModuleDllPath(m.g, ownerModule)])
+      addf(m.s[cfsTypeInit1], "\t$1 = (TNimType*)getGlobal($2, \"$1\");$n",
+           [str, getModuleDllPath(m, ownerModule)])
     else:
       addf(m.s[cfsVars], "extern TNimType $1;$n", [str])
 

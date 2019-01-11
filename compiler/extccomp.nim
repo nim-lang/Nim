@@ -862,9 +862,9 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx]).AbsoluteFile
         var (src, _) = getLinkTarget(conf, mainObjFile)
         var (dst, _) = getLinkTarget(conf, projectfile)
-        # mimic what is being done to the main file in getLinkCmd()
+        # mimic the HCR-specific things being done to the main file in getLinkCmd()
         if optGenDynLib notin conf.globalOptions: src.add ".exe"
-        copyFile(src, dst)
+        copyFileWithPermissions(src, dst)
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string

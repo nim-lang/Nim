@@ -2056,7 +2056,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       # make sure we have pointer-initialising code for hot code reloading
       if not wasDeclared and p.hcrOn:
         addf(p.module.s[cfsDynLibInit], "\t$1 = ($2) getProc($3, \"$1\");$n",
-             [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module.g, prc)])
+             [mangleDynLibProc(prc), getTypeDesc(p.module, prc.loc.t), getModuleDllPath(p.module, prc)])
     genCall(p, e, d)
   of mReset: genReset(p, e)
   of mEcho: genEcho(p, e[1].skipConv)

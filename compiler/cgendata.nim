@@ -151,6 +151,7 @@ type
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
+    hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation

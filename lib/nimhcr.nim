@@ -18,187 +18,183 @@
 ## target. In the host program, all globals and procs are first registered
 ## here with ``registerGlobal`` and ``registerProc`` and then the returned
 ## permanent locations are used in every reference to these symbols onwards.
-
-discard """
-
-== Detailed description:
-
-When code is compiled with the hotCodeReloading option for native targets
-a couple of things happen for all modules in a project:
-- the useNimRtl option is forced (including when building the HCR runtime too)
-- all modules of a target get built into separate shared libraries
-  - the smallest granularity of reloads is modules
-  - for each .c (or .cpp) in the corresponding nimcache folder of the project
-    a shared object is built with the name of the source file + DLL extension
-  - only the main module produces whatever the original project type intends
-    (again in nimcache) and is then copied to its original destination
-  - linking is done in parallel - just like compilation
-- function calls to functions from the same project go through function pointers:
-  - with a few exceptions - see the nonReloadable pragma
-  - the forward declarations of the original functions become function
-    pointers as static globals with the same names
-  - the original function definitions get prefixed with <name>_actual
-  - the function pointers get initialized with the address of the corresponding
-    function in the DatInit of their module through a call to either registerProc
-    or getProc. When being registered, the <name>_actual address is passed to
-    registerProc and a permanent location is returned and assigned to the pointer.
-    This way the implementation (<name>_actual) can change but the address for it
-    will be the same - this works by just updating a jump instruction (trampoline).
-    For functions from other modules getProc is used (after they are registered).
-- globals are initialized only once and their state is preserved
-  - including locals with the {.global.} pragma
-  - their definitions are changed into pointer definitions which are initialized
-    in the DatInit() of their module with calls to registerGlobal (supplying the
-    size of the type that this HCR runtime should allocate) and a bool is returned
-    which when true triggers the initialization code for the global (only once).
-    Globals from other modules: a global pointer coupled with a getGlobal call.
-  - globals which have already been initialized cannot have their values changed
-    by changing their initialization - use a handler or some other mechanism
-  - new globals can be introduced when reloading
-- top-level code (global scope) is executed only once - at the first module load
-- the runtime knows every symbol's module owner (globals and procs)
-- both the RTL and HCR shared libraries need to be near the program for execution
-  - same folder, in the PATH or LD_LIBRARY_PATH env var, etc (depending on OS)
-- the main module is responsible for initializing the HCR runtime
-  - the main module loads the HCR runtime with a call to its HcrInit function
-  - after that a call to initRuntime() is done in the main module which triggers
-    the loading of all modules the main one imports, and doing that for the
-    dependencies of each module recursively. A module is not initialized twice
-    (for example when 2 modules both import a 3rd one). Basically a DFS traversal.
-  - the initialization of a module is comprised of the following steps:
-    - initialize all import dependencies for that module
-    - call HcrInit - sets up the register/get proc/global pointers
-    - call DatInit - usual dat init + register/get procs and get globals
-    - call Init - it does the following multiplexed operations:
-      - register globals (if already registered - then just retrieve pointer)
-      - execute top level scope (only if loaded for the first time)
-  - when modules are loaded the originally built shared libraries get copied in
-    the same folder and the copies are loaded instead of the original files
-  - a module import tree is built in the runtime (and maintained when reloading)
-- performCodeReload
-  - explicitly called by the user - the current active callstack shouldn't contain
-    any functions which are defined in modules that will be reloaded (or crash!).
-    The reason is that old dynalic libraries get unloaded.
-    Example:
-      if A is the main module and it imports B, then only B is reloadable and only
-      if when calling performCodeReload there is no function defined in B in the
-      current active callstack at the point of the call (it has to be done from A)
-  - for reloading to take place the user has to have rebuilt parts of the application
-    without changes affecting the main module in any way - it shouldn't be rebuilt.
-  - to determine what needs to be reloaded the runtime starts traversing the import
-    tree from the root and checks the timestamps of the loaded shared objects
-  - modules that are no longer referenced are unloaded and cleaned up properly
-  - symbols (procs/globals) that have been removed in the code are also cleaned up
-    - so changing the init of a global does nothing, but removing it, reloading,
-      and then re-introducing it with a new initializer works
-  - new modules can be imported, and imports can also be reodereded/removed
-  - hasAnyModuleChanged() can be used to determine if any module needs reloading
-- code in the beforeCodeReload/afterCodeReload handlers is executed on each reload
-  - such handlers can be added and removed
-  - before each reload all "beforeCodeReload" handlers are executed and after
-    that all handlers (including "after") from the particular module are deleted
-  - the order of execution is the same as the order of top-level code execution.
-    Example: if A imports B which imports C, then all handlers in C will be executed
-    first (from top to bottom) followed by all from B and lastly all from A
-  - since new globals can be introduced, the handlers are actually registered
-    when a dummy global is initialized, and on each reload all such dummy globals
-    are removed from the runtime so they can be re-registered with the same name
-    and their init code gets ran which triggers a call to registerHandler
-  - after the reload all "after" handlers are executed the same way as "before"
-
-== TODO - immediate:
-
-- documentation in nimc.rst
-- tests
-  - extend nimhcr_usage with more unit-test-like cases
-  - implement a full runtime-reloadable test case
-- profile
-  - build speed with and without hot code reloading - difference should be small
-  - runtime degradation of HCR-enabled code - important!!!
-
-== TODO - after first merge in upstream Nim:
-
-- migrate the js target to the new before/afterCodeReload API
-- ARM support for the trampolines
-- implement hasModuleChanged (perhaps with a magic returning SigHash)
-- pdb paths on Windows should be fixed (related to copying .dll files)
-  - absolute hardcoded path to .pdb is the same even for a copied .dll
-  - if a debugger is attached - rebuilding will fail since .pdb files are locked
-  - resources to look into:
-    https://github.com/fungos/cr
-    https://github.com/crosire/blink
-    https://ourmachinery.com/post/little-machines-working-together-part-2/
-    http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
-- investigate:
-  - rethink the closure iterators
-    - ability to keep old versions of dynamic libraries alive
-      - because of async server code
-      - perhaps with refcounting of .dlls for unfinished clojures
-  - possible reload problem:
-    - when static TNimNode arrays in DatInit get resized - already allocated with other size...
-  - linking with static libs
-    - all shared objects for each module will (probably) have to link to them
-      - state in static libs gets duplicated
-      - linking is slow and therefore iteration time
-        - have just a single .dll for all .nim files and bulk reload?
-  - killing the app with Ctrl+C hangs for a few sec on Windows
-    - probably a crash on exit (after SIGINT/SIGTERM) - should investigate
-    - -d:noSignalHandler ...?
-    - initStackBottomWith() ...?
-  - think about constructs such as {.compile: "myfile.cpp".}
-  - GC - deinitGCFrame in Init and everything GC related
-  - lfDynamicLib/lfExportLib - shouldn't add an extra '*' - play with plugins/dlls/lfIndirect
-  - everything thread-local related
-- tests
-  - add a new travis build matrix entry which builds everything with HCR enabled
-    - currently building with useNimRtl is problematic - lots of problems...
-    - how to supply the nimrtl/nimhcr shared objects to all test binaries...?
-    - think about building to C++ instead of only to C - added type safety
-  - run tests through valgrind and the sanitizers! of HUGE importance!
-- cleanup at shutdown - freeing all globals
-
-== TODO - nice to have cool stuff:
-
-- separate handling of global state for much faster reloading and manipulation
-  - imagine sliders in an IDE for tweaking variables
-  - perhaps using shared memory
-- multi-dll projects - how everything can be reloaded..?
-  - a single HCR instance shared across multiple .dlls
-  - instead of having to call performCodeReload from a function in each dll
-    - which currently renders the main module of each dll not reloadable
-- ability to check with the current callstack if a reload is "legal"
-  - if it is in any function which is in a module about to be reloaded ==> error
-- pragma annotations for files - to be excluded from dll shenanigans
-  - for such file-global pragmas look at codeReordering or injectStmt
-  - how would the initialization order be kept? messy...
-  - per function exclude pragmas would be TOO messy and hard...
-- C code calling stable exportc interface of nim code (for binding)
-  - generate proxy functions with the stable names
-    - in a non-reloadable part (the main binary) that call into the function pointers
-    - parameter passing/forwarding - how? use the same trampoline jumping?
-    - extracting the dependencies for these stubs/proxies will be hard...
-- changing memory layout of types - detecting this..?
-  - implement with registerType() call to HCR runtime...?
-    - and checking if a previously registered type matches
-  - issue an error
-    - or let the user handle this by transferring the state properly
-      - perhaps in the before/afterCodeReload handlers
-- optimization: calls to functions within a module to use the _actual versions
-
-== TODO - unimportant:
-
-- have a "bad call" trampoline that all no-longer-present functions are routed to call there
-    - so the user gets some error msg if he calls a dangling pointer instead of a crash
-- before/afterCodeReload and hasModuleChanged should be accessible only where appropriate
-- nim_program_result is inaccessible in HCR mode from external C code (see nimbase.h)
-- proper .json build file - but the format is different... multiple link commands...
-
-== TODO - REPL:
-- let's not get ahead of ourselves... :|
-
-"""
-
-
+##
+## Detailed description:
+##
+## When code is compiled with the hotCodeReloading option for native targets
+## a couple of things happen for all modules in a project:
+## - the useNimRtl option is forced (including when building the HCR runtime too)
+## - all modules of a target get built into separate shared libraries
+##   - the smallest granularity of reloads is modules
+##   - for each .c (or .cpp) in the corresponding nimcache folder of the project
+##     a shared object is built with the name of the source file + DLL extension
+##   - only the main module produces whatever the original project type intends
+##     (again in nimcache) and is then copied to its original destination
+##   - linking is done in parallel - just like compilation
+## - function calls to functions from the same project go through function pointers:
+##   - with a few exceptions - see the nonReloadable pragma
+##   - the forward declarations of the original functions become function
+##     pointers as static globals with the same names
+##   - the original function definitions get prefixed with <name>_actual
+##   - the function pointers get initialized with the address of the corresponding
+##     function in the DatInit of their module through a call to either registerProc
+##     or getProc. When being registered, the <name>_actual address is passed to
+##     registerProc and a permanent location is returned and assigned to the pointer.
+##     This way the implementation (<name>_actual) can change but the address for it
+##     will be the same - this works by just updating a jump instruction (trampoline).
+##     For functions from other modules getProc is used (after they are registered).
+## - globals are initialized only once and their state is preserved
+##   - including locals with the {.global.} pragma
+##   - their definitions are changed into pointer definitions which are initialized
+##     in the DatInit() of their module with calls to registerGlobal (supplying the
+##     size of the type that this HCR runtime should allocate) and a bool is returned
+##     which when true triggers the initialization code for the global (only once).
+##     Globals from other modules: a global pointer coupled with a getGlobal call.
+##   - globals which have already been initialized cannot have their values changed
+##     by changing their initialization - use a handler or some other mechanism
+##   - new globals can be introduced when reloading
+## - top-level code (global scope) is executed only once - at the first module load
+## - the runtime knows every symbol's module owner (globals and procs)
+## - both the RTL and HCR shared libraries need to be near the program for execution
+##   - same folder, in the PATH or LD_LIBRARY_PATH env var, etc (depending on OS)
+## - the main module is responsible for initializing the HCR runtime
+##   - the main module loads the RTL and HCR shared objects
+##   - after that a call to initRuntime() is done in the main module which triggers
+##     the loading of all modules the main one imports, and doing that for the
+##     dependencies of each module recursively. Basically a DFS traversal.
+##   - then initialization takes place with several passes over all modules:
+##     - HcrInit - initializes the pointers for HCR procs such as registerProc
+##     - HcrCreateTypeInfos - creates globals which will be referenced in the next pass
+##     - DatInit - usual dat init + register/get procs and get globals
+##     - Init - it does the following multiplexed operations:
+##       - register globals (if already registered - then just retrieve pointer)
+##       - execute top level scope (only if loaded for the first time)
+##   - when modules are loaded the originally built shared libraries get copied in
+##     the same folder and the copies are loaded instead of the original files
+##   - a module import tree is built in the runtime (and maintained when reloading)
+## - performCodeReload
+##   - explicitly called by the user - the current active callstack shouldn't contain
+##     any functions which are defined in modules that will be reloaded (or crash!).
+##     The reason is that old dynalic libraries get unloaded.
+##     Example:
+##       if A is the main module and it imports B, then only B is reloadable and only
+##       if when calling performCodeReload there is no function defined in B in the
+##       current active callstack at the point of the call (it has to be done from A)
+##   - for reloading to take place the user has to have rebuilt parts of the application
+##     without changes affecting the main module in any way - it shouldn't be rebuilt.
+##   - to determine what needs to be reloaded the runtime starts traversing the import
+##     tree from the root and checks the timestamps of the loaded shared objects
+##   - modules that are no longer referenced are unloaded and cleaned up properly
+##   - symbols (procs/globals) that have been removed in the code are also cleaned up
+##     - so changing the init of a global does nothing, but removing it, reloading,
+##       and then re-introducing it with a new initializer works
+##   - new modules can be imported, and imports can also be reodereded/removed
+##   - hasAnyModuleChanged() can be used to determine if any module needs reloading
+## - code in the beforeCodeReload/afterCodeReload handlers is executed on each reload
+##   - such handlers can be added and removed
+##   - before each reload all "beforeCodeReload" handlers are executed and after
+##     that all handlers (including "after") from the particular module are deleted
+##   - the order of execution is the same as the order of top-level code execution.
+##     Example: if A imports B which imports C, then all handlers in C will be executed
+##     first (from top to bottom) followed by all from B and lastly all from A
+##   - since new globals can be introduced, the handlers are actually registered
+##     when a dummy global is initialized, and on each reload all such dummy globals
+##     are removed from the runtime so they can be re-registered with the same name
+##     and their init code gets ran which triggers a call to registerHandler
+##   - after the reload all "after" handlers are executed the same way as "before"
+##
+## TODO - after first merge in upstream Nim:
+##
+## - profile
+##   - build speed with and without hot code reloading - difference should be small
+##   - runtime degradation of HCR-enabled code - important!!!
+## - migrate the js target to the new before/afterCodeReload API
+## - ARM support for the trampolines
+## - implement hasModuleChanged (perhaps using a magic returning SigHash for a module)
+## - pdb paths on Windows should be fixed (related to copying .dll files)
+##   - absolute hardcoded path to .pdb is the same even for a copied .dll
+##   - if a debugger is attached - rebuilding will fail since .pdb files are locked
+##   - resources to look into:
+##     https://github.com/fungos/cr
+##     https://github.com/crosire/blink
+##     https://ourmachinery.com/post/little-machines-working-together-part-2/
+##     http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
+## - investigate:
+##   - rethink the closure iterators
+##     - ability to keep old versions of dynamic libraries alive
+##       - because of async server code
+##       - perhaps with refcounting of .dlls for unfinished clojures
+##   - possible reload problem:
+##     - if a passC pragma is introduced (either written or dragged in by a new
+##       import) the whole command line for compilation changes - for example:
+##         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
+##   - linking with static libs
+##     - all shared objects for each module will (probably) have to link to them
+##       - state in static libs gets duplicated
+##       - linking is slow and therefore iteration time
+##         - have just a single .dll for all .nim files and bulk reload?
+##   - think about constructs such as {.compile: "myfile.cpp".}
+##   - GC - deinitGCFrame in Init and everything GC related
+##   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
+##   - everything thread-local related
+## - tests
+##   - add a new travis build matrix entry which builds everything with HCR enabled
+##     - currently building with useNimRtl is problematic - lots of problems...
+##     - how to supply the nimrtl/nimhcr shared objects to all test binaries...?
+##     - think about building to C++ instead of only to C - added type safety
+##   - run tests through valgrind and the sanitizers! of HUGE importance!
+## - cleanup at shutdown - freeing all globals
+##
+## TODO - nice to have cool stuff:
+##
+## - separate handling of global state for much faster reloading and manipulation
+##   - imagine sliders in an IDE for tweaking variables
+##   - perhaps using shared memory
+## - multi-dll projects - how everything can be reloaded..?
+##   - a single HCR instance shared across multiple .dlls
+##   - instead of having to call performCodeReload from a function in each dll
+##     - which currently renders the main module of each dll not reloadable
+## - ability to check with the current callstack if a reload is "legal"
+##   - if it is in any function which is in a module about to be reloaded ==> error
+## - pragma annotations for files - to be excluded from dll shenanigans
+##   - for such file-global pragmas look at codeReordering or injectStmt
+##   - how would the initialization order be kept? messy...
+##   - per function exclude pragmas would be TOO messy and hard...
+## - C code calling stable exportc interface of nim code (for binding)
+##   - generate proxy functions with the stable names
+##     - in a non-reloadable part (the main binary) that call into the function pointers
+##     - parameter passing/forwarding - how? use the same trampoline jumping?
+##     - extracting the dependencies for these stubs/proxies will be hard...
+## - changing memory layout of types - detecting this..?
+##   - implement with registerType() call to HCR runtime...?
+##     - and checking if a previously registered type matches
+##   - issue an error
+##     - or let the user handle this by transferring the state properly
+##       - perhaps in the before/afterCodeReload handlers
+## - optimization: calls to functions within a module to use the _actual versions
+##
+## TODO - unimportant:
+##
+## - have a "bad call" trampoline that all no-longer-present functions are routed to call there
+##     - so the user gets some error msg if he calls a dangling pointer instead of a crash
+## - before/afterCodeReload and hasModuleChanged should be accessible only where appropriate
+## - nim_program_result is inaccessible in HCR mode from external C code (see nimbase.h)
+## - proper .json build file - but the format is different... multiple link commands...
+##
+## TODO - REPL:
+## - proper way (as proposed by Zahary):
+##   - parse the input code and put everything in global scope except for
+##     statements with side effects only - those go in afterCodeReload blocks
+## - my very hacky idea: just append to a clojure iterator the new statements
+##   followed by a yield statement. So far I can think of 2 problems:
+##   - import and some other code cannot be written inside of a proc -
+##     has to be parsed and extracted in the outer scope
+##   - when new variables are created they are actually locals to the clojure
+##     so the struct for the clojure state grows in memory, but it has already
+##     been allocated when the clojure was created with the previous smaller size.
+##     That would lead to working with memory outside of the initially allocated
+##     block. Perhaps something can be done about this - some way of re-allocating
+##     the state and transferring the old...
 
 when defined(hotcodereloading) or defined(createNimHcr) or defined(testNimHcr):
   const
@@ -208,6 +204,7 @@ when defined(hotcodereloading) or defined(createNimHcr) or defined(testNimHcr):
             else: "so"
   type
     ProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
+    PassFucntion* = proc () {.nimcall.}
 
 when defined(createNimHcr):
   when system.appType != "lib":
@@ -221,7 +218,7 @@ when defined(createNimHcr):
     when defined(testNimHcr): return "<time>"
     else: return $arg
   proc sanitize(arg: string|cstring): string =
-    when defined(testNimHcr): return "<path>"
+    when defined(testNimHcr): return ($arg).splitFile.name.splitFile.name
     else: return $arg
 
   {.pragma: nimhcr, compilerProc, exportc: nimhcrExports, dynlib.}
@@ -299,10 +296,15 @@ when defined(createNimHcr):
   proc newModuleDesc(): ModuleDesc =
     result.procs = initTable[string, ProcSym]()
     result.globals = initTable[string, GlobalVarSym]()
+    result.handle = nil
+    result.gen = -1
+    result.lastModification = low(Time)
 
   # the global state necessary for traversing and reloading the module import tree
   var modules = initTable[string, ModuleDesc]()
   var root: string
+  var system: string
+  var mainDatInit: PassFucntion
   var generation = 0
 
   # necessary for registering handlers and keeping them up-to-date
@@ -395,11 +397,15 @@ when defined(createNimHcr):
     cleanup modules[module].procs:
       modules[module].procs.del(name)
 
+  proc unloadDll(name: string) =
+    if modules[name].handle != nil:
+      unloadLib(modules[name].handle)
+
   proc loadDll(name: cstring) {.nimhcr.} =
     let name = $name
     trace "HCR LOADING: ", name.sanitize
     if modules.contains(name):
-      unloadLib(modules[name].handle)
+      unloadDll(name)
     else:
       modules.add(name, newModuleDesc())
 
@@ -413,7 +419,7 @@ when defined(createNimHcr):
     modules[name].lastModification = getLastModificationTime(name)
 
     # update the list of imports by the module
-    let getImportsProc = cast[proc (): ptr pointer {.noconv.}](
+    let getImportsProc = cast[proc (): ptr pointer {.nimcall.}](
       checkedSymAddr(lib, "HcrGetImportedModules"))
     modules[name].imports = getListOfModules(getImportsProc())
 
@@ -424,19 +430,29 @@ when defined(createNimHcr):
       cleanupGlobal(name, curr.globalVar)
     modules[name].handlers.setLen(0)
 
-  proc initPointerData(name: cstring) {.nimhcr.} =
-    trace "HCR Hcr/Dat init: ", name.sanitize
-    cast[proc (h: pointer, gpa: ProcGetter) {.noconv.}](
+  proc initHcrData(name: cstring) {.nimhcr.} =
+    trace "HCR Hcr init: ", name.sanitize
+    cast[proc (h: pointer, gpa: ProcGetter) {.nimcall.}](
       checkedSymAddr(modules[$name].handle, "HcrInit000"))(hcrDynlibHandle, getProcAddr)
-    cast[proc () {.noconv.}](checkedSymAddr(modules[$name].handle, "DatInit000"))()
+
+  proc initTypeInfoGlobals(name: cstring) {.nimhcr.} =
+    trace "HCR TypeInfo globals init: ", name.sanitize
+    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "HcrCreateTypeInfos"))()
+
+  proc initPointerData(name: cstring) {.nimhcr.} =
+    trace "HCR Dat init: ", name.sanitize
+    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "DatInit000"))()
 
   proc initGlobalScope(name: cstring) {.nimhcr.} =
     trace "HCR Init000: ", name.sanitize
     # set the currently inited module - necessary for registering the before/after HCR handlers
     currentModule = $name
-    cast[proc () {.noconv.}](checkedSymAddr(modules[$name].handle, "Init000"))()
+    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "Init000"))()
 
-  proc recursiveInit(dlls: seq[string]) =
+  var modulesToInit: seq[string] = @[]
+  var allModulesOrderedByDFS: seq[string] = @[]
+
+  proc recursiveDiscovery(dlls: seq[string]) =
     for curr in dlls:
       if modules.contains(curr):
         # skip updating modules that have already been updated to the latest generation
@@ -449,91 +465,117 @@ when defined(createNimHcr):
           # update generation so module doesn't get collected
           modules[curr].gen = generation
           # recurse to imported modules - they might be changed
-          recursiveInit(modules[curr].imports)
+          recursiveDiscovery(modules[curr].imports)
+          allModulesOrderedByDFS.add(curr)
           continue
       loadDll(curr)
       # first load all dependencies of the current module and init it after that
-      recursiveInit(modules[curr].imports)
-      # init the current module after all its dependencies
-      initPointerData(curr)
-      initGlobalScope(curr)
-      # cleanup old symbols which are gone now
+      recursiveDiscovery(modules[curr].imports)
+
+      allModulesOrderedByDFS.add(curr)
+      modulesToInit.add(curr)
+
+  proc initModules() =
+    # first init the pointers to hcr functions and also do the registering of typeinfo globals
+    for curr in modulesToInit:
+      initHcrData(curr)
+      initTypeInfoGlobals(curr)
+    # for now system always gets fully inited before any other module (including when reloading)
+    initPointerData(system)
+    initGlobalScope(system)
+    # proceed with the DatInit calls - for all modules - including the main one!
+    for curr in allModulesOrderedByDFS:
+      if curr != system:
+        initPointerData(curr)
+    mainDatInit()
+    # execute top-level code (in global scope)
+    for curr in modulesToInit:
+      if curr != system:
+        initGlobalScope(curr)
+    # cleanup old symbols which are gone now
+    for curr in modulesToInit:
       cleanupSymbols(curr)
 
-  var traversedModules: HashSet[string]
-
-  proc recursiveExecuteHandlers(isBefore: bool, module: string) =
-    # do not process an already traversed module
-    if traversedModules.containsOrIncl(module): return
-    traversedModules.incl module
-    # first recurse to do a DFS traversal
-    for curr in modules[module].imports:
-      recursiveExecuteHandlers(isBefore, curr)
-    # and then execute the handlers - from leaf modules all the way up to the root module
-    for curr in modules[module].handlers:
-      if curr.isBefore == isBefore:
-       curr.cb()
-
-  proc initRuntime*(moduleList: ptr pointer,
-                    main: cstring, handle: pointer,
-                    gpa: ProcGetter) {.nimhcr.} =
-    trace "HCR INITING: ", main.sanitize
+  proc initRuntime*(moduleList: ptr pointer, main, sys: cstring,
+                    datInit: PassFucntion, handle: pointer, gpa: ProcGetter) {.nimhcr.} =
+    trace "HCR INITING: ", main.sanitize, " gen: ", generation
     # initialize globals
     root = $main
+    system = $sys
+    mainDatInit = datInit
     hcrDynlibHandle = handle
     getProcAddr = gpa
-    traversedModules.init()
-    # we need the root to be added as well because symbols from it will also be registered in the HCR system
-    modules.add(root, newModuleDesc())
+    # the root is already added and we need it because symbols from it will also be registered in the HCR system
     modules[root].imports = getListOfModules(moduleList)
     modules[root].gen = high(int) # something huge so it doesn't get collected
     # recursively initialize all modules
-    recursiveInit(modules[root].imports)
+    recursiveDiscovery(modules[root].imports)
+    initModules()
     # the next module to be inited will be the root
     currentModule = root
 
   proc hasAnyModuleChanged*(): bool {.nimhcr.} =
+    var checked = initSet[string]()
     proc recursiveChangeScan(dlls: seq[string]): bool =
       for curr in dlls:
+        # don't re-check modules - could be slow in large codebases
+        if checked.containsOrIncl curr:
+          continue
         if modules[curr].lastModification < getLastModificationTime(curr) or
            recursiveChangeScan(modules[curr].imports): return true
       return false
     return recursiveChangeScan(modules[root].imports)
 
-  proc cleanupModule(module: string) =
-    cleanupSymbols(module)
-    unloadLib(modules[module].handle)
-    modules.del(module)
-
   proc performCodeReload*() {.nimhcr.} =
     if not hasAnyModuleChanged():
+      trace "HCR - no changes"
       return
 
     inc(generation)
     trace "HCR RELOADING: ", generation
 
+    var traversedHandlerModules = initSet[string]()
+
+    proc recursiveExecuteHandlers(isBefore: bool, module: string) =
+      # do not process an already traversed module
+      if traversedHandlerModules.containsOrIncl(module): return
+      traversedHandlerModules.incl module
+      # first recurse to do a DFS traversal
+      for curr in modules[module].imports:
+        recursiveExecuteHandlers(isBefore, curr)
+      # and then execute the handlers - from leaf modules all the way up to the root module
+      for curr in modules[module].handlers:
+        if curr.isBefore == isBefore:
+         curr.cb()
+
     # first execute the before reload handlers
-    traversedModules.clear()
+    traversedHandlerModules.clear()
     recursiveExecuteHandlers(true, root)
 
     # do the reloading
-    recursiveInit(modules[root].imports)
+    modulesToInit = @[]
+    allModulesOrderedByDFS = @[]
+    recursiveDiscovery(modules[root].imports)
+    initModules()
 
     # execute the after reload handlers
-    traversedModules.clear()
+    traversedHandlerModules.clear()
     recursiveExecuteHandlers(false, root)
 
     # collecting no longer referenced modules - based on their generation
     cleanup modules:
-      cleanupModule name
+      cleanupSymbols(name)
+      unloadDll(name)
+      modules.del(name)
 
   proc registerHandler*(isBefore: bool, cb: proc ()): bool {.nimhcr.} =
     modules[currentModule].handlers.add(
       (isBefore: isBefore, globalVar: lastRegisteredGlobal, cb: cb))
     return true
 
-  proc addDummyModule*(module: cstring) {.nimhcr.} =
-    modules.add($module, newModuleDesc())
+  proc addModule*(module: cstring) {.nimhcr.} =
+    if not modules.contains($module):
+      modules.add($module, newModuleDesc())
 
 else:
   when defined(hotcodereloading) or defined(testNimHcr):
@@ -549,11 +591,10 @@ else:
     proc registerGlobal*(module: cstring, name: cstring, size: Natural, outPtr: ptr pointer): bool {.nimhcr.}
     proc getGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
 
-    proc initRuntime*(moduleList: ptr pointer, main: cstring, handle: pointer, gpa: ProcGetter) {.nimhcr.}
+    proc initRuntime*(moduleList: ptr pointer, main, sys: cstring,
+                      datInit: PassFucntion, handle: pointer, gpa: ProcGetter) {.nimhcr.}
     proc registerHandler*(isBefore: bool, cb: proc ()): bool {.nimhcr.}
-
-    # used only for testing purposes so the register/get proc/global functions don't crash
-    proc addDummyModule*(module: cstring) {.nimhcr.}
+    proc addModule*(module: cstring) {.nimhcr.}
 
     # the following functions/templates are intended to be used by the user
     proc performCodeReload*() {.nimhcr.}

@@ -137,7 +137,7 @@ macro carryOutTests(callingConv: untyped): untyped =
   replacePlaceholderPragmas result
   # echo result.treeRepr
 
-addDummyModule("dummy_module")
+addModule("dummy_module")
 
 carryOutTests fastcall
 carryOutTests cdecl
