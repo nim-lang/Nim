@@ -780,6 +780,31 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   add(result, nil)
   add(result, lb)
 
+proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
+  result = true
+  var desc, link = ""
+  var i = p.idx
+
+  template parse(endToken, dest) =
+    inc i # skip begin token
+    while true:
+      if p.tok[i].kind in {tkEof, tkIndent}: return false
+      if p.tok[i].symbol == endToken: break
+      dest.add p.tok[i].symbol
+      inc i
+    inc i # skip end token
+
+  parse("]", desc)
+  if p.tok[i].symbol != "(": return false
+  parse(")", link)
+  let child = newRstNode(rnHyperlink)
+  child.add desc
+  child.add link
+  # only commit if we detected no syntax error:
+  father.add child
+  p.idx = i
+  result = true
+
 proc parseInline(p: var RstParser, father: PRstNode) =
   case p.tok[p.idx].kind
   of tkPunct:
@@ -811,6 +836,9 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnSubstitutionReferences)
       parseUntil(p, n, "|", false)
       add(father, n)
+    elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "[" and
+        parseMarkdownLink(p, father):
+      discard "parseMarkdownLink already processed it"
     else:
       if roSupportSmilies in p.s.options:
         let n = parseSmiley(p)

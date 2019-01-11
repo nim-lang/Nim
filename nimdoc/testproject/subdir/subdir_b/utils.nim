@@ -23,4 +23,6 @@ template bEnum*(): untyped =
 
   func someFunc*() =
     ## My someFunc.
+    ## Stuff in `quotes` here.
+    ## [Some link](https://nim-lang.org)
     discard
