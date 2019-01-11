@@ -136,7 +136,7 @@ else:
       # A type that is known to be atomic and whose size is known at
       # compile time to be 8 bytes or less
 
-  template nonAtomicType(T: typedesc[Trivial]): typedesc =
+  template nonAtomicType(T: typedesc[Trivial]): untyped =
     # Maps types to integers of the same size
     when sizeof(T) == 1: int8
     elif sizeof(T) == 2: int16
@@ -204,33 +204,33 @@ else:
     proc clear*(location: var AtomicFlag; order: MemoryOrder = moSequentiallyConsistent) =
       discard interlockedAnd(addr(location), 0'i8)
 
-    proc load*[T: Trivial](location: var T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedOr(addr(location), (nonAtomicType(T))0))
-    proc store*[T: Trivial](location: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
-      discard interlockedExchange(addr(location), cast[nonAtomicType(T)](desired))
+    proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      cast[T](interlockedOr(addr(location.value), (nonAtomicType(T))0))
+    proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
+      discard interlockedExchange(addr(location.value), cast[nonAtomicType(T)](desired))
 
-    proc exchange*[T: Trivial](location: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedExchange(addr(location), cast[int64](desired)))
-    proc compareExchange*[T: Trivial](location: var T; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-      cast[T](interlockedCompareExchange(addr(location), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
-    proc compareExchange*[T: Trivial](location: var T; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      cast[T](interlockedExchange(addr(location.value), cast[int64](desired)))
+    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+      cast[T](interlockedCompareExchange(addr(location.value), cast[nonAtomicType(T)](desired), cast[nonAtomicType(T)](expected))) == expected
+    proc compareExchange*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchange(location, expected, desired, order, order)
-    proc compareExchangeWeak*[T: Trivial](location: var T; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
+    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
       compareExchange(location, expected, desired, success, failure)
-    proc compareExchangeWeak*[T: Trivial](location: var T; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
+    proc compareExchangeWeak*[T: Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
       compareExchangeWeak(location, expected, desired, order, order)
 
-    proc fetchAdd*[T: SomeInteger](location: var T; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      let currentValue = location.load()
+    proc fetchAdd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      var currentValue = location.load()
       while not compareExchangeWeak(location, currentValue, currentValue + value): discard
-    proc fetchSub*[T: SomeInteger](location: var T; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+    proc fetchSub*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
       fetchAdd(location, -value, order)
-    proc fetchAnd*[T: SomeInteger](location: var T; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedAnd(addr(location), cast[nonAtomicType(T)](value)))
-    proc fetchOr*[T: SomeInteger](location: var T; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedOr(addr(location), cast[nonAtomicType(T)](value)))
-    proc fetchXor*[T: SomeInteger](location: var T; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](interlockedXor(addr(location), cast[nonAtomicType(T)](value)))
+    proc fetchAnd*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      cast[T](interlockedAnd(addr(location.value), cast[nonAtomicType(T)](value)))
+    proc fetchOr*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      cast[T](interlockedOr(addr(location.value), cast[nonAtomicType(T)](value)))
+    proc fetchXor*[T: SomeInteger](location: var Atomic[T]; value: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
+      cast[T](interlockedXor(addr(location.value), cast[nonAtomicType(T)](value)))
     
   else:
     {.push, header: "<stdatomic.h>".}
