@@ -104,15 +104,19 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result.output.string.add(line.string)
+      result.output.string.add("\n")
       if onStdout != nil: onStdout(line.string)
     else:
-      result[1] = peekExitCode(p)
-      if result[1] != -1: break
+      result.exitCode = peekExitCode(p)
+      if result.exitCode != -1: break
   close(p)
-
-
+  if result.exitCode != 0:
+    var command2 = command
+    if args.len > 0: command2.add " " & args.quoteShellCommand
+    echo (msg: "execCmdEx2 failed",
+      command: command2,
+      options: options)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
