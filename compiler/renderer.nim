@@ -77,13 +77,16 @@ else:
     of nkTripleStrLit:
       result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
     of nkCommentStmt:
-      result = (n.info.line.int, n.info.line.int + countLines(n.comment))
+      if n.sons.len == 1:
+        result = (n.info.line.int, n.info.line.int + countLines(n[0].strVal))
+      else:
+        result = (n.info.line.int, n.info.line.int)
     else:
       result = (n.info.line.int, n.info.line.int)
-    for i in 0 ..< safeLen(n):
-      let (currMin, currMax) = minmaxLine(n[i])
-      if currMin < result[0]: result[0] = currMin
-      if currMax > result[1]: result[1] = currMax
+      for i in 0 ..< safeLen(n):
+        let (currMin, currMax) = minmaxLine(n[i])
+        if currMin < result[0]: result[0] = currMin
+        if currMax > result[1]: result[1] = currMax
 
   proc lineDiff(a, b: PNode): int =
     result = minmaxLine(b)[0] - minmaxLine(a)[1]
