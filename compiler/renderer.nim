@@ -300,7 +300,8 @@ proc gcom(g: var TSrcGen, n: PNode) =
       var ml = maxLineLength(n.strVal)
       if ml + LineCommentColumn <= MaxLineLen:
         put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
-    putComment(g, n.strVal)  #assert(g.comStack[high(g.comStack)] = n);
+    for i in 0 ..< n.len:
+      putComment(g, n[i].strVal)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
   for i in countup(0, high(g.comStack)): gcom(g, g.comStack[i])
