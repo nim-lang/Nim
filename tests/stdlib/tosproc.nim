@@ -13,15 +13,12 @@ when defined(case_testfile): # compiled test file for child process
   var a = 0
   proc fun(b = 0) =
     a.inc
-    # if a mod 100000 == 0:
-    if a mod 10000000 == 0:
+    if a mod 10000000 == 0: # prevents optimizing it away
       echo a
-      discard
     fun(b+1)
 
   proc main() =
     let args = commandLineParams()
-    # echo "ok1"
     echo (msg: "child binary", pid: getCurrentProcessId())
     let arg = args[0]
     echo (arg: arg)
@@ -33,9 +30,16 @@ when defined(case_testfile): # compiled test file for child process
     of "c_exit2_139":
       if true: c_exit2(139)
     of "quit_139":
-      #[
-      139-128=11=SIGSEGV
-      ]#
+      # `exitStatusLikeShell` doesn't distinguish between a process that
+      # exit(139) and a process that gets killed with `SIGSEGV` because
+      # 139 = 11 + 128 = SIGSEGV + 128.
+      # However, as #10249 shows, this leads to bad debugging experience
+      # when a child process dies with SIGSEGV, leaving no trace of why it
+      # failed. The shell (and lldb debugger) solves that by inserting a
+      # helpful msg: `segmentation fault` when it detects a signal killed
+      # the child.
+      # todo: expose an API that will show more diagnostic, returing
+      # (exitCode, signal) instead of just `shellExitCode`.
       if true: quit(139)
     of "exit_recursion": # stack overflow by infinite recursion
       fun()
@@ -71,7 +75,7 @@ else:
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
     runTest("exit_array", 1)
-    runTest("exit_recursion", SIGSEGV.int + 128)
+    runTest("exit_recursion", SIGSEGV.int + 128) # bug #10273: was returning 0
 
     assertEquals exitStatusLikeShell(SIGSEGV), SIGSEGV + 128.cint
 
