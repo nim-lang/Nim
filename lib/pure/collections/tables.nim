@@ -157,8 +157,7 @@ template get(t, key): untyped =
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
-  if index >= 0:
-    return t.data[index].val
+  if index >= 0: result = t.data[index].val
   else:
     when compiles($key):
       raise newException(KeyError, "key not found: " & $key)
@@ -1376,11 +1375,13 @@ when isMainModule:
     let t = toCountTable("abracadabra")
     doAssert t['z'] == 0
 
-  block: #10065
     var t_mut = toCountTable("abracadabra")
     doAssert t_mut['z'] == 0
+    # the previous read may not have modified the table.
+    doAssert t_mut.hasKey('z') == false
     t_mut['z'] = 1
     doAssert t_mut['z'] == 1
+    doAssert t_mut.hasKey('z') == true
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
