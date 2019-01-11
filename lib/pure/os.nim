@@ -1287,6 +1287,14 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
         discard tryRemoveFile(dest)
         raise
 
+proc exitStatusLikeShell*(status: cint): cint {.noNimScript.} =
+  ## converts exit code from `c_system` into a shell exit code
+  if WIFSIGNALED(status):
+    # like the shell!
+    128 + WTERMSIG(status)
+  else:
+    WEXITSTATUS(status)
+
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect], noNimScript.} =
   ## Executes a `shell command`:idx:.
@@ -1297,10 +1305,8 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(macosx):
-    result = c_system(command) shr 8
-  elif defined(posix):
-    result = WEXITSTATUS(c_system(command))
+  when defined(posix):
+    result = exitStatusLikeShell(c_system(command))
   else:
     result = c_system(command)
 

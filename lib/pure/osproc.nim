@@ -724,13 +724,6 @@ elif not defined(useNimRtl):
   proc isExitStatus(status: cint): bool =
     WIFEXITED(status) or WIFSIGNALED(status)
 
-  proc exitStatusLikeShell(status: cint): cint =
-    if WIFSIGNALED(status):
-      # like the shell!
-      128 + WTERMSIG(status)
-    else:
-      WEXITSTATUS(status)
-
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
