@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-const EXIT_ERROR = 1
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
@@ -501,7 +499,7 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == FAILED:
-        programResult = EXIT_ERROR
+        programResult = 1
       let testResult = TestResult(
         suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
@@ -542,7 +540,7 @@ template fail* =
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
-    programResult = EXIT_ERROR
+    programResult = 1
 
   ensureInitialized()
 
