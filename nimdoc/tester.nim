@@ -28,5 +28,5 @@ proc test(dir: string; fixup = false) =
       echo "SUCCESS: files identical: ", produced
   removeDir(dir / "htmldocs")
 
-test("nimdoc/testproject", false)
+test("nimdoc/testproject", defined(fixup))
 if failures > 0: quit($failures & " failures occurred.")
