@@ -84,9 +84,32 @@ proc enumToString*(enums: openArray[enum]): string =
     result = newString(enums.len * 2)
 ```
 
-- ``discard x`` is now illegal when `x` is a function symbol.
-- Implicit imports via ``--import: module`` in a config file are now restricted
-  to the main package.
+- ``re.split`` now also supports the ``maxsplit`` parameter for consistency
+  with ``strutils.split``.
+- Added ``system.toOpenArray`` in order to support zero-copy slicing
+  operations. This is currently not yet available for the JavaScript target.
+- Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
+  ``nimscript``.
+- The ``times`` module now supports up to nanosecond time resolution when available.
+- Added the type ``times.Duration`` for representing fixed durations of time.
+- Added the proc ``times.convert`` for converting between different time units,
+  e.g days to seconds.
+- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
+- Added the proc ``algorithm.upperBound``.
+- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
+- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
+- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
+- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
+- Added the proc ``math.prod`` for product of elements in openArray.
+- Added the proc ``parseBinInt`` to parse a binary integer from a string, which returns the value.
+- ``parseOct`` and ``parseBin`` in parseutils now also support the ``maxLen`` argument similar to ``parseHexInt``.
+- Added the proc ``flush`` for memory mapped files.
+- Added the ``MemMapFileStream``.
+- Added a simple interpreting event parser template ``eventParser`` to the ``pegs`` module.
+- Added ``macros.copyLineInfo`` to copy lineInfo from other node.
+- Added ``system.ashr`` an arithmetic right shift for integers.
+- Added ``std/sums`` fast summation functions.
+
 
 
 ### Library additions
