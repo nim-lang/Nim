@@ -1,10 +1,7 @@
-discard """
-  output: ""
-"""
 # test the osproc module
 
-import compiler/unittest_light
-import std/special_paths
+import stdtest/specialpaths
+import "../.." / compiler/unittest_light
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
@@ -75,9 +72,9 @@ else:
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
     runTest("exit_array", 1)
-    runTest("exit_recursion", SIGSEGV.int + 128) # bug #10273: was returning 0
-
-    assertEquals exitStatusLikeShell(SIGSEGV), SIGSEGV + 128.cint
+    when defined(posix): # on windows, -1073741571
+      runTest("exit_recursion", SIGSEGV.int + 128) # bug #10273: was returning 0
+      assertEquals exitStatusLikeShell(SIGSEGV), SIGSEGV + 128.cint
 
   block execProcessTest:
     let dir = parentDir(currentSourcePath())

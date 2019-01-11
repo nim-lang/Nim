@@ -1287,13 +1287,16 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
         discard tryRemoveFile(dest)
         raise
 
-proc exitStatusLikeShell*(status: cint): cint {.noNimScript.} =
+proc exitStatusLikeShell*(status: cint): cint =
   ## converts exit code from `c_system` into a shell exit code
-  if WIFSIGNALED(status):
-    # like the shell!
-    128 + WTERMSIG(status)
+  when defined(posix) and not weirdTarget:
+    if WIFSIGNALED(status):
+      # like the shell!
+      128 + WTERMSIG(status)
+    else:
+      WEXITSTATUS(status)
   else:
-    WEXITSTATUS(status)
+    status
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect], noNimScript.} =
@@ -1303,12 +1306,8 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## line arguments given to program. The proc returns the error code
   ## of the shell when it has finished. The proc does not return until
   ## the process has finished. To execute a program without having a
-  ## shell involved, use the `execProcess` proc of the `osproc`
-  ## module.
-  when defined(posix):
-    result = exitStatusLikeShell(c_system(command))
-  else:
-    result = c_system(command)
+  ## shell involved, use `osproc.execProcess`.
+  result = exitStatusLikeShell(c_system(command))
 
 # Templates for filtering directories and files
 when defined(windows) and not weirdTarget:

@@ -6,13 +6,15 @@ import os
 
 # Note: all the const paths defined here are known at compile time and valid
 # so long Nim repo isn't relocated after compilation.
+# This means the binaries they produce will embed hardcoded paths, which
+# isn't appropriate for some applications that need to be relocatable.
 
 const sourcePath = currentSourcePath()
   # robust way to derive other paths here
   # We don't depend on PATH so this is robust to having multiple nim
   # binaries
 
-const nimRootDir* = sourcePath.parentDir.parentDir.parentDir
+const nimRootDir* = sourcePath.parentDir.parentDir.parentDir.parentDir
   ## root of Nim repo
 
 const stdlibDir* = nimRootDir / "lib"
