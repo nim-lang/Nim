@@ -1253,9 +1253,6 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
   s.typ = semProcTypeNode(c, n, genericParams, nil, s.kind)
-  if s.kind notin {skMacro, skTemplate}:
-    if s.typ.sons[0] != nil and s.typ.sons[0].kind == tyStmt:
-      localError(c.config, n.info, "invalid return type: 'stmt'")
 
 proc addParams(c: PContext, n: PNode, kind: TSymKind) =
   for i in countup(1, sonsLen(n)-1):
