@@ -108,7 +108,7 @@ String handling
 
 * `strformat <strformat.html>`_
   Macro based standard string interpolation / formatting. Inpired by
-  Python's ```f``-strings.
+  Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
