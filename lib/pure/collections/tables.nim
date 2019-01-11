@@ -947,7 +947,7 @@ proc enlarge[A](t: var CountTable[A]) =
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
-    swap(t.data, n)
+  swap(t.data, n)
 
 proc ctInsert[A](t: var CountTable[A], key: A, val: int): Hash {.discardable.}=
   ## puts a ``(key, value)`` pair into ``t``.
