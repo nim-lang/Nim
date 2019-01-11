@@ -205,7 +205,7 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
 proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## Use ```[]``` instead.
+  ## Use ``[]`` instead.
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =
