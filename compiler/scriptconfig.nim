@@ -63,8 +63,10 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     os.removeFile getString(a, 0)
   cbos createDir:
     os.createDir getString(a, 0)
-  cbos getOsError:
-    setResult(a, errorMsg)
+
+  result.registerCallback "stdlib.system.getOsError",
+    proc (a: VmArgs) = setResult(a, errorMsg)
+
   cbos setCurrentDir:
     os.setCurrentDir getString(a, 0)
   cbos getCurrentDir:
