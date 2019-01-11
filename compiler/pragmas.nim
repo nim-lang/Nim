@@ -1054,14 +1054,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         if sym == nil: invalidPragma(c, it)
       of wLine: pragmaLine(c, it)
-      of wRaises, wTags:
-        if not sym.isNil and sym.kind in {skVar, skLet, skConst}:
-          if comesFromPush:
-            return
-          else:
-            invalidPragma(c, it)
-        else:
-          pragmaRaisesOrTags(c, it)
+      of wRaises, wTags: pragmaRaisesOrTags(c, it)
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(c, it)
