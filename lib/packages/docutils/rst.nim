@@ -560,9 +560,9 @@ proc match(p: RstParser, start: int, expr: string): bool =
       result = (p.tok[j].kind == tkWord) or (p.tok[j].symbol == "#")
       if result:
         case p.tok[j].symbol[0]
-        of 'a'..'z', 'A'..'Z': result = len(p.tok[j].symbol) == 1
+        of 'a'..'z', 'A'..'Z', '#': result = len(p.tok[j].symbol) == 1
         of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
-        else: discard
+        else: result = false
     else:
       var c = expr[i]
       var length = 0
@@ -1105,7 +1105,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx, ":w:") and predNL(p):
       # (p.tok[p.idx].symbol == ":")
       result = rnFieldList
-    elif match(p, p.idx, "(e) "):
+    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
       result = rnEnumList
     elif match(p, p.idx, "+a+"):
       result = rnGridTable

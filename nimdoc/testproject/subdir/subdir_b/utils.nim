@@ -10,6 +10,15 @@
 
 ###### Up to level 6
 
+
+#. An enumeration
+#. Second idea here.
+
+More text.
+
+1. Other case value
+2. Second case.
+
 ]##
 
 type
