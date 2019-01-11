@@ -1,3 +1,16 @@
+##[
+
+# This is now a header
+
+## Next header
+
+### And so on
+
+# More headers
+
+###### Up to level 6
+
+]##
 
 type
   SomeType* = enum

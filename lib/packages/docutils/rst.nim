@@ -1065,15 +1065,32 @@ proc isOptionList(p: RstParser): bool =
   result = match(p, p.idx, "-w") or match(p, p.idx, "--w") or
            match(p, p.idx, "/w") or match(p, p.idx, "//w")
 
+proc isMarkdownHeadlinePattern(s: string): bool =
+  if s.len >= 1 and s.len <= 6:
+    for c in s:
+      if c != '#': return false
+    result = true
+
+proc isMarkdownHeadline(p: RstParser): bool =
+  if roSupportMarkdown in p.s.options:
+    if isMarkdownHeadlinePattern(p.tok[p.idx].symbol) and p.tok[p.idx+1].kind == tkWhite:
+      if p.tok[p.idx+2].kind in {tkWord, tkOther, tkPunct}:
+        result = true
+
 proc whichSection(p: RstParser): RstNodeKind =
   case p.tok[p.idx].kind
   of tkAdornment:
     if match(p, p.idx + 1, "ii"): result = rnTransition
     elif match(p, p.idx + 1, " a"): result = rnTable
     elif match(p, p.idx + 1, "i"): result = rnOverline
-    else: result = rnLeaf
+    elif isMarkdownHeadline(p):
+      result = rnHeadline
+    else:
+      result = rnLeaf
   of tkPunct:
-    if match(p, tokenAfterNewline(p), "ai"):
+    if isMarkdownHeadline(p):
+      result = rnHeadline
+    elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
     elif p.tok[p.idx].symbol == "::":
       result = rnLiteralBlock
@@ -1158,12 +1175,18 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
 
 proc parseHeadline(p: var RstParser): PRstNode =
   result = newRstNode(rnHeadline)
-  parseUntilNewline(p, result)
-  assert(p.tok[p.idx].kind == tkIndent)
-  assert(p.tok[p.idx + 1].kind == tkAdornment)
-  var c = p.tok[p.idx + 1].symbol[0]
-  inc(p.idx, 2)
-  result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
+  if isMarkdownHeadline(p):
+    result.level = p.tok[p.idx].symbol.len
+    assert(p.tok[p.idx+1].kind == tkWhite)
+    inc p.idx, 2
+    parseUntilNewline(p, result)
+  else:
+    parseUntilNewline(p, result)
+    assert(p.tok[p.idx].kind == tkIndent)
+    assert(p.tok[p.idx + 1].kind == tkAdornment)
+    var c = p.tok[p.idx + 1].symbol[0]
+    inc(p.idx, 2)
+    result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
 
 type
   IntSeq = seq[int]
