@@ -64,10 +64,10 @@ const
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed, wRaises}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore, wRaises}
+    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -1119,13 +1119,16 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam, 
-                      skField, skProc, skFunc, skConverter, skMethod, skType}):
-      n.sons[i] = semCustomPragma(c, it)
-    elif sym != nil:
-      illegalCustomPragma(c, it, sym)
+    elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
+      discard "ignore the .push pragma; it doesn't apply"
     else:
-      invalidPragma(c, it)
+      if sym == nil or (sym != nil and sym.kind in {skVar, skLet, skParam,
+                        skField, skProc, skFunc, skConverter, skMethod, skType}):
+        n.sons[i] = semCustomPragma(c, it)
+      elif sym != nil:
+        illegalCustomPragma(c, it, sym)
+      else:
+        invalidPragma(c, it)
 
 proc mergePragmas(n, pragmas: PNode) =
   if n[pragmasPos].kind == nkEmpty:
