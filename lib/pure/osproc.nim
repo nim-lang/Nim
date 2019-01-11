@@ -724,7 +724,7 @@ elif not defined(useNimRtl):
   proc isExitStatus(status: cint): bool =
     WIFEXITED(status) or WIFSIGNALED(status)
 
-  proc exitStatus(status: cint): cint =
+  proc exitStatusLikeShell(status: cint): cint =
     if WIFSIGNALED(status):
       # like the shell!
       128 + WTERMSIG(status)
@@ -1054,7 +1054,7 @@ elif not defined(useNimRtl):
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1109,7 +1109,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
   else:
     import times
 
@@ -1142,7 +1142,7 @@ elif not defined(useNimRtl):
         s.tv_nsec = b.tv_nsec
 
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1220,20 +1220,20 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
     if p.exitFlag:
-      return exitStatus(p.exitStatus)
+      return exitStatusLikeShell(p.exitStatus)
 
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
       if isExitStatus(status):
         p.exitFlag = true
         p.exitStatus = status
-        result = exitStatus(status)
+        result = exitStatusLikeShell(status)
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
@@ -1265,7 +1265,7 @@ elif not defined(useNimRtl):
   proc execCmd(command: string): int =
     when defined(linux):
       let tmp = csystem(command)
-      result = if tmp == -1: tmp else: exitStatus(tmp)
+      result = if tmp == -1: tmp else: exitStatusLikeShell(tmp)
     else:
       result = csystem(command)
 
