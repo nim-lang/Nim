@@ -935,12 +935,11 @@ proc rawGet[A](t: CountTable[A], key: A): int =
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
 proc rawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
-                  key: A, val: int): Hash {.discardable.}=
+                  key: A, val: int) =
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
-  return h
 
 proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
@@ -949,31 +948,20 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc ctInsert[A](t: var CountTable[A], key: A, val: int): Hash {.discardable.}=
+proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a ``(key, value)`` pair into ``t``.
   assert val >= 0
-  var h = rawGet(t, key)
+  let h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
   else:
     if mustRehash(len(t.data), t.counter): enlarge(t)
-    h = rawInsert(t, t.data, key, val)
+    rawInsert(t, t.data, key, val)
     inc(t.counter)
-    #h = -1 - h
-    #t.data[h].key = key
-    #t.data[h].val = val
-  result = h
 
 template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
-
-template ctGetOrInsert(t, key: untyped, default=0): untyped =
-  var index = rawGet(t, key)
-  # if key not found
-  if index < 0:
-    index = ctInsert(t, key, default)
-  result = t.data[index].val
 
 proc `[]`*[A](t: CountTable[A], key: A): int =
   ## Retrieves the value at ``t[key]`` if ``key`` is in ``t``.
@@ -997,10 +985,6 @@ proc hasKey*[A](t: CountTable[A], key: A): bool =
 proc contains*[A](t: CountTable[A], key: A): bool =
   ## Alias of ``hasKey`` for use with the ``in`` operator.
   return hasKey[A](t, key)
-
-proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
-  ## puts a ``(key, value)`` pair into ``t``.
-  ctInsert(t, key, val)
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments ``t[key]`` by ``val``.
