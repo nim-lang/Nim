@@ -73,24 +73,6 @@ proc parseWord(s: string, i: int, w: var string,
       inc(result)
 
 when declared(os.paramCount):
-  proc quote(s: string): string =
-    if find(s, {' ', '\t'}) >= 0 and s.len > 0 and s[0] != '"':
-      if s[0] == '-':
-        result = newStringOfCap(s.len)
-        var i = parseWord(s, 0, result, {' ', '\t', ':', '='})
-        if i < s.len and s[i] in {':','='}:
-          result.add s[i]
-          inc i
-        result.add '"'
-        while i < s.len:
-          result.add s[i]
-          inc i
-        result.add '"'
-      else:
-        result = '"' & s & '"'
-    else:
-      result = s
-
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
@@ -228,11 +210,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
 when declared(os.paramCount):
   proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
     ## retrieves the rest of the command line that has not been parsed yet.
-    var res = ""
-    for i in p.idx..<p.cmds.len:
-      if i > p.idx: res.add ' '
-      res.add quote(p.cmds[i])
-    result = res.TaintedString
+    result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
 
   proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
     ## retrieves the rest of the command line that has not been parsed yet.
