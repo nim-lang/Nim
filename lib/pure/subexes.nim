@@ -85,7 +85,7 @@ proc getFormatArg(p: var FormatParser, a: openArray[string]): int =
     result = parseInt(a[result])-1
   else:
     raiseInvalidFormat("'#', '$', number or identifier expected")
-  if result >=% a.len: raiseInvalidFormat(formatErrorIndexBound(result, a.len))
+  if result >=% a.len: raiseInvalidFormat(formatErrorIndexBound(result, a.len-1))
   p.i = i
 
 proc scanDollar(p: var FormatParser, a: openarray[string], s: var string) {.

@@ -493,11 +493,11 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
     else:
-      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)+1) & $n)
+      localError(g.config, n.info, formatErrorIndexBound(idx, sonsLen(x)-1) & $n)
   of nkBracket:
     idx = idx - firstOrd(g.config, x.typ)
     if idx >= 0 and idx < x.len: result = x.sons[int(idx)]
-    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len+1) & $n)
+    else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < len(x.strVal):

@@ -526,11 +526,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
           regs[ra].node.intVal = src.strVal[idx].ord
         else:
-          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.strVal.len+1))
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.strVal.len-1))
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -540,7 +540,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif idx == s.len and optLaxStrings in c.config.options:
         regs[ra].intVal = 0
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
     of opcWrArr:
       # a[b] = c
       decodeBC(rkNode)
@@ -550,11 +550,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if idx <% arr.strVal.len:
           arr.strVal[idx] = chr(regs[rc].intVal)
         else:
-          stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.strVal.len+1))
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.strVal.len-1))
       elif idx <% arr.len:
         writeField(arr.sons[idx], regs[rc])
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.len-1))
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
@@ -585,7 +585,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if idx <% regs[ra].node.strVal.len:
         regs[ra].node.strVal[idx] = chr(regs[rc].intVal)
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, regs[ra].node.strVal.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, regs[ra].node.strVal.len-1))
     of opcAddrReg:
       decodeB(rkRegisterAddr)
       regs[ra].regAddr = addr(regs[rb])
@@ -1287,7 +1287,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
@@ -1295,7 +1295,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
         dest.sons[idx] = regs[rc].node
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
@@ -1700,7 +1700,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
         regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len+1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
     of opcNctPut:
       let g = c.graph
       let destKey = regs[ra].node.strVal

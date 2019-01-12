@@ -17,7 +17,7 @@
 include "system/inclrtl"
 
 import
-  strutils, pathnorm
+  strutils, pathnorm, system/helpers2
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -2011,7 +2011,7 @@ elif defined(windows):
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
-    raise newException(IndexError, "invalid index")
+    raise newException(IndexError, "invalid index", formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
   proc paramStr*(i: int): TaintedString =
@@ -2030,7 +2030,7 @@ elif not defined(createNimRtl) and
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
-    raise newException(IndexError, "invalid index")
+    raise newException(IndexError, formatErrorIndexBound(i, cmdCount-1))
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
