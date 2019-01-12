@@ -925,7 +925,7 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
-        ((mapType(y.typ) != etyBaseIndex or y.sym.kind == skParam) and
+        ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
             {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
 
@@ -950,7 +950,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind == tyVar or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
