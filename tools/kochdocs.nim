@@ -56,12 +56,8 @@ proc nimexec*(cmd: string) =
   exec findNim() & " " & cmd
 
 proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
-  # TODO: simplify pending https://github.com/nim-lang/Nim/issues/9513
-  var cmd = findNim() & " " & mode
   let output = outputDir / input.splitFile.name.exe
-  cmd.add " -o:" & output
-  cmd.add " " & options
-  cmd.add " " & input
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
 const
@@ -171,7 +167,6 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
@@ -189,7 +184,6 @@ lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim

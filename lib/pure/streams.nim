@@ -146,12 +146,12 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   for str in args: write(s, str)
   write(s, "\n")
 
-proc read[T](s: Stream, result: var T) =
+proc read*[T](s: Stream, result: var T) =
   ## generic read procedure. Reads `result` from the stream `s`.
   if readData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
-proc peek[T](s: Stream, result: var T) =
+proc peek*[T](s: Stream, result: var T) =
   ## generic peek procedure. Peeks `result` from the stream `s`.
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
@@ -271,7 +271,7 @@ proc peekStr*(s: Stream, length: int): TaintedString =
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
-  ## A line of text may be delimited by ```LF`` or ``CRLF``.
+  ## A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.

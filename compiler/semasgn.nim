@@ -49,6 +49,14 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     liftBodyAux(c, f.typ, body, x.dotField(f), y.dotField(f))
   of nkNilLit: discard
   of nkRecCase:
+    if c.kind in {attachedSink, attachedAsgn, attachedDeepCopy}:
+      ## the value needs to be destroyed before we assign the selector
+      ## or the value is lost
+      let prevKind = c.kind
+      c.kind = attachedDestructor
+      liftBodyObj(c, n, body, x, y)
+      c.kind = prevKind
+
     # copy the selector:
     liftBodyObj(c, n[0], body, x, y)
     # we need to generate a case statement:
@@ -66,7 +74,6 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       liftBodyObj(c, n[i].lastSon, branch.sons[L-1], x, y)
       caseStmt.add(branch)
     body.add(caseStmt)
-    localError(c.c.config, c.info, "cannot lift assignment operator to 'case' object")
   of nkRecList:
     for t in items(n): liftBodyObj(c, t, body, x, y)
   else:
@@ -235,11 +242,12 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       discard considerOverloadedOp(c, t, body, x, y)
     else:
       defaultOp(c, t, body, x, y)
-  of tyObject, tyDistinct:
+  of tyObject:
     if not considerOverloadedOp(c, t, body, x, y):
-      if t.sons[0] != nil:
-        liftBodyAux(c, t.sons[0].skipTypes(skipPtrs), body, x, y)
-      if t.kind == tyObject: liftBodyObj(c, t.n, body, x, y)
+      liftBodyObj(c, t.n, body, x, y)
+  of tyDistinct:
+    if not considerOverloadedOp(c, t, body, x, y):
+      liftBodyAux(c, t.sons[0].skipTypes(skipPtrs), body, x, y)
   of tyTuple:
     liftBodyTup(c, t, body, x, y)
   of tyProc:
@@ -279,8 +287,36 @@ proc addParam(procType: PType; param: PSym) =
   addSon(procType.n, newSymNode(param))
   rawAddSon(procType, param.typ)
 
+proc liftBodyDistinctType(c: PContext; typ: PType; kind: TTypeAttachedOp; info: TLineInfo): PSym =
+  assert typ.kind == tyDistinct
+  let baseType = typ[0]
+  case kind
+    of attachedAsgn:
+      if baseType.assignment == nil:
+        discard liftBody(c, baseType, kind, info)
+      typ.assignment = baseType.assignment
+      result = typ.assignment
+    of attachedSink:
+      if baseType.sink == nil:
+        discard liftBody(c, baseType, kind, info)
+      typ.sink = baseType.sink
+      result = typ.sink
+    of attachedDeepCopy:
+      if baseType.deepCopy == nil:
+        discard liftBody(c, baseType, kind, info)
+      typ.deepCopy = baseType.deepCopy
+      result = typ.deepCopy
+    of attachedDestructor:
+      if baseType.destructor == nil:
+        discard liftBody(c, baseType, kind, info)
+      typ.destructor = baseType.destructor
+      result = typ.destructor
+
 proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
+  if typ.kind == tyDistinct:
+    return liftBodyDistinctType(c, typ, kind, info)
+
   var a: TLiftCtx
   a.info = info
   a.c = c

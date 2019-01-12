@@ -148,3 +148,14 @@ let a = @[1, 2, 3]
 
 # a.boundedOpenArray(1, 2).foo()  # Works
 echo a.boundedOpenArray(1, 2).len # Internal compiler error
+
+block: # `$`*[T: tuple|object](x: T)
+  doAssert $(foo1:0, bar1:"a") == """(foo1: 0, bar1: "a")"""
+  doAssert $(foo1:0, ) == """(foo1: 0)"""
+  doAssert $(0, "a") == """(0, "a")"""
+  doAssert $(0, ) == "(0,)"
+  type Foo = object
+    x:int
+    x2:float
+  doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
+  doAssert $() == "()"

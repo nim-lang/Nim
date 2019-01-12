@@ -480,7 +480,6 @@ The type suffixes are:
   ``'d``             float64
   ``'f32``           float32
   ``'f64``           float64
-  ``'f128``          float128
 =================    =========================
 
 Floating point literals may also be in binary, octal or hexadecimal

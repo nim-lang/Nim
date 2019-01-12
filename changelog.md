@@ -1,4 +1,5 @@
-## v0.20.0 - XX/XX/2018
+## v0.20.0 - XX/XX/2019
+
 
 ### Changes affecting backwards compatibility
 
@@ -26,11 +27,14 @@
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
 
+
 #### Breaking changes in the standard library
 
 - `osproc.execProcess` now also takes a `workingDir` parameter.
 
-- `options.UnpackError` is no longer a ref type and inherits from `System.Defect` instead of `System.ValueError`.
+- `options.UnpackError` is no longer a ref type and inherits from `system.Defect` instead of `system.ValueError`.
+
+- `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
 - nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
   `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
@@ -54,6 +58,14 @@
 - splitFile now correctly handles edge cases, see #10047
 
 - `isNil` is no longer false for undefined in the JavaScript backend: now it's true for both nil and undefined. Use `isNull` or `isUndefined` if you need exact equallity: `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
+
+- several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
+  `unsigned`, `actors`, `parseurl`
+
+- two poorly documented and not used modules (`subexes`, `scgi`) were moved to
+  graveyard (they are available as Nimble packages)
+
+
 
 #### Breaking changes in the compiler
 
@@ -95,13 +107,16 @@ proc enumToString*(enums: openArray[enum]): string =
   is instantiation of generic proc symbol.
 
 - Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
+
 - There is a new stdlib module `std/diff` to compute the famous "diff"
   of two texts by line.
 
 - Added `os.relativePath`.
+
 - Added `parseopt.remainingArgs`.
+
 - Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
-  can be used to retrive the currently executing compiler.
+  can be used to retrieve the currently executing compiler.
 
 
 ### Library changes
@@ -126,10 +141,12 @@ proc enumToString*(enums: openArray[enum]): string =
 - `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
   differently.
 
+- `securehash` is moved to `lib/deprecated`
+
 
 ### Language additions
 
-- Vm suport for float32<->int32 and float64<->int64 casts was added.
+- Vm support for float32<->int32 and float64<->int64 casts was added.
 - There is a new pragma block `noSideEffect` that works like
   the `gcsafe` pragma block.
 - added os.getCurrentProcessId()
@@ -137,6 +154,7 @@ proc enumToString*(enums: openArray[enum]): string =
 - Pragma blocks are no longer eliminated from the typed AST tree to preserve
   pragmas for further analysis by macros
 - Custom pragmas are now supported for `var` and `let` symbols.
+
 
 ### Language changes
 
@@ -156,8 +174,12 @@ proc enumToString*(enums: openArray[enum]): string =
 - `jsondoc` now include a `moduleDescription` field with the module
   description. `jsondoc0` shows comments as it's own objects as shown in the
   documentation.
+- `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
+  un-documented; use `git` instead of relying on backup files.
+
 
 ### Compiler changes
 - The deprecated `fmod` proc is now unavailable on the VM'.
+
 
 ### Bugfixes

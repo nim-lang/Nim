@@ -46,6 +46,8 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
+  toolsNoNimble            builds Nim related tools (except nimble)
+                           doesn't require network connectivity
   nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
@@ -56,6 +58,7 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
+  runCI                    runs continuous integration (CI), eg from travis
   docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
   pdf                      builds the PDF documentation
@@ -70,6 +73,11 @@ Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
 """
+
+let kochExe* = os.getAppFilename()
+
+proc kochExec*(cmd: string) =
+  exec kochExe.quoteShell & " " & cmd
 
 template withDir(dir, body) =
   let old = getCurrentDir()
@@ -120,9 +128,6 @@ proc bundleNimbleExe(latest: bool) =
   bundleNimbleSrc(latest)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim", options = "-d:release --nilseqs:on")
-
-proc buildNimfind() =
-  nimCompile("tools/nimfind.nim", options = "-d:release")
 
 proc buildNimble(latest: bool) =
   # old installations created nim/nimblepkg/*.nim files. We remove these
@@ -197,13 +202,12 @@ proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
-proc buildTools(latest: bool) =
+proc buildTools() =
   bundleNimsuggest()
   nimCompile("tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
   nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
-  buildNimble(latest)
-  buildNimfind()
+  nimCompile("tools/nimfind.nim", options = "-d:release")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
@@ -274,14 +278,20 @@ proc boot(args: string) =
   # default to use the 'c' command:
   let defaultCommand = if getEnv("NIM_COMPILE_TO_CPP", "false") == "true": "cpp" else: "c"
   let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
+  echo "boot: defaultCommand: ", defaultCommand, " bootOptions: ", bootOptions
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
     echo "iteration: ", i+1
-    exec i.thVersion & " $# $# --nimcache:$# compiler" / "nim.nim" % [bootOptions, args,
-        smartNimcache]
+    let extraOption = if i == 0:
+      "--skipUserCfg"
+        # forward compatibility: for bootstrap (1st iteration), avoid user flags
+        # that could break things, see #10030
+    else: ""
+    exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
+      [bootOptions, extraOption, args, smartNimcache]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
@@ -352,8 +362,8 @@ proc winReleaseArch(arch: string) =
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --cpu:$# koch" % cpu
-    exec "koch boot -d:release --cpu:$#" % cpu
-    exec "koch --latest zip -d:release"
+    kochExec "boot -d:release --cpu:$#" % cpu
+    kochExec "--latest zip -d:release"
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -427,6 +437,48 @@ proc xtemp(cmd: string) =
     exec(cmd)
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
+proc runCI(cmd: string) =
+  doAssert cmd.len == 0, cmd # avoid silently ignoring
+  echo "runCI:", cmd
+  # note(@araq): Do not replace these commands with direct calls (eg boot())
+  # as that would weaken our testing efforts.
+  when defined(posix): # appveyor (on windows) didn't run this
+    # todo: implement `execWithEnv`
+    exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
+  kochExec "boot -d:release"
+
+  ## build nimble early on to enable remainder to depend on it if needed
+  kochExec "nimble"
+
+  when false:
+    for pkg in "zip opengl sdl1 jester@#head niminst".split:
+      exec "nimble install -y" & pkg
+
+  buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+
+  ## run tests
+  exec "nim e tests/test_nimscript.nims"
+  when defined(windows):
+    # note: will be over-written below
+    exec "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester"
+
+  # main bottleneck here
+  exec "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines"
+
+  exec "nim c -r nimdoc/tester"
+  exec "nim c -r nimpretty/tester.nim"
+  when defined(posix):
+    exec "nim c -r nimsuggest/tester"
+
+  ## remaining actions
+  when defined(posix):
+    kochExec "docs --git.commit:devel"
+    kochExec "csource"
+  elif defined(windows):
+    when false:
+      kochExec "csource"
+      kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -511,6 +563,10 @@ when isMainModule:
   var op = initOptParser()
   var latest = false
   var stable = false
+  template isLatest(): bool =
+    if stable: false
+    else:
+      existsDir(".git") or latest
   while true:
     op.next()
     case op.kind
@@ -536,17 +592,18 @@ when isMainModule:
       of "distrohelper": geninstall()
       of "install": install(op.cmdLineRest)
       of "testinstall": testUnixInstall(op.cmdLineRest)
+      of "runci": runCI(op.cmdLineRest)
       of "test", "tests": tests(op.cmdLineRest)
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools()
-      of "nimble":
-        if stable: buildNimble(false)
-        else: buildNimble(existsDir(".git") or latest)
+      of "nimble": buildNimble(isLatest())
       of "nimsuggest": bundleNimsuggest()
+      of "toolsnonimble":
+        buildTools()
       of "tools":
-        if stable: buildTools(false)
-        else: buildTools(existsDir(".git") or latest)
+        buildTools()
+        buildNimble(isLatest())
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       else: showHelp()

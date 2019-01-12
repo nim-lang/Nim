@@ -456,13 +456,17 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
-  elif s.kind in {skType}:
+  elif s.kind in {skType, skVar, skLet}:
     # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
     result = s.ast[0][1]
   doAssert result == nil or result.kind == nkPragma
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
-  let pragmaNode = if s.kind == skEnumField: extractPragma(s.owner) else: extractPragma(s)
+  var pragmaNode: PNode
+  if optOldAst in conf.options and s.kind in {skVar, skLet}:
+    pragmaNode = nil
+  else:
+    pragmaNode = if s.kind == skEnumField: extractPragma(s.owner) else: extractPragma(s)
   let name =
     if s.kind == skEnumField and sfDeprecated notin s.flags: "enum '" & s.owner.name.s & "' which contains field '" & s.name.s & "'"
     else: s.name.s

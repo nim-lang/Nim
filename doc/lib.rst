@@ -108,7 +108,7 @@ String handling
 
 * `strformat <strformat.html>`_
   Macro based standard string interpolation / formatting. Inpired by
-  Python's ```f``-strings.
+  Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -140,9 +140,6 @@ String handling
   This module contains support for a *rope* data type.
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
-
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
 
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
@@ -232,9 +229,6 @@ Internet Protocols and Support
 
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
-
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
 
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
