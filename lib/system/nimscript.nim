@@ -341,14 +341,15 @@ when not defined(nimble):
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
-    proc `name Task`*() = body
+    proc `name Task`*() =
+      setCommand "nop"
+      body
 
     let cmd = getCommand()
     if cmd.len == 0 or cmd ==? "help":
       setCommand "help"
       writeTask(astToStr(name), description)
     elif cmd ==? astToStr(name):
-      setCommand "nop"
       `name Task`()
 
   # nimble has its own implementation for these things.
