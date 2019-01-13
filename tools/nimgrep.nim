@@ -336,7 +336,7 @@ else:
     for f in items(filenames):
       walker(pegp, f, counter)
   else:
-    var reflags = {reStudy, reExtended}
+    var reflags = {reStudy}
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
