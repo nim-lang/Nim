@@ -62,8 +62,9 @@
 - several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
   `unsigned`, `actors`, `parseurl`
 
-- several poorly documented and not used modules were moved to graveyard
-  (they are available as Nimble packages): `subexes`, `scgi`, `smtp`, `oids`
+- two poorly documented and not used modules (`subexes`, `scgi`) were moved to
+  graveyard (they are available as Nimble packages)
+
 
 
 #### Breaking changes in the compiler

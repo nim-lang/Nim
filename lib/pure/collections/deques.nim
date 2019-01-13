@@ -88,10 +88,22 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
-proc `[]=`* [T] (deq: var Deque[T], i: Natural, val : T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: Natural, val : T) {.inline.} =
   ## Change the i-th element of `deq`.
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
+
+proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
+  ## Access the backwards indexed i-th element.
+  return deq[deq.len - int(i)]
+
+proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): T {.inline.} =
+  ## Access the backwards indexed i-th element.
+  return deq[deq.len - int(i)]
+
+proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
+  ## Change the backwards indexed i-th element.
+  deq[deq.len - int(i)] = x
 
 iterator items*[T](deq: Deque[T]): T =
   ## Yield every element of `deq`.

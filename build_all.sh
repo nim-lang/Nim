@@ -26,6 +26,10 @@ build_nim_csources(){
 
 [ -f $nim_csources ] || echo_run build_nim_csources
 
-echo_run bin/nim c koch # Note: if fails, may need to `cd csources && git pull`
+# Note: if fails, may need to `cd csources && git pull`
+# Note: --skipUserCfg is to prevent newer flags from
+# breaking bootstrap phase
+echo_run bin/nim c --skipUserCfg koch
+
 echo_run ./koch boot -d:release
 echo_run ./koch tools # Compile Nimble and other tools.

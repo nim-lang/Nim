@@ -2700,6 +2700,7 @@ proc `$`*[T: tuple|object](x: T): string =
       firstElement = false
     else:
       result.add("...")
+      firstElement = false
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)
@@ -3456,6 +3457,10 @@ when not defined(JS): #and not defined(nimscript):
     proc setControlCHook*(hook: proc () {.noconv.})
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
+
+    when not defined(useNimRtl):
+      proc unsetControlCHook*()
+        ## reverts a call to setControlCHook
 
     proc writeStackTrace*() {.tags: [], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works

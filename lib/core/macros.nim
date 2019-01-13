@@ -151,7 +151,7 @@ proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
 
 proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
   ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ```==`(NimNode,NimNode)`` instead.
+  ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
@@ -377,7 +377,9 @@ proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
-  ## writes an error message at compile time
+  ## writes an error message at compile time. The optional ``n: NimNode``
+  ## parameter is used as the source for file and line number information in
+  ## the compilation error message.
 
 proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
