@@ -2239,8 +2239,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
       if n.sons[a].kind == nkHiddenStdConv:
         doAssert n.sons[a].sons[0].kind == nkEmpty and
-                 n.sons[a].sons[1].kind == nkArgList and
-                 n.sons[a].sons[1].len == 0
+                 n.sons[a].sons[1].kind in {nkBracket, nkArgList}
         # Steal the container and pass it along
         setSon(m.call, formal.position + 1, n.sons[a].sons[1])
       else:
