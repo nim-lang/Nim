@@ -1123,7 +1123,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       else:
         invalidPragma(c, it)
 
+proc overwriteLineInfo(n: PNode; info: TLineInfo) =
+  n.info = info
+  for i in 0..<safeLen(n):
+    overwriteLineInfo(n[i], info)
+
 proc mergePragmas(n, pragmas: PNode) =
+  var pragmas = copyTree(pragmas)
+  overwriteLineInfo pragmas, n.info
   if n[pragmasPos].kind == nkEmpty:
     n[pragmasPos] = pragmas
   else:
