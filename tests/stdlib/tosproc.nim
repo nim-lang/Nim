@@ -93,4 +93,7 @@ else:
     doAssert outStr2 == absolutePath(testDir) & "\nx yz\n"
 
     removeDir(testDir)
-    removeFile(exePath)
+    try:
+      removeFile(exePath)
+    except OSError:
+      discard
