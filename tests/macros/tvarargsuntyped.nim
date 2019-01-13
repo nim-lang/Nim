@@ -105,5 +105,4 @@ template t1(s: int, v: varargs[typed]) =
   echo s
   t2(s, v)
 
-when isMainModule:
-  t1(10, "hello", 18.0)
+t1(10, "hello", 18.0)
