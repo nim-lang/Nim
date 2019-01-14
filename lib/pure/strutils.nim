@@ -1490,7 +1490,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
     when hasCStringBuiltin:
       let L = last-start+1
       if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, L)
+        let found = c_memchr(s[start].unsafeAddr, sub, L.csize)
         if not found.isNil:
           return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
     else:

@@ -92,7 +92,7 @@ proc checkErr(f: File) =
 
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =
-  result = c_fread(buffer, 1, len, f)
+  result = c_fread(buffer, 1, len, f).int
   if result != len: checkErr(f)
 
 proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
@@ -168,7 +168,7 @@ proc readLine(f: File, line: var TaintedString): bool =
     nimSetMem(addr line.string[pos], '\L'.ord, sp)
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, sp.csize)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -373,7 +373,7 @@ proc open(f: var File, filename: string,
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, bufSize.csize)
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
 
@@ -441,7 +441,7 @@ when declared(stdout):
     when defined(windows) and compileOption("threads"):
       acquireSys echoLock
     for s in args:
-      discard c_fwrite(s.cstring, s.len, 1, stdout)
+      discard c_fwrite(s.cstring, s.len.csize, 1, stdout)
     const linefeed = "\n" # can be 1 or more chars
     discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
     discard c_fflush(stdout)
