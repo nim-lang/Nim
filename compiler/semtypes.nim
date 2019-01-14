@@ -1028,7 +1028,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   if n.kind == nkCurlyExpr:
     result = semTypeNode(c, n.sons[0], nil)
-    constraint = semNodeKindConstraints(n, c.config)
+    constraint = semNodeKindConstraints(n, c.config, 1)
+  elif n.kind == nkCall and
+      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice} and
+      considerQuotedIdent(c, n[0]).s == "{}":
+    result = semTypeNode(c, n[1], nil)
+    constraint = semNodeKindConstraints(n, c.config, 2)
   else:
     result = semTypeNode(c, n, nil)
 
