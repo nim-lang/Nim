@@ -217,14 +217,17 @@ proc rawSkipComment(p: var TParser, node: PNode) =
     if node != nil:
       when not defined(nimNoNilSeqs):
         if node.comment == nil: node.comment = ""
-      when defined(nimpretty):
-        if p.tok.commentOffsetB > p.tok.commentOffsetA:
-          add node.comment, fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
-        else:
-          add node.comment, p.tok.literal
-      else:
 
-        discard p.withComment(node, p.tok.literal)
+      let comment =
+        when defined(nimpretty):
+          if p.tok.commentOffsetB > p.tok.commentOffsetA:
+            fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+          else:
+            p.tok.literal
+        else:
+          p.tok.literal
+
+      discard p.withComment(node, comment)
 
     else:
       parMessage(p, errInternal, "skipComment")
