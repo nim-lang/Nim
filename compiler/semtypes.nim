@@ -1577,7 +1577,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         assert s != nil
         assert prev == nil
         result = copyType(s, s.owner, keepId=false)
-        # XXX figure out why this has children already...
+        # Remove the 'T' parameter from tySequence:
         result.sons.setLen 0
         result.n = nil
         result.flags = {tfHasAsgn}
@@ -1714,11 +1714,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
   dec c.inTypeContext
-  if c.inTypeContext == 0: instAllTypeBoundOp(c, n.info)
-
-when false:
-  proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
-    result = semTypeNodeInner(c, n, prev)
+  if c.inTypeContext == 0:
+    if $n == "var seq[StackTraceEntry]":
+      echo "begin ", n
     instAllTypeBoundOp(c, n.info)
 
 proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =

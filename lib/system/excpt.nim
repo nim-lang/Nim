@@ -440,11 +440,13 @@ proc getStackTrace(e: ref Exception): string =
   else:
     result = ""
 
-when not defined(gcDestructors):
-  proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-    ## Returns the attached stack trace to the exception ``e`` as
-    ## a ``seq``. This is not yet available for the JS backend.
+proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+  ## Returns the attached stack trace to the exception ``e`` as
+  ## a ``seq``. This is not yet available for the JS backend.
+  when not defined(gcDestructors):
     shallowCopy(result, e.trace)
+  else:
+    result = move(e.trace)
 
 const nimCallDepthLimit {.intdefine.} = 2000
 

@@ -297,12 +297,6 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
       #result.destructor = nil
       result.sink = nil
 
-template typeBound(c, newty, oldty, field, info) =
-  let opr = newty.field
-  if opr != nil and sfFromGeneric notin opr.flags:
-    # '=' needs to be instantiated for generics when the type is constructed:
-    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
-
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
@@ -317,7 +311,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
 
-  if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
+  if result != nil and eqFlags*result.flags == eqFlags*t.flags:
+    when defined(reportCacheHits):
+      echo "Generic instantiation cached ", typeToString(result)
+    return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind in {tyGenericParam}:
@@ -384,7 +381,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.c.config, cl.info, newbody)
   let dc = newbody.deepCopy
-  if cl.allowMetaTypes == false:
+  if not cl.allowMetaTypes:
     if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
       # 'deepCopy' needs to be instantiated for
       # generics *when the type is constructed*:
@@ -402,6 +399,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
           discard
         else:
           newbody.lastSon.typeInst = result
+    echo "adding ", typeToString(result), " for ", typeToString(newbody)
     cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
@@ -602,6 +600,12 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
+
+template typeBound(c, newty, oldty, field, info) =
+  let opr = newty.field
+  if opr != nil and sfFromGeneric notin opr.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
   var i = 0
