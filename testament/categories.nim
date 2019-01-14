@@ -343,7 +343,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "a1e87b881c5eb161553d119be8b52f64",
     "2d706a6ec68d2973ec7e733e6d5dce50",
     "c11a013db35e798f44077bc0763cc86d",
-    "3e32e2c5e9a24bd13375e1cd0467079c",
+    "60d153ef4661b482ff1960873b0aa37b",
     "a5452722b2841f0c1db030cf17708955",
     "dc6c45eb59f8814aaaf7aabdb8962294",
     "69d208d281a2e7bffd3eaf4bab2309b1",
@@ -353,14 +353,15 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "9a8fe78c588d08018843b64b57409a02",
     "8b5d28e985c0542163927d253a3e4fc9",
     "783299b98179cc725f9c46b5e3b5381f",
-    "1a2b3fba1187c68d6a9bfa66854f3318",
+    "cc1600d19fa9365c7e949528b23127ef",
     "80f9c3e594a798225046e8a42e990daf"
   ]
 
   for i, test in tests:
     let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
-    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
+    doAssert testHash == refHashes[i], "Nim in Action test changed:" &
+      $(testHash: testHash, refHashes: refHashes[i], i: i, filename: filename)
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
