@@ -281,10 +281,11 @@ proc addParam(procType: PType; param: PSym) =
 
 proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
-  var typ = typ
-  if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
-    # use the canonical type to access the =sink and =destroy etc.
-    typ = c.graph.sysTypes[tySequence]
+  when false:
+    var typ = typ
+    if c.config.selectedGC == gcDestructors and typ.kind == tySequence:
+      # use the canonical type to access the =sink and =destroy etc.
+      typ = c.graph.sysTypes[tySequence]
 
   var a: TLiftCtx
   a.info = info
@@ -318,7 +319,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
       typ.kind in {tySequence, tyString} and body.len == 0:
     discard "do not cache it yet"
     if kind == attachedSink:
-      echo "Not available yet ", typ.kind, " ", c.config$info
+      echo "Not available yet ", typ.id, " ", c.config$info, " ", cast[int](typ)
   else:
     case kind
     of attachedAsgn: typ.assignment = result
