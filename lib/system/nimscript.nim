@@ -46,7 +46,7 @@ proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
-proc getOsError: string = builtin
+proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
   ## Retrieves the current working directory.
@@ -178,9 +178,12 @@ var
   mode*: ScriptMode ## Set this to influence how mkDir, rmDir, rmFile etc.
                     ## behave
 
+template checkError(exc: untyped): untyped =
+  let err = getError()
+  if err.len > 0: raise newException(exc, err)
+
 template checkOsError =
-  let err = getOsError()
-  if err.len > 0: raise newException(OSError, err)
+  checkError(OSError)
 
 template log(msg: string, body: untyped) =
   if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
@@ -331,6 +334,26 @@ proc cppDefine*(define: string) =
   ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
   ## needs to be mangled.
   builtin
+
+proc stdinReadLine(): TaintedString {.
+  tags: [ReadIOEffect], raises: [IOError].} =
+  builtin
+
+proc stdinReadAll(): TaintedString {.
+  tags: [ReadIOEffect], raises: [IOError].} =
+  builtin
+
+proc readLineFromStdin*(): TaintedString {.raises: [IOError].} =
+  ## Reads a line of data from stdin - blocks until \n or EOF which happens when stdin is closed
+  log "readLineFromStdin":
+    result = stdinReadLine()
+    checkError(EOFError)
+
+proc readAllFromStdin*(): TaintedString {.raises: [IOError].} =
+  ## Reads all data from stdin - blocks until EOF which happens when stdin is closed
+  log "readAllFromStdin":
+    result = stdinReadAll()
+    checkError(EOFError)
 
 when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
