@@ -29,6 +29,7 @@ kind: cmdLongOption	key:val  --  left:
 kind: cmdLongOption	key:val  --  debug:3
 kind: cmdShortOption	key:val  --  l:4
 kind: cmdShortOption	key:val  --  r:2'''
+joinable: false
 """
 
 when defined(testament_tparseopt):
@@ -98,12 +99,22 @@ else:
 
   block: # fix #9951
     var p = parseopt.initOptParser(@["echo \"quoted\""])
-    assertEquals parseopt.cmdLineRest(p), """'echo "quoted"'"""
+    let expected = when defined(windows):
+      """"echo \"quoted\"""""
+    else:
+      """'echo "quoted"'"""
+    assertEquals parseopt.cmdLineRest(p), expected
+
+    doAssert "a5'b" == "a5\'b"
+
     let args = @["a1b", "a2 b", "", "a4\"b", "a5'b", r"a6\b", "a7\'b"]
     var p2 = parseopt.initOptParser(args)
-    assertEquals parseopt.cmdLineRest(p2),
+    let expected2 = when defined(windows):
+      """a1b "a2 b" "" a4\"b a5'b a6\b a7'b"""
+    else:
       """a1b 'a2 b' '' 'a4"b' 'a5'"'"'b' 'a6\b' 'a7'"'"'b'"""
     doAssert "a5'b" == "a5\'b"
+    assertEquals parseopt.cmdLineRest(p2), expected2
 
   block: # fix #9842
     let exe = buildDir / "D20190112T145450".addFileExt(ExeExt)
