@@ -1,4 +1,4 @@
-## Include file that implements 'getEnv' and friends. Do not import it!
+# Include file that implements 'getEnv' and friends. Do not import it!
 
 when not declared(ospaths):
   {.error: "This is an include file for ospaths.nim!".}
