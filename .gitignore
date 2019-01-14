@@ -63,15 +63,10 @@ dist/
 .*/
 ~*
 
-# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
+# testament cruft; TODO: generate these inside tests/build/
 testresults/
 test.txt
 /test.ini
 
 tweeter.db
 tweeter_test.db
-megatest.nim
-
-/outputExpected.txt
-/outputGotten.txt
-

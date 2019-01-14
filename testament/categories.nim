@@ -10,6 +10,8 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+import stdtest/specialpaths
+
 const
   specialCategories = [
     "assert",
@@ -595,12 +597,6 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  #[
-  TODO(minor):
-  get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
-  delete upon completion, maybe
-  ]# 
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
@@ -611,12 +607,20 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import " & quoted(file2) & "\n"
-    megatest.add "import " & quoted(file) & "\n"
+    # absolutePath disambiguates which path is imported (otherwise path could
+    # resolve to wrong path in case user has ~/.nimble/pkgs/compiler-\#head/)
+    megatest.add "import " & quoted(file2.absolutePath) & "\n"
+    megatest.add "import " & quoted(file.absolutePath) & "\n"
 
-  writeFile("megatest.nim", megatest)
+  const megatestFile = testBuildDir / "megatest.nim"
+  const megatestFileExe = megatestFile.changeFileExt ExeExt
+  const outputGottenFile = testBuildDir / "megatest_outputGotten.txt"
+  const outputExpectedFile = testBuildDir / "megatest_outputExpected.txt"
+  # keeping these for debugging as they're now in a gitignore'd dir:
+  # megatestFile, outputExpectedFile, outputGottenFile.
+  writeFile(megatestFile, megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", megatestFile]
   proc onStdout(line: string) = echo line
   var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
     onStdout = if verboseMegatest: onStdout else: nil)
@@ -625,13 +629,13 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     quit("megatest compilation failed")
 
   # Could also use onStdout here.
-  (buf, exitCode) = execCmdEx("./megatest")
+  (buf, exitCode) = execCmdEx(megatestFileExe)
   if exitCode != 0:
     echo buf
     quit("megatest execution failed")
 
   norm buf
-  writeFile("outputGotten.txt", buf)
+  writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -640,15 +644,12 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   norm outputExpected
 
   if buf != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+    writeFile(outputExpectedFile, outputExpected)
+    discard execShellCmd("diff -uNdr $# $#" % [outputExpectedFile, outputGottenFile])
     echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
     quit 1
   else:
-    echo "output OK"
-    removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
+    echo "megatest output OK"
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------

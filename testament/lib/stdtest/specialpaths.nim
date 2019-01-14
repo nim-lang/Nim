@@ -22,9 +22,14 @@ const stdlibDir* = nimRootDir / "lib"
 
 const systemPath* = stdlibDir / "system.nim"
 
+const testBuildDir* = nimRootDir / "tests" / "build"
+  ## refs #nim-lang/RFCs#119 testament generated files should go in a gitignored
+  ## dir to avoid polluting top-level .gitignore. Files that need to be under
+  ## tests (eg generated nim files) can go under `testBuildDir` so they'll
+  ## have access to tests/nim.cfg. Other generated files can go under `buildDir`.
+
 const buildDir* = nimRootDir / "build"
-  ## refs #10268: all testament generated files should go here to avoid
-  ## polluting .gitignore
+  ## see also `testBuildDir`
 
 static:
   # sanity check
