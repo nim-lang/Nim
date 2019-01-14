@@ -14,6 +14,8 @@ import
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, compiler/nodejs, times, sets, md5
 
+import stdtest/specialpaths
+
 var useColors = true
 var backendLogging = true
 var simulate = false
@@ -21,8 +23,9 @@ var verboseMegatest = false # very verbose but can be useful
 
 const
   testsDir = "tests" & DirSep
-  resultsFile = "testresults.html"
-  #jsonFile = "testresults.json" # not used
+  resultsFile = testBuildDir/"testresults.html"
+  testresultsDir* = testBuildDir/"testresults"
+
   Usage = """Usage:
   tester [options] command [arguments]
 

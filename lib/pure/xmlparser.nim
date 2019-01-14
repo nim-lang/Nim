@@ -155,11 +155,13 @@ when isMainModule:
     for e in items(errors): echo e
 
     var f: File
-    if open(f, "xmltest.txt", fmWrite):
+    import "../../testament/lib/stdtest/specialpaths"
+    let file = testBuildDir/"xmltest_D20190113T230337.txt"
+    if open(f, file, fmWrite):
       f.write($x)
       f.close()
     else:
-      quit("cannot write test.txt")
+      quit("cannot write " & file)
   else:
     block: # correctly parse ../../tests/testdata/doc1.xml
       let filePath = "tests/testdata/doc1.xml"

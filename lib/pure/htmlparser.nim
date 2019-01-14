@@ -2067,8 +2067,10 @@ when not defined(testing) and isMainModule:
   for e in items(errors): echo e
 
   var f: File
-  if open(f, "test.txt", fmWrite):
+  import "../../testament/lib/stdtest/specialpaths"
+  let file = testBuildDir/"test_D20190113T230053.txt"
+  if open(f, file, fmWrite):
     f.write($x)
     f.close()
   else:
-    quit("cannot write test.txt")
+    quit("cannot write " & file)

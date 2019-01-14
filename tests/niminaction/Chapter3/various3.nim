@@ -90,7 +90,7 @@ import asyncdispatch, asyncfile, os
 
 proc readFiles() {.async.} =
   # --- Changed to getTempDir here.
-  var file = openAsync(getTempDir() / "test.txt", fmReadWrite)
+  var file = openAsync(getTempDir() / "test_D20190113T225512.txt", fmReadWrite)
   let data = await file.readAll()
   echo(data)
   await file.write("Hello!\n")

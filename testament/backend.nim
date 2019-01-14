@@ -7,10 +7,13 @@
 #    All rights reserved.
 
 import strutils, os, osproc, json
+import stdtest/specialpaths
 
 type
   MachineId* = distinct string
   CommitId = distinct string
+
+const testresultsDir* = testBuildDir/"testresults"
 
 proc `$`*(id: MachineId): string {.borrow.}
 #proc `$`(id: CommitId): string {.borrow.} # not used
@@ -43,13 +46,13 @@ var
   entries: int
 
 proc writeTestResult*(name, category, target, action, result, expected, given: string) =
-  createDir("testresults")
+  createDir(testresultsDir)
   if currentCategory != category:
     if currentCategory.len > 0:
       results.writeLine("]")
       close(results)
     currentCategory = category
-    results = open("testresults" / category.addFileExt"json", fmWrite)
+    results = open(testresultsDir / category.addFileExt"json", fmWrite)
     results.writeLine("[")
     entries = 0
 

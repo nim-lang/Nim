@@ -69,7 +69,7 @@ type
 
 proc allTestResults(onlyFailing = false): AllTests =
   result.data = newJArray()
-  for file in os.walkFiles("testresults/*.json"):
+  for file in os.walkFiles(testresultsDir / "*.json"):
     let data = parseFile(file)
     if data.kind != JArray:
       echo "[ERROR] ignoring json file that is not an array: ", file

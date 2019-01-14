@@ -18,7 +18,7 @@ Second readLine raised an exception
 """
 
 import terminal, colors, re, encodings, strutils, os
-
+import stdtest/specialpaths
 
 block t9394:
   let codeFg = ansiForegroundColorCode(colAliceBlue)
@@ -99,9 +99,10 @@ block t5349:
 
   removeFile(fn)
   # bug #8961
-  writeFile("test.txt", "1\C\L2aaaaaaaa\C\L3bbbbbbb")
+  let file = testBuildDir/"tstdlib_issues_test.txt"
+  writeFile(file, "1\C\L2aaaaaaaa\C\L3bbbbbbb")
 
-  for line in lines("test.txt"):
+  for line in lines(file):
     echo line
 
 block t9456:

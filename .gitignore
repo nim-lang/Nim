@@ -4,8 +4,6 @@
 
 # Cache
 nimcache/
-rnimcache/
-dnimcache/
 
 *.o
 !/icons/*.o
@@ -33,6 +31,9 @@ doc/*.pdf
 doc/*.idx
 /web/upload
 /build/*
+# note: files generated while running tests go under tests/build, so they
+# inherit test/nim.cfg config where applicable
+
 bin/*
 
 # iOS specific wildcards.
@@ -45,7 +46,8 @@ bin/*
 project.xcworkspace/
 xcuserdata/
 
-# Generated files.
+# Generated files. TODO: generate these inside tests/build/ or build, see
+# specialpaths.nim
 /compile.json
 /compiler/nim.dot
 /reject.json
@@ -54,19 +56,9 @@ xcuserdata/
 /*.html
 #/testresults.html #covered by /*.html
 
-/testresults.json
-testament.db
 /csources
 dist/
 
 # Private directories and files (IDEs)
 .*/
 ~*
-
-# testament cruft; TODO: generate these inside tests/build/
-testresults/
-test.txt
-/test.ini
-
-tweeter.db
-tweeter_test.db

@@ -1,4 +1,6 @@
 import times, db_sqlite, strutils #<1>
+import stdtest/specialpaths
+from os import `/`
 type #<2>
   Database* = ref object
     db*: DbConn
@@ -12,7 +14,7 @@ type #<2>
     time*: Time #<8>
     msg*: string #<9>
 
-proc newDatabase*(filename = "tweeter.db"): Database =
+proc newDatabase*(filename = testBuildDir/"tweeter.db"): Database =
   new result
   result.db = open(filename, "", "", "")
 

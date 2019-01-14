@@ -3,10 +3,12 @@ outputsub: "All tests finished successfully!"
 """
 
 import database, os, times
+import stdtest/specialpaths
 
 when true:
-  removeFile("tweeter_test.db")
-  var db = newDatabase("tweeter_test.db")
+  let file = testBuildDir/"tweeter_test.db"
+  removeFile(file)
+  var db = newDatabase(file)
   db.setup()
 
   db.create(User(username: "d0m96"))
