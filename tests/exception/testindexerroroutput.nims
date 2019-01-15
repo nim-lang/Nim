@@ -1,6 +1,3 @@
-# import sequtils
-# import strutils
-
 mode = ScriptMode.Verbose
 
 case paramStr(3):

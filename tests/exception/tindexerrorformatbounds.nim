@@ -21,7 +21,7 @@ block:
     discard paramStr(999)
   except IndexError:
     let msg = getCurrentExceptionMsg()
-    let expected = "(i:999) <= (n:1)"
+    let expected = "(i:999) <= (n:0)"
     doAssert msg.contains expected
 
 static:
