@@ -36,6 +36,8 @@
 
 - `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
+- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`, `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a `ValueError` when the parsed integer is outside of the valid range. Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+
 - nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
   `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
   check if a group is captured, otherwise you'll recieve an exception.

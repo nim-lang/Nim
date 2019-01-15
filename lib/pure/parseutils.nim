@@ -242,8 +242,9 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
 
-{.push overflowChecks: on.}
-# this must be compiled with overflow checking turned on:
+template integerOutOfRangeError(): ref ValueError =
+  newException(ValueError, "Parsed integer outside of valid range")
+
 proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   var
     sign: BiggestInt = -1
@@ -256,38 +257,45 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   if i < s.len and s[i] in {'0'..'9'}:
     b = 0
     while i < s.len and s[i] in {'0'..'9'}:
-      b = b * 10 - (ord(s[i]) - ord('0'))
+      let c = ord(s[i]) - ord('0')
+      if b >= (low(int) + c) div 10:
+        b = b * 10 - c
+      else:
+        raise integerOutOfRangeError()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
+    if sign == -1 and b == low(int):
+      raise integerOutOfRangeError()
     b = b * sign
     result = i - start
-{.pop.} # overflowChecks
 
 proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
-  rtl, extern: "npuParseBiggestInt", noSideEffect.} =
+  rtl, extern: "npuParseBiggestInt", noSideEffect, raises: [ValueError].} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
-  ## `OverflowError` is raised if an overflow occurs.
+  ## `ValueError` is raised if the parsed integer is out of the valid range.
   var res: BiggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseInt(s, res, start)
-  number = res
+  if result != 0:
+    number = res
 
 proc parseInt*(s: string, number: var int, start = 0): int {.
-  rtl, extern: "npuParseInt", noSideEffect.} =
+  rtl, extern: "npuParseInt", noSideEffect, raises: [ValueError].} =
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
-  ## `OverflowError` is raised if an overflow occurs.
+  ## `ValueError` is raised if the parsed integer is out of the valid range.
   var res: BiggestInt
   result = parseBiggestInt(s, res, start)
-  if (sizeof(int) <= 4) and
-      ((res < low(int)) or (res > high(int))):
-    raise newException(OverflowError, "overflow")
-  elif result != 0:
+  when sizeof(int) <= 4:
+    if res < low(int) or res > high(int):
+      raise integerOutOfRangeError()
+  if result != 0:
     number = int(res)
 
-proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
+proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
+  raises: [].}=
   ## parses a natural number into ``b``. This cannot raise an overflow
   ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
@@ -312,12 +320,13 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     result = i - start
 
-# overflowChecks doesn't work with BiggestUInt
 proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
   var
     res = 0.BiggestUInt
     prev = 0.BiggestUInt
     i = start
+  if i < s.len - 1 and s[i] == '-' and s[i + 1] in {'0'..'9'}:
+    raise integerOutOfRangeError()
   if i < s.len and s[i] == '+': inc(i) # Allow
   if i < s.len and s[i] in {'0'..'9'}:
     b = 0
@@ -325,35 +334,34 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
       prev = res
       res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
-        return 0 # overflowChecks emulation
+        raise integerOutOfRangeError()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = res
     result = i - start
 
 proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
-  rtl, extern: "npuParseBiggestUInt", noSideEffect.} =
+  rtl, extern: "npuParseBiggestUInt", noSideEffect, raises: [ValueError].} =
   ## parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
-  ## Result is the number of processed chars or 0 if there is no integer
-  ## or overflow detected.
+  ## `ValueError` is raised if the parsed integer is out of the valid range.
   var res: BiggestUInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseUInt(s, res, start)
-  number = res
+  if result != 0:
+    number = res
 
 proc parseUInt*(s: string, number: var uint, start = 0): int {.
-  rtl, extern: "npuParseUInt", noSideEffect.} =
+  rtl, extern: "npuParseUInt", noSideEffect, raises: [ValueError].} =
   ## parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
-  ## Result is the number of processed chars or 0 if there is no integer or
-  ## overflow detected.
+  ## `ValueError` is raised if the parsed integer is out of the valid range.
   var res: BiggestUInt
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
-      raise newException(OverflowError, "overflow")
+      raise integerOutOfRangeError()
   if result != 0:
     number = uint(res)
 
