@@ -10,10 +10,6 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-const
-  debugEchoCode = false
-  traceCode = debugEchoCode
-
 import ast except getstr
 
 import
@@ -25,6 +21,9 @@ from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 
 from modulegraphs import ModuleGraph, PPassContext
+
+const
+  traceCode = debugEchoCode
 
 when hasFFI:
   import evalffi

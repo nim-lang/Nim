@@ -74,10 +74,11 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-let kochExe = getAppDir() / "koch "
+let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed eg: `nim c -o:koch_debug koch.nim`
+               else: getAppDir() / "koch" # works for winrelease
 
 proc kochExec*(cmd: string) =
-  exec kochExe.quoteShell & cmd
+  exec kochExe.quoteShell & " " & cmd
 
 template withDir(dir, body) =
   let old = getCurrentDir()

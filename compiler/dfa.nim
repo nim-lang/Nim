@@ -86,7 +86,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
-
+  # consider calling `asciitables.alignTable`
 
 proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
