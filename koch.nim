@@ -74,7 +74,8 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-let kochExe* = os.getAppFilename()
+let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed eg: `nim c -o:koch_debug koch.nim`
+               else: getAppDir() / "koch " # `best effort`, works for ur particular use case in nightly
 
 proc kochExec*(cmd: string) =
   exec kochExe.quoteShell & " " & cmd
