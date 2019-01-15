@@ -444,8 +444,7 @@ proc runCI(cmd: string) =
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this
-    # todo: implement `execWithEnv`
-    exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
+    kochExec "boot"
   kochExec "boot -d:release"
 
   ## build nimble early on to enable remainder to depend on it if needed
