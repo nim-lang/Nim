@@ -2018,7 +2018,7 @@ elif defined(windows):
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
-    raise newException(IndexError, "invalid index", formatErrorIndexBound(i, ownArgv.len-1))
+    raise newException(IndexError, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
   proc paramStr*(i: int): TaintedString =
