@@ -86,7 +86,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       add(s, x.prc.name.s)
     msgWriteln(c.config, s)
 
-proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
+proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
                 msg: string, lineInfo: TLineInfo) =
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
@@ -94,8 +94,14 @@ proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
   if c.mode == emRepl: globalError(c.config, lineInfo, msg)
   else: localError(c.config, lineInfo, msg)
 
-proc stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
-  stackTrace(c, tos, pc, msg, c.debug[pc])
+template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
+                    msg: string, lineInfo: TLineInfo) =
+  stackTraceImpl(c, tos, pc, msg, lineInfo)
+  return
+
+template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
+  stackTraceImpl(c, tos, pc, msg, c.debug[pc])
+  return
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, "unhandled exception: " &
@@ -955,13 +961,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       let a = regs[rb].node
       let b = regs[rc].node
-      if a.kind == nkSym and a.sym.kind in skProcKinds and 
+      if a.kind == nkSym and a.sym.kind in skProcKinds and
          b.kind == nkSym and b.sym.kind in skProcKinds:
         regs[ra].intVal =
           if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
           else: 0
-      else:    
-        stackTrace(c, tos, pc, "node is not a proc symbol") 
+      else:
+        stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:

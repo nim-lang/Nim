@@ -403,8 +403,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n[1] = makeTypeSymNode(c, lhsType, n[1].info)
       lhsType = n[1].typ
   else:
-    internalAssert c.config, lhsType.base.kind != tyNone
-    if c.inGenericContext > 0 and lhsType.base.containsGenericType:
+    if lhsType.base.kind == tyNone or
+        (c.inGenericContext > 0 and lhsType.base.containsGenericType):
       # BUGFIX: don't evaluate this too early: ``T is void``
       return
 

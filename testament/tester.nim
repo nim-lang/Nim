@@ -18,6 +18,7 @@ var useColors = true
 var backendLogging = true
 var simulate = false
 var verboseMegatest = false # very verbose but can be useful
+var verboseCommands = false
 
 const
   testsDir = "tests" & DirSep
@@ -37,6 +38,7 @@ Arguments:
 Options:
   --print                   also print results to the console
   --verboseMegatest         log to stdout megatetest compilation
+  --verboseCommands         log to stdout info about commands being run
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
@@ -111,12 +113,14 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
       result.exitCode = peekExitCode(p)
       if result.exitCode != -1: break
   close(p)
-  if result.exitCode != 0:
+
+  if verboseCommands:
     var command2 = command
     if args.len > 0: command2.add " " & args.quoteShellCommand
-    echo (msg: "execCmdEx2 failed",
+    echo (msg: "execCmdEx2",
       command: command2,
-      options: options)
+      options: options,
+      exitCode: result.exitCode)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
@@ -540,6 +544,7 @@ proc main() =
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "verbosemegatest": verboseMegatest = true
+    of "verbosecommands": verboseCommands = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":

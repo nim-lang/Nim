@@ -24,17 +24,16 @@ proc testMismatch() =
 
 """
 
-  doAssert mismatch(a, b) == """
+  let output = mismatch(a, b)
+  let expected = """
 
-lhs:{
-  some test with space at the end of lines    \n
+lhs:{  some test with space at the end of lines    \n
 \n
   can be hard to spot differences when diffing in a terminal   \n
   without this helper function\n
 \n
 }
-rhs:{
-  some test with space at the end of lines    \n
+rhs:{  some test with space at the end of lines    \n
 \n
   can be hard to spot differences when diffing in a terminal  \n
   without this helper function\n
@@ -42,14 +41,15 @@ rhs:{
 }
 lhs.len: 144 rhs.len: 143
 first mismatch index: 110
-lhs[i]: {" "} rhs[i]: {"\n"}lhs[0..<i]:{
-  some test with space at the end of lines    \n
-\n
-  can be hard to spot differences when diffing in a terminal  }
-rhs[0..<i]:{
-  some test with space at the end of lines    \n
+lhs[i]: {" "}
+rhs[i]: {"\n"}
+lhs[0..<i]:{  some test with space at the end of lines    \n
 \n
   can be hard to spot differences when diffing in a terminal  }"""
+
+  if output != expected:
+    echo output
+    doAssert false
 
 testMismatch()
 testAssertEquals()

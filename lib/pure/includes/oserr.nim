@@ -1,4 +1,4 @@
-## Include file that implements 'osErrorMsg' and friends. Do not import it!
+# Include file that implements 'osErrorMsg' and friends. Do not import it!
 
 when not declared(os):
   {.error: "This is an include file for os.nim!".}

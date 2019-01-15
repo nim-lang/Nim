@@ -3,6 +3,7 @@ output: '''
 123
 Hallo Welt
 Hallo Welt
+1
 '''
 """
 
@@ -23,3 +24,13 @@ macro foobar(arg: untyped): untyped =
 
 foobar:
   echo "Hallo Welt"
+
+# bug #3744
+import macros
+macro t(): untyped =
+  return quote do:
+    proc tp(): int =
+      result = 1
+t()
+
+echo tp()

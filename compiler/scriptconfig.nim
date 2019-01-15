@@ -42,14 +42,17 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       proc (a: VmArgs) =
         body
 
-  template cbos(name, body) {.dirty.} =
+  template cbexc(name, exc, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
         errorMsg = ""
         try:
           body
-        except OSError:
+        except exc:
           errorMsg = getCurrentExceptionMsg()
+
+  template cbos(name, body) {.dirty.} =
+    cbexc(name, OSError, body)
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
@@ -64,7 +67,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos createDir:
     os.createDir getString(a, 0)
 
-  result.registerCallback "stdlib.system.getOsError",
+  result.registerCallback "stdlib.system.getError",
     proc (a: VmArgs) = setResult(a, errorMsg)
 
   cbos setCurrentDir:
@@ -157,6 +160,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
+  cbexc stdinReadLine, EOFError:
+    setResult(a, "")
+    setResult(a, stdin.readLine())
+  cbexc stdinReadAll, EOFError:
+    setResult(a, "")
+    setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =

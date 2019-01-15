@@ -32,7 +32,7 @@ doc/*.html
 doc/*.pdf
 doc/*.idx
 /web/upload
-build/*
+/build/*
 bin/*
 
 # iOS specific wildcards.

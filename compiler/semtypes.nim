@@ -1028,7 +1028,12 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
   if n.kind == nkCurlyExpr:
     result = semTypeNode(c, n.sons[0], nil)
-    constraint = semNodeKindConstraints(n, c.config)
+    constraint = semNodeKindConstraints(n, c.config, 1)
+  elif n.kind == nkCall and
+      n[0].kind in {nkIdent, nkSym, nkOpenSymChoice, nkClosedSymChoice} and
+      considerQuotedIdent(c, n[0]).s == "{}":
+    result = semTypeNode(c, n[1], nil)
+    constraint = semNodeKindConstraints(n, c.config, 2)
   else:
     result = semTypeNode(c, n, nil)
 
@@ -1153,12 +1158,15 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
+      if kind notin {skMacro, skTemplate} and r.kind in {tyStmt, tyExpr}:
+        localError(c.config, n.sons[0].info, "return type '" & typeToString(r) & 
+            "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
-      if r.kind == tyAnything:
+      elif r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
         r = newTypeS(tyExpr, c)
-      elif r.kind != tyExpr:
+      else:
         if r.sym == nil or sfAnon notin r.sym.flags:
           let lifted = liftParamType(c, kind, genericParams, r, "result",
                                      n.sons[0].info)
@@ -1310,7 +1318,19 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
 
-proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
+    result = newTypeS(tyAlias, c)
+    result.rawAddSon typeExpr
+    result.sym = prev.sym
+    assignType(prev, result)
+
+proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
+  if prev != nil:
+    let result = newTypeS(tyAlias, c)
+    result.rawAddSon typExpr.typ
+    result.sym = prev.sym
+    assignType(prev, result)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
@@ -1413,20 +1433,6 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     pragma(c, s, n.sons[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n.sons[1])
   closeScope(c)
-
-proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct} and prev != nil:
-    result = newTypeS(tyAlias, c)
-    result.rawAddSon typeExpr
-    result.sym = prev.sym
-    assignType(prev, result)
-
-proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
-  if prev != nil:
-    let result = newTypeS(tyAlias, c)
-    result.rawAddSon typExpr.typ
-    result.sym = prev.sym
-    assignType(prev, result)
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
   if n.kind == nkType:
