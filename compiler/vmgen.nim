@@ -29,10 +29,15 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos, transf, asciitables
+  trees, intsets, magicsys, options, lowerings, lineinfos, transf
 import platform
 from os import splitFile
 
+const
+  debugEchoCode* = defined(nimVMDebug)
+
+when debugEchoCode:
+  import asciitables
 when hasFFI:
   import evalffi
 
@@ -47,8 +52,6 @@ proc debugInfo(c: PCtx; info: TLineInfo): string =
 
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   ## for debugging purposes
-
-
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
@@ -98,7 +101,8 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
-  result = result.alignTable
+  when debugEchoCode:
+    result = result.alignTable
 
 proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
   var buf = ""
