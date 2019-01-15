@@ -1318,7 +1318,19 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
 
-proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
+    result = newTypeS(tyAlias, c)
+    result.rawAddSon typeExpr
+    result.sym = prev.sym
+    assignType(prev, result)
+
+proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
+  if prev != nil:
+    let result = newTypeS(tyAlias, c)
+    result.rawAddSon typExpr.typ
+    result.sym = prev.sym
+    assignType(prev, result)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
@@ -1421,20 +1433,6 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     pragma(c, s, n.sons[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n.sons[1])
   closeScope(c)
-
-proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct} and prev != nil:
-    result = newTypeS(tyAlias, c)
-    result.rawAddSon typeExpr
-    result.sym = prev.sym
-    assignType(prev, result)
-
-proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
-  if prev != nil:
-    let result = newTypeS(tyAlias, c)
-    result.rawAddSon typExpr.typ
-    result.sym = prev.sym
-    assignType(prev, result)
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
   if n.kind == nkType:

@@ -432,7 +432,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif t.kind == tyAlias:
+    elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
       result = typeToString(t.sons[0])
     elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
