@@ -600,7 +600,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   get from Nim cmd
   put outputGotten.txt, outputGotten.txt, megatest.nim there too
   delete upon completion, maybe
-  ]# 
+  ]#
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
@@ -707,10 +707,9 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     runJoinedTest(r, cat, testsDir)
   else:
     var testsRun = 0
-
     var files: seq[string]
     for file in walkDirRec(testsDir &.? cat.string):
-        if isTestFile(file): files.add file
+      if isTestFile(file): files.add file
     files.sort # give reproducible order
 
     for i, name in files:
