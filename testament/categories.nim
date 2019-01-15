@@ -352,7 +352,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "8b5d28e985c0542163927d253a3e4fc9",
     "783299b98179cc725f9c46b5e3b5381f",
     "1a2b3fba1187c68d6a9bfa66854f3318",
-    "80f9c3e594a798225046e8a42e990daf"
+    "6746c84dac11d30decc6edd6a4442098"
   ]
 
   for i, test in tests:
