@@ -29,7 +29,7 @@
 
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
-  trees, intsets, magicsys, options, lowerings, lineinfos, transf
+  trees, intsets, magicsys, options, lowerings, lineinfos, transf, asciitables
 import platform
 from os import splitFile
 
@@ -43,9 +43,12 @@ type
   TGenFlags = set[TGenFlag]
 
 proc debugInfo(c: PCtx; info: TLineInfo): string =
-  result = toFilename(c.config, info).splitFile.name & ":" & $info.line
+  result = toFileLineCol(c.config, info)
 
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
+  ## for debugging purposes
+
+
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
@@ -54,7 +57,9 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     if x.opcode in relativeJumps:
       jumpTargets.incl(i+x.regBx-wordExcess)
 
-  # for debugging purposes
+  template toStr(opc: TOpcode): string = ($opc).substr(3)
+
+  result.add "code listing:\n"
   var i = start
   while i <= last:
     if i in jumpTargets: result.addf("L$1:\n", i)
@@ -62,34 +67,38 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
 
     result.add($i)
     let opc = opcode(x)
-    if opc in {opcConv, opcCast}:
+    if opc in {opcIndCall, opcIndCallAsgn}:
+      result.addf("\t$#\tr$#, r$#, nargs:$#", opc.toStr, x.regA,
+                  x.regB, x.regC)
+    elif opc in {opcConv, opcCast}:
       let y = c.code[i+1]
       let z = c.code[i+2]
-      result.addf("\t$#\tr$#, r$#, $#, $#", ($opc).substr(3), x.regA, x.regB,
+      result.addf("\t$#\tr$#, r$#, $#, $#", opc.toStr, x.regA, x.regB,
         c.types[y.regBx-wordExcess].typeToString,
         c.types[z.regBx-wordExcess].typeToString)
       inc i, 2
     elif opc < firstABxInstr:
-      result.addf("\t$#\tr$#, r$#, r$#", ($opc).substr(3), x.regA,
+      result.addf("\t$#\tr$#, r$#, r$#", opc.toStr, x.regA,
                   x.regB, x.regC)
     elif opc in relativeJumps:
-      result.addf("\t$#\tr$#, L$#", ($opc).substr(3), x.regA,
+      result.addf("\t$#\tr$#, L$#", opc.toStr, x.regA,
                   i+x.regBx-wordExcess)
     elif opc in {opcLdConst, opcAsgnConst}:
       let idx = x.regBx-wordExcess
-      result.addf("\t$#\tr$#, $# ($#)", ($opc).substr(3), x.regA,
+      result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
         c.constants[idx].renderTree, $idx)
     elif opc in {opcMarshalLoad, opcMarshalStore}:
       let y = c.code[i+1]
-      result.addf("\t$#\tr$#, r$#, $#", ($opc).substr(3), x.regA, x.regB,
+      result.addf("\t$#\tr$#, r$#, $#", opc.toStr, x.regA, x.regB,
         c.types[y.regBx-wordExcess].typeToString)
       inc i
     else:
-      result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
+      result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
     result.add("\t#")
     result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
+  result = result.alignTable
 
 proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
   var buf = ""

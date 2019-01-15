@@ -11,7 +11,7 @@
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 const
-  debugEchoCode = false
+  debugEchoCode = defined(nimVMDebug)
   traceCode = debugEchoCode
 
 import ast except getstr
