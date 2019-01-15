@@ -74,8 +74,10 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
+let kochExe = getAppDir() / "koch "
+
 proc kochExec*(cmd: string) =
-  exec "koch " & cmd
+  exec kochExe.quoteShell & cmd
 
 template withDir(dir, body) =
   let old = getCurrentDir()
