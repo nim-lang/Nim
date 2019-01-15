@@ -97,24 +97,27 @@ else:
   from stdtest/specialpaths import buildDir
   import "../.." / compiler/unittest_light
 
-  block: # fix #9951
-    var p = parseopt.initOptParser(@["echo \"quoted\""])
-    let expected = when defined(windows):
-      """"echo \"quoted\"""""
-    else:
-      """'echo "quoted"'"""
-    assertEquals parseopt.cmdLineRest(p), expected
+  block: # fix #9951 (and make it work for parseopt and parseopt2)
+    template runTest(parseoptCustom) =
+      var p = parseoptCustom.initOptParser(@["echo \"quoted\""])
+      let expected = when defined(windows):
+        """"echo \"quoted\"""""
+      else:
+        """'echo "quoted"'"""
+      assertEquals parseoptCustom.cmdLineRest(p), expected
 
-    doAssert "a5'b" == "a5\'b"
+      doAssert "a5'b" == "a5\'b"
 
-    let args = @["a1b", "a2 b", "", "a4\"b", "a5'b", r"a6\b", "a7\'b"]
-    var p2 = parseopt.initOptParser(args)
-    let expected2 = when defined(windows):
-      """a1b "a2 b" "" a4\"b a5'b a6\b a7'b"""
-    else:
-      """a1b 'a2 b' '' 'a4"b' 'a5'"'"'b' 'a6\b' 'a7'"'"'b'"""
-    doAssert "a5'b" == "a5\'b"
-    assertEquals parseopt.cmdLineRest(p2), expected2
+      let args = @["a1b", "a2 b", "", "a4\"b", "a5'b", r"a6\b", "a7\'b"]
+      var p2 = parseoptCustom.initOptParser(args)
+      let expected2 = when defined(windows):
+        """a1b "a2 b" "" a4\"b a5'b a6\b a7'b"""
+      else:
+        """a1b 'a2 b' '' 'a4"b' 'a5'"'"'b' 'a6\b' 'a7'"'"'b'"""
+      doAssert "a5'b" == "a5\'b"
+      assertEquals parseoptCustom.cmdLineRest(p2), expected2
+    runTest(parseopt)
+    runTest(parseopt2)
 
   block: # fix #9842
     let exe = buildDir / "D20190112T145450".addFileExt(ExeExt)
