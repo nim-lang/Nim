@@ -107,7 +107,7 @@ String handling
   substrings, replacing substrings.
 
 * `strformat <strformat.html>`_
-  Macro based standard string interpolation / formatting. Inpired by
+  Macro based standard string interpolation / formatting. Inspired by
   Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
