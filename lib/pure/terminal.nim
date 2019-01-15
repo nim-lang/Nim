@@ -37,7 +37,7 @@ type
 
 var gTerm {.threadvar.}: PTerminal
 
-proc newTerminal(): PTerminal
+proc newTerminal(): PTerminal {.gcsafe.}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
