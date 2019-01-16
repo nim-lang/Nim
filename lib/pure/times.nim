@@ -217,7 +217,7 @@ when defined(JS):
 elif defined(posix):
   import posix
 
-  type CTime* = posix.Time
+  type CTime = posix.Time
 
   var
     realTimeClockId {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
@@ -233,13 +233,10 @@ elif defined(posix):
       tzset()
 
 elif defined(windows):
-  import winlean
+  import winlean, std/time_t
 
-  when defined(i386) and defined(gcc):
-    type CTime* {.importc: "time_t", header: "<time.h>".} = distinct int32
-  else:
-    # newest version of Visual C++ defines time_t to be of 64 bits
-    type CTime* {.importc: "time_t", header: "<time.h>".} = distinct int64
+  type CTime = time_t.Time
+
   # visual c's c runtime exposes these under a different name
   var timezone {.importc: "_timezone", header: "<time.h>".}: int
 
