@@ -575,6 +575,8 @@ proc semConst(c: PContext, n: PNode): PNode =
     var typ: PType = nil
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
+      if typ.kind == tyAnything:
+        typ = nil
 
     var def = semConstExpr(c, a.sons[length-1])
     if def == nil:
