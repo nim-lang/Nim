@@ -74,7 +74,8 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-let kochExe* = os.getAppFilename()
+let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed eg: `nim c -o:koch_debug koch.nim`
+               else: getAppDir() / "koch".exe # works for winrelease
 
 proc kochExec*(cmd: string) =
   exec kochExe.quoteShell & " " & cmd
@@ -286,9 +287,10 @@ proc boot(args: string) =
   for i in 0..2:
     echo "iteration: ", i+1
     let extraOption = if i == 0:
-      "--skipUserCfg"
-        # forward compatibility: for bootstrap (1st iteration), avoid user flags
-        # that could break things, see #10030
+      "--skipUserCfg --skipParentCfg"
+        # Note(D20190115T162028:here): the configs are skipped for bootstrap
+        # (1st iteration) to prevent newer flags from breaking bootstrap phase.
+        # fixes #10030.
     else: ""
     exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
       [bootOptions, extraOption, args, smartNimcache]
@@ -444,8 +446,7 @@ proc runCI(cmd: string) =
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this
-    # todo: implement `execWithEnv`
-    exec("env NIM_COMPILE_TO_CPP=false $1 boot" % kochExe.quoteShell)
+    kochExec "boot"
   kochExec "boot -d:release"
 
   ## build nimble early on to enable remainder to depend on it if needed

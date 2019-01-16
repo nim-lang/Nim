@@ -171,7 +171,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
-    hintProcessing, hintPattern, hintExecuting, hintLinking}
+    hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const
   NotesVerbosity* = computeNotesVerbosity()

@@ -352,13 +352,13 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "8b5d28e985c0542163927d253a3e4fc9",
     "783299b98179cc725f9c46b5e3b5381f",
     "1a2b3fba1187c68d6a9bfa66854f3318",
-    "80f9c3e594a798225046e8a42e990daf"
+    "391ff57b38d9ea6f3eeb3fe69ab539d3"
   ]
 
   for i, test in tests:
     let filename = testsDir / test.addFileExt("nim")
     let testHash = getMD5(readFile(filename).string)
-    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed."
+    doAssert testHash == refHashes[i], "Nim in Action test " & filename & " was changed: " & $(i: i, testHash: testHash, refHash: refHashes[i])
   # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim"
@@ -600,7 +600,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   get from Nim cmd
   put outputGotten.txt, outputGotten.txt, megatest.nim there too
   delete upon completion, maybe
-  ]# 
+  ]#
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
@@ -707,10 +707,9 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
     runJoinedTest(r, cat, testsDir)
   else:
     var testsRun = 0
-
     var files: seq[string]
     for file in walkDirRec(testsDir &.? cat.string):
-        if isTestFile(file): files.add file
+      if isTestFile(file): files.add file
     files.sort # give reproducible order
 
     for i, name in files:

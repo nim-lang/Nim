@@ -9,6 +9,7 @@ asd
 Foo
 Bar
 '''
+joinable: false
 """
 
 import typetraits, macros
