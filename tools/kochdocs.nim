@@ -219,6 +219,7 @@ lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
 lib/std/varints.nim
+lib/std/time_t.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim
