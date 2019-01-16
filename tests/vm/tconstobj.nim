@@ -48,3 +48,15 @@ let people = {
 }.toTable()
 
 echo people["001"]
+
+# bug #10333
+
+# use auto in type expression of a const declaration
+
+const
+  encoding: auto = [
+    ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"],
+    ["", "X", "XX", "XXX", "XL", "L", "LX", "LXX", "LXXX", "XC"],
+    ["", "C", "CC", "CCC", "CD", "D", "DC", "DCC", "DCCC", "CM"],
+    ["", "M", "MM", "MMM", "--", "-", "--", "---", "----", "--"],
+  ]
