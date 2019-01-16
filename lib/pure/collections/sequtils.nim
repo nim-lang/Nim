@@ -136,12 +136,9 @@ proc count*[T](s: openArray[T], x: T): int =
     let
       a = @[1, 2, 2, 3, 2, 4, 2]
       b = "abracadabra"
-      c = count(a, 2)
-      d = count(a, 99)
-      e = count(b, 'r')
-    assert c == 4
-    assert d == 0
-    assert e == 2
+    assert count(a, 2) == 4
+    assert count(a, 99) == 0
+    assert count(b, 'r') == 2
 
   for itm in items(s):
     if itm == x:
