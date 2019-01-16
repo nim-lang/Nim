@@ -18,33 +18,6 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-{.push warning[deprecated]: off.}
-proc `$`*(url: Url): string {.deprecated: "use Uri instead".} =
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  return string(url)
-
-proc `/`*(a, b: Url): Url {.deprecated: "use Uri instead".} =
-  ## Joins two URLs together, separating them with / if needed.
-  ##
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  var urlS = $a
-  var bS = $b
-  if urlS == "": return b
-  if urlS[urlS.len-1] != '/':
-    urlS.add('/')
-  if bS[0] == '/':
-    urlS.add(bS.substr(1))
-  else:
-    urlS.add(bs)
-  result = Url(urlS)
-
-proc add*(url: var Url, a: Url) {.deprecated: "use Uri instead".} =
-  ## Appends url to url.
-  ##
-  ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
-  url = url / a
-{.pop.}
-
 proc encodeUrl*(s: string, usePlus=true): string =
   ## Encodes a URL according to RFC3986.
   ##
