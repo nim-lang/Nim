@@ -3893,7 +3893,7 @@ proc `-=`*[T: SomeInteger](x: var T, y: T) {.
   ## Decrements an ordinal
 
 proc `-=`*[T: enum|bool](x: var T, y: T) {.
-  magic: "Dec", noSideEffect, deprecated: "use `dec` instead".}
+  magic: "Dec", noSideEffect, deprecated: "0.20.0, use `dec` instead".}
 
 proc `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =
