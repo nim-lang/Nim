@@ -473,7 +473,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
-    liftTypeBoundOps(c, typ, a.info)
+    liftTypeBoundOps(c.graph, typ, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
@@ -1475,7 +1475,8 @@ proc canonType(c: PContext, t: PType): PType =
     result = t
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
-  case s.name.s.normalize
+  let name = s.name.s.normalize
+  case name
   of "=destroy":
     let t = s.typ
     var noError = false
@@ -1494,6 +1495,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           localError(c.config, n.info, errGenerated,
             "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
         noError = true
+        if obj.owner.getModule != s.getModule:
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `=destroy` can be defined only in the same module with its type (" & obj.typeToString() & ")")
     if not noError and sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
@@ -1517,6 +1521,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       else:
         localError(c.config, n.info, errGenerated,
                    "cannot bind 'deepCopy' to: " & typeToString(t))
+
+      if t.owner.getModule != s.getModule:
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
+
     else:
       localError(c.config, n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
@@ -1547,6 +1556,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+        if obj.owner.getModule != s.getModule:
+            localError(c.config, n.info, errGenerated,
+              "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+
         return
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
