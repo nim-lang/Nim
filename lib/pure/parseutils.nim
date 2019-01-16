@@ -121,6 +121,14 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  runnableExamples:
+    var res: string
+    doAssert parseIdent("Hello World", res, 0) == 5
+    doAssert res == "Hello"
+    doAssert parseIdent("Hello World", res, 1) == 4
+    doAssert res == "ello"
+    doAssert parseIdent("Hello World", res, 6) == 5
+    doAssert res == "World"
   var i = start
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
@@ -131,6 +139,11 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
 proc parseIdent*(s: string, start = 0): string =
   ## parses an identifier and returns it or an empty string in
   ## case of an error.
+  runnableExamples:
+    doAssert parseIdent("Hello World", 0) == "Hello"
+    doAssert parseIdent("Hello World", 1) == "ello"
+    doAssert parseIdent("Hello World", 5) == ""
+    doAssert parseIdent("Hello World", 6) == "World"
   result = ""
   var i = start
   if i < s.len and s[i] in IdentStartChars:
@@ -151,20 +164,34 @@ proc parseToken*(s: string, token: var string, validChars: set[char],
   token = substr(s, start, i-1)
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
-  ## skips the whitespace starting at ``s[start]``. Returns the number of
+  ## Skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.
+  runnableExamples:
+    doAssert skipWhitespace("Hello World", 0) == 0
+    doAssert skipWhitespace(" Hello World", 0) == 1
+    doAssert skipWhitespace("Hello World", 5) == 1
+    doAssert skipWhitespace("Hello  World", 5) == 2
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
-  ## skips the `token` starting at ``s[start]``. Returns the length of `token`
+  ## Skips the `token` starting at ``s[start]``. Returns the length of `token`
   ## or 0 if there was no `token` at ``s[start]``.
+  runnableExamples:
+    doAssert skip("2019-01-22", "2019", 0) == 4
+    doAssert skip("2019-01-22", "19", 0) == 0
+    doAssert skip("2019-01-22", "19", 2) == 2
+    doAssert skip("CAPlow", "CAP", 0) == 3
+    doAssert skip("CAPlow", "cap", 0) == 0
   while start+result < s.len and result < token.len and
       s[result+start] == token[result]:
     inc(result)
   if result != token.len: result = 0
 
 proc skipIgnoreCase*(s, token: string, start = 0): int =
-  ## same as `skip` but case is ignored for token matching.
+  ## Same as `skip` but case is ignored for token matching.
+  runnableExamples:
+    doAssert skipIgnoreCase("CAPlow", "CAP", 0) == 3
+    doAssert skipIgnoreCase("CAPlow", "cap", 0) == 3
   while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
@@ -173,12 +200,21 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
   ## Skips all characters until one char from the set `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
+  runnableExamples:
+    doAssert skipUntil("Hello World", {'W', 'e'}, 0) == 1
+    doAssert skipUntil("Hello World", {'W'}, 0) == 6
+    doAssert skipUntil("Hello World", {'W', 'd'}, 0) == 6
   while start+result < s.len and s[result+start] notin until: inc(result)
 
 proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   ## Skips all characters until the char `until` is found
   ## or the end is reached.
   ## Returns number of characters skipped.
+  runnableExamples:
+    doAssert skipUntil("Hello World", 'o', 0) == 4
+    doAssert skipUntil("Hello World", 'o', 4) == 0
+    doAssert skipUntil("Hello World", 'W', 0) == 6
+    doAssert skipUntil("Hello World", 'w', 0) == 11
   while start+result < s.len and s[result+start] != until: inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
@@ -188,7 +224,7 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
 
 proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
-  ## parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters notin `until`.
   var i = start
@@ -198,9 +234,17 @@ proc parseUntil*(s: string, token: var string, until: set[char],
 
 proc parseUntil*(s: string, token: var string, until: char,
                  start = 0): int {.inline.} =
-  ## parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that is not the `until` character.
+  runnableExamples:
+    var myToken: string
+    doAssert parseUntil("Hello World", myToken, 'W') == 6
+    doAssert myToken == "Hello "
+    doAssert parseUntil("Hello World", myToken, 'o') == 4
+    doAssert myToken == "Hell"
+    doAssert parseUntil("Hello World", myToken, 'o', 2) == 2
+    doAssert myToken == "ll"
   var i = start
   while i < s.len and s[i] != until: inc(i)
   result = i-start
@@ -211,6 +255,12 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
+  runnableExamples:
+    var myToken: string
+    doAssert parseUntil("Hello World", myToken, "Wor") == 6
+    doAssert myToken == "Hello "
+    doAssert parseUntil("Hello World", myToken, "Wor", 2) == 4
+    doAssert myToken == "llo "
   if until.len == 0:
     token.setLen(0)
     return 0
@@ -230,6 +280,12 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   ## parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
+  runnableExamples:
+    var myToken: string
+    doAssert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 0) == 0
+    doAssert myToken.len() == 0
+    doAssert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 6) == 3
+    doAssert myToken == "Wor"
   var i = start
   while i < s.len and s[i] in validChars: inc(i)
   result = i-start
@@ -238,6 +294,10 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
+  runnableExamples:
+    doAssert captureBetween("Hello World", 'e') == "llo World"
+    doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"
+    doAssert captureBetween("Hello World", 'l', start = 6) == "d"
   var i = skipUntil(s, first, start)+1+start
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
@@ -274,6 +334,10 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
+  runnableExamples:
+    var res: BiggestInt
+    doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
+    doAssert res == 9223372036854775807
   var res: BiggestInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -286,6 +350,12 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   ## parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
+  runnableExamples:
+    var res: int
+    doAssert parseInt("2019", res, 0) == 4
+    doAssert res == 2019
+    doAssert parseInt("2019", res, 2) == 2
+    doAssert res == 19
   var res: BiggestInt
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
@@ -342,9 +412,15 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
 
 proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
   rtl, extern: "npuParseBiggestUInt", noSideEffect, raises: [ValueError].} =
-  ## parses an unsigned integer starting at `start` and stores the value
+  ## Parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
+  runnableExamples:
+    var res: BiggestUInt
+    doAssert parseBiggestUInt("12", res, 0) == 2
+    doAssert res == 12
+    doAssert parseBiggestUInt("1111111111111111111", res, 0) == 19
+    doAssert res == 1111111111111111111'u64
   var res: BiggestUInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -376,6 +452,14 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   ## parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occurred a parsing
   ## error.
+  runnableExamples:
+    var res: float
+    doAssert parseFloat("32", res, 0) == 2
+    doAssert res == 32.0
+    doAssert parseFloat("32.57", res, 0) == 5
+    doAssert res == 32.57
+    doAssert parseFloat("32.57", res, 3) == 2
+    doAssert res == 57.00
   var bf: BiggestFloat
   result = parseBiggestFloat(s, bf, start)
   if result != 0:
