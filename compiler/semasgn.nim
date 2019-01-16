@@ -14,7 +14,7 @@
 
 type
   TLiftCtx = object
-    g: ModuleGraph
+    graph: ModuleGraph
     info: TLineInfo # for construction
     kind: TTypeAttachedOp
     fn: PSym
@@ -33,7 +33,7 @@ proc at(a, i: PNode, elemType: PType): PNode =
 
 proc liftBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   for i in 0 ..< t.len:
-    let lit = lowerings.newIntLit(c.g, x.info, i)
+    let lit = lowerings.newIntLit(c.graph, x.info, i)
     liftBodyAux(c, t.sons[i], body, x.at(lit, t.sons[i]), y.at(lit, t.sons[i]))
 
 proc dotField(x: PNode, f: PSym): PNode =
@@ -77,7 +77,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
   of nkRecList:
     for t in items(n): liftBodyObj(c, t, body, x, y)
   else:
-    illFormedAstLocal(n, c.g.config)
+    illFormedAstLocal(n, c.graph.config)
 
 proc genAddr(g: ModuleGraph; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
@@ -127,13 +127,13 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     else:
       op = field
       if op == nil:
-        op = liftBody(c.g, t, c.kind, c.info)
+        op = liftBody(c.graph, t, c.kind, c.info)
     if sfError in op.flags:
       incl c.fn.flags, sfError
     else:
-      markUsed(c.g.config, c.info, op, c.g.usageSym)
+      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
     onUse(c.info, op)
-    body.add newAsgnCall(c.g, op, x, y)
+    body.add newAsgnCall(c.graph, op, x, y)
     result = true
 
 proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
@@ -141,9 +141,9 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedDestructor:
     let op = t.destructor
     if op != nil:
-      markUsed(c.g.config, c.info, op, c.g.usageSym)
+      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
-      body.add destructorCall(c.g, op, x)
+      body.add destructorCall(c.graph, op, x)
       result = true
   of attachedAsgn:
     result = considerAsgnOrSink(c, t, body, x, y, t.assignment)
@@ -152,7 +152,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedDeepCopy:
     let op = t.deepCopy
     if op != nil:
-      markUsed(c.g.config, c.info, op, c.g.usageSym)
+      markUsed(c.graph.config, c.info, op, c.graph.usageSym)
       onUse(c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
@@ -169,13 +169,13 @@ proc addVar(father, v, value: PNode) =
   addSon(father, vpart)
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
-  var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.fn, c.info)
-  temp.typ = getSysType(c.g, body.info, tyInt)
+  var temp = newSym(skTemp, getIdent(c.graph.cache, lowerings.genPrefix), c.fn, c.info)
+  temp.typ = getSysType(c.graph, body.info, tyInt)
   incl(temp.flags, sfFromGeneric)
 
   var v = newNodeI(nkVarSection, c.info)
   result = newSymNode(temp)
-  v.addVar(result, lowerings.newIntLit(c.g, body.info, first))
+  v.addVar(result, lowerings.newIntLit(c.graph, body.info, first))
   body.add v
 
 proc genBuiltin(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
@@ -185,15 +185,15 @@ proc genBuiltin(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
   result = newNodeI(nkWhileStmt, c.info, 2)
-  let cmp = genBuiltin(c.g, mLeI, "<=", i)
-  cmp.add genHigh(c.g, dest)
-  cmp.typ = getSysType(c.g, c.info, tyBool)
+  let cmp = genBuiltin(c.graph, mLeI, "<=", i)
+  cmp.add genHigh(c.graph, dest)
+  cmp.typ = getSysType(c.graph, c.info, tyBool)
   result.sons[0] = cmp
   result.sons[1] = newNodeI(nkStmtList, c.info)
 
 proc addIncStmt(c: var TLiftCtx; body, i: PNode) =
-  let incCall = genBuiltin(c.g, mInc, "inc", i)
-  incCall.add lowerings.newIntLit(c.g, c.info, 1)
+  let incCall = genBuiltin(c.graph, mInc, "inc", i)
+  incCall.add lowerings.newIntLit(c.graph, c.info, 1)
   body.add incCall
 
 proc newSeqCall(g: ModuleGraph; x, y: PNode): PNode =
@@ -211,7 +211,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     defaultOp(c, t, body, x, y)
   of tyArray:
     if tfHasAsgn in t.flags:
-      let i = declareCounter(c, body, firstOrd(c.g.config, t))
+      let i = declareCounter(c, body, firstOrd(c.graph.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
@@ -223,12 +223,12 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tySequence:
     # note that tfHasAsgn is propagated so we need the check on
     # 'selectedGC' here to determine if we have the new runtime.
-    if c.g.config.selectedGC == gcDestructors:
+    if c.graph.config.selectedGC == gcDestructors:
       discard considerOverloadedOp(c, t, body, x, y)
     elif tfHasAsgn in t.flags:
       if c.kind != attachedDestructor:
-        body.add newSeqCall(c.g, x, y)
-      let i = declareCounter(c, body, firstOrd(c.g.config, t))
+        body.add newSeqCall(c.graph, x, y)
+      let i = declareCounter(c, body, firstOrd(c.graph.config, t))
       let whileLoop = genWhileLoop(c, i, x)
       let elemType = t.lastSon
       liftBodyAux(c, elemType, whileLoop.sons[1], x.at(i, elemType),
@@ -258,20 +258,20 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       # have to go through some indirection; we delegate this to the codegen:
       let call = newNodeI(nkCall, c.info, 2)
       call.typ = t
-      call.sons[0] = newSymNode(createMagic(c.g, "deepCopy", mDeepCopy))
+      call.sons[0] = newSymNode(createMagic(c.graph, "deepCopy", mDeepCopy))
       call.sons[1] = y
       body.add newAsgnStmt(x, call)
   of tyVarargs, tyOpenArray:
-    localError(c.g.config, c.info, "cannot copy openArray")
+    localError(c.graph.config, c.info, "cannot copy openArray")
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
      tyTypeDesc, tyGenericInvocation, tyForward:
-    internalError(c.g.config, c.info, "assignment requested for type: " & typeToString(t))
+    internalError(c.graph.config, c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyOptAsRef: internalError(c.g.config, "liftBodyAux")
+  of tyOptAsRef: internalError(c.graph.config, "liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -319,7 +319,7 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
 
   var a: TLiftCtx
   a.info = info
-  a.g = g
+  a.graph = g
   a.kind = kind
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
