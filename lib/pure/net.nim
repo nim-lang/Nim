@@ -967,39 +967,6 @@ when defined(posix) or defined(nimdoc):
         raiseOSError(osLastError())
 
 when defined(ssl):
-  proc handshake*(socket: Socket): bool
-    {.tags: [ReadIOEffect, WriteIOEffect], deprecated.} =
-    ## This proc needs to be called on a socket after it connects. This is
-    ## only applicable when using ``connectAsync``.
-    ## This proc performs the SSL handshake.
-    ##
-    ## Returns ``False`` whenever the socket is not yet ready for a handshake,
-    ## ``True`` whenever handshake completed successfully.
-    ##
-    ## A SslError error is raised on any other errors.
-    ##
-    ## **Note:** This procedure is deprecated since version 0.14.0.
-    result = true
-    if socket.isSSL:
-      var ret = SSLConnect(socket.sslHandle)
-      if ret <= 0:
-        var errret = SSLGetError(socket.sslHandle, ret)
-        case errret
-        of SSL_ERROR_ZERO_RETURN:
-          raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
-        of SSL_ERROR_WANT_CONNECT, SSL_ERROR_WANT_ACCEPT,
-          SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE:
-          return false
-        of SSL_ERROR_WANT_X509_LOOKUP:
-          raiseSSLError("Function for x509 lookup has been called.")
-        of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
-          raiseSSLError()
-        else:
-          raiseSSLError("Unknown Error")
-      socket.sslNoHandshake = false
-    else:
-      raiseSSLError("Socket is not an SSL socket.")
-
   proc gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (``socket``)
     ## and the server that ``socket`` is connected to.
