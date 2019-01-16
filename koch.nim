@@ -287,9 +287,10 @@ proc boot(args: string) =
   for i in 0..2:
     echo "iteration: ", i+1
     let extraOption = if i == 0:
-      "--skipUserCfg"
-        # forward compatibility: for bootstrap (1st iteration), avoid user flags
-        # that could break things, see #10030
+      "--skipUserCfg --skipParentCfg"
+        # Note(D20190115T162028:here): the configs are skipped for bootstrap
+        # (1st iteration) to prevent newer flags from breaking bootstrap phase.
+        # fixes #10030.
     else: ""
     exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
       [bootOptions, extraOption, args, smartNimcache]
