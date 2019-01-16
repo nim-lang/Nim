@@ -993,7 +993,7 @@ proc select(readfd: Socket, timeout = 500): int =
     return 1
 
   var fds = @[readfd.fd]
-  result = select(fds, timeout)
+  result = selectRead(fds, timeout)
 
 proc isClosed(socket: Socket): bool =
   socket.fd == osInvalidSocket
