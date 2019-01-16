@@ -1661,7 +1661,5 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     when defineSsl and not defined(nimdoc):
       if socket.isSSL:
         socket.fd.setBlocking(true)
-        {.warning[Deprecated]: off.}
-        doAssert socket.handshake()
-        {.warning[Deprecated]: on.}
+        doAssert socket.gotHandshake()
   socket.fd.setBlocking(true)
