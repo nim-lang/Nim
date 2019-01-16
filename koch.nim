@@ -287,7 +287,7 @@ proc boot(args: string) =
   for i in 0..2:
     echo "iteration: ", i+1
     let extraOption = if i == 0:
-      "--skipCfg --skipUserCfg --skipParentCfg"
+      "--skipUserCfg --skipParentCfg"
         # Note(D20190115T162028:here): the configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
         # fixes #10030.

@@ -77,7 +77,7 @@ Advanced options:
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
   --oldast:on|off           use old AST for backwards compatibility
-  --skipCfg                 do not read the general configuration file
+  --skipCfg                 do not read the nim installation's configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
   --skipProjCfg             do not read the project's configuration file
