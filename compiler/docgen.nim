@@ -243,8 +243,8 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
-  if n.kind == nkCommentStmt and n.strVal.len > 0:
-    renderRstToOut(d[], parseRst(n.strVal, toFilename(d.conf, n.info),
+  if n.kind == nkCommentStmt and n.len > 0 and n[0].strVal.len > 0:
+    renderRstToOut(d[], parseRst(n[0].strVal, toFilename(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -278,14 +278,22 @@ proc getPlainDocstring(n: PNode): string =
   ## You need to call this before genRecComment, whose side effects are removal
   ## of comments from the tree. The proc will recursively scan and return all
   ## the concatenated ``##`` comments of the node.
+
   result = ""
-  if n == nil: return
-  if startsWith(n.strVal, "##"):
-    result = n.strVal
-  if result.len < 1:
-    for i in countup(0, safeLen(n)-1):
-      result = getPlainDocstring(n.sons[i])
-      if result.len > 0: return
+  if n == nil:
+    return
+
+  elif n.kind == nkExportDoc:
+    # if startsWith(n[2].strVal, "##"):
+    return n[2].strVal
+  elif n.kind == nkCommentStmt:
+    for strLit in n:
+      result.add strLit.strVal
+  else:
+    for i in 0 ..< safeLen(n):
+      result = getPlainDocstring(n[i])
+      if result.len > 0:
+        return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
   result = module.kind == skModule and module.owner != nil and
