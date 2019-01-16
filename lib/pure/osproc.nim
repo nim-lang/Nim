@@ -60,9 +60,6 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-const poUseShell* {.deprecated.} = poUsePath
-  ## Deprecated alias for poUsePath.
-
 proc execProcess*(command: string,
                   workingDir: string = "",
                   args: openArray[string] = [],
