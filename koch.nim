@@ -277,14 +277,16 @@ proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let defaultCommand = if getEnv("NIM_COMPILE_TO_CPP", "false") == "true": "cpp" else: "c"
-  let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
-  echo "boot: defaultCommand: ", defaultCommand, " bootOptions: ", bootOptions
+  let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
   let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOs & "_" & hostCpu
 
   copyExe(findStartNim(), 0.thVersion)
-  for i in 0..2:
+  for i in 0..2+ord(useCpp):
+    # do the first iteration in C mode in order to avoid problem #10315:
+    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
+    let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
+
     echo "iteration: ", i+1
     let extraOption = if i == 0:
       "--skipUserCfg --skipParentCfg"
