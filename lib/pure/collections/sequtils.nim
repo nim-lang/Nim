@@ -301,7 +301,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ##
   ## See also:
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
-  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-ace version
+  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
   ##
   runnableExamples:
     let
@@ -380,7 +380,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ## See also:
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
-  ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_ for the in-ace version
+  ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_ for the in-place version
   ##
   runnableExamples:
     let
@@ -811,7 +811,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ##
   ## See also:
   ## * `map proc<#map,openArray[T],proc(T)>`_
-  ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-ace version
+  ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
   ##
   runnableExamples:
     let
