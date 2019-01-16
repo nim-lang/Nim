@@ -8,7 +8,8 @@
 #
 
 ## This module implements a series of low level methods for bit manipulation.
-## By default, this module use compiler intrinsics to improve performance
+
+## By default, this module use compiler intrinsics where possible to improve performance
 ## on supported compilers: ``GCC``, ``LLVM_GCC``, ``CLANG``, ``VCC``, ``ICC``.
 ##
 ## The module will fallback to pure nim procs incase the backend is not supported.
@@ -31,6 +32,63 @@ const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) an
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
+
+when defined(nimHasalignOf):
+
+  import macros
+
+  type BitsRange*[T] = range[0..sizeof(T)*8-1]
+    ## Returns a range with all bit positions for type ``T``
+
+  proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
+    v = v or mask
+
+  proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
+    v = v and not mask
+
+  proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
+    v = v xor mask
+
+  proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` set to 1
+    v.setMask(1.T shl bit)
+
+  proc clearBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` set to 0
+    v.clearMask(1.T shl bit)
+
+  proc flipBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
+    ## Returns ``v``, with the bit at position ``bit`` flipped
+    v.flipMask(1.T shl bit)
+
+  macro setBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 1
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("setBit", v, bit)
+
+  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("clearBit", v, bit)
+
+  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    bits.expectKind(nnkBracket)
+    result = newStmtList()
+    for bit in bits:
+      result.add newCall("flipBit", v, bit)
+
+  proc testBit*[T: SomeInteger](v: var T, bit: BitsRange[T]): bool {.inline.} =
+    ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
+    let mask = 1.T shl bit
+    return (v and mask) == mask
 
 # #### Pure Nim version ####
 
