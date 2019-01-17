@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Nim contributors
-##
 ## The system module defines several common functions for working with strings,
 ## such as:
 ## * ``$`` for converting other data-types to strings

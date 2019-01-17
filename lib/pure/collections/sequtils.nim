@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Alexander Mitchell-Robinson (Amrykid) and Nim contributors
-##
 ## Although this module has ``seq`` in its name, it implements operations
 ## not only for `seq`:idx: type, but for three built-in container types under
 ## the ``openArray`` umbrella:
