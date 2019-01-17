@@ -401,29 +401,39 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     test.spec.action = actionCompile
     testSpec r, test
 
-proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  var files: seq[string]
 
-  proc isValid(file: string): bool =
+type TestMeta = object
+  skip: bool
+  optionCompile: string
+
+type ProcGetTestMeta = proc(file: string, testMeta: var TestMeta)
+
+proc testLibGeneric(r: var TResults, pattern, options: string, cat: Category, getTestMeta: ProcGetTestMeta) =
+  var files: seq[string]
+  proc isValidGeneric(file: string): bool =
     for dir in parentDirs(file, inclusive = false):
       if dir.lastPathPart in ["includes", "nimcache"]:
         # eg: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
         return false
     let name = extractFilename(file)
     if name.splitFile.ext != ".nim": return false
-    for namei in disabledFiles:
-      # because of `LockFreeHash.nim` which has case
-      if namei.cmpPaths(name) == 0: return false
     return true
 
   for testFile in os.walkDirRec(pattern):
-    if isValid(testFile):
-      files.add testFile
+    # Nim BUG: Error: 'continue' cannot have a label
+    # if not isValidGeneric(testFile): continue
+    #   files.add testFile
+    if isValidGeneric(testFile): files.add testFile
 
   files.sort # reproducible order
   for testFile in files:
+    var options2 = options
     let contents = readFile(testFile).string
-    var testObj = makeTest(testFile, options, cat)
+    var testMeta: TestMeta
+    getTestMeta(testFile, testMeta)
+    if testMeta.skip: continue
+    options2.add " " & testMeta.optionCompile
+    var testObj = makeTest(testFile, options2, cat)
     #[
     todo:
     this logic is fragile:
@@ -435,6 +445,59 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     if "when isMainModule" notin contents:
       testObj.spec.action = actionCompile
     testSpec r, testObj
+
+proc testCompilerlib(r: var TResults, pattern, options: string, cat: Category) =
+  proc getTestMeta(file: string, testMeta: var TestMeta) =
+    let contents = readFile(file).string
+    if contents.contains("# included from "): # hack; need something more robust
+      testMeta.skip = true
+      return
+
+    # todo: reduce list below by making appropriate adjustments
+    let excluded = """
+canonicalizer
+ccgliterals
+closureiters
+debuginfo
+evalffi
+forloops
+hlo
+jstypes
+lambdalifting
+nimfix/nimfix
+packagehandling
+plugins/active
+plugins/itersgen
+rodimpl
+semfields
+semstmts
+sizealignoffsetimpl
+tccgen
+vmhooks
+vmops
+"""
+    for a in excluded.split:
+      if a.len == 0: continue # IMPROVE: cf splitRemoveComments
+      let file2 = unixToNativePath("compiler/" & (a & ".nim"))
+      if file == file2:
+        testMeta.skip = true
+        return
+
+    case file
+      of "compiler/layouter.nim": testMeta.optionCompile = " -d:nimPretty"
+      else: discard
+  testLibGeneric(r, pattern, options, cat, getTestMeta)
+
+proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
+  proc getTestMeta(file: string, testMeta: var TestMeta) =
+    let name = extractFilename(file)
+    for namei in disabledFiles:
+      # because of `LockFreeHash.nim` which has case
+      if namei.cmpPaths(name) == 0:
+        testMeta.skip = true
+        return
+
+  testLibGeneric(r, pattern, options, cat, getTestMeta)
 
 # ----------------------------- nimble ----------------------------------------
 type
@@ -688,6 +751,8 @@ proc processCategory(r: var TResults, cat: Category, options, testsDir: string,
   of "lib":
     testStdlib(r, "lib/pure/", options, cat)
     testStdlib(r, "lib/packages/docutils/", options, cat)
+  of "compilerlib":
+    testCompilerlib(r, "compiler/", options, cat)
   of "examples":
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)

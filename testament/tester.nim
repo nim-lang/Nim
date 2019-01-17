@@ -134,6 +134,8 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
+  if verboseCommands:
+    echo (msg: "callCompiler", command: c.quoteShellCommand)
   var p = startProcess(command=c[0], args=c[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -236,7 +238,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshouldfail.nim
   var name = test.name.replace(DirSep, '/')
-  name.add " " & $target & test.options
+  name.add " " & $target & " " & $test.spec.action & " " & test.options
 
   let duration = epochTime() - test.startTime
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
