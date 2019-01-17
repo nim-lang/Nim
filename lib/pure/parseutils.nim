@@ -68,21 +68,20 @@ proc parseHex*(s: string, number: var int, start = 0; maxLen = 0): int {.
   ## proc is sensitive to the already existing value of ``number`` and will
   ## likely not do what you want unless you make sure ``number`` is zero. You
   ## can use this feature to *chain* calls, though the result int will quickly
-  ## overflow. Example:
-  ##
-  ## .. code-block:: nim
-  ##   var value = 0
-  ##   discard parseHex("0x38", value)
-  ##   assert value == 56
-  ##   discard parseHex("0x34", value)
-  ##   assert value == 56 * 256 + 52
-  ##   value = -1
-  ##   discard parseHex("0x38", value)
-  ##   assert value == -200
+  ## overflow.
   ##
   ## If ``maxLen == 0`` the length of the hexadecimal number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
+  runnableExamples:
+    var value = 0
+    discard parseHex("0x38", value)
+    assert value == 56
+    discard parseHex("0x34", value)
+    assert value == 56 * 256 + 52
+    value = -1
+    discard parseHex("0x38", value)
+    assert value == -200
   var i = start
   var foundDigit = false
   # get last index based on minimum `start + maxLen` or `s.len`
@@ -426,10 +425,10 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
   ## Example:
   ##
-  ## .. code-block:: nim
-  ##   var res = 0
-  ##   discard parseSaturatedNatural("848", res)
-  ##   doAssert res == 848
+  runnableExamples:
+    var res = 0
+    discard parseSaturatedNatural("848", res)
+    doAssert res == 848
   var i = start
   if i < s.len and s[i] == '+': inc(i)
   if i < s.len and s[i] in {'0'..'9'}:
