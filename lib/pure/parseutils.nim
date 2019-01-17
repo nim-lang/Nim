@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains helpers for parsing tokens, numbers, integers, floats, identifiers, etc.
+## This module contains helpers for parsing tokens, numbers, integers, floats,
+## identifiers, etc.
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
@@ -38,10 +39,13 @@
 ##
 ##
 ## **See also:**
-## * `pure parsers<lib.html#pure-libraries-parsers>`_ for other parsers
-## * `strutils module<strutils.html>`_ for combined and identifical parsing proc's
-## * `json module<json.html>`_ for a high performance JSON parser
-## * `parsexml module<parsexml.html>`_ for a high performance XML / HTML parser
+## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
+## * `json module<json.html>`_ for a JSON parser
+## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
+## * `parseopt module<parseopt.html>`_ for a command line parser
+## * `parsecsv module<parsecsv.html>`_ for a simple CSV (comma separated value) parser
+## * `parsecfg module<parsecfg.html>`_ for a configuration file parser
+## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
 
 {.deadCodeElim: on.}  # dce option deprecated
