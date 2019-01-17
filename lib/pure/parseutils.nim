@@ -41,10 +41,10 @@
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
 ## * `json module<json.html>`_ for a JSON parser
-## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
-## * `parseopt module<parseopt.html>`_ for a command line parser
-## * `parsecsv module<parsecsv.html>`_ for a simple CSV (comma separated value) parser
 ## * `parsecfg module<parsecfg.html>`_ for a configuration file parser
+## * `parsecsv module<parsecsv.html>`_ for a simple CSV (comma separated value) parser
+## * `parseopt module<parseopt.html>`_ for a command line parser
+## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
 
