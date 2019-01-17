@@ -1953,7 +1953,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mOf: genOf(p, n, r)
   of mReset: genReset(p, n)
   of mEcho: genEcho(p, n, r)
-  of mNLen..mNError, mSlurp, mStaticExec:
+  of mNLen..mNError, mSlurp:
     localError(p.config, n.info, errXMustBeCompileTime % n.sons[0].sym.name.s)
   of mCopyStr:
     binaryExpr(p, n, r, "", "($1.slice($2))")

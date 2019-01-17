@@ -100,7 +100,6 @@ type
     opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext,
 
     opcSlurp,
-    opcGorge,
     opcParseExprToAst,
     opcParseStmtToAst,
     opcQueryErrorFlag,

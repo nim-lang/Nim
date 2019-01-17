@@ -5,6 +5,8 @@ import os
 import math
 import strutils
 
+const unexistant = "D20190116T211842"
+
 template forceConst(a: untyped): untyped =
   ## Force evaluation at CT, useful for example here:
   ## `callFoo(forceConst(getBar1()), getBar2())`
@@ -44,4 +46,10 @@ block:
   # Check against bugs like #9176
   doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())
   if false: #pending #9176
-    doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))
+    doAssert gorgeEx(unexistant) == forceConst(gorgeEx(unexistant))
+  echo gorge("pwd")
+
+block: # issue #1994
+  static:
+    doAssertRaises(AssertionError):
+      let a = gorge(unexistant)

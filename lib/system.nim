@@ -3849,38 +3849,6 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
-  ## This is an alias for `staticExec <#staticExec>`_.
-
-proc staticExec*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
-  ## Executes an external process at compile-time.
-  ## if `input` is not an empty string, it will be passed as a standard input
-  ## to the executed program.
-  ##
-  ## .. code-block:: nim
-  ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") &
-  ##                       "\nCompiled on " & staticExec("uname -v")
-  ##
-  ## `gorge <#gorge>`_ is an alias for ``staticExec``. Note that you can use
-  ## this proc inside a pragma like `passC <nimc.html#passc-pragma>`_ or `passL
-  ## <nimc.html#passl-pragma>`_.
-  ##
-  ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
-  ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
-  ## behaviour then. ``command & input & cache`` (the concatenated string) is
-  ## used to determine whether the entry in the cache is still valid. You can
-  ## use versioning information for ``cache``:
-  ##
-  ## .. code-block:: nim
-  ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
-
-proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
-                                                              exitCode: int] =
-  ## Same as `gorge` but also returns the precious exit code.
-  discard
-
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}
   ## Increments an ordinal
@@ -4004,6 +3972,48 @@ template doAssert*(cond: untyped, msg = "") =
   ## same as ``assert`` but is always turned on regardless of ``--assertions``
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
+
+
+proc gorgeEx*(command: string, input = "", cache = ""):
+  tuple[output: string, exitCode: int] {.compileTime.} =
+  ## Executes an external process at compile-time.
+  ## if `input` is not an empty string, it will be passed as a standard input
+  ## to the executed program.
+  ##
+  ## .. code-block:: nim
+  ##     const buildInfo = "Revision " & gorgeEx("git rev-parse HEAD") &
+  ##                       "\nCompiled on " & gorgeEx("uname -v")
+  ##
+  ## If ``cache`` is not empty, the results of ``gorgeEx`` are cached within
+  ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
+  ## behaviour then. ``command & input & cache`` (the concatenated string) is
+  ## used to determine whether the entry in the cache is still valid. You can
+  ## use versioning information for ``cache``:
+  ##
+  ## .. code-block:: nim
+  ##     const (stateMachine, exitCode) = gorgeEx("dfaoptimizer", "input", "0.8.0")
+  ##
+  runnableExamples:
+    import os, strutils
+    const ret = gorgeEx(getCurrentCompilerExe() & " --version")
+    doAssert ret.exitCode == 0
+    doAssert ret.output.startsWith("Nim Compiler Version")
+  discard
+
+proc gorge*(command: string, input = "", cache = ""): string {.compileTime.} =
+  ## Convenience wrapper around `gorgeEx` that returns the output after
+  ## checking `exitCode`.
+  ## Note that you can use this proc inside a pragma like
+  ## `passC <nimc.html#passc-pragma>`_ or
+  ## `passL <nimc.html#passl-pragma>`_,
+  ## eg: `{.passL: gorge("pkg-config --libs sdl").}`
+  let ret = gorgeEx(command, input, cache)
+  doAssert ret.exitCode == 0, "gorgeEx failed: cmd: `" & command & "` input: `" & input & "` cache: `" & cache & "`"
+  result = ret.output
+
+proc staticExec*(command: string, input = "", cache = ""): string {.compileTime.} =
+  ## alias for `gorge`
+  result = gorge(command, input, cache)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
   ## iterates over each item of `a`.

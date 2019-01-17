@@ -665,6 +665,8 @@ proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
 
 proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
+  # was used by `of mStaticExec: genBinaryABCD(c, n, dest, opcGorge)`
+  # which was removed; keeping this in case of future use
   let
     tmp = c.genx(n.sons[1])
     tmp2 = c.genx(n.sons[2])
@@ -1156,7 +1158,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, opcTypeTrait, dest, tmp)
     c.freeTemp(tmp)
   of mSlurp: genUnaryABC(c, n, dest, opcSlurp)
-  of mStaticExec: genBinaryABCD(c, n, dest, opcGorge)
   of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
   of mGetImplTransf: genUnaryABC(c, n, dest, opcGetImplTransf)

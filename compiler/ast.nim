@@ -580,7 +580,7 @@ type
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
-    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
+    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
