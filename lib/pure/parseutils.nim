@@ -423,8 +423,6 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
   ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
-  ## Example:
-  ##
   runnableExamples:
     var res = 0
     discard parseSaturatedNatural("848", res)
