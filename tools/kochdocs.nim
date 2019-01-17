@@ -177,7 +177,6 @@ lib/pure/collections/lists.nim
 lib/pure/collections/sharedlist.nim
 lib/pure/collections/sharedtables.nim
 lib/pure/collections/intsets.nim
-lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
