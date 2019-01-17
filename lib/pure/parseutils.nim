@@ -7,9 +7,42 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains helpers for parsing tokens, numbers, identifiers, etc.
+## This module contains helpers for parsing tokens, numbers, integers, floats, identifiers, etc.
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
+##
+##
+## .. code-block::
+##    import parseutils
+##
+##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##
+##    for log in logs:
+##      var res: string
+##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
+##        echo res & " - " & captureBetween(log, ' ', '_')
+##        # => 2019-01-10 - OK
+##
+##
+## .. code-block::
+##    import parseutils
+##    from strutils import Digits, parseInt
+##
+##    let userInput1 = "2019 school start"
+##    let userInput2 = "3 years back"
+##
+##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
+##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
+##
+##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
+##
+##
+## **See also:**
+## * `pure parsers<lib.html#pure-libraries-parsers>`_ for other parsers
+## * `strutils module<strutils.html>`_ for combined and identifical parsing proc's
+## * `json module<json.html>`_ for a high performance JSON parser
+## * `parsexml module<parsexml.html>`_ for a high performance XML / HTML parser
+
 
 {.deadCodeElim: on.}  # dce option deprecated
 
@@ -80,6 +113,11 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   ## If ``maxLen == 0`` the length of the octal number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
+  runnableExamples:
+    var res: int
+    doAssert parseOct("12", res) == 2
+    doAssert res == 10
+    doAssert parseOct("9", res) == 0
   var i = start
   var foundDigit = false
   # get last index based on minimum `start + maxLen` or `s.len`
@@ -103,6 +141,10 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   ## If ``maxLen == 0`` the length of the binary number has no upper bound.
   ## Else no more than ``start + maxLen`` characters are parsed, up to the
   ## length of the string.
+  runnableExamples:
+    var res: int
+    doAssert parseBin("010011100110100101101101", res) == 24
+    doAssert parseBin("3", res) == 0
   var i = start
   var foundDigit = false
   # get last index based on minimum `start + maxLen` or `s.len`
@@ -119,7 +161,7 @@ proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
   if foundDigit: result = i-start
 
 proc parseIdent*(s: string, ident: var string, start = 0): int =
-  ## parses an identifier and stores it in ``ident``. Returns
+  ## Parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
   runnableExamples:
     var res: string
@@ -137,7 +179,7 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
     result = i-start
 
 proc parseIdent*(s: string, start = 0): string =
-  ## parses an identifier and returns it or an empty string in
+  ## Parses an identifier and returns it or an empty string in
   ## case of an error.
   runnableExamples:
     doAssert parseIdent("Hello World", 0) == "Hello"
@@ -153,7 +195,7 @@ proc parseIdent*(s: string, start = 0): string =
 
 proc parseToken*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline, deprecated.} =
-  ## parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
   ##
@@ -220,6 +262,10 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
+  runnableExamples:
+    doAssert skipWhile("Hello World", {'H', 'e'}) == 2
+    doAssert skipWhile("Hello World", {'e'}) == 0
+    doAssert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
 proc parseUntil*(s: string, token: var string, until: set[char],
@@ -227,6 +273,14 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters notin `until`.
+  runnableExamples:
+    var myToken: string
+    doAssert parseUntil("Hello World", myToken, {'W', 'o', 'r'}) == 4
+    doAssert myToken == "Hell"
+    doAssert parseUntil("Hello World", myToken, {'W', 'r'}) == 6
+    doAssert myToken == "Hello "
+    doAssert parseUntil("Hello World", myToken, {'W', 'r'}, 3) == 3
+    doAssert myToken == "lo "
   var i = start
   while i < s.len and s[i] notin until: inc(i)
   result = i-start
@@ -252,7 +306,7 @@ proc parseUntil*(s: string, token: var string, until: char,
 
 proc parseUntil*(s: string, token: var string, until: string,
                  start = 0): int {.inline.} =
-  ## parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
   runnableExamples:
@@ -277,7 +331,7 @@ proc parseUntil*(s: string, token: var string, until: string,
 
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
-  ## parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in ``token``. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
   runnableExamples:
@@ -331,7 +385,7 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
 
 proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect, raises: [ValueError].} =
-  ## parses an integer starting at `start` and stores the value into `number`.
+  ## Parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
@@ -347,7 +401,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
 
 proc parseInt*(s: string, number: var int, start = 0): int {.
   rtl, extern: "npuParseInt", noSideEffect, raises: [ValueError].} =
-  ## parses an integer starting at `start` and stores the value into `number`.
+  ## Parses an integer starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there is no integer.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
@@ -366,7 +420,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
 
 proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
   raises: [].}=
-  ## parses a natural number into ``b``. This cannot raise an overflow
+  ## Parses a natural number into ``b``. This cannot raise an overflow
   ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
@@ -430,9 +484,15 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
 
 proc parseUInt*(s: string, number: var uint, start = 0): int {.
   rtl, extern: "npuParseUInt", noSideEffect, raises: [ValueError].} =
-  ## parses an unsigned integer starting at `start` and stores the value
+  ## Parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
+  runnableExamples:
+    var res: uint
+    doAssert parseUInt("3450", res) == 4
+    doAssert res == 3450
+    doAssert parseUInt("3450", res, 2) == 2
+    doAssert res == 50
   var res: BiggestUInt
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
@@ -443,13 +503,13 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
 
 proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.
   magic: "ParseBiggestFloat", importc: "nimParseBiggestFloat", noSideEffect.}
-  ## parses a float starting at `start` and stores the value into `number`.
+  ## Parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if a parsing error
   ## occurred.
 
 proc parseFloat*(s: string, number: var float, start = 0): int {.
   rtl, extern: "npuParseFloat", noSideEffect.} =
-  ## parses a float starting at `start` and stores the value into `number`.
+  ## Parses a float starting at `start` and stores the value into `number`.
   ## Result is the number of processed chars or 0 if there occurred a parsing
   ## error.
   runnableExamples:
@@ -466,7 +526,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
     number = bf
 
 type
-  InterpolatedKind* = enum   ## describes for `interpolatedFragments`
+  InterpolatedKind* = enum   ## Describes for `interpolatedFragments`
                              ## which part of the interpolated string is
                              ## yielded; for example in "str$$$var${expr}"
     ikStr,                   ## ``str`` part of the interpolated string
