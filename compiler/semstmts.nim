@@ -130,13 +130,13 @@ proc fixNilType(c: PContext; n: PNode) =
     for it in n: fixNilType(c, it)
   n.typ = nil
 
-proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
+proc discardCheck(c: PContext, expr: PNode, flags: TExprFlags): PNode =
+  result = expr
   if c.matchedConcept != nil or efInTypeof in flags: return
 
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if implicitlyDiscardable(result):
-      var n = newNodeI(nkDiscardStmt, result.info, 1)
-      n[0] = result
+      result = newNode(nkDiscardStmt, result.info, @[result])
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
@@ -168,7 +168,8 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: discardCheck(c, it.lastSon, flags)
+    for it in n: 
+      it.sons[^1] = discardCheck(c, it.sons[^1], flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
@@ -266,12 +267,14 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
-    discardCheck(c, n.sons[0], flags)
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
+    n.sons[0] = discardCheck(c, n.sons[0], flags)
+    for i in 1..n.len-1:
+      n.sons[i].sons[^1] = discardCheck(c, n.sons[i].sons[^1], flags)
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
   else:
-    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
+    if n.lastSon.kind == nkFinally:
+      n.sons[^1].sons[^1] = discardCheck(c, n.sons[^1].sons[^1], flags)
     n.sons[0] = fitNode(c, typ, n.sons[0], n.sons[0].info)
     for i in 1..last:
       var it = n.sons[i]
@@ -679,7 +682,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   openScope(c)
   n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)
   if efInTypeof notin flags:
-    discardCheck(c, n.sons[length-1], flags)
+    n.sons[^1] = discardCheck(c, n.sons[^1], flags)
   closeScope(c)
   dec(c.p.nestedLoopCounter)
 
@@ -866,7 +869,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
+    for i in 1..n.len-1:
+      n.sons[i].sons[^1] = discardCheck(c, n.sons[i].sons[^1], flags)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
@@ -2029,7 +2033,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
     elif i != last or voidContext:
-      discardCheck(c, n.sons[i], flags)
+      n.sons[i] = discardCheck(c, n.sons[i], flags)
     else:
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
