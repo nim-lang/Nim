@@ -1,4 +1,5 @@
 discard """
+joinable: false
 cmd: "nim check $file"
 errormsg: "type bound operation `=deepcopy` can be defined only in the same module with its type (MyTestObject)"
 nimout: '''
@@ -9,7 +10,6 @@ terror_module.nim(20, 1) Error: type bound operation `=deepcopy` can be defined 
 '''
 """
 import helper
-
 
 proc `=destroy`[T](x: var MyTestObject[T]) = discard
 
