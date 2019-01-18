@@ -500,7 +500,11 @@ proc semResolvedCall(c: PContext, x: TCandidate,
 
   result = x.call
   instGenericConvertersSons(c, result, x)
-  result[0] = newSymNode(finalCallee, result[0].info)
+  let xinfo = if result[0].kind == nkDotExpr:
+                result[0][1].info
+              else:
+                result[0].info
+  result[0] = newSymNode(finalCallee, xinfo)
   result.typ = finalCallee.typ.sons[0]
   updateDefaultParams(result)
 
