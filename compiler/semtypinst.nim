@@ -555,6 +555,14 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:
+          if result.sons[i].kind == tyGenericBody:
+            localError(
+              cl.c.config,
+              t.sym.info,
+              "cannot instantiate '" &
+              typeToString(result.sons[i]) &
+              "' inside of type defintion : '" &
+              t.owner.name.s & "'")
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
