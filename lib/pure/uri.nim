@@ -273,11 +273,11 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## For building URIs you may wish to use \`/\` instead.
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
-    assert foo.path == "/baz"
+    doAssert foo.path == "/baz"
     let bar = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("baz"))
-    assert bar.path == "/foo/baz"
+    doAssert bar.path == "/foo/baz"
     let qux = combine(parseUri("https://nim-lang.org/foo/bar/"), parseUri("baz"))
-    assert qux.path == "/foo/bar/baz"
+    doAssert qux.path == "/foo/bar/baz"
 
   template setAuthority(dest, src): untyped =
     dest.hostname = src.hostname
@@ -338,11 +338,11 @@ proc `/`*(x: Uri, path: string): Uri =
   ## respectively.
   runnableExamples:
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
-    assert foo.path == "/foo/bar/baz"
+    doAssert foo.path == "/foo/bar/baz"
     let bar = parseUri("https://nim-lang.org/foo/bar") / "baz"
-    assert bar.path == "/foo/bar/baz"
+    doAssert bar.path == "/foo/bar/baz"
     let qux = parseUri("https://nim-lang.org/foo/bar/") / "baz"
-    assert qux.path == "/foo/bar/baz"
+    doAssert qux.path == "/foo/bar/baz"
   result = x
 
   if result.path.len == 0:
