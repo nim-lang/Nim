@@ -121,7 +121,10 @@ else:
 
   block: # fix #9842
     let exe = buildDir / "D20190112T145450".addFileExt(ExeExt)
-    defer: removeFile exe
+    defer:
+      when not defined(windows):
+        # workaround #10359 ; innocuous to skip since we're saving under `buildDir`
+        removeFile exe
     let args = @["a1b", "a2 b", "", "a4\"b", "a5'b", r"a6\b", "a7\'b"]
     let cmd = "$# c -r --verbosity:0 -o:$# -d:testament_tparseopt $# $#" %
       [getCurrentCompilerExe(), exe, currentSourcePath(),
