@@ -95,7 +95,7 @@ proc parseOct*(s: string, number: var int, start = 0, maxLen = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
-proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int  {.
+proc parseBin*(s: string, number: var int, start = 0, maxLen = 0): int {.
   rtl, extern: "npuParseBin", noSideEffect.} =
   ## Parses an binary number and stores its value in ``number``. Returns
   ## the number of the parsed characters or 0 in case of an error.
@@ -242,8 +242,8 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
 
-template integerOutOfRangeError(): ref ValueError =
-  newException(ValueError, "Parsed integer outside of valid range")
+proc integerOutOfRangeError() {.noinline.} =
+  raise newException(ValueError, "Parsed integer outside of valid range")
 
 proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   var
@@ -261,13 +261,14 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
       if b >= (low(int) + c) div 10:
         b = b * 10 - c
       else:
-        raise integerOutOfRangeError()
+        integerOutOfRangeError()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     if sign == -1 and b == low(int):
-      raise integerOutOfRangeError()
-    b = b * sign
-    result = i - start
+      integerOutOfRangeError()
+    else:
+      b = b * sign
+      result = i - start
 
 proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect, raises: [ValueError].} =
@@ -290,7 +291,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
     if res < low(int) or res > high(int):
-      raise integerOutOfRangeError()
+      integerOutOfRangeError()
   if result != 0:
     number = int(res)
 
@@ -326,7 +327,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
     prev = 0.BiggestUInt
     i = start
   if i < s.len - 1 and s[i] == '-' and s[i + 1] in {'0'..'9'}:
-    raise integerOutOfRangeError()
+    integerOutOfRangeError()
   if i < s.len and s[i] == '+': inc(i) # Allow
   if i < s.len and s[i] in {'0'..'9'}:
     b = 0
@@ -334,7 +335,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
       prev = res
       res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
-        raise integerOutOfRangeError()
+        integerOutOfRangeError()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = res
@@ -361,7 +362,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
-      raise integerOutOfRangeError()
+      integerOutOfRangeError()
   if result != 0:
     number = uint(res)
 

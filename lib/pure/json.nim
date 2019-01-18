@@ -142,7 +142,8 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  typetraits
 
 export
   tables.`$`
@@ -355,6 +356,20 @@ when false:
     result = newJObject()
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
+
+#[
+Note: could use simply:
+proc `%`*(o: object|tuple): JsonNode
+but blocked by https://github.com/nim-lang/Nim/issues/10019
+]#
+proc `%`*(o: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  when isNamedTuple(type(o)):
+    result = newJObject()
+    for k, v in o.fieldPairs: result[k] = %v
+  else:
+    result = newJArray()
+    for a in o.fields: result.add(%a)
 
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
