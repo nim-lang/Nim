@@ -350,6 +350,10 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
 proc integerOutOfRangeError() {.noinline.} =
   raise newException(ValueError, "Parsed integer outside of valid range")
 
+# See #6752
+when defined(js):
+  {.push overflowChecks: off.}
+
 proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
   var
     sign: BiggestInt = -1
@@ -363,17 +367,20 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
     b = 0
     while i < s.len and s[i] in {'0'..'9'}:
       let c = ord(s[i]) - ord('0')
-      if b >= (low(int) + c) div 10:
+      if b >= (low(BiggestInt) + c) div 10:
         b = b * 10 - c
       else:
         integerOutOfRangeError()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
-    if sign == -1 and b == low(int):
+    if sign == -1 and b == low(BiggestInt):
       integerOutOfRangeError()
     else:
       b = b * sign
       result = i - start
+
+when defined(js):
+  {.pop.} # overflowChecks: off
 
 proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   rtl, extern: "npuParseBiggestInt", noSideEffect, raises: [ValueError].} =
@@ -631,5 +638,9 @@ when isMainModule:
   value = -1
   doAssert(parseSaturatedNatural("1_000_000", value) == 9)
   doAssert value == 1_000_000
+
+  var i64Value: int64
+  discard parseBiggestInt("9223372036854775807", i64Value)
+  doAssert i64Value == 9223372036854775807
 
 {.pop.}
