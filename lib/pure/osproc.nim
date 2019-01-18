@@ -60,9 +60,6 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-const poUseShell* {.deprecated.} = poUsePath
-  ## Deprecated alias for poUsePath.
-
 proc execProcess*(command: string,
                   workingDir: string = "",
                   args: openArray[string] = [],
@@ -334,19 +331,6 @@ proc execProcesses*(cmds: openArray[string],
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
-
-proc select*(readfds: var seq[Process], timeout = 500): int
-  {.benign, deprecated.}
-  ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
-  ## Specify -1 for no timeout. Returns the number of processes that are
-  ## ready to read from. The processes that are ready to be read from are
-  ## removed from `readfds`.
-  ##
-  ## **Warning**: This function may give unexpected or completely wrong
-  ## results on Windows.
-  ##
-  ## **Deprecated since version 0.17.0**: This procedure isn't cross-platform
-  ## and so should not be used in newly written code.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,

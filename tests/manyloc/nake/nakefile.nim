@@ -83,6 +83,7 @@ task "download", "download game assets":
   var
     skipAssets = false
     path = expandFilename("data")
+    client = newHttpClient()
   path.add DirSep
   path.add(extractFilename(GameAssets))
   if existsFile(path):
@@ -101,7 +102,7 @@ task "download", "download game assets":
     echo "Downloading from ", GameAssets
   if not skipAssets:
     echo "Downloading to ", path
-    downloadFile GameAssets, path
+    client.downloadFile(GameAssets, path)
     echo "Download finished"
 
     let targetDir = parentDir(parentDir(path))
@@ -126,7 +127,7 @@ task "download", "download game assets":
   else:
     return
   path = extractFilename(BinLibs)
-  downloadFile BinLibs, path
+  client.downloadFile(BinLibs, path)
   echo "Downloaded dem libs ", path
   when true: echo "Unpack it yourself, sorry."
   else:  ## this crashes, dunno why

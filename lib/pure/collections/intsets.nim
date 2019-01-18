@@ -357,12 +357,6 @@ proc `$`*(s: IntSet): string =
   ## The `$` operator for int sets.
   dollarImpl()
 
-proc empty*(s: IntSet): bool {.inline, deprecated.} =
-  ## Returns true if `s` is empty. This is safe to call even before
-  ## the set has been initialized with `initIntSet`. Note this never
-  ## worked reliably and so is deprecated.
-  result = s.counter == 0
-
 when isMainModule:
   import sequtils, algorithm
 

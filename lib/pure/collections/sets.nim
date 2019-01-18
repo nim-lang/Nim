@@ -191,13 +191,6 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
     else:
       raise newException(KeyError, "key not found")
 
-proc mget*[A](s: var HashSet[A], key: A): var A {.deprecated.} =
-  ## returns the element that is actually stored in 's' which has the same
-  ## value as 'key' or raises the ``KeyError`` exception. This is useful
-  ## when one overloaded 'hash' and '==' but still needs reference semantics
-  ## for sharing. Use ``[]`` instead.
-  s[key]
-
 proc contains*[A](s: HashSet[A], key: A): bool =
   ## Returns true iff `key` is in `s`.
   ##

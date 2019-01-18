@@ -202,12 +202,6 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   get(c, key)
 
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
-  ## retrieves the value at ``c[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## Use ``[]`` instead.
-  get(c, key)
-
 iterator leaves[T](n: Node[T]): Node[T] =
   if n != nil:
     # XXX actually we could compute the necessary stack size in advance:
