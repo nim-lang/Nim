@@ -524,6 +524,7 @@ const disabledFilesDefault = @[
 # megatest needs minor adjustment to deal with that.
 const joinableBlacklist = @[
   "tests/stdlib/tmarshal.nim", # see #9754
+  "tests/osproc/texecps.nim", # tests/osproc/texecps.nim(23, 13) `gResults == checks`  [AssertionError]
 ]
 
 when defined(windows):

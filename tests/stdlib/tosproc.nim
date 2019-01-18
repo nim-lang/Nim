@@ -66,7 +66,7 @@ else:
     const nim = getCurrentCompilerExe()
     const sourcePath = currentSourcePath()
     let output = buildDir / "D20190111T024543".addFileExt(ExeExt)
-    let cmd = "$# c -o:$# --verbosity:0 --colors:off -d:release -d:case_testfile $#" %
+    let cmd = "$# c -o:$# --verbosity:0 --hints:off --colors:off -d:release -d:case_testfile $#" %
       [nim, output, sourcePath]
     # we're testing `execShellCmd` so don't rely on it to compile test file
     # note: this should be exported in posix.nim
