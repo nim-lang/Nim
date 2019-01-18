@@ -62,9 +62,13 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
-    result = newSymNode(s, n.info)
-    markUsed(c.config, n.info, s, c.graph.usageSym)
-    onUse(n.info, s)
+    let info = if n.kind == nkDotExpr:
+                 n.sons[1].info
+               else:
+                 n.info
+    result = newSymNode(s, info)
+    markUsed(c.config, info, s, c.graph.usageSym)
+    onUse(info, s)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately

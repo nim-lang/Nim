@@ -1077,8 +1077,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skMacro:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0):
-      markUsed(c.config, n.info, s, c.graph.usageSym)
-      onUse(n.info, s)
+      let info = if n.kind == nkDotExpr:
+                   n.sons[1].info
+                 else:
+                   n.info
+      markUsed(c.config, info, s, c.graph.usageSym)
+      onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
       result = semMacroExpr(c, n, n, s, flags)
