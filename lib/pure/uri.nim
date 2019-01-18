@@ -19,13 +19,17 @@
 ##    let blog = "/blog.html"
 ##    let host = parseUri("https://nim-lang.org")
 ##    let bloguri = host / blog
-##    echo "Main page: " & $host & " and blog: " & $bloguri
+##    echo "Main page: " & $host
+##    # --> Main page: https://nim-lang.org
+##    echo "Blog page: " & $bloguri
+##    # --> Blog page: https://nim-lang.org/blog.html
 ##
 ## .. code-block::
 ##    import uri
 ##    let res = parseUri("sftp://127.0.0.1:4343")
 ##    if isAbsolute(res):
 ##      echo "Connect to port: " & res.port
+##      # --> Connect to port: 4343
 ##    else:
 ##      echo "Wrong format"
 
