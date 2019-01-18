@@ -14,8 +14,9 @@ matrix:
     - os: osx
       env: NIM_COMPILE_TO_CPP=true
 
-  allow_failures:
-    - env: NIM_COMPILE_TO_CPP=true
+# To allow failures for a failing configuration, use something like:
+#  allow_failures:
+#    - env: NIM_COMPILE_TO_CPP=true
 #    - os: osx
 
 addons:

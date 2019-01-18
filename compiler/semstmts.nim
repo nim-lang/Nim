@@ -130,13 +130,13 @@ proc fixNilType(c: PContext; n: PNode) =
     for it in n: fixNilType(c, it)
   n.typ = nil
 
-proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
+proc discardCheck(c: PContext, expr: PNode, flags: TExprFlags): PNode =
+  result = expr
   if c.matchedConcept != nil or efInTypeof in flags: return
 
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if implicitlyDiscardable(result):
-      var n = newNodeI(nkDiscardStmt, result.info, 1)
-      n[0] = result
+      result = newNode(nkDiscardStmt, result.info, @[result])
     elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
@@ -168,7 +168,8 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: discardCheck(c, it.lastSon, flags)
+    for it in n: 
+      it.sons[^1] = discardCheck(c, it.sons[^1], flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
@@ -266,12 +267,14 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
-    discardCheck(c, n.sons[0], flags)
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
+    n.sons[0] = discardCheck(c, n.sons[0], flags)
+    for i in 1..n.len-1:
+      n.sons[i].sons[^1] = discardCheck(c, n.sons[i].sons[^1], flags)
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
   else:
-    if n.lastSon.kind == nkFinally: discardCheck(c, n.lastSon.lastSon, flags)
+    if n.lastSon.kind == nkFinally:
+      n.sons[^1].sons[^1] = discardCheck(c, n.sons[^1].sons[^1], flags)
     n.sons[0] = fitNode(c, typ, n.sons[0], n.sons[0].info)
     for i in 1..last:
       var it = n.sons[i]
@@ -473,7 +476,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
-    liftTypeBoundOps(c, typ, a.info)
+    liftTypeBoundOps(c.graph, typ, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
@@ -679,7 +682,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   openScope(c)
   n.sons[length-1] = semExprBranch(c, n.sons[length-1], flags)
   if efInTypeof notin flags:
-    discardCheck(c, n.sons[length-1], flags)
+    n.sons[^1] = discardCheck(c, n.sons[^1], flags)
   closeScope(c)
   dec(c.p.nestedLoopCounter)
 
@@ -866,7 +869,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon, flags)
+    for i in 1..n.len-1:
+      n.sons[i].sons[^1] = discardCheck(c, n.sons[i].sons[^1], flags)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext:
       result.typ = c.enforceVoidContext
@@ -1475,7 +1479,8 @@ proc canonType(c: PContext, t: PType): PType =
     result = t
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
-  case s.name.s.normalize
+  let name = s.name.s.normalize
+  case name
   of "=destroy":
     let t = s.typ
     var noError = false
@@ -1494,6 +1499,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           localError(c.config, n.info, errGenerated,
             "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
         noError = true
+        if obj.owner.getModule != s.getModule:
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `=destroy` can be defined only in the same module with its type (" & obj.typeToString() & ")")
     if not noError and sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
         "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
@@ -1517,6 +1525,11 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       else:
         localError(c.config, n.info, errGenerated,
                    "cannot bind 'deepCopy' to: " & typeToString(t))
+
+      if t.owner.getModule != s.getModule:
+          localError(c.config, n.info, errGenerated,
+            "type bound operation `" & name & "` can be defined only in the same module with its type (" & t.typeToString() & ")")
+
     else:
       localError(c.config, n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
@@ -1547,6 +1560,10 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+        if obj.owner.getModule != s.getModule:
+            localError(c.config, n.info, errGenerated,
+              "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
+
         return
     if sfSystemModule notin s.owner.flags:
       localError(c.config, n.info, errGenerated,
@@ -2029,7 +2046,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
     elif i != last or voidContext:
-      discardCheck(c, n.sons[i], flags)
+      n.sons[i] = discardCheck(c, n.sons[i], flags)
     else:
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr

@@ -15,7 +15,7 @@ Options:
                             (Optionally: Define the value for that symbol,
                             see: "compile time define pragmas")
   -u, --undef:SYMBOL        undefine a conditional symbol
-  -f, --forceBuild          force rebuilding of all modules
+  -f, --forceBuild:on|off   force rebuilding of all modules
   --stackTrace:on|off       turn stack tracing on|off
   --lineTrace:on|off        turn line tracing on|off
   --threads:on|off          turn support for multi-threading on|off
@@ -35,7 +35,7 @@ Options:
   --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
-  -r, --run                 run the compiled program with given arguments
+  -r, --run:on|off          run the compiled program with given arguments
   --fullhelp                show all command line switches
   -h, --help                show this help
 

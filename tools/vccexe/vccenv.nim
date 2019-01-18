@@ -44,4 +44,4 @@ proc vccEnvVcVarsAllPath*(version: VccEnvVersion = vsUndefined): string =
     let key = $version
     let val = getEnv key
     if val.len > 0:
-      result = expandFilename(val & vcvarsallRelativePath)
+      result = try: expandFilename(val & vcvarsallRelativePath) except OSError: ""

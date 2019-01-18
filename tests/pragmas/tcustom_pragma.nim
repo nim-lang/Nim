@@ -219,3 +219,12 @@ block:
   check(x)
   check(y)
   check(z)
+
+# pragma with multiple fields
+block:
+  template myAttr(first: string, second: int, third: float) {.pragma.}
+  let a {.myAttr("one", 2, 3.0).} = 0
+  let ps = a.getCustomPragmaVal(myAttr)
+  doAssert ps.first == ps[0] and ps.first == "one"
+  doAssert ps.second == ps[1] and ps.second == 2
+  doAssert ps.third == ps[2] and ps.third == 3.0

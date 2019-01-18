@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Nim contributors
-##
 ## The ``tables`` module implements variants of an efficient `hash table`:idx:
 ## (also often named `dictionary`:idx: in other programming languages) that is
 ## a mapping from keys to values.

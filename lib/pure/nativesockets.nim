@@ -265,10 +265,6 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
-proc dealloc*(ai: ptr AddrInfo) {.deprecated.} =
-  ## Deprecated since 0.16.2. Use ``freeAddrInfo`` instead.
-  freeaddrinfo(ai)
-
 proc ntohl*(x: uint32): uint32 =
   ## Converts 32-bit unsigned integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
@@ -279,15 +275,6 @@ proc ntohl*(x: uint32): uint32 =
                  (x shl 8'u32 and 0xff0000'u32) or
                  (x shl 24'u32)
 
-template ntohl*(x: int32): untyped {.deprecated.} =
-  ## Converts 32-bit integers from network to host byte order.
-  ## On machines where the host byte order is the same as network byte order,
-  ## this is a no-op; otherwise, it performs a 4-byte swap operation.
-  ## **Warning**: This template is deprecated since 0.14.0, IPv4
-  ## addresses are now treated as unsigned integers. Please use the unsigned
-  ## version of this template.
-  cast[int32](nativesockets.ntohl(cast[uint32](x)))
-
 proc ntohs*(x: uint16): uint16 =
   ## Converts 16-bit unsigned integers from network to host byte order. On
   ## machines where the host byte order is the same as network byte order,
@@ -295,38 +282,11 @@ proc ntohs*(x: uint16): uint16 =
   when cpuEndian == bigEndian: result = x
   else: result = (x shr 8'u16) or (x shl 8'u16)
 
-template ntohs*(x: int16): untyped {.deprecated.} =
-  ## Converts 16-bit integers from network to host byte order. On
-  ## machines where the host byte order is the same as network byte order,
-  ## this is a no-op; otherwise, it performs a 2-byte swap operation.
-  ## **Warning**: This template is deprecated since 0.14.0, where port
-  ## numbers became unsigned integers. Please use the unsigned version of
-  ## this template.
-  cast[int16](nativesockets.ntohs(cast[uint16](x)))
-
-template htonl*(x: int32): untyped {.deprecated.} =
-  ## Converts 32-bit integers from host to network byte order. On machines
-  ## where the host byte order is the same as network byte order, this is
-  ## a no-op; otherwise, it performs a 4-byte swap operation.
-  ## **Warning**: This template is deprecated since 0.14.0, IPv4
-  ## addresses are now treated as unsigned integers. Please use the unsigned
-  ## version of this template.
-  nativesockets.ntohl(x)
-
 template htonl*(x: uint32): untyped =
   ## Converts 32-bit unsigned integers from host to network byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   nativesockets.ntohl(x)
-
-template htons*(x: int16): untyped {.deprecated.} =
-  ## Converts 16-bit integers from host to network byte order.
-  ## On machines where the host byte order is the same as network byte
-  ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
-  ## **Warning**: This template is deprecated since 0.14.0, where port
-  ## numbers became unsigned integers. Please use the unsigned version of
-  ## this template.
-  nativesockets.ntohs(x)
 
 template htons*(x: uint16): untyped =
   ## Converts 16-bit unsigned integers from host to network byte order.
@@ -648,29 +608,6 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
     else:
       inc(i)
   setLen(s, L)
-
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated: "use selectRead instead".} =
-  ## When a socket in ``readfds`` is ready to be read from then a non-zero
-  ## value will be returned specifying the count of the sockets which can be
-  ## read from. The sockets which can be read from will also be removed
-  ## from ``readfds``.
-  ##
-  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
-  ## an unlimited time.
-  ## **Warning:** This is deprecated since version 0.16.2.
-  ## Use the ``selectRead`` procedure instead.
-  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
-
-  var rd: TFdSet
-  var m = 0
-  createFdSet((rd), readfds, m)
-
-  if timeout != -1:
-    result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
-  else:
-    result = int(select(cint(m+1), addr(rd), nil, nil, nil))
-
-  pruneSocketSet(readfds, (rd))
 
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero

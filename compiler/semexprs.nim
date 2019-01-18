@@ -802,7 +802,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
       result = magicsAfterOverloadResolution(c, result, flags)
     if result.typ != nil and
         not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
-      liftTypeBoundOps(c, result.typ, n.info)
+      liftTypeBoundOps(c.graph, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -917,7 +917,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
   let isPush = hintExtendedContext in c.config.notes
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
-  discardCheck(c, result, {})
+  result = discardCheck(c, result, {})
   if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
@@ -1592,7 +1592,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
-    liftTypeBoundOps(c, lhs.typ, lhs.info)
+    liftTypeBoundOps(c.graph, lhs.typ, lhs.info)
     #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
 
     fixAbstractType(c, n)
@@ -1639,7 +1639,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    discardCheck(c, result, {})
+    result = discardCheck(c, result, {})
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:

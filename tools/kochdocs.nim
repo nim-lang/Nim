@@ -177,7 +177,6 @@ lib/pure/collections/lists.nim
 lib/pure/collections/sharedlist.nim
 lib/pure/collections/sharedtables.nim
 lib/pure/collections/intsets.nim
-lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
@@ -219,6 +218,7 @@ lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
 lib/std/varints.nim
+lib/std/time_t.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim

@@ -55,15 +55,6 @@ proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
 
   result.cmd = @cmdline
 
-proc initOptParser*(cmdline: string): OptParser {.rtl, deprecated.} =
-  ## Initalizes option parses with cmdline. Splits cmdline in on spaces
-  ## and calls initOptParser(openarray[string])
-  ## Do not use.
-  if cmdline == "": # backward compatibility
-    return initOptParser(@[])
-  else:
-    return initOptParser(cmdline.split)
-
 when not defined(createNimRtl):
   proc initOptParser*(): OptParser =
     ## Initializes option parser from current command line arguments.

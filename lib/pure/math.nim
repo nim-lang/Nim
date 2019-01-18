@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Nim contributors
-##
 ## *Constructive mathematics is naturally typed.* -- Simon Thompson
 ##
 ## Basic math routines for Nim.
@@ -237,7 +235,6 @@ proc cumsummed*[T](x: openArray[T]): seq[T] =
   ## See also:
   ## * `sum proc <#sum,openArray[T]>`_
   ## * `cumsum proc <#cumsum,openArray[T]>`_ for the in-place version
-  ## * `cumsummed proc <#cumsummed,openArray[T]>`_
   runnableExamples:
     let a = [1, 2, 3, 4]
     doAssert cumsummed(a) == @[1, 3, 6, 10]
