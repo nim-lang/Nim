@@ -1429,9 +1429,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let rd = c.code[pc].regA
 
         createStr regs[ra]
-        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                      c.debug[pc], c.config)[0]
+        let cmd = regs[rb].node.strVal
+        let input = regs[rc].node.strVal
+        let ret = opGorge(cmd, input, regs[rd].node.strVal, c.debug[pc], c.config)
+        # note: can't be enabled locally via {.experimental: gorgeIgnoreExitCodeDeprecated.},
+        # as to be a global flag, unless VM starts supporting this (eg with `c.features`)
+        if gorgeIgnoreExitCodeDeprecated notin c.config.features:
+          if ret[1] != 0:
+            stackTrace(c, tos, pc, "gorge failed: " & $(exitCode: ret[1], cmd: cmd, input: input))
+        regs[ra].node.strVal = ret[0]
       else:
         globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:

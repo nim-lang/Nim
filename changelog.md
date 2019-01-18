@@ -67,7 +67,10 @@
 - two poorly documented and not used modules (`subexes`, `scgi`) were moved to
   graveyard (they are available as Nimble packages)
 
-
+- `gorge`, `staticExec` now give compile time error if exitCode is not 0 instead of
+  silently ignoring errors. See https://github.com/nim-lang/Nim/issues/1994#issuecomment-327904129
+  Use `--experimental:gorgeIgnoreExitCodeDeprecated` to get old behavior, or use
+  `gorgeEx` to get `tuple[output: string, exitCode: int]`.
 
 #### Breaking changes in the compiler
 

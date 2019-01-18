@@ -5,6 +5,8 @@ import os
 import math
 import strutils
 
+const nonexistant = "D20190116T211842"
+
 template forceConst(a: untyped): untyped =
   ## Force evaluation at CT, useful for example here:
   ## `callFoo(forceConst(getBar1()), getBar2())`
@@ -22,7 +24,7 @@ static:
     let ret = gorgeEx(nim & " --version")
     doAssert ret.exitCode == 0
     doAssert ret.output.contains "Nim Compiler"
-    let ret2 = gorgeEx(nim & " --unexistant")
+    let ret2 = gorgeEx(nim & " --" & nonexistant)
     doAssert ret2.exitCode != 0
     let output3 = gorge(nim & " --version")
     doAssert output3.contains "Nim Compiler"
@@ -44,4 +46,5 @@ block:
   # Check against bugs like #9176
   doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())
   if false: #pending #9176
-    doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))
+    doAssert gorgeEx(nonexistant) == forceConst(gorgeEx(nonexistant))
+

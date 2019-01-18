@@ -127,6 +127,8 @@ type
     forLoopMacros,
     caseStmtMacros,
     codeReordering,
+    # deprecated behavior `foo` is named: `fooDeprecated`
+    gorgeIgnoreExitCodeDeprecated,
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
