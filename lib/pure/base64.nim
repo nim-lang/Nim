@@ -9,10 +9,14 @@
 
 ## This module implements a base64 encoder and decoder.
 ##
-## Encoding data
-## -------------
+## Base64 is an encoding and decoding technique used to convert binary
+## data to an ASCII string format.
+## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
+## bytes (i.e., a total of 24 bits) can therefore be represented by
+## four 6-bit Base64 digits.
 ##
-## In order to encode some text simply call the ``encode`` procedure:
+##
+## **Encoding data**
 ##
 ##   .. code-block::nim
 ##      import base64
@@ -28,18 +32,16 @@
 ##      let encodedChars = encode(['h','e','y'])
 ##      echo(encodedChars) # aGV5
 ##
-## The ``encode`` procedure takes an ``openarray`` so both arrays and sequences
-## can be passed as parameters.
-##
-## Decoding data
-## -------------
-##
-## To decode a base64 encoded data string simply call the ``decode``
-## procedure:
+## **Decoding data**
 ##
 ##   .. code-block::nim
 ##      import base64
 ##      echo(decode("SGVsbG8gV29ybGQ=")) # Hello World
+##
+## **See also:**
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
 
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -105,6 +107,9 @@ proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
+  runnableExamples:
+    doAssert encode(['n', 'i', 'm']) == "bmlt"
+    doAssert encode(@['n', 'i', 'm']) == "bmlt"
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
@@ -112,6 +117,9 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   ## `newline` is added.
   ##
   ## This procedure encodes a string.
+  runnableExamples:
+    doAssert encode("Hello World") == "SGVsbG8gV29ybGQ="
+    doAssert encode("Hello World", 3, "\n") == "SGVs\nbG8g\nV29ybGQ="
   encodeInternal(s, lineLen, newLine)
 
 proc decodeByte(b: char): int {.inline.} =
@@ -125,6 +133,8 @@ proc decodeByte(b: char): int {.inline.} =
 proc decode*(s: string): string =
   ## decodes a string in base64 representation back into its original form.
   ## Whitespace is skipped.
+  runnableExamples:
+    doAssert decode("SGVsbG8gV29ybGQ=") == "Hello World"
   const Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   var total = ((len(s) + 3) div 4) * 3
   # total is an upper bound, as we will skip arbitrary whitespace:
