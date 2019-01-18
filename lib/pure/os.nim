@@ -1427,7 +1427,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     for x in walkFiles(result.string):
       result = x
     if not existsFile(result) and not existsDir(result):
-      raise newException(OSError, "file does not exist")
+      raise newException(OSError, "file '" & result & "' does not exist")
   else:
     # according to Posix we don't need to allocate space for result pathname.
     # But we need to free return value with free(3).
