@@ -51,7 +51,6 @@ proc encodeUrl*(s: string, usePlus=true): string =
   ## spaces are encoded as ``'+'`` instead of ``'%20'``.
   runnableExamples:
     doAssert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
-    doAssert encodeUrl("https://nim-lang.org/docs/manual.html") == "https%3A%2F%2Fnim-lang.org%2Fdocs%2Fmanual.html"
     doAssert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
     doAssert encodeUrl("https://nim-lang.org/this is a test", false) == "https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test"
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
@@ -76,7 +75,6 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   ## characters are converted to a space.
   runnableExamples:
     doAssert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
-    doAssert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fdocs%2Fmanual.html") == "https://nim-lang.org/docs/manual.html"
     doAssert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
     doAssert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
   proc handleHexChar(c: char, x: var int) {.inline.} =
@@ -274,11 +272,11 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##
   ## For building URIs you may wish to use \`/\` instead.
   runnableExamples:
-    let foo = combine(parseUri("http://example.com/foo/bar"), parseUri("/baz"))
+    let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
-    let bar = combine(parseUri("http://example.com/foo/bar"), parseUri("baz"))
+    let bar = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("baz"))
     assert bar.path == "/foo/baz"
-    let qux = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
+    let qux = combine(parseUri("https://nim-lang.org/foo/bar/"), parseUri("baz"))
     assert qux.path == "/foo/bar/baz"
 
   template setAuthority(dest, src): untyped =
@@ -339,11 +337,11 @@ proc `/`*(x: Uri, path: string): Uri =
   ## the slashes at the beginning and end of the path and URI's path
   ## respectively.
   runnableExamples:
-    let foo = parseUri("http://example.com/foo/bar") / "/baz"
+    let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
     assert foo.path == "/foo/bar/baz"
-    let bar = parseUri("http://example.com/foo/bar") / "baz"
+    let bar = parseUri("https://nim-lang.org/foo/bar") / "baz"
     assert bar.path == "/foo/bar/baz"
-    let qux = parseUri("http://example.com/foo/bar/") / "baz"
+    let qux = parseUri("https://nim-lang.org/foo/bar/") / "baz"
     assert qux.path == "/foo/bar/baz"
   result = x
 
