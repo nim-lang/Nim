@@ -466,7 +466,11 @@ proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
-  markUsed(c.config, n.sons[0].info, finalCallee, c.graph.usageSym)
+  let info = if n.sons[0].kind == nkDotExpr:
+               n.sons[0].sons[1].info
+             else:
+               n.sons[0].info
+  markUsed(c.config, info, finalCallee, c.graph.usageSym)
   onUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
