@@ -517,6 +517,15 @@ const disabledFilesDefault = @[
   "ioselectors_select.nim",
 ]
 
+# TODO: fix these files.
+# note: some tests use `write(stdout, "foo")`; this will break when joining
+# megatest because of lack of trailing newline; either these tests need
+# adjustement (see modification to tests/stdlib/tstrutil.nim) or logic in
+# megatest needs minor adjustment to deal with that.
+const joinableBlacklist = @[
+  "tests/stdlib/tmarshal.nim", # see #9754
+]
+
 when defined(windows):
   const
     # array of modules disabled from compilation test of stdlib.

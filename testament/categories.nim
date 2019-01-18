@@ -31,7 +31,6 @@ const
     "rodfiles",
     "threads",
     "untestable",
-    "stdlib",
     "testdata",
     "nimcache",
     "coroutines",
@@ -545,6 +544,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     not fileExists(spec.file.changeFileExt("nims")) and
     not fileExists(parentDir(spec.file) / "nim.cfg") and
     not fileExists(parentDir(spec.file) / "config.nims") and
+    spec.file notin joinableBlacklist and
     spec.cmd.len == 0 and
     spec.err != reDisabled and
     not spec.unjoinable and
@@ -616,13 +616,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   writeFile("megatest.nim", megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
+  let argFromNimCfg = "--path:"  & "$nim/testament/lib"
+    # duplicates logic from tests/nim.cfg (or see PR #10293 for a more robust way)
+  let args = @["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", argFromNimCfg, "megatest.nim"]
+
   proc onStdout(line: string) = echo line
   var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
     onStdout = if verboseMegatest: onStdout else: nil)
   if exitCode != 0:
     echo buf
-    quit("megatest compilation failed")
+    quit("megatest compilation failed: " & quoteShellCommand(compilerPrefix & args))
 
   # Could also use onStdout here.
   (buf, exitCode) = execCmdEx("./megatest")

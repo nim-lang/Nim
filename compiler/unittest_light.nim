@@ -31,8 +31,11 @@ proc mismatch*[T](lhs: T, rhs: T): string =
       result.add "lhs[0..<i]:{" & replaceInvisible($lhs[
           0..<i]) & "}"
 
-proc assertEquals*[T](lhs: T, rhs: T) =
+proc assertEquals*[T](lhs: T, rhs: T, msg = "") =
   when false: # can be useful for debugging to see all that's fed to this.
     echo "----" & $lhs
   if lhs!=rhs:
-    doAssert false, mismatch(lhs, rhs)
+    var msg2 = ""
+    if msg.len > 0: msg2.add "msg: `" & msg & "` "
+    msg2.add "mismatch:" & mismatch(lhs, rhs)
+    doAssert false, msg2

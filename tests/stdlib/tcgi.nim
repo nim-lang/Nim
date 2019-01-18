@@ -1,3 +1,9 @@
+discard """
+  output: '''
+[Suite] Test cgi module
+'''
+"""
+
 import unittest
 import cgi, strtabs
 
