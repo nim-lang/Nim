@@ -24,15 +24,19 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
-  markUsed(c.config, n.info, s, c.graph.usageSym)
-  onUse(n.info, s)
-  pushInfoContext(c.config, n.info, s.detailedInfo)
+  let info = if n.kind == nkCall:
+               n.sons[0].info
+             else:
+               n.info
+  markUsed(c.config, info, s, c.graph.usageSym)
+  onUse(info, s)
+  pushInfoContext(c.config, info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
   # XXX: A more elaborate line info rewrite might be needed
-  result.info = n.info
+  result.info = info
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
