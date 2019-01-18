@@ -8,6 +8,32 @@
 #
 
 ## Note: Import ``std/sha1`` to use this module
+##
+## SHA-1 (Secure Hash Algorithm 1) is a cryptographic hash function which
+## takes an input and produces a 160-bit (20-byte) hash value known as a
+## message digest.
+##
+## .. code-block::
+##    import std/sha1
+##
+##    let accessName = secureHash("John Doe")
+##    echo $accessName
+##    # --> F742544A66E7EF2310A42D0A01DBB5395F26BC0A
+##
+## .. code-block::
+##    import std/sha1
+##
+##    let
+##      a = secureHashFile("myFile.nim")
+##      b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
+##
+##    if a == b:
+##      echo "Files match"
+##
+## **See also:**
+## * `base64 module<base64.html>`_ implements a base64 encoder and decoder
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 
 import strutils
 from endians import bigEndian32, bigEndian64
@@ -170,23 +196,46 @@ proc finalize(ctx: var Sha1State): Sha1Digest =
 # Public API
 
 proc secureHash*(str: string): SecureHash =
+  ## Generates a SecureHash from a string and returns it.
+  runnableExamples:
+    let hash = secureHash("Hello World")
+    doAssert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
   var state = newSha1State()
   state.update(str)
   SecureHash(state.finalize())
 
 proc secureHashFile*(filename: string): SecureHash =
+  ## Generates a SecureHash from a file and returns it.
   secureHash(readFile(filename))
 
 proc `$`*(self: SecureHash): string =
+  ## Returns the string representation of a SecureHash.
+  runnableExamples:
+    let hash = secureHash("Hello World")
+    doAssert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
   result = ""
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
+  ## Converts a string to a SecureHash
+  runnableExamples:
+    let
+      hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
+      secureHash = secureHash("Hello World")
+    doAssert secureHash == parseSecureHash(hashStr)
   for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
+  ## Checks if two SecureHash values are identical.
+  runnableExamples:
+    let
+      a = secureHash("Hello World")
+      b = secureHash("Goodbye World")
+      c = parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
+    doAssert a != b
+    doAssert a == c
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
 
