@@ -14,7 +14,7 @@
 ##
 ##    var birth = ["2000 John", "1995 Marie", "2010 Jane"]
 ##    sort(birth)
-##    # --> @["1995 Marie", "2000 John", "2010 Jane"]
+##    assert birth == @["1995 Marie", "2000 John", "2010 Jane"]
 ##    echo "Firstborn: " & birth[0] # --> 1995 Marie
 ##
 ##    let john = binarySearch(birth, "2000 John")
@@ -38,10 +38,10 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## | ``== 0`` for *equal*,
   ## | ``> 0`` for *greater than*.
   runnableExamples:
-    doAssert `*`(-123, Descending) == 123
-    doAssert `*`(123, Descending) == -123
-    doAssert `*`(-123, Ascending) == -123
-    doAssert `*`(123, Ascending) == 123
+    assert `*`(-123, Descending) == 123
+    assert `*`(123, Descending) == -123
+    assert `*`(-123, Ascending) == -123
+    assert `*`(123, Ascending) == 123
   var y = order.ord - 1
   result = (x xor y) - y
 
@@ -56,7 +56,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   runnableExamples:
     var a: array[6, int]
     a.fill(1, 3, 9)
-    doAssert a == [0, 9, 9, 9, 0, 0]
+    assert a == [0, 9, 9, 9, 0, 0]
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
@@ -64,7 +64,7 @@ proc fill*[T](a: var openArray[T], value: T) =
   runnableExamples:
     var a: array[6, int]
     a.fill(9)
-    doAssert a == [9, 9, 9, 9, 9, 9]
+    assert a == [9, 9, 9, 9, 9, 9]
   fillImpl(a, 0, a.high, value)
 
 
@@ -77,7 +77,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
   runnableExamples:
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse(1, 3)
-    doAssert a == [1, 4, 3, 2, 5, 6]
+    assert a == [1, 4, 3, 2, 5, 6]
   var x = first
   var y = last
   while x < y:
@@ -94,7 +94,7 @@ proc reverse*[T](a: var openArray[T]) =
   runnableExamples:
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse()
-    doAssert a == [6, 5, 4, 3, 2, 1]
+    assert a == [6, 5, 4, 3, 2, 1]
   reverse(a, 0, max(0, a.high))
 
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
@@ -107,7 +107,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
     let
       a = [1, 2, 3, 4, 5, 6]
       b = reversed(a, 1, 3)
-    doAssert b == @[4, 3, 2]
+    assert b == @[4, 3, 2]
   assert last >= first-1
   var i = last - first
   var x = first.int
@@ -127,7 +127,7 @@ proc reversed*[T](a: openArray[T]): seq[T] =
     let
       a = [1, 2, 3, 4, 5, 6]
       b = reversed(a)
-    doAssert b == @[6, 5, 4, 3, 2, 1]
+    assert b == @[6, 5, 4, 3, 2, 1]
   reversed(a, 0, a.high)
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
@@ -137,8 +137,8 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
   ## ``cmp`` is the comparator function to use, the expected return values are
   ## the same as that of system.cmp.
   runnableExamples:
-    doAssert binarySearch(["a","b","c","d"], "d", system.cmp[string]) == 3
-    doAssert binarySearch(["a","b","d","c"], "d", system.cmp[string]) == 2
+    assert binarySearch(["a","b","c","d"], "d", system.cmp[string]) == 3
+    assert binarySearch(["a","b","d","c"], "d", system.cmp[string]) == 2
   if a.len == 0:
     return -1
 
@@ -182,8 +182,8 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## Binary search for ``key`` in ``a``. Returns -1 if not found.
   runnableExamples:
-    doAssert binarySearch([0, 1, 2, 3, 4], 4) == 4
-    doAssert binarySearch([0, 1, 4, 2, 3], 4) == 2
+    assert binarySearch([0, 1, 2, 3, 4], 4) == 4
+    assert binarySearch([0, 1, 4, 2, 3], 4) == 2
   binarySearch(a, key, cmp[T])
 
 proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
@@ -210,7 +210,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   runnableExamples:
     var arr = @[1,2,3,5,6,7,8,9]
     arr.insert(4, arr.lowerBound(4))
-    doAssert arr == [1,2,3,4,5,6,7,8,9]
+    assert arr == [1,2,3,4,5,6,7,8,9]
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -242,7 +242,7 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   runnableExamples:
     var arr = @[1,2,3,4,6,7,8,9]
     arr.insert(5, arr.upperBound(4))
-    doAssert arr == [1,2,3,4,5,6,7,8,9]
+    assert arr == [1,2,3,4,5,6,7,8,9]
   result = a.low
   var count = a.high - a.low + 1
   var step, pos: int
@@ -343,9 +343,9 @@ func sort*[T](a: var openArray[T],
       myIntArray = [1, 3, 4, 2, 5]
       myStrArray = ["boo", "foo", "bar", "qux"]
     sort(myIntArray, system.cmp[int])
-    doAssert myIntArray == [1, 2, 3, 4, 5]
+    assert myIntArray == [1, 2, 3, 4, 5]
     sort(myStrArray, system.cmp)
-    doAssert myStrArray == ["bar", "boo", "foo", "qux"]
+    assert myStrArray == ["bar", "boo", "foo", "qux"]
   var n = a.len
   var b: seq[T]
   newSeq(b, n div 2)
@@ -379,8 +379,8 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
       a = [2, 3, 1, 5, 4]
       b = sorted(a, system.cmp)
       c = sorted(a, system.cmp, Descending)
-    doAssert b == @[1, 2, 3, 4, 5]
-    doAssert c == @[5, 4, 3, 2, 1]
+    assert b == @[1, 2, 3, 4, 5]
+    assert c == @[5, 4, 3, 2, 1]
   result = newSeq[T](a.len)
   for i in 0 .. a.high:
     result[i] = a[i]
@@ -398,8 +398,8 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
       a = [2, 3, 1, 5, 4]
       b = sorted(a)
       c = sorted(a, Descending)
-    doAssert b == @[1, 2, 3, 4, 5]
-    doAssert c == @[5, 4, 3, 2, 1]
+    assert b == @[1, 2, 3, 4, 5]
+    assert c == @[5, 4, 3, 2, 1]
   sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
@@ -459,10 +459,10 @@ func isSorted*[T](a: openArray[T],
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
       c = [5, 4, 3, 2, 1]
-    doAssert isSorted(a) == false
-    doAssert isSorted(b) == true
-    doAssert isSorted(c) == false
-    doAssert isSorted(c, Descending) == true
+    assert isSorted(a) == false
+    assert isSorted(b) == true
+    assert isSorted(c) == false
+    assert isSorted(c, Descending) == true
   result = true
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
@@ -478,17 +478,17 @@ proc isSorted*[T](a: openarray[T], order = SortOrder.Ascending): bool =
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
       c = [5, 4, 3, 2, 1]
-    doAssert isSorted(a) == false
-    doAssert isSorted(b) == true
-    doAssert isSorted(c) == false
-    doAssert isSorted(c, Descending) == true
+    assert isSorted(a) == false
+    assert isSorted(b) == true
+    assert isSorted(c) == false
+    assert isSorted(c, Descending) == true
   isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   runnableExamples:
-    doAssert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
+    assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
   result = newSeq[seq[T]]()
   if x.len == 0:
     return
@@ -529,7 +529,7 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   runnableExamples:
     var v = @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     v.nextPermutation()
-    doAssert v == @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
+    assert v == @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
   if x.len < 2:
     return false
 
@@ -559,7 +559,7 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   runnableExamples:
     var v = @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
     v.prevPermutation()
-    doAssert v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
   if x.len < 2:
     return false
 
@@ -688,7 +688,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   runnableExamples:
     var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     list.rotateLeft(1 .. 8, 3)
-    doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+    assert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
@@ -703,7 +703,7 @@ proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
   runnableExamples:
     var a = [1, 2, 3, 4, 5]
     a.rotateLeft(2)
-    doAssert a == [3, 4, 5, 1, 2]
+    assert a == [3, 4, 5, 1, 2]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
@@ -716,7 +716,7 @@ proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
   runnableExamples:
-    doAssert rotatedLeft([1, 2, 3, 4, 5], 1 .. 4, 2) == @[1, 4, 5, 2, 3]
+    assert rotatedLeft([1, 2, 3, 4, 5], 1 .. 4, 2) == @[1, 4, 5, 2, 3]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
@@ -729,7 +729,7 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
   runnableExamples:
-    doAssert rotatedLeft([1, 2, 3, 4, 5], 2) == [3, 4, 5, 1, 2]
+    assert rotatedLeft([1, 2, 3, 4, 5], 2) == [3, 4, 5, 1, 2]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotatedInternal(0, distLeft, arg.len)
