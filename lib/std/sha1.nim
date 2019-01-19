@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Note: Import ``std/sha1`` to use this module
+## **Note: Import `std/sha1` to use this module**
 ##
 ## SHA-1 (Secure Hash Algorithm 1) is a cryptographic hash function which
 ## takes an input and produces a 160-bit (20-byte) hash value known as a
@@ -17,8 +17,7 @@
 ##    import std/sha1
 ##
 ##    let accessName = secureHash("John Doe")
-##    echo $accessName
-##    # --> F742544A66E7EF2310A42D0A01DBB5395F26BC0A
+##    doAssert $accessName == "F742544A66E7EF2310A42D0A01DBB5395F26BC0A"
 ##
 ## .. code-block::
 ##    import std/sha1
