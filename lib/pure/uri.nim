@@ -58,6 +58,9 @@ proc encodeUrl*(s: string, usePlus=true): string =
   ##
   ## As a special rule, when the value of ``usePlus`` is true,
   ## spaces are encoded as ``+`` instead of ``%20``.
+  ##
+  ## **See also:**
+  ## * `decodeUrl proc<#decodeUrl,string>`_
   runnableExamples:
     assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
     assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
@@ -82,6 +85,9 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   ##
   ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
+  ##
+  ## **See also:**
+  ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
@@ -162,6 +168,9 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
 proc initUri*(): Uri =
   ## Initializes a URI with ``scheme``, ``username``, ``password``,
   ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
     var uri: Uri
     assert initUri() == uri
@@ -177,6 +186,10 @@ proc resetUri(uri: var Uri) =
 
 proc parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  ## * `initUri proc <#initUri,>`_ for initializing a URI
   runnableExamples:
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
@@ -221,6 +234,9 @@ proc parseUri*(uri: string, result: var Uri) =
 
 proc parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
     let res = parseUri("ftp://Username:Password@Hostname")
     assert res.username == "Username"
@@ -279,7 +295,8 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## This means that the slashes inside the base URI's path as well as reference
   ## URI's path affect the resulting URI.
   ##
-  ## For building URIs you may wish to use `/ proc <#/,Uri,string>`_ instead.
+  ## **See also:**
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
@@ -322,6 +339,9 @@ proc combine*(base: Uri, reference: Uri): Uri =
 
 proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
+  ##
+  ## **See also:**
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html"))
     assert foo.hostname == "nim-lang.org"
@@ -345,6 +365,9 @@ proc `/`*(x: Uri, path: string): Uri =
   ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
   ## the slashes at the beginning and end of the path and URI's path
   ## respectively.
+  ##
+  ## **See also:**
+  ## * `combine proc <#combine,Uri,Uri>`_
   runnableExamples:
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
     assert foo.path == "/foo/bar/baz"
