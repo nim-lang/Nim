@@ -118,8 +118,8 @@ proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
   runnableExamples:
-    doAssert encode(['n', 'i', 'm']) == "bmlt"
-    doAssert encode(@['n', 'i', 'm']) == "bmlt"
+    assert encode(['n', 'i', 'm']) == "bmlt"
+    assert encode(@['n', 'i', 'm']) == "bmlt"
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
@@ -128,8 +128,8 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   ##
   ## This procedure encodes a string.
   runnableExamples:
-    doAssert encode("Hello World") == "SGVsbG8gV29ybGQ="
-    doAssert encode("Hello World", 3, "\n") == "SGVs\nbG8g\nV29ybGQ="
+    assert encode("Hello World") == "SGVsbG8gV29ybGQ="
+    assert encode("Hello World", 3, "\n") == "SGVs\nbG8g\nV29ybGQ="
   encodeInternal(s, lineLen, newLine)
 
 proc decodeByte(b: char): int {.inline.} =
@@ -144,7 +144,7 @@ proc decode*(s: string): string =
   ## decodes a string in base64 representation back into its original form.
   ## Whitespace is skipped.
   runnableExamples:
-    doAssert decode("SGVsbG8gV29ybGQ=") == "Hello World"
+    assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
   const Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
   var total = ((len(s) + 3) div 4) * 3
   # total is an upper bound, as we will skip arbitrary whitespace:
