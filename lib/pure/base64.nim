@@ -120,6 +120,7 @@ proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"
   runnableExamples:
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
+    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
