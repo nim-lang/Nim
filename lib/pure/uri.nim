@@ -353,9 +353,9 @@ proc combine*(uris: varargs[Uri]): Uri =
 proc isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org"))
+    let foo = parseUri("https://nim-lang.org")
     assert isAbsolute(foo) == true
-    let bar = combine(parseUri("nim-lang"))
+    let bar = parseUri("nim-lang")
     assert isAbsolute(bar) == false
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
