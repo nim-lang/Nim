@@ -17,7 +17,7 @@
 ##    import std/sha1
 ##
 ##    let accessName = secureHash("John Doe")
-##    assert $accessName == "F742544A66E7EF2310A42D0A01DBB5395F26BC0A"
+##    assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
 ##
 ## .. code-block::
 ##    import std/sha1
@@ -196,6 +196,10 @@ proc finalize(ctx: var Sha1State): Sha1Digest =
 
 proc secureHash*(str: string): SecureHash =
   ## Generates a ``SecureHash`` from a ``str``.
+  ##
+  ## **See also:**
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
   runnableExamples:
     let hash = secureHash("Hello World")
     assert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
@@ -205,10 +209,17 @@ proc secureHash*(str: string): SecureHash =
 
 proc secureHashFile*(filename: string): SecureHash =
   ## Generates a ``SecureHash`` from a file.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
   secureHash(readFile(filename))
 
 proc `$`*(self: SecureHash): string =
   ## Returns the string representation of a ``SecureHash``.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
   runnableExamples:
     let hash = secureHash("Hello World")
     assert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
@@ -218,6 +229,10 @@ proc `$`*(self: SecureHash): string =
 
 proc parseSecureHash*(hash: string): SecureHash =
   ## Converts a string ``hash`` to ``SecureHash``.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
   runnableExamples:
     let
       hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
