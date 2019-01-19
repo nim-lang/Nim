@@ -200,9 +200,8 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## ``insert(thing, elm, lowerBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## The first version uses ``cmp`` to compare the elements.
+  ## The version uses ``cmp`` to compare the elements.
   ## The expected return values are the same as that of ``system.cmp``.
-  ## The second version uses the default comparison function ``cmp``.
   ##
   ## **See also:**
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
@@ -224,6 +223,17 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
+  ## Returns a position to the first element in the ``a`` that is greater than
+  ## ``key``, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
+  ## ``insert(thing, elm, lowerBound(thing, elm))``
+  ## the sequence will still be sorted.
+  ##
+  ## The version uses the default comparison function ``cmp``.
+  ##
+  ## **See also:**
+  ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
+  ## * `upperBound proc<#upperBound,openArray[T],K,>`_
 
 proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## Returns a position to the first element in the ``a`` that is not less
@@ -232,9 +242,8 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## ``insert(thing, elm, upperBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## The first version uses ``cmp`` to compare the elements. The expected
+  ## The version uses ``cmp`` to compare the elements. The expected
   ## return values are the same as that of ``system.cmp``.
-  ## The second version uses the default comparison function ``cmp``.
   ##
   ## **See also:**
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
@@ -256,6 +265,17 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
       count = step
 
 proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
+  ## Returns a position to the first element in the ``a`` that is not less
+  ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
+  ## In other words if you have a sorted sequence and you call
+  ## ``insert(thing, elm, upperBound(thing, elm))``
+  ## the sequence will still be sorted.
+  ##
+  ## The version uses the default comparison function ``cmp``.
+  ##
+  ## **See also:**
+  ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
+  ## * `lowerBound proc<#lowerBound,openArray[T],K>`_
 
 template `<-` (a, b) =
   when false:
