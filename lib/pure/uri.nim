@@ -24,8 +24,8 @@
 ##    let host = parseUri("https://nim-lang.org")
 ##    let blog = "/blog.html"
 ##    let bloguri = host / blog
-##    doAssert $host == "https://nim-lang.org"
-##    doAssert $bloguri == "https://nim-lang.org/blog.html"
+##    assert $host == "https://nim-lang.org"
+##    assert $bloguri == "https://nim-lang.org/blog.html"
 ##
 ## Access URI item
 ## ---------------
@@ -59,9 +59,9 @@ proc encodeUrl*(s: string, usePlus=true): string =
   ## As a special rule, when the value of ``usePlus`` is true,
   ## spaces are encoded as ``'+'`` instead of ``'%20'``.
   runnableExamples:
-    doAssert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
-    doAssert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
-    doAssert encodeUrl("https://nim-lang.org/this is a test", false) == "https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test"
+    assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
+    assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
+    assert encodeUrl("https://nim-lang.org/this is a test", false) == "https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test"
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   let fromSpace = if usePlus: "+" else: "%20"
   for c in s:
@@ -83,9 +83,9 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   ## As a special rule, when the value of ``decodePlus`` is true, ``'+'``
   ## characters are converted to a space.
   runnableExamples:
-    doAssert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
-    doAssert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
-    doAssert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -164,7 +164,7 @@ proc initUri*(): Uri =
   ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
   runnableExamples:
     var uri: Uri
-    doAssert initUri() == uri
+    assert initUri() == uri
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
@@ -180,9 +180,9 @@ proc parseUri*(uri: string, result: var Uri) =
   runnableExamples:
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
-    doAssert res.scheme == "https"
-    doAssert res.hostname == "nim-lang.org"
-    doAssert res.path == "/docs/manual.html"
+    assert res.scheme == "https"
+    assert res.hostname == "nim-lang.org"
+    assert res.path == "/docs/manual.html"
   resetUri(result)
 
   var i = 0
@@ -223,9 +223,9 @@ proc parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
   runnableExamples:
     let res = parseUri("ftp://Username:Password@Hostname")
-    doAssert res.username == "Username"
-    doAssert res.password == "Password"
-    doAssert res.scheme == "ftp"
+    assert res.username == "Username"
+    assert res.password == "Password"
+    assert res.scheme == "ftp"
   result = initUri()
   parseUri(uri, result)
 
@@ -282,11 +282,11 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## For building URIs you may wish to use \`/\` instead.
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
-    doAssert foo.path == "/baz"
+    assert foo.path == "/baz"
     let bar = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("baz"))
-    doAssert bar.path == "/foo/baz"
+    assert bar.path == "/foo/baz"
     let qux = combine(parseUri("https://nim-lang.org/foo/bar/"), parseUri("baz"))
-    doAssert qux.path == "/foo/bar/baz"
+    assert qux.path == "/foo/bar/baz"
 
   template setAuthority(dest, src): untyped =
     dest.hostname = src.hostname
@@ -324,8 +324,8 @@ proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html"))
-    doAssert foo.hostname == "nim-lang.org"
-    doAssert foo.path == "/install.html"
+    assert foo.hostname == "nim-lang.org"
+    assert foo.path == "/install.html"
   result = uris[0]
   for i in 1 ..< uris.len:
     result = combine(result, uris[i])
@@ -334,9 +334,9 @@ proc isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org"))
-    doAssert isAbsolute(foo) == true
+    assert isAbsolute(foo) == true
     let bar = combine(parseUri("nim-lang"))
-    doAssert isAbsolute(bar) == false
+    assert isAbsolute(bar) == false
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
 proc `/`*(x: Uri, path: string): Uri =
@@ -347,11 +347,11 @@ proc `/`*(x: Uri, path: string): Uri =
   ## respectively.
   runnableExamples:
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
-    doAssert foo.path == "/foo/bar/baz"
+    assert foo.path == "/foo/bar/baz"
     let bar = parseUri("https://nim-lang.org/foo/bar") / "baz"
-    doAssert bar.path == "/foo/bar/baz"
+    assert bar.path == "/foo/bar/baz"
     let qux = parseUri("https://nim-lang.org/foo/bar/") / "baz"
-    doAssert qux.path == "/foo/bar/baz"
+    assert qux.path == "/foo/bar/baz"
   result = x
 
   if result.path.len == 0:
@@ -374,7 +374,7 @@ proc `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     let foo = parseUri("https://nim-lang.org")
-    doAssert $foo == "https://nim-lang.org"
+    assert $foo == "https://nim-lang.org"
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
