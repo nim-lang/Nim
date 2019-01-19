@@ -34,12 +34,12 @@ except AssertionError as e:
 try:
   assert false, "msg2"  # assert test
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(35, 10) `false` msg2", "test2")
+  checkMsg(e.msg, "tfailedassert.nim(35, 3) `false` msg2", "test2")
 
 try:
   assert false # assert test with no msg
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(40, 10) `false` ", "test3")
+  checkMsg(e.msg, "tfailedassert.nim(40, 3) `false` ", "test3")
 
 try:
   let a = 1
@@ -109,14 +109,14 @@ block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
     doAssert fun("foo1") == fun("foo2"), "mymsg"
   except AssertionError as e:
     # used to expand out the template instantiaiton, sometimes filling hundreds of lines
-    checkMsg(e.msg, """tfailedassert.nim(109, 14) `fun("foo1") == fun("foo2")` mymsg""", "test9")
+    checkMsg(e.msg, """tfailedassert.nim(109, 5) `fun("foo1") == fun("foo2")` mymsg""", "test9")
 
 block: ## checks for issue https://github.com/nim-lang/Nim/issues/9301
   try:
     doAssert 1 + 1 == 3
   except AssertionError as e:
     # used to const fold as false
-    checkMsg(e.msg, "tfailedassert.nim(116, 14) `1 + 1 == 3` ", "test10")
+    checkMsg(e.msg, "tfailedassert.nim(116, 5) `1 + 1 == 3` ", "test10")
 
 block: ## checks AST isnt' transformed as it used to
   let a = 1
@@ -124,4 +124,4 @@ block: ## checks AST isnt' transformed as it used to
     doAssert a > 1
   except AssertionError as e:
     # used to rewrite as `1 < a`
-    checkMsg(e.msg, "tfailedassert.nim(124, 14) `a > 1` ", "test11")
+    checkMsg(e.msg, "tfailedassert.nim(124, 5) `a > 1` ", "test11")
