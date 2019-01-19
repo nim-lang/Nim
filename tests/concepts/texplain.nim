@@ -30,7 +30,7 @@ texplain.nim(84, 5) ExplainedConcept: concept predicate failed
 texplain.nim(128, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc e(o: ExplainedConcept): int
-texplain.nim(128, 9) template/generic instantiation of `assert` from here
+texplain.nim(128, 3) template/generic instantiation of `assert` from here
 texplain.nim(84, 5) ExplainedConcept: concept predicate failed
 proc e(i: int): int
 
@@ -38,7 +38,7 @@ expression: e(n)
 texplain.nim(129, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc r(o: RegularConcept): int
-texplain.nim(129, 9) template/generic instantiation of `assert` from here
+texplain.nim(129, 3) template/generic instantiation of `assert` from here
 texplain.nim(88, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
 proc r(i: string): int
