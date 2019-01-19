@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## **Note: Import `std/sha1` to use this module**
+## **Note:** Import ``std/sha1`` to use this module
 ##
 ## SHA-1 (Secure Hash Algorithm 1) is a cryptographic hash function which
 ## takes an input and produces a 160-bit (20-byte) hash value known as a
