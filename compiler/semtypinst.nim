@@ -462,14 +462,6 @@ proc propagateFieldFlags(t: PType, n: PNode) =
       propagateFieldFlags(t, son)
   else: discard
 
-template genericParamsToString(t: untyped): untyped =
-  var genericParams = "["
-  for i in countup(0, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
-    if i > 0: add(genericParams, ", ")
-    add(genericParams, typeToString(t.sons[i]))
-  add(genericParams, ']')
-  genericParams
-
 proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   template bailout =
     if cl.recursionLimit > 100:
@@ -498,13 +490,13 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
-    var genericParams = genericParamsToString(t)
     localError(
       cl.c.config,
       cl.info,
-      "cannot instantiate generic : '" &
+      "cannot instantiate : '" &
       typeToString(t) &
-      genericParams & "'; Maybe generic arguments are missing?")
+      genericParamsToString(t) &
+      "'; Maybe generic arguments are missing?")
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
@@ -570,13 +562,12 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:
           if result.sons[i].kind == tyGenericBody:
-            var genericParams = genericParamsToString(result.sons[i])
             localError(
               cl.c.config,
               t.sym.info,
-              "cannot instantiate generic '" &
+              "cannot instantiate '" &
               typeToString(result.sons[i]) &
-              genericParams &
+              genericParamsToString(result.sons[i]) &
               "' inside of type definition : '" &
               t.owner.name.s & "'; Maybe generic arguments are missing?")
           var r = replaceTypeVarsT(cl, result.sons[i])

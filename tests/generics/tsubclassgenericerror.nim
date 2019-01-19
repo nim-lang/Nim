@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot instantiate generic 'GenericParentType[T]' inside of type definition : 'GenericChildType'; Maybe generic arguments are missing?"
+  errormsg: "cannot instantiate 'GenericParentType[T]' inside of type definition : 'GenericChildType'; Maybe generic arguments are missing?"
   line: 8
 """
 

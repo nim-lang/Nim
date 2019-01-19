@@ -612,6 +612,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
+proc genericParamsToString*(t: PType): string =
+  result = "["
+  for i in countup(0, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
+    if i > 0: add(result, ", ")
+    add(result, typeToString(t.sons[i]))
+  add(result, ']')
 
 proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
