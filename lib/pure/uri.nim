@@ -279,7 +279,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## This means that the slashes inside the base URI's path as well as reference
   ## URI's path affect the resulting URI.
   ##
-  ## For building URIs you may wish to use \`/\` instead.
+  ## For building URIs you may wish to use `/ proc <#/,Uri,string>`_ instead.
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
@@ -342,7 +342,7 @@ proc isAbsolute*(uri: Uri): bool =
 proc `/`*(x: Uri, path: string): Uri =
   ## Concatenates the path specified to the specified URI's path.
   ##
-  ## Contrary to the ``combine`` procedure you do not have to worry about
+  ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
   ## the slashes at the beginning and end of the path and URI's path
   ## respectively.
   runnableExamples:
