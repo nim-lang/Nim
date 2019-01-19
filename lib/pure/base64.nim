@@ -112,7 +112,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
     discard
 
 proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
+  ## Encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
@@ -123,7 +123,7 @@ proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"
   encodeInternal(s, lineLen, newLine)
 
 proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
+  ## Encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
   ##
   ## This procedure encodes a string.
@@ -141,7 +141,7 @@ proc decodeByte(b: char): int {.inline.} =
   else: result = 63
 
 proc decode*(s: string): string =
-  ## decodes a string in base64 representation back into its original form.
+  ## Decodes a string in base64 representation back into its original form.
   ## Whitespace is skipped.
   runnableExamples:
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
