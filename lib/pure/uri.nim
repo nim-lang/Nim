@@ -53,11 +53,11 @@ proc encodeUrl*(s: string, usePlus=true): string =
   ## This means that characters in the set
   ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
   ## carried over to the result.
-  ## All other characters are encoded as ``''%xx'`` where ``xx``
+  ## All other characters are encoded as ``%xx`` where ``xx``
   ## denotes its hexadecimal value.
   ##
   ## As a special rule, when the value of ``usePlus`` is true,
-  ## spaces are encoded as ``'+'`` instead of ``'%20'``.
+  ## spaces are encoded as ``+`` instead of ``%20``.
   runnableExamples:
     assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
     assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
@@ -76,11 +76,11 @@ proc encodeUrl*(s: string, usePlus=true): string =
 proc decodeUrl*(s: string, decodePlus=true): string =
   ## Decodes a URL according to RFC3986.
   ##
-  ## This means that any ``'%xx'`` (where ``xx`` denotes a hexadecimal
+  ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
   ##
-  ## As a special rule, when the value of ``decodePlus`` is true, ``'+'``
+  ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
