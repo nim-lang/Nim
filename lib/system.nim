@@ -3983,13 +3983,13 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   Hide(raiseAssert)(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
-  const loc = $instantiationInfo(-1, true)
+  const loc = $instantiationInfo(-2, true)
   bind instantiationInfo
   mixin failedAssertImpl
   when enabled:
     # for stacktrace; fixes #8928 ; Note: `fullPaths = true` is correct
     # here, regardless of --excessiveStackTrace
-    {.line: instantiationInfo(fullPaths = true).}:
+    {.line: instantiationInfo(-2, fullPaths = true).}:
       if not cond:
         failedAssertImpl(loc & " `" & expr & "` " & msg)
 
@@ -4059,7 +4059,7 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ##  onFailedAssert(msg):
   ##    var e = new(TMyError)
   ##    e.msg = msg
-  ##    e.lineinfo = instantiationInfo(-2)
+  ##    e.lineinfo = instantiationInfo(-3)
   ##    raise e
   ##
   template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =

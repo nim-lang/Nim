@@ -29,7 +29,7 @@ echo("")
 try:
   doAssert(false, "msg1") # doAssert test
 except AssertionError as e:
-  checkMsg(e.msg, "tfailedassert.nim(30, 11) `false` msg1", "test1")
+  checkMsg(e.msg, "tfailedassert.nim(30, 3) `false` msg1", "test1")
 
 try:
   assert false, "msg2"  # assert test
@@ -70,7 +70,7 @@ block:
   onFailedAssert(msg):
     var e = new(TMyError)
     e.msg = msg
-    e.lineinfo = instantiationInfo(-2)
+    e.lineinfo = instantiationInfo(-3)
     raise e
 
   proc foo =
@@ -80,12 +80,12 @@ block:
   proc bar: int =
     # local overrides that are active only in this proc
     onFailedAssert(msg):
-      checkMsg(msg, "tfailedassert.nim(85, 11) `false` first assertion from bar", "test6")
+      checkMsg(msg, "tfailedassert.nim(85, 5) `false` first assertion from bar", "test6")
 
     assert(false, "first assertion from bar")
 
     onFailedAssert(msg):
-      checkMsg(msg, "tfailedassert.nim(91, 11) `false` second assertion from bar", "test7")
+      checkMsg(msg, "tfailedassert.nim(91, 5) `false` second assertion from bar", "test7")
       return -1
 
     assert(false, "second assertion from bar")
@@ -98,7 +98,7 @@ block:
   except:
     let e = EMyError(getCurrentException())
     echo e.lineinfo.filename
-    checkMsg(e.msg, "tfailedassert.nim(77, 11) `false` assertion from foo", "test8")
+    checkMsg(e.msg, "tfailedassert.nim(77, 5) `false` assertion from foo", "test8")
 
 block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
   template fun(a: string): string =
