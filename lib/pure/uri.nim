@@ -14,8 +14,8 @@
 ## as a locator, a name, or both. The term “Uniform Resource Locator”
 ## (URL) refers to the subset of URIs.
 ##
-## Examples
-## ========
+## Basic usage
+## ===========
 ##
 ## Combine URI's
 ## -------------
