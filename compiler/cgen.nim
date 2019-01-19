@@ -1732,8 +1732,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  let tranformed_n = transformStmt(m.g.graph, m.module, n)
-  genStmts(m.initProc, tranformed_n)
+  let transformed_n = transformStmt(m.g.graph, m.module, n)
+  genStmts(m.initProc, transformed_n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   result = true

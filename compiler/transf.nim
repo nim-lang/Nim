@@ -814,8 +814,9 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
-      cnst.len != 0
+  result = orig.kind == nkSym and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
+           cnst.len != 0
 
 proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
   result = n
@@ -1023,10 +1024,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   when false:
     if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
 
-  var cnst = getConstExpr(c.module, PNode(result), c.graph)
-  # we inline constants if they are not complex constants:
-  if cnst != nil and not dontInlineConstant(n, cnst):
-    result = PTransNode(cnst) # do not miss an optimization
+  if n.kind notin {nkCast, nkConv, nkHiddenStdConv}:
+    var cnst = getConstExpr(c.module, PNode(result), c.graph)
+    # we inline constants if they are not complex constants:
+    if cnst != nil and not dontInlineConstant(n, cnst):
+      result = PTransNode(cnst) # do not miss an optimization
 
 proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
