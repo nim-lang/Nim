@@ -17,7 +17,7 @@
 ## Basic usage
 ## ===========
 ##
-## Combine URI's
+## Combine URIs
 ## -------------
 ## .. code-block::
 ##    import uri
@@ -292,8 +292,8 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## This uses the algorithm specified in
   ## `section 5.2.2 of RFC 3986 <http://tools.ietf.org/html/rfc3986#section-5.2.2>`_.
   ##
-  ## This means that the slashes inside the base URI's path as well as reference
-  ## URI's path affect the resulting URI.
+  ## This means that the slashes inside the base URIs path as well as reference
+  ## URIs path affect the resulting URI.
   ##
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
@@ -360,10 +360,10 @@ proc isAbsolute*(uri: Uri): bool =
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
 proc `/`*(x: Uri, path: string): Uri =
-  ## Concatenates the path specified to the specified URI's path.
+  ## Concatenates the path specified to the specified URIs path.
   ##
   ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
-  ## the slashes at the beginning and end of the path and URI's path
+  ## the slashes at the beginning and end of the path and URIs path
   ## respectively.
   ##
   ## **See also:**
