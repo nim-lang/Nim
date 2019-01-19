@@ -14,16 +14,21 @@
 ## as a locator, a name, or both. The term “Uniform Resource Locator”
 ## (URL) refers to the subset of URIs.
 ##
+## Examples
+## ========
+##
+## Combine URI's
+## -------------
 ## .. code-block::
 ##    import uri
-##    let blog = "/blog.html"
 ##    let host = parseUri("https://nim-lang.org")
+##    let blog = "/blog.html"
 ##    let bloguri = host / blog
-##    echo "Main page: " & $host
-##    # --> Main page: https://nim-lang.org
-##    echo "Blog page: " & $bloguri
-##    # --> Blog page: https://nim-lang.org/blog.html
+##    doAssert $host == "https://nim-lang.org"
+##    doAssert $bloguri == "https://nim-lang.org/blog.html"
 ##
+## Access URI item
+## ---------------
 ## .. code-block::
 ##    import uri
 ##    let res = parseUri("sftp://127.0.0.1:4343")
