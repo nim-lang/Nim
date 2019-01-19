@@ -24,7 +24,7 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
-  let info = if n.kind == nkCall:
+  let info = if n.kind in {nkCall,nkCommand}:
                n.sons[0].info
              else:
                n.info
@@ -1090,8 +1090,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
-      markUsed(c.config, n.info, s, c.graph.usageSym)
-      onUse(n.info, s)
+      let info = if n.kind == nkDotExpr:
+                   n.sons[1].info
+                 else:
+                   n.info
+      markUsed(c.config, info, s, c.graph.usageSym)
+      onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
       result = semTemplateExpr(c, n, s, flags)
