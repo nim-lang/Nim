@@ -9,12 +9,12 @@ test2:ok
 import testhelper
 
 onFailedAssert(msg):
-  checkMsg(msg, "tfaileddoassert.nim(15, 9) `a == 2` foo", "test1")
+  checkMsg(msg, "tfaileddoassert.nim(15, 1) `a == 2` foo", "test1")
 
 var a = 1
 doAssert(a == 2, "foo")
 
 onFailedAssert(msg):
-  checkMsg(msg, "tfaileddoassert.nim(20, 10) `a == 3` ", "test2")
+  checkMsg(msg, "tfaileddoassert.nim(20, 1) `a == 3` ", "test2")
 
 doAssert a == 3
