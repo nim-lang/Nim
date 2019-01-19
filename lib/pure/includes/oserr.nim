@@ -59,7 +59,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
-    if e.msg[^1] != '\n': e.msg.add '\n'
+    if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
     e.msg.add  "Additional info: "
     e.msg.addQuoted additionalInfo
   if e.msg == "":
