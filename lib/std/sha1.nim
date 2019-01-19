@@ -195,7 +195,7 @@ proc finalize(ctx: var Sha1State): Sha1Digest =
 # Public API
 
 proc secureHash*(str: string): SecureHash =
-  ## Generates a SecureHash from a string and returns it.
+  ## Generates a ``SecureHash`` from a ``str``.
   runnableExamples:
     let hash = secureHash("Hello World")
     doAssert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
@@ -204,11 +204,11 @@ proc secureHash*(str: string): SecureHash =
   SecureHash(state.finalize())
 
 proc secureHashFile*(filename: string): SecureHash =
-  ## Generates a SecureHash from a file and returns it.
+  ## Generates a ``SecureHash`` from a file.
   secureHash(readFile(filename))
 
 proc `$`*(self: SecureHash): string =
-  ## Returns the string representation of a SecureHash.
+  ## Returns the string representation of a ``SecureHash``.
   runnableExamples:
     let hash = secureHash("Hello World")
     doAssert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
@@ -217,7 +217,7 @@ proc `$`*(self: SecureHash): string =
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
-  ## Converts a string to a SecureHash
+  ## Converts a string ``hash`` to ``SecureHash``.
   runnableExamples:
     let
       hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
@@ -227,7 +227,7 @@ proc parseSecureHash*(hash: string): SecureHash =
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
-  ## Checks if two SecureHash values are identical.
+  ## Checks if two ``SecureHash`` values are identical.
   runnableExamples:
     let
       a = secureHash("Hello World")
