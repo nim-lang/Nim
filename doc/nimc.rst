@@ -416,44 +416,79 @@ is raised.
 
 Hot code reloading
 ------------------
-**Note:** At the moment hot code reloading is supported only in
-JavaScript projects.
 
-The `hotCodeReloading`:idx: option enables special compilation mode where changes in
-the code can be applied automatically to a running program. The code reloading
-happens at the granularity of an individual module. When a module is reloaded,
-Nim will preserve the state of all global variables which are initialized with
-a standard variable declaration in the code. All other top level code will be
-executed repeatedly on each reload. If you want to prevent this behavior, you
-can guard a block of code with the ``once`` construct:
-
-.. code-block:: Nim
-  var settings = initTable[string, string]()
-
-  once:
-    myInit()
-
-    for k, v in loadSettings():
-      settings[k] = v
-
-If you want to reset the state of a global variable on each reload, just
-re-assign a value anywhere within the top-level code:
+The `hotCodeReloading`:idx: option enables special compilation mode where
+changes in the code can be applied automatically to a running program.
+The code reloading happens at the granularity of an individual module.
+When a module is reloaded, any newly added global variables will be
+initialized, but all other top-level code appearing in the module won't
+be re-executed and the state of all existing global variables will be
+preserved. One can use the special event handlers ``beforeCodeReload`` and
+``afterCodeReload`` to reset the state of a particular variable or to force
+the execution of certain statements:
 
 .. code-block:: Nim
-  var lastReload: Time
+  var
+   settings = initTable[string, string]()
+   lastReload: Time
 
-  lastReload = now()
-  resetProgramState()
+  for k, v in loadSettings():
+    settings[k] = v
 
-**Known limitations:** In the JavaScript target, global variables using the
-``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
-initialization with a `once` block to work-around this.
+  initProgram()
+
+  afterCodeReload:
+    lastReload = now()
+    resetProgramState()
+
+On each code reload, Nim will first execute all `beforeCodeReload`:idx:
+handlers registered in the previous version of the program and then all
+`afterCodeReload`:idx handlers appearing in the newly loaded code. Please note
+that any handlers appearing in modules that weren't reloaded will also be
+executed. To prevent this behavior, one can guard the code with the
+`hasModuleChanged`:idx: magic:
+
+.. code-block:: Nim
+  import mydb
+
+  var myCache = initTable[Key, Value]()
+
+  afterCodeReload:
+    if hasModuleChanged(mydb):
+      resetCache(myCache)
+
+The hot code reloading is based on dynamic library hot swapping in the native
+targets and direct manipulation of the global namespace in the JavaScript
+target. The Nim compiler does not specify the mechanism for detecting the
+conditions when the code must be reloaded. Instead, the program code is
+expected to call `performCodeReload()`:idx every time it wishes to reload its
+code.
+
+**Usage in Native projects:**
+
+Native projects using the hot code reloading option will be implicitly
+compiled with the `-d:useNimRtl` option and they will depend on both
+the ``nimrtl`` library and the ``nimhcr`` library which implements the
+hot code reloading run-time.
+
+All modules of the project will be compiled to separate dynamic link
+libraries placed in the ``nimcache`` directory. Please note that during
+the execution of the program, the hot code reloading run-time will load
+only copies of these libraries in order to not interfere with any newly
+issued build commands.
+
+The main module of the program is considered non-reloadable. Please note
+that procs from reloadable modules should not appear in the call stack of
+program while ``performCodeReload`` is being called. Thus, the main module
+is a suitable place for implementing a program loop capable of calling
+``performCodeReload``.
 
 **Usage in JavaScript projects:**
 
-Once your code is compiled for hot reloading, you can use a framework such
-as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
-to implement the actual reloading behavior in your project.
+Once your code is compiled for hot reloading, the ``nim-livereload`` NPM
+package provides a convenient solution for implementing the actual reloading
+in the browser using a framework such as [LiveReload](http://livereload.com/)
+or [BrowserSync](https://browsersync.io/).
 
 
 DynlibOverride

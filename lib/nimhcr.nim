@@ -200,8 +200,8 @@ when defined(hotcodereloading) or defined(createNimHcr) or defined(testNimHcr):
   const
     nimhcrExports = "nimhcr_$1"
     dllExt = when defined(windows): "dll"
-            elif defined(macosx): "dylib"
-            else: "so"
+             elif defined(macosx): "dylib"
+             else: "so"
   type
     ProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
     PassFucntion* = proc () {.nimcall.}
