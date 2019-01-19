@@ -117,6 +117,10 @@ proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,string,int,string>`_ for encoding a string
+  ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
@@ -128,6 +132,10 @@ proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
   ## ``newline`` is added.
   ##
   ## This procedure encodes a string.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T],int,string>`_ for encoding an openarray
+  ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
     assert encode("Hello World", 3, "\n") == "SGVs\nbG8g\nV29ybGQ="
@@ -144,6 +152,10 @@ proc decodeByte(b: char): int {.inline.} =
 proc decode*(s: string): string =
   ## Decodes string ``s`` in base64 representation back into its original form.
   ## The initial whitespace is skipped.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T],int,string>`_ for encoding an openarray
+  ## * `encode proc<#encode,string,int,string>`_ for encoding a string
   runnableExamples:
     assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
