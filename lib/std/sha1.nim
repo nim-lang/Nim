@@ -17,7 +17,7 @@
 ##    import std/sha1
 ##
 ##    let accessName = secureHash("John Doe")
-##    doAssert $accessName == "F742544A66E7EF2310A42D0A01DBB5395F26BC0A"
+##    assert $accessName == "F742544A66E7EF2310A42D0A01DBB5395F26BC0A"
 ##
 ## .. code-block::
 ##    import std/sha1
@@ -198,7 +198,7 @@ proc secureHash*(str: string): SecureHash =
   ## Generates a ``SecureHash`` from a ``str``.
   runnableExamples:
     let hash = secureHash("Hello World")
-    doAssert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
+    assert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
   var state = newSha1State()
   state.update(str)
   SecureHash(state.finalize())
@@ -211,7 +211,7 @@ proc `$`*(self: SecureHash): string =
   ## Returns the string representation of a ``SecureHash``.
   runnableExamples:
     let hash = secureHash("Hello World")
-    doAssert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
+    assert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
   result = ""
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
@@ -222,7 +222,7 @@ proc parseSecureHash*(hash: string): SecureHash =
     let
       hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
       secureHash = secureHash("Hello World")
-    doAssert secureHash == parseSecureHash(hashStr)
+    assert secureHash == parseSecureHash(hashStr)
   for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
@@ -233,8 +233,8 @@ proc `==`*(a, b: SecureHash): bool =
       a = secureHash("Hello World")
       b = secureHash("Goodbye World")
       c = parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
-    doAssert a != b
-    doAssert a == c
+    assert a != b
+    assert a == c
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
 
