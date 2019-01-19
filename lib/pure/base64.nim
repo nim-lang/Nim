@@ -16,29 +16,39 @@
 ## four 6-bit Base64 digits.
 ##
 ##
-## **Encoding data**
+## Basic usage
+## ===========
 ##
-##   .. code-block::nim
-##      import base64
-##      let encoded = encode("Hello World")
-##      echo(encoded) # SGVsbG8gV29ybGQ=
+## Encoding data
+## -------------
+##
+## .. code-block::nim
+##    import base64
+##    let encoded = encode("Hello World")
+##    assert encoded == "SGVsbG8gV29ybGQ="
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-##   .. code-block::nim
-##      import base64
-##      let encodedInts = encode([1,2,3])
-##      echo(encodedInts) # AQID
-##      let encodedChars = encode(['h','e','y'])
-##      echo(encodedChars) # aGV5
+## .. code-block::nim
+##    import base64
+##    let encodedInts = encode([1,2,3])
+##    assert encodedInts == "AQID"
+##    let encodedChars = encode(['h','e','y'])
+##    assert encodedChars == "aGV5"
 ##
-## **Decoding data**
 ##
-##   .. code-block::nim
-##      import base64
-##      echo(decode("SGVsbG8gV29ybGQ=")) # Hello World
+## Decoding data
+## -------------
 ##
-## **See also:**
+## .. code-block::nim
+##    import base64
+##    let decoded = decode("SGVsbG8gV29ybGQ=")
+##    assert decoded == "Hello World"
+##
+##
+## See also
+## ========
+##
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
 ## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 ## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
