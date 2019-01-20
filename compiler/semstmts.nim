@@ -432,7 +432,6 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
-  var hasCompileTime = false
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
@@ -556,13 +555,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else: v.typ = tup
         b.sons[j] = newSymNode(v)
       checkNilable(c, v)
-      if sfCompileTime in v.flags: hasCompileTime = true
+      if sfCompileTime in v.flags:
+        var x = newNodeI(result.kind, v.info)
+        addSon(x, result[i])
+        vm.setupCompileTimeVar(c.module, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-  if hasCompileTime:
-    vm.setupCompileTimeVar(c.module, c.graph, result)
-    # handled by the VM codegen:
-    #c.graph.recordStmt(c.graph, c.module, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
