@@ -1024,7 +1024,11 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   when false:
     if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
 
-  if n.kind notin {nkCast, nkConv, nkHiddenStdConv}:
+  # Constants can be inlined here, but only if they cannot result in a cast
+  # in the back-end (e.g. var p: pointer = someProc)
+  let exprIsPointerCast = n.kind in {nkCast, nkConv, nkHiddenStdConv} and
+                          n.typ.kind == tyPointer
+  if not exprIsPointerCast:
     var cnst = getConstExpr(c.module, PNode(result), c.graph)
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):
