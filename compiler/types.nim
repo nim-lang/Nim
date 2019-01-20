@@ -464,7 +464,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyGenericBody:
     result = typeToString(t.lastSon) & '['
-    for i in countup(0, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
+    for i in countup(0, sonsLen(t)-2):
       if i > 0: add(result, ", ")
       add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
