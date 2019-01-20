@@ -15,8 +15,11 @@
 ##
 ## .. code-block:: nim
 ##   import os, parsecsv, streams
+##   
 ##   var s = newFileStream(paramStr(1), fmRead)
-##   if s == nil: quit("cannot open the file" & paramStr(1))
+##   if s == nil:
+##     quit("cannot open the file" & paramStr(1))
+##   
 ##   var x: CsvParser
 ##   open(x, s, paramStr(1))
 ##   while readRow(x):
@@ -29,8 +32,8 @@
 ## reference for item access with `rowEntry <#rowEntry.CsvParser.string>`_:
 ##
 ## .. code-block:: nim
-##   import parsecsv
-##   import os
+##   import os, parsecsv
+##   
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four
 ##   1,2,3,4
@@ -82,7 +85,7 @@ proc error(my: CsvParser, pos: int, msg: string) =
 proc open*(my: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## initializes the parser with an input stream. `Filename` is only used
+  ## Initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. The parser's behaviour can be controlled by
   ## the diverse optional parameters:
   ## - `separator`: character used to separate fields
@@ -114,7 +117,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
 proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## same as the other `open` but creates the file stream for you.
+  ## Same as the other `open` but creates the file stream for you.
   runnableExamples:
     import os
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
@@ -176,7 +179,10 @@ proc parseField(my: var CsvParser, a: var string) =
   my.bufpos = pos
 
 proc processedRows*(my: var CsvParser): int =
-  ## returns number of the processed rows
+  ## Returns number of the processed rows.
+  ##
+  ## But even if `readRow <#readRow.CsvParser.int>`_ arrived at EOF then
+  ## processed rows counter is incremented.
   runnableExamples:
     import streams
 
@@ -186,11 +192,11 @@ proc processedRows*(my: var CsvParser): int =
 
     doAssert parser.readRow()
     doAssert 1 == parser.processedRows()
-    doAssert 1 == parser.processedRows()
 
     doAssert parser.readRow()
     doAssert 2 == parser.processedRows()
 
+    ## Even if `readRow` arrived at EOF then `processedRows` is incremented.
     doAssert false == parser.readRow()
     doAssert 3 == parser.processedRows()
 
@@ -202,7 +208,7 @@ proc processedRows*(my: var CsvParser): int =
   return my.currRow
 
 proc readRow*(my: var CsvParser, columns = 0): bool =
-  ## reads the next row; if `columns` > 0, it expects the row to have
+  ## Reads the next row; if `columns` > 0, it expects the row to have
   ## exactly this many columns. Returns false if the end of the file
   ## has been encountered else true.
   ##
@@ -262,7 +268,7 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   inc(my.currRow)
 
 proc close*(my: var CsvParser) {.inline.} =
-  ## closes the parser `my` and its associated input stream.
+  ## Closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
 proc readHeaderRow*(my: var CsvParser) =
@@ -307,7 +313,7 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
     doAssert "1" == parser.rowEntry("One")
     doAssert "2" == parser.rowEntry("Two")
     doAssert "3" == parser.rowEntry("Three")
-    ## `doAssert "" == parser.rowEntry("NotExistEntry")` faults SIGSEGV.
+    ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
 
     parser.close()
     strm.close()
