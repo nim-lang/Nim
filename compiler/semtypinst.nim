@@ -494,8 +494,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       cl.c.config,
       cl.info,
       "cannot instantiate : '" &
-      typeToString(t) &
-      genericParamsToString(t) &
+      typeToString(t, preferDesc) &
       "'; Maybe generic arguments are missing?")
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
@@ -566,8 +565,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
               cl.c.config,
               t.sym.info,
               "cannot instantiate '" &
-              typeToString(result.sons[i]) &
-              genericParamsToString(result.sons[i]) &
+              typeToString(result.sons[i], preferDesc) &
               "' inside of type definition : '" &
               t.owner.name.s & "'; Maybe generic arguments are missing?")
           var r = replaceTypeVarsT(cl, result.sons[i])
