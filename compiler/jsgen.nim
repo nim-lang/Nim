@@ -1613,6 +1613,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       lineF(p, "var $1;$n", varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
       varCode = $varName
+      inc p.extraIndent
     else:
       varCode = "var $2"
   else:
@@ -1664,6 +1665,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, s])
 
   if useReloadingGuard:
+    dec p.extraIndent
     lineF(p, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
@@ -2446,7 +2448,39 @@ proc genModule(p: PProc, n: PNode) =
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilename(p.config, p.module.module.info))))
   let n_transformed = transformStmt(p.module.graph, p.module.module, n)
-  genStmt(p, n_transformed)
+  if p.config.hcrOn and n.kind == nkStmtList:
+    let moduleSym = p.module.module
+    var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+    lineF(p, "var $1;$n", [moduleLoadedVar])
+    var inGuardedBlock = false
+    for stmt in n:
+      let stmtShouldExecute = stmt.kind in
+        {nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef,
+         nkVarSection, nkLetSection}
+
+      if inGuardedBlock:
+        if stmtShouldExecute:
+          dec p.extraIndent
+          line(p, "}\L")
+          inGuardedBlock = false
+      else:
+        if not stmtShouldExecute:
+          lineF(p, "if ($1 == undefined) {$n", [moduleLoadedVar])
+          inc p.extraIndent
+          inGuardedBlock = true
+
+      genStmt(p, stmt)
+
+    if inGuardedBlock:
+      dec p.extraIndent
+      line(p, "}\L")
+
+    lineF(p, "$1 = true;$n", [moduleLoadedVar])
+
+  else:
+    genStmt(p, n_transformed)
+
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
 
