@@ -94,6 +94,14 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
+  runnableExamples:
+    import streams
+
+    var strm = newStringStream("One,Two,Three\n1,2,3\n10,20,30")
+    var parser: CsvParser
+    parser.open(strm, "tmp.csv")
+    parser.close()
+    strm.close()
   lexbase.open(my, input)
   my.filename = filename
   my.sep = separator
@@ -107,6 +115,15 @@ proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
   ## same as the other `open` but creates the file stream for you.
+  runnableExamples:
+    import os
+    writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
+
+    var parser: CsvParser
+    parser.open("tmp.csv")
+    parser.close()
+
+    removeFile("tmp.csv")
   var s = newFileStream(filename, fmRead)
   if s == nil: my.error(0, "cannot open: " & filename)
   open(my, s, filename, separator,
@@ -160,6 +177,28 @@ proc parseField(my: var CsvParser, a: var string) =
 
 proc processedRows*(my: var CsvParser): int =
   ## returns number of the processed rows
+  runnableExamples:
+    import streams
+
+    var strm = newStringStream("One,Two,Three\n1,2,3")
+    var parser: CsvParser
+    parser.open(strm, "tmp.csv")
+
+    doAssert parser.readRow()
+    doAssert 1 == parser.processedRows()
+    doAssert 1 == parser.processedRows()
+
+    doAssert parser.readRow()
+    doAssert 2 == parser.processedRows()
+
+    doAssert false == parser.readRow()
+    doAssert 3 == parser.processedRows()
+
+    doAssert false == parser.readRow()
+    doAssert 4 == parser.processedRows()
+
+    parser.close()
+    strm.close()
   return my.currRow
 
 proc readRow*(my: var CsvParser, columns = 0): bool =
@@ -168,6 +207,29 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ## has been encountered else true.
   ##
   ## Blank lines are skipped.
+  runnableExamples:
+    import streams
+
+    var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
+    var parser: CsvParser
+    parser.open(strm, "tmp.csv")
+
+    doAssert parser.readRow()
+    doAssert @["One", "Two", "Three"] == parser.row
+    doAssert parser.readRow()
+    doAssert @["1", "2", "3"] == parser.row
+    ## Blank lines are skipped.
+    doAssert parser.readRow()
+    doAssert @["10", "20", "30"] == parser.row
+
+    var emptySeq: seq[string]
+    doAssert false == parser.readRow()
+    doAssert emptySeq == parser.row
+    doAssert false == parser.readRow()
+    doAssert emptySeq == parser.row
+
+    parser.close()
+    strm.close()
   var col = 0 # current column
   let oldpos = my.bufpos
   while my.buf[my.bufpos] != '\0':
@@ -206,6 +268,23 @@ proc close*(my: var CsvParser) {.inline.} =
 proc readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
   ## See also `rowEntry <#rowEntry.CsvParser.string>`_.
+  runnableExamples:
+    import streams
+
+    var strm = newStringStream("One,Two,Three\n1,2,3")
+    var parser: CsvParser
+    parser.open(strm, "tmp.csv")
+
+    parser.readHeaderRow()
+    doAssert @["One", "Two", "Three"] == parser.headers
+    doAssert @["One", "Two", "Three"] == parser.row
+
+    doAssert parser.readRow()
+    doAssert @["One", "Two", "Three"] == parser.headers
+    doAssert @["1", "2", "3"] == parser.row
+
+    parser.close()
+    strm.close()
   let present = my.readRow()
   if present:
     my.headers = my.row
@@ -215,6 +294,23 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow.CsvParser>`_ has already been
   ## called.
+  runnableExamples:
+    import streams
+
+    var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
+    var parser: CsvParser
+    parser.open(strm, "tmp.csv")
+
+    ## Need calling `readHeaderRow`.
+    parser.readHeaderRow()
+    doAssert parser.readRow()
+    doAssert "1" == parser.rowEntry("One")
+    doAssert "2" == parser.rowEntry("Two")
+    doAssert "3" == parser.rowEntry("Three")
+    ## `doAssert "" == parser.rowEntry("NotExistEntry")` faults SIGSEGV.
+
+    parser.close()
+    strm.close()
   let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
