@@ -75,12 +75,38 @@
 ##      waitFor(main())
 
 
-import asyncdispatch, asyncnet, strutils, parseutils, os, times
-
-from ftpclient import FtpBaseObj, ReplyError, FtpEvent
+import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
 type
+  FtpBaseObj*[SockType] = object
+    csock*: SockType
+    dsock*: SockType
+    user*, pass*: string
+    address*: string
+    port*: Port
+
+  FTPJobType* = enum
+    JRetrText, JRetr, JStore
+
+  FTPEventType* = enum
+    EvTransferProgress, EvLines, EvRetr, EvStore
+
+  FTPEvent* = object ## Event
+    filename*: string
+    case typ*: FTPEventType
+    of EvLines:
+      lines*: string ## Lines that have been transferred.
+    of EvRetr, EvStore: ## Retr/Store operation finished.
+      nil
+    of EvTransferProgress:
+      bytesTotal*: BiggestInt     ## Bytes total.
+      bytesFinished*: BiggestInt  ## Bytes transferred.
+      speed*: BiggestInt          ## Speed in bytes/s
+      currentJob*: FTPJobType     ## The current job being performed.
+
+  ReplyError* = object of IOError
+
   AsyncFtpClientObj* = FtpBaseObj[AsyncSocket]
   AsyncFtpClient* = ref AsyncFtpClientObj
 
