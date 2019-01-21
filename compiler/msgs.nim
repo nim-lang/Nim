@@ -135,6 +135,10 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
+  # NOTE: currently line info line numbers start with 1,
+  # but column numbers start with 0, however most editors expect
+  # first column to be 1, so we need to +1 here
+  ColOffset*   = 1
 
 proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
 proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
@@ -155,7 +159,10 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    conf.m.fileInfos[fileIdx.int32].projPath.string
+    if optListFullPaths in conf.globalOptions:
+      conf.m.fileInfos[fileIdx.int32].fullPath.string
+    else:
+      conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
@@ -192,10 +199,10 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
     result = "???"
     return
   let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
   if optListFullPaths in conf.globalOptions:
     result = absPath
   else:
+    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
     result = if absPath.len < relPath.len: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
@@ -208,7 +215,9 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = toFilename(conf, info) & ":" & $info.line
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
+  # consider calling `helpers.lineInfoToString` instead
+  result = toFilename(conf, info) & "(" & $info.line & ", " &
+    $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -359,7 +368,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         styledMsgWriteln(styleBright,
                          PosFormat % [toMsgFilename(conf, context.info),
                                       coordToStr(context.info.line.int),
-                                      coordToStr(context.info.col+1)],
+                                      coordToStr(context.info.col+ColOffset)],
                          resetStyle,
                          message)
     info = context.info
@@ -446,7 +455,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
   result = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                        coordToStr(info.col+1)] &
+                        coordToStr(info.col+ColOffset)] &
            title &
            getMessageStr(msg, arg)
 
@@ -483,11 +492,8 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  # NOTE: currently line info line numbers start with 1,
-  # but column numbers start with 0, however most editors expect
-  # first column to be 1, so we need to +1 here
   let x = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                       coordToStr(info.col+1)]
+                       coordToStr(info.col+ColOffset)]
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:

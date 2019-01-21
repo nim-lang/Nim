@@ -12,7 +12,7 @@
 ## write your own.
 ##
 ## Format strings support the following variables which must be prefixed with
-## the dollar operator (``$``):
+## the dollar operator (``$``, see example below):
 ##
 ## ============  =======================
 ##   Operator     Output
@@ -43,6 +43,11 @@
 ##    warn("4 8 15 16 23 4-- Error")
 ##    error("922044:16 SYSTEM FAILURE")
 ##    fatal("SYSTEM FAILURE SYSTEM FAILURE")
+##    # Using the aformetioned operator
+##    var opL = newConsoleLogger(fmtStr = "$datetime :: ")
+##    addHandler(opL)
+##    info("Starting web server...")
+##    # Will print something like 2018-12-17T19:28:05 :: Starting web server...
 ##
 ## **Warning:** The global list of handlers is a thread var, this means that
 ## the handlers must be re-added in each thread.

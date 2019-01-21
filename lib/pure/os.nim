@@ -19,7 +19,9 @@ include "system/inclrtl"
 import
   strutils, pathnorm
 
-when defined(nimscript):
+const weirdTarget = defined(nimscript) or defined(js)
+
+when weirdTarget:
   discard
 elif defined(windows):
   import winlean, times
@@ -31,7 +33,7 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-when defined(nimscript) and defined(nimErrorProcCanHaveBody):
+when weirdTarget and defined(nimErrorProcCanHaveBody):
   {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
 else:
   {.pragma: noNimScript.}
@@ -334,7 +336,7 @@ proc searchExtPos*(path: string): int =
 
 proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a filename into (dir, filename, extension).
+  ## Splits a filename into (dir, name, extension).
   ## `dir` does not end in `DirSep`.
   ## `extension` includes the leading dot.
   ##
@@ -349,19 +351,30 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## If `path` has no extension, `ext` is the empty string.
   ## If `path` has no directory component, `dir` is the empty string.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
-  if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
-    result = (path, "", "")
+  if path.len == 0:
+      result = ("", "", "")
+  elif path[^1] in {DirSep, AltSep}:
+    if path.len == 1:
+      # issue #8255
+      result = ($path[0], "", "")
+    else:
+      result = (path[0 ..< ^1], "", "")
   else:
     var sepPos = -1
     var dotPos = path.len
     for i in countdown(len(path)-1, 0):
       if path[i] == ExtSep:
         if dotPos == path.len and i > 0 and
-            path[i-1] notin {DirSep, AltSep}: dotPos = i
+            path[i-1] notin {DirSep, AltSep, ExtSep}: dotPos = i
       elif path[i] in {DirSep, AltSep}:
         sepPos = i
         break
-    result.dir = substr(path, 0, sepPos-1)
+    if sepPos-1 >= 0:
+      result.dir = substr(path, 0, sepPos-1)
+    elif path[0] in {DirSep, AltSep}:
+      # issue #8255
+      result.dir = $path[0]
+
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
@@ -651,7 +664,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       if i > 0: result.add " "
       result.add quoteShell(args[i])
 
-when not defined(nimscript):
+when not weirdTarget:
   proc c_rename(oldname, newname: cstring): cint {.
     importc: "rename", header: "<stdio.h>".}
   proc c_system(cmd: cstring): cint {.
@@ -662,7 +675,7 @@ when not defined(nimscript):
     importc: "free", header: "<stdlib.h>".}
 
 
-when defined(windows) and not defined(nimscript):
+when defined(windows) and not weirdTarget:
   when useWinUnicode:
     template wrapUnary(varname, winApiProc, arg: untyped) =
       var varname = winApiProc(newWideCString(arg))
@@ -744,7 +757,7 @@ proc dirExists*(dir: string): bool {.inline, noNimScript.} =
   ## Synonym for existsDir
   existsDir(dir)
 
-when not defined(windows) and not defined(nimscript):
+when not defined(windows) and not weirdTarget:
   proc checkSymlink(path: string): bool =
     var rawInfo: Stat
     if lstat(path, rawInfo) < 0'i32: result = false
@@ -805,7 +818,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         return x
   result = ""
 
-when defined(nimscript):
+when weirdTarget:
   const times = "fake const"
   template Time(x: untyped): untyped = string
 
@@ -920,7 +933,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError())
 
-when not defined(nimscript):
+when not weirdTarget:
   proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
     ## Returns the absolute path of `path`, rooted at `root` (which must be absolute)
     ## if `path` is absolute, return it, ignoring `root`
@@ -932,48 +945,6 @@ when not defined(nimscript):
         raise newException(ValueError, "The specified root is not absolute: " & root)
       joinPath(root, path)
 
-proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noNimScript.} =
-  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
-  ## raises OSError in case of an error. Follows symlinks.
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var unused: WideCString = nil
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
-    else:
-      var unused: cstring = nil
-      result = newString(bufsize)
-      while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
-  else:
-    # according to Posix we don't need to allocate space for result pathname.
-    # But we need to free return value with free(3).
-    var r = realpath(filename, nil)
-    if r.isNil:
-      raiseOSError(osLastError())
-    else:
-      result = $r
-      c_free(cast[pointer](r))
-
 proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Normalize a path.
   ##
@@ -984,38 +955,39 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
   ##
   ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
   ## Triple dot is not handled.
-  let isAbs = isAbsolute(path)
-  var stack: seq[string] = @[]
-  for p in split(path, {DirSep}):
-    case p
-    of "", ".":
-      continue
-    of "..":
-      if stack.len == 0:
-        if isAbs:
-          discard  # collapse all double dots on absoluta paths
-        else:
+  path = pathnorm.normalizePath(path)
+  when false:
+    let isAbs = isAbsolute(path)
+    var stack: seq[string] = @[]
+    for p in split(path, {DirSep}):
+      case p
+      of "", ".":
+        continue
+      of "..":
+        if stack.len == 0:
+          if isAbs:
+            discard  # collapse all double dots on absoluta paths
+          else:
+            stack.add(p)
+        elif stack[^1] == "..":
           stack.add(p)
-      elif stack[^1] == "..":
-        stack.add(p)
+        else:
+          discard stack.pop()
       else:
-        discard stack.pop()
-    else:
-      stack.add(p)
+        stack.add(p)
 
-  if isAbs:
-    path = DirSep & join(stack, $DirSep)
-  elif stack.len > 0:
-    path = join(stack, $DirSep)
-  else:
-    path = "."
+    if isAbs:
+      path = DirSep & join(stack, $DirSep)
+    elif stack.len > 0:
+      path = join(stack, $DirSep)
+    else:
+      path = "."
 
 proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## Returns a normalized path for the current OS. See `<#normalizePath>`_
-  result = path
-  normalizePath(result)
+  result = pathnorm.normalizePath(path)
 
-when defined(Windows) and not defined(nimscript):
+when defined(Windows) and not weirdTarget:
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
@@ -1238,7 +1210,7 @@ when not declared(ENOENT) and not defined(Windows):
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
-when defined(Windows) and not defined(nimscript):
+when defined(Windows) and not weirdTarget:
   when useWinUnicode:
     template deleteFile(file: untyped): untyped  = deleteFileW(file)
     template setFileAttributes(file, attrs: untyped): untyped =
@@ -1315,6 +1287,17 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
         discard tryRemoveFile(dest)
         raise
 
+proc exitStatusLikeShell*(status: cint): cint =
+  ## converts exit code from `c_system` into a shell exit code
+  when defined(posix) and not weirdTarget:
+    if WIFSIGNALED(status):
+      # like the shell!
+      128 + WTERMSIG(status)
+    else:
+      WEXITSTATUS(status)
+  else:
+    status
+
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect], noNimScript.} =
   ## Executes a `shell command`:idx:.
@@ -1323,23 +1306,19 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## line arguments given to program. The proc returns the error code
   ## of the shell when it has finished. The proc does not return until
   ## the process has finished. To execute a program without having a
-  ## shell involved, use the `execProcess` proc of the `osproc`
-  ## module.
-  when defined(posix):
-    result = c_system(command) shr 8
-  else:
-    result = c_system(command)
+  ## shell involved, use `osproc.execProcess`.
+  result = exitStatusLikeShell(c_system(command))
 
 # Templates for filtering directories and files
-when defined(windows) and not defined(nimscript):
+when defined(windows) and not weirdTarget:
   template isDir(f: WIN32_FIND_DATA): bool =
     (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   template isFile(f: WIN32_FIND_DATA): bool =
     not isDir(f)
 else:
-  template isDir(f: string): bool =
+  template isDir(f: string): bool {.dirty.} =
     dirExists(f)
-  template isFile(f: string): bool =
+  template isFile(f: string): bool {.dirty.} =
     fileExists(f)
 
 template defaultWalkFilter(item): bool =
@@ -1411,6 +1390,54 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noNimScript
   ## notation is supported.
   walkCommon(pattern, isDir)
 
+proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
+  tags: [ReadDirEffect], noNimScript.} =
+  ## Returns the full (`absolute`:idx:) path of an existing file `filename`,
+  ## raises OSError in case of an error. Follows symlinks.
+  when defined(windows):
+    var bufsize = MAX_PATH.int32
+    when useWinUnicode:
+      var unused: WideCString = nil
+      var res = newWideCString("", bufsize)
+      while true:
+        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          res = newWideCString("", L)
+          bufsize = L
+        else:
+          result = res$L
+          break
+    else:
+      var unused: cstring = nil
+      result = newString(bufsize)
+      while true:
+        var L = getFullPathNameA(filename, bufsize, result, unused)
+        if L == 0'i32:
+          raiseOSError(osLastError())
+        elif L > bufsize:
+          result = newString(L)
+          bufsize = L
+        else:
+          setLen(result, L)
+          break
+    # getFullPathName doesn't do case corrections, so we have to use this convoluted
+    # way of retrieving the true filename
+    for x in walkFiles(result.string):
+      result = x
+    if not existsFile(result) and not existsDir(result):
+      raise newException(OSError, "file '" & result & "' does not exist")
+  else:
+    # according to Posix we don't need to allocate space for result pathname.
+    # But we need to free return value with free(3).
+    var r = realpath(filename, nil)
+    if r.isNil:
+      raiseOSError(osLastError())
+    else:
+      result = $r
+      c_free(cast[pointer](r))
+
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
     pcFile,               ## path refers to a file
@@ -1418,7 +1445,13 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-when defined(posix) and not defined(nimscript):
+proc getCurrentCompilerExe*(): string {.compileTime.} = discard
+  ## `getAppFilename` at CT; can be used to retrive the currently executing
+  ## Nim compiler from a Nim or nimscript program, or the nimble binary
+  ## inside a nimble program (likewise with other binaries built from
+  ## compiler API).
+
+when defined(posix) and not weirdTarget:
   proc getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
@@ -1459,7 +1492,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     for k, v in items(staticWalkDir(dir, relative)):
       yield (k, v)
   else:
-    when defined(nimscript):
+    when weirdTarget:
       for k, v in items(staticWalkDir(dir, relative)):
         yield (k, v)
     elif defined(windows):
@@ -1494,8 +1527,9 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             var y = $x.d_name.cstring
           if y != "." and y != "..":
             var s: Stat
+            let path = dir / y
             if not relative:
-              y = dir / y
+              y = path
             var k = pcFile
 
             when defined(linux) or defined(macosx) or
@@ -1503,16 +1537,16 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
-                  if dirExists(y): k = pcLinkToDir
+                  if dirExists(path): k = pcLinkToDir
                   else: k = pcLinkToFile
                 yield (k, y)
                 continue
 
-            if lstat(y, s) < 0'i32: break
+            if lstat(path, s) < 0'i32: break
             if S_ISDIR(s.st_mode):
               k = pcDir
             elif S_ISLNK(s.st_mode):
-              k = getSymlinkFileKind(y)
+              k = getSymlinkFileKind(path)
             yield (k, y)
 
 iterator walkDirRec*(dir: string,
@@ -1953,7 +1987,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-elif defined(nintendoswitch) or defined(nimscript):
+elif defined(nintendoswitch) or weirdTarget:
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
@@ -2030,7 +2064,7 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 
-when not defined(nimscript) and (defined(freebsd) or defined(dragonfly)):
+when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -2063,7 +2097,7 @@ when not defined(nimscript) and (defined(freebsd) or defined(dragonfly)):
         result.setLen(pathLength)
         break
 
-when not defined(nimscript) and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
+when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
     result = newString(256)
     var len = readlink(procPath, result, 256)
@@ -2072,7 +2106,7 @@ when not defined(nimscript) and (defined(linux) or defined(solaris) or defined(b
       len = readlink(procPath, result, len)
     setLen(result, len)
 
-when not (defined(windows) or defined(macosx) or defined(nimscript)):
+when not (defined(windows) or defined(macosx) or weirdTarget):
   proc getApplHeuristic(): string =
     when declared(paramStr):
       result = string(paramStr(0))
@@ -2117,7 +2151,8 @@ when defined(haiku):
       result = ""
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noNimScript.} =
-  ## Returns the filename of the application's executable.
+  ## Returns the filename of the application's executable. See also
+  ## `getCurrentCompilerExe`.
   ##
   ## This procedure will resolve symlinks.
 
@@ -2207,7 +2242,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError())
 
-when defined(Windows) or defined(nimscript):
+when defined(Windows) or weirdTarget:
   type
     DeviceId* = int32
     FileId* = int64
@@ -2286,6 +2321,12 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     elif S_ISLNK(rawInfo.st_mode):
       assert(path != "") # symlinks can't occur for file handles
       formalInfo.kind = getSymlinkFileKind(path)
+
+when defined(js):
+  when not declared(FileHandle):
+    type FileHandle = distinct int32
+  when not declared(File):
+    type File = object
 
 proc getFileInfo*(handle: FileHandle): FileInfo {.noNimScript.} =
   ## Retrieves file information for the file object represented by the given

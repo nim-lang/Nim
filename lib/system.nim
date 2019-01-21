@@ -118,6 +118,22 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
+
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
@@ -553,7 +569,12 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    raiseId: uint # set when exception is raised
+    when defined(nimBoostrapCsources0_19_0):
+      # see #10315, bootstrap with `nim cpp` from csources gave error:
+      # error: no member named 'raise_id' in 'Exception'
+      raise_id: uint # set when exception is raised
+    else:
+      raiseId: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
@@ -590,7 +611,7 @@ type
     ## Raised when assertion is proved wrong.
     ##
     ## Usually the result of using the `assert() template <#assert>`_.
-  ValueError* = object of Defect ## \
+  ValueError* = object of CatchableError ## \
     ## Raised for string and object conversion errors.
   KeyError* = object of ValueError ## \
     ## Raised if a key cannot be found in a table.
@@ -1479,12 +1500,9 @@ const
   # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
-when defined(nimKnowsNimvm):
-  let nimvm* {.magic: "Nimvm".}: bool = false
-    ## may be used only in "when" expression.
-    ## It is true in Nim VM context and false otherwise
-else:
-  const nimvm*: bool = false
+let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
+  ## may be used only in "when" expression.
+  ## It is true in Nim VM context and false otherwise
 {.pop.}
 
 proc compileOption*(option: string): bool {.
@@ -1539,7 +1557,7 @@ else:
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
-when defined(profiler):
+when defined(profiler) and not defined(nimscript):
   proc nimProfile() {.compilerProc, noinline.}
 when hasThreadSupport:
   {.pragma: rtlThreadVar, threadvar.}
@@ -1555,7 +1573,7 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-when defined(nodejs):
+when defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
@@ -1601,7 +1619,7 @@ elif defined(genode):
 
 
 
-elif defined(nodejs):
+elif defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -1692,7 +1710,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   else:
     when defined(js):
       var it : T
-      {.emit: "`x`.splice(`i`, 0, `it`);".}
+      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
       defaultImpl()
   x[i] = item
@@ -1795,21 +1813,26 @@ proc toFloat*(i: int): float {.
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.
   magic: "ToBiggestFloat", noSideEffect, importc: "toBiggestFloat".}
-  ## converts an biggestint `i` into a ``biggestfloat``. If the conversion
+  ## converts a biggestint `i` into a ``biggestfloat``. If the conversion
   ## fails, `ValueError` is raised. However, on most platforms the
   ## conversion cannot fail.
 
 proc toInt*(f: float): int {.
-  magic: "ToInt", noSideEffect, importc: "toInt".}
+  magic: "ToInt", noSideEffect, importc: "toInt".} =
   ## converts a floating point number `f` into an ``int``. Conversion
-  ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `ValueError` is raised.
+  ## rounds `f` half away from 0, see https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero
+  ## Note that some floating point numbers (e.g. infinity or even 1e19)
+  ## cannot be accurately converted.
+  runnableExamples:
+    doAssert toInt(0.49) == 0
+    doAssert toInt(0.5) == 1
+    doAssert toInt(-0.5) == -1 ## rounding is symmetrical
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.
-  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".}
-  ## converts a biggestfloat `f` into a ``biggestint``. Conversion
-  ## rounds `f` if it does not contain an integer value. If the conversion
-  ## fails (because `f` is infinite for example), `ValueError` is raised.
+  magic: "ToBiggestInt", noSideEffect, importc: "toBiggestInt".} =
+  ## Same as `toInt` but for BiggestFloat to ``BiggestInt``.
+  runnableExamples:
+    doAssert toBiggestInt(0.49) == 0
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>".}
@@ -2624,8 +2647,8 @@ proc `==`*[T: tuple|object](x, y: T): bool =
   return true
 
 proc `<=`*[T: tuple](x, y: T): bool =
-  ## generic ``<=`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<=`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
@@ -2633,8 +2656,8 @@ proc `<=`*[T: tuple](x, y: T): bool =
   return true
 
 proc `<`*[T: tuple](x, y: T): bool =
-  ## generic ``<`` operator for tuples that is lifted from the components
-  ## of `x` and `y`. This implementation uses `cmp`.
+  ## generic lexicographic ``<`` operator for tuples that is lifted from the
+  ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
     if c < 0: return true
@@ -2651,19 +2674,28 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ##     echo "'+' for integers is available"
   discard
 
+include "system/helpers" # for `lineInfoToString`, `isNamedTuple`
+
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: nim
   ##   $(23, 45) == "(23, 45)"
+  ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
   var firstElement = true
+  const isNamed = T is object or isNamedTuple(T)
+  when not isNamed:
+    var count = 0
   for name, value in fieldPairs(x):
     if not firstElement: result.add(", ")
-    result.add(name)
-    result.add(": ")
+    when isNamed:
+      result.add(name)
+      result.add(": ")
+    else:
+      count.inc
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
@@ -2673,6 +2705,11 @@ proc `$`*[T: tuple|object](x: T): string =
       firstElement = false
     else:
       result.add("...")
+      firstElement = false
+  when not isNamed:
+    if count == 1:
+      result.add(",") # $(1,) should print as the semantically legal (1,)
+
   result.add(")")
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
@@ -2710,6 +2747,16 @@ proc `$`*[T](x: seq[T]): string =
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
+
+proc `$`*[T, U](x: HSlice[T, U]): string =
+  ## generic ``$`` operator for slices that is lifted from the components
+  ## of `x`. Example:
+  ##
+  ## .. code-block:: nim
+  ##  $(1 .. 5) == "1 .. 5"
+  result = $x.a
+  result.add(" .. ")
+  result.add($x.b)
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -2760,8 +2807,8 @@ when not defined(nimscript) and hasAlloc:
 
     when not defined(JS) and not defined(nimscript) and hasAlloc:
       proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
-      ## Expands operating GC stack range to `theStackBottom`. Does nothing
-      ## if current stack bottom is already lower than `theStackBottom`.
+        ## Expands operating GC stack range to `theStackBottom`. Does nothing
+        ## if current stack bottom is already lower than `theStackBottom`.
 
   else:
     template GC_disable* =
@@ -3075,7 +3122,7 @@ when not defined(JS): #and not defined(nimscript):
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
       # Linux 64bit system. -- That's because the stack direction is the other
-      # way round.
+      # way around.
       when declared(nimGC_setStackBottom):
         var locals {.volatile.}: pointer
         locals = addr(locals)
@@ -3147,7 +3194,7 @@ when not defined(JS): #and not defined(nimscript):
         result = x.len - y.len
 
   when defined(nimscript):
-    proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
+    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
       ## Opens a file named `filename` for reading, calls `readAll
       ## <#readAll>`_ and closes the file afterwards. Returns the string.
       ## Raises an IO exception in case of an error. If # you need to call
@@ -3196,14 +3243,15 @@ when not defined(JS): #and not defined(nimscript):
 
     proc open*(f: var File, filename: string,
                mode: FileMode = fmRead, bufSize: int = -1): bool {.tags: [],
-               benign.}
+               raises: [], benign.}
       ## Opens a file named `filename` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
       ## This throws no exception if the file could not be opened.
 
     proc open*(f: var File, filehandle: FileHandle,
-               mode: FileMode = fmRead): bool {.tags: [], benign.}
+               mode: FileMode = fmRead): bool {.tags: [], raises: [],
+               benign.}
       ## Creates a ``File`` from a `filehandle` with given `mode`.
       ##
       ## Default mode is readonly. Returns true iff the file could be opened.
@@ -3212,7 +3260,7 @@ when not defined(JS): #and not defined(nimscript):
                mode: FileMode = fmRead, bufSize: int = -1): File =
       ## Opens a file named `filename` with given `mode`.
       ##
-      ## Default mode is readonly. Raises an ``IO`` exception if the file
+      ## Default mode is readonly. Raises an ``IOError`` if the file
       ## could not be opened.
       if not open(result, filename, mode, bufSize):
         sysFatal(IOError, "cannot open: ", filename)
@@ -3415,6 +3463,10 @@ when not defined(JS): #and not defined(nimscript):
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
+    when not defined(useNimRtl):
+      proc unsetControlCHook*()
+        ## reverts a call to setControlCHook
+
     proc writeStackTrace*() {.tags: [], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works
       ## for debug builds. Since it's usually used for debugging, this
@@ -3430,6 +3482,10 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
+
+    when defined(gcDestructors):
+      include "core/strs"
+      include "core/seqs"
 
     when hostOS == "standalone":
       include "system/embedded"
@@ -3479,10 +3535,7 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc:
-      when defined(gcDestructors):
-        include "core/strs"
-        include "core/seqs"
-      else:
+      when not defined(gcDestructors):
         include "system/sysstr"
     {.pop.}
     when hasAlloc: include "system/strmantle"
@@ -3568,7 +3621,7 @@ when not defined(JS): #and not defined(nimscript):
   when defined(endb) and not defined(nimscript):
     include "system/debugger"
 
-  when defined(profiler) or defined(memProfiler):
+  when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
   {.pop.} # stacktrace
 
@@ -3609,7 +3662,7 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-  when defined(JS):
+  when defined(JS) and not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
   elif defined(nimscript):
@@ -3833,15 +3886,21 @@ proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
   ## Same as `gorge` but also returns the precious exit code.
   discard
 
-proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `+=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}
-  ## Increments an ordinal
+  ## Increments an integer
 
-proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `+=`*[T: enum|bool](x: var T, y: T) {.
+  magic: "Inc", noSideEffect, deprecated: "use `inc` instead".}
+
+proc `-=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `-=`*[T: enum|bool](x: var T, y: T) {.
+  magic: "Dec", noSideEffect, deprecated: "0.20.0, use `dec` instead".}
+
+proc `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
@@ -3919,7 +3978,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
 template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## returns the full file-system path of the current source
 
-proc raiseAssert*(msg: string) {.noinline.} =
+proc raiseAssert*(msg: string) {.noinline, noReturn.} =
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
@@ -3928,8 +3987,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
   Hide(raiseAssert)(msg)
-
-include "system/helpers" # for `lineInfoToString`
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   const loc = $instantiationInfo(-1, true)
@@ -4326,24 +4383,7 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
 
-
-when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
-    ## A section you should use to mark `runnable example`:idx: code with.
-    ##
-    ## - In normal debug and release builds code within
-    ##   a ``runnableExamples`` section is ignored.
-    ## - The documentation generator is aware of these examples and considers them
-    ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation the examples are put into an ``$file_example.nim`` file,
-    ##   compiled and tested. The collected examples are
-    ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols.
-else:
-  template runnableExamples*(body: untyped) =
-    discard
-
-template doAssertRaises*(exception, code: untyped): typed =
+template doAssertRaises*(exception: typedesc, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##
@@ -4351,16 +4391,24 @@ template doAssertRaises*(exception, code: untyped): typed =
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
   var wrong = false
-  try:
-    if true:
-      code
-    wrong = true
-  except exception:
-    discard
-  except Exception as exc:
-    raiseAssert(astToStr(exception) &
-                " wasn't raised, another error was raised instead by:\n"&
-                astToStr(code))
+  when Exception is exception:
+    try:
+      if true:
+        code
+      wrong = true
+    except Exception:
+      discard
+  else:
+    try:
+      if true:
+        code
+      wrong = true
+    except exception:
+      discard
+    except Exception as exc:
+      raiseAssert(astToStr(exception) &
+                  " wasn't raised, another error was raised instead by:\n"&
+                  astToStr(code))
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
@@ -4420,3 +4468,12 @@ when defined(genode):
       componentConstructHook(env)
         # Perform application initialization
         # and return to thread entrypoint.
+
+proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
+  ## Returns the name of the given type.
+  ##
+  ## For more procedures dealing with ``typedesc``, see ``typetraits.nim``.
+  runnableExamples:
+    doAssert $(type(42)) == "int"
+    doAssert $(type("Foo")) == "string"
+    static: doAssert $(type(@['A', 'B'])) == "seq[char]"

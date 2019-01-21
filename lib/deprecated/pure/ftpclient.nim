@@ -81,7 +81,6 @@ type
       oneSecond: BiggestInt # Bytes transferred in one second.
       lastProgressReport: float # Time
       toStore: string # Data left to upload (Only used with async)
-    else: nil
 
   FtpClientObj* = FtpBaseObj[Socket]
   FtpClient* = ref FtpClientObj

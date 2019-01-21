@@ -189,62 +189,44 @@ block walkDirRec:
 
   removeDir("walkdir_test")
 
+when not defined(windows):
+  block walkDirRelative:
+    createDir("walkdir_test")
+    createSymlink(".", "walkdir_test/c")
+    for k, p in walkDir("walkdir_test", true):
+      doAssert k == pcLinkToDir
+    removeDir("walkdir_test")
+
 block normalizedPath:
-  when defined(posix):
-    block relative:
-      doAssert normalizedPath(".") == "."
-      doAssert normalizedPath("..") == ".."
-      doAssert normalizedPath("../") == ".."
-      doAssert normalizedPath("../..") == "../.."
-      doAssert normalizedPath("../a/..") == ".."
-      doAssert normalizedPath("../a/../") == ".."
-      doAssert normalizedPath("./") == "."
+  doAssert normalizedPath("") == ""
+  block relative:
+    doAssert normalizedPath(".") == "."
+    doAssert normalizedPath("foo/..") == "."
+    doAssert normalizedPath("foo//../bar/.") == "bar"
+    doAssert normalizedPath("..") == ".."
+    doAssert normalizedPath("../") == ".."
+    doAssert normalizedPath("../..") == unixToNativePath"../.."
+    doAssert normalizedPath("../a/..") == ".."
+    doAssert normalizedPath("../a/../") == ".."
+    doAssert normalizedPath("./") == "."
 
-    block absolute:
-      doAssert normalizedPath("/") == "/"
-      doAssert normalizedPath("/.") == "/"
-      doAssert normalizedPath("/..") == "/"
-      doAssert normalizedPath("/../") == "/"
-      doAssert normalizedPath("/../..") == "/"
-      doAssert normalizedPath("/../../") == "/"
-      doAssert normalizedPath("/../../../") == "/"
-      doAssert normalizedPath("/a/b/../../foo") == "/foo"
-      doAssert normalizedPath("/a/b/../../../foo") == "/foo"
-      doAssert normalizedPath("/./") == "/"
-      doAssert normalizedPath("//") == "/"
-      doAssert normalizedPath("///") == "/"
-      doAssert normalizedPath("/a//b") == "/a/b"
-      doAssert normalizedPath("/a///b") == "/a/b"
-      doAssert normalizedPath("/a/b/c/..") == "/a/b"
-      doAssert normalizedPath("/a/b/c/../") == "/a/b"
-
-  else:
-    block relative:
-      doAssert normalizedPath(".") == "."
-      doAssert normalizedPath("..") == ".."
-      doAssert normalizedPath("..\\") == ".."
-      doAssert normalizedPath("..\\..") == "..\\.."
-      doAssert normalizedPath("..\\a\\..") == ".."
-      doAssert normalizedPath("..\\a\\..\\") == ".."
-      doAssert normalizedPath(".\\") == "."
-
-    block absolute:
-      doAssert normalizedPath("\\") == "\\"
-      doAssert normalizedPath("\\.") == "\\"
-      doAssert normalizedPath("\\..") == "\\"
-      doAssert normalizedPath("\\..\\") == "\\"
-      doAssert normalizedPath("\\..\\..") == "\\"
-      doAssert normalizedPath("\\..\\..\\") == "\\"
-      doAssert normalizedPath("\\..\\..\\..\\") == "\\"
-      doAssert normalizedPath("\\a\\b\\..\\..\\foo") == "\\foo"
-      doAssert normalizedPath("\\a\\b\\..\\..\\..\\foo") == "\\foo"
-      doAssert normalizedPath("\\.\\") == "\\"
-      doAssert normalizedPath("\\\\") == "\\"
-      doAssert normalizedPath("\\\\\\") == "\\"
-      doAssert normalizedPath("\\a\\\\b") == "\\a\\b"
-      doAssert normalizedPath("\\a\\\\\\b") == "\\a\\b"
-      doAssert normalizedPath("\\a\\b\\c\\..") == "\\a\\b"
-      doAssert normalizedPath("\\a\\b\\c\\..\\") == "\\a\\b"
+  block absolute:
+    doAssert normalizedPath("/") == unixToNativePath"/"
+    doAssert normalizedPath("/.") == unixToNativePath"/"
+    doAssert normalizedPath("/..") == unixToNativePath"/.."
+    doAssert normalizedPath("/../") == unixToNativePath"/.."
+    doAssert normalizedPath("/../..") == unixToNativePath"/../.."
+    doAssert normalizedPath("/../../") == unixToNativePath"/../.."
+    doAssert normalizedPath("/../../../") == unixToNativePath"/../../.."
+    doAssert normalizedPath("/a/b/../../foo") == unixToNativePath"/foo"
+    doAssert normalizedPath("/a/b/../../../foo") == unixToNativePath"/../foo"
+    doAssert normalizedPath("/./") == unixToNativePath"/"
+    doAssert normalizedPath("//") == unixToNativePath"/"
+    doAssert normalizedPath("///") == unixToNativePath"/"
+    doAssert normalizedPath("/a//b") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a///b") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a/b/c/..") == unixToNativePath"/a/b"
+    doAssert normalizedPath("/a/b/c/../") == unixToNativePath"/a/b"
 
 block isHidden:
   when defined(posix):
@@ -265,3 +247,21 @@ block absolutePath:
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
 
+block splitFile:
+  doAssert splitFile("") == ("", "", "")
+  doAssert splitFile("abc/") == ("abc", "", "")
+  doAssert splitFile("/") == ("/", "", "")
+  doAssert splitFile("./abc") == (".", "abc", "")
+  doAssert splitFile(".txt") == ("", ".txt", "")
+  doAssert splitFile("abc/.txt") == ("abc", ".txt", "")
+  doAssert splitFile("abc") == ("", "abc", "")
+  doAssert splitFile("abc.txt") == ("", "abc", ".txt")
+  doAssert splitFile("/abc.txt") == ("/", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt") == ("/foo", "abc", ".txt")
+  doAssert splitFile("/foo/abc.txt.gz") == ("/foo", "abc.txt", ".gz")
+  doAssert splitFile(".") == ("", ".", "")
+  doAssert splitFile("abc/.") == ("abc", ".", "")
+  doAssert splitFile("..") == ("", "..", "")
+  doAssert splitFile("a/..") == ("a", "..", "")
+
+# execShellCmd is tested in tosproc

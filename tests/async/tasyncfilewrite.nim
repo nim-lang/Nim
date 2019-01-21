@@ -9,7 +9,6 @@ import os, asyncfile, asyncdispatch
 const F = "test_async.txt"
 
 removeFile(F)
-defer: removeFile(F)
 let f = openAsync(F, fmWrite)
 var futs = newSeq[Future[void]]()
 for i in 1..3:
@@ -17,4 +16,4 @@ for i in 1..3:
 waitFor(all(futs))
 f.close()
 echo readFile(F)
-
+removeFile(F)

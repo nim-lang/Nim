@@ -337,11 +337,6 @@ proc setStackTraceStdout*() =
   ## Makes Nim output stacktraces to stdout, instead of server log.
   errorMessageWriter = writeErrorMessage
 
-proc setStackTraceNewLine*() {.deprecated.} =
-  ## Makes Nim output stacktraces to stdout, instead of server log.
-  ## Depracated alias for setStackTraceStdout.
-  setStackTraceStdout()
-
 proc setCookie*(name, value: string) =
   ## Sets a cookie.
   write(stdout, "Set-Cookie: ", name, "=", value, "\n")

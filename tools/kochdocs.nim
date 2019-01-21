@@ -56,12 +56,8 @@ proc nimexec*(cmd: string) =
   exec findNim() & " " & cmd
 
 proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
-  # TODO: simplify pending https://github.com/nim-lang/Nim/issues/9513
-  var cmd = findNim() & " " & mode
   let output = outputDir / input.splitFile.name.exe
-  cmd.add " -o:" & output
-  cmd.add " " & options
-  cmd.add " " & input
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
 const
@@ -126,7 +122,6 @@ lib/js/asyncjs.nim
 lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
-lib/pure/matchers.nim
 lib/std/editdistance.nim
 lib/std/wordwrap.nim
 lib/experimental/diff.nim
@@ -161,10 +156,8 @@ lib/impure/db_mysql.nim
 lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
-lib/pure/httpserver.nim
 lib/pure/httpclient.nim
 lib/pure/smtp.nim
-lib/impure/ssl.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
 lib/pure/xmlparser.nim
@@ -174,7 +167,6 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
 lib/deprecated/pure/sockets.nim
@@ -185,14 +177,12 @@ lib/pure/collections/lists.nim
 lib/pure/collections/sharedlist.nim
 lib/pure/collections/sharedtables.nim
 lib/pure/collections/intsets.nim
-lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
@@ -218,7 +208,6 @@ lib/pure/selectors.nim
 lib/pure/sugar.nim
 lib/pure/collections/chains.nim
 lib/pure/asyncfile.nim
-lib/deprecated/pure/ftpclient.nim
 lib/pure/asyncftpclient.nim
 lib/pure/lenientops.nim
 lib/pure/md5.nim
@@ -229,6 +218,7 @@ lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
 lib/std/varints.nim
+lib/std/time_t.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim

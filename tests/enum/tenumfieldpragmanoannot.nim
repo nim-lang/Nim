@@ -1,7 +1,10 @@
 discard """
   errormsg: "annotation to deprecated not supported here"
-  line: 7
+  line: 8
 """
 
-var foo* {.deprecated.} = 42
-var foo1* {.deprecated: "no".} = 42
+type
+  A = enum
+    a {.deprecated: "njshd".}
+
+var v1 = a

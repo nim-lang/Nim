@@ -17,7 +17,6 @@ import parseutils
 import deques
 import sequtils
 import strutils
-import subexes
 import tables
 import unicode
 import uri

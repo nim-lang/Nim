@@ -70,12 +70,6 @@ proc `=sink`[T](x: var seq[T]; y: seq[T]) =
   a.len = b.len
   a.p = b.p
 
-when false:
-  proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.}
-  proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
-      compilerRtl.}
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.}
-
 
 type
   PayloadBase = object

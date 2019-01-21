@@ -11,7 +11,7 @@
 
 import cgi, backend, strutils, json, os, tables, times
 
-import "testamenthtml.templ"
+import "testamenthtml.nimf"
 
 proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
   let
@@ -35,12 +35,12 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
     bgCtxClass = "success"
     resultSign = "ok"
     resultDescription = "PASS"
-  of "reIgnored":
+  of "reDisabled", "reJoined":
     panelCtxClass = "info"
     textCtxClass = "info"
     bgCtxClass = "info"
     resultSign = "question"
-    resultDescription = "SKIP"
+    resultDescription = if result != "reJoined": "SKIP" else: "JOINED"
   else:
     panelCtxClass = "danger"
     textCtxClass = "danger"
@@ -78,7 +78,8 @@ proc allTestResults(onlyFailing = false): AllTests =
         let state = elem["result"].str
         inc result.totalCount
         if state.contains("reSuccess"): inc result.successCount
-        elif state.contains("reIgnored"): inc result.ignoredCount
+        elif state.contains("reDisabled") or state.contains("reJoined"):
+          inc result.ignoredCount
         if not onlyFailing or not(state.contains("reSuccess")):
           result.data.add elem
   result.successPercentage = 100 *

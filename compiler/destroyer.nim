@@ -296,7 +296,8 @@ proc makePtrType(c: Con, baseType: PType): PType =
 template genOp(opr, opname, ri) =
   let op = opr
   if op == nil:
-    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator not found for type " & typeToString(t))
+    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+      "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
     globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
   patchHead op
@@ -365,7 +366,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   result.add genWasMoved(n, c)
   result.add tempAsNode
 
-proc sinkParamIsLastReadCheck(c: var Con, s: PNode) = 
+proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   assert s.kind == nkSym and s.sym.kind == skParam
   if not isLastRead(s, c):
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
@@ -427,7 +428,7 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
       result = copyNode(arg)
       for i in 0..<arg.len:
         var branch = copyNode(arg[i])
-        if arg[i].kind in {nkElifBranch, nkElifExpr}:   
+        if arg[i].kind in {nkElifBranch, nkElifExpr}:
           branch.add p(arg[i][0], c)
           branch.add pArgIfTyped(arg[i][1])
         else:
@@ -442,13 +443,13 @@ proc pArg(arg: PNode; c: var Con; isSink: bool): PNode =
           branch = arg[i] # of branch conditions are constants
           branch[^1] = pArgIfTyped(arg[i][^1])
         elif arg[i].kind in {nkElifBranch, nkElifExpr}:
-          branch = copyNode(arg[i])   
+          branch = copyNode(arg[i])
           branch.add p(arg[i][0], c)
           branch.add pArgIfTyped(arg[i][1])
         else:
-          branch = copyNode(arg[i]) 
+          branch = copyNode(arg[i])
           branch.add pArgIfTyped(arg[i][0])
-        result.add branch     
+        result.add branch
     else:
       # an object that is not temporary but passed to a 'sink' parameter
       # results in a copy.
@@ -476,7 +477,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     result.add ri2
   of nkBracketExpr:
     if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
-      # unpacking of tuple: move out the elements 
+      # unpacking of tuple: move out the elements
       result = genSink(c, dest.typ, dest, ri)
     else:
       result = genCopy(c, dest.typ, dest, ri)
@@ -509,11 +510,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
         branch = ri[i] # of branch conditions are constants
         branch[^1] = moveOrCopyIfTyped(ri[i][^1])
       elif ri[i].kind in {nkElifBranch, nkElifExpr}:
-        branch = copyNode(ri[i])   
+        branch = copyNode(ri[i])
         branch.add p(ri[i][0], c)
         branch.add moveOrCopyIfTyped(ri[i][1])
       else:
-        branch = copyNode(ri[i]) 
+        branch = copyNode(ri[i])
         branch.add moveOrCopyIfTyped(ri[i][0])
       result.add branch
   of nkBracket:
@@ -550,7 +551,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       sinkParamIsLastReadCheck(c, ri)
       var snk = genSink(c, dest.typ, dest, ri)
       snk.add ri
-      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))   
+      result = newTree(nkStmtList, snk, genMagicCall(ri, c, "wasMoved", mWasMoved))
     elif ri.sym.kind != skParam and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest.typ, dest, ri)
@@ -647,7 +648,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     let params = owner.typ.n
     for i in 1 ..< params.len:
       let param = params[i].sym
-      if param.typ.kind == tySink and hasDestructor(param.typ): 
+      if param.typ.kind == tySink and hasDestructor(param.typ):
         c.destroys.add genDestroy(c, param.typ.skipTypes({tyGenericInst, tyAlias, tySink}), params[i])
 
   let body = p(n, c)

@@ -347,13 +347,16 @@ complete list.
 Define                   Effect
 ======================   =========================================================
 ``release``              Turns off runtime checks and turns on the optimizer.
+                         More aggressive optimizations are possible, eg:
+                         ``--passC:-ffast-math`` (but see issue #10305)
+                         ``--stacktrace:off``
 ``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
                          of the Windows API. The default build uses the Unicode
                          version.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, ableit prefixing each allocation with
+                         own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
                          This only works with ``gc:none``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime

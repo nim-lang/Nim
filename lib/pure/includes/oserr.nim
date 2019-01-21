@@ -1,4 +1,4 @@
-## Include file that implements 'osErrorMsg' and friends. Do not import it!
+# Include file that implements 'osErrorMsg' and friends. Do not import it!
 
 when not declared(os):
   {.error: "This is an include file for os.nim!".}
@@ -59,7 +59,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   e.errorCode = errorCode.int32
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
-    if e.msg[^1] != '\n': e.msg.add '\n'
+    if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
     e.msg.add  "Additional info: "
     e.msg.addQuoted additionalInfo
   if e.msg == "":

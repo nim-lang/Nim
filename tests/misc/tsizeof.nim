@@ -36,26 +36,23 @@ macro testSizeAlignOf(args: varargs[untyped]): untyped =
       if nim_size != c_size or nim_align != c_align:
         var msg = strAlign(`arg`.type.name & ": ")
         if nim_size != c_size:
-          msg.add  " size(got, expected):  " & $nim_size  & " != " & $c_size
+          msg.add  " size(got, expected):  " & $nim_size & " != " & $c_size
         if nim_align != c_align:
           msg.add  " align(get, expected): " & $nim_align & " != " & $c_align
         echo msg
         failed = true
 
 
-macro testOffsetOf(a,b1,b2: untyped): untyped =
+macro testOffsetOf(a, b: untyped): untyped =
   let typeName = newLit(a.repr)
-  let member   = newLit(b2.repr)
+  let member   = newLit(b.repr)
   result = quote do:
     let
-      c_offset   = c_offsetof(`a`,`b1`)
-      nim_offset = offsetof(`a`,`b2`)
+      c_offset   = c_offsetof(`a`,`b`)
+      nim_offset = offsetof(`a`,`b`)
     if c_offset != nim_offset:
       echo `typeName`, ".", `member`, " offsetError, C: ", c_offset, " nim: ", nim_offset
       failed = true
-
-template testOffsetOf(a,b: untyped): untyped =
-  testOffsetOf(a,b,b)
 
 proc strAlign(arg: string): string =
   const minLen = 22
@@ -337,16 +334,16 @@ testinstance:
     testOffsetOf(AlignAtEnd, b)
     testOffsetOf(AlignAtEnd, c)
 
-    testOffsetOf(SimpleBranch, "_Ukind", a)
-    testOffsetOf(SimpleBranch, "_Ukind", b)
-    testOffsetOf(SimpleBranch, "_Ukind", c)
+    testOffsetOf(SimpleBranch, a)
+    testOffsetOf(SimpleBranch, b)
+    testOffsetOf(SimpleBranch, c)
 
     testOffsetOf(PaddingBeforeBranchA, cause)
-    testOffsetOf(PaddingBeforeBranchA, "_Ukind", a)
+    testOffsetOf(PaddingBeforeBranchA, a)
     testOffsetOf(PaddingBeforeBranchB, cause)
-    testOffsetOf(PaddingBeforeBranchB, "_Ukind", a)
+    testOffsetOf(PaddingBeforeBranchB, a)
 
-    testOffsetOf(PaddingAfterBranch, "_Ukind", a)
+    testOffsetOf(PaddingAfterBranch, a)
     testOffsetOf(PaddingAfterBranch, cause)
 
     testOffsetOf(Foobar, c)
@@ -367,15 +364,15 @@ testinstance:
     testOffsetOf(EnumObjectB, d)
 
     testOffsetOf(RecursiveStuff, kind)
-    testOffsetOf(RecursiveStuff, "_Ukind.S1.a",              a)
-    testOffsetOf(RecursiveStuff, "_Ukind.S2.b",              b)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3.kind2",          kind2)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S1.ca1", ca1)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S1.ca2", ca2)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S2.cb",  cb)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3._Ukind2.S3.cc",  cc)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3.d1",             d1)
-    testOffsetOf(RecursiveStuff, "_Ukind.S3.d2",             d2)
+    testOffsetOf(RecursiveStuff, a)
+    testOffsetOf(RecursiveStuff, b)
+    testOffsetOf(RecursiveStuff, kind2)
+    testOffsetOf(RecursiveStuff, ca1)
+    testOffsetOf(RecursiveStuff, ca2)
+    testOffsetOf(RecursiveStuff, cb)
+    testOffsetOf(RecursiveStuff, cc)
+    testOffsetOf(RecursiveStuff, d1)
+    testOffsetOf(RecursiveStuff, d2)
 
   main()
 
@@ -393,6 +390,29 @@ type
     foo: Foo
 
 assert sizeof(Bar) == 12
+
+# bug #10082
+type
+  A = int8        # change to int16 and get sizeof(C)==6
+  B = int16
+  C = object {.packed.}
+    d {.bitsize:  1.}: A
+    e {.bitsize:  7.}: A
+    f {.bitsize: 16.}: B
+
+assert sizeof(C) == 3
+
+
+type
+  MixedBitsize = object {.packed.}
+    a: uint32
+    b {.bitsize:  8.}: uint8
+    c {.bitsize:  1.}: uint8
+    d {.bitsize:  7.}: uint8
+    e {.bitsize: 16.}: uint16
+    f: uint32
+
+doAssert sizeof(MixedBitsize) == 12
 
 if failed:
   quit("FAIL")

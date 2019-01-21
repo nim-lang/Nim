@@ -2071,6 +2071,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # constructor in a call:
     if result == nil and f.kind == tyVarargs:
       if f.n != nil:
+        # Forward to the varargs converter
         result = localConvMatch(c, m, f, a, arg)
       else:
         r = typeRel(m, base(f), a)
@@ -2083,10 +2084,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         # bug #4799, varargs accepting subtype relation object
         elif r == isSubtype:
           inc(m.subtypeMatches)
-          if f.kind == tyTypeDesc:
+          if base(f).kind == tyTypeDesc:
             result = arg
           else:
-            result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+            result = implicitConv(nkHiddenSubConv, base(f), arg, m, c)
           m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
@@ -2231,14 +2232,14 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         m.state = csNoMatch
         return
-    
+
     if formal.typ.kind == tyVar:
-      let arg_converter = if arg.kind == nkHiddenDeref: arg[0] else: arg
-      if arg_converter.kind == nkHiddenCallConv:
-        if arg_converter.typ.kind != tyVar:
+      let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
+      if argConverter.kind == nkHiddenCallConv:
+        if argConverter.typ.kind != tyVar:
           m.state = csNoMatch
           m.mutabilityProblem = uint8(f-1)
-          return  
+          return
       elif not n.isLValue:
         m.state = csNoMatch
         m.mutabilityProblem = uint8(f-1)
@@ -2267,8 +2268,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
       if n.sons[a].kind == nkHiddenStdConv:
         doAssert n.sons[a].sons[0].kind == nkEmpty and
-                 n.sons[a].sons[1].kind == nkArgList and
-                 n.sons[a].sons[1].len == 0
+                 n.sons[a].sons[1].kind in {nkBracket, nkArgList}
         # Steal the container and pass it along
         setSon(m.call, formal.position + 1, n.sons[a].sons[1])
       else:

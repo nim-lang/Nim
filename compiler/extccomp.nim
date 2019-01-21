@@ -63,8 +63,8 @@ compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 -ffast-math ",
-    optSize: " -Os -ffast-math ",
+    optSpeed: " -O3 ",
+    optSize: " -Os ",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -88,8 +88,8 @@ compiler nintendoSwitchGCC:
   result = (
     name: "switch_gcc",
     objExt: "o",
-    optSpeed: " -O3 -ffast-math ",
-    optSize: " -Os -ffast-math ",
+    optSpeed: " -O3 ",
+    optSize: " -Os ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
     compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
@@ -152,6 +152,13 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     props: {hasCpp, hasAssume, hasDeclspec})
+
+compiler clangcl:
+  result = vcc()
+  result.name = "clang_cl"
+  result.compilerExe = "clang-cl"
+  result.cppCompiler = "clang-cl"
+  result.linkerExe = "clang-cl"
 
 # Intel C/C++ Compiler
 compiler icl:
@@ -353,7 +360,8 @@ const
     pcc(),
     ucc(),
     icl(),
-    icc()]
+    icc(),
+    clangcl()]
 
   hExt* = ".h"
 
@@ -566,6 +574,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
   else:
     includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
+
+  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
   var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname

@@ -286,6 +286,13 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
     result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType)
 
+proc makeVarType*(owner: PSym, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
+  else:
+    result = newType(kind, owner)
+    addSonSkipIntLit(result, baseType)
+
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc:
     result = typ

@@ -245,6 +245,17 @@ suite "ttimes":
     parseTestExcp("12345", "uuuu")
     parseTestExcp("-1 BC", "UUUU g")
 
+  test "incorrect inputs: invalid sign":
+    parseTestExcp("+1", "YYYY")
+    parseTestExcp("+1", "dd")
+    parseTestExcp("+1", "MM")
+    parseTestExcp("+1", "hh")
+    parseTestExcp("+1", "mm")
+    parseTestExcp("+1", "ss")
+
+  test "_ as a separator":
+    discard parse("2000_01_01", "YYYY'_'MM'_'dd")
+
   test "dynamic timezone":
     let tz = staticTz(seconds = -9000)
     let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)

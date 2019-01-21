@@ -42,9 +42,10 @@ type
       wasOpened*: bool     ## **Caution**: Windows specific public field.
     else:
       handle*: cint        ## **Caution**: Posix specific public field.
+      flags: cint          ## **Caution**: Platform specific private field.
 
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
-             mappedSize = -1, offset = 0): pointer =
+             mappedSize = -1, offset = 0, mapFlags = cint(-1)): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
   ##
   ## ``mappedSize`` of ``-1`` maps to the whole file, and
@@ -65,11 +66,17 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
       raiseOSError(osLastError())
   else:
     assert mappedSize > 0
+
+    m.flags = if mapFlags == cint(-1): MAP_SHARED else: mapFlags
+    #Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
+    if int(m.flags and MAP_PRIVATE) == 0:
+      m.flags = m.flags or MAP_SHARED
+
     result = mmap(
       nil,
       mappedSize,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
+      m.flags,
       m.handle, offset)
     if result == cast[pointer](MAP_FAILED):
       raiseOSError(osLastError())
@@ -90,7 +97,7 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1,
-           allowRemap = false): MemFile =
+           allowRemap = false, mapFlags = cint(-1)): MemFile =
   ## opens a memory mapped file. If this fails, ``OSError`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
@@ -104,6 +111,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
   ## the resulting MemFile; else file handles are not kept open.
+  ##
+  ## ``mapFlags`` allows callers to override default choices for memory mapping
+  ## flags with a bitwise mask of a variety of likely platform-specific flags
+  ## which may be ignored or even cause `open` to fail if misspecified.
   ##
   ## Example:
   ##
@@ -245,11 +256,16 @@ proc open*(filename: string, mode: FileMode = fmRead,
       else:
         fail(osLastError(), "error getting file size")
 
+    result.flags = if mapFlags == cint(-1): MAP_SHARED else: mapFlags
+    #Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
+    if int(result.flags and MAP_PRIVATE) == 0:
+      result.flags = result.flags or MAP_SHARED
+
     result.mem = mmap(
       nil,
       result.size,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
+      result.flags,
       result.handle,
       offset)
 
@@ -305,7 +321,7 @@ when defined(posix) or defined(nimdoc):
         if munmap(f.mem, f.size) != 0:
           raiseOSError(osLastError())
         let newAddr = mmap(nil, newFileSize, PROT_READ or PROT_WRITE,
-                            MAP_SHARED or MAP_POPULATE, f.handle, 0)
+                           f.flags, f.handle, 0)
         if newAddr == cast[pointer](MAP_FAILED):
           raiseOSError(osLastError())
       f.mem = newAddr

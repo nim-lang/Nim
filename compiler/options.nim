@@ -40,7 +40,8 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optHotCodeReloading,
     optLaxStrings,
-    optNilSeqs
+    optNilSeqs,
+    optOldAst
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -77,7 +78,7 @@ type                          # please make sure we have under 32 options
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths
+    optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
     optDynlibOverrideAll
 
@@ -132,7 +133,7 @@ type
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
@@ -482,16 +483,7 @@ proc setDefaultLibpath*(conf: ConfigRef) =
       conf.libpath = AbsoluteDir parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
-  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
-  # case corrections, so we have to use this convoluted way of retrieving
-  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
-  # of 'import uri'):
-  when defined(windows):
-    result = AbsoluteFile path.string.expandFilename
-    for x in walkFiles(result.string):
-      return AbsoluteFile x
-  else:
-    result = AbsoluteFile path.string.expandFilename
+  result = AbsoluteFile path.string.expandFilename
 
 proc shortenDir*(conf: ConfigRef; dir: string): string {.
     deprecated: "use 'relativeTo' instead".} =

@@ -516,3 +516,7 @@ when true:
       var w = u.to(MyDistRef)
       doAssert v.name == "smith"
       doAssert MyRef(w).name == "smith"
+
+    block test_tuple:
+      doAssert $(%* (a1: 10, a2: "foo")) == """{"a1":10,"a2":"foo"}"""
+      doAssert $(%* (10, "foo")) == """[10,"foo"]"""

@@ -51,7 +51,7 @@ when defined(windows):
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
      defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
-     defined(aix):
+     defined(aix) or hostOS == "standalone":
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)

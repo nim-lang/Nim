@@ -94,6 +94,7 @@ type
     options: TOptions
     module: BModule
     g: PGlobals
+    generatedParamCopies: IntSet
     beforeRetNeeded: bool
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
@@ -918,35 +919,15 @@ proc countJsParams(typ: PType): int =
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
     nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkStringToCString,
+    nkObjConstr, nkTupleConstr, nkBracket,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
-  # if the node is a literal object constructor we have to recursively
-  # check the expressions passed into it
-  case y.kind
-  of nkObjConstr:
-    for arg in y.sons[1..^1]:
-      if not needsNoCopy(p, arg[1]):
-        return false
-  of nkTupleConstr:
-    for arg in y.sons:
-      var arg = arg
-      if arg.kind == nkExprColonExpr:
-        arg = arg[1]
-      if not needsNoCopy(p, arg):
-        return false
-  of nkBracket:
-    for arg in y.sons:
-      if not needsNoCopy(p, arg):
-        return false
-  of nodeKindsNeedNoCopy:
-    return true
-  else:
-    return (mapType(y.typ) != etyBaseIndex and
-            (skipTypes(y.typ, abstractInst).kind in
-             {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
-  return true
+  return y.kind in nodeKindsNeedNoCopy or
+        ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
+          (skipTypes(y.typ, abstractInst).kind in
+            {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc} + IntegralTypes))
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -969,7 +950,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind == tyVar or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -1252,12 +1233,29 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
     if owner != nil: add(owner.locals, newp)
     else: attachProc(p, newp, s)
 
+proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
+  let s = n.sym
+  if p.prc == s.owner or needsNoCopy(p, n): 
+    return
+  var owner = p.up
+  while true:
+    if owner == nil:
+      internalError(p.config, n.info, "couldn't find the owner proc of the closed over param: " & s.name.s)
+    if owner.prc == s.owner:
+      if not owner.generatedParamCopies.containsOrIncl(s.id):
+        let copy = "$1 = nimCopy(null, $1, $2);$n" % [s.loc.r, genTypeInfo(p, s.typ)]
+        add(owner.locals, owner.indentLine(copy))
+      return
+    owner = owner.up
+
 proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   var s = n.sym
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
       internalError(p.config, n.info, "symbol has no generated name: " & s.name.s)
+    if s.kind == skParam:
+      genCopyForParamIfNeeded(p, n)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
@@ -1504,6 +1502,8 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     for i in countup(1, sonsLen(rec) - 1):
       createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
+    # Do not produce code for void types
+    if isEmptyType(rec.sym.typ): return
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       output.addf("$#: ", [mangleName(p.module, rec.sym)])
@@ -1886,12 +1886,13 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLtStr:
     binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
   of mIsNil:
+    # we want to accept undefined, so we ==
     if mapType(n[1].typ) != etyBaseIndex:
-      unaryExpr(p, n, r, "", "($1 === null)")
+      unaryExpr(p, n, r, "", "($1 == null)")
     else:
       var x: TCompRes
       gen(p, n[1], x)
-      r.res = "($# === null && $# === 0)" % [x.address, x.res]
+      r.res = "($# == null && $# === 0)" % [x.address, x.res]
   of mEnumToStr: genRepr(p, n, r)
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n.sons[1], r)
@@ -1924,7 +1925,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)")
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1 === null ? $3 = mnewString($2) : $3.length = $2)")
+    binaryExpr(p, n, r, "mnewString", "($1 == null ? $3 = mnewString($2) : $3.length = $2)")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -2005,6 +2006,10 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
     if a.typ == etyBaseIndex:
       addf(r.res, "[$1, $2]", [a.address, a.res])
     else:
+      if not needsNoCopy(p, n[i]):
+        let typ = n[i].typ.skipTypes(abstractInst)
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
       add(r.res, a.res)
   add(r.res, "]")
 
@@ -2017,9 +2022,13 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
     var it = n.sons[i]
     if it.kind == nkExprColonExpr: it = it.sons[1]
     gen(p, it, a)
+    let typ = it.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:
       addf(r.res, "Field$#: [$#, $#]", [i.rope, a.address, a.res])
     else:
+      if not needsNoCopy(p, it):
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
       addf(r.res, "Field$#: $#", [i.rope, a.res])
   r.res.add("}")
 
@@ -2039,17 +2048,12 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     fieldIDs.incl(f.id)
 
     let typ = val.typ.skipTypes(abstractInst)
-    if (typ.kind in IntegralTypes+{tyCstring, tyRef, tyPtr} and
-          mapType(p, typ) != etyBaseIndex) or
-          a.typ == etyBaseIndex or
-          needsNoCopy(p, it.sons[1]):
-      discard
-    else:
-      useMagic(p, "nimCopy")
-      a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
     if a.typ == etyBaseIndex:
       addf(initList, "$#: [$#, $#]", [f.loc.r, a.address, a.res])
     else:
+      if not needsNoCopy(p, val):
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
       addf(initList, "$#: $#", [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)

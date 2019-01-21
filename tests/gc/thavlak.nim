@@ -12,9 +12,10 @@ Found 1 loops (including artificial root node) (5)'''
 
 # bug #3184
 
-import tables
-import sequtils
-import sets
+import tables, sequtils, sets, strutils
+
+when not declared(withScratchRegion):
+  template withScratchRegion(body: untyped) = body
 
 type
   BasicBlock = object
@@ -418,8 +419,9 @@ proc run(self: var LoopTesterApp) =
   echo "15000 dummy loops"
 
   for i in 1..15000:
-    var h = newHavlakLoopFinder(self.cfg, newLsg())
-    var res = h.findLoops
+    withScratchRegion:
+      var h = newHavlakLoopFinder(self.cfg, newLsg())
+      var res = h.findLoops
 
   echo "Constructing CFG..."
   var n = 2
@@ -446,12 +448,17 @@ proc run(self: var LoopTesterApp) =
 
   var sum = 0
   for i in 1..5:
-    write stdout, "."
-    flushFile(stdout)
-    var hlf = newHavlakLoopFinder(self.cfg, newLsg())
-    sum += hlf.findLoops
-    #echo getOccupiedMem()
+    withScratchRegion:
+      write stdout, "."
+      flushFile(stdout)
+      var hlf = newHavlakLoopFinder(self.cfg, newLsg())
+      sum += hlf.findLoops
+      #echo getOccupiedMem()
   echo "\nFound ", loops, " loops (including artificial root node) (", sum, ")"
+
+  when false:
+    echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
+    echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
 var l = newLoopTesterApp()
 l.run

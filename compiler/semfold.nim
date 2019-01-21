@@ -132,7 +132,9 @@ proc ordinalValToString*(a: PNode; g: ModuleGraph): string =
           return field.name.s
         else:
           return field.ast.strVal
-    internalError(g.config, a.info, "no symbol for ordinal value: " & $x)
+    localError(g.config, a.info,
+      "Cannot convert int literal to $1. The value is invalid." %
+        [typeToString(t)])
   else:
     result = $x
 

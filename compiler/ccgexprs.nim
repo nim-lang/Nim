@@ -1501,7 +1501,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
                 addrLoc(p.config, a), genTypeInfo(p.module, t, e.info)]), a.storage)
   of tyOpenArray, tyVarargs:
     var b: TLoc
-    case a.t.kind
+    case skipTypes(a.t, abstractVarRange).kind
     of tyOpenArray, tyVarargs:
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:

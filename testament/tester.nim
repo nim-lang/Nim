@@ -16,8 +16,12 @@ import
 
 var useColors = true
 var backendLogging = true
+var simulate = false
+var verboseMegatest = false # very verbose but can be useful
+var verboseCommands = false
 
 const
+  testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
@@ -33,6 +37,9 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --verboseMegatest         log to stdout megatetest compilation
+  --verboseCommands         log to stdout info about commands being run
+  --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
@@ -68,7 +75,7 @@ let
   pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
-var targets = {low(TTarget)..high(TTarget)}
+var gTargets = {low(TTarget)..high(TTarget)}
 
 proc normalizeMsg(s: string): string =
   result = newStringOfCap(s.len+1)
@@ -81,7 +88,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, onStdout: proc(line: string) = nil): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
@@ -99,14 +106,21 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result.output.string.add(line.string)
+      result.output.string.add("\n")
+      if onStdout != nil: onStdout(line.string)
     else:
-      result[1] = peekExitCode(p)
-      if result[1] != -1: break
+      result.exitCode = peekExitCode(p)
+      if result.exitCode != -1: break
   close(p)
 
-
+  if verboseCommands:
+    var command2 = command
+    if args.len > 0: command2.add " " & args.quoteShellCommand
+    echo (msg: "execCmdEx2",
+      command: command2,
+      options: options,
+      exitCode: result.exitCode)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
@@ -219,7 +233,11 @@ proc `$`(x: TResults): string =
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
-  let name = test.name.extractFilename & " " & $target & test.options
+  # test.name is easier to find than test.name.extractFilename
+  # A bit hacky but simple and works with tests/testament/tshouldfail.nim
+  var name = test.name.replace(DirSep, '/')
+  name.add " " & $target & test.options
+
   let duration = epochTime() - test.startTime
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
   if backendLogging:
@@ -372,6 +390,17 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
       expected.targets = {targetC}
   for target in expected.targets:
     inc(r.total)
+    if target notin gTargets:
+      r.addResult(test, target, "", "", reDisabled)
+      inc(r.skipped)
+      continue
+
+    if simulate:
+      var count {.global.} = 0
+      count.inc
+      echo "testSpec count: ", count, " expected: ", expected
+      continue
+
     case expected.action
     of actionCompile:
       var given = callCompiler(expected.getCmd, test.name, test.options, target,
@@ -473,18 +502,32 @@ proc makeTest(test, options: string, cat: Category): TTest =
   result.spec = parseSpec(addFileExt(test, ".nim"))
   result.startTime = epochTime()
 
+# TODO: fix these files
+const disabledFilesDefault = @[
+  "LockFreeHash.nim",
+  "sharedstrings.nim",
+  "tableimpl.nim",
+
+  # Error: undeclared identifier: 'hasThreadSupport'
+  "ioselectors_epoll.nim",
+  "ioselectors_kqueue.nim",
+  "ioselectors_poll.nim",
+
+  # Error: undeclared identifier: 'Timeval'
+  "ioselectors_select.nim",
+]
+
 when defined(windows):
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["coro.nim"]
+    disabledFiles = disabledFilesDefault & @["coro.nim"]
 else:
   const
     # array of modules disabled from compilation test of stdlib.
-    disabledFiles = ["-"]
+    # TODO: why the ["-"]? (previous code should've prob used seq[string] = @[] instead)
+    disabledFiles = disabledFilesDefault & @["-"]
 
 include categories
-
-const testsDir = "tests" & DirSep
 
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
@@ -500,11 +543,13 @@ proc main() =
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
+    of "verbosemegatest": verboseMegatest = true
+    of "verbosecommands": verboseCommands = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":
       targetsStr = p.val.string
-      targets = parseTargets(targetsStr)
+      gTargets = parseTargets(targetsStr)
     of "nim":
       compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
@@ -517,6 +562,8 @@ proc main() =
         useColors = false
       else:
         quit Usage
+    of "simulate":
+      simulate = true
     of "backendlogging":
       case p.val.string:
       of "on":
@@ -543,16 +590,28 @@ proc main() =
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
 
-    var cmds: seq[string] = @[]
+    var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testdata", "nimcache"]:
-        cmds.add(myself & " pcat " & quoteShell(cat) & rest)
-    for cat in AdditionalCategories:
+        cats.add cat
+    cats.add AdditionalCategories
+
+    var cmds: seq[string]
+    for cat in cats:
       cmds.add(myself & " pcat " & quoteShell(cat) & rest)
-    quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
+
+    proc progressStatus(idx: int) =
+      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+
+    if simulate:
+      for i, cati in cats:
+        progressStatus(i)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    else:
+      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
@@ -565,10 +624,12 @@ proc main() =
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
   of "r", "run":
-    let (dir, file) = splitPath(p.key.string)
-    let (_, subdir) = splitPath(dir)
-    var cat = Category(subdir)
-    processSingleTest(r, cat, p.cmdLineRest.string, file)
+    # at least one directory is required in the path, to use as a category name
+    let pathParts = split(p.key.string, {DirSep, AltSep})
+    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let cat = Category(pathParts[0])
+    let subPath = joinPath(pathParts[1..^1])
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:

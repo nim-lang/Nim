@@ -332,12 +332,15 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
           parMessage(p, errIdentifierExpected, p.tok)
         break
       of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
+        let lineinfo = parLineinfo(p)
         var accm = ""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(p.lex.cache.getIdent(accm), p))
+        let node = newNodeI(nkIdent, lineinfo)
+        node.ident = p.lex.cache.getIdent(accm)
+        result.add(node)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
         result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
         getTok(p)
@@ -1764,23 +1767,8 @@ proc parseSection(p: var TParser, kind: TNodeKind,
   else:
     parMessage(p, errIdentifierExpected, p.tok)
 
-proc parseConstant(p: var TParser): PNode =
-  #| constant = identWithPragma (colon typeDesc)? '=' optInd expr indAndComment
-  result = newNodeP(nkConstDef, p)
-  addSon(result, identWithPragma(p))
-  if p.tok.tokType == tkColon:
-    getTok(p)
-    optInd(p, result)
-    addSon(result, parseTypeDesc(p))
-  else:
-    addSon(result, p.emptyNode)
-  eat(p, tkEquals)
-  optInd(p, result)
-  addSon(result, parseExpr(p))
-  indAndComment(p, result)
-
 proc parseEnum(p: var TParser): PNode =
-  #| enum = 'enum' optInd (symbol optInd ('=' optInd expr COMMENT?)? comma?)+
+  #| enum = 'enum' optInd (symbol optPragmas optInd ('=' optInd expr COMMENT?)? comma?)+
   result = newNodeP(nkEnumTy, p)
   getTok(p)
   addSon(result, p.emptyNode)
@@ -1790,25 +1778,35 @@ proc parseEnum(p: var TParser): PNode =
   while true:
     var a = parseSymbol(p)
     if a.kind == nkEmpty: return
+
+    var symPragma = a
+    var pragma: PNode
+    if p.tok.tokType == tkCurlyDotLe:
+      pragma = optPragmas(p)
+      symPragma = newNodeP(nkPragmaExpr, p)
+      addSon(symPragma, a)
+      addSon(symPragma, pragma)
+
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd:
-      add(result, a)
+      add(result, symPragma)
       break
+
     if p.tok.tokType == tkEquals and p.tok.indent < 0:
       getTok(p)
-      optInd(p, a)
-      var b = a
-      a = newNodeP(nkEnumFieldDef, p)
-      addSon(a, b)
-      addSon(a, parseExpr(p))
+      optInd(p, symPragma)
+      var b = symPragma
+      symPragma = newNodeP(nkEnumFieldDef, p)
+      addSon(symPragma, b)
+      addSon(symPragma, parseExpr(p))
       if p.tok.indent < 0 or p.tok.indent >= p.currInd:
-        rawSkipComment(p, a)
+        rawSkipComment(p, symPragma)
     if p.tok.tokType == tkComma and p.tok.indent < 0:
       getTok(p)
-      rawSkipComment(p, a)
+      rawSkipComment(p, symPragma)
     else:
       if p.tok.indent < 0 or p.tok.indent >= p.currInd:
-        rawSkipComment(p, a)
-    addSon(result, a)
+        rawSkipComment(p, symPragma)
+    addSon(result, symPragma)
     if p.tok.indent >= 0 and p.tok.indent <= p.currInd or
         p.tok.tokType == tkEof:
       break
@@ -1920,6 +1918,8 @@ proc parseObject(p: var TParser): PNode =
   result = newNodeP(nkObjectTy, p)
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
+    # Deprecated since v0.20.0
+    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas is deprecated")
     addSon(result, parsePragma(p))
   else:
     addSon(result, p.emptyNode)
@@ -1992,13 +1992,42 @@ proc parseTypeClass(p: var TParser): PNode =
 proc parseTypeDef(p: var TParser): PNode =
   #|
   #| typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
+  #|             indAndComment? / identVisDot genericParamList? pragma '=' optInd typeDefAux
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
-  addSon(result, identWithPragma(p, allowDot=true))
+  var identifier = identVis(p, allowDot=true)
+  var identPragma = identifier
+  var pragma: PNode
+  var genericParam: PNode
+  var noPragmaYet = true
+
+  if p.tok.tokType == tkCurlyDotLe:
+    pragma = optPragmas(p)
+    identPragma = newNodeP(nkPragmaExpr, p)
+    addSon(identPragma, identifier)
+    addSon(identPragma, pragma)
+    noPragmaYet = false
+
   if p.tok.tokType == tkBracketLe and p.validInd:
-    addSon(result, parseGenericParamList(p))
+    if not noPragmaYet:
+      # Deprecated since v0.20.0
+      parMessage(p, warnDeprecated, "pragma before generic parameter list is deprecated")
+    genericParam = parseGenericParamList(p)
   else:
-    addSon(result, p.emptyNode)
+    genericParam = p.emptyNode
+
+  if noPragmaYet:
+    pragma = optPragmas(p)
+    if pragma.kind != nkEmpty:
+      identPragma = newNodeP(nkPragmaExpr, p)
+      addSon(identPragma, identifier)
+      addSon(identPragma, pragma)
+  elif p.tok.tokType == tkCurlyDotLe:
+    parMessage(p, errGenerated, "pragma already present")
+
+  addSon(result, identPragma)
+  addSon(result, genericParam)
+
   if p.tok.tokType == tkEquals:
     result.info = parLineInfo(p)
     getTok(p)
@@ -2034,6 +2063,23 @@ proc parseVariable(p: var TParser): PNode =
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
+
+proc parseConstant(p: var TParser): PNode =
+  #| constant = (parseVarTuple / identWithPragma) (colon typeDesc)? '=' optInd expr indAndComment
+  if p.tok.tokType == tkParLe: result = parseVarTuple(p)
+  else:
+    result = newNodeP(nkConstDef, p)
+    addSon(result, identWithPragma(p))
+    if p.tok.tokType == tkColon:
+      getTok(p)
+      optInd(p, result)
+      addSon(result, parseTypeDesc(p))
+    else:
+      addSon(result, p.emptyNode)
+    eat(p, tkEquals)
+    optInd(p, result)
+    addSon(result, parseExpr(p))
+    indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
   #| bindStmt = 'bind' optInd qualifiedIdent ^+ comma

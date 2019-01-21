@@ -485,8 +485,9 @@ proc collectCTBody(gch: var GcHeap) =
   sysAssert(allocInv(gch.region), "collectCT: end")
 
 proc collectCT(gch: var GcHeap; size: int) =
+  let fmem = getFreeMem(gch.region)
   if (getOccupiedMem(gch.region) >= gch.cycleThreshold or
-      size > getFreeMem(gch.region)) and gch.recGcLock == 0:
+      size > fmem and fmem > InitialThreshold) and gch.recGcLock == 0:
     collectCTBody(gch)
 
 when not defined(useNimRtl):

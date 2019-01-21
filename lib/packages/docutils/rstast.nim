@@ -89,6 +89,9 @@ proc lastSon*(n: PRstNode): PRstNode =
 proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
+proc add*(father: PRstNode; s: string) =
+  add(father.sons, newRstNode(rnLeaf, s))
+
 proc addIfNotNil*(father, son: PRstNode) =
   if son != nil: add(father, son)
 

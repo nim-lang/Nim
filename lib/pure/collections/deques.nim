@@ -20,41 +20,59 @@
 ## access, unless your program logic guarantees it indirectly.
 ##
 ## .. code-block:: Nim
-##   proc foo(a, b: Positive) =  # assume random positive values for `a` and `b`
-##     var deq = initDeque[int]()  # initializes the object
-##     for i in 1 ..< a: deq.addLast i  # populates the deque
+##   import deques
 ##
-##     if b < deq.len:  # checking before indexed access
-##       echo "The element at index position ", b, " is ", deq[b]
+##   var a = initDeque[int]()
 ##
-##     # The following two lines don't need any checking on access due to the
-##     # logic of the program, but that would not be the case if `a` could be 0.
-##     assert deq.peekFirst == 1
-##     assert deq.peekLast == a
+##   doAssertRaises(IndexError, echo a[0])
 ##
-##     while deq.len > 0:  # checking if the deque is empty
-##       echo deq.popLast()
+##   for i in 1 .. 5:
+##     a.addLast(10*i)
+##   assert $a == "[10, 20, 30, 40, 50]"
 ##
-## Note: For inter thread communication use
-## a `Channel <channels.html>`_ instead.
+##   assert a.peekFirst == 10
+##   assert a.peekLast == 50
+##   assert len(a) == 5
+##
+##   assert a.popFirst == 10
+##   assert a.popLast == 50
+##   assert len(a) == 3
+##
+##   a.addFirst(11)
+##   a.addFirst(22)
+##   a.addFirst(33)
+##   assert $a == "[33, 22, 11, 20, 30, 40]"
+##
+##   a.shrink(fromFirst = 1, fromLast = 2)
+##   assert $a == "[22, 11, 20]"
+##
+##
+## **See also:**
+## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
+## * `channels module <channels.html>`_ for inter-thread communication
+
 
 import math, typetraits
 
 type
   Deque*[T] = object
     ## A double-ended queue backed with a ringed seq buffer.
+    ##
+    ## To initialize an empty deque use `initDeque proc <#initDeque,int>`_.
     data: seq[T]
     head, tail, count, mask: int
 
 proc initDeque*[T](initialSize: int = 4): Deque[T] =
-  ## Create a new deque.
-  ## Optionally, the initial capacity can be reserved via `initialSize` as a
-  ## performance optimization. The length of a newly created deque will still
-  ## be 0.
+  ## Create a new empty deque.
   ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module.
+  ## Optionally, the initial capacity can be reserved via `initialSize`
+  ## as a performance optimization.
+  ## The length of a newly created deque will still be 0.
+  ##
+  ## ``initialSize`` must be a power of two (default: 4).
+  ## If you need to accept runtime values for this you could use the
+  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
+  ## `math module<math.html>`_.
   assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
@@ -75,33 +93,128 @@ template xBoundsCheck(deq, i) =
     if unlikely(i >= deq.count):  # x < deq.low is taken care by the Natural parameter
       raise newException(IndexError,
                          "Out of bounds: " & $i & " > " & $(deq.count - 1))
+    if unlikely(i < 0):  # when used with BackwardsIndex
+      raise newException(IndexError,
+                         "Out of bounds: " & $i & " < 0")
 
 proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
-  ## Access the i-th element of `deq` by order from first to last.
-  ## deq[0] is the first, deq[^1] is the last.
+  ## Access the i-th element of `deq`.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert a[0] == 10
+    assert a[3] == 40
+    doAssertRaises(IndexError, echo a[8])
+
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
 proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
-  ## Access the i-th element of `deq` and returns a mutable
+  ## Access the i-th element of `deq` and return a mutable
   ## reference to it.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert a[0] == 10
+    assert a[3] == 40
+    doAssertRaises(IndexError, echo a[8])
+
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
-proc `[]=`* [T] (deq: var Deque[T], i: Natural, val : T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: Natural, val : T) {.inline.} =
   ## Change the i-th element of `deq`.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    a[0] = 99
+    a[3] = 66
+    assert $a == "[99, 20, 30, 66, 50]"
+
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
 
+proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): T {.inline.} =
+  ## Access the backwards indexed i-th element.
+  ##
+  ## `deq[^1]` is the last element.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert a[^1] == 50
+    assert a[^4] == 20
+    doAssertRaises(IndexError, echo a[^9])
+
+  xBoundsCheck(deq, deq.len - int(i))
+  return deq[deq.len - int(i)]
+
+proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
+  ## Access the backwards indexed i-th element.
+  ##
+  ## `deq[^1]` is the last element.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert a[^1] == 50
+    assert a[^4] == 20
+    doAssertRaises(IndexError, echo a[^9])
+
+  xBoundsCheck(deq, deq.len - int(i))
+  return deq[deq.len - int(i)]
+
+proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
+  ## Change the backwards indexed i-th element.
+  ##
+  ## `deq[^1]` is the last element.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    a[^1] = 99
+    a[^3] = 77
+    assert $a == "[10, 20, 77, 40, 99]"
+
+  xBoundsCheck(deq, deq.len - int(i))
+  deq[deq.len - int(i)] = x
+
 iterator items*[T](deq: Deque[T]): T =
   ## Yield every element of `deq`.
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var a = initDeque[int]()
+  ##   for i in 1 .. 3:
+  ##     a.addLast(10*i)
+  ##
+  ##   for x in a:  # the same as: for x in items(a):
+  ##     echo x
+  ##
+  ##   # 10
+  ##   # 20
+  ##   # 30
+  ##
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
     i = (i + 1) and deq.mask
 
 iterator mitems*[T](deq: var Deque[T]): var T =
-  ## Yield every element of `deq`.
+  ## Yield every element of `deq`, which can be modified.
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    for x in mitems(a):
+      x = 5*x - 1
+    assert $a == "[49, 99, 149, 199, 249]"
+
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -109,18 +222,35 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yield every (position, value) of `deq`.
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var a = initDeque[int]()
+  ##   for i in 1 .. 3:
+  ##     a.addLast(10*i)
+  ##
+  ##   for k, v in pairs(a):
+  ##     echo "key: ", k, ", value: ", v
+  ##
+  ##   # key: 0, value: 10
+  ##   # key: 1, value: 20
+  ##   # key: 2, value: 30
+  ##
   var i = deq.head
   for c in 0 ..< deq.count:
     yield (c, deq.data[i])
     i = (i + 1) and deq.mask
 
 proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
-  ## Return true if `item` is in `deq` or false if not found. Usually used
-  ## via the ``in`` operator. It is the equivalent of ``deq.find(item) >= 0``.
+  ## Return true if `item` is in `deq` or false if not found.
+  ##
+  ## Usually used via the ``in`` operator.
+  ## It is the equivalent of ``deq.find(item) >= 0``.
   ##
   ## .. code-block:: Nim
   ##   if x in q:
-  ##     assert q.contains x
+  ##     assert q.contains(x)
   for e in deq:
     if e == item: return true
   return false
@@ -138,6 +268,19 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
 
 proc addFirst*[T](deq: var Deque[T], item: T) =
   ## Add an `item` to the beginning of the `deq`.
+  ##
+  ## See also:
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addFirst(10*i)
+    assert $a == "[50, 40, 30, 20, 10]"
+
   expandIfNeeded(deq)
   inc deq.count
   deq.head = (deq.head - 1) and deq.mask
@@ -145,6 +288,19 @@ proc addFirst*[T](deq: var Deque[T], item: T) =
 
 proc addLast*[T](deq: var Deque[T], item: T) =
   ## Add an `item` to the end of the `deq`.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+
   expandIfNeeded(deq)
   inc deq.count
   deq.data[deq.tail] = item
@@ -152,11 +308,41 @@ proc addLast*[T](deq: var Deque[T], item: T) =
 
 proc peekFirst*[T](deq: Deque[T]): T {.inline.}=
   ## Returns the first element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekFirst == 10
+    assert len(a) == 5
+
   emptyCheck(deq)
   result = deq.data[deq.head]
 
 proc peekLast*[T](deq: Deque[T]): T {.inline.} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekLast == 50
+    assert len(a) == 5
+
   emptyCheck(deq)
   result = deq.data[(deq.tail - 1) and deq.mask]
 
@@ -165,6 +351,23 @@ template destroy(x: untyped) =
 
 proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## Remove and returns the first element of the `deq`.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  ## * `clear proc <#clear,Deque[T]>`_
+  ## * `shrink proc <#shrink,Deque[T],int,int>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.popFirst == 10
+    assert $a == "[20, 30, 40, 50]"
+
   emptyCheck(deq)
   dec deq.count
   result = deq.data[deq.head]
@@ -173,6 +376,23 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
 proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## Remove and returns the last element of the `deq`.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `clear proc <#clear,Deque[T]>`_
+  ## * `shrink proc <#shrink,Deque[T],int,int>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.popLast == 50
+    assert $a == "[10, 20, 30, 40]"
+
   emptyCheck(deq)
   dec deq.count
   deq.tail = (deq.tail - 1) and deq.mask
@@ -181,17 +401,39 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.
+  ##
+  ## See also:
+  ## * `clear proc <#clear,Deque[T]>`_
+  ## * `shrink proc <#shrink,Deque[T],int,int>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addFirst(10*i)
+    assert $a == "[50, 40, 30, 20, 10]"
+    clear(a)
+    assert len(a) == 0
+
   for el in mitems(deq): destroy(el)
   deq.count = 0
   deq.tail = deq.head
 
 proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
   ## Remove `fromFirst` elements from the front of the deque and
-  ## `fromLast` elements from the back. If the supplied number of
-  ## elements exceeds the total number of elements in the deque,
-  ## the deque will remain empty.
+  ## `fromLast` elements from the back.
   ##
-  ## Any user defined destructors
+  ## If the supplied number of elements exceeds the total number of elements
+  ## in the deque, the deque will remain empty.
+  ##
+  ## See also:
+  ## * `clear proc <#clear,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addFirst(10*i)
+    assert $a == "[50, 40, 30, 20, 10]"
+    a.shrink(fromFirst = 2, fromLast = 1)
+    assert $a == "[30, 20]"
+
   if fromFirst + fromLast > deq.count:
     clear(deq)
     return
@@ -213,6 +455,8 @@ proc `$`*[T](deq: Deque[T]): string =
     if result.len > 1: result.add(", ")
     result.addQuoted(x)
   result.add("]")
+
+
 
 when isMainModule:
   var deq = initDeque[int](1)

@@ -107,8 +107,8 @@ String handling
   substrings, replacing substrings.
 
 * `strformat <strformat.html>`_
-  Macro based standard string interpolation / formatting. Inpired by
-  Python's ```f``-strings.
+  Macro based standard string interpolation / formatting. Inspired by
+  Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -140,12 +140,6 @@ String handling
   This module contains support for a *rope* data type.
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
-
-* `matchers <matchers.html>`_
-  This module contains various string matchers for email addresses, etc.
-
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
 
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
@@ -236,9 +230,6 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
 
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
@@ -275,8 +266,8 @@ Internet Protocols and Support
   module.
 
 * `net <net.html>`_
-  This module implements a high-level sockets API. It will replace the
-  ``sockets`` module in the future.
+  This module implements a high-level sockets API. It replaces the
+  ``sockets`` module.
 
 * `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
@@ -455,13 +446,6 @@ Database support
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
-
-Other
------
-
-* `ssl <ssl.html>`_
-  This module provides an easy to use sockets-style
-  Nim interface to the OpenSSL library.
 
 
 Wrappers

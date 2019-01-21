@@ -32,7 +32,7 @@ doc/*.html
 doc/*.pdf
 doc/*.idx
 /web/upload
-build/*
+/build/*
 bin/*
 
 # iOS specific wildcards.
@@ -71,3 +71,7 @@ test.txt
 tweeter.db
 tweeter_test.db
 megatest.nim
+
+/outputExpected.txt
+/outputGotten.txt
+

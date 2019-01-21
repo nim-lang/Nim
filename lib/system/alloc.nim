@@ -20,7 +20,7 @@ template track(op, address, size) =
 # Each chunk starts at an address that is divisible by the page size.
 
 const
-  InitialMemoryRequest = 128 * PageSize # 0.5 MB
+  nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
   MaxFli = 30
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
@@ -588,8 +588,8 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
-    if size < InitialMemoryRequest:
-      result = requestOsChunks(a, InitialMemoryRequest)
+    if size < nimMinHeapPages * PageSize:
+      result = requestOsChunks(a, nimMinHeapPages * PageSize)
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)

@@ -134,8 +134,16 @@
 ##    j2["details"] = %* {"age":35, "pi":3.1415}
 ##    echo j2
 
+runnableExamples:
+  ## Note: for JObject, key ordering is preserved, unlike in some languages,
+  ## this is convenient for some use cases. Example:
+  type Foo = object
+    a1, a2, a0, a3, a4: int
+  doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
+
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  typetraits
 
 export
   tables.`$`
@@ -349,6 +357,25 @@ when false:
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
 
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+  ## Sets a field from a `JObject`.
+  assert(obj.kind == JObject)
+  obj.fields[key] = val
+
+#[
+Note: could use simply:
+proc `%`*(o: object|tuple): JsonNode
+but blocked by https://github.com/nim-lang/Nim/issues/10019
+]#
+proc `%`*(o: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  when isNamedTuple(type(o)):
+    result = newJObject()
+    for k, v in o.fieldPairs: result[k] = %v
+  else:
+    result = newJArray()
+    for a in o.fields: result.add(%a)
+
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   result = newJObject()
@@ -499,11 +526,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
-
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
-  obj.fields[key] = val
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the

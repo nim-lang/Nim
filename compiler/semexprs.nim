@@ -108,6 +108,8 @@ const
 
 proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
+  # We're interested in the inner type and not in the static tag
+  var src = src.skipTypes({tyStatic})
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
     if castDest.kind notin IntegralTypes+{tyRange}:
@@ -230,7 +232,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   # special case to make MyObject(x = 3) produce a nicer error message:
   if n[1].kind == nkExprEqExpr and
       targetType.skipTypes(abstractPtrs).kind == tyObject:
-    localError(c.config, n.info, "object contruction uses ':', not '='")
+    localError(c.config, n.info, "object construction uses ':', not '='")
   var op = semExprWithType(c, n.sons[1])
   if targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
@@ -403,8 +405,8 @@ proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n[1] = makeTypeSymNode(c, lhsType, n[1].info)
       lhsType = n[1].typ
   else:
-    internalAssert c.config, lhsType.base.kind != tyNone
-    if c.inGenericContext > 0 and lhsType.base.containsGenericType:
+    if lhsType.base.kind == tyNone or
+        (c.inGenericContext > 0 and lhsType.base.containsGenericType):
       # BUGFIX: don't evaluate this too early: ``T is void``
       return
 
@@ -710,16 +712,20 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       let a = getConstExpr(c.module, n.sons[i], c.graph)
       if a == nil: return n
       call.add(a)
+
     #echo "NOW evaluating at compile time: ", call.renderTree
-    if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, c.graph, call, c.p.owner)
-      if result.isNil:
-        localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
-      else: result = fixupTypeAfterEval(c, result, n)
+    if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
+      if sfCompileTime in callee.flags:
+        result = evalStaticExpr(c.module, c.graph, call, c.p.owner)
+        if result.isNil:
+          localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
+        else: result = fixupTypeAfterEval(c, result, n)
+      else:
+        result = evalConstExpr(c.module, c.graph, call)
+        if result.isNil: result = n
+        else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, c.graph, call)
-      if result.isNil: result = n
-      else: result = fixupTypeAfterEval(c, result, n)
+      result = n
     #if result != n:
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
@@ -798,7 +804,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
       result = magicsAfterOverloadResolution(c, result, flags)
     if result.typ != nil and
         not (result.typ.kind == tySequence and result.typ.sons[0].kind == tyEmpty):
-      liftTypeBoundOps(c, result.typ, n.info)
+      liftTypeBoundOps(c.graph, result.typ, n.info)
     #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
@@ -913,7 +919,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode =
   let isPush = hintExtendedContext in c.config.notes
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
-  discardCheck(c, result, {})
+  result = discardCheck(c, result, {})
   if isPush: popInfoContext(c.config)
 
 proc isTypeExpr(n: PNode): bool =
@@ -1039,7 +1045,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skConst:
     markUsed(c.config, n.info, s, c.graph.usageSym)
     onUse(n.info, s)
-    case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
+    let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
+    case typ.kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
       if s.magic == mNone: result = inlineConst(c, n, s)
@@ -1057,6 +1064,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # deal with two different ``[]``.
       if s.ast.len == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
+    of tyStatic:
+      if typ.n != nil:
+        result = typ.n
+        result.typ = typ.base
+      else:
+        result = newSymNode(s, n.info)
     else:
       result = newSymNode(s, n.info)
   of skMacro:
@@ -1581,7 +1594,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
-    liftTypeBoundOps(c, lhs.typ, lhs.info)
+    liftTypeBoundOps(c.graph, lhs.typ, lhs.info)
     #liftTypeBoundOps(c, n.sons[0].typ, n.sons[0].info)
 
     fixAbstractType(c, n)
@@ -1628,7 +1641,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       a.sons[1] = result
       result = semAsgn(c, a)
   else:
-    discardCheck(c, result, {})
+    result = discardCheck(c, result, {})
 
   if c.p.owner.kind notin {skMacro, skTemplate} and
      c.p.resultSym != nil and c.p.resultSym.typ.isMetaType:
@@ -2324,7 +2337,6 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
 
 proc semExport(c: PContext, n: PNode): PNode =
   result = newNodeI(nkExportStmt, n.info)
-
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2343,6 +2355,9 @@ proc semExport(c: PContext, n: PNode): PNode =
         it = nextIter(ti, s.tab)
     else:
       while s != nil:
+        if s.kind == skEnumField:
+          localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a) &
+            "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule}:
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
@@ -2430,7 +2445,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result.kind = nkCall
       result = semExpr(c, result, flags)
   of nkBind:
-    message(c.config, n.info, warnDeprecated, "bind")
+    message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
     if c.matchedConcept != nil and n.len == 1:
@@ -2620,6 +2635,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticStmt:
     result = semStaticStmt(c, n)
   of nkDefer:
+    if c.currentScope == c.topLevelScope:
+      localError(c.config, n.info, "defer statement not supported at top level")
     n.sons[0] = semExpr(c, n.sons[0])
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(c.config, n.info, "'defer' takes a 'void' expression")
