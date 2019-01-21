@@ -1066,8 +1066,12 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       else: result = newSymNode(s, n.info)
     of tyStatic:
       if typ.n != nil:
-        result = typ.n
-        result.typ = typ.base
+        case typ.n.kind
+        of nkObjConstr:
+          result = newSymNode(s, n.info)
+        else:
+          result = typ.n
+          result.typ = typ.base
       else:
         result = newSymNode(s, n.info)
     else:
