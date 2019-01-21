@@ -333,9 +333,8 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
       let s = getTokSym(r)
-      if s != nil and s.kind == skType and sfExported in s.flags and
-          s.owner != nil and belongsToPackage(d.conf, s.owner) and
-          d.target == outHtml:
+      if s != nil and s.kind == skType and s.owner != nil and
+          belongsToPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html"), rope literal,
@@ -464,7 +463,7 @@ proc isVisible(d: PDoc; n: PNode): bool =
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
-    result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    result = {sfFromGeneric, sfForward}*n.sym.flags == {}
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
