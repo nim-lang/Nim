@@ -176,8 +176,8 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # we go through all paths beginning from 'instr+1' and need to
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
-  when false:
-    result = isLastRead(n.sym, c, 0, -1) >= 0
+  when true:
+    result = isLastRead(n.sym, c, instr+1, -1) >= 0
   else:
     let s = n.sym
     var pcs: seq[int] = @[instr+1]
