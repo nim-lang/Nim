@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, lineinfos, pathutils
+  wordrecg, lineinfos, pathutils, parseutils
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -307,20 +307,6 @@ template tokenEndPrevious(tok, pos) =
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
 
-{.push overflowChecks: off.}
-# We need to parse the largest uint literal without overflow checks
-proc unsafeParseUInt(s: string, b: var BiggestInt, start = 0): int =
-  var i = start
-  if i < s.len and s[i] in {'0'..'9'}:
-    b = 0
-    while i < s.len and s[i] in {'0'..'9'}:
-      b = b * 10 + (ord(s[i]) - ord('0'))
-      inc(i)
-      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
-    result = i - start
-{.pop.} # overflowChecks
-
-
 template eatChar(L: var TLexer, t: var TToken, replacementChar: char) =
   add(t.literal, replacementChar)
   inc(L.bufpos)
@@ -586,33 +572,43 @@ proc getNumber(L: var TLexer, result: var TToken) =
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
       of tkUint64Lit:
-        xi = 0
-        let len = unsafeParseUInt(result.literal, xi)
-        if len != result.literal.len or len == 0:
-          raise newException(ValueError, "invalid integer: " & $xi)
-        result.iNumber = xi
+        var iNumber: uint64
+        var len: int
+        try:
+          len = parseBiggestUInt(result.literal, iNumber)
+        except ValueError:
+          raise newException(OverflowError, "number out of range: " & $result.literal)
+        if len != result.literal.len:
+          raise newException(ValueError, "invalid integer: " & $result.literal)
+        result.iNumber = cast[int64](iNumber)
       else:
-        result.iNumber = parseBiggestInt(result.literal)
+        var iNumber: int64
+        var len: int
+        try:
+          len = parseBiggestInt(result.literal, iNumber)
+        except ValueError:
+          raise newException(OverflowError, "number out of range: " & $result.literal)
+        if len != result.literal.len:
+          raise newException(ValueError, "invalid integer: " & $result.literal)
+        result.iNumber = iNumber
 
-      # Explicit bounds checks
+      # Explicit bounds checks. Only T.high needs to be considered
+      # since result.iNumber can't be negative.
       let outOfRange =
         case result.tokType
-        of tkInt8Lit: (result.iNumber < int8.low or result.iNumber > int8.high)
-        of tkUInt8Lit: (result.iNumber < BiggestInt(uint8.low) or
-                        result.iNumber > BiggestInt(uint8.high))
-        of tkInt16Lit: (result.iNumber < int16.low or result.iNumber > int16.high)
-        of tkUInt16Lit: (result.iNumber < BiggestInt(uint16.low) or
-                        result.iNumber > BiggestInt(uint16.high))
-        of tkInt32Lit: (result.iNumber < int32.low or result.iNumber > int32.high)
-        of tkUInt32Lit: (result.iNumber < BiggestInt(uint32.low) or
-                        result.iNumber > BiggestInt(uint32.high))
+        of tkInt8Lit: result.iNumber > int8.high
+        of tkUInt8Lit: result.iNumber > BiggestInt(uint8.high)
+        of tkInt16Lit: result.iNumber > int16.high
+        of tkUInt16Lit: result.iNumber > BiggestInt(uint16.high)
+        of tkInt32Lit: result.iNumber > int32.high
+        of tkUInt32Lit: result.iNumber > BiggestInt(uint32.high)
         else: false
 
       if outOfRange: lexMessageLitNum(L, "number out of range: '$1'", startpos)
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
-      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
+      if result.iNumber > high(int32):
         result.tokType = tkInt64Lit
 
   except ValueError:
