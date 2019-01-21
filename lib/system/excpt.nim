@@ -236,14 +236,7 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
 
 template addFrameEntry(s: var string, f: PFrame|StackTraceEntry) =
   var oldLen = s.len
-  add(s, f.filename)
-  if f.line > 0:
-    add(s, '(')
-    # todo: reuse `lineInfoToString`
-    add(s, $f.line)
-    add(s, ", ")
-    add(s, $(f.col+1))
-    add(s, ')')
+  add(s, lineInfoToString($f.filename, f.line, f.col+1))
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   add(s, "\n")
