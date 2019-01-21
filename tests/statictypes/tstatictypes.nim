@@ -132,3 +132,8 @@ block:
   var x = foo(y, 10, 15, [1, 2, 3])
   doAssert x == (20, 10, 15, 3)
 
+# #7609
+block:
+  type
+    Coord[N: static[int]] = tuple[col, row: range[0'i8 .. (N.int8-1)]]
+    Point[N: static[int]] = range[0'i16 .. N.int16 * N.int16 - 1]

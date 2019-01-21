@@ -108,6 +108,8 @@ const
 
 proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
+  # We're interested in the inner type and not in the static tag
+  var src = src.skipTypes({tyStatic})
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
     if castDest.kind notin IntegralTypes+{tyRange}:
