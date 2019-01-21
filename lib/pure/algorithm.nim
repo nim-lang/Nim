@@ -9,20 +9,36 @@
 
 ## This module implements some common generic algorithms.
 ##
+## Basic usage
+## ===========
+##
 ## .. code-block::
 ##    import algorithm
 ##
-##    var birth = ["2000 John", "1995 Marie", "2010 Jane"]
-##    sort(birth)
-##    assert birth == @["1995 Marie", "2000 John", "2010 Jane"]
-##    echo "Firstborn: " & birth[0] # --> 1995 Marie
+##    type People = tuple
+##    year: int
+##    name: string
 ##
-##    let john = binarySearch(birth, "2000 John")
-##    echo "John was born as number " & $(john + 1) # --> 2
+##    var a: seq[People]
+##
+##    a.add((2000, "John"))
+##    a.add((2005, "Marie"))
+##    a.add((2010, "Jane"))
+##
+##    # Sorting with default system.cmp
+##    a.sort()
+##    assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"), (year: 2010, name: "Jane")]
+##
+##    proc myCmp(x, y: People): int =
+##      if x.name < y.name: -1 else: 1
+##
+##    # Sorting with custom proc
+##    a.sort(myCmp)
+##    assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"), (year: 2005, name: "Marie")]
 ##
 ##
-## See also:
-## =========
+## See also
+## ========
 ## * `tables module<tables.html>`_ for sorting tables
 
 type
@@ -53,10 +69,15 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
 
 proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   ## Fills the slice ``a[first..last]`` with ``value``.
+  ##
+  ## If an invalid range is passed, it raises IndexError.
   runnableExamples:
     var a: array[6, int]
     a.fill(1, 3, 9)
     assert a == [0, 9, 9, 9, 0, 0]
+    a.fill(3, 5, 7)
+    assert a == [0, 9, 9, 7, 7, 7]
+    doAssertRaises(IndexError, a.fill(1, 7, 9))
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
@@ -65,11 +86,15 @@ proc fill*[T](a: var openArray[T], value: T) =
     var a: array[6, int]
     a.fill(9)
     assert a == [9, 9, 9, 9, 9, 9]
+    a.fill(4)
+    assert a == [4, 4, 4, 4, 4, 4]
   fillImpl(a, 0, a.high, value)
 
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## Reverses the slice ``a[first..last]``.
+  ##
+  ## If an invalid range is passed, it raises IndexError.
   ##
   ## **See also:**
   ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a ``seq[T]``
@@ -78,6 +103,9 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse(1, 3)
     assert a == [1, 4, 3, 2, 5, 6]
+    a.reverse(1, 3)
+    assert a == [1, 2, 3, 4, 5, 6]
+    doAssertRaises(IndexError, a.reverse(1, 7))
   var x = first
   var y = last
   while x < y:
@@ -95,10 +123,14 @@ proc reverse*[T](a: var openArray[T]) =
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse()
     assert a == [6, 5, 4, 3, 2, 1]
+    a.reverse()
+    assert a == [1, 2, 3, 4, 5, 6]
   reverse(a, 0, max(0, a.high))
 
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## Returns the reverse of the slice ``a[first..last]``.
+  ##
+  ## If an invalid range is passed, it raises IndexError.
   ##
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
@@ -106,7 +138,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   runnableExamples:
     let
       a = [1, 2, 3, 4, 5, 6]
-      b = reversed(a, 1, 3)
+      b = a.reversed(1, 3)
     assert b == @[4, 3, 2]
   assert last >= first-1
   var i = last - first
@@ -200,6 +232,8 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## ``insert(thing, elm, lowerBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
+  ## If an invalid range is passed, it raises IndexError.
+  ##
   ## The version uses ``cmp`` to compare the elements.
   ## The expected return values are the same as that of ``system.cmp``.
   ##
@@ -208,7 +242,10 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## * `upperBound proc<#upperBound,openArray[T],K,>`_
   runnableExamples:
     var arr = @[1,2,3,5,6,7,8,9]
-    arr.insert(4, arr.lowerBound(4))
+    assert arr.lowerBound(3, system.cmp[int]) == 2
+    assert arr.lowerBound(4, system.cmp[int]) == 3
+    assert arr.lowerBound(5, system.cmp[int]) == 3
+    arr.insert(4, arr.lowerBound(4, system.cmp[int]))
     assert arr == [1,2,3,4,5,6,7,8,9]
   result = a.low
   var count = a.high - a.low + 1
@@ -242,6 +279,8 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## ``insert(thing, elm, upperBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
+  ## If an invalid range is passed, it raises IndexError.
+  ##
   ## The version uses ``cmp`` to compare the elements. The expected
   ## return values are the same as that of ``system.cmp``.
   ##
@@ -249,8 +288,11 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
   ## * `lowerBound proc<#lowerBound,openArray[T],K>`_
   runnableExamples:
-    var arr = @[1,2,3,4,6,7,8,9]
-    arr.insert(5, arr.upperBound(4))
+    var arr = @[1,2,3,5,6,7,8,9]
+    assert arr.upperBound(2, system.cmp[int]) == 2
+    assert arr.upperBound(3, system.cmp[int]) == 3
+    assert arr.upperBound(4, system.cmp[int]) == 3
+    arr.insert(4, arr.upperBound(3, system.cmp[int]))
     assert arr == [1,2,3,4,5,6,7,8,9]
   result = a.low
   var count = a.high - a.low + 1
@@ -330,6 +372,7 @@ func sort*[T](a: var openArray[T],
   ## Default Nim sort (an implementation of merge sort). The sorting
   ## is guaranteed to be stable and the worst case is guaranteed to
   ## be O(n log n).
+  ##
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of
   ## length ``a.len div 2``. If you do not wish to provide your own
@@ -357,15 +400,14 @@ func sort*[T](a: var openArray[T],
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by ``cmp`` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
-  ## * `sortedByIt template<#sorted,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
   runnableExamples:
-    var
-      myIntArray = [1, 3, 4, 2, 5]
-      myStrArray = ["boo", "foo", "bar", "qux"]
-    sort(myIntArray, system.cmp[int])
-    assert myIntArray == [1, 2, 3, 4, 5]
-    sort(myStrArray, system.cmp)
-    assert myStrArray == ["bar", "boo", "foo", "qux"]
+    var d = ["boo", "fo", "barr", "qux"]
+    proc myCmp(x, y: string): int =
+      if x.len() > y.len() or x.len() == y.len(): 1
+      else: -1
+    sort(d, myCmp)
+    assert d == ["fo", "qux", "boo", "barr"]
   var n = a.len
   var b: seq[T]
   newSeq(b, n div 2)
@@ -384,7 +426,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, sys
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by ``cmp`` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
-  ## * `sortedByIt template<#sorted,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
 
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
@@ -393,14 +435,16 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
-  ## * `sortedByIt template<#sorted,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
   runnableExamples:
     let
       a = [2, 3, 1, 5, 4]
-      b = sorted(a, system.cmp)
-      c = sorted(a, system.cmp, Descending)
+      b = sorted(a, system.cmp[int])
+      c = sorted(a, system.cmp[int], Descending)
+      d = sorted(["adam", "dande", "brian", "cat"], system.cmp[string])
     assert b == @[1, 2, 3, 4, 5]
     assert c == @[5, 4, 3, 2, 1]
+    assert d == @["adam", "brian", "cat", "dande"]
   result = newSeq[T](a.len)
   for i in 0 .. a.high:
     result[i] = a[i]
@@ -412,51 +456,44 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
-  ## * `sortedByIt template<#sorted,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
   runnableExamples:
     let
       a = [2, 3, 1, 5, 4]
       b = sorted(a)
       c = sorted(a, Descending)
+      d = sorted(["adam", "dande", "brian", "cat"])
     assert b == @[1, 2, 3, 4, 5]
     assert c == @[5, 4, 3, 2, 1]
+    assert d == @["adam", "brian", "cat", "dande"]
   sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
   ## Convenience template around the ``sorted`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
-  ## expression. Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   type Person = tuple[name: string, age: int]
-  ##   var
-  ##     p1: Person = (name: "p1", age: 60)
-  ##     p2: Person = (name: "p2", age: 20)
-  ##     p3: Person = (name: "p3", age: 30)
-  ##     p4: Person = (name: "p4", age: 30)
-  ##     people = @[p1,p2,p4,p3]
-  ##
-  ##   echo people.sortedByIt(it.name)
-  ##   # @[(name: "p1", age: 60), (name: "p2", age: 20),
-  ##   #   (name: "p3", age: 30), (name: "p4", age: 30)]
+  ## expression.
   ##
   ## Because the underlying ``cmp()`` is defined for tuples you can do
-  ## a nested sort like in the following example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   echo people.sortedByIt((it.age, it.name))
-  ##   # @[(name: "p2", age: 20), (name: "p3", age: 30),
-  ##   #   (name: "p4", age: 30), (name: "p1", age: 60)]
-  ##
+  ## a nested sort.
   ##
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by ``cmp`` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
+  runnableExamples:
+    type Person = tuple[name: string, age: int]
+    var
+      p1: Person = (name: "p1", age: 60)
+      p2: Person = (name: "p2", age: 20)
+      p3: Person = (name: "p3", age: 30)
+      p4: Person = (name: "p4", age: 30)
+      people = @[p1,p2,p4,p3]
+
+    assert people.sortedByIt(it.name) == @[(name: "p1", age: 60), (name: "p2", age: 20), (name: "p3", age: 30), (name: "p4", age: 30)]
+    # Nested sort
+    assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20), (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
   var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
     var it {.inject.} = x
     let a = op
@@ -479,10 +516,14 @@ func isSorted*[T](a: openArray[T],
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
       c = [5, 4, 3, 2, 1]
+      d = ["adam", "brian", "cat", "dande"]
+      e = ["adam", "dande", "brian", "cat"]
     assert isSorted(a) == false
     assert isSorted(b) == true
     assert isSorted(c) == false
     assert isSorted(c, Descending) == true
+    assert isSorted(d) == true
+    assert isSorted(e) == false
   result = true
   for i in 0..<len(a)-1:
     if cmp(a[i],a[i+1]) * order > 0:
@@ -498,16 +539,21 @@ proc isSorted*[T](a: openarray[T], order = SortOrder.Ascending): bool =
       a = [2, 3, 1, 5, 4]
       b = [1, 2, 3, 4, 5]
       c = [5, 4, 3, 2, 1]
+      d = ["adam", "brian", "cat", "dande"]
+      e = ["adam", "dande", "brian", "cat"]
     assert isSorted(a) == false
     assert isSorted(b) == true
     assert isSorted(c) == false
     assert isSorted(c, Descending) == true
+    assert isSorted(d) == true
+    assert isSorted(e) == false
   isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array. Warning: complexity
   ## may explode.
   runnableExamples:
+    assert product(@[@[1], @[2]]) == @[@[1, 2]]
     assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
   result = newSeq[seq[T]]()
   if x.len == 0:
@@ -544,12 +590,22 @@ proc nextPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
   ##
+  ## If you start with an unsorted array/seq, the repeated permutations
+  ## will **not** give you all permutations but stop with last.
+  ##
   ## **See also:**
   ## * `prevPermutation proc<#prevPermutation,openArray[T]>`_
   runnableExamples:
-    var v = @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    v.nextPermutation()
-    assert v == @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
+    var v = @[0, 1, 2, 3]
+    assert v.nextPermutation() == true
+    assert v == @[0, 1, 3, 2]
+    assert v.nextPermutation() == true
+    assert v == @[0, 2, 1, 3]
+    assert v.prevPermutation() == true
+    assert v == @[0, 1, 3, 2]
+    v = @[3, 2, 1, 0]
+    assert v.nextPermutation() == false
+    assert v == @[3, 2, 1, 0]
   if x.len < 2:
     return false
 
@@ -577,9 +633,13 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   ## **See also:**
   ## * `nextPermutation proc<#nextPermutation,openArray[T]>`_
   runnableExamples:
-    var v = @[0, 1, 2, 3, 4, 5, 6, 7, 9, 8]
-    v.prevPermutation()
-    assert v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    var v = @[0, 1, 2, 3]
+    assert v.prevPermutation() == false
+    assert v == @[0, 1, 2, 3]
+    assert v.nextPermutation() == true
+    assert v == @[0, 1, 3, 2]
+    assert v.prevPermutation() == true
+    assert v == @[0, 1, 2, 3]
   if x.len < 2:
     return false
 
@@ -694,6 +754,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ##
   ## Elements outside of ``slice`` will be left unchanged.
   ## The time complexity is linear to ``slice.b - slice.a + 1``.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
   ##
   ## ``slice``
   ##   The indices of the element range that should be rotated.
@@ -706,9 +767,14 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_
   ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_
   runnableExamples:
-    var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    list.rotateLeft(1 .. 8, 3)
-    assert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+    var list = [0, 1, 2, 3, 4, 5]
+    list.rotateLeft(1 .. 4, 3)
+    assert list == [0, 4, 1, 2, 3, 5]
+    list.rotateLeft(1 .. 4, 3)
+    assert list == [0, 3, 4, 1, 2, 5]
+    list.rotateLeft(1 .. 4, -3)
+    assert list == [0, 4, 1, 2, 3, 5]
+    doAssertRaises(IndexError, list.rotateLeft(1 .. 7, 2))
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
@@ -724,6 +790,10 @@ proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
     var a = [1, 2, 3, 4, 5]
     a.rotateLeft(2)
     assert a == [3, 4, 5, 1, 2]
+    a.rotateLeft(2)
+    assert a == [5, 1, 2, 3, 4]
+    a.rotateLeft(-2)
+    assert a == [3, 4, 5, 1, 2]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
@@ -732,11 +802,23 @@ proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq
   ## Same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
+  ## Elements outside of ``slice`` will be left unchanged.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
+  ##
+  ## ``slice``
+  ##   The indices of the element range that should be rotated.
+  ##
+  ## ``dist``
+  ##   The distance in amount of elements that the data should be rotated.
+  ##   Can be negative, can be any number.
+  ##
   ## **See also:**
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
   runnableExamples:
-    assert rotatedLeft([1, 2, 3, 4, 5], 1 .. 4, 2) == @[1, 4, 5, 2, 3]
+    let a = [1, 2, 3, 4, 5]
+    assert rotatedLeft(a, 1 .. 4, 3) == @[1, 5, 2, 3, 4]
+    assert rotatedLeft(a, 1 .. 4, -3) == @[1, 3, 4, 5, 2]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
@@ -749,7 +831,12 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
   ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
   runnableExamples:
-    assert rotatedLeft([1, 2, 3, 4, 5], 2) == [3, 4, 5, 1, 2]
+    var a = rotatedLeft([1, 2, 3, 4, 5], 2)
+    assert a == @[3, 4, 5, 1, 2]
+    a = rotatedLeft(a, 4)
+    assert a == @[2, 3, 4, 5, 1]
+    a = rotatedLeft(a, -6)
+    assert a == @[1, 2, 3, 4, 5]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotatedInternal(0, distLeft, arg.len)
