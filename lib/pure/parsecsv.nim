@@ -29,7 +29,7 @@
 ##   close(x)
 ##
 ## For CSV files with a header row, the header can be read and then used as a
-## reference for item access with `rowEntry <#rowEntry.CsvParser.string>`_:
+## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
 ##   import os, parsecsv
@@ -63,8 +63,8 @@ type
     skipWhite: bool
     currRow: int
     headers*: seq[string] ## The columns that are defined in the csv file
-                          ## (read using `readHeaderRow <#readHeaderRow.CsvParser>`_).
-                          ## Used with `rowEntry <#rowEntry.CsvParser.string>`_).
+                          ## (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
+                          ## Used with `rowEntry <#rowEntry,CsvParser,string>`_).
 
   CsvError* = object of IOError ## exception that is raised if
                                 ## a parsing error occurs
@@ -181,7 +181,7 @@ proc parseField(my: var CsvParser, a: var string) =
 proc processedRows*(my: var CsvParser): int =
   ## Returns number of the processed rows.
   ##
-  ## But even if `readRow <#readRow.CsvParser.int>`_ arrived at EOF then
+  ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
   ## processed rows counter is incremented.
   runnableExamples:
     import streams
@@ -273,7 +273,7 @@ proc close*(my: var CsvParser) {.inline.} =
 
 proc readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
-  ## See also `rowEntry <#rowEntry.CsvParser.string>`_.
+  ## See also `rowEntry <#rowEntry,CsvParser,string>`_.
   runnableExamples:
     import streams
 
@@ -298,7 +298,7 @@ proc readHeaderRow*(my: var CsvParser) =
 proc rowEntry*(my: var CsvParser, entry: string): var string =
   ## Acceses a specified `entry` from the current row.
   ##
-  ## Assumes that `readHeaderRow <#readHeaderRow.CsvParser>`_ has already been
+  ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.
   runnableExamples:
     import streams
