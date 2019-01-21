@@ -120,6 +120,8 @@ proc enumToString*(enums: openArray[enum]): string =
 - Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
   can be used to retrieve the currently executing compiler.
 
+- Added `xmltree.toXmlAttributes`.
+
 
 ### Library changes
 
