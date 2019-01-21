@@ -446,7 +446,7 @@ handlers registered in the previous version of the program and then all
 `afterCodeReload`:idx handlers appearing in the newly loaded code. Please note
 that any handlers appearing in modules that weren't reloaded will also be
 executed. To prevent this behavior, one can guard the code with the
-`hasModuleChanged`:idx: magic:
+`hasModuleChanged()`:idx: magic:
 
 .. code-block:: Nim
   import mydb
@@ -463,6 +463,11 @@ target. The Nim compiler does not specify the mechanism for detecting the
 conditions when the code must be reloaded. Instead, the program code is
 expected to call `performCodeReload()`:idx every time it wishes to reload its
 code.
+
+There is also the `hasAnyModuleChanged()`:idx magic which checks all modules.
+
+In order to access ``beforeCodeReload``, ``afterCodeReload``, ``hasModuleChanged``
+or ``hasAnyModuleChanged`` one must import the `hotcodereloading`:idx module.
 
 **Usage in Native projects:**
 

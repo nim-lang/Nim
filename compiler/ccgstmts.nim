@@ -43,6 +43,10 @@ proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
     if x.inExcept: result.inc
 
+proc startBlock(p: BProc, start: FormatStr = "{$n",
+                args: varargs[Rope]): int {.discardable.}
+proc endBlock(p: BProc)
+
 proc genVarTuple(p: BProc, n: PNode) =
   var tup, field: TLoc
   if n.kind != nkVarTuple: internalError(p.config, n.info, "genVarTuple")
@@ -54,6 +58,33 @@ proc genVarTuple(p: BProc, n: PNode) =
       genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
       return
 
+  var hcrCond: Rope
+  var hcrGlobals: seq[tuple[loc: TLoc, tp: Rope]]
+  # check only the first son
+  let s0 = n.sons[0].sym
+  let forHcr = p.hcrOn and sfThread notin s0.flags and ({lfNoDecl, lfHeader} * s0.loc.flags == {})
+
+  if forHcr:
+    endBlock(p)
+    # check with the boolean if the initializing code for the tuple should be ran
+    hcrCond = getTempName(p.module)
+    lineCg(p, cpsStmts, "if ($1)$n", hcrCond)
+    p.blocks[startBlock(p)].label = "// init tuple".rope
+  defer:
+    if forHcr:
+      # end the block where the tuple gets initialized
+      endBlock(p)
+      # insert the registration of the globals for the different parts of the tuple at the
+      # start of the current scope (after they have been iterated) and init a boolean to
+      # check if any of them is newly introduced and the initializing code has to be ran
+      lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", hcrCond)
+      for curr in hcrGlobals:
+        lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
+               hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, s0), curr.tp)
+      # reopen the guarding of code with nim_hcr_do_init_
+      lineCg(p, cpsStmts, "if (nim_hcr_do_init_)$n")
+      p.blocks[startBlock(p)].label = "// nim_hcr_do_init_".rope
+
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t.skipTypes(abstractInst)
@@ -61,10 +92,11 @@ proc genVarTuple(p: BProc, n: PNode) =
     let vn = n.sons[i]
     let v = vn.sym
     if sfCompileTime in v.flags: continue
+    var traverseProc: Rope
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
-      let traverseProc = getTraverseProc(p, v)
+      traverseProc = getTraverseProc(p, v)
       if traverseProc != nil and not p.hcrOn:
         registerTraverseProc(p, v, traverseProc)
     else:
@@ -77,6 +109,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       if t.n.sons[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym)]
     putLocIntoDest(p, v.loc, field)
+    hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
 
@@ -317,7 +350,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   # In the case of loops - such a line is already inserted earlier because the variable needs
   # to be "registered" ("created") before it is reset in assignGlobalVar() with resetLoc()
   var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
-  if forHcr and targetProc.blocks.len != 1:
+  if forHcr and targetProc.blocks.len > 2:
     lineCg(targetProc, cpsStmts, "hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1);$n",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
     forHcr = false
@@ -326,13 +359,15 @@ proc genSingleVar(p: BProc, a: PNode) =
   # for the module so we can have globals and top-level code be interleaved and still
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
-    lineCg(targetProc, cpsStmts, "} if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))",
+    endBlock(targetProc)
+    lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
-    startBlock(targetProc)
+    p.blocks[startBlock(targetProc)].label = "// hcrRegisterGlobal".rope
   defer:
     if forHcr:
       endBlock(targetProc)
-      lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_) {$n")
+      lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_)$n")
+      p.blocks[startBlock(targetProc)].label = "// nim_hcr_do_init_".rope
   
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)

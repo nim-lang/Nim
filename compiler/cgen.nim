@@ -493,7 +493,8 @@ proc assignGlobalVar(p: BProc, n: PNode) =
     # function but inside of a block from the main scope) so that it can be
     # "reset" after that, and a redundant hcrRegisterGlobal() call will follow
     if treatGlobalDifferentlyForHCR(p.module, s):
-      # XXX: Should we pass a valid marker proc here?
+      # no need to pass a valid marker here because right after this a second call to
+      # hcrRegisterGlobal will be placed and it will update it with a marker properly
       lineCg(p, cpsStmts, "hcrRegisterGlobal($3, \"$1\", sizeof($2), NULL, (void**)&$1);$n",
              s.loc.r, rdLoc(s.loc), getModuleDllPath(p.module, s))
     # fixes tests/run/tzeroarray:
@@ -1370,18 +1371,20 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
     datInit = m.getDatInitName
 
   if m.hcrOn:
-    var hcr_module_list = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
+    var hcr_module_meta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
     let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
     let mainModulePath = getModuleDllPath(m, m.module)
     if sfMainModule in m.module.flags:
-      addf(hcr_module_list, "\t$1,$n", [systemModulePath])
+      addf(hcr_module_meta, "\t$1,$n", [systemModulePath])
     g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
       for curr in deps[]:
-        addf(hcr_module_list, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
-    addf(hcr_module_list, "\t\"\"};$n", [])
-    addf(hcr_module_list, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n$n", [])
+        addf(hcr_module_meta, "\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
+    addf(hcr_module_meta, "\t\"\"};$n", [])
+    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
+    addf(hcr_module_meta, "$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
+                          [($sigHash(m.module)).rope])
     if sfMainModule in m.module.flags:
-      add(g.mainModProcs, hcr_module_list)
+      add(g.mainModProcs, hcr_module_meta)
       addf(g.mainModProcs, "static void* hcr_handle;$N", [])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [init])
       addf(g.mainModProcs, "N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [datInit])
@@ -1405,7 +1408,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       add(g.mainDatInit, "\t*cmd_count = cmdCount;\n")
       add(g.mainDatInit, "\t*cmd_line = cmdLine;\n")
     else:
-      add(m.s[cfsInitProc], hcr_module_list)
+      add(m.s[cfsInitProc], hcr_module_meta)
     return
 
   if m.s[cfsDatInitProc].len > 0:
@@ -1502,8 +1505,8 @@ proc genInitCode(m: BModule) =
     add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
     writeSection(preInitProc, cpsLocals)
-    writeSection(preInitProc, cpsInit)
-    writeSection(preInitProc, cpsStmts, false)
+    writeSection(preInitProc, cpsInit, m.hcrOn)
+    writeSection(preInitProc, cpsStmts)
     addf(prc, "}$N", [])
 
   # add new scope for following code, because old vcc compiler need variable
@@ -1531,8 +1534,8 @@ proc genInitCode(m: BModule) =
       else:
         add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
-    writeSection(initProc, cpsInit)
-    writeSection(initProc, cpsStmts, false)
+    writeSection(initProc, cpsInit, m.hcrOn)
+    writeSection(initProc, cpsStmts)
 
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       add(prc, deinitFrame(m.initProc))
@@ -1558,7 +1561,7 @@ proc genInitCode(m: BModule) =
       procsToLoad.add("hcrAddModule")
     # load procs
     for curr in procsToLoad:
-      add(m.s[cfsInitProc], hcrGetProcLoadCode(m, curr, "nimhcr_", "handle", "getProcAddr"))
+      add(m.s[cfsInitProc], hcrGetProcLoadCode(m, curr, "", "handle", "getProcAddr"))
     addf(m.s[cfsInitProc], "}$N$N", [])
 
   for i, el in pairs(m.extensionLoaders):
@@ -1742,19 +1745,17 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
       if inGuardedBlock:
         if stmtShouldExecute:
           endBlock(p)
-          line(p, cpsStmts, "} // nim_hcr_do_init_\n")
           inGuardedBlock = false
       else:
         if not stmtShouldExecute:
-          line(p, cpsStmts, "if (nim_hcr_do_init_) {\n")
-          startBlock(p)
+          line(p, cpsStmts, "if (nim_hcr_do_init_)\n")
+          p.blocks[startBlock(p)].label = "// nim_hcr_do_init_".rope
           inGuardedBlock = true
 
       genStmts(p, stmt)
 
     if inGuardedBlock:
       endBlock(p)
-      line(p, cpsStmts, "}\n")
 
   else:
     genStmts(m.initProc, transformed_n)

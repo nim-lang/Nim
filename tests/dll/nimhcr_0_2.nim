@@ -1,4 +1,6 @@
 
+import hotcodereloading
+
 import nimhcr_1 # new import!
 
 # global scope for this module was executed when loading the program

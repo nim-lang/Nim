@@ -1,4 +1,6 @@
 
+import hotcodereloading
+
 import nimhcr_1
 import nimhcr_2 # a new and different import!
 

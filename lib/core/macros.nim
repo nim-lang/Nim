@@ -352,7 +352,7 @@ when defined(nimHasSignatureHashInMacro):
     ## Returns a stable identifier derived from the signature of a symbol.
     ## The signature combines many factors such as the type of the symbol,
     ## the owning module of the symbol and others. The same identifier is
-    ## used in the back-end to to produce the mangled symbol name.
+    ## used in the back-end to produce the mangled symbol name.
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.

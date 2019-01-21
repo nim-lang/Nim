@@ -13,12 +13,15 @@ when defined(hotcodereloading):
       error "hasModuleChanged expects a module symbol", module
     return newCall(bindSym"hcrHasModuleChanged", newLit(module.signatureHash))
 
+  proc hasAnyModuleChanged*(): bool = hcrReloadNeeded()
+
   when not defined(JS):
     template performCodeReload* = hcrPerformCodeReload()
   else:
     template performCodeReload* = discard
 else:
-  template performCodeReload*() = discard
-  template hasModuleChanged*(module: typed): bool = false
   template beforeCodeReload*(body: untyped) = discard
   template afterCodeReload*(body: untyped) = discard
+  template hasModuleChanged*(module: typed): bool = false
+  proc hasAnyModuleChanged*(): bool = false
+  template performCodeReload*() = discard

@@ -1,4 +1,6 @@
 
+import hotcodereloading
+
 import nimhcr_1 # only importing 1
 
 let g_0 = 1000 # new value! but also a "new" global :)

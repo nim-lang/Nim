@@ -1,6 +1,8 @@
 
 echo "   1: print me once!"
 
+import hotcodereloading
+
 let g_1* = 8 # devilish!
 
 proc f_1*(): int =
@@ -35,3 +37,15 @@ type
     b: int
 var t = Type1(a: 42, b: 11)
 echo "   1: Type1.a:", t.a
+
+type
+  obj = ref object
+    dat: int
+    str: ref string
+
+proc foo(): (int, obj) = (1, obj(dat: 3, str: "bar"))
+
+let (aa, bb) = foo()
+afterCodeReload:
+  echo aa
+  echo bb

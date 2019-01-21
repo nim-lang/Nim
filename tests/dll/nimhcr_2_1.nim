@@ -1,4 +1,6 @@
 
+import hotcodereloading
+
 type
   Type2 = ref object of RootObj
     data*: int

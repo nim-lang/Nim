@@ -62,8 +62,8 @@ proc compileReloadExecute() =
     echo "COMPILATION ERROR!"
     echo "COMMAND: ", cmd
     echo "STDOUT: ", stdout
-  echo "main: hcrReloadNeeded? ", hcrReloadNeeded()
-  hcrPerformCodeReload()
+  echo "main: hasAnyModuleChanged? ", hasAnyModuleChanged()
+  performCodeReload()
   echo "              The answer is: ", getInt()
 
 # there are 3 files and all of them start from their 1st version
@@ -102,4 +102,4 @@ update 2
 compileReloadExecute() # versions are: 4 2 1
 
 update 0
-compileReloadExecute() # versions are: 5 1 0
+compileReloadExecute() # versions are: 5 2 1
