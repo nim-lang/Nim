@@ -79,15 +79,34 @@ import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
 type
+  FtpBase*[SockType] = ref FtpBaseObj[SockType]
   FtpBaseObj*[SockType] = object
     csock*: SockType
     dsock*: SockType
     user*, pass*: string
     address*: string
     port*: Port
+    jobInProgress*: bool
+    job*: FTPJob[SockType]
+    dsockConnected*: bool
 
   FTPJobType* = enum
     JRetrText, JRetr, JStore
+
+  FtpJob[T] = ref FtpJobObj[T]
+  FTPJobObj[T] = object
+    prc: proc (ftp: FTPBase[T], async: bool): bool {.nimcall, gcsafe.}
+    case typ*: FTPJobType
+    of JRetrText:
+      lines: string
+    of JRetr, JStore:
+      file: File
+      filename: string
+      total: BiggestInt # In bytes.
+      progress: BiggestInt # In bytes.
+      oneSecond: BiggestInt # Bytes transferred in one second.
+      lastProgressReport: float # Time
+      toStore: string # Data left to upload (Only used with async)
 
   FTPEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore

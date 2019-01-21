@@ -1674,7 +1674,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
         curFd = fdPerDomain[ord(domain)]
         if curFd == osInvalidSocket.AsyncFD:
           try:
-            curFd = newAsyncNativeSocket(domain, sockType, protocol)
+            curFd = createAsyncNativeSocket(domain, sockType, protocol)
           except:
             freeAddrInfo(addrInfo)
             closeUnusedFds()
