@@ -117,7 +117,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
 proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## Same as the other `open` but creates the file stream for you.
+  ## Similar to the `other open <#open,CsvParser,Stream,string,Char,Char,Char>`_, but creates the file stream for you.
   runnableExamples:
     import os
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
