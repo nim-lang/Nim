@@ -586,7 +586,7 @@ when defined(createNimHcr):
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.nimhcr.} =
+  proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
     for _, module in modules:
       for _, global in module.globals:
         if global.markerProc != nil:
@@ -627,7 +627,7 @@ elif defined(hotcodereloading) or defined(testNimHcr):
       # TODO
       false
 
-    proc hcrMarkGlobals*() {.nimhcr.}
+    proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
 
     proc hcrGeneration*(): int {.nimhcr.}
 
