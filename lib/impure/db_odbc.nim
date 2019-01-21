@@ -128,7 +128,7 @@ proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
               cast[PSQLCHAR](sqlState.addr),
               cast[PSQLCHAR](nativeErr.addr),
               cast[PSQLCHAR](errMsg.addr),
-              511.TSqlSmallInt, retSz.addr.PSQLSMALLINT)
+              511.TSqlSmallInt, retSz.addr.PSQLINTEGER)
   except:
     discard
   return (res.int, $(addr sqlState), $(addr nativeErr), $(addr errMsg))
@@ -297,7 +297,8 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, 
+                                 sz.addr.PSQLINTEGER))
         rowRes[colId-1] = $(addr buf)
         cCnt = tempcCnt
       yield rowRes
@@ -332,7 +333,8 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
+                                 sz.addr.PSQLINTEGER))
         rowRes[colId-1] = $(addr buf)
         cCnt = tempcCnt
       yield (row: rowRes, len: cCnt.int)
@@ -374,7 +376,8 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     for colId in 1..cCnt:
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+                               cast[cstring](buf.addr), 4095.TSqlSmallInt,
+                               sz.addr.PSQLINTEGER))
       rowRes[colId-1] = $(addr buf)
       cCnt = tempcCnt
     res = SQLFetch(db.stmt)
@@ -409,7 +412,8 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt, sz.addr))
+                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
+                                 sz.addr.PSQLINTEGER))
         rowRes[colId-1] = $(addr buf)
         cCnt = tempcCnt
       rows.add(rowRes)
