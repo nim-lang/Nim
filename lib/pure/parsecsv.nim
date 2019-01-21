@@ -32,7 +32,7 @@
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
-##   import os, parsecsv
+##   import parsecsv
 ##   
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four
