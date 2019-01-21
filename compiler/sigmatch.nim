@@ -2071,6 +2071,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     # constructor in a call:
     if result == nil and f.kind == tyVarargs:
       if f.n != nil:
+        # Forward to the varargs converter
         result = localConvMatch(c, m, f, a, arg)
       else:
         r = typeRel(m, base(f), a)
@@ -2083,10 +2084,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         # bug #4799, varargs accepting subtype relation object
         elif r == isSubtype:
           inc(m.subtypeMatches)
-          if f.kind == tyTypeDesc:
+          if base(f).kind == tyTypeDesc:
             result = arg
           else:
-            result = implicitConv(nkHiddenSubConv, f, arg, m, c)
+            result = implicitConv(nkHiddenSubConv, base(f), arg, m, c)
           m.baseTypeMatch = true
         else:
           result = userConvMatch(c, m, base(f), a, arg)
