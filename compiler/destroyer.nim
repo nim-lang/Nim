@@ -132,62 +132,6 @@ type
     emptyNode: PNode
     otherRead: PNode
 
-
-proc isHarmlessVar*(s: PSym; c: Con): bool =
-  # 's' is harmless if it used only once and its
-  # definition/usage are not split by any labels:
-  #
-  # let s = foo()
-  # while true:
-  #   a[i] = s
-  #
-  # produces:
-  #
-  # def s
-  # L1:
-  #   use s
-  # goto L1
-  #
-  # let s = foo()
-  # if cond:
-  #   a[i] = s
-  # else:
-  #   a[j] = s
-  #
-  # produces:
-  #
-  # def s
-  # fork L2
-  # use s
-  # goto L3
-  # L2:
-  # use s
-  # L3
-  #
-  # So this analysis is for now overly conservative, but correct.
-  var defsite = -1
-  var usages = 0
-  for i in 0..<c.g.len:
-    case c.g[i].kind
-    of def:
-      if c.g[i].sym == s:
-        if defsite < 0: defsite = i
-        else: return false
-    of use:
-      if c.g[i].sym == s:
-        if defsite < 0: return false
-        for j in defsite .. i:
-          # not within the same basic block?
-          if j in c.jumpTargets: return false
-        # if we want to die after the first 'use':
-        if usages > 1: return false
-        inc usages
-    #of useWithinCall:
-    #  if c.g[i].sym == s: return false
-    of goto, fork, InstrKind.join:
-      discard "we do not perform an abstract interpretation yet"
-  result = usages <= 1
-
 proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
   var pc = pc
   while pc < c.g.len:
@@ -248,17 +192,6 @@ proc isLastRead(n: PNode; c: var Con): bool =
         of def:
           if c.g[pc].sym == s:
             # the path lead to a redefinition of 's' --> abandon it.
-            when false:
-              # Too complex thinking ahead: In reality it is enough to find
-              # the 'def x' here on the current path to make the 'use x' valid.
-              # but for this the definition needs to dominate the usage:
-              var dominates = true
-              for j in pc+1 .. instr:
-                # not within the same basic block?
-                if c.g[j].kind in {goto, fork} and (j + c.g[j].dest) in (pc+1 .. instr):
-                  #if j in c.jumpTargets:
-                  dominates = false
-              if dominates: break
             break
           inc pc
         of use:
