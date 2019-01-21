@@ -97,6 +97,10 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
+  ##
+  ## See also:
+  ## * `open proc <#open,CsvParser,string,Char,Char,Char>`_ which creates the
+  ##   file stream for you.
   runnableExamples:
     import streams
 
