@@ -3886,15 +3886,21 @@ proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
   ## Same as `gorge` but also returns the precious exit code.
   discard
 
-proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `+=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}
-  ## Increments an ordinal
+  ## Increments an integer
 
-proc `-=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `+=`*[T: enum|bool](x: var T, y: T) {.
+  magic: "Inc", noSideEffect, deprecated: "use `inc` instead".}
+
+proc `-=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Dec", noSideEffect.}
   ## Decrements an ordinal
 
-proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
+proc `-=`*[T: enum|bool](x: var T, y: T) {.
+  magic: "Dec", noSideEffect, deprecated: "0.20.0, use `dec` instead".}
+
+proc `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Binary `*=` operator for ordinals
   x = x * y
