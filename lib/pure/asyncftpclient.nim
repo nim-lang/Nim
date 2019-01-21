@@ -183,7 +183,7 @@ proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
   ## Returns a list of filenames in the given directory. If ``dir`` is "",
   ## the current directory is used. If ``async`` is true, this
   ## function will return immediately and it will be your job to
-  ## use asyncio's ``poll`` to progress this operation.
+  ## use asyncdispatch's ``poll`` to progress this operation.
   await ftp.pasv()
 
   assertReply(await(ftp.send("NLST " & dir.normalizePathSep)), ["125", "150"])
