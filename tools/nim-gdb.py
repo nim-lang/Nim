@@ -1,4 +1,3 @@
-
 import gdb
 import re
 import sys
@@ -16,8 +15,6 @@ def printErrorOnce(id, message):
     errorSet.add(id)
     gdb.write(message, gdb.STDERR)
 
-nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
-nimobjfile.type_printers = []
 
 ################################################################################
 #####  Type pretty printers
@@ -120,9 +117,6 @@ class NimTypePrinter:
 
   def instantiate(self):
     return NimTypeRecognizer()
-
-
-nimobjfile.type_printers = [NimTypePrinter()]
 
 ################################################################################
 #####  GDB Function, equivalent of Nim's $ operator
@@ -528,5 +522,11 @@ def makematcher(klass):
       printErrorOnce(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
-nimobjfile.pretty_printers = []
-nimobjfile.pretty_printers.extend([makematcher(var) for var in list(vars().values()) if hasattr(var, 'pattern')])
+def new_object_handler(event):
+  nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
+  nimobjfile.type_printers = []
+  nimobjfile.type_printers = [NimTypePrinter()]
+  nimobjfile.pretty_printers = []
+  nimobjfile.pretty_printers.extend([makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')])
+
+gdb.events.new_objfile.connect(new_object_handler)
