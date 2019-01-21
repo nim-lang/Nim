@@ -522,11 +522,20 @@ def makematcher(klass):
       printErrorOnce(typeName, "No matcher for type '" + typeName + "': " + str(e) + "\n")
   return matcher
 
+def register_nim_pretty_printers_for_object(objfile):
+  nimMainSym = gdb.lookup_global_symbol("NimMain", gdb.SYMBOL_FUNCTIONS_DOMAIN)
+  if nimMainSym and nimMainSym.symtab.objfile == objfile:
+    print("set Nim pretty printers for ", objfile.filename)
+
+    objfile.type_printers = [NimTypePrinter()]
+    objfile.pretty_printers = [makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')]
+
+# Register pretty printers for all objfiles that are already loaded.
+for old_objfile in gdb.objfiles():
+  register_nim_pretty_printers_for_object(old_objfile)
+
+# Register an event handler to register nim pretty printers for all future objfiles.
 def new_object_handler(event):
-  nimobjfile = gdb.current_objfile() or gdb.objfiles()[0]
-  nimobjfile.type_printers = []
-  nimobjfile.type_printers = [NimTypePrinter()]
-  nimobjfile.pretty_printers = []
-  nimobjfile.pretty_printers.extend([makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')])
+  register_nim_pretty_printers_for_object(event.new_objfile)
 
 gdb.events.new_objfile.connect(new_object_handler)
