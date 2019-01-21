@@ -16,8 +16,9 @@
 ## by storing them on the heap. For procs, we produce on the fly simple
 ## trampolines that can be dynamically overwritten to jump to a different
 ## target. In the host program, all globals and procs are first registered
-## here with ``registerGlobal`` and ``registerProc`` and then the returned
-## permanent locations are used in every reference to these symbols onwards.
+## here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
+## returned permanent locations are used in every reference to these symbols
+## onwards.
 ##
 ## Detailed description:
 ##
@@ -37,19 +38,19 @@
 ##     pointers as static globals with the same names
 ##   - the original function definitions get prefixed with <name>_actual
 ##   - the function pointers get initialized with the address of the corresponding
-##     function in the DatInit of their module through a call to either registerProc
-##     or getProc. When being registered, the <name>_actual address is passed to
-##     registerProc and a permanent location is returned and assigned to the pointer.
+##     function in the DatInit of their module through a call to either hcrRegisterProc
+##     or hcrGetProc. When being registered, the <name>_actual address is passed to
+##     hcrRegisterProc and a permanent location is returned and assigned to the pointer.
 ##     This way the implementation (<name>_actual) can change but the address for it
 ##     will be the same - this works by just updating a jump instruction (trampoline).
-##     For functions from other modules getProc is used (after they are registered).
+##     For functions from other modules hcrGetProc is used (after they are registered).
 ## - globals are initialized only once and their state is preserved
 ##   - including locals with the {.global.} pragma
 ##   - their definitions are changed into pointer definitions which are initialized
-##     in the DatInit() of their module with calls to registerGlobal (supplying the
+##     in the DatInit() of their module with calls to hcrRegisterGlobal (supplying the
 ##     size of the type that this HCR runtime should allocate) and a bool is returned
 ##     which when true triggers the initialization code for the global (only once).
-##     Globals from other modules: a global pointer coupled with a getGlobal call.
+##     Globals from other modules: a global pointer coupled with a hcrGetGlobal call.
 ##   - globals which have already been initialized cannot have their values changed
 ##     by changing their initialization - use a handler or some other mechanism
 ##   - new globals can be introduced when reloading
@@ -59,11 +60,11 @@
 ##   - same folder, in the PATH or LD_LIBRARY_PATH env var, etc (depending on OS)
 ## - the main module is responsible for initializing the HCR runtime
 ##   - the main module loads the RTL and HCR shared objects
-##   - after that a call to initRuntime() is done in the main module which triggers
+##   - after that a call to hcrInit() is done in the main module which triggers
 ##     the loading of all modules the main one imports, and doing that for the
 ##     dependencies of each module recursively. Basically a DFS traversal.
 ##   - then initialization takes place with several passes over all modules:
-##     - HcrInit - initializes the pointers for HCR procs such as registerProc
+##     - HcrInit - initializes the pointers for HCR procs such as hcrRegisterProc
 ##     - HcrCreateTypeInfos - creates globals which will be referenced in the next pass
 ##     - DatInit - usual dat init + register/get procs and get globals
 ##     - Init - it does the following multiplexed operations:
@@ -72,13 +73,13 @@
 ##   - when modules are loaded the originally built shared libraries get copied in
 ##     the same folder and the copies are loaded instead of the original files
 ##   - a module import tree is built in the runtime (and maintained when reloading)
-## - performCodeReload
+## - hcrPerformCoreReload
 ##   - explicitly called by the user - the current active callstack shouldn't contain
 ##     any functions which are defined in modules that will be reloaded (or crash!).
 ##     The reason is that old dynalic libraries get unloaded.
 ##     Example:
 ##       if A is the main module and it imports B, then only B is reloadable and only
-##       if when calling performCodeReload there is no function defined in B in the
+##       if when calling hcrPerformCoreReload there is no function defined in B in the
 ##       current active callstack at the point of the call (it has to be done from A)
 ##   - for reloading to take place the user has to have rebuilt parts of the application
 ##     without changes affecting the main module in any way - it shouldn't be rebuilt.
@@ -89,7 +90,7 @@
 ##     - so changing the init of a global does nothing, but removing it, reloading,
 ##       and then re-introducing it with a new initializer works
 ##   - new modules can be imported, and imports can also be reodereded/removed
-##   - hasAnyModuleChanged() can be used to determine if any module needs reloading
+##   - hcrReloadNeeded() can be used to determine if any module needs reloading
 ## - code in the beforeCodeReload/afterCodeReload handlers is executed on each reload
 ##   - such handlers can be added and removed
 ##   - before each reload all "beforeCodeReload" handlers are executed and after
@@ -100,7 +101,7 @@
 ##   - since new globals can be introduced, the handlers are actually registered
 ##     when a dummy global is initialized, and on each reload all such dummy globals
 ##     are removed from the runtime so they can be re-registered with the same name
-##     and their init code gets ran which triggers a call to registerHandler
+##     and their init code gets ran which triggers a call to hcrAddEventHandler
 ##   - after the reload all "after" handlers are executed the same way as "before"
 ##
 ## TODO - after first merge in upstream Nim:
@@ -110,7 +111,7 @@
 ##   - runtime degradation of HCR-enabled code - important!!!
 ## - migrate the js target to the new before/afterCodeReload API
 ## - ARM support for the trampolines
-## - implement hasModuleChanged (perhaps using a magic returning SigHash for a module)
+## - implement hcrHasModuleChanged (perhaps using a magic returning SigHash for a module)
 ## - pdb paths on Windows should be fixed (related to copying .dll files)
 ##   - absolute hardcoded path to .pdb is the same even for a copied .dll
 ##   - if a debugger is attached - rebuilding will fail since .pdb files are locked
@@ -152,7 +153,7 @@
 ##   - perhaps using shared memory
 ## - multi-dll projects - how everything can be reloaded..?
 ##   - a single HCR instance shared across multiple .dlls
-##   - instead of having to call performCodeReload from a function in each dll
+##   - instead of having to call hcrPerformCoreReload from a function in each dll
 ##     - which currently renders the main module of each dll not reloadable
 ## - ability to check with the current callstack if a reload is "legal"
 ##   - if it is in any function which is in a module about to be reloaded ==> error
@@ -177,7 +178,7 @@
 ##
 ## - have a "bad call" trampoline that all no-longer-present functions are routed to call there
 ##     - so the user gets some error msg if he calls a dangling pointer instead of a crash
-## - before/afterCodeReload and hasModuleChanged should be accessible only where appropriate
+## - before/afterCodeReload and hcrHasModuleChanged should be accessible only where appropriate
 ## - nim_program_result is inaccessible in HCR mode from external C code (see nimbase.h)
 ## - proper .json build file - but the format is different... multiple link commands...
 ##
@@ -196,15 +197,18 @@
 ##     block. Perhaps something can be done about this - some way of re-allocating
 ##     the state and transferring the old...
 
-when defined(hotcodereloading) or defined(createNimHcr) or defined(testNimHcr):
+when not defined(JS) and (defined(hotcodereloading) or
+                          defined(createNimHcr) or
+                          defined(testNimHcr)):
   const
     nimhcrExports = "nimhcr_$1"
     dllExt = when defined(windows): "dll"
              elif defined(macosx): "dylib"
              else: "so"
   type
-    ProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
-    PassFucntion* = proc () {.nimcall.}
+    HcrProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
+    HcrGcMarkerProc = proc () {.nimcall.}
+    HcrModuleInitializer* = proc () {.nimcall.}
 
 when defined(createNimHcr):
   when system.appType != "lib":
@@ -214,9 +218,11 @@ when defined(createNimHcr):
 
   template trace(args: varargs[untyped]) =
     when defined(testNimHcr): echo args
+
   proc sanitize(arg: Time): string =
     when defined(testNimHcr): return "<time>"
     else: return $arg
+
   proc sanitize(arg: string|cstring): string =
     when defined(testNimHcr): return ($arg).splitFile.name.splitFile.name
     else: return $arg
@@ -282,6 +288,7 @@ when defined(createNimHcr):
 
     GlobalVarSym = object
       p: pointer
+      markerProc: HcrGcMarkerProc
       gen: int
 
     ModuleDesc = object
@@ -291,7 +298,7 @@ when defined(createNimHcr):
       handle: LibHandle
       gen: int
       lastModification: Time
-      handlers: seq[tuple[isBefore: bool, globalVar: string, cb: proc ()]]
+      handlers: seq[tuple[isBefore: bool, cb: proc ()]]
 
   proc newModuleDesc(): ModuleDesc =
     result.procs = initTable[string, ProcSym]()
@@ -304,18 +311,17 @@ when defined(createNimHcr):
   var modules = initTable[string, ModuleDesc]()
   var root: string
   var system: string
-  var mainDatInit: PassFucntion
+  var mainDatInit: HcrModuleInitializer
   var generation = 0
 
   # necessary for registering handlers and keeping them up-to-date
   var currentModule: string
-  var lastRegisteredGlobal: string
 
   # supplied from the main module - used by others to initialize pointers to this runtime
   var hcrDynlibHandle: pointer
-  var getProcAddr: ProcGetter
+  var getProcAddr: HcrProcGetter
 
-  proc registerProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.} =
+  proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.} =
     trace "  register proc: ", module.sanitize, " ", name
     # Please note: We must allocate a local copy of the strings, because the supplied
     # `cstring` will reside in the data segment of a DLL that will be later unloaded.
@@ -337,14 +343,15 @@ when defined(createNimHcr):
     writeJump jumpTableEntryAddr, fn
     return jumpTableEntryAddr
 
-  proc getProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
+  proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
     return modules[$module].procs[$name].jump
 
-  proc registerGlobal*(module: cstring,
-                       name: cstring,
-                       size: Natural,
-                       outPtr: ptr pointer): bool {.nimhcr.} =
+  proc hcrRegisterGlobal*(module: cstring,
+                          name: cstring,
+                          size: Natural,
+                          gcMarker: HcrGcMarkerProc,
+                          outPtr: ptr pointer): bool {.nimhcr.} =
     trace "  register global: ", module.sanitize, " ", name
     # Please note: We must allocate local copies of the strings, because the supplied
     # `cstring` will reside in the data segment of a DLL that will be later unloaded.
@@ -354,19 +361,21 @@ when defined(createNimHcr):
     # to void*& since the casting yields an rvalue and references bind only to lvalues.
     let name = $name
     let module = $module
-    lastRegisteredGlobal = name
 
     modules[module].globals.withValue(name, global):
       trace "    update global: ", name
       outPtr[] = global.p
       global.gen = generation
+      global.markerProc = gcMarker
       return false
     do:
       outPtr[] = alloc0(size)
-      modules[module].globals[name] = GlobalVarSym(p: outPtr[], gen: generation)
+      modules[module].globals[name] = GlobalVarSym(p: outPtr[],
+                                                   gen: generation,
+                                                   markerProc: gcMarker)
       return true
 
-  proc getGlobal*(module: cstring, name: cstring): pointer {.nimhcr.} =
+  proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get global: ", module.sanitize, " ", name
     return modules[$module].globals[$name].p
 
@@ -425,29 +434,27 @@ when defined(createNimHcr):
 
     # Remove handlers for this module if reloading - they will be re-registered.
     # In order for them to be re-registered we need to de-register all globals
-    # that trigger the registering of handlers through calls to registerHandler
-    for curr in modules[name].handlers:
-      cleanupGlobal(name, curr.globalVar)
+    # that trigger the registering of handlers through calls to hcrAddEventHandler
     modules[name].handlers.setLen(0)
 
   proc initHcrData(name: cstring) {.nimhcr.} =
     trace "HCR Hcr init: ", name.sanitize
-    cast[proc (h: pointer, gpa: ProcGetter) {.nimcall.}](
+    cast[proc (h: pointer, gpa: HcrProcGetter) {.nimcall.}](
       checkedSymAddr(modules[$name].handle, "HcrInit000"))(hcrDynlibHandle, getProcAddr)
 
   proc initTypeInfoGlobals(name: cstring) {.nimhcr.} =
     trace "HCR TypeInfo globals init: ", name.sanitize
-    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "HcrCreateTypeInfos"))()
+    cast[HcrModuleInitializer](checkedSymAddr(modules[$name].handle, "HcrCreateTypeInfos"))()
 
   proc initPointerData(name: cstring) {.nimhcr.} =
     trace "HCR Dat init: ", name.sanitize
-    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "DatInit000"))()
+    cast[HcrModuleInitializer](checkedSymAddr(modules[$name].handle, "DatInit000"))()
 
   proc initGlobalScope(name: cstring) {.nimhcr.} =
     trace "HCR Init000: ", name.sanitize
     # set the currently inited module - necessary for registering the before/after HCR handlers
     currentModule = $name
-    cast[PassFucntion](checkedSymAddr(modules[$name].handle, "Init000"))()
+    cast[HcrModuleInitializer](checkedSymAddr(modules[$name].handle, "Init000"))()
 
   var modulesToInit: seq[string] = @[]
   var allModulesOrderedByDFS: seq[string] = @[]
@@ -496,8 +503,8 @@ when defined(createNimHcr):
     for curr in modulesToInit:
       cleanupSymbols(curr)
 
-  proc initRuntime*(moduleList: ptr pointer, main, sys: cstring,
-                    datInit: PassFucntion, handle: pointer, gpa: ProcGetter) {.nimhcr.} =
+  proc hcrInit*(moduleList: ptr pointer, main, sys: cstring,
+                datInit: HcrModuleInitializer, handle: pointer, gpa: HcrProcGetter) {.nimhcr.} =
     trace "HCR INITING: ", main.sanitize, " gen: ", generation
     # initialize globals
     root = $main
@@ -514,7 +521,7 @@ when defined(createNimHcr):
     # the next module to be inited will be the root
     currentModule = root
 
-  proc hasAnyModuleChanged*(): bool {.nimhcr.} =
+  proc hcrReloadNeeded*(): bool {.nimhcr.} =
     var checked = initSet[string]()
     proc recursiveChangeScan(dlls: seq[string]): bool =
       for curr in dlls:
@@ -526,8 +533,8 @@ when defined(createNimHcr):
       return false
     return recursiveChangeScan(modules[root].imports)
 
-  proc performCodeReload*() {.nimhcr.} =
-    if not hasAnyModuleChanged():
+  proc hcrPerformCoreReload*() {.nimhcr.} =
+    if not hcrReloadNeeded():
       trace "HCR - no changes"
       return
 
@@ -568,17 +575,25 @@ when defined(createNimHcr):
       unloadDll(name)
       modules.del(name)
 
-  proc registerHandler*(isBefore: bool, cb: proc ()): bool {.nimhcr.} =
+  proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.} =
     modules[currentModule].handlers.add(
-      (isBefore: isBefore, globalVar: lastRegisteredGlobal, cb: cb))
-    return true
+      (isBefore: isBefore, cb: cb))
 
-  proc addModule*(module: cstring) {.nimhcr.} =
+  proc hcrAddModule*(module: cstring) {.nimhcr.} =
     if not modules.contains($module):
       modules.add($module, newModuleDesc())
 
-else:
-  when defined(hotcodereloading) or defined(testNimHcr):
+  proc hcrGeneration*(): int {.nimhcr.} =
+    generation
+
+  proc hcrMarkGlobals*() {.nimhcr.} =
+    for _, module in modules:
+      for _, global in module.globals:
+        if global.markerProc != nil:
+          global.markerProc()
+
+elif defined(hotcodereloading) or defined(testNimHcr):
+  when not defined(JS):
     const
       nimhcrLibname = when defined(windows): "nimhcr." & dllExt
                       elif defined(macosx): "libnimhcr." & dllExt
@@ -586,32 +601,45 @@ else:
 
     {.pragma: nimhcr, compilerProc, importc: nimhcrExports, dynlib: nimhcrLibname.}
 
-    proc registerProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.}
-    proc getProc*(module: cstring, name: cstring): pointer {.nimhcr.}
-    proc registerGlobal*(module: cstring, name: cstring, size: Natural, outPtr: ptr pointer): bool {.nimhcr.}
-    proc getGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
+    proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.}
 
-    proc initRuntime*(moduleList: ptr pointer, main, sys: cstring,
-                      datInit: PassFucntion, handle: pointer, gpa: ProcGetter) {.nimhcr.}
-    proc registerHandler*(isBefore: bool, cb: proc ()): bool {.nimhcr.}
-    proc addModule*(module: cstring) {.nimhcr.}
+    proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.}
 
-    # the following functions/templates are intended to be used by the user
-    proc performCodeReload*() {.nimhcr.}
-    proc hasAnyModuleChanged*(): bool {.nimhcr.}
+    proc hcrRegisterGlobal*(module: cstring, name: cstring, size: Natural,
+                            gcMarker: HcrGcMarkerProc, outPtr: ptr pointer): bool {.nimhcr.}
+    proc hcrGetGlobal*(module: cstring, name: cstring): pointer {.nimhcr.}
 
-    # We use a "global" to force execution while top-level statements are
-    # evaluated - this way new handlers can be added when reloading (new globals
-    # can be introduced but newly written top-level code is not executed)
-    template beforeCodeReload*(body: untyped) =
-      let dummy = registerHandler(true, proc = body)
+    proc hcrInit*(moduleList: ptr pointer,
+                  main, sys: cstring,
+                  datInit: HcrModuleInitializer,
+                  handle: pointer,
+                  gpa: HcrProcGetter) {.nimhcr.}
 
-    template afterCodeReload*(body: untyped) =
-      let dummy = registerHandler(false, proc = body)
+    proc hcrAddModule*(module: cstring) {.nimhcr.}
+
+    proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
+
+    proc hcrPerformCoreReload*() {.nimhcr.}
+
+    proc hcrReloadNeeded*(): bool {.nimhcr.}
+
+    proc hcrHasModuleChanged*(moduleId: string): bool =
+      # TODO
+      false
+
+    proc hcrMarkGlobals*() {.nimhcr.}
+
+    proc hcrGeneration*(): int {.nimhcr.}
+
+    when hasAlloc:
+      nimRegisterGlobalMarker(hcrMarkGlobals)
 
   else:
-    # we need these stubs so code continues to compile even when HCR is off
-    proc performCodeReload*() = discard
-    proc hasAnyModuleChanged*(): bool = false
-    template beforeCodeReload*(body: untyped) = discard
-    template afterCodeReload*(body: untyped) = discard
+    proc hcrHasModuleChanged*(moduleId: string): bool =
+      # TODO
+      false
+
+    proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) =
+      # TODO
+      discard
+

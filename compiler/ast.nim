@@ -470,6 +470,7 @@ type
     nfDefaultParam # an automatically inserter default parameter
     nfDefaultRefsParam # a default param value references another parameter
                        # the flag is applied to proc default values and to calls
+    nfExecuteOnReload #
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -656,7 +657,7 @@ type
 
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
@@ -980,7 +981,8 @@ const
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
-                                      nfFromTemplate, nfDefaultRefsParam}
+                                      nfFromTemplate, nfDefaultRefsParam,
+                                      nfExecuteOnReload}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

@@ -88,11 +88,11 @@ macro carryOutTests(callingConv: untyped): untyped =
 
   result = quote do:
     var `g1`: pointer = nil
-    if registerGlobal("dummy_module", `globalName`, sizeof(int), addr `g1`):
+    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), nil, addr `g1`):
       cast[ptr int](`g1`)[] = 10
 
     var `g2`: pointer = nil
-    if registerGlobal("dummy_module", `globalName`, sizeof(int), addr `g2`):
+    if hcrRegisterGlobal("dummy_module", `globalName`, sizeof(int), nil, addr `g2`):
       cast[ptr int](`g2`)[] = 20
 
     doAssert `g1` == `g2` and cast[ptr int](`g1`)[] == 10
@@ -104,14 +104,14 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #1 ", x
       return x + 1
 
-    let fp1 = cast[F](registerProc("dummy_module", `procName`, `p1`))
+    let fp1 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p1`))
     echo fp1(10)
 
     proc `p2`(x: int): int {.placeholder.} =
       echo `procName`, " implementation #2 ", x
       return x + 2
 
-    let fp2 = cast[F](registerProc("dummy_module", `procName`, `p2`))
+    let fp2 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p2`))
     echo fp1(20)
     echo fp2(20)
 
@@ -119,12 +119,12 @@ macro carryOutTests(callingConv: untyped): untyped =
       echo `procName`, " implementation #3 ", x
       return x + 3
 
-    let fp3 = cast[F](registerProc("dummy_module", `procName`, `p3`))
+    let fp3 = cast[F](hcrRegisterProc("dummy_module", `procName`, `p3`))
     echo fp1(30)
     echo fp2(30)
     echo fp3(30)
 
-    let fp4 = cast[F](getProc("dummy_module", `procName`))
+    let fp4 = cast[F](hcrGetProc("dummy_module", `procName`))
     echo fp4(40)
 
   proc replacePlaceholderPragmas(n: NimNode) =
@@ -137,7 +137,7 @@ macro carryOutTests(callingConv: untyped): untyped =
   replacePlaceholderPragmas result
   # echo result.treeRepr
 
-addModule("dummy_module")
+hcrAddModule("dummy_module")
 
 carryOutTests fastcall
 carryOutTests cdecl

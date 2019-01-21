@@ -2454,10 +2454,11 @@ proc genModule(p: PProc, n: PNode) =
                           idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
-    for stmt in n:
-      let stmtShouldExecute = stmt.kind in
-        {nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef,
-         nkVarSection, nkLetSection}
+
+    for stmt in n_transformed:
+      let stmtShouldExecute = stmt.kind in {
+        nkProcDef, nkFuncDef, nkMethodDef,nkConverterDef,
+        nkVarSection, nkLetSection} or nfExecuteOnReload in stmt.flags
 
       if inGuardedBlock:
         if stmtShouldExecute:

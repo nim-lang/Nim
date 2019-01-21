@@ -347,6 +347,13 @@ object
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
 
+when defined(nimHasSignatureHashInMacro):
+  proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
+    ## Returns a stable identifier derived from the signature of a symbol.
+    ## The signature combines many factors such as the type of the symbol,
+    ## the owning module of the symbol and others. The same identifier is
+    ## used in the back-end to to produce the mangled symbol name.
+
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
 

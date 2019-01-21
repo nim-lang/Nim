@@ -2535,19 +2535,22 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent(c.cache, "{}")), flags)
   of nkPragmaExpr:
     var
-      expr = n[0]
       pragma = n[1]
       pragmaName = considerQuotedIdent(c, pragma[0])
       flags = flags
+      finalNodeFlags: TNodeFlags = {}
 
     case whichKeyword(pragmaName)
     of wExplain:
       flags.incl efExplain
+    of wExecuteOnReload:
+      finalNodeFlags.incl nfExecuteOnReload
     else:
       # what other pragmas are allowed for expressions? `likely`, `unlikely`
       invalidPragma(c, n)
 
     result = semExpr(c, n[0], flags)
+    result.flags.incl finalNodeFlags
   of nkPar, nkTupleConstr:
     case checkPar(c, n)
     of paNone: result = errorNode(c, n)

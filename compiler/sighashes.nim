@@ -348,6 +348,12 @@ proc hashOwner*(s: PSym): SigHash =
 
   md5Final c, result.Md5Digest
 
+proc sigHash*(s: PSym): SigHash =
+  if s.kind in routineKinds and s.typ != nil:
+    result = hashProc(s)
+  else:
+    result = hashNonProc(s)
+
 proc idOrSig*(s: PSym, currentModule: string,
               sigCollisions: var CountTable[SigHash]): Rope =
   if s.kind in routineKinds and s.typ != nil:

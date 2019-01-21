@@ -15,32 +15,20 @@ const
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
-proc registerGcRoot(p: BProc, v: PSym) =
+proc getTraverseProc(p: BProc, v: Psym): Rope =
   if p.config.selectedGC in {gcMarkAndSweep, gcDestructors, gcV2, gcRefc} and
       containsGarbageCollectedRef(v.loc.t):
-
-    if(p.hcrOn and sfSystemModule in getModule(v).flags):
-      # The call to nimRegisterGlobalMarker or nimRegisterThreadLocalMarker which
-      # will be inserted right after this will need these globals initialized
-      let globalsToInitBeforeAnything = [
-        "globalMarkersLen",
-        "globalMarkers",
-        "threadLocalMarkersLen",
-        "threadLocalMarkers"]
-      for curr in globalsToInitBeforeAnything:
-        appcg(p.module, p.module.initProc.procSec(cpsLocals),
-          "\tregisterGlobal($2, \"$1\", sizeof((*$1)), (void**)&$1);$n",
-          rope(curr), getModuleDllPath(p.module, v))
-
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
-    let prc = genTraverseProcForGlobal(p.module, v, v.info)
-    if sfThread in v.flags:
-      appcg(p.module, p.module.initProc.procSec(cpsInit),
-        "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [prc])
-    else:
-      appcg(p.module, p.module.initProc.procSec(cpsInit),
-        "$n\t#nimRegisterGlobalMarker($1);$n$n", [prc])
+    result = genTraverseProcForGlobal(p.module, v, v.info)
+
+proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
+  if sfThread in v.flags:
+    appcg(p.module, p.module.initProc.procSec(cpsInit),
+      "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
+  else:
+    appcg(p.module, p.module.initProc.procSec(cpsInit),
+      "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
@@ -76,7 +64,9 @@ proc genVarTuple(p: BProc, n: PNode) =
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
-      registerGcRoot(p, v)
+      let traverseProc = getTraverseProc(p, v)
+      if traverseProc != nil and not p.hcrOn:
+        registerTraverseProc(p, v, traverseProc)
     else:
       assignLocalVar(p, vn)
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[L-1]))
@@ -256,6 +246,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     genGotoVar(p, a.sons[2])
     return
   var targetProc = p
+  var traverseProc: Rope
   if sfGlobal in v.flags:
     if v.flags * {sfImportc, sfExportc} == {sfImportc} and
         a.sons[2].kind == nkEmpty and
@@ -284,7 +275,9 @@ proc genSingleVar(p: BProc, a: PNode) =
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
       genVarPrototype(p.module.g.generatedHeader, vn)
-    registerGcRoot(p, v)
+    traverseProc = getTraverseProc(p, v)
+    if traverseProc != nil and not p.hcrOn:
+      registerTraverseProc(p, v, traverseProc)
   else:
     let value = a.sons[2]
     let imm = isAssignedImmediately(p.config, value)
@@ -316,6 +309,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
+  if traverseProc == nil: traverseProc = ~"NULL"
   # If the var is in a block (perhaps of a control flow statement like if (not loops!)) -
   # just register the so called "global" so it can be used later on - otherwise the
   # closing and reopening of if (nim_hcr_do_init_) blocks would be messed up, and
@@ -324,16 +318,16 @@ proc genSingleVar(p: BProc, a: PNode) =
   # to be "registered" ("created") before it is reset in assignGlobalVar() with resetLoc()
   var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
   if forHcr and targetProc.blocks.len != 1:
-    lineCg(targetProc, cpsStmts, "registerGlobal($3, \"$1\", sizeof($2), (void**)&$1);$n",
-           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v))
+    lineCg(targetProc, cpsStmts, "hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1);$n",
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
     forHcr = false
-  
+
   # we close and reopen the global if (nim_hcr_do_init_) blocks in the main Init function
   # for the module so we can have globals and top-level code be interleaved and still
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
-    lineCg(targetProc, cpsStmts, "} if (registerGlobal($3, \"$1\", sizeof($2), (void**)&$1))",
-           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v))
+    lineCg(targetProc, cpsStmts, "} if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))",
+           v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
     startBlock(targetProc)
   defer:
     if forHcr:

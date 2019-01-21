@@ -16,7 +16,8 @@ import system/indexerrors
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl
+  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
+  sighashes
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -1492,6 +1493,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal = a.sym.name.s
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
+    of opcNSigHash:
+      decodeB(rkNode)
+      createStr regs[ra]
+      if regs[rb].node.kind != nkSym:
+        stackTrace(c, tos, pc, "node is not a symbol")
+      else:
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]

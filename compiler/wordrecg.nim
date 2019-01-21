@@ -45,7 +45,7 @@ type
     wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideeffect, wHeader,
     wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
-    wCompilerproc, wNonReloadable, wCore, wProcVar, wBase, wUsed,
+    wCompilerproc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
     wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
     wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
@@ -53,6 +53,7 @@ type
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks,
     wFloatchecks, wNanChecks, wInfChecks, wMoveChecks,
+    wNonReloadable, wExecuteOnReload,
     wAssertions, wPatterns, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
@@ -133,7 +134,7 @@ const
     "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
-    "compilerproc", "nonreloadable", "core", "procvar", "base", "used",
+    "compilerproc", "core", "procvar", "base", "used",
     "fatal", "error", "warning", "hint", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
@@ -142,6 +143,7 @@ const
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks", "movechecks",
+    "nonreloadable", "executeonreload",
 
     "assertions", "patterns", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",

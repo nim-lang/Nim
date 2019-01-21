@@ -25,7 +25,7 @@ main: after
 ## and after that with a single call to `compileReloadExecute` the new version
 ## of the program will be compiled, reloaded, and the only thing the main module
 ## calls from `nimhcr_0.nim` (the procedure `getInt` proc) is called for a result.
-## 
+##
 ## This test is expected to be executed with arguments - the full nim compiler
 ## command used for building it - so it can rebuild iself the same way - example:
 ##
@@ -34,7 +34,7 @@ main: after
 ## executing:
 ##   <this_file>.exe nim c --hotCodeReloading:on --nimCache:<folder> <this_file>.nim
 
-import os, osproc, times, strutils
+import os, osproc, times, strutils, hotcodereloading
 
 import nimhcr_0 # getInt() - the only thing we continually call from the main module
 
@@ -62,8 +62,8 @@ proc compileReloadExecute() =
     echo "COMPILATION ERROR!"
     echo "COMMAND: ", cmd
     echo "STDOUT: ", stdout
-  echo "main: hasAnyModuleChanged? ", hasAnyModuleChanged()
-  performCodeReload()
+  echo "main: hcrReloadNeeded? ", hcrReloadNeeded()
+  hcrPerformCodeReload()
   echo "              The answer is: ", getInt()
 
 # there are 3 files and all of them start from their 1st version

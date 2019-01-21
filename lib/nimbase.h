@@ -356,7 +356,7 @@ typedef NU8 NU;
 
 // for now there isn't an easy way for C code to reach the program result
 // when hot code reloading is ON - users will have to:
-// load the nimhcr.dll, get the getGlobal proc from there and use it
+// load the nimhcr.dll, get the hcrGetGlobal proc from there and use it
 #ifndef NIM_HOT_CODE_RELOADING
 extern NI nim_program_result;
 #endif

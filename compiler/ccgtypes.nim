@@ -993,7 +993,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   
   if m.hcrOn:
     addf(m.s[cfsVars], "static TNimType* $1;$n", [name])
-    addf(m.hcrCreateTypeInfosProc, "\tregisterGlobal($2, \"$1\", sizeof(TNimType), (void**)&$1);$n",
+    addf(m.hcrCreateTypeInfosProc, "\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
     addf(m.s[cfsVars], "TNimType $1;$n", [name])
@@ -1029,7 +1029,7 @@ proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
 proc genTNimNodeArray(m: BModule, name: Rope, size: Rope) =
   if m.hcrOn:
     addf(m.s[cfsVars], "static TNimNode** $1;$n", [name])
-    addf(m.hcrCreateTypeInfosProc, "\tregisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, (void**)&$1);$n",
+    addf(m.hcrCreateTypeInfosProc, "\thcrRegisterGlobal($3, \"$1\", sizeof(TNimNode*) * $2, NULL, (void**)&$1);$n",
          [name, size, getModuleDllPath(m, m.module)])
   else:
     addf(m.s[cfsTypeInit1], "static TNimNode* $1[$2];$n", [name, size])
@@ -1228,7 +1228,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
     if m.hcrOn:
       addf(m.s[cfsVars], "static TNimType* $1;$n", [str])
-      addf(m.s[cfsTypeInit1], "\t$1 = (TNimType*)getGlobal($2, \"$1\");$n",
+      addf(m.s[cfsTypeInit1], "\t$1 = (TNimType*)hcrGetGlobal($2, \"$1\");$n",
            [str, getModuleDllPath(m, ownerModule)])
     else:
       addf(m.s[cfsVars], "extern TNimType $1;$n", [str])
