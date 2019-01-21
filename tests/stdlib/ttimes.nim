@@ -253,7 +253,7 @@ suite "ttimes":
     parseTestExcp("+1", "mm")
     parseTestExcp("+1", "ss")
 
-  test "_ as a seperator":
+  test "_ as a separator":
     discard parse("2000_01_01", "YYYY'_'MM'_'dd")
 
   test "dynamic timezone":

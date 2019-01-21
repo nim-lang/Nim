@@ -1500,9 +1500,18 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
-      return p[1]
-
-  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
+      if p.len == 2:
+        result = p[1]
+      else:
+        let def = p[0].getImpl[3]
+        result = newTree(nnkPar)
+        for i in 1..<p.len:
+          let key = def[i][0]
+          let val = p[i]
+          result.add newTree(nnkExprColonExpr, key, val)
+      break
+  if result.kind == nnkEmpty:
+    error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 
 when not defined(booting):

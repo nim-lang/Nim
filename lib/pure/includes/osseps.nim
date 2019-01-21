@@ -85,9 +85,9 @@ elif doslikeFileSystem:
   const
     CurDir* = '.'
     ParDir* = ".."
-    DirSep* = '\\' # seperator within paths
+    DirSep* = '\\' # separator within paths
     AltSep* = '/'
-    PathSep* = ';' # seperator between paths
+    PathSep* = ';' # separator between paths
     FileSystemCaseSensitive* = false
     ExeExt* = "exe"
     ScriptExt* = "bat"
