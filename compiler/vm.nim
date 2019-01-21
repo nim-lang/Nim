@@ -1249,8 +1249,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
       else: c.setLenSeq(regs[ra].node, newLen, c.debug[pc])
-    of opcReset:
-      internalError(c.config, c.debug[pc], "too implement")
     of opcNarrowS:
       decodeB(rkInt)
       let min = -(1.BiggestInt shl (rb-1))
