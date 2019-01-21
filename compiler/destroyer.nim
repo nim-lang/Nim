@@ -184,7 +184,7 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
         inc usages
     #of useWithinCall:
     #  if c.g[i].sym == s: return false
-    of goto, fork:
+    of goto, fork, InstrKind.join:
       discard "we do not perform an abstract interpretation yet"
   result = usages <= 1
 
@@ -245,6 +245,8 @@ proc isLastRead(n: PNode; c: var Con): bool =
         # we follow the next instruction but push the dest onto our "work" stack:
         if not takenForks.containsOrIncl(pc):
           pcs.add pc + c.g[pc].dest
+        inc pc
+      of InstrKind.join:
         inc pc
   #echo c.graph.config $ n.info, " last read here!"
   return true
