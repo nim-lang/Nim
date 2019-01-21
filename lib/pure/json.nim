@@ -357,6 +357,11 @@ when false:
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
 
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+  ## Sets a field from a `JObject`.
+  assert(obj.kind == JObject)
+  obj.fields[key] = val
+
 #[
 Note: could use simply:
 proc `%`*(o: object|tuple): JsonNode
@@ -521,11 +526,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
-
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
-  obj.fields[key] = val
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
