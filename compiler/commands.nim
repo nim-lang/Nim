@@ -388,6 +388,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
     conf.outFile = AbsoluteFile arg
+  of "docprivatesymbols":
+    processOnOffSwitchG(conf, {optDocPvtSyms}, arg, pass, info)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg

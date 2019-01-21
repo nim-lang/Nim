@@ -58,6 +58,8 @@ Advanced options:
   --project                 document the whole project (doc2)
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
+  --docPrivateSymbols       use with `nim doc` to generate documentation or
+                            run runnableExamples for private symbols
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output

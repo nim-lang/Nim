@@ -81,6 +81,7 @@ type                          # please make sure we have under 32 options
     optListFullPaths          # use full paths in toMsgFilename, toFilename
     optNoNimblePath
     optDynlibOverrideAll
+    optDocPrivateSymbols
 
   TGlobalOptions* = set[TGlobalOption]
 
