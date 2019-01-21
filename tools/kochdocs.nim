@@ -169,8 +169,6 @@ lib/pure/json.nim
 lib/pure/base64.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
-lib/deprecated/pure/sockets.nim
-lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim
 lib/pure/collections/lists.nim
