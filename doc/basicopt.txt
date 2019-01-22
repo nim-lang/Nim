@@ -35,7 +35,7 @@ Options:
   --debugger:native|endb    use native debugger (gdb) | ENDB (experimental)
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
-  -r, --run:on|off          run the compiled program with given arguments
+  -r, --run                 run the compiled program with given arguments
   --fullhelp                show all command line switches
   -h, --help                show this help
 
