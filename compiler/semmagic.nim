@@ -410,4 +410,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mNewFinalize:
+    # Make sure the finalizer procedure refers to a procedure
+    if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
+      localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
+    result = n
   else: result = n
