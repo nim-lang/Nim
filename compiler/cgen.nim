@@ -1338,6 +1338,7 @@ proc genInitCode(m: BModule) =
       add(prc, genSectionEnd(cpsStmts, m.config))
   addf(prc, "}$N", [])
 
+  addf(prc, "{$N", [])
   if m.initProc.gcFrameId > 0:
     moduleInitRequired = true
     add(prc, initGCFrame(m.initProc))
@@ -1374,6 +1375,7 @@ proc genInitCode(m: BModule) =
   if m.initProc.gcFrameId > 0:
     moduleInitRequired = true
     add(prc, deinitGCFrame(m.initProc))
+  addf(prc, "}$N", [])
 
   addf(prc, "}$N$N", [])
 
