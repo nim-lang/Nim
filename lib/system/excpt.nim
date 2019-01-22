@@ -446,27 +446,21 @@ when not defined(gcDestructors):
     ## a ``seq``. This is not yet available for the JS backend.
     shallowCopy(result, e.trace)
 
-when defined(nimRequiresNimFrame):
-  const nimCallDepthLimit {.intdefine.} = 2000
+const nimCallDepthLimit {.intdefine.} = 2000
 
-  proc callDepthLimitReached() {.noinline.} =
-    writeStackTrace()
-    showErrorMessage("Error: call depth limit reached in a debug build (" &
-        $nimCallDepthLimit & " function calls). You can change it with " &
-        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-        "recursions instead.\n")
-    quitOrDebug()
+proc callDepthLimitReached() {.noinline.} =
+  writeStackTrace()
+  showErrorMessage("Error: call depth limit reached in a debug build (" &
+      $nimCallDepthLimit & " function calls). You can change it with " &
+      "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+      "recursions instead.\n")
+  quitOrDebug()
 
-  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
-    s.prev = framePtr
-    framePtr = s
-    if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
-else:
-  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    # XXX only for backwards compatibility
-    s.prev = framePtr
-    framePtr = s
+proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
+  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  s.prev = framePtr
+  framePtr = s
+  if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
 when defined(endb):
   var
