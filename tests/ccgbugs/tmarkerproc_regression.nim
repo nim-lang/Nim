@@ -1,5 +1,5 @@
 discard """
-  output: "done"
+  output: "done markerproc regression"
 """
 
 type
@@ -34,14 +34,14 @@ proc foo(x: string): VersionRange =
   result.ver = Version(x)
 
 proc main =
-  var a: array[5000, VersionRange]
-  for i in 0 ..< 5000:
+  var a: array[500, VersionRange]
+  for i in 0 ..< 500:
     a[i] = foo($i & "some longer text here " & $i)
   GC_fullcollect()
-  for i in 0 ..< 5000:
+  for i in 0 ..< 500:
     let expected = $i & "some longer text here " & $i
     if a[i].ver.string != expected:
       quit "bug!"
-  echo "done"
+  echo "done markerproc regression"
 
 main()

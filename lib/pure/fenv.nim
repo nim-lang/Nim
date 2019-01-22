@@ -12,7 +12,7 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
-when defined(Posix) and not defined(haiku):
+when defined(Posix):
   {.passl: "-lm".}
 
 var

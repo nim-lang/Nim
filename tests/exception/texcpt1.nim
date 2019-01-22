@@ -4,6 +4,8 @@ discard """
 type
   ESomething = object of Exception
   ESomeOtherErr = object of Exception
+  ESomethingGen[T] = object of Exception
+  ESomethingGenRef[T] = ref object of Exception
 
 proc genErrors(s: string) =
   if s == "error!":
@@ -27,4 +29,17 @@ proc blah(): int =
 
 echo blah()
 
+# Issue #7845, raise generic exception
+var x: ref ESomethingGen[int]
+new(x)
+try:
+  raise x
+except ESomethingGen[int] as e:
+  discard
 
+try:
+  raise new(ESomethingGenRef[int])
+except ESomethingGenRef[int] as e:
+  discard
+except:
+  discard

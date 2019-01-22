@@ -1,123 +1,39 @@
-# test the new time module
 discard """
-  file: "ttimes.nim"
-  output: '''[Suite] ttimes
-'''
+  target: "c js"
 """
 
-import
-  times, os, strutils, unittest
+import times, strutils, unittest
 
-# $ date --date='@2147483647'
-# Tue 19 Jan 03:14:07 GMT 2038
+when not defined(js):
+  import os
 
-proc checkFormat(t: DateTime, format, expected: string) =
-  let actual = t.format(format)
-  if actual != expected:
-    echo "Formatting failure!"
-    echo "expected: ", expected
-    echo "actual  : ", actual
-    doAssert false
+# Normally testament configures unittest with environment variables,
+# but that doesn't work for the JS target. So instead we must set the correct
+# settings here.
+addOutputFormatter(
+  newConsoleOutputFormatter(PRINT_FAILURES, colorOutput = false))
 
-let t = fromUnix(2147483647).utc
-t.checkFormat("ddd dd MMM hh:mm:ss yyyy", "Tue 19 Jan 03:14:07 2038")
-t.checkFormat("ddd ddMMMhh:mm:ssyyyy", "Tue 19Jan03:14:072038")
-t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz",
-  "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 +0 +00 +00:00")
+proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
+  let offset = hours * 3600 + minutes * 60 + seconds
 
-t.checkFormat("yyyyMMddhhmmss", "20380119031407")
+  proc zonedTimeFromAdjTime(adjTime: Time): ZonedTime {.locks: 0.} =
+    result.isDst = false
+    result.utcOffset = offset
+    result.time = adjTime + initDuration(seconds = offset)
 
-# issue 7620
-let t7620_am = parse("4/15/2017 12:01:02 AM +0", "M/d/yyyy' 'h:mm:ss' 'tt' 'z", utc())
-t7620_am.checkFormat("M/d/yyyy' 'h:mm:ss' 'tt' 'z", "4/15/2017 12:01:02 AM +0")
-let t7620_pm = parse("4/15/2017 12:01:02 PM +0", "M/d/yyyy' 'h:mm:ss' 'tt' 'z", utc())
-t7620_pm.checkFormat("M/d/yyyy' 'h:mm:ss' 'tt' 'z", "4/15/2017 12:01:02 PM +0")
+  proc zonedTimeFromTime(time: Time): ZonedTime {.locks: 0.}=
+    result.isDst = false
+    result.utcOffset = offset
+    result.time = time
 
-let t2 = fromUnix(160070789).utc # Mon 27 Jan 16:06:29 GMT 1975
-t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz",
-  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
-
-var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
-t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
-
-# Interval tests
-(t4 - initTimeInterval(years = 2)).checkFormat("yyyy", "1995")
-(t4 - initTimeInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
-
-# checking dayOfWeek matches known days
-doAssert getDayOfWeek(01, mJan, 0000) == dSat
-doAssert getDayOfWeek(01, mJan, -0023) == dSat
-doAssert getDayOfWeek(21, mSep, 1900) == dFri
-doAssert getDayOfWeek(01, mJan, 1970) == dThu
-doAssert getDayOfWeek(21, mSep, 1970) == dMon
-doAssert getDayOfWeek(01, mJan, 2000) == dSat
-doAssert getDayOfWeek(01, mJan, 2021) == dFri
-
-# toUnix tests with GM timezone
-let t4L = fromUnix(876124714).utc
-doAssert toUnix(toTime(t4L)) == 876124714
-doAssert toUnix(toTime(t4L)) + t4L.utcOffset == toUnix(toTime(t4))
-
-# adding intervals
-var
-  a1L = toUnix(toTime(t4L + initTimeInterval(hours = 1))) + t4L.utcOffset
-  a1G = toUnix(toTime(t4)) + 60 * 60
-doAssert a1L == a1G
-
-# subtracting intervals
-a1L = toUnix(toTime(t4L - initTimeInterval(hours = 1))) + t4L.utcOffset
-a1G = toUnix(toTime(t4)) - (60 * 60)
-doAssert a1L == a1G
-
-# Comparison between Time objects should be detected by compiler
-# as 'noSideEffect'.
-proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
-  result = t1 == t2
-doAssert cmpTimeNoSideEffect(0.fromUnix, 0.fromUnix)
-# Additionally `==` generic for seq[T] has explicit 'noSideEffect' pragma
-# so we can check above condition by comparing seq[Time] sequences
-let seqA: seq[Time] = @[]
-let seqB: seq[Time] = @[]
-doAssert seqA == seqB
-
-for tz in [
-    (0, "+0", "+00", "+00:00"), # UTC
-    (-3600, "+1", "+01", "+01:00"), # CET
-    (-39600, "+11", "+11", "+11:00"), # two digits
-    (-1800, "+0", "+00", "+00:30"), # half an hour
-    (7200, "-2", "-02", "-02:00"), # positive
-    (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
-  let ti = DateTime(month: mJan, monthday: 1, utcOffset: tz[0])
-  doAssert ti.format("z") == tz[1]
-  doAssert ti.format("zz") == tz[2]
-  doAssert ti.format("zzz") == tz[3]
-
-block countLeapYears:
-  # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
-  doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
-  doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
-  doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
-
-block timezoneConversion:
-  var l = now()
-  let u = l.utc
-  l = u.local
-
-  doAssert l.timezone == local()
-  doAssert u.timezone == utc()
+  newTimezone("", zonedTimeFromTime, zonedTImeFromAdjTime)
 
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
     parsed = s.parse(f, utc())
     parsedStr = $parsed
   check parsedStr == sExpected
-  if parsed.yearday != ydExpected:
-    echo s
-    echo parsed.repr
-    echo parsed.yearday, " exp: ", ydExpected
-  check(parsed.yearday == ydExpected)
+  check parsed.yearday == ydExpected
 
 template parseTestExcp(s, f: string) =
   expect ValueError:
@@ -130,51 +46,52 @@ template parseTestTimeOnly(s, f, sExpected: string) =
 # explicit timezone offsets in all tests.
 template runTimezoneTests() =
   parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
-      "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
+      "dddd 'at' hh:mmtt 'on' MMM d, yyyy z", "2015-12-15T09:04:00Z", 348)
   # ANSIC       = "Mon Jan _2 15:04:05 2006"
   parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-      "2006-01-12T15:04:05+00:00", 11)
+      "2006-01-12T15:04:05Z", 11)
   # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
   parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-      "2006-01-12T15:04:05+00:00", 11)
+      "2006-01-12T15:04:05Z", 11)
   # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
   parseTest("Mon Feb 29 15:04:05 -07:00 2016 +0", "ddd MMM dd HH:mm:ss zzz yyyy z",
-      "2016-02-29T15:04:05+00:00", 59) # leap day
+      "2016-02-29T15:04:05Z", 59) # leap day
   # RFC822      = "02 Jan 06 15:04 MST"
   parseTest("12 Jan 16 15:04 +0", "dd MMM yy HH:mm z",
-      "2016-01-12T15:04:00+00:00", 11)
+      "2016-01-12T15:04:00Z", 11)
   # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
   parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
-      "2016-03-01T22:04:00+00:00", 60) # day after february in leap year
+      "2016-03-01T22:04:00Z", 60) # day after february in leap year
   # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
   parseTest("Monday, 12-Jan-06 15:04:05 +0", "dddd, dd-MMM-yy HH:mm:ss z",
-      "2006-01-12T15:04:05+00:00", 11)
+      "2006-01-12T15:04:05Z", 11)
   # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
   parseTest("Sun, 01 Mar 2015 15:04:05 +0", "ddd, dd MMM yyyy HH:mm:ss z",
-      "2015-03-01T15:04:05+00:00", 59) # day after february in non-leap year
+      "2015-03-01T15:04:05Z", 59) # day after february in non-leap year
   # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
   parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
-      "2006-01-12T22:04:05+00:00", 11)
+      "2006-01-12T22:04:05Z", 11)
   # RFC3339     = "2006-01-02T15:04:05Z07:00"
-  parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-ddTHH:mm:ssZzzz",
-      "2006-01-12T22:04:05+00:00", 11)
   parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
-      "2006-01-12T22:04:05+00:00", 11)
+      "2006-01-12T22:04:05Z", 11)
   # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
   parseTest("2006-01-12T15:04:05.999999999Z-07:00",
-      "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "2006-01-12T22:04:05+00:00", 11)
+      "yyyy-MM-dd'T'HH:mm:ss'.999999999Z'zzz", "2006-01-12T22:04:05Z", 11)
   for tzFormat in ["z", "zz", "zzz"]:
     # formatting timezone as 'Z' for UTC
     parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
-        "2001-01-12T22:04:05+00:00", 11)
+        "2001-01-12T22:04:05Z", 11)
+  # timezone offset formats
+  parseTest("2001-01-12T15:04:05 +7", "yyyy-MM-dd'T'HH:mm:ss z",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07", "yyyy-MM-dd'T'HH:mm:ss zz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:00", "yyyy-MM-dd'T'HH:mm:ss zzz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:30:59", "yyyy-MM-dd'T'HH:mm:ss zzzz",
+      "2001-01-12T07:33:06Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
-  #when not defined(testing):
-  #  echo "Kitchen: " & $s.parse(f)
-  #  var ti = timeToTimeInfo(getTime())
-  #  echo "Todays date after decoding: ", ti
-  #  var tint = timeToTimeInterval(getTime())
-  #  echo "Todays date after decoding to interval: ", tint
 
   # Bug with parse not setting DST properly if the current local DST differs from
   # the date being parsed. Need to test parse dates both in and out of DST. We
@@ -195,17 +112,17 @@ template runTimezoneTests() =
     let
       parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
       parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-    doAssert toTime(parsedJan).toUnix == 1451962800
-    doAssert toTime(parsedJul).toUnix == 1467342000
+    check toTime(parsedJan).toUnix == 1451962800
+    check toTime(parsedJul).toUnix == 1467342000
 
 suite "ttimes":
 
   # Generate tests for multiple timezone files where available
   # Set the TZ env var for each test
-  when defined(Linux) or defined(macosx):
-    const tz_dir = "/usr/share/zoneinfo"
+  when defined(linux) or defined(macosx):
+    let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
-    
+
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
     for tz_fn in walkFiles(tz_dir & "/**/*"):
@@ -232,7 +149,7 @@ suite "ttimes":
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
       check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
-      
+
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
 
     test "issue #6520":
@@ -250,13 +167,13 @@ suite "ttimes":
       check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")      
+      putEnv("TZ", "Europe/Stockholm")
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
-      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
+      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
     test "datetime before epoch":
-      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52+00:00"
+      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
 
     test "adding/subtracting time across dst":
       putenv("TZ", "Europe/Stockholm")
@@ -319,28 +236,33 @@ suite "ttimes":
   test "incorrect inputs: timezone (zzz) 3":
     parseTestExcp("2018-02-19 16:30:00 +01:0", "yyyy-MM-dd hh:mm:ss zzz")
 
+  test "incorrect inputs: year (yyyy/uuuu)":
+    parseTestExcp("-0001", "yyyy")
+    parseTestExcp("-0001", "YYYY")
+    parseTestExcp("1", "yyyy")
+    parseTestExcp("12345", "yyyy")
+    parseTestExcp("1", "uuuu")
+    parseTestExcp("12345", "uuuu")
+    parseTestExcp("-1 BC", "UUUU g")
+
+  test "incorrect inputs: invalid sign":
+    parseTestExcp("+1", "YYYY")
+    parseTestExcp("+1", "dd")
+    parseTestExcp("+1", "MM")
+    parseTestExcp("+1", "hh")
+    parseTestExcp("+1", "mm")
+    parseTestExcp("+1", "ss")
+
+  test "_ as a separator":
+    discard parse("2000_01_01", "YYYY'_'MM'_'dd")
+
   test "dynamic timezone":
-    proc staticOffset(offset: int): Timezone =
-      proc zoneInfoFromTz(adjTime: Time): ZonedTime =
-          result.isDst = false
-          result.utcOffset = offset
-          result.adjTime = adjTime
-
-      proc zoneInfoFromUtc(time: Time): ZonedTime =
-          result.isDst = false
-          result.utcOffset = offset
-          result.adjTime = fromUnix(time.toUnix - offset)
-
-      result.name = ""
-      result.zoneInfoFromTz = zoneInfoFromTz
-      result.zoneInfoFromUtc = zoneInfoFromUtc
-
-    let tz = staticOffset(-9000)
+    let tz = staticTz(seconds = -9000)
     let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
     check dt.utcOffset == -9000
     check dt.isDst == false
     check $dt == "2000-01-01T12:00:00+02:30"
-    check $dt.utc == "2000-01-01T09:30:00+00:00"
+    check $dt.utc == "2000-01-01T09:30:00Z"
     check $dt.utc.inZone(tz) == $dt
 
   test "isLeapYear":
@@ -349,14 +271,26 @@ suite "ttimes":
     check isLeapYear(2000)
     check (not isLeapYear(1900))
 
-  test "subtract months":
+  test "TimeInterval":
+    let t = fromUnix(876124714).utc # Mon 6 Oct 08:58:34 BST 1997
+    # Interval tests
+    let t2 = t - 2.years
+    check t2.year == 1995
+    let t3 = (t - 7.years - 34.minutes - 24.seconds)
+    check t3.year == 1990
+    check t3.minute == 24
+    check t3.second == 10
+    check (t + 1.hours).toTime.toUnix == t.toTime.toUnix + 60 * 60
+    check (t - 1.hours).toTime.toUnix == t.toTime.toUnix - 60 * 60
+
+  test "TimeInterval - months":
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
-    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00Z"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
-    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00Z"
     dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
     # This happens due to monthday overflow. It's consistent with Phobos.
-    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00Z"
 
   test "duration":
     let d = initDuration
@@ -384,11 +318,11 @@ suite "ttimes":
     discard initDateTime(1, mJan, -35_000, 12, 00, 00)
     discard initDateTime(1, mJan,  35_000, 12, 00, 00)
     # with duration/timeinterval
-    let dt = initDateTime(1, mJan,  35_000, 12, 00, 00, utc()) +
+    let dt = initDateTime(1, mJan, -35_000, 12, 00, 00, utc()) +
       initDuration(seconds = 1)
     check dt.second == 1
     let dt2 = dt + 35_001.years
-    check $dt2 == "0001-01-01T12:00:01+00:00"
+    check $dt2 == "0001-01-01T12:00:01Z"
 
   test "compare datetimes":
     var dt1 = now()
@@ -420,10 +354,134 @@ suite "ttimes":
     let day = 24.hours
     let tomorrow = now + day
     check tomorrow - now == initDuration(days = 1)
-  
-  test "fromWinTime/toWinTime":
-    check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
-    check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
-    check -1.fromWinTime.toWinTime == -1
-    # One nanosecond is discarded due to differences in time resolution
-    check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100 
+
+  # Disabled for JS because it fails due to precision errors
+  # (The JS target uses float64 for int64).
+  when not defined(js):
+    test "fromWinTime/toWinTime":
+      check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
+      check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
+      check (-1).fromWinTime.toWinTime == -1
+      # One nanosecond is discarded due to differences in time resolution
+      check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
+      check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100
+
+  test "issue 7620":
+    let layout = "M/d/yyyy' 'h:mm:ss' 'tt' 'z"
+    let t7620_am = parse("4/15/2017 12:01:02 AM +0", layout, utc())
+    check t7620_am.format(layout) == "4/15/2017 12:01:02 AM Z"
+    let t7620_pm = parse("4/15/2017 12:01:02 PM +0", layout, utc())
+    check t7620_pm.format(layout) == "4/15/2017 12:01:02 PM Z"
+
+  test "format":
+    var dt = initDateTime(1, mJan, -0001,
+                          17, 01, 02, 123_456_789,
+                          staticTz(hours = 1, minutes = 2, seconds = 3))
+    check dt.format("d") == "1"
+    check dt.format("dd") == "01"
+    check dt.format("ddd") == "Fri"
+    check dt.format("dddd") == "Friday"
+    check dt.format("h") == "5"
+    check dt.format("hh") == "05"
+    check dt.format("H") == "17"
+    check dt.format("HH") == "17"
+    check dt.format("m") == "1"
+    check dt.format("mm") == "01"
+    check dt.format("M") == "1"
+    check dt.format("MM") == "01"
+    check dt.format("MMM") == "Jan"
+    check dt.format("MMMM") == "January"
+    check dt.format("s") == "2"
+    check dt.format("ss") == "02"
+    check dt.format("t") == "P"
+    check dt.format("tt") == "PM"
+    check dt.format("yy") == "02"
+    check dt.format("yyyy") == "0002"
+    check dt.format("YYYY") == "2"
+    check dt.format("uuuu") == "-0001"
+    check dt.format("UUUU") == "-1"
+    check dt.format("z") == "-1"
+    check dt.format("zz") == "-01"
+    check dt.format("zzz") == "-01:02"
+    check dt.format("zzzz") == "-01:02:03"
+    check dt.format("g") == "BC"
+
+    check dt.format("fff") == "123"
+    check dt.format("ffffff") == "123456"
+    check dt.format("fffffffff") == "123456789"
+    dt.nanosecond = 1
+    check dt.format("fff") == "000"
+    check dt.format("ffffff") == "000000"
+    check dt.format("fffffffff") == "000000001"
+
+    dt.year = 12345
+    check dt.format("yyyy") == "+12345"
+    check dt.format("uuuu") == "+12345"
+    dt.year = -12345
+    check dt.format("yyyy") == "+12346"
+    check dt.format("uuuu") == "-12345"
+
+    expect ValueError:
+      discard initTimeFormat("'")
+
+    expect ValueError:
+      discard initTimeFormat("'foo")
+
+    expect ValueError:
+      discard initTimeFormat("foo'")
+
+    for tz in [
+        (staticTz(seconds = 0), "+0", "+00", "+00:00"), # UTC
+        (staticTz(seconds = -3600), "+1", "+01", "+01:00"), # CET
+        (staticTz(seconds = -39600), "+11", "+11", "+11:00"), # two digits
+        (staticTz(seconds = -1800), "+0", "+00", "+00:30"), # half an hour
+        (staticTz(seconds = 7200), "-2", "-02", "-02:00"), # positive
+        (staticTz(seconds = 38700), "-10", "-10", "-10:45")]: # positive with three quaters hour
+      let dt = initDateTime(1, mJan, 2000, 00, 00, 00, tz[0])
+      doAssert dt.format("z") == tz[1]
+      doAssert dt.format("zz") == tz[2]
+      doAssert dt.format("zzz") == tz[3]
+
+  test "parse":
+    check $parse("20180101", "yyyyMMdd", utc()) == "2018-01-01T00:00:00Z"
+    parseTestExcp("+120180101", "yyyyMMdd")
+
+    check parse("1", "YYYY", utc()).year == 1
+    check parse("1 BC", "YYYY g", utc()).year == 0
+    check parse("0001 BC", "yyyy g", utc()).year == 0
+    check parse("+12345 BC", "yyyy g", utc()).year == -12344
+    check parse("1 AD", "YYYY g", utc()).year == 1
+    check parse("0001 AD", "yyyy g", utc()).year == 1
+    check parse("+12345 AD", "yyyy g", utc()).year == 12345
+
+    check parse("-1", "UUUU", utc()).year == -1
+    check parse("-0001", "uuuu", utc()).year == -1
+
+    discard parse("foobar", "'foobar'")
+    discard parse("foo'bar", "'foo''''bar'")
+    discard parse("'", "''")
+
+    parseTestExcp("2000 A", "yyyy g")
+
+  test "countLeapYears":
+    # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
+    check countLeapYears(1920) + 1 == countLeapYears(1921)
+    check countLeapYears(2004) + 1 == countLeapYears(2005)
+    check countLeapYears(2020) + 1 == countLeapYears(2021)
+
+  test "timezoneConversion":
+    var l = now()
+    let u = l.utc
+    l = u.local
+
+    check l.timezone == local()
+    check u.timezone == utc()
+
+  test "getDayOfWeek":
+    check getDayOfWeek(01, mJan, 0000) == dSat
+    check getDayOfWeek(01, mJan, -0023) == dSat
+    check getDayOfWeek(21, mSep, 1900) == dFri
+    check getDayOfWeek(01, mJan, 1970) == dThu
+    check getDayOfWeek(21, mSep, 1970) == dMon
+    check getDayOfWeek(01, mJan, 2000) == dSat
+    check getDayOfWeek(01, mJan, 2021) == dFri

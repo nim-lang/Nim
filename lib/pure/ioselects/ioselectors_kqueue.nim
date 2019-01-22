@@ -114,6 +114,9 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
+  for i in 0 ..< maxFD:
+    result.fds[i].ident = InvalidIdent
+
   result.sock = usock
   result.kqFD = kqFD
   result.maxFD = maxFD.int
@@ -127,12 +130,6 @@ proc close*[T](s: Selector[T]) =
     deallocShared(cast[pointer](s))
   if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
-
-template clearKey[T](key: ptr SelectorKey[T]) =
-  var empty: T
-  key.ident = 0
-  key.events = {}
-  key.data = empty
 
 proc newSelectEvent*(): SelectEvent =
   var fds: array[2, cint]
@@ -221,7 +218,7 @@ proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
   s.setKey(fdi, events, 0, data)
 
   if events != {}:
@@ -242,7 +239,7 @@ proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor $# is not registered in the queue!" % $fdi)
   doAssert(pkey.events * maskEvents == {})
 
@@ -269,7 +266,7 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
   let fdi = getUnique(s)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
 
   let events = if oneshot: {Event.Timer, Event.Oneshot} else: {Event.Timer}
   let flags: cushort = if oneshot: EV_ONESHOT or EV_ADD else: EV_ADD
@@ -291,7 +288,7 @@ proc registerSignal*[T](s: Selector[T], signal: int,
                         data: T): int {.discardable.} =
   let fdi = getUnique(s)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
 
   s.setKey(fdi, {Event.Signal}, signal, data)
   var nmask, omask: Sigset
@@ -315,7 +312,7 @@ proc registerProcess*[T](s: Selector[T], pid: int,
                          data: T): int {.discardable.} =
   let fdi = getUnique(s)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == InvalidIdent)
 
   var kflags: cushort = EV_ONESHOT or EV_ADD
   setKey(s, fdi, {Event.Process, Event.Oneshot}, pid, data)
@@ -331,7 +328,7 @@ proc registerProcess*[T](s: Selector[T], pid: int,
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = ev.rfd.int
-  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
+  doAssert(s.fds[fdi].ident == InvalidIdent, "Event is already registered in the queue!")
   setKey(s, fdi, {Event.User}, 0, data)
 
   modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
@@ -374,7 +371,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0,
+  doAssert(pkey.ident != InvalidIdent,
            "Descriptor [" & $fdi & "] is not registered in the queue!")
 
   if pkey.events != {}:
@@ -434,7 +431,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
+  doAssert(pkey.ident != InvalidIdent, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
   modifyKQueue(s, uint(fdi), EVFILT_READ, EV_DELETE, 0, 0, nil)
   when not declared(CACHE_EVENTS):
@@ -570,8 +567,11 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         doAssert(true, "Unsupported kqueue filter in the queue!")
 
       if (kevent.flags and EV_EOF) != 0:
+        # TODO this error handling needs to be rethought.
+        # `fflags` can sometimes be `0x80000000` and thus we use 'cast'
+        # here:
         if kevent.fflags != 0:
-          rkey.errorCode = kevent.fflags.OSErrorCode
+          rkey.errorCode = cast[OSErrorCode](kevent.fflags)
         else:
           # This assumes we are dealing with sockets.
           # TODO: For future-proofing it might be a good idea to give the
@@ -593,7 +593,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd.int].ident != 0
+  return s.fds[fd.int].ident != InvalidIdent
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)

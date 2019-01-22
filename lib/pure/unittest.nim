@@ -145,8 +145,6 @@ type
     testStartTime: float
     testStackTrace: string
 
-{.deprecated: [TTestStatus: TestStatus, TOutputLevel: OutputLevel]}
-
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
@@ -176,10 +174,7 @@ method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
   discard
 
 proc addOutputFormatter*(formatter: OutputFormatter) =
-  if formatters == nil:
-    formatters = @[formatter]
-  else:
-    formatters.add(formatter)
+  formatters.add(formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
                                 colorOutput = true): ConsoleOutputFormatter =
@@ -225,7 +220,7 @@ method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
 
 method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[string], stackTrace: string) =
-  if stackTrace != nil:
+  if stackTrace.len > 0:
     echo stackTrace
   let prefix = if formatter.isInSuite: "    " else: ""
   for msg in items(checkpoints):
@@ -236,7 +231,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
 
   if formatter.outputLevel != PRINT_NONE and
      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
-    let prefix = if testResult.suiteName != nil: "  " else: ""
+    let prefix = if testResult.suiteName.len > 0: "  " else: ""
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName)
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
@@ -244,7 +239,6 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of OK: fgGreen
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
-                    else: fgWhite
         styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()
@@ -301,7 +295,7 @@ method failureOccurred*(formatter: JUnitOutputFormatter, checkpoints: seq[string
   ## ``stackTrace`` is provided only if the failure occurred due to an exception.
   ## ``checkpoints`` is never ``nil``.
   formatter.testErrors.add(checkpoints)
-  if stackTrace != nil:
+  if stackTrace.len > 0:
     formatter.testStackTrace = stackTrace
 
 method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
@@ -392,7 +386,7 @@ proc shouldRun(currentSuiteName, testName: string): bool =
   return false
 
 proc ensureInitialized() =
-  if formatters == nil:
+  if formatters.len == 0:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
   if not disabledParamFiltering and not testsFilters.isValid:
@@ -505,9 +499,9 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == FAILED:
-        programResult += 1
+        programResult = 1
       let testResult = TestResult(
-        suiteName: when declared(testSuiteName): testSuiteName else: nil,
+        suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
         status: testStatusIMPL
       )
@@ -525,8 +519,6 @@ proc checkpoint*(msg: string) =
   ##  checkpoint("Checkpoint B")
   ##
   ## outputs "Checkpoint A" once it fails.
-  if checkpoints == nil:
-    checkpoints = @[]
   checkpoints.add(msg)
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
@@ -548,7 +540,7 @@ template fail* =
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
-    programResult += 1
+    programResult = 1
 
   ensureInitialized()
 
@@ -557,7 +549,7 @@ template fail* =
     when declared(stackTrace):
       formatter.failureOccurred(checkpoints, stackTrace)
     else:
-      formatter.failureOccurred(checkpoints, nil)
+      formatter.failureOccurred(checkpoints, "")
 
   when not defined(ECMAScript):
     if abortOnError: quit(programResult)

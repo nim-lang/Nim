@@ -10,13 +10,12 @@
 # Nim support for C/C++'s `wide strings`:idx:. This is part of the system
 # module! Do not import it directly!
 
-when not declared(NimString):
+when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
 type
   Utf16Char* = distinct int16
   WideCString* = ref UncheckedArray[Utf16Char]
-{.deprecated: [TUtf16Char: Utf16Char].}
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to

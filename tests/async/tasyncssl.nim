@@ -1,8 +1,13 @@
 discard """
-  file: "tasyncssl.nim"
   cmd: "nim $target --hints:on --define:ssl $options $file"
   output: "500"
+  disabled: "windows"
+  target: c
+  action: compile
 """
+
+# XXX, deactivated
+
 import asyncdispatch, asyncnet, net, strutils, os
 
 when defined(ssl):
@@ -15,11 +20,11 @@ when defined(ssl):
   var clientCount = 0
 
   proc sendMessages(client: AsyncSocket) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await send(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
+    for i in 0 ..< swarmSize:
       var sock = newAsyncSocket()
       var clientContext = newContext(verifyMode = CVerifyNone)
       clientContext.wrapSocket(sock)
@@ -62,5 +67,3 @@ when defined(ssl):
 
   assert msgCount == swarmSize * messagesToSend
   echo msgCount
-
-

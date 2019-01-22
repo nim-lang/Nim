@@ -85,14 +85,6 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-
-template release(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
-
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
@@ -264,18 +256,18 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
     of tyRef, tyOptAsRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      var d = cast[ByteAddress](cellToUsr(cell))
-      var s = cast[PGenericSeq](d)
-      if s != nil:
-        for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+      when not defined(gcDestructors):
+        var d = cast[ByteAddress](cellToUsr(cell))
+        var s = cast[PGenericSeq](d)
+        if s != nil:
+          for i in 0..s.len-1:
+            forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
+              GenericSeqSize), cell.typ.base, op)
     else: discard
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
-  acquire(gch)
   gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
@@ -287,7 +279,6 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
       res.filename = framePtr.prev.filename
       res.line = framePtr.prev.line
   res.refcount = 0
-  release(gch)
   when withBitvectors: incl(gch.allocated, res)
   when useCellIds:
     inc gch.idGenerator
@@ -310,53 +301,52 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  # `newObj` already uses locks, so no need for them here.
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
-  cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).reserved = len
-  when defined(memProfiler): nimProfile(size)
-
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
-  cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).reserved = len
-  when defined(memProfiler): nimProfile(size)
+when not defined(gcDestructors):
+  proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
+    # `newObj` already uses locks, so no need for them here.
+    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    result = newObj(typ, size)
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+    when defined(memProfiler): nimProfile(size)
 
-proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-  acquire(gch)
-  collectCT(gch, newsize + sizeof(Cell))
-  var ol = usrToCell(old)
-  sysAssert(ol.typ != nil, "growObj: 1")
-  gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
+  proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
+    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    result = newObj(typ, size)
+    cast[PGenericSeq](result).len = len
+    cast[PGenericSeq](result).reserved = len
+    when defined(memProfiler): nimProfile(size)
 
-  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-  var elemSize = 1
-  if ol.typ.kind != tyString: elemSize = ol.typ.base.size
-  incTypeSize ol.typ, newsize
+  proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
+    collectCT(gch, newsize + sizeof(Cell))
+    var ol = usrToCell(old)
+    sysAssert(ol.typ != nil, "growObj: 1")
+    gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  copyMem(res, ol, oldsize + sizeof(Cell))
-  zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
-          newsize-oldsize)
-  sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
-  when withBitvectors: incl(gch.allocated, res)
-  when useCellIds:
-    inc gch.idGenerator
-    res.id = gch.idGenerator
-  release(gch)
-  result = cellToUsr(res)
-  when defined(memProfiler): nimProfile(newsize-oldsize)
+    var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
+    var elemSize = 1
+    if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+    incTypeSize ol.typ, newsize
 
-proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
-  result = growObj(old, newsize, gch)
+    var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+    copyMem(res, ol, oldsize + sizeof(Cell))
+    zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
+            newsize-oldsize)
+    sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "growObj: 3")
+    when withBitvectors: incl(gch.allocated, res)
+    when useCellIds:
+      inc gch.idGenerator
+      res.id = gch.idGenerator
+    result = cellToUsr(res)
+    when defined(memProfiler): nimProfile(newsize-oldsize)
+
+  proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
+    result = growObj(old, newsize, gch)
 
 {.push profiler:off.}
 
@@ -495,24 +485,19 @@ proc collectCTBody(gch: var GcHeap) =
   sysAssert(allocInv(gch.region), "collectCT: end")
 
 proc collectCT(gch: var GcHeap; size: int) =
+  let fmem = getFreeMem(gch.region)
   if (getOccupiedMem(gch.region) >= gch.cycleThreshold or
-      size > getFreeMem(gch.region)) and gch.recGcLock == 0:
+      size > fmem and fmem > InitialThreshold) and gch.recGcLock == 0:
     collectCTBody(gch)
 
 when not defined(useNimRtl):
   proc GC_disable() =
-    when hasThreadSupport and hasSharedHeap:
-      atomicInc(gch.recGcLock, 1)
-    else:
-      inc(gch.recGcLock)
+    inc(gch.recGcLock)
   proc GC_enable() =
     if gch.recGcLock <= 0:
       raise newException(AssertionError,
           "API usage error: GC_enable called but GC is already enabled")
-    when hasThreadSupport and hasSharedHeap:
-      atomicDec(gch.recGcLock, 1)
-    else:
-      dec(gch.recGcLock)
+    dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) = discard
 
@@ -528,12 +513,10 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    acquire(gch)
     var oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold
-    release(gch)
 
   proc GC_getStatistics(): string =
     result = "[GC] total memory: " & $getTotalMem() & "\n" &

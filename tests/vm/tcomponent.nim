@@ -11,7 +11,7 @@ FOO: blah'''
 
 import macros, sequtils, tables
 import strutils
-import future, meta
+import sugar, meta
 
 type
   Component = object

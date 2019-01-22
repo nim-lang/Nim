@@ -99,6 +99,9 @@ proc newSelector*[T](): Selector[T] =
     result = Selector[T]()
     result.fds = newSeq[SelectorKey[T]](FD_SETSIZE)
 
+  for i in 0 ..< FD_SETSIZE:
+    result.fds[i].ident = InvalidIdent
+
   IOFD_ZERO(addr result.rSet)
   IOFD_ZERO(addr result.wSet)
   IOFD_ZERO(addr result.eSet)
@@ -195,7 +198,7 @@ proc setSelectKey[T](s: Selector[T], fd: SocketHandle, events: set[Event],
   var i = 0
   let fdi = int(fd)
   while i < FD_SETSIZE:
-    if s.fds[i].ident == 0:
+    if s.fds[i].ident == InvalidIdent:
       var pkey = addr(s.fds[i])
       pkey.ident = fdi
       pkey.events = events
@@ -221,7 +224,7 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
   var i = 0
   while i < FD_SETSIZE:
     if s.fds[i].ident == fd.int:
-      s.fds[i].ident = 0
+      s.fds[i].ident = InvalidIdent
       s.fds[i].events = {}
       s.fds[i].data = empty
       break
@@ -307,7 +310,10 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   var rset, wset, eset: FdSet
 
   if timeout != -1:
-    tv.tv_sec = timeout.int32 div 1_000
+    when defined(genode):
+      tv.tv_sec = Time(timeout div 1_000)
+    else:
+      tv.tv_sec = timeout.int32 div 1_000
     tv.tv_usec = (timeout.int32 %% 1_000) * 1_000
   else:
     ptv = nil
@@ -335,7 +341,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
     var k = 0
 
     while (i < FD_SETSIZE) and (k < count):
-      if s.fds[i].ident != 0:
+      if s.fds[i].ident != InvalidIdent:
         var flag = false
         var pkey = addr(s.fds[i])
         var rkey = ReadyKey(fd: int(pkey.ident), events: {})
@@ -388,7 +394,6 @@ proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
         return true
-      inc(i)
 
 when hasThreadSupport:
   template withSelectLock[T](s: Selector[T], body: untyped) =

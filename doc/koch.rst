@@ -61,7 +61,7 @@ test command
 ------------
 
 The `test`:idx: command can also be invoked with the alias ``tests``. This
-command will compile and run ``tests/testament/tester.nim``, which is the main
+command will compile and run ``testament/tester.nim``, which is the main
 driver of Nim's test suite. You can pass options to the ``test`` command,
 they will be forwarded to the tester. See its source code for available
 options.

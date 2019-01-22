@@ -9,6 +9,9 @@
 
 ## Nimsuggest is a tool that helps to give editors IDE like capabilities.
 
+when not defined(nimcore):
+  {.error: "nimcore MUST be defined for Nim's core tooling".}
+
 import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to wierd bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
@@ -17,7 +20,8 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, vm, prefixmatches]
+  idents, modulegraphs, vm, prefixmatches, lineinfos, cmdlinehelper,
+  pathutils]
 
 when defined(windows):
   import winlean
@@ -31,6 +35,7 @@ Usage:
   nimsuggest [options] projectfile.nim
 
 Options:
+  --autobind              automatically binds into a free port
   --port:PORT             port, by default 6000
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
@@ -45,6 +50,8 @@ Options:
                           '""" & DummyEof & """' for the tester
 
 The server then listens to the connection and takes line-based commands.
+
+If --autobind is used, the binded port number will be printed to stdout.
 
 In addition, all command line options of Nim that do not affect code generation
 are supported.
@@ -64,6 +71,7 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
   gRefresh: bool
+  gAutoBind = false
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -74,8 +82,8 @@ proc writelnToChannel(line: string) =
 proc sugResultHook(s: Suggest) =
   results.send(s)
 
-proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
-  results.send(Suggest(section: ideChk, filePath: toFullPath(info),
+proc errorHook(conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+  results.send(Suggest(section: ideChk, filePath: toFullPath(conf, info),
     line: toLinenumber(info), column: toColumn(info), doc: msg,
     forth: $sev))
 
@@ -95,7 +103,7 @@ type
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
-  if cmd[i] == '"':
+  if i < cmd.len and cmd[i] == '"':
     i += parseUntil(cmd, outp, '"', i+1)+2
   else:
     i += parseUntil(cmd, outp, seps, i)
@@ -106,10 +114,10 @@ proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 proc sexp(s: Suggest): SexpNode =
   # If you change the order here, make sure to change it over in
   # nim-mode.el too.
-  let qp = if s.qualifiedPath.isNil: @[] else: s.qualifiedPath
+  let qp = if s.qualifiedPath.len == 0: @[] else: s.qualifiedPath
   result = convertSexp([
     s.section,
-    s.symkind,
+    TSymKind s.symkind,
     qp.map(newSString),
     s.filePath,
     s.forth,
@@ -141,74 +149,79 @@ proc listEpc(): SexpNode =
     methodDesc.add(docstring)
     result.add(methodDesc)
 
-proc findNode(n: PNode): PSym =
+proc findNode(n: PNode; trackPos: TLineInfo): PSym =
   #echo "checking node ", n.info
   if n.kind == nkSym:
-    if isTracked(n.info, n.sym.name.s.len): return n.sym
+    if isTracked(n.info, trackPos, n.sym.name.s.len): return n.sym
   else:
     for i in 0 ..< safeLen(n):
-      let res = n.sons[i].findNode
+      let res = findNode(n[i], trackPos)
       if res != nil: return res
 
-proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
-  let m = graph.getModule(gTrackPos.fileIndex)
-  #echo m.isNil, " I knew it ", gTrackPos.fileIndex
+proc symFromInfo(graph: ModuleGraph; trackPos: TLineInfo): PSym =
+  let m = graph.getModule(trackPos.fileIndex)
   if m != nil and m.ast != nil:
-    result = m.ast.findNode
+    result = findNode(m.ast, trackPos)
 
-proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
-             graph: ModuleGraph; cache: IdentCache) =
+proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+             graph: ModuleGraph) =
   let conf = graph.config
-  myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+  myLog("cmd: " & $cmd & ", file: " & file.string &
+        ", dirtyFile: " & dirtyfile.string &
         "[" & $line & ":" & $col & "]")
   conf.ideCmd = cmd
-  if cmd == ideChk:
-    msgs.structuredErrorHook = errorHook
-    msgs.writelnHook = myLog
-  else:
-    msgs.structuredErrorHook = nil
-    msgs.writelnHook = myLog
-  if cmd == ideUse and suggestVersion != 0:
+  if cmd == ideUse and conf.suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
-  if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
-  else: msgs.setDirtyFile(dirtyIdx, nil)
+  if not dirtyfile.isEmpty: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
+  else: msgs.setDirtyFile(conf, dirtyIdx, AbsoluteFile"")
 
-  gTrackPos = newLineInfo(dirtyIdx, line, col)
-  gTrackPosAttached = false
+  conf.m.trackPos = newLineInfo(dirtyIdx, line, col)
+  conf.m.trackPosAttached = false
   conf.errorCounter = 0
-  if suggestVersion == 1:
+  if conf.suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
-    graph.compileProject(cache)
-  if suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
-      dirtyfile.len == 0:
+    graph.compileProject(dirtyIdx)
+  if conf.suggestVersion == 0 and conf.ideCmd in {ideUse, ideDus} and
+      dirtyfile.isEmpty:
     discard "no need to recompile anything"
   else:
     let modIdx = graph.parentModule(dirtyIdx)
     graph.markDirty dirtyIdx
     graph.markClientsDirty dirtyIdx
     if conf.ideCmd != ideMod:
-      graph.compileProject(cache, modIdx)
+      if isKnownFile:
+        graph.compileProject(modIdx)
   if conf.ideCmd in {ideUse, ideDus}:
-    let u = if suggestVersion != 1: graph.symFromInfo(gTrackPos) else: graph.usageSym
+    let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
       listUsages(conf, u)
     else:
-      localError(conf, gTrackPos, "found no symbol at this position " & $gTrackPos)
+      localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
+
+proc execute(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
+             graph: ModuleGraph) =
+  if cmd == ideChk:
+    graph.config.structuredErrorHook = errorHook
+    graph.config.writelnHook = myLog
+  else:
+    graph.config.structuredErrorHook = nil
+    graph.config.writelnHook = myLog
+  executeNoHooks(cmd, file, dirtyfile, line, col, graph)
 
 proc executeEpc(cmd: IdeCmd, args: SexpNode;
-                graph: ModuleGraph; cache: IdentCache) =
+                graph: ModuleGraph) =
   let
-    file = args[0].getStr
+    file = AbsoluteFile args[0].getStr
     line = args[1].getNum
     column = args[2].getNum
-  var dirtyfile = ""
+  var dirtyfile = AbsoluteFile""
   if len(args) > 3:
-    dirtyfile = args[3].getStr(nil)
-  execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
+    dirtyfile = AbsoluteFile args[3].getStr("")
+  execute(cmd, file, dirtyfile, int(line), int(column), graph)
 
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
@@ -297,9 +310,15 @@ proc replCmdline(x: ThreadParams) {.thread.} =
 
 proc replTcp(x: ThreadParams) {.thread.} =
   var server = newSocket()
-  server.bindAddr(x.port, x.address)
+  if gAutoBind:
+    let port = server.connectToNextFreePort(x.address)
+    server.listen()
+    echo port
+    stdout.flushFile()
+  else:
+    server.bindAddr(x.port, x.address)
+    server.listen()
   var inp = "".TaintedString
-  server.listen()
   while true:
     var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
@@ -377,7 +396,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
                          "unexpected call: " & epcAPI
       quit errMessage
 
-proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: CachedMsgs) =
+proc execCmd(cmd: string; graph: ModuleGraph; cachedMsgs: CachedMsgs) =
   let conf = graph.config
 
   template sentinel() =
@@ -419,7 +438,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   var dirtyfile = ""
   var orig = ""
   i = parseQuoted(cmd, orig, i)
-  if cmd[i] == ';':
+  if i < cmd.len and cmd[i] == ';':
     i = parseQuoted(cmd, dirtyfile, i+1)
   i += skipWhile(cmd, seps, i)
   var line = -1
@@ -429,27 +448,27 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   i += parseInt(cmd, col, i)
 
   if conf.ideCmd == ideKnown:
-    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, orig))))
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, AbsoluteFile orig))))
   else:
     if conf.ideCmd == ideChk:
-      for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
-    execute(conf.ideCmd, orig, dirtyfile, line, col, graph, cache)
+      for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
+    execute(conf.ideCmd, AbsoluteFile orig, AbsoluteFile dirtyfile, line, col, graph)
   sentinel()
 
-proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
+proc recompileFullProject(graph: ModuleGraph) =
   #echo "recompiling full project"
   resetSystemArtifacts(graph)
-  vm.globalCtx = nil
+  graph.vm = nil
   graph.resetAllModules()
   GC_fullcollect()
-  compileProject(graph, cache)
+  compileProject(graph)
   #echo GC_getStatistics()
 
-proc mainThread(graph: ModuleGraph; cache: IdentCache) =
+proc mainThread(graph: ModuleGraph) =
   let conf = graph.config
   if gLogging:
     for it in conf.searchPaths:
-      log(it)
+      log(it.string)
 
   proc wrHook(line: string) {.closure.} =
     if gMode == mepc:
@@ -457,17 +476,17 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
     else:
       writelnToChannel(line)
 
-  msgs.writelnHook = wrHook
-  suggestionResultHook = sugResultHook
+  conf.writelnHook = wrHook
+  conf.suggestionResultHook = sugResultHook
   graph.doStopCompile = proc (): bool = requests.peek() > 0
   var idle = 0
   var cachedMsgs: CachedMsgs = @[]
   while true:
     let (hasData, req) = requests.tryRecv()
     if hasData:
-      msgs.writelnHook = wrHook
-      suggestionResultHook = sugResultHook
-      execCmd(req, graph, cache, cachedMsgs)
+      conf.writelnHook = wrHook
+      conf.suggestionResultHook = sugResultHook
+      execCmd(req, graph, cachedMsgs)
       idle = 0
     else:
       os.sleep 250
@@ -475,39 +494,38 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
     if idle == 20 and gRefresh:
       # we use some nimsuggest activity to enable a lazy recompile:
       conf.ideCmd = ideChk
-      msgs.writelnHook = proc (s: string) = discard
+      conf.writelnHook = proc (s: string) = discard
       cachedMsgs.setLen 0
-      msgs.structuredErrorHook = proc (info: TLineInfo; msg: string; sev: Severity) =
+      conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
         cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
-      suggestionResultHook = proc (s: Suggest) = discard
-      recompileFullProject(graph, cache)
+      conf.suggestionResultHook = proc (s: Suggest) = discard
+      recompileFullProject(graph)
 
 var
   inputThread: Thread[ThreadParams]
 
-proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
+proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
-  clearPasses()
-  registerPass verbosePass
-  registerPass semPass
+  clearPasses(graph)
+  registerPass graph, verbosePass
+  registerPass graph, semPass
   conf.cmd = cmdIdeTools
-  incl conf.globalOptions, optCaasEnabled
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
-    quit "cannot find file: " & conf.projectFull
+    quit "cannot find file: " & conf.projectFull.string
 
   add(conf.searchPaths, conf.libpath)
 
   # do not stop after the first error:
   conf.errorMax = high(int)
   # do not print errors, but log them
-  msgs.writelnHook = proc (s: string) = log(s)
-  msgs.structuredErrorHook = nil
+  conf.writelnHook = proc (s: string) = log(s)
+  conf.structuredErrorHook = nil
 
   # compile the project before showing any input so that we already
   # can answer questions right away:
-  compileProject(graph, cache)
+  compileProject(graph)
 
   open(requests)
   open(results)
@@ -517,10 +535,10 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
   of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
   of mcmdsug: createThread(inputThread, replCmdline,
-                            (gPort, "sug \"" & conf.projectFull & "\":" & gAddress))
+                            (gPort, "sug \"" & conf.projectFull.string & "\":" & gAddress))
   of mcmdcon: createThread(inputThread, replCmdline,
-                            (gPort, "con \"" & conf.projectFull & "\":" & gAddress))
-  mainThread(graph, cache)
+                            (gPort, "con \"" & conf.projectFull.string & "\":" & gAddress))
+  mainThread(graph)
   joinThread(inputThread)
   close(requests)
   close(results)
@@ -536,6 +554,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "help", "h":
         stdout.writeline(Usage)
         quit()
+      of "autobind":
+        gMode = mtcp
+        gAutoBind = true
       of "port":
         gPort = parseInt(p.val).Port
         gMode = mtcp
@@ -555,8 +576,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         gMode = mepc
         conf.verbosity = 0          # Port number gotta be first.
       of "debug": incl(conf.globalOptions, optIdeDebug)
-      of "v2": suggestVersion = 0
-      of "v1": suggestVersion = 1
+      of "v2": conf.suggestVersion = 0
+      of "v1": conf.suggestVersion = 1
       of "tester":
         gMode = mstdin
         gEmitEof = true
@@ -568,7 +589,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
         else:
           gRefresh = true
       of "maxresults":
-        suggestMaxResults = parseInt(p.val)
+        conf.suggestMaxResults = parseInt(p.val)
       else: processSwitch(pass, p, conf)
     of cmdArgument:
       let a = unixToNativePath(p.key)
@@ -581,55 +602,142 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
-  condsyms.initDefines(conf.symbols)
-  defineSymbol conf.symbols, "nimsuggest"
+  let self = NimProg(
+    suggestMode: true,
+    processCmdLine: processCmdLine,
+    mainCommand: mainCommand
+  )
+  self.initDefinesProg(conf, "nimsuggest")
 
   if paramCount() == 0:
     stdout.writeline(Usage)
-  else:
-    processCmdLine(passCmd1, "", conf)
-    if gMode != mstdin:
-      msgs.writelnHook = proc (msg: string) = discard
-    if conf.projectName != "":
-      try:
-        conf.projectFull = canonicalizePath(conf, conf.projectName)
-      except OSError:
-        conf.projectFull = conf.projectName
-      var p = splitFile(conf.projectFull)
-      conf.projectPath = canonicalizePath(conf, p.dir)
-      conf.projectName = p.name
-    else:
-      conf.projectPath = canonicalizePath(conf, getCurrentDir())
+    return
 
+  self.processCmdLineAndProjectPath(conf)
+
+  if gMode != mstdin:
+    conf.writelnHook = proc (msg: string) = discard
+  # Find Nim's prefix dir.
+  let binaryPath = findExe("nim")
+  if binaryPath == "":
+    raise newException(IOError,
+        "Cannot find Nim standard library: Nim compiler not in PATH")
+  conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
+  if not dirExists(conf.prefixDir / RelativeDir"lib"):
+    conf.prefixDir = AbsoluteDir""
+
+  #msgs.writelnHook = proc (line: string) = log(line)
+  myLog("START " & conf.projectFull.string)
+
+  discard self.loadConfigsAndRunMainCommand(cache, conf)
+
+when isMainModule:
+  handleCmdline(newIdentCache(), newConfigRef())
+else:
+  export Suggest
+  export IdeCmd
+  export AbsoluteFile
+  type NimSuggest* = ref object
+    graph: ModuleGraph
+    idle: int
+    cachedMsgs: CachedMsgs
+
+  proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
+    var retval: ModuleGraph
+    proc mockCommand(graph: ModuleGraph) =
+      retval = graph
+      let conf = graph.config
+      clearPasses(graph)
+      registerPass graph, verbosePass
+      registerPass graph, semPass
+      conf.cmd = cmdIdeTools
+      wantMainModule(conf)
+
+      if not fileExists(conf.projectFull):
+        quit "cannot find file: " & conf.projectFull.string
+
+      add(conf.searchPaths, conf.libpath)
+
+      # do not stop after the first error:
+      conf.errorMax = high(int)
+      # do not print errors, but log them
+      conf.writelnHook = proc (s: string) = log(s)
+      conf.structuredErrorHook = nil
+
+      # compile the project before showing any input so that we already
+      # can answer questions right away:
+      compileProject(graph)
+
+
+    proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
+      conf.suggestVersion = 0
+      let a = unixToNativePath(project)
+      if dirExists(a) and not fileExists(a.addFileExt("nim")):
+        conf.projectName = findProjectNimFile(conf, a)
+        # don't make it worse, report the error the old way:
+        if conf.projectName.len == 0: conf.projectName = a
+      else:
+        conf.projectName = a
+          # if processArgument(pass, p, argsCount): break
+    let
+      cache = newIdentCache()
+      conf = newConfigRef()
+      self = NimProg(
+        suggestMode: true,
+        processCmdLine: mockCmdLine,
+        mainCommand: mockCommand
+      )
+    self.initDefinesProg(conf, "nimsuggest")
+
+    self.processCmdLineAndProjectPath(conf)
+
+    if gMode != mstdin:
+      conf.writelnHook = proc (msg: string) = discard
     # Find Nim's prefix dir.
-    let binaryPath = findExe("nim")
-    if binaryPath == "":
-      raise newException(IOError,
-          "Cannot find Nim standard library: Nim compiler not in PATH")
-    conf.prefixDir = binaryPath.splitPath().head.parentDir()
-    if not dirExists(conf.prefixDir / "lib"): conf.prefixDir = ""
+    if nimPath == "":
+      let binaryPath = findExe("nim")
+      if binaryPath == "":
+        raise newException(IOError,
+            "Cannot find Nim standard library: Nim compiler not in PATH")
+      conf.prefixDir = AbsoluteDir binaryPath.splitPath().head.parentDir()
+      if not dirExists(conf.prefixDir / RelativeDir"lib"):
+        conf.prefixDir = AbsoluteDir""
+    else:
+      conf.prefixDir = AbsoluteDir nimPath
 
     #msgs.writelnHook = proc (line: string) = log(line)
-    myLog("START " & conf.projectFull)
+    myLog("START " & conf.projectFull.string)
 
-    loadConfigs(DefaultConfig, cache, conf) # load all config files
-    # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
-    conf.command = "nimsuggest"
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if fileExists(scriptFile):
-      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file:
-      if scriptFile != conf.projectFull:
-        runNimScript(cache, scriptFile, freshDefines=false, conf)
-    elif fileExists(conf.projectPath / "config.nims"):
-      # directory wide NimScript file
-      runNimScript(cache, conf.projectPath / "config.nims", freshDefines=false, conf)
+    discard self.loadConfigsAndRunMainCommand(cache, conf)
+    if gLogging:
+      for it in conf.searchPaths:
+        log(it.string)
 
-    extccomp.initVars(conf)
-    processCmdLine(passCmd2, "", conf)
+    retval.doStopCompile = proc (): bool = false
+    return NimSuggest(graph: retval, idle: 0, cachedMsgs: @[])
 
-    let graph = newModuleGraph(conf)
-    graph.suggestMode = true
-    mainCommand(graph, cache)
+  proc runCmd*(nimsuggest: NimSuggest, cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int): seq[Suggest] =
+    var retval: seq[Suggest] = @[]
+    let conf = nimsuggest.graph.config
+    conf.ideCmd = cmd
+    conf.writelnHook = proc (line: string) =
+      retval.add(Suggest(section: ideMsg, doc: line))
+    conf.suggestionResultHook = proc (s: Suggest) =
+      retval.add(s)
+    conf.writelnHook = proc (s: string) =
+      stderr.write s & "\n"
+    if conf.ideCmd == ideKnown:
+      retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
+    else:
+      if conf.ideCmd == ideChk:
+        for cm in nimsuggest.cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
+      if conf.ideCmd == ideChk:
+        conf.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+          retval.add(Suggest(section: ideChk, filePath: toFullPath(conf, info),
+            line: toLinenumber(info), column: toColumn(info), doc: msg,
+            forth: $sev))
 
-handleCmdline(newIdentCache(), newConfigRef())
+      else:
+        conf.structuredErrorHook = nil
+      executeNoHooks(conf.ideCmd, file, dirtyfile, line, col, nimsuggest.graph)
+    return retval

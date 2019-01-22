@@ -89,6 +89,9 @@ proc lastSon*(n: PRstNode): PRstNode =
 proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
+proc add*(father: PRstNode; s: string) =
+  add(father.sons, newRstNode(rnLeaf, s))
+
 proc addIfNotNil*(father, son: PRstNode) =
   if son != nil: add(father, son)
 
@@ -293,9 +296,9 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
       (key: "kind", val: %($node.kind)),
       (key: "level", val: %BiggestInt(node.level))
      ]
-  if node.text != nil:
+  if node.text.len > 0:
     result.add("text", %node.text)
-  if node.sons != nil and len(node.sons) > 0:
+  if len(node.sons) > 0:
     var accm = newSeq[JsonNode](len(node.sons))
     for i, son in node.sons:
       accm[i] = renderRstToJsonNode(son)

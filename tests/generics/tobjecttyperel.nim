@@ -2,8 +2,8 @@ discard """
   output: '''(peel: 0, color: 15)
 (color: 15)
 17
-(width: 0.0, taste: nil, color: 13)
-(width: 0.0, taste: nil, color: 15)
+(width: 0.0, taste: "", color: 13)
+(width: 0.0, taste: "", color: 15)
 cool'''
 """
 
@@ -11,16 +11,16 @@ cool'''
 type
   BaseFruit[T] = object of RootObj
     color: T
-    
+
   MidLevel[T] = object of BaseFruit[T]
-  
+
   Mango = object of MidLevel[int]
     peel: int
-    
+
   Peach[X, T, Y] = object of T
     width: X
     taste: Y
-    
+
 proc setColor[T](self: var BaseFruit[T]) =
   self.color = 15
 

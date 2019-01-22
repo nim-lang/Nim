@@ -25,6 +25,11 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
+proc c_strlen(a: cstring): csize {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_abort() {.
+  importc: "abort", header: "<stdlib.h>", noSideEffect.}
+
 
 when defined(linux) and defined(amd64):
   type
@@ -45,7 +50,8 @@ when defined(windows):
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
-     defined(dragonfly):
+     defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
+     defined(aix) or hostOS == "standalone":
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)
@@ -54,6 +60,15 @@ elif defined(macosx) or defined(linux) or defined(freebsd) or
     SIGSEGV = cint(11)
     SIGTERM = cint(15)
     SIGPIPE = cint(13)
+elif defined(haiku):
+  const
+    SIGABRT = cint(6)
+    SIGFPE = cint(8)
+    SIGILL = cint(4)
+    SIGINT = cint(2)
+    SIGSEGV = cint(11)
+    SIGTERM = cint(15)
+    SIGPIPE = cint(7)
 else:
   when NoFakeVars:
     {.error: "SIGABRT not ported to your platform".}
@@ -69,6 +84,8 @@ else:
 
 when defined(macosx):
   const SIGBUS = cint(10)
+elif defined(haiku):
+  const SIGBUS = cint(30)
 else:
   template SIGBUS: untyped = SIGSEGV
 

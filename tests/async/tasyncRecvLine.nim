@@ -1,6 +1,5 @@
 discard """
-  file: "tasyncRecvLine.nim"
-  output: '''
+output: '''
 Hello World
 Hello World
 '''

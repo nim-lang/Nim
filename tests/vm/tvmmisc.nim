@@ -1,7 +1,6 @@
 # bug #4462
 import macros
 import os
-import ospaths
 import strutils
 
 block:
@@ -19,9 +18,9 @@ block:
     var x = default(type(0))
 
 # #6379
-static:
-  import algorithm
+import algorithm
 
+static:
   var numArray = [1, 2, 3, 4, -1]
   numArray.sort(cmp)
   assert numArray == [-1, 1, 2, 3, 4]
@@ -31,7 +30,7 @@ static:
   assert str == "abc"
 
 # #6086
-import math, sequtils, future
+import math, sequtils, sugar
 
 block:
   proc f: int =
@@ -71,7 +70,9 @@ block:
 # Tests for VM ops
 block:
   static:
-    assert "vm" in getProjectPath()
+    # for joint test, the project path is different, so I disabled it:
+    when false:
+      assert "vm" in getProjectPath()
 
     let b = getEnv("UNSETENVVAR")
     assert b == ""
@@ -90,3 +91,61 @@ block:
       var some = newStringOfCap(size)
       result = size
     doAssert f(4) == 4
+
+# #6689
+block:
+  static:
+    proc foo(): int = 0
+    var f: proc(): int
+    doAssert f.isNil
+    f = foo
+    doAssert(not f.isNil)
+
+block:
+  static:
+    var x: ref ref int
+    new(x)
+    doAssert(not x.isNil)
+
+# #7871
+static:
+  type Obj = object
+    field: int
+  var s = newSeq[Obj](1)
+  var o = Obj()
+  s[0] = o
+  o.field = 2
+  doAssert s[0].field == 0
+
+# #8125
+static:
+   let def_iter_var = ident("it")
+
+# #8142
+static:
+  type Obj = object
+    names: string
+
+  proc pushName(o: var Obj) =
+    var s = ""
+    s.add("FOOBAR")
+    o.names.add(s)
+
+  var o = Obj()
+  o.names = ""
+  o.pushName()
+  o.pushName()
+  doAssert o.names == "FOOBARFOOBAR"
+
+# #8154
+import parseutils
+
+static:
+  type Obj = object
+    i: int
+
+  proc foo(): Obj =
+    discard parseInt("1", result.i, 0)
+
+  static:
+    doAssert foo().i == 1

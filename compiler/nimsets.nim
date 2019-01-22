@@ -10,7 +10,8 @@
 # this unit handles Nim sets; it implements symbolic sets
 
 import
-  ast, astalgo, trees, nversion, msgs, platform, bitsets, types, renderer
+  ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
+  options
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
@@ -58,10 +59,10 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
         return true
   result = false
 
-proc toBitSet*(s: PNode, b: var TBitSet) =
+proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
   var first, j: BiggestInt
-  first = firstOrd(s.typ.sons[0])
-  bitSetInit(b, int(getSize(s.typ)))
+  first = firstOrd(conf, s.typ.sons[0])
+  bitSetInit(b, int(getSize(conf, s.typ)))
   for i in countup(0, sonsLen(s) - 1):
     if s.sons[i].kind == nkRange:
       j = getOrdValue(s.sons[i].sons[0])
@@ -71,13 +72,13 @@ proc toBitSet*(s: PNode, b: var TBitSet) =
     else:
       bitSetIncl(b, getOrdValue(s.sons[i]) - first)
 
-proc toTreeSet*(s: TBitSet, settype: PType, info: TLineInfo): PNode =
+proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
     a, b, e, first: BiggestInt # a, b are interval borders
     elemType: PType
     n: PNode
   elemType = settype.sons[0]
-  first = firstOrd(elemType)
+  first = firstOrd(conf, elemType)
   result = newNodeI(nkCurly, info)
   result.typ = settype
   result.info = info
@@ -107,42 +108,42 @@ proc toTreeSet*(s: TBitSet, settype: PType, info: TLineInfo): PNode =
 
 template nodeSetOp(a, b: PNode, op: untyped) {.dirty.} =
   var x, y: TBitSet
-  toBitSet(a, x)
-  toBitSet(b, y)
+  toBitSet(conf, a, x)
+  toBitSet(conf, b, y)
   op(x, y)
-  result = toTreeSet(x, a.typ, a.info)
+  result = toTreeSet(conf, x, a.typ, a.info)
 
-proc unionSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetUnion)
-proc diffSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetDiff)
-proc intersectSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetIntersect)
-proc symdiffSets*(a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
+proc unionSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetUnion)
+proc diffSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetDiff)
+proc intersectSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetIntersect)
+proc symdiffSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
 
-proc containsSets*(a, b: PNode): bool =
+proc containsSets*(conf: ConfigRef; a, b: PNode): bool =
   var x, y: TBitSet
-  toBitSet(a, x)
-  toBitSet(b, y)
+  toBitSet(conf, a, x)
+  toBitSet(conf, b, y)
   result = bitSetContains(x, y)
 
-proc equalSets*(a, b: PNode): bool =
+proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
   var x, y: TBitSet
-  toBitSet(a, x)
-  toBitSet(b, y)
+  toBitSet(conf, a, x)
+  toBitSet(conf, b, y)
   result = bitSetEquals(x, y)
 
-proc complement*(a: PNode): PNode =
+proc complement*(conf: ConfigRef; a: PNode): PNode =
   var x: TBitSet
-  toBitSet(a, x)
+  toBitSet(conf, a, x)
   for i in countup(0, high(x)): x[i] = not x[i]
-  result = toTreeSet(x, a.typ, a.info)
+  result = toTreeSet(conf, x, a.typ, a.info)
 
-proc deduplicate*(a: PNode): PNode =
+proc deduplicate*(conf: ConfigRef; a: PNode): PNode =
   var x: TBitSet
-  toBitSet(a, x)
-  result = toTreeSet(x, a.typ, a.info)
+  toBitSet(conf, a, x)
+  result = toTreeSet(conf, x, a.typ, a.info)
 
-proc cardSet*(a: PNode): BiggestInt =
+proc cardSet*(conf: ConfigRef; a: PNode): BiggestInt =
   var x: TBitSet
-  toBitSet(a, x)
+  toBitSet(conf, a, x)
   result = bitSetCard(x)
 
 proc setHasRange*(s: PNode): bool =

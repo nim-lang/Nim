@@ -33,8 +33,6 @@ type
     root: Node[T]
     count: int
 
-{.deprecated: [TCritBitTree: CritBitTree].}
-
 proc len*[T](c: CritBitTree[T]): int =
   ## returns the number of elements in `c` in O(1).
   result = c.count
@@ -165,15 +163,17 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
 
 proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
   ## increments `c[key]` by `val`.
-  let oldCount = c.count
   var n = rawInsert(c, key)
-  if c.count == oldCount or oldCount == 0:
-    # not a new key:
-    inc n.val, val
+  inc n.val, val
 
 proc incl*(c: var CritBitTree[void], key: string) =
   ## includes `key` in `c`.
   discard rawInsert(c, key)
+
+proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+  ## inserts `key` with value `val` into `c`.
+  var n = rawInsert(c, key)
+  n.val = val
 
 proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## puts a (key, value)-pair into `t`.
@@ -200,12 +200,6 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
   deprecatedGet.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  get(c, key)
-
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
-  ## retrieves the value at ``c[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## Use ```[]``` instead.
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =
@@ -322,10 +316,14 @@ proc `$`*[T](c: CritBitTree[T]): string =
       const avgItemLen = 16
     result = newStringOfCap(c.count * avgItemLen)
     result.add("{")
-    for key, val in pairs(c):
-      if result.len > 1: result.add(", ")
-      result.add($key)
-      when T isnot void:
+    when T is void:
+      for key in keys(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
+    else:
+      for key, val in pairs(c):
+        if result.len > 1: result.add(", ")
+        result.addQuoted(key)
         result.add(": ")
         result.addQuoted(val)
     result.add("}")
@@ -362,3 +360,27 @@ when isMainModule:
 
   c.inc("a", -5)
   assert c["a"] == 0
+
+  c.inc("b", 2)
+  assert c["b"] == 2
+
+  c.inc("c", 3)
+  assert c["c"] == 3
+
+  c.inc("a", 1)
+  assert c["a"] == 1
+
+  var cf = CritBitTree[float]()
+
+  cf.incl("a", 1.0)
+  assert cf["a"] == 1.0
+
+  cf.incl("b", 2.0)
+  assert cf["b"] == 2.0
+
+  cf.incl("c", 3.0)
+  assert cf["c"] == 3.0
+
+  assert cf.len == 3
+  cf.excl("c")
+  assert cf.len == 2

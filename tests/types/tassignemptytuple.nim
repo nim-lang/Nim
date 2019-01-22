@@ -1,7 +1,7 @@
 discard """
+  errormsg: "cannot infer the type of the tuple"
   file: "tassignemptytuple.nim"
   line: 11
-  errormsg: "cannot infer the type of the tuple"
 """
 
 var

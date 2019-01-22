@@ -10,33 +10,21 @@
 ## This module defines compile-time reflection procs for
 ## working with types
 
+include "system/helpers" # for `isNamedTuple`
+
+export system.`$`
+export isNamedTuple
+
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
-  ## Returns the name of the given type.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##
-  ##   import typetraits
-  ##
-  ##   proc `$`*(T: typedesc): string = name(T)
-  ##
-  ##   template test(x): typed =
-  ##     echo "type: ", type(x), ", value: ", x
-  ##
-  ##   test 42
-  ##   # --> type: int, value: 42
-  ##   test "Foo"
-  ##   # --> type: string, value: Foo
-  ##   test(@['A','B'])
-  ##   # --> type: seq[char], value: @[A, B]
+  ## Alias for system.`$`(t) since Nim v0.20.0.
 
-proc `$`*(t: typedesc): string =
-  ## An alias for `name`.
-  name(t)
-
-proc arity*(t: typedesc): int {.magic: "TypeTrait".}
-  ## Returns the arity of the given type
+proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
+  ## Returns the arity of the given type. This is the number of "type" components or
+  ## the number of generic parameters a given type ``t`` has.
+  runnableExamples:
+    assert arity(seq[string]) == 1
+    assert arity(array[3, int]) == 2
+    assert arity((int, int, float, string)) == 4
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## Accepts an instantiated generic type and returns its
@@ -47,11 +35,11 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ##   seq[int].genericHead[float] will be seq[float]
   ##
   ## A compile-time error will be produced if the supplied type
-  ## is not generic
+  ## is not generic.
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## This trait is similar to `genericHead`, but instead of producing
-  ## error for non-generic types, it will just return them unmodified
+  ## error for non-generic types, it will just return them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
@@ -59,9 +47,22 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 
 
 when isMainModule:
-  # echo type(42)
-  import streams
-  var ss = newStringStream()
-  ss.write($type(42)) # needs `$`
-  ss.setPosition(0)
-  doAssert ss.readAll() == "int"
+  static:
+    doAssert $type(42) == "int"
+    doAssert int.name == "int"
+
+  const a1 = name(int)
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a1 == "int"
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a1 = name(t)
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a1 == "int"
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)

@@ -1,7 +1,5 @@
 discard """
-  file: "tawaitsemantics.nim"
-  exitcode: 0
-  output: '''
+output: '''
 Error can be caught using yield
 Infix `or` raises
 Infix `and` raises

@@ -1,5 +1,4 @@
 discard """
-  file: "tambsym2.nim"
   output: "7"
 """
 # Test overloading of procs with locals
@@ -20,5 +19,3 @@ m.len = 7
 m.data = "1234"
 
 x(m, 5) #OUT 7
-
-

@@ -56,7 +56,9 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  platform, hashes
+  hashes
+
+from pathutils import AbsoluteFile
 
 type
   FormatStr* = string  # later we may change it to CString for better
@@ -66,43 +68,22 @@ type
   Rope* = ref RopeObj
   RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
                                           # by nil to safe space
-    left*, right*: Rope
-    length*: int
-    data*: string             # != nil if a leaf
-
-  RopeSeq* = seq[Rope]
-
-  RopesError* = enum
-    rCannotOpenFile
-    rInvalidFormatStr
-
-# implementation
-
-var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
-  # avoid dependency on msgs.nim
+    left, right: Rope
+    L: int                    # <= 0 if a leaf
+    data*: string
 
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
-  else: result = a.length
+  else: result = abs a.L
 
-proc newRope(data: string = nil): Rope =
+proc newRope(data: string = ""): Rope =
   new(result)
-  if data != nil:
-    result.length = len(data)
-    result.data = data
-
-proc newMutableRope*(capacity = 30): Rope =
-  ## creates a new rope that supports direct modifications of the rope's
-  ## 'data' and 'length' fields.
-  new(result)
-  result.data = newStringOfCap(capacity)
-
-proc freezeMutableRope*(r: Rope) {.inline.} =
-  r.length = r.data.len
+  result.L = -len(data)
+  result.data = data
 
 var
-  cache: array[0..2048*2 - 1, Rope]
+  cache: array[0..2048*2 - 1, Rope] # XXX Global here!
 
 proc resetRopeCache* =
   for i in low(cache)..high(cache):
@@ -158,7 +139,7 @@ proc `&`*(a, b: Rope): Rope =
     result = a
   else:
     result = newRope()
-    result.length = a.length + b.length
+    result.L = abs(a.L) + abs(b.L)
     result.left = a
     result.right = b
 
@@ -204,13 +185,14 @@ proc writeRope*(f: File, r: Rope) =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc writeRope*(head: Rope, filename: string, useWarning = false) =
+proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
   var f: File
-  if open(f, filename, fmWrite):
+  if open(f, filename.string, fmWrite):
     if head != nil: writeRope(f, head)
     close(f)
+    result = true
   else:
-    errorHandler(rCannotOpenFile, filename, useWarning)
+    result = false
 
 proc `$`*(r: Rope): string =
   ## converts a rope back to a string.
@@ -224,11 +206,6 @@ proc ropeConcat*(a: varargs[Rope]): Rope =
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
-
-var
-  rnl* = tnl.newRope
-  softRnl* = tnl.newRope
-  noRnl* = "".newRope
 
 proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
@@ -254,7 +231,7 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
           add(result, args[j-1])
       of '{':
@@ -265,20 +242,21 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           inc(i)
         num = j
         if frmt[i] == '}': inc(i)
-        else: errorHandler(rInvalidFormatStr, $(frmt[i]))
+        else:
+          doAssert false, "invalid format string: " & frmt
 
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
           add(result, args[j-1])
       of 'n':
-        add(result, softRnl)
+        add(result, "\n")
         inc(i)
       of 'N':
-        add(result, rnl)
+        add(result, "\n")
         inc(i)
       else:
-        errorHandler(rInvalidFormatStr, $(frmt[i]))
+        doAssert false, "invalid format string: " & frmt
     var start = i
     while i < length:
       if frmt[i] != '$': inc(i)
@@ -338,19 +316,18 @@ proc equalsFile*(r: Rope, f: File): bool =
   result = readBuffer(f, addr(buf[0]), 1) == 0 and
       btotal == rtotal # check that we've read all
 
-proc equalsFile*(r: Rope, filename: string): bool =
+proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
   var f: File
-  result = open(f, filename)
+  result = open(f, filename.string)
   if result:
     result = equalsFile(r, f)
     close(f)
 
-proc writeRopeIfNotEqual*(r: Rope, filename: string): bool =
+proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
   # returns true if overwritten
   if not equalsFile(r, filename):
-    writeRope(r, filename)
-    result = true
+    result = writeRope(r, filename)
   else:
     result = false

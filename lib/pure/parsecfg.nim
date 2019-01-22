@@ -17,12 +17,37 @@
 ##
 ## .. include:: ../../doc/mytest.cfg
 ##     :literal:
-## The file ``examples/parsecfgex.nim`` demonstrates how to use the
-## configuration file parser:
 ##
-## .. code-block:: nim
-##     :file: ../../examples/parsecfgex.nim
-##
+
+##[ Here is an example of how to use the configuration file parser:
+
+.. code-block:: nim
+
+    import
+      os, parsecfg, strutils, streams
+
+    var f = newFileStream(paramStr(1), fmRead)
+    if f != nil:
+      var p: CfgParser
+      open(p, f, paramStr(1))
+      while true:
+        var e = next(p)
+        case e.kind
+        of cfgEof: break
+        of cfgSectionStart:   ## a ``[section]`` has been parsed
+          echo("new section: " & e.section)
+        of cfgKeyValuePair:
+          echo("key-value-pair: " & e.key & ": " & e.value)
+        of cfgOption:
+          echo("command: " & e.key & ": " & e.value)
+        of cfgError:
+          echo(e.msg)
+      close(p)
+    else:
+      echo("cannot open: " & paramStr(1))
+
+]##
+
 ## Examples
 ## --------
 ##
@@ -86,7 +111,7 @@
 ##     dict.writeConfig("config.ini")
 
 import
-  hashes, strutils, lexbase, streams, tables
+  strutils, lexbase, streams, tables
 
 include "system/inclrtl"
 

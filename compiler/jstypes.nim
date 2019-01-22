@@ -25,7 +25,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     else:
       s = nil
       for i in countup(0, length - 1):
-        if i > 0: add(s, ", " & tnl)
+        if i > 0: add(s, ", \L")
         add(s, genObjectFields(p, typ, n.sons[i]))
       result = ("{kind: 2, len: $1, offset: 0, " &
           "typ: null, name: null, sons: [$2]}") % [rope(length), s]
@@ -56,15 +56,15 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
           else:
             add(u, rope(getOrdValue(b.sons[j])))
       of nkElse:
-        u = rope(lengthOrd(field.typ))
+        u = rope(lengthOrd(p.config, field.typ))
       else: internalError(p.config, n.info, "genObjectFields(nkRecCase)")
-      if result != nil: add(result, ", " & tnl)
+      if result != nil: add(result, ", \L")
       addf(result, "[setConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
         mangleName(p.module, field), s,
-        rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
+        rope(lengthOrd(p.config, field.typ)), makeJSString(field.name.s), result]
   else: internalError(p.config, n.info, "genObjectFields")
 
 proc objHasTypeField(t: PType): bool {.inline.} =
@@ -85,7 +85,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
   for i in 0 ..< typ.len:
-    if i > 0: add(s, ", " & tnl)
+    if i > 0: add(s, ", \L")
     s.addf("{kind: 1, offset: \"Field$1\", len: 0, " &
            "typ: $2, name: \"Field$1\", sons: null}",
            [i.rope, genTypeInfo(p, typ.sons[i])])
@@ -106,7 +106,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
   for i in countup(0, length - 1):
     if (typ.n.sons[i].kind != nkSym): internalError(p.config, typ.n.info, "genEnumInfo")
     let field = typ.n.sons[i].sym
-    if i > 0: add(s, ", " & tnl)
+    if i > 0: add(s, ", \L")
     let extName = if field.ast == nil: field.name.s else: field.ast.strVal
     addf(s, "\"$1\": {kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}",
          [rope(field.position), name, makeJSString(extName)])

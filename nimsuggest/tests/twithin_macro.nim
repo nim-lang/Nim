@@ -202,6 +202,7 @@ echo r.age_human_yrs()
 echo r
 
 discard """
+disabled:true
 $nimsuggest --tester $file
 >sug $1
 sug;;skField;;age;;int;;$file;;167;;6;;"";;100;;None

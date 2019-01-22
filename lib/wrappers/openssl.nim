@@ -38,12 +38,20 @@ when useWinVersion:
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  when defined(osx):
+    # todo: find a better workaround for #10281 (caused by #10230)
+    const versions = "(.1.1|.38|.39|.41|.43|.44|.45|.46|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  else:
+    const versions = "(.1.1|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|.46|.45|.44|.43|.41|.39|.38|.10|)"
 
   when defined(macosx):
     const
       DLLSSLName* = "libssl" & versions & ".dylib"
       DLLUtilName* = "libcrypto" & versions & ".dylib"
+  elif defined(genode):
+    const
+      DLLSSLName* = "libssl.lib.so"
+      DLLUtilName* = "libcrypto.lib.so"
   else:
     const
       DLLSSLName* = "libssl.so" & versions
@@ -78,8 +86,6 @@ type
   des_key_schedule* = array[1..16, des_ks_struct]
 
   pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
-
-{.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const
   SSL_SENT_SHUTDOWN* = 1
@@ -323,6 +329,7 @@ proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
@@ -394,14 +401,14 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
-  proc allocWrapper(size: int): pointer {.cdecl.} = alloc(size)
+  proc allocWrapper(size: int): pointer {.cdecl.} = allocShared(size)
   proc reallocWrapper(p: pointer; newsize: int): pointer {.cdecl.} =
     if p == nil:
-      if newSize > 0: result = alloc(newsize)
-    elif newsize == 0: dealloc(p)
-    else: result = realloc(p, newsize)
+      if newSize > 0: result = allocShared(newsize)
+    elif newsize == 0: deallocShared(p)
+    else: result = reallocShared(p, newsize)
   proc deallocWrapper(p: pointer) {.cdecl.} =
-    if p != nil: dealloc(p)
+    if p != nil: deallocShared(p)
 
 proc CRYPTO_malloc_init*() =
   when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):

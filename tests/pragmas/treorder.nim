@@ -6,17 +6,18 @@ output:'''0
 """
 
 import macros
-{.reorder: on .}
+# {.reorder: on .}
+{.experimental: "codeReordering".}
 
 echo foo(-1)
 echo callWithFoo(0)
 echo(CA+CD)
 echo useTypes(TA(x:TB(x:1)), 2)
 second(0)
-  
+
 template callWithFoo(arg: untyped): untyped =
   foo(arg)
-  
+
 proc first(i: int): void
 
 proc second(i: int): void =
@@ -34,7 +35,7 @@ type
 type
   TCyclicA = ref object
     x: TDoubleCyclic
-  
+
 type
   TCyclicB = ref object
     x: TDoubleCyclic
@@ -71,5 +72,4 @@ macro make(arg: untyped): untyped =
 proc first(i: int): void =
   make(second)
 
-static:
-  var ss: string = ""
+var ss {.compileTime.}: string = ""

@@ -1,6 +1,6 @@
 discard """
-  line: 17
   errormsg: "'mainUnsafe' is not GC-safe"
+  line: 17
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 

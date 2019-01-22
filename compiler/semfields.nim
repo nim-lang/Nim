@@ -19,14 +19,17 @@ type
     c: PContext
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
+  if c.field != nil and isEmptyType(c.field.typ):
+    result = newNode(nkEmpty)
+    return
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
   of nkIdent, nkSym:
     result = n
-    let ident = considerQuotedIdent(c.c.config, n)
+    let ident = considerQuotedIdent(c.c, n)
     var L = sonsLen(forLoop)
     if c.replaceByFieldName:
-      if ident.id == considerQuotedIdent(c.c.config, forLoop[0]).id:
+      if ident.id == considerQuotedIdent(c.c, forLoop[0]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n.sons[c.tupleIndex].sym.name.s
@@ -34,7 +37,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         return
     # other fields:
     for i in ord(c.replaceByFieldName)..L-3:
-      if ident.id == considerQuotedIdent(c.c.config, forLoop[i]).id:
+      if ident.id == considerQuotedIdent(c.c, forLoop[i]).id:
         var call = forLoop.sons[L-2]
         var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
         if c.field.isNil:
@@ -70,7 +73,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
-    father.add(semStmt(c.c, body))
+    father.add(semStmt(c.c, body, {}))
     dec c.c.inUnrolledContext
     closeScope(c.c)
   of nkNilLit: discard
@@ -107,10 +110,10 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
-  var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent"true")
+  var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "true"))
   if trueSymbol == nil:
     localError(c.config, n.info, "system needs: 'true'")
-    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(c), n.info)
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result.sons[0] = newSymNode(trueSymbol, n.info)
@@ -145,7 +148,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       fc.replaceByFieldName = m == mFieldPairs
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
-      stmts.add(semStmt(c, body))
+      stmts.add(semStmt(c, body, {}))
       dec c.inUnrolledContext
       closeScope(c)
   else:
@@ -162,7 +165,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # we avoid it now if we can:
   if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
-    b.add(ast.emptyNode)
+    b.add(newNodeI(nkEmpty, n.info))
     stmts.add(b)
   else:
     result = stmts

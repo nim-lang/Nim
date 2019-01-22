@@ -1,5 +1,5 @@
 discard """
-  msg: '''1
+  nimout: '''1
 2
 3
 1

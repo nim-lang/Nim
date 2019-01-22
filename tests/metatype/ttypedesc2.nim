@@ -34,3 +34,17 @@ when true:
 type Point[T] = tuple[x, y: T]
 proc origin(T: typedesc): Point[T] = discard
 discard origin(int)
+
+# https://github.com/nim-lang/Nim/issues/7516
+import typetraits
+
+proc hasDefault1(T: type = int): auto = return T.name
+doAssert hasDefault1(int) == "int"
+doAssert hasDefault1(string) == "string"
+doAssert hasDefault1() == "int"
+
+proc hasDefault2(T = string): auto = return T.name
+doAssert hasDefault2(int) == "int"
+doAssert hasDefault2(string) == "string"
+doAssert hasDefault2() == "string"
+

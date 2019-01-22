@@ -129,11 +129,28 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
-                    client: AsyncSocket,
-                    address: string, lineFut: FutureVar[string],
-                    callback: proc (request: Request):
-                      Future[void] {.closure, gcsafe.}) {.async.} =
+proc parseUppercaseMethod(name: string): HttpMethod =
+  result =
+    case name
+    of "GET": HttpGet
+    of "POST": HttpPost
+    of "HEAD": HttpHead
+    of "PUT": HttpPut
+    of "DELETE": HttpDelete
+    of "PATCH": HttpPatch
+    of "OPTIONS": HttpOptions
+    of "CONNECT": HttpConnect
+    of "TRACE": HttpTrace
+    else: raise newException(ValueError, "Invalid HTTP method " & name)
+
+proc processRequest(
+  server: AsyncHttpServer,
+  req: FutureVar[Request],
+  client: AsyncSocket,
+  address: string,
+  lineFut: FutureVar[string],
+  callback: proc (request: Request): Future[void] {.closure, gcsafe.},
+): Future[bool] {.async.} =
 
   # Alias `request` to `req.mget()` so we don't have to write `mget` everywhere.
   template request(): Request =
@@ -157,12 +174,12 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
 
     if lineFut.mget == "":
       client.close()
-      return
+      return false
 
     if lineFut.mget.len > maxLine:
       await request.respondError(Http413)
       client.close()
-      return
+      return false
     if lineFut.mget != "\c\L":
       break
 
@@ -172,26 +189,25 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     case i
     of 0:
       try:
-        # TODO: this is likely slow.
-        request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+        request.reqMethod = parseUppercaseMethod(linePart)
       except ValueError:
         asyncCheck request.respondError(Http400)
-        return
+        return true # Retry processing of request
     of 1:
       try:
         parseUri(linePart, request.url)
       except ValueError:
         asyncCheck request.respondError(Http400)
-        return
+        return true
     of 2:
       try:
         request.protocol = parseProtocol(linePart)
       except ValueError:
         asyncCheck request.respondError(Http400)
-        return
+        return true
     else:
       await request.respondError(Http400)
-      return
+      return true
     inc i
 
   # Headers
@@ -202,10 +218,10 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     await client.recvLineInto(lineFut, maxLength=maxLine)
 
     if lineFut.mget == "":
-      client.close(); return
+      client.close(); return false
     if lineFut.mget.len > maxLine:
       await request.respondError(Http413)
-      client.close(); return
+      client.close(); return false
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
     request.headers[key] = value
@@ -213,7 +229,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     if request.headers.len > headerLimit:
       await client.sendStatus("400 Bad Request")
       request.client.close()
-      return
+      return false
 
   if request.reqMethod == HttpPost:
     # Check for Expect header
@@ -229,24 +245,24 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     var contentLength = 0
     if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-      return
+      return true
     else:
       if contentLength > server.maxBody:
         await request.respondError(Http413)
-        return
+        return false
       request.body = await client.recv(contentLength)
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return
+        return true
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
-    return
+    return true
 
   # Call the user's callback.
   await callback(request)
 
   if "upgrade" in request.headers.getOrDefault("connection"):
-    return
+    return false
 
   # Persistent connections
   if (request.protocol == HttpVer11 and
@@ -260,7 +276,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     discard
   else:
     request.client.close()
-    return
+    return false
 
 proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
@@ -272,7 +288,10 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   lineFut.mget() = newStringOfCap(80)
 
   while not client.isClosed:
-    await processRequest(server, request, client, address, lineFut, callback)
+    let retry = await processRequest(
+      server, request, client, address, lineFut, callback
+    )
+    if not retry: break
 
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure,gcsafe.},

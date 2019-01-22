@@ -136,8 +136,8 @@ proc checkLe(c: AnalysisCtx; a, b: PNode) =
     localError(c.graph.config, a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
-  checkLe(c, arr.lowBound, idx)
-  checkLe(c, idx, arr.highBound(c.guards.o))
+  checkLe(c, lowBound(c.graph.config, arr), idx)
+  checkLe(c, idx, highBound(c.graph.config, arr, c.guards.o))
 
 proc addLowerBoundAsFacts(c: var AnalysisCtx) =
   for v in c.locals:
@@ -438,7 +438,7 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
           result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
-          it.sons[it.len-1] = emptyNode
+          it.sons[it.len-1] = newNodeI(nkEmpty, it.info)
         else:
           it.sons[it.len-1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
@@ -483,7 +483,7 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent"barrier", owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)
@@ -493,6 +493,6 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
-  result.add callCodegenProc(g, "openBarrier", barrier)
+  result.add callCodegenProc(g, "openBarrier", barrier.info, barrier)
   result.add transformSpawn(g, owner, body, barrier)
-  result.add callCodegenProc(g, "closeBarrier", barrier)
+  result.add callCodegenProc(g, "closeBarrier", barrier.info, barrier)

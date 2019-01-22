@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Platform detection for Nim. This module is included by the system module!
+## Platform detection for NimScript. This module is included by the system module!
 ## Do not import it directly!
 
 type
@@ -37,7 +37,7 @@ type
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
     atari, netware, macos, macosx, haiku, android, js, nimVM,
-    standalone
+    standalone, nintendoswitch
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
@@ -62,8 +62,9 @@ const
               elif defined(haiku): OsPlatform.haiku
               elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
-              elif defined(nimrodVM): OsPlatform.nimVM
+              elif defined(nimVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
+              elif defined(nintendoswitch): OsPlatform.nintendoswitch
               else: OsPlatform.none
     ## the OS this program will run on.
 

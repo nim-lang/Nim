@@ -12,7 +12,7 @@
 ## write your own.
 ##
 ## Format strings support the following variables which must be prefixed with
-## the dollar operator (``$``):
+## the dollar operator (``$``, see example below):
 ##
 ## ============  =======================
 ##   Operator     Output
@@ -43,6 +43,11 @@
 ##    warn("4 8 15 16 23 4-- Error")
 ##    error("922044:16 SYSTEM FAILURE")
 ##    fatal("SYSTEM FAILURE SYSTEM FAILURE")
+##    # Using the aformetioned operator
+##    var opL = newConsoleLogger(fmtStr = "$datetime :: ")
+##    addHandler(opL)
+##    info("Starting web server...")
+##    # Will print something like 2018-12-17T19:28:05 :: Starting web server...
 ##
 ## **Warning:** The global list of handlers is a thread var, this means that
 ## the handlers must be re-added in each thread.
@@ -80,6 +85,7 @@ type
 
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
+    useStderr*: bool ## will send logs into Stderr if set 
 
 when not defined(js):
   type
@@ -103,14 +109,9 @@ var
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
-  const nilString = "nil"
-
   var msgLen = 0
   for arg in args:
-    if arg.isNil:
-      msgLen += nilString.len
-    else:
-      msgLen += arg.len
+    msgLen += arg.len
   result = newStringOfCap(frmt.len + msgLen + 20)
   var i = 0
   while i < frmt.len:
@@ -137,10 +138,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       of "levelname": result.add(LevelNames[level])
       else: discard
   for arg in args:
-    if arg.isNil:
-      result.add(nilString)
-    else:
-      result.add(arg)
+    result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception], gcsafe,
@@ -158,16 +156,20 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       {.emit: "console.log(`cln`);".}
     else:
       try:
-        writeLine(stdout, ln)
-        if level in {lvlError, lvlFatal}: flushFile(stdout)
+        var handle = stdout
+        if logger.useStderr:
+          handle = stderr 
+        writeLine(handle, ln)
+        if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr, useStderr=false): ConsoleLogger =
   ## Creates a new console logger. This logger logs to the console.
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
+  result.useStderr = useStderr
 
 when not defined(js):
   method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =
@@ -338,7 +340,6 @@ template fatal*(args: varargs[string, `$`]) =
 
 proc addHandler*(handler: Logger) =
   ## Adds ``handler`` to the list of handlers.
-  if handlers.isNil: handlers = @[]
   handlers.add(handler)
 
 proc getHandlers*(): seq[Logger] =

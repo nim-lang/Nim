@@ -9,18 +9,23 @@
 
 ## This module implements the canonalization for the various caching mechanisms.
 
-import ast, idgen, msgs
+import ast, idgen, lineinfos, msgs, incremental, modulegraphs, pathutils
 
-when not defined(nimSymbolfiles):
-  template setupModuleCache* = discard
-  template storeNode*(module: PSym; n: PNode) = discard
-  template loadNode*(module: PSym; index: var int): PNode = PNode(nil)
+when not nimIncremental:
+  template setupModuleCache*(g: ModuleGraph) = discard
+  template storeNode*(g: ModuleGraph; module: PSym; n: PNode) = discard
+  template loadNode*(g: ModuleGraph; module: PSym): PNode = newNode(nkStmtList)
 
-  template getModuleId*(fileIdx: FileIndex; fullpath: string): int = getID()
+  proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) {.inline.} = (nil, getID())
 
-  template addModuleDep*(module, fileIdx: FileIndex; isIncludeFile: bool) = discard
+  template addModuleDep*(g: ModuleGraph; module, fileIdx: FileIndex; isIncludeFile: bool) = discard
 
-  template storeRemaining*(module: PSym) = discard
+  template storeRemaining*(g: ModuleGraph; module: PSym) = discard
+
+  template registerModule*(g: ModuleGraph; module: PSym) = discard
 
 else:
   include rodimpl
+
+  # idea for testing all this logic: *Always* load the AST from the DB, whether
+  # we already have it in RAM or not!

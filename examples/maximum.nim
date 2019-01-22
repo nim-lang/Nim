@@ -1,4 +1,4 @@
-# Test high level features
+# Shows how the method call syntax can be used to chain calls conveniently.
 
 import strutils, sequtils
 

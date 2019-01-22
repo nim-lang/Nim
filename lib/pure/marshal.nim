@@ -54,13 +54,11 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
     else:
       s.write($int(ch))
   of akArray, akSequence:
-    if a.kind == akSequence and isNil(a): s.write("null")
-    else:
-      s.write("[")
-      for i in 0 .. a.len-1:
-        if i > 0: s.write(", ")
-        storeAny(s, a[i], stored)
-      s.write("]")
+    s.write("[")
+    for i in 0 .. a.len-1:
+      if i > 0: s.write(", ")
+      storeAny(s, a[i], stored)
+    s.write("]")
   of akObject, akTuple:
     s.write("{")
     var i = 0
@@ -98,8 +96,7 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akProc, akPointer, akCString: s.write($a.getPointer.ptrToInt)
   of akString:
     var x = getString(a)
-    if isNil(x): s.write("null")
-    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    if x.validateUtf8() == -1: s.write(escapeJson(x))
     else:
       s.write("[")
       var i = 0
@@ -257,12 +254,12 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   close(p)
 
 proc load*[T](s: Stream, data: var T) =
-  ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
+  ## loads `data` from the stream `s`. Raises `IOError` in case of an error.
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
 proc store*[T](s: Stream, data: T) =
-  ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
+  ## stores `data` into the stream `s`. Raises `IOError` in case of an error.
   var stored = initIntSet()
   var d: T
   shallowCopy(d, data)
@@ -270,6 +267,8 @@ proc store*[T](s: Stream, data: T) =
 
 proc `$$`*[T](x: T): string =
   ## returns a string representation of `x`.
+  ##
+  ## Note: to serialize `x` to JSON use $(%x) from the ``json`` module
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -279,6 +278,17 @@ proc `$$`*[T](x: T): string =
 
 proc to*[T](data: string): T =
   ## reads data and transforms it to a ``T``.
+  runnableExamples:
+    type
+      Foo = object
+        id: int
+        bar: string
+
+    let x = Foo(id: 1, bar: "baz")
+    # serialize
+    let y = ($$x)
+    # deserialize back to type 'Foo':
+    let z = y.to[:Foo]
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
 

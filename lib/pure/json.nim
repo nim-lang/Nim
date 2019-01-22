@@ -14,28 +14,38 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
-## Dynamically retrieving fields from JSON
-## =======================================
+## Overview
+## ========
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## Parsing JSON
+## ------------
+##
+## JSON often arrives into your program (via an API or a file) as a ``string``.
+## The first step is to change it from its serialized form into a nested object
+## structure called a ``JsonNode``.
 ##
 ## The ``parseJson`` procedure takes a string containing JSON and returns a
 ## ``JsonNode`` object. This is an object variant and it is either a
 ## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
-## ``JNull``. You
-## check the kind of this object variant by using the ``kind`` accessor.
+## ``JNull``. You check the kind of this object variant by using the ``kind``
+## accessor.
 ##
 ## For a ``JsonNode`` who's kind is ``JObject``, you can acess its fields using
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
+##   import json
+##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode.kind == JObject
 ##   doAssert jsonNode["key"].kind == JFloat
 ##
-## Retrieving the value of a JSON node can then be achieved using one of the
-## helper procedures, which include:
+## Reading values
+## --------------
+##
+## Once you have a ``JsonNode``, retrieving the values can then be achieved
+## by using one of the helper procedures, which include:
 ##
 ## * ``getInt``
 ## * ``getFloat``
@@ -45,51 +55,95 @@
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("""{"key": 3.14}""")
+##
 ##   doAssert jsonNode["key"].getFloat() == 3.14
 ##
-## The ``[]`` operator will raise an exception when the specified field does
-## not exist. If you wish to avoid this behaviour you can use the ``{}``
-## operator instead, it will simply return ``nil`` when the field is not found.
-## The ``get``-family of procedures will return a default value when called on
-## ``nil``.
+## **Important:** The ``[]`` operator will raise an exception when the
+## specified field does not exist.
 ##
-## Unmarshalling JSON into a type
-## ==============================
+## Handling optional keys
+## ----------------------
 ##
-## This module allows you to access fields in a parsed JSON object in two
-## different ways, one of them is described in this section.
+## By using the ``{}`` operator instead of ``[]``, it will return ``nil``
+## when the field is not found. The ``get``-family of procedures will return a
+## type's default value when called on ``nil``.
 ##
-## This is done using the ``to`` macro. Take a look at
-## `its documentation <#to.m,JsonNode,typedesc>`_ to see an example of its use.
+## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("{}")
+##
+##   doAssert jsonNode{"nope"}.getInt() == 0
+##   doAssert jsonNode{"nope"}.getFloat() == 0
+##   doAssert jsonNode{"nope"}.getStr() == ""
+##   doAssert jsonNode{"nope"}.getBool() == false
+##
+## Using default values
+## --------------------
+##
+## The ``get``-family helpers also accept an additional parameter which allow
+## you to fallback to a default value should the key's values be ``null``:
+##
+## .. code-block:: Nim
+##   import json
+##
+##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
+##
+##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
+##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
+##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##
+## Unmarshalling
+## -------------
+##
+## In addition to reading dynamic data, Nim can also unmarshall JSON directly
+## into a type with the ``to`` macro.
+##
+## .. code-block:: Nim
+##   import json
+##
+##   type
+##     User = object
+##       name: string
+##       age: int
+##
+##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
+##   let user = to(userJson, User)
 ##
 ## Creating JSON
 ## =============
 ##
-## This module can also be used to comfortably create JSON using the `%*`
+## This module can also be used to comfortably create JSON using the ``%*``
 ## operator:
 ##
 ## .. code-block:: nim
+##   import json
 ##
 ##   var hisName = "John"
 ##   let herAge = 31
 ##   var j = %*
 ##     [
-##       {
-##         "name": hisName,
-##         "age": 30
-##       },
-##       {
-##         "name": "Susan",
-##         "age": herAge
-##       }
+##       { "name": hisName, "age": 30 },
+##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
 ##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##    j2["details"] = %* {"age":35, "pi":3.1415}
 ##    echo j2
 
+runnableExamples:
+  ## Note: for JObject, key ordering is preserved, unlike in some languages,
+  ## this is convenient for some use cases. Example:
+  type Foo = object
+    a1, a2, a0, a3, a4: int
+  doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
+
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  typetraits
 
 export
   tables.`$`
@@ -256,7 +310,6 @@ proc add*(obj: JsonNode, key: string, val: JsonNode) =
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
-  if s.isNil: return
   result.kind = JString
   result.str = s
 
@@ -303,6 +356,25 @@ when false:
     result = newJObject()
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
+
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+  ## Sets a field from a `JObject`.
+  assert(obj.kind == JObject)
+  obj.fields[key] = val
+
+#[
+Note: could use simply:
+proc `%`*(o: object|tuple): JsonNode
+but blocked by https://github.com/nim-lang/Nim/issues/10019
+]#
+proc `%`*(o: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  when isNamedTuple(type(o)):
+    result = newJObject()
+    for k, v in o.fieldPairs: result[k] = %v
+  else:
+    result = newJArray()
+    for a in o.fields: result.add(%a)
 
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
@@ -455,11 +527,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
-  obj.fields[key] = val
-
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
@@ -546,10 +613,9 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJson*(s: string; result: var string) =
-  ## Converts a string `s` to its JSON representation.
+proc escapeJsonUnquoted*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to ``result``.
-  result.add("\"")
   for c in s:
     case c
     of '\L': result.add("\\n")
@@ -562,10 +628,21 @@ proc escapeJson*(s: string; result: var string) =
     of '\14'..'\31': result.add("\\u00" & $ord(c))
     of '\\': result.add("\\\\")
     else: result.add(c)
+
+proc escapeJsonUnquoted*(s: string): string =
+  ## Converts a string `s` to its JSON representation without quotes.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJsonUnquoted(s, result)
+
+proc escapeJson*(s: string; result: var string) =
+  ## Converts a string `s` to its JSON representation with quotes.
+  ## Appends to ``result``.
+  result.add("\"")
+  escapeJsonUnquoted(s, result)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
-  ## Converts a string `s` to its JSON representation.
+  ## Converts a string `s` to its JSON representation with quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
@@ -1004,6 +1081,13 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
       exprColonExpr.add(ifStmt)
 
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
+
+proc detectDistinctType(typeSym: NimNode): NimNode =
+  let
+    typeImpl = getTypeImpl(typeSym)
+    typeInst = getTypeInst(typeSym)
+  result = if typeImpl.typeKind == ntyDistinct: typeImpl else: typeInst
+
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   ## Process a field from a ``RecList``.
   ##
@@ -1022,8 +1106,8 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     # Add the field value.
     # -> jsonNode["`field`"]
     let indexedJsonNode = createJsonIndexer(jsonNode, $field)
-    exprColonExpr.add(createConstructor(getTypeInst(field), indexedJsonNode))
-
+    let typeNode = detectDistinctType(field)
+    exprColonExpr.add(createConstructor(typeNode, indexedJsonNode))
   of nnkRecCase:
     # A "case" field that introduces a variant.
     let exprColonExpr = newNimNode(nnkExprColonExpr)
@@ -1131,13 +1215,13 @@ proc processType(typeName: NimNode, obj: NimNode,
         `getEnumCall`
       )
   of nnkSym:
-    let name = ($typeName).normalize
+    let name = normalize($typeName.getTypeImpl())
     case name
     of "string":
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
+          if `jsonNode`.kind == JNull: "" else: `jsonNode`.str
         )
     of "biggestint":
       result = quote do:
@@ -1248,7 +1332,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let seqT = typeSym[1]
       let forLoopI = genSym(nskForVar, "i")
       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
-      let constructorNode = createConstructor(seqT, indexerNode)
+      let constructorNode = createConstructor(detectDistinctType(seqT), indexerNode)
 
       # Create a statement expression containing a for loop.
       result = quote do:
@@ -1284,7 +1368,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
     # Handle all other types.
     let obj = getType(typeSym)
-    if obj.kind == nnkBracketExpr:
+    let typeNode = getTypeImpl(typeSym)
+    if typeNode.typeKind == ntyDistinct:
+      result = createConstructor(typeNode, jsonNode)
+    elif obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
@@ -1295,6 +1382,21 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     # TODO: The fact that `jsonNode` here works to give a good line number
     # is weird. Specifying typeSym should work but doesn't.
     error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
+  of nnkDistinctTy:
+    var baseType = typeSym
+    # solve nested distinct types
+    while baseType.typeKind == ntyDistinct:
+      let impl = getTypeImpl(baseType[0])
+      if impl.typeKind != ntyDistinct:
+        baseType = baseType[0]
+        break
+      baseType = impl
+    let ret = createConstructor(baseType, jsonNode)
+    let typeInst = getTypeInst(typeSym)
+    result = quote do:
+      (
+        `typeInst`(`ret`)
+      )
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1418,7 +1520,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  let typeNode = getTypeInst(T)
+  let typeNode = getTypeImpl(T)
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
@@ -1496,22 +1598,23 @@ when isMainModule:
   doAssert parsedAgain["abc"].num == 5
 
   # Bounds checking
-  try:
-    let a = testJson["a"][9]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    let a = testJson["a"][-1]
-    doAssert(false, "IndexError not thrown")
-  except IndexError:
-    discard
-  try:
-    doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
-  except:
-    doAssert(false, "IndexError thrown for valid index")
+  when compileOption("boundChecks"):
+    try:
+      let a = testJson["a"][9]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      let a = testJson["a"][-1]
+      doAssert(false, "IndexError not thrown")
+    except IndexError:
+      discard
+    try:
+      doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
+    except:
+      doAssert(false, "IndexError thrown for valid index")
 
-  doAssert(testJson{"b"}.str=="asd", "Couldn't fetch a singly nested key with {}")
+  doAssert(testJson{"b"}.getStr()=="asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
   doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
@@ -1582,6 +1685,8 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
+  doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
   doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
 
@@ -1603,4 +1708,16 @@ when isMainModule:
   doAssert($ %*[] == "[]")
   doAssert($ %*{} == "{}")
 
-  echo("Tests succeeded!")
+  # bug #9111
+  block:
+    type
+      Bar = string
+      Foo = object
+        a: int
+        b: Bar
+
+    let
+      js = """{"a": 123, "b": "abc"}""".parseJson
+      foo = js.to Foo
+
+    doAssert(foo.b == "abc")

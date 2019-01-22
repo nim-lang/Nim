@@ -91,7 +91,7 @@ proc newAsyncFile*(fd: AsyncFd): AsyncFile =
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
-  ## the specified ``mode`` asynchronously.
+  ## the specified FileMode ``mode`` asynchronously.
   when defined(windows) or defined(nimdoc):
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)

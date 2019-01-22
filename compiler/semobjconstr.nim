@@ -54,7 +54,7 @@ proc locateFieldInInitExpr(c: PContext, field: PSym, initExpr: PNode): PNode =
       invalidObjConstr(c, assignment)
       continue
 
-    if fieldId == considerQuotedIdent(c.config, assignment[0]).id:
+    if fieldId == considerQuotedIdent(c, assignment[0]).id:
       return assignment
 
 proc semConstrField(c: PContext, flags: TExprFlags,
@@ -121,7 +121,7 @@ proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string
     if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
       let assignment = locateFieldInInitExpr(c, r.sym, initExpr)
       if assignment == nil:
-        if result == nil:
+        if result.len == 0:
           result = r.sym.name.s
         else:
           result.add ", "
@@ -129,7 +129,7 @@ proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string
 
 proc checkForMissingFields(c: PContext, recList, initExpr: PNode) =
   let missing = missingMandatoryFields(c, recList, initExpr)
-  if missing != nil:
+  if missing.len > 0:
     localError(c.config, initExpr.info, "fields not initialized: $1.", [missing])
 
 proc semConstructFields(c: PContext, recNode: PNode,
@@ -295,11 +295,11 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if field.kind != nkExprColonExpr:
         invalidObjConstr(c, field)
         continue
-      let id = considerQuotedIdent(c.config, field[0])
+      let id = considerQuotedIdent(c, field[0])
       # This node was not processed. There are two possible reasons:
       # 1) It was shadowed by a field with the same name on the left
       for j in 1 ..< i:
-        let prevId = considerQuotedIdent(c.config, result[j][0])
+        let prevId = considerQuotedIdent(c, result[j][0])
         if prevId.id == id.id:
           localError(c.config, field.info, errFieldInitTwice % id.s)
           return

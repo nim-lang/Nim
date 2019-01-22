@@ -5,16 +5,16 @@ output: "8\n8\n4"
 import
   macros, typetraits
 
-template selectType(x: int): typeDesc =
+template selectType(x: int): type =
   when x < 10:
     int
   else:
     string
 
-template simpleTypeTempl: typeDesc =
+template simpleTypeTempl: type =
   string
 
-macro typeFromMacro: typedesc = string
+macro typeFromMacro: type = string
 
 # The tests below check that the result variable of the
 # selected type matches the literal types in the code:
@@ -99,3 +99,15 @@ echo sizeof(a)
 echo sizeof(b)
 echo sizeof(c)
 
+# This is the same example but using a proc instead of a macro
+# Instead of type mismatch for macro, proc just failed with internal error: getTypeDescAux(tyNone)
+# https://github.com/nim-lang/Nim/issues/7231
+
+proc getBase2*(bits: static[int]): typedesc =
+  if bits == 128:
+    result = newTree(nnkBracketExpr, ident("MpUintBase"), ident("uint64"))
+  else:
+    result = newTree(nnkBracketExpr, ident("MpUintBase"), ident("uint32"))
+
+type
+  MpUint2*[bits: static[int]] = getbase2(bits)

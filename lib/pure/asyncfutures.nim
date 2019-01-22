@@ -123,11 +123,17 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
     callbacks.function = function
     assert callbacks.next == nil
   else:
-    let newNext = new(ref CallbackList)
-    newNext.function = callbacks.function
-    newNext.next = callbacks.next
-    callbacks.next = newNext
-    callbacks.function = function
+    let newCallback = new(ref CallbackList)
+    newCallback.function = function
+    newCallback.next = nil
+
+    if callbacks.next == nil:
+      callbacks.next = newCallback
+    else:
+      var last = callbacks.next
+      while last.next != nil:
+        last = last.next
+      last.next = newCallback
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
@@ -219,10 +225,10 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  if entry.procname == "processPendingCallbacks":
+  if entry.procname == cstring"processPendingCallbacks":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
-  elif entry.procname == "poll":
+  elif entry.procname == cstring"poll":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
@@ -250,7 +256,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
         indent.inc(2)
       else:
         indent.dec(2)
-        result.add(spaces(indent)& "]#\n")
+        result.add(spaces(indent) & "]#\n")
       continue
 
     let left = "$#($#)" % [$entry.filename, $entry.line]
@@ -339,7 +345,8 @@ proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on ``future`` which raises an exception if the future
   ## finished with an error.
   ##
-  ## This should be used instead of ``discard`` to discard void futures.
+  ## This should be used instead of ``discard`` to discard void futures,
+  ## or use ``waitFor`` if you need to wait for the future's completion.
   assert(not future.isNil, "Future is nil")
   future.callback =
     proc () =
@@ -368,8 +375,9 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
   proc cb[X](fut: Future[X]) =
-    if fut.failed: retFuture.fail(fut.error)
-    if not retFuture.finished: retFuture.complete()
+    if not retFuture.finished:
+      if fut.failed: retFuture.fail(fut.error)
+      else: retFuture.complete()
   fut1.callback = cb[T]
   fut2.callback = cb[Y]
   return retFuture

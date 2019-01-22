@@ -107,6 +107,8 @@ __clang__
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
+#define N_INLINE_PTR(rettype, name) rettype (*name)
+
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
 #  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
@@ -129,13 +131,13 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
+#elif defined(__TINYC__) || defined(__GENODE__)
+#  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
-#elif defined __TINYC__
-#  define NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -164,13 +166,13 @@ __clang__
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
 #  define N_FASTCALL(rettype, name) rettype __fastcall name
-#  define N_SAFECALL(rettype, name) rettype __safecall name
+#  define N_SAFECALL(rettype, name) rettype __stdcall name
 /* function pointers with calling convention: */
 #  define N_CDECL_PTR(rettype, name) rettype (__cdecl *name)
 #  define N_STDCALL_PTR(rettype, name) rettype (__stdcall *name)
 #  define N_SYSCALL_PTR(rettype, name) rettype (__syscall *name)
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
-#  define N_SAFECALL_PTR(rettype, name) rettype (__safecall *name)
+#  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus
 #    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
@@ -266,7 +268,7 @@ __clang__
 
 /* wrap all Nim typedefs into namespace Nim */
 #ifdef USE_NIM_NAMESPACE
-namespace Nim {
+namespace USE_NIM_NAMESPACE {
 #endif
 
 /* bool types (C++ has it): */
@@ -278,7 +280,13 @@ namespace Nim {
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL 0
+#  if __cplusplus >= 201103L
+#    /* nullptr is more type safe (less implicit conversions than 0) */
+#    define NIM_NIL nullptr
+#  else
+#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    define NIM_NIL 0
+#  endif
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -500,11 +508,6 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <tool/gnu/toolMacros.h>
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
-#endif
-
-#if defined(__GENODE__)
-#include <libc/component.h>
-extern Libc::Env *genodeEnv;
 #endif
 
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */

@@ -1,0 +1,2 @@
+--define:nimfind
+--define:nimcore

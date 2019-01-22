@@ -1270,10 +1270,10 @@ AST:
         nnkIdent("float32"),
         nnkEmpty()
       )
-      nnkPragma(nnkIdent("inline")),
-      nnkEmpty(), # reserved slot for future use
-      nnkStmtList(nnkDiscardStmt(nnkEmpty())) # the meat of the proc
-    )
+    ),
+    nnkPragma(nnkIdent("inline")),
+    nnkEmpty(), # reserved slot for future use
+    nnkStmtList(nnkDiscardStmt(nnkEmpty())) # the meat of the proc
   )
 
 There is another consideration. Nim has flexible type identification for

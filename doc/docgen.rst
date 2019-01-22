@@ -97,24 +97,9 @@ Partial Output::
   proc helloWorld(times: int) {.raises: [], tags: [].}
   ...
 
-The full output can be seen here: `docgen_sample2.html <docgen_sample2.html>`_.
-
-The older version of the ``doc`` command, now renamed ``doc0`` runs before
-semantic checking which means it lacks some of the things ``doc`` will output.
-
-The ``doc0`` command::
-  nim doc0 sample
-
-Partial Output::
-  ...
-  proc helloWorld*(times: int)
-  ...
-
-Output can be viewed in full here: `docgen_sample.html <docgen_sample.html>`_.
-As you can see, the tool has extracted less information than what the ``doc``
-command provides, such as pragmas attached implicitly by the compiler. This type
-of information is not available from looking at the AST (Abstract Syntax Tree)
-prior to semantic checking, which is why ``doc0`` doesn't show it.
+The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
+It runs after semantic checking, and includes pragmas attached implicitly by the
+compiler.
 
 
 JSON
@@ -132,6 +117,7 @@ Output::
   {
     "orig": "docgen_sample.nim",
     "nimble": "",
+    "moduleDescription": "This module is a sample",
     "entries": [
       {
         "name": "helloWorld",
@@ -146,7 +132,7 @@ Output::
 
 Similarly to the old ``doc`` command the old ``jsondoc`` command has been
 renamed ``jsondoc0``.
- 
+
 The ``jsondoc0`` command::
   nim jsondoc0 sample
 
@@ -173,11 +159,11 @@ Project switch
 --------------
 
 ::
-  nim doc2 --project filename.nim
+  nim doc --project filename.nim
 
 This will recursively generate documentation of all nim modules imported
-into the input module, including system modules. Be careful with this command,
-as it may end up sprinkling html files all over your filesystem!
+into the input module that belong to the Nimble package that ``filename.nim``
+belongs to.
 
 
 Index switch
@@ -237,9 +223,8 @@ Usage::
 Output::
   You're reading it!
 
-The input can be viewed here `docgen.txt <docgen.txt>`_. The ``rst2tex``
-command is invoked identically to ``rst2html``, but outputs a .tex file instead
-of .html.
+The ``rst2tex`` command is invoked identically to ``rst2html``, but outputs
+a .tex file instead of .html.
 
 
 HTML anchor generation
@@ -303,9 +288,9 @@ symbols in the `system module <system.html>`_.
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: typedesc; message: string): expr`` **=>**
-  `#newException.t,typedesc,string
-  <system.html#newException.t,typedesc,string>`_
+* ``template newException[](exceptn: type; message: string): expr`` **=>**
+  `#newException.t,type,string
+  <system.html#newException.t,type,string>`_
 
 
 Index (idx) file format
@@ -327,8 +312,7 @@ but can have up to four (additional columns are ignored). The content of these
 columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
-   Nim's rules (eg. \`^\` like in `the actors module
-   <actors.html#^,ptr.TChannel[T]>`_).
+   Nim's rules (eg. \`^\`).
 2. Base filename plus anchor hyper link (eg.
    ``algorithm.html#*,int,SortOrder``).
 3. Optional human readable string to display as hyper link. If the value is not

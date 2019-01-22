@@ -22,5 +22,4 @@ proc dosomething(): seq[TThing] =
 
   result = @[TThing(data: 10, children: result)]
 
-when isMainModule:
-  echo($dosomething()[0])
+echo($dosomething()[0])

@@ -60,17 +60,6 @@ type
   PSQLDOUBLE* = ptr TSqlDouble
   PSQLFLOAT* = ptr TSqlFloat
   PSQLHANDLE* = ptr SqlHandle
-{.deprecated: [
-    # TSqlChar: TSqlChar, # Name conflict if we drop`T`
-    # TSqlSmallInt: TSqlSmallInt, # Name conflict if we drop`T`
-    TSqlUSmallInt: SqlUSmallInt, TSqlHandle: SqlHandle, TSqlHEnv: SqlHEnv,
-    TSqlHDBC: SqlHDBC, TSqlHStmt: SqlHStmt, TSqlHDesc: SqlHDesc,
-    # TSqlInteger: TSqlInteger, # Name conflict if we drop `T`
-    TSqlUInteger: SqlUInteger, TSqlPointer: SqlPointer,
-    # TSqlReal: TSqlReal, # Name conflict if we drop`T`
-    # TSqlDouble: TSqlDouble, # Name conflict if we drop`T`
-    # TSqlFloat: TSqlFloat, # Name conflict if we drop `T`
-    TSqlHWND: SqlHWND].}
 
 const                         # SQL data type codes
   SQL_UNKNOWN_TYPE* = 0

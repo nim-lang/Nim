@@ -3,7 +3,7 @@ discard """
   disabled: "windows"
   output: "Matched"
 """
-import asyncdispatch
+import asyncdispatch, strutils
 
 # Tests to ensure our exception trace backs are friendly.
 
@@ -117,10 +117,26 @@ Exception message: bar failure
 Exception type:
 """
 
-if result.match(re(expected)):
-  echo("Matched")
-else:
-  echo("Not matched!")
+let resLines = splitLines(result.strip)
+let expLines = splitLines(expected.strip)
+
+if resLines.len != expLines.len:
+  echo("Not matched! Wrong number of lines!")
   echo()
   echo(result)
+  quit(QuitFailure)
+
+var ok = true
+for i in 0 ..< resLines.len:
+  if not resLines[i].match(re(expLines[i])):
+    echo "Not matched! Line ", i + 1
+    echo "Expected:"
+    echo expLines[i]
+    echo "Actual:"
+    echo resLines[i]
+    ok = false
+
+if ok:
+  echo("Matched")
+else:
   quit(QuitFailure)

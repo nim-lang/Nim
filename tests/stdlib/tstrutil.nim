@@ -1,11 +1,18 @@
 discard """
-  file: "tstrutil.nim"
   output: "ha/home/a1xyz/usr/bin"
 """
 # test the new strutils module
 
 import
   strutils
+
+import macros
+
+template rejectParse(e) =
+  try:
+    discard e
+    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+  except ValueError: discard
 
 proc testStrip() =
   write(stdout, strip("  ha  "))
@@ -148,7 +155,6 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-
 proc testIsAlphaNumeric =
   assert isAlphaNumeric("abcdABC1234") == true
   assert isAlphaNumeric("a") == true
@@ -192,6 +198,12 @@ proc testRFind =
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
   assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
 
+proc testSplitLines() =
+  let fixture = "a\nb\rc\r\nd"
+  assert len(fixture.splitLines) == 4
+  assert splitLines(fixture) == @["a", "b", "c", "d"]
+  assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
+
 proc testCountLines =
   proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
   assertCountLines("")
@@ -203,10 +215,51 @@ proc testCountLines =
   assertCountLines("\nabc\n123")
   assertCountLines("\nabc\n123\n")
 
+proc testParseInts =
+  # binary
+  assert "0b1111".parseBinInt == 15
+  assert "0B1111".parseBinInt == 15
+  assert "1111".parseBinInt == 15
+  assert "1110".parseBinInt == 14
+  assert "1_1_1_1".parseBinInt == 15
+  assert "0b1_1_1_1".parseBinInt == 15
+  rejectParse "".parseBinInt
+  rejectParse "_".parseBinInt
+  rejectParse "0b".parseBinInt
+  rejectParse "0b1234".parseBinInt
+  # hex
+  assert "0x72".parseHexInt == 114
+  assert "0X72".parseHexInt == 114
+  assert "#72".parseHexInt == 114
+  assert "72".parseHexInt == 114
+  assert "FF".parseHexInt == 255
+  assert "ff".parseHexInt == 255
+  assert "fF".parseHexInt == 255
+  assert "0x7_2".parseHexInt == 114
+  rejectParse "".parseHexInt
+  rejectParse "_".parseHexInt
+  rejectParse "0x".parseHexInt
+  rejectParse "0xFFG".parseHexInt
+  rejectParse "reject".parseHexInt
+  # octal
+  assert "0o17".parseOctInt == 15
+  assert "0O17".parseOctInt == 15
+  assert "17".parseOctInt == 15
+  assert "10".parseOctInt == 8
+  assert "0o1_0_0".parseOctInt == 64
+  rejectParse "".parseOctInt
+  rejectParse "_".parseOctInt
+  rejectParse "0o".parseOctInt
+  rejectParse "9".parseOctInt
+  rejectParse "0o9".parseOctInt
+  rejectParse "reject".parseOctInt
+
 testDelete()
 testFind()
 testRFind()
+testSplitLines()
 testCountLines()
+testParseInts()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
@@ -254,6 +307,21 @@ assert(spaces(8) == "        ")
 assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
+
+# bug #8911
+when true:
+  static:
+    let a = ""
+    let a2 = a.replace("\n", "\\n")
+
+when true:
+  static:
+    let b = "b"
+    let b2 = b.replace("\n", "\\n")
+
+when true:
+  let c = ""
+  let c2 = c.replace("\n", "\\n")
 
 main()
 #OUT ha/home/a1xyz/usr/bin

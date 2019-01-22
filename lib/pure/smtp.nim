@@ -71,7 +71,12 @@ when not defined(ssl):
   type PSSLContext = ref object
   let defaultSSLContext: PSSLContext = nil
 else:
-  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+  var defaultSSLContext {.threadvar.}: SSLContext
+
+  proc getSSLContext(): SSLContext =
+    if defaultSSLContext == nil:
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
+    result = defaultSSLContext
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): Message =
@@ -109,21 +114,22 @@ proc `$`*(msg: Message): string =
   result.add(msg.msgBody)
 
 proc newSmtp*(useSsl = false, debug=false,
-              sslContext = defaultSslContext): Smtp =
+              sslContext: SSLContext = nil): Smtp =
   ## Creates a new ``Smtp`` instance.
   new result
   result.debug = debug
-
   result.sock = newSocket()
   if useSsl:
     when compiledWithSsl:
-      sslContext.wrapSocket(result.sock)
+      if sslContext == nil:
+        getSSLContext().wrapSocket(result.sock)
+      else:
+        sslContext.wrapSocket(result.sock)
     else:
-      raise newException(SystemError,
-                         "SMTP module compiled without SSL support")
+      {.error: "SMTP module compiled without SSL support".}
 
 proc newAsyncSmtp*(useSsl = false, debug=false,
-                   sslContext = defaultSslContext): AsyncSmtp =
+                   sslContext: SSLContext = nil): AsyncSmtp =
   ## Creates a new ``AsyncSmtp`` instance.
   new result
   result.debug = debug
@@ -131,10 +137,12 @@ proc newAsyncSmtp*(useSsl = false, debug=false,
   result.sock = newAsyncSocket()
   if useSsl:
     when compiledWithSsl:
-      sslContext.wrapSocket(result.sock)
+      if sslContext == nil:
+        getSSLContext().wrapSocket(result.sock)
+      else:
+        sslContext.wrapSocket(result.sock)
     else:
-      raise newException(SystemError,
-                         "SMTP module compiled without SSL support")
+      {.error: "SMTP module compiled without SSL support".}
 
 proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   var retFuture = newFuture[void]()

@@ -79,3 +79,63 @@ proc foo(f: (iterator(): int)) =
 
 let fIt = iterator(): int = yield 70
 foo fIt
+
+# bug #5321
+
+proc lineIter*(filename: string): iterator(): string =
+  result = iterator(): string {.closure.} =
+    for line in lines(filename):
+      yield line
+
+proc unused =
+  var count = 0
+  let iter = lineIter("temp10.nim")
+  for line in iter():
+    count += 1
+
+iterator lineIter2*(filename: string): string {.closure.} =
+  var f = open(filename, bufSize=8000)
+  defer: close(f)   # <-- commenting defer "solves" the problem
+  var res = TaintedString(newStringOfCap(80))
+  while f.readLine(res): yield res
+
+proc unusedB =
+  var count = 0
+  for line in lineIter2("temp10.nim"):
+    count += 1
+
+# bug #5519
+import os, algorithm
+
+iterator filesIt(path: string): auto {.closure.} =
+  var files = newSeq[string]()
+  var dirs = newSeq[string]()
+  for k, p in os.walkDir(path):
+    let (_, n, e) = p.splitFile
+    if e != "":
+      continue
+    case k
+    of pcFile, pcLinkToFile:
+      files.add(n)
+    else:
+      dirs.add(n)
+  files.sort(system.cmp)
+  dirs.sort(system.cmp)
+  for f in files:
+    yield f
+
+  for d in dirs:
+    files = newSeq[string]()
+    for k, p in os.walkDir(path / d):
+      let (_, n, e) = p.splitFile
+      if e != "":
+        continue
+      case k
+      of pcFile, pcLinkToFile:
+        files.add(n)
+      else:
+        discard
+    files.sort(system.cmp)
+    let prefix = path.splitPath[1]
+    for f in files:
+      yield prefix / f

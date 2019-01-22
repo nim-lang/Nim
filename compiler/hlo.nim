@@ -43,8 +43,8 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
       if not isNil(x):
         assert x.kind in {nkStmtList, nkCall}
         # better be safe than sorry, so check evalTemplateCounter too:
-        inc(evalTemplateCounter)
-        if evalTemplateCounter > evalTemplateLimit:
+        inc(c.config.evalTemplateCounter)
+        if c.config.evalTemplateCounter > evalTemplateLimit:
           globalError(c.config, n.info, "template instantiation too nested")
         # deactivate this pattern:
         c.patterns[i] = nil
@@ -54,7 +54,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
           result = flattenStmts(x)
         else:
           result = evalPattern(c, x, result)
-        dec(evalTemplateCounter)
+        dec(c.config.evalTemplateCounter)
         # activate this pattern again:
         c.patterns[i] = pattern
 

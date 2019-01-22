@@ -81,6 +81,9 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
   let savedCb = future.cb
   future.callback =
     proc (fs: FutureStream[T]) =
+      # Exit early if `resFut` is already complete. (See #8994).
+      if resFut.finished: return
+
       # We don't want this callback called again.
       future.cb = nil
 
@@ -93,8 +96,7 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
         res[0] = true
         res[1] = fs.queue.popFirst()
 
-      if not resFut.finished:
-        resFut.complete(res)
+      resFut.complete(res)
 
       # If the saved callback isn't nil then let's call it.
       if not savedCb.isNil: savedCb()

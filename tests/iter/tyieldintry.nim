@@ -393,4 +393,79 @@ block: #7969
 
   test(it, 1, 2, 3)
 
+block: # yield in blockexpr
+  iterator it(): int {.closure.} =
+    yield(block:
+      checkpoint(1)
+      yield 2
+      3
+    )
+
+  test(it, 1, 2, 3)
+
+block: #8851
+  type
+    Foo = ref object of RootObj
+  template someFoo(): Foo =
+    var f: Foo
+    yield 1
+    f
+  iterator it(): int {.closure.} =
+    var o: RootRef
+    o = someFoo()
+
+  test(it, 1)
+
+block: # 8243
+  iterator it(): int {.closure.} =
+    template yieldAndSeq: seq[int] =
+      yield 1
+      @[123, 5, 123]
+
+    checkpoint(yieldAndSeq[1])
+
+  test(it, 1, 5)
+
+block:
+  iterator it(): int {.closure.} =
+    template yieldAndSeq: seq[int] =
+      yield 1
+      @[123, 5, 123]
+
+    template yieldAndNum: int =
+      yield 2
+      1
+
+    checkpoint(yieldAndSeq[yieldAndNum])
+
+  test(it, 1, 2, 5)
+
+block: #9694 - yield in ObjConstr
+  type Foo = object
+    a, b: int
+
+  template yieldAndNum: int =
+    yield 1
+    2
+
+  iterator it(): int {.closure.} =
+    let a = Foo(a: 5, b: yieldAndNum())
+    checkpoint(a.b)
+
+  test(it, 1, 2)
+
+block: #9716
+  iterator it(): int {.closure.} =
+    var a = 0
+    for i in 1 .. 3:
+      var a: int # Make sure the "local" var is reset
+      var b: string # ditto
+      yield 1
+      a += 5
+      b &= "hello"
+      doAssert(a == 5)
+      doAssert(b == "hello")
+  test(it, 1, 1, 1)
+
 echo "ok"
+

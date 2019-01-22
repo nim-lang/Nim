@@ -10,7 +10,7 @@
 ## This module implements the 'implies' relation for guards.
 
 import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
-  saturate, modulegraphs, options, configuration
+  saturate, modulegraphs, options, lineinfos
 
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
@@ -70,7 +70,7 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
       n = n.sons[0]
       inc derefs
     of nkBracketExpr:
-      if isConstExpr(n.sons[1]) or isLet(n.sons[1]):
+      if isConstExpr(n.sons[1]) or isLet(n.sons[1]) or isConstExpr(n.sons[1].skipConv):
         n = n.sons[0]
       else: return
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
@@ -131,8 +131,8 @@ proc neg(n: PNode; o: Operators): PNode =
         let eAsNode = newIntNode(nkIntLit, e.sym.position)
         if not inSet(n.sons[1], eAsNode): s.add eAsNode
       result.sons[1] = s
-    elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
-      result.sons[1] = complement(n.sons[1])
+    #elif t.kind notin {tyString, tySequence} and lengthOrd(t) < 1000:
+    #  result.sons[1] = complement(n.sons[1])
     else:
       # not ({2, 3, 4}.contains(x))   x != 2 and x != 3 and x != 4
       # XXX todo
@@ -208,14 +208,14 @@ proc zero(): PNode = nkIntLit.newIntNode(0)
 proc one(): PNode = nkIntLit.newIntNode(1)
 proc minusOne(): PNode = nkIntLit.newIntNode(-1)
 
-proc lowBound*(x: PNode): PNode =
-  result = nkIntLit.newIntNode(firstOrd(x.typ))
+proc lowBound*(conf: ConfigRef; x: PNode): PNode =
+  result = nkIntLit.newIntNode(firstOrd(conf, x.typ))
   result.info = x.info
 
-proc highBound*(x: PNode; o: Operators): PNode =
+proc highBound*(conf: ConfigRef; x: PNode; o: Operators): PNode =
   let typ = x.typ.skipTypes(abstractInst)
   result = if typ.kind == tyArray:
-             nkIntLit.newIntNode(lastOrd(typ))
+             nkIntLit.newIntNode(lastOrd(conf, typ))
            elif typ.kind == tySequence and x.kind == nkSym and
                x.sym.kind == skConst:
              nkIntLit.newIntNode(x.sym.ast.len-1)
@@ -257,9 +257,9 @@ proc canon*(n: PNode; o: Operators): PNode =
     for i in 0 ..< n.len:
       result.sons[i] = canon(n.sons[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
-      n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +
+      n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
       someMax + someHigh + {mUnaryLt} + someSub + someLen + someDiv):
-    result = n.sym.ast.copyTree
+    result = n.sym.astdef.copyTree
   else:
     result = n
   case result.getMagic
@@ -395,8 +395,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     #   if a:
     #     ...
     # We make can easily replace 'a' by '2 < x' here:
-    if n.sym.ast != nil:
-      result = usefulFact(n.sym.ast, o)
+    if n.sym.astdef != nil:
+      result = usefulFact(n.sym.astdef, o)
   elif n.kind == nkStmtListExpr:
     result = usefulFact(n.lastSon, o)
 
@@ -503,7 +503,7 @@ proc leImpliesIn(x, c, aSet: PNode): TImplication =
     # fact:  x <= 4;  question x in {56}?
     # --> true if every value <= 4 is in the set {56}
     #
-    var value = newIntNode(c.kind, firstOrd(x.typ))
+    var value = newIntNode(c.kind, firstOrd(nil, x.typ))
     # don't iterate too often:
     if c.intVal - value.intVal < 1000:
       var i, pos, neg: int
@@ -520,7 +520,7 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
     # --> true iff every value >= 4 is in the set {56}
     #
     var value = newIntNode(c.kind, c.intVal)
-    let max = lastOrd(x.typ)
+    let max = lastOrd(nil, x.typ)
     # don't iterate too often:
     if max - value.intVal < 1000:
       var i, pos, neg: int
@@ -532,8 +532,8 @@ proc geImpliesIn(x, c, aSet: PNode): TImplication =
       elif neg == i: result = impNo
 
 proc compareSets(a, b: PNode): TImplication =
-  if equalSets(a, b): result = impYes
-  elif intersectSets(a, b).len == 0: result = impNo
+  if equalSets(nil, a, b): result = impYes
+  elif intersectSets(nil, a, b).len == 0: result = impNo
 
 proc impliesIn(fact, loc, aSet: PNode): TImplication =
   case fact.sons[0].sym.magic
@@ -799,10 +799,10 @@ proc ple(m: TModel; a, b: PNode): TImplication =
 
   # use type information too:  x <= 4  iff  high(x) <= 4
   if b.isValue and a.typ != nil and a.typ.isOrdinalType:
-    if lastOrd(a.typ) <= b.intVal: return impYes
+    if lastOrd(nil, a.typ) <= b.intVal: return impYes
   # 3 <= x   iff  low(x) <= 3
   if a.isValue and b.typ != nil and b.typ.isOrdinalType:
-    if firstOrd(b.typ) <= a.intVal: return impYes
+    if firstOrd(nil, b.typ) <= a.intVal: return impYes
 
   # x <= x
   if sameTree(a, b): return impYes

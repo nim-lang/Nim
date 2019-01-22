@@ -6,16 +6,16 @@ when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
 
 type
-  TTestObj = object of TObject
+  TTestObj = object of RootObj
     x: string
 
-proc MakeObj(): TTestObj =
+proc makeObj(): TTestObj =
   result.x = "Hello"
 
-for i in 1 .. 1_000_000:
+for i in 1 .. 100_000:
   when defined(gcMarkAndSweep) or defined(boehmgc):
     GC_fullcollect()
-  var obj = MakeObj()
+  var obj = makeObj()
   if getOccupiedMem() > 300_000: quit("still a leak!")
 #  echo GC_getstatistics()
 

@@ -8,28 +8,49 @@
 #
 
 type
-  Allocator* = ptr object {.inheritable.}
+  AllocatorFlag* {.pure.} = enum  ## flags describing the properties of the allocator
+    ThreadLocal ## the allocator is thread local only.
+    ZerosMem    ## the allocator always zeros the memory on an allocation
+  Allocator* = ptr AllocatorObj
+  AllocatorObj* {.inheritable.} = object
     alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.}
     dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall.}
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
+    deallocAll*: proc (a: Allocator) {.nimcall.}
+    flags*: set[AllocatorFlag]
+    allocCount: int
+    deallocCount: int
 
 var
-  currentAllocator {.threadvar.}: Allocator
+  localAllocator {.threadvar.}: Allocator
+  sharedAllocator: Allocator
+  allocatorStorage {.threadvar.}: AllocatorObj
 
-proc getCurrentAllocator*(): Allocator =
-  result = currentAllocator
+proc getLocalAllocator*(): Allocator =
+  result = localAllocator
+  if result == nil:
+    result = addr allocatorStorage
+    result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.} =
+      result = system.alloc(size)
+      inc a.allocCount
+    result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall.} =
+      system.dealloc(p)
+      inc a.deallocCount
+    result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.} =
+      result = system.realloc(p, newSize)
+    result.deallocAll = nil
+    result.flags = {ThreadLocal}
+    localAllocator = result
 
-proc setCurrentAllocator*(a: Allocator) =
-  currentAllocator = a
+proc setLocalAllocator*(a: Allocator) =
+  localAllocator = a
 
-proc alloc*(size: int; alignment: int = 8): pointer =
-  let a = getCurrentAllocator()
-  result = a.alloc(a, size, alignment)
+proc getSharedAllocator*(): Allocator =
+  result = sharedAllocator
 
-proc dealloc*(p: pointer; size: int) =
-  let a = getCurrentAllocator()
-  a.dealloc(a, p, size)
+proc setSharedAllocator*(a: Allocator) =
+  sharedAllocator = a
 
-proc realloc*(p: pointer; oldSize, newSize: int): pointer =
-  let a = getCurrentAllocator()
-  result = a.realloc(a, p, oldSize, newSize)
+proc allocCounters*(): (int, int) =
+  let a = getLocalAllocator()
+  result = (a.allocCount, a.deallocCount)

@@ -9,16 +9,16 @@ suite "captures":
   test "capture bounds are correct":
     let ex1 = re("([0-9])")
     check("1 23".find(ex1).matchBounds == 0 .. 0)
-    check("1 23".find(ex1).captureBounds[0].get == 0 .. 0)
+    check("1 23".find(ex1).captureBounds[0] == 0 .. 0)
     check("1 23".find(ex1, 1).matchBounds == 2 .. 2)
     check("1 23".find(ex1, 3).matchBounds == 3 .. 3)
 
     let ex2 = re("()()()()()()()()()()([0-9])")
-    check("824".find(ex2).captureBounds[0].get == 0 .. -1)
-    check("824".find(ex2).captureBounds[10].get == 0 .. 0)
+    check("824".find(ex2).captureBounds[0] == 0 .. -1)
+    check("824".find(ex2).captureBounds[10] == 0 .. 0)
 
     let ex3 = re("([0-9]+)")
-    check("824".find(ex3).captureBounds[0].get == 0 .. 2)
+    check("824".find(ex3).captureBounds[0] == 0 .. 2)
 
   test "named captures":
     let ex1 = "foobar".find(re("(?<foo>foo)(?<bar>bar)"))
@@ -26,13 +26,19 @@ suite "captures":
     check(ex1.captures["bar"] == "bar")
 
     let ex2 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
+    check("foo" in ex2.captureBounds)
     check(ex2.captures["foo"] == "foo")
-    check(ex2.captures["bar"] == nil)
+    check(not ("bar" in ex2.captures))
+    expect KeyError:
+        discard ex2.captures["bar"]
 
   test "named capture bounds":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captureBounds["foo"] == some(0..2))
-    check(ex1.captureBounds["bar"] == none(Slice[int]))
+    check("foo" in ex1.captureBounds)
+    check(ex1.captureBounds["foo"] == 0..2)
+    check(not ("bar" in ex1.captures))
+    expect KeyError:
+        discard ex1.captures["bar"]
 
   test "capture count":
     let ex1 = re("(?<foo>foo)(?<bar>bar)?")
@@ -41,19 +47,18 @@ suite "captures":
 
   test "named capture table":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.toTable == {"foo" : "foo", "bar" : nil}.toTable())
-    check(ex1.captureBounds.toTable == {"foo" : some(0..2), "bar" : none(Slice[int])}.toTable())
-    check(ex1.captures.toTable("") == {"foo" : "foo", "bar" : ""}.toTable())
+    check(ex1.captures.toTable == {"foo" : "foo"}.toTable())
+    check(ex1.captureBounds.toTable == {"foo" : 0..2}.toTable())
 
     let ex2 = "foobar".find(re("(?<foo>foo)(?<bar>bar)?"))
     check(ex2.captures.toTable == {"foo" : "foo", "bar" : "bar"}.toTable())
 
   test "capture sequence":
     let ex1 = "foo".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex1.captures.toSeq == @["foo", nil])
+    check(ex1.captures.toSeq == @[some("foo"), none(string)])
     check(ex1.captureBounds.toSeq == @[some(0..2), none(Slice[int])])
-    check(ex1.captures.toSeq("") == @["foo", ""])
+    check(ex1.captures.toSeq(some("")) == @[some("foo"), some("")])
 
     let ex2 = "foobar".find(re("(?<foo>foo)(?<bar>bar)?"))
-    check(ex2.captures.toSeq == @["foo", "bar"])
+    check(ex2.captures.toSeq == @[some("foo"), some("bar")])
 

@@ -1,7 +1,9 @@
 discard """
-  output: '''HELLO WORLD
+  output: '''
+HELLO WORLD
 c_func
-12'''
+12
+'''
 """
 
 import macros, strutils

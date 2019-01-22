@@ -4,7 +4,6 @@ import parseutils
 import unicode
 import math
 import fenv
-#import unsigned
 import pegs
 import streams
 
@@ -73,7 +72,7 @@ type
 
 const
   DefaultPrec = 6 ## Default precision for floating point numbers.
-  DefaultFmt: Format = (ftDefault, -1, -1, nil, faDefault, fsMinus, false, false, false, nil)
+  DefaultFmt: Format = (ftDefault, -1, -1, "", faDefault, fsMinus, false, false, false, "")
     ## Default format corresponding to the empty format string, i.e.
     ##   `x.format("") == x.format(DefaultFmt)`.
   round_nums = [0.5, 0.05, 0.005, 0.0005, 0.00005, 0.000005, 0.0000005, 0.00000005]
@@ -124,7 +123,7 @@ proc parse(fmt: string): Format {.nosideeffect.} =
   if fmt.rawmatch(p, 0, caps) < 0:
     raise newException(FormatError, "Invalid format string")
 
-  result.fill = fmt.get(caps, 0, nil)
+  result.fill = fmt.get(caps, 0, "")
 
   case fmt.get(caps, 1, 0.char)
   of '<': result.align = faLeft
@@ -144,7 +143,7 @@ proc parse(fmt: string): Format {.nosideeffect.} =
   result.width = fmt.get(caps, 4, -1)
 
   if caps.has(4) and fmt[caps.bounds(4).first] == '0':
-    if result.fill != nil:
+    if result.fill != "":
       raise newException(FormatError, "Leading 0 in with not allowed with explicit fill character")
     if result.align != faDefault:
       raise newException(FormatError, "Leading 0 in with not allowed with explicit alignment")
@@ -171,7 +170,7 @@ proc parse(fmt: string): Format {.nosideeffect.} =
   of '%': result.typ = ftPercent
   else: result.typ = ftDefault
 
-  result.arysep = fmt.get(caps, 8, nil, 1)
+  result.arysep = fmt.get(caps, 8, "", 1)
 
 proc getalign(fmt: Format; defalign: FmtAlign; slen: int) : tuple[left, right:int] {.nosideeffect.} =
   ## Returns the number of left and right padding characters for a
@@ -218,7 +217,7 @@ proc writefill(o: var Writer; fmt: Format; n: int; signum: int = 0) =
     elif fmt.sign == fsPlus: write(o, '+')
     elif fmt.sign == fsSpace: write(o, ' ')
 
-  if fmt.fill == nil:
+  if fmt.fill.len == 0:
     for i in 1..n: write(o, ' ')
   else:
     for i in 1..n:
@@ -626,19 +625,19 @@ proc splitfmt(s: string): seq[Part] {.compiletime, nosideeffect.} =
       else:
         lvl.dec
     let clpos = pos
-    var fmtpart = Part(kind: pkFmt, arg: -1, fmt: s.substr(oppos+1, clpos-1), field: nil, index: int.high, nested: nested)
+    var fmtpart = Part(kind: pkFmt, arg: -1, fmt: s.substr(oppos+1, clpos-1), field: "", index: int.high, nested: nested)
     if fmtpart.fmt.len > 0:
       var m: array[0..3, string]
       if not fmtpart.fmt.match(subpeg, m):
         error("invalid format string")
 
-      if m[1] != nil and m[1].len > 0:
+      if m[1].len > 0:
         fmtpart.field = m[1].substr(1)
-      if m[2] != nil and m[2].len > 0:
+      if m[2].len > 0:
         discard parseInt(m[2].substr(1, m[2].len-2), fmtpart.index)
 
       if m[0].len > 0: discard parseInt(m[0], fmtpart.arg)
-      if m[3] == nil or m[3].len == 0:
+      if m[3].len == 0:
         fmtpart.fmt = ""
       elif m[3][0] == ':':
         fmtpart.fmt = m[3].substr(1)
@@ -650,7 +649,7 @@ proc splitfmt(s: string): seq[Part] {.compiletime, nosideeffect.} =
 proc literal(s: string): NimNode {.compiletime, nosideeffect.} =
   ## Return the nim literal of string `s`. This handles the case if
   ## `s` is nil.
-  result = if s == nil: newNilLit() else: newLit(s)
+  result = newLit(s)
 
 proc literal(b: bool): NimNode {.compiletime, nosideeffect.} =
   ## Return the nim literal of boolean `b`. This is either `true`
@@ -713,7 +712,7 @@ proc generatefmt(fmtstr: string;
           args[arg].cnt = args[arg].cnt + 1
           arg.inc
         # possible field access
-        if part.field != nil and part.field.len > 0:
+        if part.field.len > 0:
           argexpr = newDotExpr(argexpr, part.field.ident)
         # possible array access
         if part.index < int.high:
@@ -724,7 +723,7 @@ proc generatefmt(fmtstr: string;
           # nested format string. Compute the format string by
           # concatenating the parts of the substring.
           for e in generatefmt(part.fmt, args, arg):
-            var newexpr = if part.fmt == nil: e.val else: newCall(bindsym"format", e.val, e.fmt)
+            var newexpr = if part.fmt.len == 0: e.val else: newCall(bindsym"format", e.val, e.fmt)
             if fmtexpr != nil and fmtexpr.kind != nnkNilLit:
               fmtexpr = infix(fmtexpr, "&", newexpr)
             else:

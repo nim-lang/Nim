@@ -1,8 +1,12 @@
+discard """
+output: ""
+"""
+
 import macros, strutils
 
 # https://github.com/nim-lang/Nim/issues/1512
 
-proc macrobust0(raw_input: string) =
+proc macrobust0(input: string): string =
   var output = ""
   proc p1(a:string) =
     output.add(a)
@@ -27,13 +31,9 @@ proc macrobust0(raw_input: string) =
   proc p19(a:string) = p18(a)
   proc p20(a:string) = p19(a)
 
-  let input = $raw_input
-
   for a in input.split():
     p20(a)
     p19(a)
-
-
     p18(a)
     p17(a)
     p16(a)
@@ -53,11 +53,9 @@ proc macrobust0(raw_input: string) =
     p2(a)
     p1(a)
 
+  result = output
 
-  echo output
-
-macro macrobust(raw_input: untyped): untyped =
-
+macro macrobust(input: static[string]): untyped =
   var output = ""
   proc p1(a:string) =
     output.add(a)
@@ -82,12 +80,9 @@ macro macrobust(raw_input: untyped): untyped =
   proc p19(a:string) = p18(a)
   proc p20(a:string) = p19(a)
 
-  let input = $raw_input
-
   for a in input.split():
     p20(a)
     p19(a)
-
     p18(a)
     p17(a)
     p16(a)
@@ -105,11 +100,11 @@ macro macrobust(raw_input: untyped): untyped =
     p4(a)
     p3(a)
     p2(a)
+    p1(a)
 
-  echo output
-  discard result
+  result = newLit(output)
 
-macrobust """
+const input = """
   fdsasadfsdfa sadfsdafsdaf
   dsfsdafdsfadsfa fsdaasdfasdf
   fsdafsadfsad asdfasdfasdf
@@ -122,16 +117,7 @@ macrobust """
   sdfasdafsadf sdfasdafsdaf sdfasdafsdaf
 """
 
+let str1 = macrobust(input)
+let str2 = macrobust0(input)
 
-macrobust0 """
-  fdsasadfsdfa sadfsdafsdaf
-  dsfsdafdsfadsfa fsdaasdfasdf
-  fsdafsadfsad asdfasdfasdf
-  fdsasdfasdfa sadfsadfsadf
-  sadfasdfsdaf sadfsdafsdaf dsfasdaf
-  sadfsdafsadf fdsasdafsadf fdsasadfsdaf
-  sdfasadfsdafdfsa sadfsadfsdaf
-  sdafsdaffsda sdfasadfsadf
-  fsdasdafsdfa sdfasdfafsda
-  sdfasdafsadf sdfasdafsdaf sdfasdafsdaf
-"""
+doAssert str1 == str2

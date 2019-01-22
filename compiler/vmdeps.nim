@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, streams, options, idents
+import ast, types, msgs, os, streams, options, idents, lineinfos
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
-    var filename = parentDir(info.toFullPath) / file
+    var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
-      filename = findFile(conf, file)
+      filename = findFile(conf, file).string
     result = readFile(filename)
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
@@ -23,8 +23,8 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     localError(conf, info, "cannot open file: " & file)
     result = ""
 
-proc atomicTypeX(name: string; m: TMagic; t: PType; info: TLineInfo): PNode =
-  let sym = newSym(skType, getIdent(name), t.owner, info)
+proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo): PNode =
+  let sym = newSym(skType, getIdent(cache, name), t.owner, info)
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
@@ -34,60 +34,57 @@ proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s)
   result.info = info
 
-proc mapTypeToAstX(t: PType; info: TLineInfo;
+proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode
 
-proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
+proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-  result.add atomicTypeX(name, m, t, info)
+  result.add atomicTypeX(cache, name, m, t, info)
   for i in 0 ..< t.len:
     if t.sons[i] == nil:
-      let void = atomicTypeX("void", mVoid, t, info)
+      let void = atomicTypeX(cache, "void", mVoid, t, info)
       void.typ = newType(tyVoid, t.owner)
       result.add void
     else:
-      result.add mapTypeToAstX(t.sons[i], info, inst)
+      result.add mapTypeToAstX(cache, t.sons[i], info, inst)
 
-proc objectNode(n: PNode): PNode =
+proc objectNode(cache: IdentCache; n: PNode): PNode =
   if n.kind == nkSym:
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
-    result.add mapTypeToAstX(n.sym.typ, n.info, true, false)  # type
-    result.add ast.emptyNode  # no assigned value
+    result.add mapTypeToAstX(cache, n.sym.typ, n.info, true, false)  # type
+    result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
     for i in 0 ..< n.safeLen:
-      result.add objectNode(n[i])
+      result.add objectNode(cache, n[i])
 
-proc mapTypeToAstX(t: PType; info: TLineInfo;
+proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode =
   var allowRecursion = allowRecursionX
-  template atomicType(name, m): untyped = atomicTypeX(name, m, t, info)
+  template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info)
   template atomicType(s): untyped = atomicTypeX(s, info)
-  template mapTypeToAst(t,info): untyped = mapTypeToAstX(t, info, inst)
-  template mapTypeToAstR(t,info): untyped = mapTypeToAstX(t, info, inst, true)
+  template mapTypeToAst(t,info): untyped = mapTypeToAstX(cache, t, info, inst)
+  template mapTypeToAstR(t,info): untyped = mapTypeToAstX(cache, t, info, inst, true)
   template mapTypeToAst(t,i,info): untyped =
-    if i<t.len and t.sons[i]!=nil: mapTypeToAstX(t.sons[i], info, inst)
-    else: ast.emptyNode
+    if i<t.len and t.sons[i]!=nil: mapTypeToAstX(cache, t.sons[i], info, inst)
+    else: newNodeI(nkEmpty, info)
   template mapTypeToBracket(name, m, t, info): untyped =
-    mapTypeToBracketX(name, m, t, info, inst)
+    mapTypeToBracketX(cache, name, m, t, info, inst)
   template newNodeX(kind): untyped =
     newNodeIT(kind, if t.n.isNil: info else: t.n.info, t)
   template newIdentDefs(n,t): untyped =
     var id = newNodeX(nkIdentDefs)
     id.add n  # name
     id.add mapTypeToAst(t, info)  # type
-    id.add ast.emptyNode  # no assigned value
+    id.add newNodeI(nkEmpty, info)  # no assigned value
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
-  if inst:
-    if t.sym != nil:  # if this node has a symbol
-      if not allowRecursion:  # getTypeInst behavior: return symbol
-        return atomicType(t.sym)
-      #else:  # getTypeImpl behavior: turn off recursion
-      #  allowRecursion = false
+  if inst and not allowRecursion and t.sym != nil:
+    # getTypeInst behavior: return symbol
+    return atomicType(t.sym)
 
   case t.kind
   of tyNone: result = atomicType("none", mNone)
@@ -98,12 +95,16 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyStmt: result = atomicType("stmt", mStmt)
   of tyVoid: result = atomicType("void", mVoid)
   of tyEmpty: result = atomicType("empty", mNone)
+  of tyUncheckedArray:
+    result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
+    result.add atomicType("UncheckedArray", mUncheckedArray)
+    result.add mapTypeToAst(t.sons[0], info)
   of tyArray:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("array", mArray)
     if inst and t.sons[0].kind == tyRange:
       var rng = newNodeX(nkInfix)
-      rng.add newIdentNode(getIdent(".."), info)
+      rng.add newIdentNode(getIdent(cache, ".."), info)
       rng.add t.sons[0].n.sons[0].copyTree
       rng.add t.sons[0].n.sons[1].copyTree
       result.add rng
@@ -132,14 +133,14 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         for i in 1 ..< t.len-1:
           result.add mapTypeToAst(t.sons[i], info)
     else:
-      result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
+      result = mapTypeToAstX(cache, t.lastSon, info, inst, allowRecursion)
   of tyGenericBody:
     if inst:
       result = mapTypeToAstR(t.lastSon, info)
     else:
       result = mapTypeToAst(t.lastSon, info)
   of tyAlias:
-    result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
+    result = mapTypeToAstX(cache, t.lastSon, info, inst, allowRecursion)
   of tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
@@ -156,22 +157,26 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
-      result.add ast.emptyNode  # pragmas not reconstructed yet
-      if t.sons[0] == nil: result.add ast.emptyNode  # handle parent object
+      if t.sym.ast != nil:
+        result.add t.sym.ast[2][0].copyTree  # copy object pragmas
       else:
+        result.add newNodeI(nkEmpty, info)
+      if t.sons[0] == nil:
+        result.add newNodeI(nkEmpty, info)
+      else:  # handle parent object
         var nn = newNodeX(nkOfInherit)
         nn.add mapTypeToAst(t.sons[0], info)
         result.add nn
       if t.n.len > 0:
-        result.add objectNode(t.n)
+        result.add objectNode(cache, t.n)
       else:
-        result.add ast.emptyNode
+        result.add newNodeI(nkEmpty, info)
     else:
       if allowRecursion or t.sym == nil:
         result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
-        result.add ast.emptyNode
+        result.add newNodeI(nkEmpty, info)
         if t.sons[0] == nil:
-          result.add ast.emptyNode
+          result.add newNodeI(nkEmpty, info)
         else:
           result.add mapTypeToAst(t.sons[0], info)
         result.add copyTree(t.n)
@@ -179,7 +184,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
-    result.add ast.emptyNode  # pragma node, currently always empty for enum
+    result.add newNodeI(nkEmpty, info)  # pragma node, currently always empty for enum
     for c in t.n.sons:
       result.add copyTree(c)
   of tyTuple:
@@ -223,21 +228,29 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = newNodeX(nkProcTy)
       var fp = newNodeX(nkFormalParams)
       if t.sons[0] == nil:
-        fp.add ast.emptyNode
+        fp.add newNodeI(nkEmpty, info)
       else:
         fp.add mapTypeToAst(t.sons[0], t.n[0].info)
       for i in 1..<t.sons.len:
         fp.add newIdentDefs(t.n[i], t.sons[i])
       result.add fp
-      result.add ast.emptyNode  # pragmas aren't reconstructed yet
+      result.add if t.n[0].len > 0: t.n[0][pragmasEffects].copyTree
+                 else: newNodeI(nkEmpty, info)
     else:
       result = mapTypeToBracket("proc", mNone, t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)
   of tyRange:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     result.add atomicType("range", mRange)
-    result.add t.n.sons[0].copyTree
-    result.add t.n.sons[1].copyTree
+    if inst:
+      let rng = newNodeX(nkInfix)
+      rng.add newIdentNode(getIdent(cache, ".."), info)
+      rng.add t.n.sons[0].copyTree
+      rng.add t.n.sons[1].copyTree
+      result.add rng
+    else:
+      result.add t.n.sons[0].copyTree
+      result.add t.n.sons[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
   of tyString: result = atomicType("string", mString)
   of tyCString: result = atomicType("cstring", mCString)
@@ -281,17 +294,17 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef: assert(false, "mapTypeToAstX")
+  of tyOptAsRef: assert(false, "mapTypeToAstX")
 
-proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(t, info, false, true)
+proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
+  result = mapTypeToAstX(cache, t, info, false, true)
 
 # the "Inst" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type declaration
-proc opMapTypeInstToAst*(t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(t, info, true, false)
+proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
+  result = mapTypeToAstX(cache, t, info, true, false)
 
 # the "Impl" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type implementation
-proc opMapTypeImplToAst*(t: PType; info: TLineInfo): PNode =
-  result = mapTypeToAstX(t, info, true, true)
+proc opMapTypeImplToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
+  result = mapTypeToAstX(cache, t, info, true, true)

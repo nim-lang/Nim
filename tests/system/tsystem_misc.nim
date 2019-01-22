@@ -15,8 +15,34 @@ discard """
 1
 2
 3
+2
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+2
 '''
 """
+
+
+block:
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
 
 # check high/low implementations
 doAssert high(int) > low(int)
@@ -86,3 +112,50 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+doAssertRaises(Exception):
+  raise newException(Exception, "foo")
+
+block:
+  var didThrow = false
+  try:
+    doAssertRaises(IndexError): # should fail since it's wrong exception
+      raise newException(FieldError, "foo")
+  except AssertionError:
+    # ok, throwing was correct behavior
+    didThrow = true
+  doAssert didThrow
+
+type seqqType = ptr UncheckedArray[int]
+let qData = cast[seqqType](addr seqq[0])
+oaFirstElm(toOpenArray(qData, 1, 3))
+
+proc foo(a: openArray[byte]) =
+  for x in a: echo x
+
+let str = "0123456789"
+foo(toOpenArrayByte(str, 0, str.high))
+
+
+template boundedOpenArray[T](x: seq[T], first, last: int): openarray[T] =
+  toOpenarray(x, max(0, first), min(x.high, last))
+
+# bug #9281
+
+proc foo[T](x: openarray[T]) =
+  echo x.len
+
+let a = @[1, 2, 3]
+
+# a.boundedOpenArray(1, 2).foo()  # Works
+echo a.boundedOpenArray(1, 2).len # Internal compiler error
+
+block: # `$`*[T: tuple|object](x: T)
+  doAssert $(foo1:0, bar1:"a") == """(foo1: 0, bar1: "a")"""
+  doAssert $(foo1:0, ) == """(foo1: 0)"""
+  doAssert $(0, "a") == """(0, "a")"""
+  doAssert $(0, ) == "(0,)"
+  type Foo = object
+    x:int
+    x2:float
+  doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
+  doAssert $() == "()"

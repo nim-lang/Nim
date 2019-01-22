@@ -11,7 +11,7 @@
 
 import
   llstream, nversion, commands, os, strutils, msgs, platform, condsyms, lexer,
-  options, idents, wordrecg, strtabs, configuration
+  options, idents, wordrecg, strtabs, lineinfos, pathutils
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
@@ -175,9 +175,9 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
     confTok(L, tok, config, condStack)
   if tok.tokType == tkBracketLe:
     # BUGFIX: val, not s!
-    # BUGFIX: do not copy '['!
     confTok(L, tok, config, condStack)
     checkSymbol(L, tok)
+    add(val, '[')
     add(val, tokToStr(tok))
     confTok(L, tok, config, condStack)
     if tok.tokType == tkBracketRi: confTok(L, tok, config, condStack)
@@ -201,8 +201,8 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
   else:
     processSwitch(s, val, passPP, info, config)
 
-proc readConfigFile(
-    filename: string; cache: IdentCache; config: ConfigRef): bool =
+proc readConfigFile(filename: AbsoluteFile; cache: IdentCache;
+                    config: ConfigRef): bool =
   var
     L: TLexer
     tok: TToken
@@ -219,38 +219,38 @@ proc readConfigFile(
     closeLexer(L)
     return true
 
-proc getUserConfigPath(filename: string): string =
-  result = joinPath(getConfigDir(), filename)
+proc getUserConfigPath*(filename: RelativeFile): AbsoluteFile =
+  result = getConfigDir().AbsoluteDir / RelativeDir"nim" / filename
 
-proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
+proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile =
   # try standard configuration file (installation did not distribute files
   # the UNIX way)
   let p = getPrefixDir(conf)
-  result = joinPath([p, "config", filename])
+  result = p / RelativeDir"config" / filename
   when defined(unix):
-    if not existsFile(result): result = joinPath([p, "etc", filename])
-    if not existsFile(result): result = "/etc/" & filename
+    if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
+    if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
-  
-  var configFiles = newSeq[string]()
 
-  template readConfigFile(path: string) =
+  var configFiles = newSeq[AbsoluteFile]()
+
+  template readConfigFile(path) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
       add(configFiles, configPath)
 
-  if optSkipConfigFile notin conf.globalOptions:
+  if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
 
   if optSkipUserConfigFile notin conf.globalOptions:
     readConfigFile(getUserConfigPath(cfg))
 
-  let pd = if conf.projectPath.len > 0: conf.projectPath else: getCurrentDir()
+  let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
   if optSkipParentConfigFiles notin conf.globalOptions:
-    for dir in parentDirs(pd, fromRoot=true, inclusive=false):
-      readConfigFile(dir / cfg)
+    for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
+      readConfigFile(AbsoluteDir(dir) / cfg)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
@@ -263,8 +263,5 @@ proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
       readConfigFile(projectConfig)
 
   for filename in configFiles:
-    rawMessage(conf, hintConf, filename)
-
-proc loadConfigs*(cfg: string; conf: ConfigRef) =
-  # for backwards compatibility only.
-  loadConfigs(cfg, newIdentCache(), conf)
+    # delayed to here so that `hintConf` is honored
+    rawMessage(conf, hintConf, filename.string)

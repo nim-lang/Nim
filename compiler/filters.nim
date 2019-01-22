@@ -11,7 +11,7 @@
 
 import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
-  renderer
+  renderer, pathutils
 
 proc invalidPragma(conf: ConfigRef; n: PNode) =
   localError(conf, n.info,
@@ -47,7 +47,7 @@ proc boolArg*(conf: ConfigRef; n: PNode, name: string, pos: int, default: bool):
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "false") == 0: result = false
   else: invalidPragma(conf, n)
 
-proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, call: PNode): PLLStream =
   var pattern = strArg(conf, call, "startswith", 1, "")
   var leading = boolArg(conf, call, "leading", 2, true)
   var trailing = boolArg(conf, call, "trailing", 3, true)
@@ -61,7 +61,7 @@ proc filterStrip*(conf: ConfigRef; stdin: PLLStream, filename: string, call: PNo
       llStreamWriteln(result, line)
   llStreamClose(stdin)
 
-proc filterReplace*(conf: ConfigRef; stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterReplace*(conf: ConfigRef; stdin: PLLStream, filename: AbsoluteFile, call: PNode): PLLStream =
   var sub = strArg(conf, call, "sub", 1, "")
   if len(sub) == 0: invalidPragma(conf, call)
   var by = strArg(conf, call, "by", 2, "")

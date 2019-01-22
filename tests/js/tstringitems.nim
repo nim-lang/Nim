@@ -45,7 +45,7 @@ block: # Test compile-time binary data generation, invalid unicode
 block: # Test unicode strings
   const constStr = "Привет!"
   var jsStr : cstring
-  {.emit: """`jsStr`[0] = "Привет!";""".}
+  {.emit: """`jsStr` = "Привет!";""".}
 
   doAssert($jsStr == constStr)
   var runtimeStr = "При"

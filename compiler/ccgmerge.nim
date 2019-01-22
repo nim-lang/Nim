@@ -12,7 +12,7 @@
 
 import
   ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes
+  intsets, platform, llstream, tables, sighashes, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -31,6 +31,7 @@ const
     cfsData: "NIM_merge_DATA",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
+    cfsDatInitProc: "NIM_merge_DATINIT_PROC",    
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
@@ -47,34 +48,32 @@ const
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(tnl)
-    add(result, "/*\t")
+    result = nil
+    add(result, "\n/*\t")
     add(result, CFileSectionNames[fs])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
 proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & "\n")
 
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(tnl)
-    add(result, "/*\t")
+    result = rope("")
+    add(result, "\n/*\t")
     add(result, CProcSectionNames[ps])
-    add(result, ":*/")
-    add(result, tnl)
+    add(result, ":*/\n")
 
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
-    result = rope(NimMergeEndMark & tnl)
+    result = rope(NimMergeEndMark & "\n")
 
 proc writeTypeCache(a: TypeCache, s: var string) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeStr($id, s)
@@ -88,7 +87,7 @@ proc writeIntSet(a: IntSet, s: var string) =
   for x in items(a):
     if i == 10:
       i = 0
-      s.add(tnl)
+      s.add('\L')
     else:
       s.add(' ')
     encodeVInt(x, s)
@@ -97,8 +96,7 @@ proc writeIntSet(a: IntSet, s: var string) =
 
 proc genMergeInfo*(m: BModule): Rope =
   if not compilationCachePresent(m.config): return nil
-  var s = "/*\tNIM_merge_INFO:"
-  s.add(tnl)
+  var s = "/*\tNIM_merge_INFO:\n"
   s.add("typeCache:{")
   writeTypeCache(m.typeCache, s)
   s.add("declared:{")
@@ -110,8 +108,7 @@ proc genMergeInfo*(m: BModule): Rope =
   encodeVInt(m.labels, s)
   s.add(" flags:")
   encodeVInt(cast[int](m.flags), s)
-  s.add(tnl)
-  s.add("*/")
+  s.add("\n*/")
   result = s.rope
 
 template `^`(pos: int): untyped = L.buf[pos]
@@ -155,11 +152,11 @@ proc readVerbatimSection(L: var TBaseLexer): Rope =
     of CR:
       pos = nimlexbase.handleCR(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
       buf = L.buf
-      r.add(tnl)
+      r.add('\L')
     of '\0':
       doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break
@@ -230,7 +227,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template withCFile(cfilename: string, body: untyped) =
+template withCFile(cfilename: AbsoluteFile, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
   var L {.inject.}: TBaseLexer
@@ -242,7 +239,7 @@ template withCFile(cfilename: string, body: untyped) =
     body
   closeBaseLexer(L)
 
-proc readMergeInfo*(cfilename: string, m: BModule) =
+proc readMergeInfo*(cfilename: AbsoluteFile, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -255,7 +252,7 @@ type
     f: TCFileSections
     p: TCProcSections
 
-proc readMergeSections(cfilename: string, m: var TMergeSections) =
+proc readMergeSections(cfilename: AbsoluteFile, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
     readKey(L, k)
@@ -289,7 +286,7 @@ proc mergeRequired*(m: BModule): bool =
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
 
-proc mergeFiles*(cfilename: string, m: BModule) =
+proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   ## merges the C file with the old version on hard disc.
   var old: TMergeSections
   readMergeSections(cfilename, old)

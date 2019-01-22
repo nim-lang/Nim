@@ -30,12 +30,7 @@ type
     wordCounter: int
     idAnon*, idDelegator*, emptyIdent*: PIdent
 
-var
-  legacy: IdentCache
-
-proc resetIdentCache*() =
-  for i in low(legacy.buckets)..high(legacy.buckets):
-    legacy.buckets[i] = nil
+proc resetIdentCache*() = discard
 
 proc cmpIgnoreStyle*(a, b: cstring, blen: int): int =
   if a[0] != b[0]: return 1
@@ -71,11 +66,9 @@ proc cmpExact(a, b: cstring, blen: int): int =
   if result == 0:
     if a[i] != '\0': result = 1
 
-{.this: self.}
-
-proc getIdent*(self: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
-  var idx = h and high(buckets)
-  result = buckets[idx]
+proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
+  var idx = h and high(ic.buckets)
+  result = ic.buckets[idx]
   var last: PIdent = nil
   var id = 0
   while result != nil:
@@ -83,8 +76,8 @@ proc getIdent*(self: IdentCache; identifier: cstring, length: int, h: Hash): PId
       if last != nil:
         # make access to last looked up identifier faster:
         last.next = result.next
-        result.next = buckets[idx]
-        buckets[idx] = result
+        result.next = ic.buckets[idx]
+        ic.buckets[idx] = result
       return
     elif cmpIgnoreStyle(cstring(result.s), identifier, length) == 0:
       assert((id == 0) or (id == result.id))
@@ -95,41 +88,31 @@ proc getIdent*(self: IdentCache; identifier: cstring, length: int, h: Hash): PId
   result.h = h
   result.s = newString(length)
   for i in countup(0, length - 1): result.s[i] = identifier[i]
-  result.next = buckets[idx]
-  buckets[idx] = result
+  result.next = ic.buckets[idx]
+  ic.buckets[idx] = result
   if id == 0:
-    inc(wordCounter)
-    result.id = -wordCounter
+    inc(ic.wordCounter)
+    result.id = -ic.wordCounter
   else:
     result.id = id
 
-proc getIdent*(self: IdentCache; identifier: string): PIdent =
-  result = getIdent(cstring(identifier), len(identifier),
+proc getIdent*(ic: IdentCache; identifier: string): PIdent =
+  result = getIdent(ic, cstring(identifier), len(identifier),
                     hashIgnoreStyle(identifier))
 
-proc getIdent*(self: IdentCache; identifier: string, h: Hash): PIdent =
-  result = getIdent(cstring(identifier), len(identifier), h)
+proc getIdent*(ic: IdentCache; identifier: string, h: Hash): PIdent =
+  result = getIdent(ic, cstring(identifier), len(identifier), h)
 
 proc newIdentCache*(): IdentCache =
-  if legacy.isNil:
-    result = IdentCache()
-    result.idAnon = result.getIdent":anonymous"
-    result.wordCounter = 1
-    result.idDelegator = result.getIdent":delegator"
-    result.emptyIdent = result.getIdent("")
-    # initialize the keywords:
-    for s in countup(succ(low(specialWords)), high(specialWords)):
-      result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
-    legacy = result
-  else:
-    result = legacy
+  result = IdentCache()
+  result.idAnon = result.getIdent":anonymous"
+  result.wordCounter = 1
+  result.idDelegator = result.getIdent":delegator"
+  result.emptyIdent = result.getIdent("")
+  # initialize the keywords:
+  for s in countup(succ(low(specialWords)), high(specialWords)):
+    result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
-
-proc getIdent*(identifier: string): PIdent =
-  ## for backwards compatibility.
-  if legacy.isNil:
-    discard newIdentCache()
-  legacy.getIdent identifier

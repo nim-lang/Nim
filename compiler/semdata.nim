@@ -13,8 +13,8 @@ import
   strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
-  magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
-  modulegraphs, configuration
+  magicsys, nversion, nimsets, parser, times, passes, vmdef,
+  modulegraphs, lineinfos
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -22,6 +22,7 @@ type
     defaultCC*: TCallingConvention
     dynlib*: PLib
     notes*: TNoteKinds
+    features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
 
   POptionEntry* = ref TOptionEntry
@@ -37,6 +38,7 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
+    mappingExists*: bool
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -63,7 +65,10 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoEvaluateGeneric, efInCall, efFromHlo
+    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoUndeclared
+      # Use this if undeclared identifiers should not raise an error during
+      # overload resolution.
 
   TExprFlags* = set[TExprFlag]
 
@@ -75,6 +80,7 @@ type
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents a module
+    enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     importTable*: PScope       # scope for all imported symbols
@@ -94,8 +100,8 @@ type
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int
     inGenericInst*: int        # > 0 if we are instantiating a generic
-    converters*: TSymSeq       # sequence of converters
-    patterns*: TSymSeq         # sequence of pattern matchers
+    converters*: seq[PSym]
+    patterns*: seq[PSym]       # sequence of pattern matchers
     optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
@@ -138,7 +144,6 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
-    runnableExamples*: PNode
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -148,7 +153,7 @@ proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
 
 proc filename*(c: PContext): string =
   # the module's filename
-  return toFilename(FileIndex c.module.position)
+  return toFilename(c.config, FileIndex c.module.position)
 
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
@@ -175,12 +180,14 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
 proc put*(p: PProcCon; key, val: PSym) =
-  if p.mapping.data == nil: initIdTable(p.mapping)
+  if not p.mappingExists:
+    initIdTable(p.mapping)
+    p.mappingExists = true
   #echo "put into table ", key.info
   p.mapping.idTablePut(key, val)
 
 proc get*(p: PProcCon; key: PSym): PSym =
-  if p.mapping.data == nil: return nil
+  if not p.mappingExists: return nil
   result = PSym(p.mapping.idTableGet(key))
 
 proc getGenSym*(c: PContext; s: PSym): PSym =
@@ -210,8 +217,9 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.dynlib = nil
   result.notes = conf.notes
 
-proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
+proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
+  result.enforceVoidContext = PType(kind: tyStmt)
   result.ambiguousSymbols = initIntSet()
   result.optionStack = @[]
   result.libs = @[]
@@ -225,13 +233,13 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
-  result.cache = cache
+  result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
   result.typesWithOps = @[]
   result.features = graph.config.features
 
-proc inclSym(sq: var TSymSeq, s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym) =
   var L = len(sq)
   for i in countup(0, L - 1):
     if sq[i].id == s.id: return
@@ -278,6 +286,13 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
     result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType)
 
+proc makeVarType*(owner: PSym, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
+    result = baseType
+  else:
+    result = newType(kind, owner)
+    addSonSkipIntLit(result, baseType)
+
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc:
     result = typ
@@ -286,7 +301,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
     result.addSonSkipIntLit(typ)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
-  let typedesc = makeTypeDesc(c, typ)
+  let typedesc = newTypeS(tyTypeDesc, c)
+  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)

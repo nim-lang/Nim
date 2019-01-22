@@ -19,7 +19,7 @@ proc readVu64*(z: openArray[byte]; pResult: var uint64): int =
     return 1
   if z[0] <= 248:
     if z.len < 2: return 0
-    pResult = (uint64 z[0] - 241) * 256 + uint64 z[1] + 240
+    pResult = (uint64 z[0] - 241) * 256 + z[1].uint64 + 240
     return 2
   if z.len < int(z[0]-246): return 0
   if z[0] == 249:
@@ -134,6 +134,13 @@ when isMainModule:
 
     if encodeZigzag(decodeZigzag(test)) != test:
       echo "Failure for ", test, " ", encodeZigzag(decodeZigzag(test)), " ", decodeZigzag(test)
+
+  for test in 0u64..300u64:
+    let wrLen = writeVu64(dest, test)
+    let rdLen = readVu64(dest, got)
+    assert wrLen == rdLen
+    if got != test:
+      echo "BUG! expected: ", test, " got: ", got, " z0: ", dest[0]
 
   # check this also works for floats:
   for test in [0.0, 0.1, 2.0, +Inf, Nan, NegInf]:

@@ -9,7 +9,7 @@
 
 ## This module implements the module graph data structure. The module graph
 ## represents a complete Nim project. Single modules can either be kept in RAM
-## or stored in a ROD file. The ROD file mechanism is not yet integrated here.
+## or stored in a Sqlite database.
 ##
 ## The caching of modules is critical for 'nimsuggest' and is tricky to get
 ## right. If module E is being edited, we need autocompletion (and type
@@ -25,7 +25,8 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, rod, msgs, hashes, idents
+import ast, intsets, tables, options, lineinfos, hashes, idents,
+  incremental, btrees
 
 type
   ModuleGraph* = ref object
@@ -40,85 +41,141 @@ type
                                   # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
+    cache*: IdentCache
+    vm*: RootRef # unfortunately the 'vm' state is shared project-wise, this will
+                 # be clarified in later compiler implementations.
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
+    methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
     exposed*: TStrTable
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
+    emptyNode*: PNode
+    incr*: IncrementalCtx
+    importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
+    includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
+    recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
+    cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
+    cacheCounters*: Table[string, BiggestInt]
+    cacheTables*: Table[string, BTree[string, PNode]]
+    passes*: seq[TPass]
+    onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+
+  TPassContext* = object of RootObj # the pass's context
+  PPassContext* = ref TPassContext
+
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
+
+  TPass* = tuple[open: TPassOpen,
+                 process: TPassProcess,
+                 close: TPassClose,
+                 isFrontend: bool]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
-{.this: g.}
+when defined(nimfind):
+  template onUse*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
+    else:
+      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+
+  template onDefResolveForward*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinitionResolveForward != nil:
+        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinitionResolveForward != nil:
+        c.graph.onDefinitionResolveForward(c.graph, s, info)
+
+else:
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
-  result = doStopCompile != nil and doStopCompile()
+  result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo(), {})
+  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
   result.magic = m
 
-proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
+proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
-  if config.isNil:
-    result.config = newConfigRef()
-  else:
-    result.config = config
+  result.config = config
+  result.cache = cache
   result.owners = @[]
   result.methods = @[]
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
+  result.emptyNode = newNode(nkEmpty)
+  init(result.incr)
+  result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
+    discard
+  result.cacheSeqs = initTable[string, PNode]()
+  result.cacheCounters = initTable[string, BiggestInt]()
+  result.cacheTables = initTable[string, BTree[string, PNode]]()
 
 proc resetAllModules*(g: ModuleGraph) =
-  initStrTable(packageSyms)
-  deps = initIntSet()
-  modules = @[]
-  importStack = @[]
-  inclToMod = initTable[FileIndex, FileIndex]()
-  usageSym = nil
-  owners = @[]
-  methods = @[]
-  initStrTable(compilerprocs)
-  initStrTable(exposed)
+  initStrTable(g.packageSyms)
+  g.deps = initIntSet()
+  g.modules = @[]
+  g.importStack = @[]
+  g.inclToMod = initTable[FileIndex, FileIndex]()
+  g.usageSym = nil
+  g.owners = @[]
+  g.methods = @[]
+  initStrTable(g.compilerprocs)
+  initStrTable(g.exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len:
-    result = modules[fileIdx.int32]
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len:
+    result = g.modules[fileIdx.int32]
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   assert m.position == m.info.fileIndex.int32
-  addModuleDep(m.info.fileIndex, dep, isIncludeFile = false)
-  if suggestMode:
-    deps.incl m.position.dependsOn(dep.int)
+  addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
+  if g.suggestMode:
+    g.deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when quering the graph lazily.
-    # this improve efficiency quite a lot:
+    # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
-  addModuleDep(module, includeFile, isIncludeFile = true)
-  discard hasKeyOrPut(inclToMod, includeFile, module)
+  addModuleDep(g.incr, g.config, module, includeFile, isIncludeFile = true)
+  discard hasKeyOrPut(g.inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   ## returns 'fileIdx' if the file belonging to this index is
   ## directly used as a module or else the module that first
   ## references this include file.
-  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len and modules[fileIdx.int32] != nil:
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len and g.modules[fileIdx.int32] != nil:
     result = fileIdx
   else:
-    result = inclToMod.getOrDefault(fileIdx)
+    result = g.inclToMod.getOrDefault(fileIdx)
 
 proc transitiveClosure(g: var IntSet; n: int) =
   # warshall's algorithm
@@ -130,22 +187,22 @@ proc transitiveClosure(g: var IntSet; n: int) =
             g.incl i.dependsOn(j)
 
 proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
-  let m = getModule fileIdx
+  let m = g.getModule fileIdx
   if m != nil: incl m.flags, sfDirty
 
 proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # we need to mark its dependent modules D as dirty right away because after
   # nimsuggest is done with this module, the module's dirty flag will be
   # cleared but D still needs to be remembered as 'dirty'.
-  if invalidTransitiveClosure:
-    invalidTransitiveClosure = false
-    transitiveClosure(deps, modules.len)
+  if g.invalidTransitiveClosure:
+    g.invalidTransitiveClosure = false
+    transitiveClosure(g.deps, g.modules.len)
 
   # every module that *depends* on this file is also dirty:
-  for i in 0i32..<modules.len.int32:
-    let m = modules[i]
-    if m != nil and deps.contains(i.dependsOn(fileIdx.int)):
+  for i in 0i32..<g.modules.len.int32:
+    let m = g.modules[i]
+    if m != nil and g.deps.contains(i.dependsOn(fileIdx.int)):
       incl m.flags, sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
-  result = suggestMode and sfDirty in m.flags
+  result = g.suggestMode and sfDirty in m.flags

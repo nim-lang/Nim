@@ -1,154 +1,187 @@
-## v0.19.X - XX/XX/2018
+## v0.20.0 - XX/XX/2019
+
 
 ### Changes affecting backwards compatibility
 
-- The stdlib module ``future`` has been renamed to ``sugar``.
-- ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
-  parameters this became unnecessary.
-- Anonymous tuples with a single element can now be written as ``(1,)`` with a
-  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
-  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
-  to deal with!
-- Indexing into a ``cstring`` for the JS target is now mapped
-  to ``charCodeAt``.
-- Assignments that would "slice" an object into its supertype are now prevented
-  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
-  inheritance to prevent this issue.
-- The ``not nil`` type annotation now has to be enabled explicitly
-  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
-  feature works with Nim's containers.
-- The parser now warns about inconsistent spacing around binary operators as
-  these can easily be confused with unary operators. This warning will likely
-  become an error in the future.
+- The ``isLower``, ``isUpper`` family of procs in strutils/unicode
+  operating on **strings** have been
+  deprecated since it was unclear what these do. Note that the much more
+  useful procs that operator on ``char`` or ``Rune`` are not affected.
+
+- `strutils.editDistance` has been deprecated,
+  use `editdistance.editDistance` or `editdistance.editDistanceAscii`
+  instead.
+
+- The OpenMP parallel iterator \``||`\` now supports any `#pragma omp directives`
+  and not just `#pragma omp parallel for`. See
+  [OpenMP documentation](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf).
+
+  The default annotation is `parallel for`, if you used OpenMP without annotation
+  the change is transparent, if you used annotations you will have to prefix
+  your previous annotations with `parallel for`.
+
+- The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
+- The undocumented ``#? strongSpaces`` parsing mode has been removed.
+- The `not` operator is now always a unary operator, this means that code like
+  ``assert not isFalse(3)`` compiles.
+- `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
+  tree from the symbol declaration instead of just the initializer portion.
 
 
 #### Breaking changes in the standard library
 
-- ``re.split`` for empty regular expressions now yields every character in
-  the string which is what other programming languages chose to do.
-- The returned tuple of ``system.instantiationInfo`` now has a third field
-  containing the column of the instantiation.
+- `osproc.execProcess` now also takes a `workingDir` parameter.
 
-- ``cookies.setCookie` no longer assumes UTC for the expiration date.
-- ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
-  strings anymore for its ``unit`` parameter. Instead the space is controlled
-  by a new parameter ``useUnitSpace``.
+- `options.UnpackError` is no longer a ref type and inherits from `system.Defect` instead of `system.ValueError`.
 
-- ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
-  to ``times.Duration`` in order to support higher time resolutions.
-  The proc is no longer deprecated.
-- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
+- `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
 
-- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
-  (previously it used floor division like Python). Use ``math.floorMod`` for the old behavior.
+- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`, `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a `ValueError` when the parsed integer is outside of the valid range. Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+
+- nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
+  `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
+  check if a group is captured, otherwise you'll recieve an exception.
+
+- nre's `RegexMatch.{captureBounds,captures}.toTable` no longer accept a
+  default parameter. Instead uncaptured entries are left empty. Use
+  `Table.getOrDefault()` if you need defaults.
+
+- nre's `RegexMatch.captures.{items,toSeq}` now returns an `Option[string]`
+  instead of a `string`. With the removal of `nil` strings, this is the only
+  way to indicate a missing match. Inside your loops, instead of `capture ==
+  ""` or `capture == nil`, use `capture.isSome` to check if a capture is
+  present, and `capture.get` to get its value.
+
+- nre's `replace()` no longer throws `ValueError` when the replacement string
+  has missing captures. It instead throws `KeyError` for named captures, and
+  `IndexError` for un-named captures. This is consistant with
+  `RegexMatch.{captureBounds,captures}[]`.
+
+- splitFile now correctly handles edge cases, see #10047
+
+- `isNil` is no longer false for undefined in the JavaScript backend: now it's true for both nil and undefined. Use `isNull` or `isUndefined` if you need exact equallity: `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
+
+- several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
+  `unsigned`, `actors`, `parseurl`
+
+- two poorly documented and not used modules (`subexes`, `scgi`) were moved to
+  graveyard (they are available as Nimble packages)
+
+
 
 #### Breaking changes in the compiler
 
-- The undocumented ``#? braces`` parsing mode was removed.
-- The undocumented PHP backend was removed.
+- The compiler now implements the "generic symbol prepass" for `when` statements
+  in generics, see bug #8603. This means that code like this does not compile
+  anymore:
+
+```nim
+proc enumToString*(enums: openArray[enum]): string =
+  # typo: 'e' instead 'enums'
+  when e.low.ord >= 0 and e.high.ord < 256:
+    result = newString(enums.len)
+  else:
+    result = newString(enums.len * 2)
+```
+
+- ``discard x`` is now illegal when `x` is a function symbol.
+- Implicit imports via ``--import: module`` in a config file are now restricted
+  to the main package.
+
 
 ### Library additions
 
-- ``re.split`` now also supports the ``maxsplit`` parameter for consistency
-  with ``strutils.split``.
-- Added ``system.toOpenArray`` in order to support zero-copy slicing
-  operations. This is currently not yet available for the JavaScript target.
-- Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
-  ``nimscript``.
-- The ``times`` module now supports up to nanosecond time resolution when available.
-- Added the type ``times.Duration`` for representing fixed durations of time.
-- Added the proc ``times.convert`` for converting between different time units,
-  e.g days to seconds.
-- Added the proc ``algorithm.binarySearch[T, K]`` with the ```cmp``` parameter.
-- Added the proc ``algorithm.upperBound``.
-- Added inverse hyperbolic functions, ``math.arcsinh``, ``math.arccosh`` and ``math.arctanh`` procs.
-- Added cotangent, secant and cosecant procs ``math.cot``, ``math.sec`` and ``math.csc``; and their hyperbolic, inverse and inverse hyperbolic functions, ``math.coth``, ``math.sech``, ``math.csch``, ``math.arccot``, ``math.arcsec``, ``math.arccsc``, ``math.arccoth``, ``math.arcsech`` and ``math.arccsch`` procs.
-- Added the procs ``math.floorMod`` and ``math.floorDiv`` for floor based integer division.
-- Added the procs ``rationals.`div```, ``rationals.`mod```, ``rationals.floorDiv`` and ``rationals.floorMod`` for rationals.
-- Added the proc ``math.prod`` for product of elements in openArray.
+- There is a new stdlib module `std/editdistance` as a replacement for the
+  deprecated `strutils.editDistance`.
+
+- There is a new stdlib module `std/wordwrap` as a replacement for the
+  deprecated `strutils.wordwrap`.
+
+- Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
+  `strip`, `repeat` procs and iterators to `unicode.nim`.
+
+- Added `or` for `NimNode` in `macros`.
+
+- Added `system.typeof` for more control over how `type` expressions
+  can be deduced.
+
+- Added `macros.isInstantiationOf` for checking if the proc symbol
+  is instantiation of generic proc symbol.
+
+- Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
+
+- There is a new stdlib module `std/diff` to compute the famous "diff"
+  of two texts by line.
+
+- Added `os.relativePath`.
+
+- Added `parseopt.remainingArgs`.
+
+- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
+  can be used to retrieve the currently executing compiler.
+
 
 ### Library changes
 
-- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
-  now escapes the content of string literals consistently.
-- ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
-  of the more general ``NimNode``.
-- ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
-- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
-  also support ``ref`` and ``ptr`` types, pragmas on types and variant
-  fields.
-- ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
-  correctness.
-- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
-  now joined in ``binarySearch``. ``smartbinarySearch`` is now
-  deprecated.
-- The `terminal` module now exports additional procs for generating ANSI color
-  codes as strings.
-- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
-- An exception raised from ``test`` block of ``unittest`` now shows its type in
-  the error message
-- The proc ``tgamma`` was renamed to ``gamma``. ``tgamma`` is deprecated.
+- The string output of `macros.lispRepr` proc has been tweaked
+  slightly. The `dumpLisp` macro in this module now outputs an
+  indented proper Lisp, devoid of commas.
+
+- In `strutils` empty strings now no longer matched as substrings
+  anymore.
+
+- Complex type is now generic and not a tuple anymore.
+
+- The `ospaths` module is now deprecated, use `os` instead. Note that
+  `os` is available in a NimScript environment but unsupported
+  operations produce a compile-time error.
+
+- The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
+  (default value: true) that can be set to `false` for better Posix
+  interoperability. (Bug #9619.)
+
+- `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
+  differently.
+
+- `securehash` is moved to `lib/deprecated`
+
 
 ### Language additions
 
-- Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]`` which is transformed into ``y[z](x)`` by the parser.
-- ``func`` is now an alias for ``proc {.noSideEffect.}``.
-- In order to make ``for`` loops and iterators more flexible to use Nim now
-  supports so called "for-loop macros". See
-  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- Vm support for float32<->int32 and float64<->int64 casts was added.
+- There is a new pragma block `noSideEffect` that works like
+  the `gcsafe` pragma block.
+- added os.getCurrentProcessId()
+- User defined pragmas are now allowed in the pragma blocks
+- Pragma blocks are no longer eliminated from the typed AST tree to preserve
+  pragmas for further analysis by macros
+- Custom pragmas are now supported for `var` and `let` symbols.
+
 
 ### Language changes
 
-- The `importcpp` pragma now allows importing the listed fields of generic
-  C++ types. Support for numeric parameters have also been added through
-  the use of `static[T]` types.
-  (#6415)
+- The standard extension for SCF (source code filters) files was changed from
+  ``.tmpl`` to ``.nimf``,
+  it's more recognizable and allows tools like github to recognize it as Nim,
+  see [#9647](https://github.com/nim-lang/Nim/issues/9647).
+  The previous extension will continue to work.
+- Pragma syntax is now consistent. Previous syntax where type pragmas did not
+  follow the type name is now deprecated. Also pragma before generic parameter
+  list is deprecated to be consistent with how pragmas are used with a proc. See
+  [#8514](https://github.com/nim-lang/Nim/issues/8514) and
+  [#1872](https://github.com/nim-lang/Nim/issues/1872) for further details.
 
-- Native C++ exceptions can now be imported with `importcpp` pragma.
-  Imported exceptions can be raised and caught just like Nim exceptions.
-  More details in language manual.
-
-- ``nil`` for strings/seqs is finally gone. Instead the default value for
-  these is ``"" / @[]``.
-
-- Accessing the binary zero terminator in Nim's native strings
-  is now invalid. Internally a Nim string still has the trailing zero for
-  zero-copy interoperability with ``cstring``. Compile your code with the
-  new switch ``--laxStrings:on`` if you need a transition period.
-
-- The command syntax now supports keyword arguments after the first comma.
-
-- Thread-local variables can now be declared inside procs. This implies all
-  the effects of the `global` pragma.
-
-- Nim now supports `except` clause in the export statement.
 
 ### Tool changes
+- `jsondoc` now include a `moduleDescription` field with the module
+  description. `jsondoc0` shows comments as it's own objects as shown in the
+  documentation.
+- `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
+  un-documented; use `git` instead of relying on backup files.
 
-- ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
-  ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
 
 ### Compiler changes
+- The deprecated `fmod` proc is now unavailable on the VM'.
 
-- The VM's instruction count limit was raised to 1 billion instructions in
-  order to support more complex computations at compile-time.
-
-- Support for hot code reloading has been implemented for the JavaScript
-  target. To use it, compile your code with `--hotCodeReloading:on` and use a
-  helper library such as LiveReload or BrowserSync.
-
-- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
-  into the namespace "Nim" in order to avoid naming conflicts with existing
-  C++ code. This is done for all Nim code - internal and exported.
-
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
-  machine.
-
-- The ``deadCodeElim`` option is now always turned on and the switch has no
-  effect anymore, but is recognized for backwards compatibility.
-
-- ``experimental`` is now a pragma / command line switch that can enable specific
-  language extensions, it is not an all-or-nothing switch anymore.
 
 ### Bugfixes

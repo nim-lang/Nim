@@ -116,7 +116,7 @@ proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
       if mode == mStore:
         x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
       else:
-        unsureAsgnRef(x, newObj(mt, seq.len * mt.base.size + GenericSeqSize))
+        unsureAsgnRef(x, newSeq(mt, seq.len))
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
       var dstseq = cast[PGenericSeq](dst)
       dstseq.len = seq.len
@@ -233,7 +233,7 @@ proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
 proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
   ## Tries to send a message to a thread. `msg` is deeply copied. Doesn't block.
   ## Returns `false` if the message was not sent because number of pending items
-  ## in the cannel exceeded `maxItems`.
+  ## in the channel exceeded `maxItems`.
   sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =

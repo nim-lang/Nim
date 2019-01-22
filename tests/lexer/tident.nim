@@ -1,6 +1,19 @@
+discard """
+output: '''
+Length correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+Correct
+'''
+"""
 
 type
-  TIdObj* = object of TObject
+  TIdObj* = object of RootObj
     id*: int                  # unique id; use this for comparisons and not the pointers
 
   PIdObj* = ref TIdObj
@@ -19,4 +32,3 @@ proc myNewString(L: int): string {.inline.} =
       echo("Wrong")
 
 var s = myNewString(8)
-

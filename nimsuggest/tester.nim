@@ -7,9 +7,10 @@ import os, osproc, strutils, streams, re, sexp, net
 
 type
   Test = object
-    cmd, dest: string
+    filename, cmd, dest: string
     startup: seq[string]
     script: seq[(string, string)]
+    disabled: bool
 
 const
   curDir = when defined(windows): "" else: ""
@@ -21,6 +22,7 @@ proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
   let libpath = findExe("nim").splitFile().dir /../ "lib"
+  result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
   result.cmd = nimsug & " --tester " & result.dest
   result.script = @[]
@@ -42,7 +44,14 @@ proc parseTest(filename: string; epcMode=false): Test =
     if x.contains("""""""""):
       inc specSection
     elif specSection == 1:
-      if x.startsWith("$nimsuggest"):
+      if x.startsWith("disabled:"):
+        if x.startsWith("disabled:true"):
+          result.disabled = true
+        else:
+          # be strict about format
+          doAssert x.startsWith("disabled:false")
+          result.disabled = false
+      elif x.startsWith("$nimsuggest"):
         result.cmd = x % ["nimsuggest", nimsug, "file", filename, "lib", libpath]
       elif x.startsWith("!"):
         if result.cmd.len == 0:
@@ -70,22 +79,22 @@ proc parseCmd(c: string): seq[string] =
   result = @[]
   var i = 0
   var a = ""
-  while true:
+  while i < c.len:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
     case c[i]
     of '"': raise newException(ValueError, "double quotes not yet supported: " & c)
     of '\'':
       var delim = c[i]
       inc(i) # skip ' or "
-      while c[i] != '\0' and c[i] != delim:
+      while i < c.len and c[i] != delim:
         add a, c[i]
         inc(i)
-      if c[i] != '\0': inc(i)
-    of '\0': break
+      if i < c.len: inc(i)
     else:
-      while c[i] > ' ':
+      while i < c.len and c[i] > ' ':
         add(a, c[i])
         inc(i)
     add(result, a)
@@ -223,8 +232,14 @@ proc doReport(filename, answer, resp: string; report: var string) =
       report.add "\n  Expected:  " & resp
       report.add "\n  But got:   " & answer
 
+proc skipDisabledTest(test: Test): bool =
+  if test.disabled:
+    echo "disabled: " & test.filename
+  result = test.disabled
+
 proc runEpcTest(filename: string): int =
   let s = parseTest(filename, true)
+  if s.skipDisabledTest: return 0
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
@@ -267,6 +282,7 @@ proc runEpcTest(filename: string): int =
 
 proc runTest(filename: string): int =
   let s = parseTest filename
+  if s.skipDisabledTest: return 0
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd

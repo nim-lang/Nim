@@ -302,6 +302,7 @@ var IF_NAMESIZE* {.importc: "IF_NAMESIZE", header: "<net/if.h>".}: cint
 var IPPROTO_IP* {.importc: "IPPROTO_IP", header: "<netinet/in.h>".}: cint
 var IPPROTO_IPV6* {.importc: "IPPROTO_IPV6", header: "<netinet/in.h>".}: cint
 var IPPROTO_ICMP* {.importc: "IPPROTO_ICMP", header: "<netinet/in.h>".}: cint
+var IPPROTO_ICMPV6* {.importc: "IPPROTO_ICMPV6", header: "<netinet/in.h>".}: cint
 var IPPROTO_RAW* {.importc: "IPPROTO_RAW", header: "<netinet/in.h>".}: cint
 var IPPROTO_TCP* {.importc: "IPPROTO_TCP", header: "<netinet/in.h>".}: cint
 var IPPROTO_UDP* {.importc: "IPPROTO_UDP", header: "<netinet/in.h>".}: cint
@@ -488,10 +489,10 @@ var SOMAXCONN* {.importc: "SOMAXCONN", header: "<sys/socket.h>".}: cint
 var MSG_PEEK* {.importc: "MSG_PEEK", header: "<sys/socket.h>".}: cint
 var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
 var MSG_WAITALL* {.importc: "MSG_WAITALL", header: "<sys/socket.h>".}: cint
-var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: TSa_Family
-var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: TSa_Family
-var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: TSa_Family
+var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: cint
+var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: cint
+var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: cint
+var AF_UNSPEC* {.importc: "AF_UNSPEC", header: "<sys/socket.h>".}: cint
 var SHUT_RD* {.importc: "SHUT_RD", header: "<sys/socket.h>".}: cint
 var SHUT_RDWR* {.importc: "SHUT_RDWR", header: "<sys/socket.h>".}: cint
 var SHUT_WR* {.importc: "SHUT_WR", header: "<sys/socket.h>".}: cint

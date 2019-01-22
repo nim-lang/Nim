@@ -100,7 +100,7 @@ when defined(upcoming):
                                    {poStdErrToStdOut, poUsePath, poInteractive,
                                    poDemon})
       else:
-        var process = startProcess("/bin/sleep", "", ["1"], nil,
+        var process = startProcess("sleep", "", ["1"], nil,
                                    {poStdErrToStdOut, poUsePath})
       var fut = waitProcess(process)
       waitFor(fut or waitTimer(2000))

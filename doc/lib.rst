@@ -18,9 +18,9 @@ low-level interface to a C library.
 
 Read this `document <apis.html>`_ for a quick overview of the API design.
 
-The `bottom <#nimble>`_ of this page includes a list of 3rd party packages
-created by the Nim community. These packages are a useful addition to the
-modules in the standard library.
+In addition to the modules in the standard library, third-party packages
+created by the Nim community can be used via `Nimble <#nimble>`_, Nim's
+package manager.
 
 
 Pure libraries
@@ -59,7 +59,7 @@ Core
   This module defines compile-time reflection procs for working with types.
 
 * `threadpool <threadpool.html>`_
-  Implements Nim's `spawn <manual.html#spawn>`_.
+  Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
@@ -107,8 +107,8 @@ String handling
   substrings, replacing substrings.
 
 * `strformat <strformat.html>`_
-  Macro based standard string interpolation / formatting. Inpired by
-  Python's ```f``-strings.
+  Macro based standard string interpolation / formatting. Inspired by
+  Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -141,11 +141,16 @@ String handling
   Ropes can represent very long strings efficiently; especially concatenation
   is done in O(1) instead of O(n).
 
-* `matchers <matchers.html>`_
-  This module contains various string matchers for email addresses, etc.
+* `std/editdistance <editdistance.html>`_
+  This module contains an algorithm to compute the edit distance between two
+  Unicode strings.
 
-* `subexes <subexes.html>`_
-  This module implements advanced string substitution operations.
+* `std/wordwrap <wordwrap.html>`_
+  This module contains an algorithm to wordwrap a Unicode string.
+
+* `experimental/diff <diff.html>`_
+  This module contains an algorithm to compute the famous "diff"
+  of two texts by line.
 
 
 Generic Operating System Services
@@ -183,12 +188,6 @@ Generic Operating System Services
 * `memfiles <memfiles.html>`_
   This module provides support for memory mapped files (Posix's ``mmap``)
   on the different operating systems.
-
-* `fsmonitor <fsmonitor.html>`_
-  This module implements the ability to monitor a directory/file for changes
-  using Posix's inotify API.
-
-  **Warning:** This module will likely be moved out to a Nimble package soon.
 
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
@@ -231,15 +230,9 @@ Internet Protocols and Support
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
 
-* `scgi <scgi.html>`_
-  This module implements helpers for SCGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
-
-* `httpserver <httpserver.html>`_
-  This module implements a simple HTTP server.
 
 * `httpclient <httpclient.html>`_
   This module implements a simple HTTP client which supports both synchronous
@@ -273,8 +266,8 @@ Internet Protocols and Support
   module.
 
 * `net <net.html>`_
-  This module implements a high-level sockets API. It will replace the
-  ``sockets`` module in the future.
+  This module implements a high-level sockets API. It replaces the
+  ``sockets`` module.
 
 * `nativesockets <nativesockets.html>`_
   This module implements a low-level sockets API.
@@ -288,11 +281,6 @@ Parsers
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
-
-* `parseopt2 <parseopt2.html>`_
-  The ``parseopt2`` module implements a command line option parser. This
-  supports long and short command options with optional values and command line
-  arguments.
 
 * `parsecfg <parsecfg.html>`_
   The ``parsecfg`` module implements a high performance configuration file
@@ -344,12 +332,6 @@ Parsers
 XML Processing
 --------------
 
-* `xmldom <xmldom.html>`_
-  This module implements the XML DOM Level 2.
-
-* `xmldomparser <xmldomparser.html>`_
-  This module parses an XML Document into a XML DOM Document representation.
-
 * `xmltree <xmltree.html>`_
   A simple XML tree. More efficient and simpler than the DOM. It also
   contains a macro for XML/HTML code generation.
@@ -393,10 +375,6 @@ Multimedia support
 Miscellaneous
 -------------
 
-* `events <events.html>`_
-  This module implements an event system that is not dependent on external
-  graphical toolkits.
-
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
   a unique counter and a random value. This combination should suffice to
@@ -425,7 +403,7 @@ Miscellaneous
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
 Modules for JS backend
----------------------------
+----------------------
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
@@ -440,30 +418,6 @@ Modules for JS backend
   Wrapper of core JavaScript functions. For most purposes you should be using
   the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
-Deprecated modules
-------------------
-
-* `asyncio <asyncio.html>`_
-  This module implements an asynchronous event loop for sockets.
-  **Deprecated since version 0.11.2:**
-  Use the `asyncnet <asyncnet.html>`_ together with the
-  `asyncdispatch <asyncdispatch.html>`_ module instead.
-
-* `ftpclient <ftpclient.html>`_
-  This module implements an FTP client.
-  **Deprecated since version 0.11.3:**
-  Use the `asyncftpclient <asyncftpclient.html>`_ module instead.
-
-* `sockets <sockets.html>`_
-  This module implements a simple portable type-safe sockets layer.
-  **Deprecated since version 0.11.2:**
-  Use the `net <net.html>`_ or the `rawsockets <rawsockets.html>`_ module
-  instead.
-
-* `rawsockets <rawsockets.html>`_
-  **Deprecated since version 0.11.4:**
-  This module has been renamed to `nativesockets <nativesockets.html>`_.
-
 
 Impure libraries
 ================
@@ -475,9 +429,6 @@ Regular expressions
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
-* `nre <nre.html>`_
-  Another implementation of procedures for using regular expressions. Also uses
-  PCRE.
 
 
 Database support
@@ -495,13 +446,6 @@ Database support
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
 
-
-Other
------
-
-* `ssl <ssl.html>`_
-  This module provides an easy to use sockets-style
-  Nim interface to the OpenSSL library.
 
 
 Wrappers
@@ -565,4 +509,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_
+or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.

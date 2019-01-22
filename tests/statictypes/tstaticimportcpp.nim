@@ -1,6 +1,6 @@
 discard """
 targets: "cpp"
-output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest\n[0, 0, 20, 0]"
+output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest\n[0, 0, 20, 0]\n4"
 """
 
 {.emit: """/*TYPESECTION*/
@@ -26,6 +26,8 @@ type
   GenericIntType {.importcpp: "GenericIntType<'0, '1>".} [N: static[int]; T] = object
     data: array[N, T]
 
+  GenericIntTypeAlt {.importcpp: "GenericIntType".} [N: static[int]; T] = object
+
   GenericTType {.importcpp: "GenericTType<'0>".} [T] = object
     field: T
 
@@ -40,6 +42,7 @@ var
   c = GenericTType[float]()
   d = SimpleStruct(field: 15)
   e = GenericTType[string](field: "test")
+  f = GenericIntTypeAlt[4, int8]()
 
 a.data[2] = 10
 b.field = 5
@@ -57,3 +60,4 @@ proc plus(a, b: GenInt4): GenInt4 =
 
 echo plus(a, a).data
 
+echo sizeof(f)

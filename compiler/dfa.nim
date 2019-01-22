@@ -7,35 +7,38 @@
 #    distribution, for details about the copyright.
 #
 
-## Data flow analysis for Nim. For now the task is to prove that every
-## usage of a local variable 'v' is covered by an initialization to 'v'
-## first.
+## Data flow analysis for Nim.
 ## We transform the AST into a linear list of instructions first to
 ## make this easier to handle: There are only 2 different branching
 ## instructions: 'goto X' is an unconditional goto, 'fork X'
 ## is a conditional goto (either the next instruction or 'X' can be
-## taken). Exhaustive case statements are translated
-## so that the last branch is transformed into an 'else' branch.
+## taken). Exhaustive case statements could be translated
+## so that the last branch is transformed into an 'else' branch, but
+## this is currently not done.
 ## ``return`` and ``break`` are all covered by 'goto'.
-## The case to detect is ``use v`` that is not dominated by
-## a ``def v``.
+##
+## Control flow through exception handling:
+## Contrary to popular belief, exception handling doesn't cause
+## many problems for this DFA representation, ``raise`` is a statement
+## that ``goes to`` the outer ``finally`` or ``except`` if there is one,
+## otherwise it is the same as ``return``. Every call is treated as
+## a call that can potentially ``raise``. However, without a surrounding
+## ``try`` we don't emit these ``fork ReturnLabel`` instructions in order
+## to speed up the dataflow analysis passes.
+##
 ## The data structures and algorithms used here are inspired by
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs, options
+import ast, astalgo, types, intsets, tables, msgs, options, lineinfos
 
 type
   InstrKind* = enum
-    goto, fork, def, use,
-    useWithinCall # this strange special case is used to get more
-                  # move optimizations out of regular code
-                  # XXX This is still overly pessimistic in
-                  # call(let x = foo; bar(x))
+    goto, fork, def, use
   Instr* = object
     n*: PNode
     case kind*: InstrKind
-    of def, use, useWithinCall: sym*: PSym
+    of def, use: sym*: PSym
     of goto, fork: dest*: int
 
   ControlFlowGraph* = seq[Instr]
@@ -50,11 +53,13 @@ type
 
   Con = object
     code: ControlFlowGraph
-    inCall: int
+    inCall, inTryStmt: int
     blocks: seq[TBlock]
+    tryStmtFixups: seq[TPosition]
+    owner: PSym
 
 proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename & ":" & $info.line
+  result = $info.line #info.toFilename & ":" & $info.line
 
 proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   # for debugging purposes
@@ -71,7 +76,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
     result.add $c[i].kind
     result.add "\t"
     case c[i].kind
-    of def, use, useWithinCall:
+    of def, use:
       result.add c[i].sym.name.s
     of goto, fork:
       result.add "L"
@@ -81,13 +86,14 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
-
+  # consider calling `asciitables.alignTable`
 
 proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  echo buf
+  when declared(echo):
+    echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -198,6 +204,13 @@ proc genCase(c: var Con; n: PNode) =
   #  L2:
   #    elsePart
   #  Lend:
+  when false:
+    # XXX Exhaustiveness is not yet mapped to the control flow graph as
+    # it seems to offer no benefits for the 'last read of' question.
+    let isExhaustive = skipTypes(n.sons[0].typ,
+      abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString} or
+      lastSon(n).kind == nkElse
+
   var endings: seq[TPosition] = @[]
   c.gen(n.sons[0])
   for i in 1 ..< n.len:
@@ -214,8 +227,17 @@ proc genCase(c: var Con; n: PNode) =
 
 proc genTry(c: var Con; n: PNode) =
   var endings: seq[TPosition] = @[]
+  inc c.inTryStmt
+  var newFixups: seq[TPosition]
+  swap(newFixups, c.tryStmtFixups)
+
   let elsePos = c.forkI(n)
   c.gen(n.sons[0])
+  dec c.inTryStmt
+  for f in newFixups:
+    c.patch(f)
+  swap(newFixups, c.tryStmtFixups)
+
   c.patch(elsePos)
   for i in 1 ..< n.len:
     let it = n.sons[i]
@@ -233,14 +255,24 @@ proc genTry(c: var Con; n: PNode) =
 
 proc genRaise(c: var Con; n: PNode) =
   gen(c, n.sons[0])
-  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+  if c.inTryStmt > 0:
+    c.tryStmtFixups.add c.gotoI(n)
+  else:
+    c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+
+proc genImplicitReturn(c: var Con) =
+  if c.owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter} and resultPos < c.owner.ast.len:
+    gen(c, c.owner.ast.sons[resultPos])
 
 proc genReturn(c: var Con; n: PNode) =
-  if n.sons[0].kind != nkEmpty: gen(c, n.sons[0])
+  if n.sons[0].kind != nkEmpty:
+    gen(c, n.sons[0])
+  else:
+    genImplicitReturn(c)
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 const
-  InterestingSyms = {skVar, skResult, skLet}
+  InterestingSyms = {skVar, skResult, skLet, skParam}
 
 proc genUse(c: var Con; n: PNode) =
   var n = n
@@ -249,10 +281,7 @@ proc genUse(c: var Con; n: PNode) =
                    nkAddr, nkHiddenAddr}:
     n = n[0]
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    if c.inCall > 0:
-      c.code.add Instr(n: n, kind: useWithinCall, sym: n.sym)
-    else:
-      c.code.add Instr(n: n, kind: use, sym: n.sym)
+    c.code.add Instr(n: n, kind: use, sym: n.sym)
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
@@ -267,6 +296,9 @@ proc genCall(c: var Con; n: PNode) =
     gen(c, n[i])
     if t != nil and i < t.len and t.sons[i].kind == tyVar:
       genDef(c, n[i])
+  # every call can potentially raise:
+  if c.inTryStmt > 0:
+    c.tryStmtFixups.add c.forkI(n)
   dec c.inCall
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
@@ -332,6 +364,8 @@ proc gen(c: var Con; n: PNode) =
     gen(c, n.sons[1])
   of nkObjDownConv, nkStringToCString, nkCStringToString: gen(c, n.sons[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
+  of nkDefer:
+    doAssert false, "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 proc dfa(code: seq[Instr]; conf: ConfigRef) =
@@ -344,7 +378,7 @@ proc dfa(code: seq[Instr]; conf: ConfigRef) =
     d[i] = initIntSet()
     c[i] = initIntSet()
     case code[i].kind
-    of use, useWithinCall: u[i].incl(code[i].sym.id)
+    of use: u[i].incl(code[i].sym.id)
     of def: d[i].incl(code[i].sym.id)
     of fork, goto:
       let d = i+code[i].dest
@@ -406,7 +440,7 @@ proc dfa(code: seq[Instr]; conf: ConfigRef) =
         #if someChange:
         w.add pc + code[pc].dest
         inc pc
-      of use, useWithinCall:
+      of use:
         #if not d[prevPc].missingOrExcl():
         # someChange = true
         consuming = code[pc].sym.id
@@ -423,7 +457,7 @@ proc dfa(code: seq[Instr]; conf: ConfigRef) =
   # now check the condition we're interested in:
   for i in 0..<code.len:
     case code[i].kind
-    of use, useWithinCall:
+    of use:
       let s = code[i].sym
       if s.id notin d[i]:
         localError(conf, code[i].n.info, "usage of uninitialized variable: " & s.name.s)
@@ -435,10 +469,13 @@ proc dfa(code: seq[Instr]; conf: ConfigRef) =
 proc dataflowAnalysis*(s: PSym; body: PNode; conf: ConfigRef) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
+  genImplicitReturn(c)
   when defined(useDfa) and defined(debugDfa): echoCfg(c.code)
   dfa(c.code, conf)
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
-  var c = Con(code: @[], blocks: @[])
+  var c = Con(code: @[], blocks: @[], owner: s)
+  gen(c, body)
+  genImplicitReturn(c)
   shallowCopy(result, c.code)

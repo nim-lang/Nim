@@ -15,7 +15,6 @@ include "system/inclrtl"
 import
   strutils, os, strtabs, streams, cpuinfo
 
-from ospaths import quoteShell, quoteShellWindows, quoteShellPosix
 export quoteShell, quoteShellWindows, quoteShellPosix
 
 when defined(windows):
@@ -61,10 +60,8 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-const poUseShell* {.deprecated.} = poUsePath
-  ## Deprecated alias for poUsePath.
-
 proc execProcess*(command: string,
+                  workingDir: string = "",
                   args: openArray[string] = [],
                   env: StringTableRef = nil,
                   options: set[ProcessOption] = {poStdErrToStdOut,
@@ -121,7 +118,7 @@ proc startProcess*(command: string,
   ## invocation if possible as it leads to non portable software.
   ##
   ## Return value: The newly created process object. Nil is never returned,
-  ## but ``EOS`` is raised in case of an error.
+  ## but ``OSError`` is raised in case of an error.
 
 proc startCmd*(command: string, options: set[ProcessOption] = {
                poStdErrToStdOut, poUsePath}): Process {.
@@ -155,7 +152,7 @@ proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
-  ## returns `p`'s process ID.
+  ## returns `p`'s process ID. See also ``os.getCurrentProcessId()``.
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
@@ -229,13 +226,14 @@ proc execProcesses*(cmds: openArray[string],
                     {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
-  ## that execute in parallel. The highest return value of all processes
+  ## that execute in parallel. The highest (absolute) return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
 
   assert n > 0
   if n > 1:
     var i = 0
     var q = newSeq[Process](n)
+    var idxs = newSeq[int](n) # map process index to cmds index
 
     when defined(windows):
       var w: WOHandleArray
@@ -248,6 +246,7 @@ proc execProcesses*(cmds: openArray[string],
       if beforeRunEvent != nil:
         beforeRunEvent(i)
       q[i] = startProcess(cmds[i], options = options + {poEvalCommand})
+      idxs[i] = i
       when defined(windows):
         w[i] = q[i].fProcessHandle
       inc(i)
@@ -304,12 +303,13 @@ proc execProcesses*(cmds: openArray[string],
 
       if rexit >= 0:
         result = max(result, abs(q[rexit].peekExitCode()))
-        if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
+        if afterRunEvent != nil: afterRunEvent(idxs[rexit], q[rexit])
         close(q[rexit])
         if i < len(cmds):
           if beforeRunEvent != nil: beforeRunEvent(i)
           q[rexit] = startProcess(cmds[i],
                                   options = options + {poEvalCommand})
+          idxs[rexit] = i
           when defined(windows):
             w[rexit] = q[rexit].fProcessHandle
           inc(i)
@@ -332,27 +332,15 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-proc select*(readfds: var seq[Process], timeout = 500): int
-  {.benign, deprecated.}
-  ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
-  ## Specify -1 for no timeout. Returns the number of processes that are
-  ## ready to read from. The processes that are ready to be read from are
-  ## removed from `readfds`.
-  ##
-  ## **Warning**: This function may give unexpected or completely wrong
-  ## results on Windows.
-  ##
-  ## **Deprecated since version 0.17.0**: This procedure isn't cross-platform
-  ## and so should not be used in newly written code.
-
 when not defined(useNimRtl):
   proc execProcess(command: string,
+                   workingDir: string = "",
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut,
                                                    poUsePath,
                                                    poEvalCommand}): TaintedString =
-    var p = startProcess(command, args=args, env=env, options=options)
+    var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
@@ -720,13 +708,6 @@ elif not defined(useNimRtl):
   proc isExitStatus(status: cint): bool =
     WIFEXITED(status) or WIFSIGNALED(status)
 
-  proc exitStatus(status: cint): cint =
-    if WIFSIGNALED(status):
-      # like the shell!
-      128 + WTERMSIG(status)
-    else:
-      WEXITSTATUS(status)
-
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
@@ -832,7 +813,7 @@ elif not defined(useNimRtl):
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      echo(command, " ", join(args, " "))
+      when declared(echo): echo(command, " ", join(args, " "))
     result.id = pid
     result.exitFlag = false
 
@@ -885,7 +866,7 @@ elif not defined(useNimRtl):
         chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-        if (poStdErrToStdOut in data.options):
+        if poStdErrToStdOut in data.options:
           chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
         else:
           chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
@@ -902,7 +883,7 @@ elif not defined(useNimRtl):
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      if res != 0'i32: raiseOSError(OSErrorCode(res))
+      if res != 0'i32: raiseOSError(OSErrorCode(res), data.sysCommand)
 
       return pid
   else:
@@ -1050,7 +1031,7 @@ elif not defined(useNimRtl):
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1105,7 +1086,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
   else:
     import times
 
@@ -1138,7 +1119,7 @@ elif not defined(useNimRtl):
         s.tv_nsec = b.tv_nsec
 
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1216,20 +1197,20 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
     if p.exitFlag:
-      return exitStatus(p.exitStatus)
+      return exitStatusLikeShell(p.exitStatus)
 
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
       if isExitStatus(status):
         p.exitFlag = true
         p.exitStatus = status
-        result = exitStatus(status)
+        result = exitStatusLikeShell(status)
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
@@ -1261,7 +1242,7 @@ elif not defined(useNimRtl):
   proc execCmd(command: string): int =
     when defined(linux):
       let tmp = csystem(command)
-      result = if tmp == -1: tmp else: exitStatus(tmp)
+      result = if tmp == -1: tmp else: exitStatusLikeShell(tmp)
     else:
       result = csystem(command)
 
@@ -1321,6 +1302,12 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
   var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
+
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  close inputStream(p)
+
   result = (TaintedString"", -1)
   var line = newStringOfCap(120).TaintedString
   while true:
@@ -1331,3 +1318,4 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
       result[1] = peekExitCode(p)
       if result[1] != -1: break
   close(p)
+

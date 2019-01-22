@@ -1,7 +1,3 @@
-discard """
-  file: "tparsesql.nim"
-"""
-
 import parsesql
 
 doAssert $parseSQL("SELECT foo FROM table;") == "select foo from table;"

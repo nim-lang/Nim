@@ -37,26 +37,35 @@ when defined(nimTypeNames):
         a[j] = v
       if h == 1: break
 
-  proc dumpNumberOfInstances* =
-    # also add the allocated strings to the list of known types:
+  iterator dumpHeapInstances*(): tuple[name: cstring; count: int; sizes: int] =
+    ## Iterate over summaries of types on heaps.
+    ## This data may be inaccurate if allocations
+    ## are made by the iterator body.
     if strDesc.nextType == nil:
       strDesc.nextType = nimTypeRoot
       strDesc.name = "string"
       nimTypeRoot = addr strDesc
+    var it = nimTypeRoot
+    while it != nil:
+      if (it.instances > 0 or it.sizes != 0):
+        yield (it.name, it.instances, it.sizes)
+      it = it.nextType
+
+  proc dumpNumberOfInstances* =
     var a: InstancesInfo
     var n = 0
-    var it = nimTypeRoot
     var totalAllocated = 0
-    while it != nil:
-      if (it.instances > 0 or it.sizes != 0) and n < a.len:
-        a[n] = (it.name, it.instances, it.sizes)
-        inc n
+    for it in dumpHeapInstances():
+      a[n] = it
+      inc n
       inc totalAllocated, it.sizes
-      it = it.nextType
     sortInstances(a, n)
     for i in 0 .. n-1:
       c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
     c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
+    when defined(nimTypeNames):
+      let (allocs, deallocs) = getMemCounters()
+      c_fprintf(stdout, "[Heap] allocs/deallocs: %ld/%ld\n", allocs, deallocs)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
@@ -148,46 +157,6 @@ else:
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
   proc len(stack: var GcStack): int = 1
 
-proc stackSize(stack: ptr GcStack): int {.noinline.} =
-  when nimCoroutines:
-    var pos = stack.pos
-  else:
-    var pos {.volatile.}: pointer
-    pos = addr(pos)
-
-  if pos != nil:
-    when defined(stackIncreases):
-      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
-    else:
-      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
-  else:
-    result = 0
-
-proc stackSize(): int {.noinline.} =
-  for stack in gch.stack.items():
-    result = result + stack.stackSize()
-
-when nimCoroutines:
-  proc setPosition(stack: ptr GcStack, position: pointer) =
-    stack.pos = position
-    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
-
-  proc setPosition(stack: var GcStack, position: pointer) =
-    setPosition(addr(stack), position)
-
-  proc getActiveStack(gch: var GcHeap): ptr GcStack =
-    return gch.activeStack
-
-  proc isActiveStack(stack: ptr GcStack): bool =
-    return gch.activeStack == stack
-else:
-  # Stack positions do not need to be tracked if coroutines are not used.
-  proc setPosition(stack: ptr GcStack, position: pointer) = discard
-  proc setPosition(stack: var GcStack, position: pointer) = discard
-  # There is just one stack - main stack of the thread. It is active always.
-  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
-  proc isActiveStack(stack: ptr GcStack): bool = true
-
 when declared(threadType):
   proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
@@ -227,7 +196,7 @@ else:
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
 
-when defined(emscripten):
+when defined(emscripten) or defined(wasm):
   const stackIncreases = true
 elif defined(sparc):
   const stackIncreases = false
@@ -236,6 +205,46 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
   const stackIncreases = true
 else:
   const stackIncreases = false
+
+proc stackSize(stack: ptr GcStack): int {.noinline.} =
+  when nimCoroutines:
+    var pos = stack.pos
+  else:
+    var pos {.volatile.}: pointer
+    pos = addr(pos)
+
+  if pos != nil:
+    when stackIncreases:
+      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+    else:
+      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+  else:
+    result = 0
+
+proc stackSize(): int {.noinline.} =
+  for stack in gch.stack.items():
+    result = result + stack.stackSize()
+
+when nimCoroutines:
+  proc setPosition(stack: ptr GcStack, position: pointer) =
+    stack.pos = position
+    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
+
+  proc setPosition(stack: var GcStack, position: pointer) =
+    setPosition(addr(stack), position)
+
+  proc getActiveStack(gch: var GcHeap): ptr GcStack =
+    return gch.activeStack
+
+  proc isActiveStack(stack: ptr GcStack): bool =
+    return gch.activeStack == stack
+else:
+  # Stack positions do not need to be tracked if coroutines are not used.
+  proc setPosition(stack: ptr GcStack, position: pointer) = discard
+  proc setPosition(stack: var GcStack, position: pointer) = discard
+  # There is just one stack - main stack of the thread. It is active always.
+  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
+  proc isActiveStack(stack: ptr GcStack): bool = true
 
 {.push stack_trace: off.}
 when nimCoroutines:
@@ -323,21 +332,28 @@ elif stackIncreases:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------
-  var
-    jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
-      # a little hack to get the size of a JmpBuf in the generated C code
-      # in a platform independent way
+  when defined(emscripten) or defined(wasm):
+    var
+      jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
+        # a little hack to get the size of a JmpBuf in the generated C code
+        # in a platform independent way
+
+  template forEachStackSlotAux(gch, gcMark: untyped) {.dirty.} =
+    for stack in gch.stack.items():
+      var max = cast[ByteAddress](gch.stack.bottom)
+      var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
+      while sp >=% max:
+        gcMark(gch, cast[PPointer](sp)[])
+        sp = sp -% sizeof(pointer)
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
-    var registers {.noinit.}: C_JmpBuf
-
-    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      for stack in gch.stack.items():
-        var max = cast[ByteAddress](gch.stack.bottom)
-        var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
-        while sp >=% max:
-          gcMark(gch, cast[PPointer](sp)[])
-          sp = sp -% sizeof(pointer)
+    when defined(emscripten) or defined(wasm):
+      var registers: cint
+      forEachStackSlotAux(gch, gcMark)
+    else:
+      var registers {.noinit.}: C_JmpBuf
+      if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
+        forEachStackSlotAux(gch, gcMark)
 
 else:
   # ---------------------------------------------------------------------------
@@ -402,7 +418,7 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
   ## to ``deallocHeap``.
@@ -431,9 +447,9 @@ type
   GlobalMarkerProc = proc () {.nimcall, benign.}
 var
   globalMarkersLen: int
-  globalMarkers: array[0.. 3499, GlobalMarkerProc]
+  globalMarkers: array[0..3499, GlobalMarkerProc]
   threadLocalMarkersLen: int
-  threadLocalMarkers: array[0.. 3499, GlobalMarkerProc]
+  threadLocalMarkers: array[0..3499, GlobalMarkerProc]
   gHeapidGenerator: int
 
 proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =

@@ -1,3 +1,25 @@
+discard """
+sortoutput: true
+output: '''
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+Hello 1
+Hello 2
+Hello 3
+Hello 4
+Hello 5
+Hello 6
+'''
+"""
+
 # bug #2287
 
 import threadPool
@@ -37,5 +59,5 @@ proc maino =
 
 maino() # Doesn't work outside a proc
 
-when isMainModule:
+when true:
   main()

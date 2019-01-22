@@ -881,7 +881,7 @@ when isMainModule:
       break
     except:
       echo filename, " not found"
-  doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
+  doAssert(keywords.len > 0, "Couldn't read any keywords.txt file!")
   for i in 0..min(keywords.len, nimKeywords.len)-1:
     doAssert keywords[i] == nimKeywords[i], "Unexpected keyword"
   doAssert keywords.len == nimKeywords.len, "No matching lengths"

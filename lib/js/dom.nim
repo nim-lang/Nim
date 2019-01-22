@@ -201,7 +201,7 @@ type
     vspace*: int
     width*: int
 
-  Style = ref StyleObj
+  Style* = ref StyleObj
   StyleObj {.importc.} = object of RootObj
     background*: cstring
     backgroundAttachment*: cstring
@@ -416,12 +416,12 @@ type
   BoundingRect* {.importc.} = ref object
     top*, bottom*, left*, right*, x*, y*, width*, height*: float
 
-  PerformanceMemory* {.importc.} = ref object 
+  PerformanceMemory* {.importc.} = ref object
     jsHeapSizeLimit*: float
     totalJSHeapSize*: float
     usedJSHeapSize*: float
 
-  PerformanceTiming* {.importc.} = ref object 
+  PerformanceTiming* {.importc.} = ref object
     connectStart*: float
     domComplete*: float
     domContentLoadedEventEnd*: float
@@ -459,7 +459,6 @@ proc dispatchEvent*(et: EventTarget, ev: Event)
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc captureEvents*(w: Window, eventMask: int) {.deprecated.}
 proc clearInterval*(w: Window, interval: ref TInterval)
 proc clearTimeout*(w: Window, timeout: ref TTimeOut)
 proc close*(w: Window)
@@ -478,7 +477,6 @@ proc open*(w: Window, uri, windowname: cstring,
            properties: cstring = nil): Window
 proc print*(w: Window)
 proc prompt*(w: Window, text, default: cstring): cstring
-proc releaseEvents*(w: Window, eventMask: int) {.deprecated.}
 proc resizeBy*(w: Window, x, y: int)
 proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
@@ -513,7 +511,6 @@ proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 
 # Document "methods"
-proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
 proc createAttribute*(d: Document, identifier: cstring): Node
 proc createElement*(d: Document, identifier: cstring): Element
 proc createTextNode*(d: Document, identifier: cstring): Node
@@ -524,7 +521,6 @@ proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
 proc getSelection*(d: Document): cstring
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
-proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
@@ -605,25 +601,3 @@ proc parseInt*(s: cstring): int {.importc, nodecl.}
 proc parseInt*(s: cstring, radix: int):int {.importc, nodecl.}
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
-
-type
-  TEventHandlers* {.deprecated.} = EventTargetObj
-  TWindow* {.deprecated.} = WindowObj
-  TFrame* {.deprecated.} = FrameObj
-  TNode* {.deprecated.} = NodeObj
-  TDocument* {.deprecated.} = DocumentObj
-  TElement* {.deprecated.} = ElementObj
-  TLink* {.deprecated.} = LinkObj
-  TEmbed* {.deprecated.} = EmbedObj
-  TAnchor* {.deprecated.} = AnchorObj
-  TOption* {.deprecated.} = OptionObj
-  TForm* {.deprecated.} = FormObj
-  TImage* {.deprecated.} = ImageObj
-  TNodeType* {.deprecated.} = NodeType
-  TEvent* {.deprecated.} = EventObj
-  TLocation* {.deprecated.} = LocationObj
-  THistory* {.deprecated.} = HistoryObj
-  TNavigator* {.deprecated.} = NavigatorObj
-  TStyle* {.deprecated.} = StyleObj
-  TScreen* {.deprecated.} = ScreenObj
-  TApplet* {.importc, deprecated.} = object of RootObj

@@ -1,6 +1,6 @@
 discard """
-  file: "tnotuniquename/mnotuniquename.nim"
   errormsg: "module names need to be unique per Nimble package"
+  file: "tnotuniquename/mnotuniquename.nim"
 """
 
 import mnotuniquename

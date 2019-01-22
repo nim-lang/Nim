@@ -22,7 +22,7 @@ import custom_pragma
 block: # A bit more advanced case
   type
     Subfield {.defaultValue: "catman".} = object
-      c {.serializationKey: "cc".}: float
+      c* {.serializationKey: "cc".}: float
 
     MySerializable = object
       a {.serializationKey"asdf", defaultValue: 5.} : int
@@ -138,3 +138,93 @@ block:
     assert hasIntSerKey
     assert strSerKey == "string"
     assert nestedItemDefVal == "Nimmers of the world, unite!"
+
+block:
+  template simpleAttr {.pragma.}
+
+  type Annotated {.simpleAttr.} = object
+
+  proc generic_proc[T]() =
+    assert Annotated.hasCustomPragma(simpleAttr)
+
+
+#--------------------------------------------------------------------------
+# Pragma on proc type
+
+let a: proc(x: int) {.defaultValue(5).} = nil
+static:
+  doAssert hasCustomPragma(a.type, defaultValue)
+
+# bug #8371
+template thingy {.pragma.}
+
+type
+  Cardinal = enum
+    north, east, south, west
+  Something = object
+    a: float32
+    case cardinal: Cardinal
+    of north:
+      b {.thingy.}: int
+    of east:
+      c: int
+    of south: discard
+    else: discard
+
+var foo: Something
+foo.cardinal = north
+doAssert foo.b.hasCustomPragma(thingy) == true
+
+proc myproc(s: string): int =
+  {.thingy.}:
+    s.len
+
+doAssert myproc("123") == 3
+
+let xx = compiles:
+  proc myproc_bad(s: string): int =
+    {.not_exist.}:
+      s.len
+doAssert: xx == false
+
+macro checkSym(s: typed{nkSym}): untyped =
+  let body = s.getImpl.body
+  doAssert body[1].kind == nnkPragmaBlock
+  doAssert body[1][0].kind == nnkPragma
+  doAssert body[1][0][0] == bindSym"thingy"
+
+checkSym(myproc)
+
+# var and let pragmas
+block:
+  template myAttr() {.pragma.}
+  template myAttr2(x: int) {.pragma.}
+  template myAttr3(x: string) {.pragma.}
+
+  let a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
+  let b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+  var x {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
+  var y {.myAttr,myAttr2(2),myAttr3:"test".}: int
+  var z {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+
+  template check(s: untyped) =
+    doAssert s.hasCustomPragma(myAttr)
+    doAssert s.hasCustomPragma(myAttr2)
+    doAssert s.getCustomPragmaVal(myAttr2) == 2
+    doAssert s.hasCustomPragma(myAttr3)
+    doAssert s.getCustomPragmaVal(myAttr3) == "test"
+
+  check(a)
+  check(b)
+  check(x)
+  check(y)
+  check(z)
+
+# pragma with multiple fields
+block:
+  template myAttr(first: string, second: int, third: float) {.pragma.}
+  let a {.myAttr("one", 2, 3.0).} = 0
+  let ps = a.getCustomPragmaVal(myAttr)
+  doAssert ps.first == ps[0] and ps.first == "one"
+  doAssert ps.second == ps[1] and ps.second == 2
+  doAssert ps.third == ps[2] and ps.third == 3.0

@@ -208,7 +208,8 @@ Note that declaring multiple variables with a single assignment which calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use only constant values.
+different values! For safety use side-effect free procedures if making multiple
+assignments.
 
 
 Constants
@@ -570,8 +571,8 @@ With parenthesis and semicolons ``(;)`` you can use statements where only
 an expression is allowed:
 
 .. code-block:: nim
-  # computes fac(4) at compile time:
     :test: "nim c $1"
+  # computes fac(4) at compile time:
   const fac4 = (var x = 1; for i in 1..4: x *= i; x)
 
 
@@ -642,7 +643,7 @@ initialisation.
 
 Parameters
 ----------
-Parameters are constant in the procedure body. By default, their value cannot be
+Parameters are immutable in the procedure body. By default, their value cannot be
 changed because this allows the compiler to implement parameter passing in the
 most efficient way. If a mutable variable is needed inside the procedure, it has
 to be declared with ``var`` in the procedure body. Shadowing the parameter name
@@ -890,7 +891,7 @@ important differences:
   future version of the compiler.)
 
 However, you can also use a ``closure`` iterator to get a different set of
-restrictions. See `first class iterators <manual.html#first-class-iterators>`_
+restrictions. See `first class iterators <manual.html#iterators-and-the-for-statement-first-class-iterators>`_
 for details. Iterators can have the same name and parameters as a proc, since
 essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the
@@ -1111,21 +1112,12 @@ proc can convert it to its underlying integer value.
 
 For better interfacing to other programming languages, the symbols of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
-must be in ascending order. A symbol whose ordinal value is not
-explicitly given is assigned the value of the previous symbol + 1.
-
-An explicit ordered enum can have *holes*:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  type
-    MyEnum = enum
-      a = 2, b = 4, c = 89
+must be in ascending order.
 
 
 Ordinal types
 -------------
-Enumerations without holes, integer types, ``char`` and ``bool`` (and
+Enumerations, integer types, ``char`` and ``bool`` (and
 subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 

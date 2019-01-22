@@ -36,26 +36,26 @@
 #      platforms - where do they come from and why are they here?
 when false:
   const
-    C_IRUSR = 0c000400 ## Read by owner.
-    C_IWUSR = 0c000200 ## Write by owner.
-    C_IXUSR = 0c000100 ## Execute by owner.
-    C_IRGRP = 0c000040 ## Read by group.
-    C_IWGRP = 0c000020 ## Write by group.
-    C_IXGRP = 0c000010 ## Execute by group.
-    C_IROTH = 0c000004 ## Read by others.
-    C_IWOTH = 0c000002 ## Write by others.
-    C_IXOTH = 0c000001 ## Execute by others.
-    C_ISUID = 0c004000 ## Set user ID.
-    C_ISGID = 0c002000 ## Set group ID.
-    C_ISVTX = 0c001000 ## On directories, restricted deletion flag.
-    C_ISDIR = 0c040000 ## Directory.
-    C_ISFIFO = 0c010000 ##FIFO.
-    C_ISREG = 0c100000 ## Regular file.
-    C_ISBLK = 0c060000 ## Block special.
-    C_ISCHR = 0c020000 ## Character special.
-    C_ISCTG = 0c110000 ## Reserved.
-    C_ISLNK = 0c120000 ## Symbolic link.</p>
-    C_ISSOCK = 0c140000 ## Socket.
+    C_IRUSR = 0o000400 ## Read by owner.
+    C_IWUSR = 0o000200 ## Write by owner.
+    C_IXUSR = 0o000100 ## Execute by owner.
+    C_IRGRP = 0o000040 ## Read by group.
+    C_IWGRP = 0o000020 ## Write by group.
+    C_IXGRP = 0o000010 ## Execute by group.
+    C_IROTH = 0o000004 ## Read by others.
+    C_IWOTH = 0o000002 ## Write by others.
+    C_IXOTH = 0o000001 ## Execute by others.
+    C_ISUID = 0o004000 ## Set user ID.
+    C_ISGID = 0o002000 ## Set group ID.
+    C_ISVTX = 0o001000 ## On directories, restricted deletion flag.
+    C_ISDIR = 0o040000 ## Directory.
+    C_ISFIFO = 0o010000 ##FIFO.
+    C_ISREG = 0o100000 ## Regular file.
+    C_ISBLK = 0o060000 ## Block special.
+    C_ISCHR = 0o020000 ## Character special.
+    C_ISCTG = 0o110000 ## Reserved.
+    C_ISLNK = 0o120000 ## Symbolic link.</p>
+    C_ISSOCK = 0o140000 ## Socket.
 
 const
   MM_NULLLBL* = nil
@@ -94,11 +94,12 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 when defined(linux) and defined(amd64):
   include posix_linux_amd64
+elif defined(nintendoswitch):
+  include posix_nintendoswitch
 else:
   include posix_other
 
 # There used to be this name in posix.nim a long time ago, not sure why!
-{.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =
@@ -185,7 +186,7 @@ proc fnmatch*(a1, a2: cstring, a3: cint): cint {.importc, header: "<fnmatch.h>".
 proc ftw*(a1: cstring,
          a2: proc (x1: cstring, x2: ptr Stat, x3: cint): cint {.noconv.},
          a3: cint): cint {.importc, header: "<ftw.h>".}
-when not (defined(linux) and defined(amd64)):
+when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
   proc nftw*(a1: cstring,
             a2: proc (x1: cstring, x2: ptr Stat,
                       x3: cint, x4: ptr FTW): cint {.noconv.},
@@ -226,25 +227,26 @@ proc setlocale*(a1: cint, a2: cstring): cstring {.
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
 
-proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
-proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
-  importc, header: "<mqueue.h>".}
-proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
-  importc, header: "<mqueue.h>".}
-proc mq_open*(a1: cstring, a2: cint): Mqd {.
-  varargs, importc, header: "<mqueue.h>".}
-proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
-  importc, header: "<mqueue.h>".}
-proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
-  importc, header: "<mqueue.h>".}
-proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
-  importc, header: "<mqueue.h>".}
+when not defined(nintendoswitch):
+  proc mq_close*(a1: Mqd): cint {.importc, header: "<mqueue.h>".}
+  proc mq_getattr*(a1: Mqd, a2: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
+  proc mq_notify*(a1: Mqd, a2: ptr SigEvent): cint {.
+    importc, header: "<mqueue.h>".}
+  proc mq_open*(a1: cstring, a2: cint): Mqd {.
+    varargs, importc, header: "<mqueue.h>".}
+  proc mq_receive*(a1: Mqd, a2: cstring, a3: int, a4: var int): int {.
+    importc, header: "<mqueue.h>".}
+  proc mq_send*(a1: Mqd, a2: cstring, a3: int, a4: int): cint {.
+    importc, header: "<mqueue.h>".}
+  proc mq_setattr*(a1: Mqd, a2, a3: ptr MqAttr): cint {.
+    importc, header: "<mqueue.h>".}
 
-proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                      a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
-proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
-                   a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
-proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
+  proc mq_timedreceive*(a1: Mqd, a2: cstring, a3: int, a4: int,
+                        a5: ptr Timespec): int {.importc, header: "<mqueue.h>".}
+  proc mq_timedsend*(a1: Mqd, a2: cstring, a3: int, a4: int,
+                     a5: ptr Timespec): cint {.importc, header: "<mqueue.h>".}
+  proc mq_unlink*(a1: cstring): cint {.importc, header: "<mqueue.h>".}
 
 
 proc getpwnam*(a1: cstring): ptr Passwd {.importc, header: "<pwd.h>".}
@@ -603,7 +605,7 @@ proc posix_madvise*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
 proc posix_mem_offset*(a1: pointer, a2: int, a3: var Off,
            a4: var int, a5: var cint): cint {.importc, header: "<sys/mman.h>".}
-when not (defined(linux) and defined(amd64)):
+when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
   proc posix_typed_mem_get_info*(a1: cint,
     a2: var Posix_typed_mem_info): cint {.importc, header: "<sys/mman.h>".}
 proc posix_typed_mem_open*(a1: cstring, a2, a3: cint): cint {.
@@ -713,12 +715,12 @@ proc sigwait*(a1: var Sigset, a2: var cint): cint {.
 proc sigwaitinfo*(a1: var Sigset, a2: var SigInfo): cint {.
   importc, header: "<signal.h>".}
 
-
-proc catclose*(a1: Nl_catd): cint {.importc, header: "<nl_types.h>".}
-proc catgets*(a1: Nl_catd, a2, a3: cint, a4: cstring): cstring {.
-  importc, header: "<nl_types.h>".}
-proc catopen*(a1: cstring, a2: cint): Nl_catd {.
-  importc, header: "<nl_types.h>".}
+when not defined(nintendoswitch):
+  proc catclose*(a1: Nl_catd): cint {.importc, header: "<nl_types.h>".}
+  proc catgets*(a1: Nl_catd, a2, a3: cint, a4: cstring): cstring {.
+    importc, header: "<nl_types.h>".}
+  proc catopen*(a1: cstring, a2: cint): Nl_catd {.
+    importc, header: "<nl_types.h>".}
 
 proc sched_get_priority_max*(a1: cint): cint {.importc, header: "<sched.h>".}
 proc sched_get_priority_min*(a1: cint): cint {.importc, header: "<sched.h>".}
@@ -800,11 +802,12 @@ when hasSpawnH:
             a4: var Tposix_spawnattr,
             a5, a6: cstringArray): cint {.importc, header: "<spawn.h>".}
 
-proc getcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
-proc makecontext*(a1: var Ucontext, a4: proc (){.noconv.}, a3: cint) {.
-  varargs, importc, header: "<ucontext.h>".}
-proc setcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
-proc swapcontext*(a1, a2: var Ucontext): cint {.importc, header: "<ucontext.h>".}
+when not defined(nintendoswitch):
+  proc getcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
+  proc makecontext*(a1: var Ucontext, a4: proc (){.noconv.}, a3: cint) {.
+    varargs, importc, header: "<ucontext.h>".}
+  proc setcontext*(a1: var Ucontext): cint {.importc, header: "<ucontext.h>".}
+  proc swapcontext*(a1, a2: var Ucontext): cint {.importc, header: "<ucontext.h>".}
 
 proc readv*(a1: cint, a2: ptr IOVec, a3: cint): int {.
   importc, header: "<sys/uio.h>".}
@@ -818,6 +821,12 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_LEN*(len: csize): csize {.
   importc, header: "<sys/socket.h>".}
 
 const
@@ -981,14 +990,21 @@ proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
 proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
 
 template onSignal*(signals: varargs[cint], body: untyped) =
-  ## Setup code to be executed when Unix signals are received. Example:
-  ## from posix import SIGINT, SIGTERM
-  ## onSignal(SIGINT, SIGTERM):
-  ##   echo "bye"
+  ## Setup code to be executed when Unix signals are received. The
+  ## currently handled signal is injected as ``sig`` into the calling
+  ## scope.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   from posix import SIGINT, SIGTERM
+  ##   onSignal(SIGINT, SIGTERM):
+  ##     echo "bye from signal ", sig
 
   for s in signals:
     handle_signal(s,
-      proc (sig: cint) {.noconv.} =
+      proc (signal: cint) {.noconv.} =
+        let sig {.inject.} = signal
         body
     )
 

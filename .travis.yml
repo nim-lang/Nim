@@ -1,14 +1,23 @@
 sudo: false
 language: c
-os:
-  - linux
-  - osx
+
 dist: trusty
 
-
 matrix:
-  allow_failures:
+  include:
+    - os: linux
+      env: NIM_COMPILE_TO_CPP=false
+
     - os: osx
+      env: NIM_COMPILE_TO_CPP=false
+
+    - os: osx
+      env: NIM_COMPILE_TO_CPP=true
+
+# To allow failures for a failing configuration, use something like:
+#  allow_failures:
+#    - env: NIM_COMPILE_TO_CPP=true
+#    - os: osx
 
 addons:
   apt:
@@ -25,28 +34,28 @@ before_install:
 
 before_script:
   - set -e
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then unset -f cd; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then shell_session_update() { :; }; fi
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - cd csources
   - sh build.sh
   - cd ..
-  - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
+  - echo PATH:${PATH}
+
 script:
   - nim c koch
-  - ./koch boot
-  - ./koch boot -d:release
-  - ./koch nimble
-  - nim e tests/test_nimscript.nims
-  - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
-  - nimble install jester@#head
-  - nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
-  - tests/testament/tester --pedantic all -d:nimCoroutines
-  - ./koch web
-  - ./koch csource
-  - ./koch nimsuggest
-#  - nim c -r nimsuggest/tester
-  - ( ! grep -F '.. code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
-  - ( ! grep -F '..code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
+  - ./koch runCI
+
+before_deploy:
+  # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
+  - cp -f ./doc/html/overview.html ./doc/html/index.html
+deploy:                         # https://nim-lang.github.io/Nim
+  provider: pages
+  # local-dir *has* to be a relative path from the repo root.
+  local-dir: "doc/html"
+  skip-cleanup: true
+  github-token: "$GITHUB_OAUTH_TOKEN"
+  keep-history: false
+  on:
+    branch: devel

@@ -39,8 +39,7 @@ type
   CellSeq {.final, pure.} = object
     len, cap: int
     d: PCellArray
-{.deprecated: [TCell: Cell, TBitIndex: BitIndex, TPageDesc: PageDesc,
-              TRefCount: RefCount, TCellSet: CellSet, TCellSeq: CellSeq].}
+
 # ------------------- cell seq handling ---------------------------------------
 
 proc contains(s: CellSeq, c: PCell): bool {.inline.} =

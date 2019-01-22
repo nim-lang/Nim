@@ -12,7 +12,7 @@
 import ast, md5, tables, ropes
 from hashes import Hash
 from astalgo import debug
-from types import typeToString, preferDesc
+import types
 from strutils import startsWith, contains
 
 when false:
@@ -68,6 +68,8 @@ else:
     toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
   proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
   proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
+  proc `&=`(c: var MD5Context, r: Rope) =
+    for l in leaves(r): md5Update(c, l, l.len)
   proc `&=`(c: var MD5Context, i: BiggestInt) =
     md5Update(c, cast[cstring](unsafeAddr i), sizeof(i))
 
@@ -148,19 +150,23 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyGenericInvocation:
     for i in countup(0, sonsLen(t) - 1):
       c.hashType t.sons[i], flags
-    return
   of tyDistinct:
     if CoType in flags:
       c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
-    return
-  of tyAlias, tySink, tyGenericInst, tyUserTypeClasses:
+  of tyGenericInst:
+    if sfInfixCall in t.base.sym.flags:
+      # This is an imported C++ generic type.
+      # We cannot trust the `lastSon` to hold a properly populated and unique
+      # value for each instantiation, so we hash the generic parameters here:
+      let normalizedType = t.skipGenericAlias
+      for i in 0 .. normalizedType.len - 2:
+        c.hashType t.sons[i], flags
+    else:
+      c.hashType t.lastSon, flags
+  of tyAlias, tySink, tyUserTypeClasses, tyInferred:
     c.hashType t.lastSon, flags
-    return
-  else:
-    discard
-  case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
@@ -168,34 +174,40 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    c &= char(t.kind)
     if t.typeInst != nil:
-      assert t.typeInst.kind == tyGenericInst
-      for i in countup(1, sonsLen(t.typeInst) - 2):
-        c.hashType t.typeInst.sons[i], flags
+      # prevent against infinite recursions here, see bug #8883:
+      let inst = t.typeInst
+      t.typeInst = nil
+      assert inst.kind == tyGenericInst
+      for i in countup(0, inst.len - 2):
+        c.hashType inst.sons[i], flags
+      t.typeInst = inst
+      return
+    c &= char(t.kind)
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
-      #if "Future:" in t.sym.name.s and t.typeInst == nil:
-      #  writeStackTrace()
-      #  echo "yes ", t.sym.name.s
-      #  #quit 1
-      if CoOwnerSig in flags:
+      if {sfCompilerProc} * t.sym.flags != {}:
+        doAssert t.sym.loc.r != nil
+        # The user has set a specific name for this type
+        c &= t.sym.loc.r
+      elif CoOwnerSig in flags:
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if sfAnon in t.sym.flags:
+      if {sfAnon, sfGenSym} * t.sym.flags != {}:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
         # mild hack to prevent endless recursions (makes nimforum compile again):
-        excl t.sym.flags, sfAnon
+        let oldFlags = t.sym.flags
+        t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
         let n = t.n
         for i in 0 ..< n.len:
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
-        incl t.sym.flags, sfAnon
+        t.sym.flags = oldFlags
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:

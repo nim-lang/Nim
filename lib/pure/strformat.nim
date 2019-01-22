@@ -258,7 +258,9 @@ template callFormat(res, arg) {.dirty.} =
     # workaround in order to circumvent 'strutils.format' which matches
     # too but doesn't adhere to our protocol.
     res.add arg
-  elif compiles(format(arg, res)):
+  elif compiles(format(arg, res)) and
+      # Check if format returns void
+      not (compiles do: discard format(arg, res)):
     format(arg, res)
   elif compiles(format(arg)):
     res.add format(arg)
@@ -681,8 +683,11 @@ when isMainModule:
   # works:
   import times
 
-  var nullTime: DateTime
-  check &"{nullTime:yyyy-mm-dd}", "0000-00-00"
+  var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
+  check &"{dt:yyyy-MM-dd}", "2000-01-01"
+
+  var tm = fromUnix(0)
+  discard &"{tm}"
 
   # Unicode string tests
   check &"""{"αβγ"}""", "αβγ"

@@ -1,5 +1,6 @@
 discard """
-  output: "abc"
+  output: '''abc
+16 == 16'''
 """
 
 type
@@ -14,3 +15,19 @@ doAssert TA.sizeof == string.sizeof
 
 echo a.x
 
+##########################################
+# bug #9794
+##########################################
+type
+  imported_double {.importc: "double".} = object
+
+  Pod = object
+    v* : imported_double
+    seed*: int32
+
+  Pod2 = tuple[v: imported_double, seed: int32]
+
+proc test() =
+  echo sizeof(Pod), " == ",sizeof(Pod2)
+
+test()

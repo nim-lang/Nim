@@ -10,8 +10,8 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread,
-  modulegraphs
+  ast, astalgo, hashes, msgs, platform, nversion, times, idents,
+  modulegraphs, lineinfos
 
 export createMagic
 
@@ -26,30 +26,18 @@ proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModule.tab, getIdent(name))
+  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(name), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, g.systemModule)
-  if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
-
-when false:
-  proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-    result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-    result.magic = m
-
-when false:
-  let
-    opNot* = createMagic("not", mNot)
-    opContains* = createMagic("contains", mInSet)
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   var ti: TIdentIter
-  let id = getIdent(name)
+  let id = getIdent(g.cache, name)
   var r = initIdentIter(ti, g.systemModule.tab, id)
   while r != nil:
-    if r.kind == skStub: loadStub(r)
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ.sons[0] != nil and r.typ.sons[0].kind == tyInt: return r
@@ -87,7 +75,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyString: result = sysTypeFromName("string")
     of tyCString: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
-    of tyNil: result = newSysType(g, tyNil, ptrSize)
+    of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)
     g.sysTypes[kind] = result
   if result.kind != kind:
@@ -132,14 +120,15 @@ proc skipIntLit*(t: PType): PType {.inline.} =
     result = t
 
 proc addSonSkipIntLit*(father, son: PType) =
-  if isNil(father.sons): father.sons = @[]
+  when not defined(nimNoNilSeqs):
+    if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
   add(father.sons, s)
   propagateToOwner(father, s)
 
 proc setIntLitType*(g: ModuleGraph; result: PNode) =
   let i = result.intVal
-  case platform.intSize
+  case g.config.target.intSize
   of 8: result.typ = getIntLitType(g, result)
   of 4:
     if i >= low(int32) and i <= high(int32):
@@ -167,15 +156,8 @@ proc setIntLitType*(g: ModuleGraph; result: PNode) =
     internalError(g.config, result.info, "invalid int size")
 
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
-  let ident = getIdent(name)
+  let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
-  when false:
-    if result == nil:
-      result = strTableGet(g.rodCompilerprocs, ident)
-      if result != nil:
-        strTableAdd(g.compilerprocs, result)
-        if result.kind == skStub: loadStub(result)
-        if result.kind == skAlias: result = result.owner
 
 proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
   strTableAdd(g.compilerprocs, s)
@@ -187,9 +169,9 @@ proc registerNimScriptSymbol*(g: ModuleGraph; s: PSym) =
     strTableAdd(g.exposed, s)
   else:
     localError(g.config, s.info,
-      "symbol conflicts with other .exportNims symbol at: " & $conflict.info)
+      "symbol conflicts with other .exportNims symbol at: " & g.config$conflict.info)
 
 proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
-  strTableGet(g.exposed, getIdent(name))
+  strTableGet(g.exposed, getIdent(g.cache, name))
 
 proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
