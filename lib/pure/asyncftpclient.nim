@@ -79,23 +79,21 @@ import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
 type
-  FtpBase*[SockType] = ref FtpBaseObj[SockType]
-  FtpBaseObj*[SockType] = object
-    csock*: SockType
-    dsock*: SockType
+  AsyncFtpClient* = ref object
+    csock*: AsyncSocket
+    dsock*: AsyncSocket
     user*, pass*: string
     address*: string
     port*: Port
     jobInProgress*: bool
-    job*: FTPJob[SockType]
+    job*: FTPJob
     dsockConnected*: bool
 
   FTPJobType* = enum
     JRetrText, JRetr, JStore
 
-  FtpJob[T] = ref FtpJobObj[T]
-  FTPJobObj[T] = object
-    prc: proc (ftp: FTPBase[T], async: bool): bool {.nimcall, gcsafe.}
+  FtpJob = ref object
+    prc: proc (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
     case typ*: FTPJobType
     of JRetrText:
       lines: string
@@ -125,9 +123,6 @@ type
       currentJob*: FTPJobType     ## The current job being performed.
 
   ReplyError* = object of IOError
-
-  AsyncFtpClientObj* = FtpBaseObj[AsyncSocket]
-  AsyncFtpClient* = ref AsyncFtpClientObj
 
   ProgressChangedProc* =
     proc (total, progress: BiggestInt, speed: float):
