@@ -537,7 +537,7 @@ proc setControlCHook(hook: proc () {.noconv.}) =
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[SignalHandler](hook))
 
-when not defined(useNimRtl):
+when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =
     # proc to unset a hook set by setControlCHook
     c_signal(SIGINT, signalHandler)
