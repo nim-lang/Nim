@@ -321,7 +321,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   else:
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(p.config, loc))
-    if loc.storage != OnStack:
+    if loc.storage != OnStack and containsGcRef:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info))
       # XXX: generated reset procs should not touch the m_type
