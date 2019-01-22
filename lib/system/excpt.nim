@@ -347,24 +347,17 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    if e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
-    else:
-      pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+    pushCurrentException(e)
+    raiseCounter.inc
+    if raiseCounter == 0:
+      raiseCounter.inc # skip zero at overflow
+    e.raiseId = raiseCounter
+    {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
         pushCurrentException(e)
         c_longjmp(excHandler.context, 1)
-    elif e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
