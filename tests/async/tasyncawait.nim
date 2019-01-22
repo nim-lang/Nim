@@ -24,9 +24,10 @@ proc launchSwarm(port: Port) {.async.} =
     closeSocket(sock)
 
 proc readMessages(client: AsyncFD) {.async.} =
-  var a = newAsyncSocket(client)
+  # wrapping the AsyncFd into a AsyncSocket object
+  var sockObj = newAsyncSocket(client)
   while true:
-    var line = await recvLine(a)
+    var line = await recvLine(sockObj)
     if line == "":
       closeSocket(client)
       clientCount.inc
