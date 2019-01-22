@@ -137,6 +137,15 @@
 ## ========
 ##
 ## * `os module<os.html>`_ for lower-level command line parsing procs
+## * `parseutils module<parseutils.html>`_ for helpers that parse tokens,
+##   numbers, identifiers, etc.
+## * `strutils module<strutils.html>`_ for common string handling operations
+## * `json module<json.html>`_ for a JSON parser
+## * `parsecfg module<parsecfg.html>`_ for a configuration file parser
+## * `parsecsv module<parsecsv.html>`_ for a simple CSV (comma separated value)
+##   parser
+## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
+## * `other parsers<lib.html#pure-libraries-parsers>`_ for more parsers
 
 {.push debugger: off.}
 
@@ -153,6 +162,9 @@ type
     cmdShortOption            ## A short option such as -c
   OptParser* =
       object of RootObj ## Implementation of the command line parser.
+      ##
+      ## To initialize it, use the
+      ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
     pos*: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
@@ -193,7 +205,7 @@ when declared(os.paramCount):
     ## If ``cmdline == ""``, the real command line as provided by the
     ## ``os`` module is retrieved instead.
     ##
-    ## ``shortNoVal`` and ``longNoVal`` is used to specify which options
+    ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
     ## do not take values. See the `documentation about these
     ## parameters<#shortnoval-and-longnoval>`_ for more information on
     ## how this affects parsing.
@@ -359,7 +371,7 @@ when declared(os.paramCount):
     ## See also:
     ## * `remainingArgs proc<#remainingArgs,OptParser>`_
     ##
-    ## **Example:**
+    ## **Examples:**
     ##
     ## .. code-block::
     ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
@@ -377,7 +389,7 @@ when declared(os.paramCount):
     ## See also:
     ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
     ##
-    ## **Example:**
+    ## **Examples:**
     ##
     ## .. code-block::
     ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
@@ -399,7 +411,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
   ## See also:
   ## * `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_
   ##
-  ## **Example:**
+  ## **Examples:**
   ##
   ## .. code-block::
   ##   # these are placeholders, of course
@@ -438,7 +450,7 @@ when declared(initOptParser):
     ## arguments are provided, the real command line as provided by the
     ## ``os`` module is retrieved instead.
     ##
-    ## ``shortNoVal`` and ``longNoVal`` is used to specify which options
+    ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
     ## do not take values. See the `documentation about these
     ## parameters<#shortnoval-and-longnoval>`_ for more information on
     ## how this affects parsing.
@@ -448,7 +460,7 @@ when declared(initOptParser):
     ## See also:
     ## * `initOptParser proc<#initOptParser,seq[TaintedString],set[char],seq[string]>`_
     ##
-    ## **Example:**
+    ## **Examples:**
     ##
     ## .. code-block::
     ##
