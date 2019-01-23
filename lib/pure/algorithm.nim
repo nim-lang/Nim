@@ -400,7 +400,7 @@ func sort*[T](a: var openArray[T],
   ## * `sort proc<#sort,openArray[T]>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by ``cmp`` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
-  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     var d = ["boo", "fo", "barr", "qux"]
     proc myCmp(x, y: string): int =
@@ -426,7 +426,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a, sys
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sorted proc<#sorted,openArray[T],proc(T,T)>`_ sorted by ``cmp`` in the specified order
   ## * `sorted proc<#sorted,openArray[T]>`_
-  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
@@ -435,7 +435,7 @@ proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
-  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     let
       a = [2, 3, 1, 5, 4]
@@ -456,7 +456,7 @@ proc sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
   ## * `sort proc<#sort,openArray[T]>`_
-  ## * `sortedByIt template<#sortedByIt.t,untyped,untypedd,openArray[T]>`_
+  ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
   runnableExamples:
     let
       a = [2, 3, 1, 5, 4]
