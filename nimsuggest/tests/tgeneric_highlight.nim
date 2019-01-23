@@ -3,7 +3,6 @@ system.newSeq[int]()#[!]#
 offsetOf[int]()
 
 discard """
-disabled:true
 $nimsuggest --tester $file
 >highlight $1
 highlight;;skType;;1;;7;;3
