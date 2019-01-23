@@ -1056,9 +1056,22 @@ proc genVarPrototype(m: BModule, n: PNode) =
       if sfVolatile in sym.flags: add(m.s[cfsVars], " volatile")
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
+const
+  frameDefines = """
+$1  define nimfr_(proc, file) \
+    TFrame FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
+
+$1  define nimfrs_(proc, file, slots, length) \
+    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+
+$1  define nimln_(n, file) \
+    FR_.line = n; FR_.filename = file;
+"""
+
 proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
-  addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
-               "#define NIM_INTBITS $1\L", [
+  addf(result, "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
   if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
@@ -1302,6 +1315,7 @@ proc genInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
   ## it means raising dependency on the symbols is too late as it will not propogate
   ## into other modules, only simple rope manipulations are allowed
+  appcg(m, m.s[cfsForwardTypes], frameDefines, [rope("#")])
 
   var moduleInitRequired = false
   let initname = getInitName(m.module)
