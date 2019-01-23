@@ -279,7 +279,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     for i in 1..last:
       var it = n.sons[i]
       let j = it.len-1
-      it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
+      if not endsInNoReturn(it.sons[j]):
+        it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
 proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
