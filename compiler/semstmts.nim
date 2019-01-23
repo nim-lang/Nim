@@ -440,11 +440,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
     var length = sonsLen(a)
-    var typ: PType
+
+    var typ: PType = nil
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
-    else:
-      typ = nil
+
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
@@ -582,9 +582,19 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def == nil:
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
+
+    if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+      # prevent the all too common 'const x = int' bug:
+      localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+      def.typ = errorType(c)
+
     # check type compatibility between def.typ and typ:
     if typ != nil:
-      def = fitRemoveHiddenConv(c, typ, def)
+      if typ.isMetaType:
+        def = inferWithMetatype(c, typ, def)
+        typ = def.typ
+      else:
+        def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
     if typ == nil:
