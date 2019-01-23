@@ -625,7 +625,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
-    of '\14'..'\31': result.add("\\u00" & $ord(c))
+    of '\14'..'\31': result.add("\\u00" & toHex(ord(c), 2))
     of '\\': result.add("\\\\")
     else: result.add(c)
 
@@ -1686,9 +1686,9 @@ when isMainModule:
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
-  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0014" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
-  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
+  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0014\"" # for #7887
 
   # Test with extra data
   when not defined(js):
