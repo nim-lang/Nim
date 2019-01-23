@@ -27,6 +27,7 @@ dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajs
 dflfdjkl__abcdefgasfsgdfgsgdfggsdfasdfsafewfkljdsfajsdf
 kgdchlfniambejop
 fjpmholcibdgeakn
+2.0
 '''
 joinable: false
 """
@@ -538,3 +539,12 @@ block trelaxedindextyp:
   proc foo(x: seq[int]; idx: uint64) = echo x[idx]
   proc foo(x: string|cstring; idx: uint64) = echo x[idx]
   proc foo(x: openArray[int]; idx: uint64) = echo x[idx]
+
+block t3899:
+  # https://github.com/nim-lang/Nim/issues/3899
+  type O = object
+    a: array[1..2,float]
+  template `[]`(x: O, i: int): float =
+    x.a[i]
+  const c = O(a: [1.0,2.0])
+  echo c[2]
