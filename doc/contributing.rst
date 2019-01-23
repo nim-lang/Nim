@@ -398,6 +398,26 @@ Code reviews
    saves time explaining the change or applying it; see also
    https://forum.nim-lang.org/t/4317
 
+2. When reviewing large diffs that may involve code moving around, github's interface
+   doesn't help much as it doesn't highlight moves. Instead you can use something
+   like this, see visual results [here](https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196):
+
+   .. code-block:: sh
+
+      git fetch origin pull/10431/head && git checkout FETCH_HEAD
+      git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD
+
+3. In addition, you can view github-like diffs locally to identify what was changed
+   within a code block using `diff-highlight` or `diff-so-fancy`, eg:
+
+   .. code-block:: sh
+
+      # put this in ~/.gitconfig:
+      [core]
+        pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
+
+
+
 .. include:: docstyle.rst
 
 
