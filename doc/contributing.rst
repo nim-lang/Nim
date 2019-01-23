@@ -60,7 +60,7 @@ Compiler
 --------
 
 The tests for the compiler use a testing tool called ``testament``. They are all
-located in ``tests/`` (eg: ``tests/destructor/tdestructor3.nim``).
+located in ``tests/`` (e.g.: ``tests/destructor/tdestructor3.nim``).
 Each test has its own file. All test files are prefixed with ``t``. If you want
 to create a file for import into another test only, use the prefix ``m``.
 
@@ -115,6 +115,13 @@ list of these, see ``testament/categories.nim``, at the bottom.
 
   ./koch tests c lib
 
+To run a single test:
+
+::
+
+  ./koch tests c <category>/<name>
+  
+E.g. ``./koch test run stdlib/thttpclient_ssl``
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on travis/appveyor), you may want to disable your
