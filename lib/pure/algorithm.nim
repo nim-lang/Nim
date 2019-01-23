@@ -765,17 +765,17 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
-  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_
-  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_
+  ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_ for a version which rotates the whole container
+  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_ for a version which returns a ``seq[T]``
   runnableExamples:
-    var list = [0, 1, 2, 3, 4, 5]
-    list.rotateLeft(1 .. 4, 3)
-    assert list == [0, 4, 1, 2, 3, 5]
-    list.rotateLeft(1 .. 4, 3)
-    assert list == [0, 3, 4, 1, 2, 5]
-    list.rotateLeft(1 .. 4, -3)
-    assert list == [0, 4, 1, 2, 3, 5]
-    doAssertRaises(IndexError, list.rotateLeft(1 .. 7, 2))
+    var a = [0, 1, 2, 3, 4, 5]
+    a.rotateLeft(1 .. 4, 3)
+    assert a == [0, 4, 1, 2, 3, 5]
+    a.rotateLeft(1 .. 4, 3)
+    assert a == [0, 3, 4, 1, 2, 5]
+    a.rotateLeft(1 .. 4, -3)
+    assert a == [0, 4, 1, 2, 3, 5]
+    doAssertRaises(IndexError, a.rotateLeft(1 .. 7, 2))
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
@@ -785,16 +785,16 @@ proc rotateLeft*[T](arg: var openarray[T]; dist: int): int {.discardable.} =
   ## ``arg``, and not just on a part of it.
   ##
   ## **See also:**
-  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_
-  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_
+  ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for a version which rotates a range
+  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_ for a version which returns a ``seq[T]``
   runnableExamples:
     var a = [1, 2, 3, 4, 5]
     a.rotateLeft(2)
     assert a == [3, 4, 5, 1, 2]
-    a.rotateLeft(2)
-    assert a == [5, 1, 2, 3, 4]
-    a.rotateLeft(-2)
-    assert a == [3, 4, 5, 1, 2]
+    a.rotateLeft(4)
+    assert a == [2, 3, 4, 5, 1]
+    a.rotateLeft(-6)
+    assert a == [1, 2, 3, 4, 5]
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
@@ -814,12 +814,16 @@ proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
-  ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
-  ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
+  ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for the in-place version of this proc
+  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],int>`_ for a version which rotates the whole container
   runnableExamples:
-    let a = [1, 2, 3, 4, 5]
-    assert rotatedLeft(a, 1 .. 4, 3) == @[1, 5, 2, 3, 4]
-    assert rotatedLeft(a, 1 .. 4, -3) == @[1, 3, 4, 5, 2]
+    var a = @[1, 2, 3, 4, 5]
+    a = rotatedLeft(a, 1 .. 4, 3)
+    assert a == @[1, 5, 2, 3, 4]
+    a = rotatedLeft(a, 1 .. 3, 2)
+    assert a == @[1, 3, 5, 2, 4]
+    a = rotatedLeft(a, 1 .. 3, -2)
+    assert a == @[1, 5, 2, 3, 4]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
@@ -829,10 +833,11 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
   ## **See also:**
-  ## * `rotateLeft proc<#rotateLeft,openArray[T],HSlice[int,int],int>`_
-  ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_
+  ## * `rotateLeft proc<#rotateLeft,openArray[T],int>`_ for the in-place version of this proc
+  ## * `rotatedLeft proc<#rotatedLeft,openArray[T],HSlice[int,int],int>`_ for a version which rotates a range
   runnableExamples:
-    var a = rotatedLeft([1, 2, 3, 4, 5], 2)
+    var a = @[1, 2, 3, 4, 5]
+    a = rotatedLeft(a, 2)
     assert a == @[3, 4, 5, 1, 2]
     a = rotatedLeft(a, 4)
     assert a == @[2, 3, 4, 5, 1]
