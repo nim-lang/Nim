@@ -1171,9 +1171,10 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(n.info, s)
     result = newSymNode(s, n.info)
   else:
-    markUsed(c.config, n.info, s, c.graph.usageSym)
-    onUse(n.info, s)
-    result = newSymNode(s, n.info)
+    let info = getCallLineInfo(n)
+    markUsed(c.config, info, s, c.graph.usageSym)
+    onUse(info, s)
+    result = newSymNode(s, info)
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
