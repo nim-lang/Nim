@@ -196,17 +196,17 @@ proc processedRows*(my: var CsvParser): int =
     parser.open(strm, "tmp.csv")
 
     doAssert parser.readRow()
-    doAssert 1 == parser.processedRows()
+    doAssert parser.processedRows() == 1
 
     doAssert parser.readRow()
-    doAssert 2 == parser.processedRows()
+    doAssert parser.processedRows() == 2
 
     ## Even if `readRow` arrived at EOF then `processedRows` is incremented.
-    doAssert false == parser.readRow()
-    doAssert 3 == parser.processedRows()
+    doAssert parser.readRow() == false
+    doAssert parser.processedRows() == 3
 
-    doAssert false == parser.readRow()
-    doAssert 4 == parser.processedRows()
+    doAssert parser.readRow() == false
+    doAssert parser.processedRows() == 4
 
     parser.close()
     strm.close()
@@ -226,18 +226,18 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
     parser.open(strm, "tmp.csv")
 
     doAssert parser.readRow()
-    doAssert @["One", "Two", "Three"] == parser.row
+    doAssert parser.row == @["One", "Two", "Three"]
     doAssert parser.readRow()
-    doAssert @["1", "2", "3"] == parser.row
+    doAssert parser.row == @["1", "2", "3"]
     ## Blank lines are skipped.
     doAssert parser.readRow()
-    doAssert @["10", "20", "30"] == parser.row
+    doAssert parser.row == @["10", "20", "30"]
 
     var emptySeq: seq[string]
-    doAssert false == parser.readRow()
-    doAssert emptySeq == parser.row
-    doAssert false == parser.readRow()
-    doAssert emptySeq == parser.row
+    doAssert parser.readRow() == false
+    doAssert parser.row == emptySeq 
+    doAssert parser.readRow() == false
+    doAssert parser.row == emptySeq 
 
     parser.close()
     strm.close()
@@ -287,12 +287,12 @@ proc readHeaderRow*(my: var CsvParser) =
     parser.open(strm, "tmp.csv")
 
     parser.readHeaderRow()
-    doAssert @["One", "Two", "Three"] == parser.headers
-    doAssert @["One", "Two", "Three"] == parser.row
+    doAssert parser.headers == @["One", "Two", "Three"]
+    doAssert parser.row == @["One", "Two", "Three"]
 
     doAssert parser.readRow()
-    doAssert @["One", "Two", "Three"] == parser.headers
-    doAssert @["1", "2", "3"] == parser.row
+    doAssert parser.headers == @["One", "Two", "Three"]
+    doAssert parser.row == @["1", "2", "3"]
 
     parser.close()
     strm.close()
@@ -315,9 +315,9 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
     ## Need calling `readHeaderRow`.
     parser.readHeaderRow()
     doAssert parser.readRow()
-    doAssert "1" == parser.rowEntry("One")
-    doAssert "2" == parser.rowEntry("Two")
-    doAssert "3" == parser.rowEntry("Three")
+    doAssert parser.rowEntry("One") == "1" 
+    doAssert parser.rowEntry("Two") == "2" 
+    doAssert parser.rowEntry("Three") == "3" 
     ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
 
     parser.close()
