@@ -556,19 +556,10 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
         appcg(m, result, "virtual void raise() { throw *this; }$n") # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
-          # hack: forward declare popCurrentExceptionEx() on top of type description,
-          # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
-          # generated function will be below declared Exception type and circular dependency
-          # between Exception and popCurrentExceptionEx function
-
-          let popExSym = magicsys.getCompilerProc(m.g.graph, "popCurrentExceptionEx")
-          if lfDynamicLib in popExSym.loc.flags and sfImportc in popExSym.flags:
-            #  echo popExSym.flags, " ma flags ", popExSym.loc.flags
-            result = "extern " & getTypeDescAux(m, popExSym.typ, check) & " " &
-                mangleName(m, popExSym) & ";\L" & result
-          else:
-            result = genProcHeader(m, popExSym) & ";\L" & result
+          appcg(m, result, "~$1();$n", [name])
+          # define it out of the class body and into the procs section so we don't have to
+          # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
+          appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
