@@ -29,6 +29,8 @@ proc newTreeExpr(stmtList, exprNode, unquoteIdent: NimNode): NimNode {.compileTi
     echo result.lispRepr
   elif exprNode.kind == nnkSym:
     error("for quoting the ast needs to be untyped", exprNode)
+  elif exprNode.kind == nnkCommentStmt:
+    result = newCall(bindSym"newCommentStmtNode", newLit(exprNode.strVal))
   elif exprNode.kind == nnkEmpty:
     # bug newTree(nnkEmpty) raises exception:
     result = newCall(bindSym"newEmptyNode")
@@ -214,3 +216,23 @@ macro fooE(): untyped =
 echo fooC() # Outputs 5
 echo fooD() # Outputs 5
 echo fooE() # Outputs 3
+
+
+# example from #10430
+
+import macros
+
+macro commentTest(arg: untyped): untyped =
+  let tmp = quoteAst:
+    ## comment 1
+    echo "abc"
+    ## comment 2
+    ## still comment 2
+
+  doAssert tmp.treeRepr == arg.treeRepr
+
+commentTest:
+  ## comment 1
+  echo "abc"
+  ## comment 2
+  ## still comment 2
