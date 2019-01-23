@@ -34,7 +34,7 @@
 ##   echo sqrt(-1.0)
 ##   # nan   (use `complex` module)
 ##
-## This module is available for the `JavaScript target
+## This module is also available for the `JavaScript target
 ## <backends.html#the-javascript-target>`_.
 ##
 ## **See also:**
