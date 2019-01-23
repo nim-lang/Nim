@@ -189,13 +189,16 @@ test cases (typically 1 to 3 ``doAssert`` statements, depending on complexity).
 These ``runnableExamples`` are automatically run by ``nim doc mymodule.nim``
 as well as ``testament`` and guarantee they stay in sync.
 
+Mark the ending of ``runnableExamples`` with an empty comment line
+(prefixed with ``##``) as shown below.
+
 .. code-block:: nim
   proc addBar*(a: string): string =
     ## Adds "Bar" to ``a``.
     runnableExamples:
       doAssert "baz".addBar == "bazBar"
-
-     result = a & "Bar"
+    ##
+    result = a & "Bar"
 
 See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
 example.
@@ -399,5 +402,3 @@ Code reviews
    https://forum.nim-lang.org/t/4317
 
 .. include:: docstyle.rst
-
-
