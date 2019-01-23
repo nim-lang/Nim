@@ -39,6 +39,7 @@
 ##
 ## See also
 ## ========
+## * `sequtils module<sequtils.html>`_ for working with the built-in seq type
 ## * `tables module<tables.html>`_ for sorting tables
 
 type
