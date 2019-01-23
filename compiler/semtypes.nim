@@ -1015,8 +1015,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
-    markUsed(c.config, info, paramType.sym, c.graph.usageSym)
-    onUse(info, paramType.sym)
+    markUsed(c.config, paramType.sym.info, paramType.sym, c.graph.usageSym)
+    onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
