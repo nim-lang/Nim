@@ -239,7 +239,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ##
   ## **See also:**
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
-  ## * `upperBound proc<#upperBound,openArray[T],K,>`_
+  ## * `upperBound proc<#upperBound,openArray[T],T>`_
   runnableExamples:
     var arr = @[1,2,3,5,6,7,8,9]
     assert arr.lowerBound(3, system.cmp[int]) == 2
@@ -270,7 +270,7 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ##
   ## **See also:**
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
-  ## * `upperBound proc<#upperBound,openArray[T],K,>`_
+  ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
 proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## Returns a position to the first element in the ``a`` that is not less
@@ -286,7 +286,7 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.clo
   ##
   ## **See also:**
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
-  ## * `lowerBound proc<#lowerBound,openArray[T],K>`_
+  ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
   runnableExamples:
     var arr = @[1,2,3,5,6,7,8,9]
     assert arr.upperBound(2, system.cmp[int]) == 2
@@ -317,7 +317,7 @@ proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
   ##
   ## **See also:**
   ## * `lowerBound proc<#lowerBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
-  ## * `lowerBound proc<#lowerBound,openArray[T],K>`_
+  ## * `lowerBound proc<#lowerBound,openArray[T],T>`_
 
 template `<-` (a, b) =
   when false:
