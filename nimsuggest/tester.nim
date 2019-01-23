@@ -240,6 +240,10 @@ proc skipDisabledTest(test: Test): bool =
 proc runEpcTest(filename: string): int =
   let s = parseTest(filename, true)
   if s.skipDisabledTest: return 0
+  for req, _ in items(s.script):
+    if req.startsWith("highlight"):
+      echo "disabled epc: " & s.filename
+      return 0
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
