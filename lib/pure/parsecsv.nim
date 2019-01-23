@@ -14,7 +14,9 @@
 ## ==============================
 ##
 ## .. code-block:: nim
-##   import os, parsecsv, streams
+##   import parsecsv
+##   from os import paramStr
+##   from streams import newFileStream
 ##   
 ##   var s = newFileStream(paramStr(1), fmRead)
 ##   if s == nil:
@@ -124,7 +126,8 @@ proc open*(my: var CsvParser, filename: string,
   ## Similar to the `other open <#open,CsvParser,Stream,string,Char,Char,Char>`_,
   ## but creates the file stream for you.
   runnableExamples:
-    import os
+    from os import removeFile
+
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
 
     var parser: CsvParser
