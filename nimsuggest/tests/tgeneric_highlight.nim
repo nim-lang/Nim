@@ -1,8 +1,8 @@
 newSeq[int]()
 system.newSeq[int]()#[!]#
+offsetOf[int]()
 
 discard """
-disabled:true
 $nimsuggest --tester $file
 >highlight $1
 highlight;;skType;;1;;7;;3
@@ -15,4 +15,6 @@ highlight;;skProc;;2;;7;;6
 highlight;;skProc;;2;;7;;6
 highlight;;skType;;2;;14;;3
 highlight;;skProc;;2;;7;;6
+highlight;;skTemplate;;3;;0;;8
+highlight;;skType;;3;;9;;3
 """
