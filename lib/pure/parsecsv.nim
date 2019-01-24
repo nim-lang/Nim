@@ -52,6 +52,18 @@
 ##     for col in items(p.headers):
 ##       echo "##", col, ":", p.rowEntry(col), "##"
 ##   p.close()
+##
+## See also
+## ========
+##
+## * `streams module <streams.html>`_ for using
+##   `open proc <#open,CsvParser,Stream,string,Char,Char,Char>`_
+##   and other stream processing (like `close proc <streams.html#close,Stream>`_).
+## * `parseopt module <parseopt.html>`_ for a command line parser.
+## * `parsecfg module <parsecfg.html>`_ for a configuration file parser.
+## * `parsexml module <parsexml.html>`_ for a XML / HTML parser.
+## * `parsesql module <parsesql.html>`_ for a SQL parser.
+## * `other parsers <lib.html#pure-libraries-parsers>`_ for other parsers.
 
 import
   lexbase, streams
