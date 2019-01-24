@@ -203,7 +203,7 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
     result = absPath
   else:
     let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if absPath.len < relPath.len: absPath else: relPath
+    result = if relPath.count("..") > 2: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
