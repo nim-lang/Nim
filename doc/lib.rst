@@ -67,6 +67,8 @@ Core
 * `lenientops <lenientops.html>`_
   Provides binary operators for mixed integer/float expressions for convenience.
 
+* `bitops <bitops.html>`_
+  Provides a series of low level methods for bit manipulation.
 
 
 Collections and algorithms
@@ -74,26 +76,38 @@ Collections and algorithms
 
 * `algorithm <algorithm.html>`_
   Implements some common generic algorithms like sort or binary search.
+
 * `tables <tables.html>`_
   Nim hash table support. Contains tables, ordered tables and count tables.
+
 * `sets <sets.html>`_
   Nim hash and bit set support.
+
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
+
 * `deques <deques.html>`_
   Implementation of a double-ended queue.
   The underlying implementation uses a ``seq``.
+
+* `heapqueue <heapqueue.html>`_
+  This module implements Heap queue (a.k.a. priority queue) algorithm.
+
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
+
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
   container for a sorted set of strings, or for a sorted mapping of strings.
+
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+
 * `sharedtables <sharedtables.html>`_
   Nim shared hash table support. Contains shared tables.
+
 * `sharedlist <sharedlist.html>`_
   Nim shared linked list support. Contains shared singly linked list.
 
@@ -128,6 +142,13 @@ String handling
 
 * `unicode <unicode.html>`_
   This module provides support to handle the Unicode UTF-8 encoding.
+
+* `unidecode <unidecode.html>`_
+  It provides a single proc that does Unicode to ASCII transliterations.
+  Based on Python's Unidecode module.
+
+* `punycode <punycode.html>`_
+  Implements a representation of Unicode with the limited ASCII character subset.
 
 * `encodings <encodings.html>`_
   Converts between different character encodings. On UNIX, this uses
@@ -189,9 +210,15 @@ Generic Operating System Services
   ``asyncdispatch``.
 
 * `distros <distros.html>`_
-  This module implements the basics for OS distribution ("distro") detection and the OS's native package manager.
-  Its primary purpose is to produce output for Nimble packages, but it also contains the widely used **Distribution** enum
+  This module implements the basics for OS distribution ("distro") detection
+  and the OS's native package manager.
+  Its primary purpose is to produce output for Nimble packages,
+  but it also contains the widely used **Distribution** enum
   that is useful for writing platform specific code.
+
+* `volatile <volatile.html>`_
+  This module contains code for generating volatile loads and stores,
+  which are useful in embedded and systems programming.
 
 
 Math libraries
@@ -273,6 +300,7 @@ Internet Protocols and Support
 * `selectors <selectors.html>`_
   This module implements a selector API with backends specific to each OS.
   Currently epoll on Linux and select on other operating systems.
+
 
 Parsers
 -------
@@ -406,6 +434,7 @@ Miscellaneous
 * `segfaults <segfaults.html>`_
   Turns access violations or segfaults into a ``NilAccessError`` exception.
 
+
 Modules for JS backend
 ----------------------
 
@@ -432,7 +461,6 @@ Regular expressions
 * `re <re.html>`_
   This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
-
 
 
 Database support
@@ -464,6 +492,7 @@ Wrappers
 
 The generated HTML for some of these wrappers is so huge that it is
 not contained in the distribution. You can then find them on the website.
+
 
 Windows specific
 ----------------
@@ -520,5 +549,5 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_
+To see a list of Nimble's packages, check out `<https://nimble.directory/>`_
 or the `packages repo <https://github.com/nim-lang/packages>`_ on GitHub.
