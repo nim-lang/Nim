@@ -10,18 +10,18 @@
 ## This module implements a simple high performance `CSV`:idx:
 ## (`comma separated value`:idx:) parser.
 ##
-## Example: How to use the parser
-## ==============================
+## Basic usage
+## ===========
 ##
 ## .. code-block:: nim
 ##   import parsecsv
 ##   from os import paramStr
 ##   from streams import newFileStream
-##   
+##
 ##   var s = newFileStream(paramStr(1), fmRead)
 ##   if s == nil:
 ##     quit("cannot open the file" & paramStr(1))
-##   
+##
 ##   var x: CsvParser
 ##   open(x, s, paramStr(1))
 ##   while readRow(x):
@@ -35,7 +35,7 @@
 ##
 ## .. code-block:: nim
 ##   import parsecsv
-##   
+##
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four
 ##   1,2,3,4
@@ -58,30 +58,34 @@
 ##
 ## * `streams module <streams.html>`_ for using
 ##   `open proc <#open,CsvParser,Stream,string,Char,Char,Char>`_
-##   and other stream processing (like `close proc <streams.html#close,Stream>`_).
-## * `parseopt module <parseopt.html>`_ for a command line parser.
-## * `parsecfg module <parsecfg.html>`_ for a configuration file parser.
-## * `parsexml module <parsexml.html>`_ for a XML / HTML parser.
-## * `parsesql module <parsesql.html>`_ for a SQL parser.
-## * `other parsers <lib.html#pure-libraries-parsers>`_ for other parsers.
+##   and other stream processing (like `close proc <streams.html#close,Stream>`_)
+## * `parseopt module <parseopt.html>`_ for a command line parser
+## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
+## * `parsexml module <parsexml.html>`_ for a XML / HTML parser
+## * `parsesql module <parsesql.html>`_ for a SQL parser
+## * `other parsers <lib.html#pure-libraries-parsers>`_ for other parsers
 
 import
   lexbase, streams
 
 type
-  CsvRow* = seq[string] ## a row in a CSV file
-  CsvParser* = object of BaseLexer ## the parser object.
-    row*: CsvRow                    ## the current row
+  CsvRow* = seq[string] ## A row in a CSV file.
+  CsvParser* = object of BaseLexer ## The parser object.
+    ##
+    ## It consists of two public fields:
+    ## * `row` is the current row
+    ## * `headers` are the columns that are defined in the csv file
+    ##   (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
+    ##   Used with `rowEntry <#rowEntry,CsvParser,string>`_).
+    row*: CsvRow
     filename: string
     sep, quote, esc: char
     skipWhite: bool
     currRow: int
-    headers*: seq[string] ## The columns that are defined in the csv file
-                          ## (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
-                          ## Used with `rowEntry <#rowEntry,CsvParser,string>`_).
+    headers*: seq[string]
 
-  CsvError* = object of IOError ## exception that is raised if
-                                ## a parsing error occurs
+  CsvError* = object of IOError ## An exception that is raised if
+                                ## a parsing error occurs.
 
 proc raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
@@ -114,15 +118,15 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ##
   ## See also:
   ## * `open proc <#open,CsvParser,string,Char,Char,Char>`_ which creates the
-  ##   file stream for you.
+  ##   file stream for you
   runnableExamples:
     import streams
-
     var strm = newStringStream("One,Two,Three\n1,2,3\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
     parser.close()
     strm.close()
+
   lexbase.open(my, input)
   my.filename = filename
   my.sep = separator
@@ -135,18 +139,16 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
 proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## Similar to the `other open <#open,CsvParser,Stream,string,Char,Char,Char>`_,
+  ## Similar to the `other open proc<#open,CsvParser,Stream,string,Char,Char,Char>`_,
   ## but creates the file stream for you.
   runnableExamples:
     from os import removeFile
-
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
-
     var parser: CsvParser
     parser.open("tmp.csv")
     parser.close()
-
     removeFile("tmp.csv")
+
   var s = newFileStream(filename, fmRead)
   if s == nil: my.error(0, "cannot open: " & filename)
   open(my, s, filename, separator,
@@ -209,22 +211,18 @@ proc processedRows*(my: var CsvParser): int =
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-
     doAssert parser.readRow()
     doAssert parser.processedRows() == 1
-
     doAssert parser.readRow()
     doAssert parser.processedRows() == 2
-
     ## Even if `readRow` arrived at EOF then `processedRows` is incremented.
     doAssert parser.readRow() == false
     doAssert parser.processedRows() == 3
-
     doAssert parser.readRow() == false
     doAssert parser.processedRows() == 4
-
     parser.close()
     strm.close()
+
   return my.currRow
 
 proc readRow*(my: var CsvParser, columns = 0): bool =
@@ -235,11 +233,9 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ## Blank lines are skipped.
   runnableExamples:
     import streams
-
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-
     doAssert parser.readRow()
     doAssert parser.row == @["One", "Two", "Three"]
     doAssert parser.readRow()
@@ -250,12 +246,13 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
 
     var emptySeq: seq[string]
     doAssert parser.readRow() == false
-    doAssert parser.row == emptySeq 
+    doAssert parser.row == emptySeq
     doAssert parser.readRow() == false
-    doAssert parser.row == emptySeq 
+    doAssert parser.row == emptySeq
 
     parser.close()
     strm.close()
+
   var col = 0 # current column
   let oldpos = my.bufpos
   while my.buf[my.bufpos] != '\0':
@@ -293,7 +290,8 @@ proc close*(my: var CsvParser) {.inline.} =
 
 proc readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
-  ## See also `rowEntry <#rowEntry,CsvParser,string>`_.
+  ## See also:
+  ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
   runnableExamples:
     import streams
 
@@ -311,6 +309,7 @@ proc readHeaderRow*(my: var CsvParser) =
 
     parser.close()
     strm.close()
+
   let present = my.readRow()
   if present:
     my.headers = my.row
@@ -322,21 +321,19 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ## called.
   runnableExamples:
     import streams
-
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-
     ## Need calling `readHeaderRow`.
     parser.readHeaderRow()
     doAssert parser.readRow()
-    doAssert parser.rowEntry("One") == "1" 
-    doAssert parser.rowEntry("Two") == "2" 
-    doAssert parser.rowEntry("Three") == "3" 
+    doAssert parser.rowEntry("One") == "1"
+    doAssert parser.rowEntry("Two") == "2"
+    doAssert parser.rowEntry("Three") == "3"
     ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
-
     parser.close()
     strm.close()
+
   let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
@@ -384,4 +381,3 @@ when isMainModule:
 
     # Tidy up
     removeFile("temp.csv")
-
