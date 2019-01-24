@@ -16,8 +16,8 @@
 ##    import algorithm
 ##
 ##    type People = tuple
-##    year: int
-##    name: string
+##      year: int
+##      name: string
 ##
 ##    var a: seq[People]
 ##
@@ -27,14 +27,16 @@
 ##
 ##    # Sorting with default system.cmp
 ##    a.sort()
-##    assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"), (year: 2010, name: "Jane")]
+##    assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
+##                  (year: 2010, name: "Jane")]
 ##
 ##    proc myCmp(x, y: People): int =
 ##      if x.name < y.name: -1 else: 1
 ##
 ##    # Sorting with custom proc
 ##    a.sort(myCmp)
-##    assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"), (year: 2005, name: "Marie")]
+##    assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"),
+##                  (year: 2005, name: "Marie")]
 ##
 ##
 ## See also
@@ -220,7 +222,8 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
   binarySearch(a, key, cmp[T])
 
 proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
-  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
+  ## **Deprecated since version 0.18.1**; Use `binarySearch proc
+  ## <#binarySearch,openArray[T],T>`_ instead.
   binarySearch(a, key, cmp[T])
 
 const
