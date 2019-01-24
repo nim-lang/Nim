@@ -362,6 +362,7 @@ Define                   Effect
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
+``logGC``                Enable GC logging to stdout.
 ``nodejs``               The JS target is actually ``node.js``.
 ``ssl``                  Enables OpenSSL support for the sockets module.
 ``memProfiler``          Enables memory profiling for the native GC.
