@@ -144,28 +144,28 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    var d = TDocumentor(gen)
-    var outp: AbsoluteFile
-    if filename.len == 0:
-      inc(d.id)
-      let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
-      createDir(subdir)
-      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
-    elif isAbsolute(filename):
-      outp = AbsoluteFile filename
-    else:
-      # Nim's convention: every path is relative to the file it was written in:
-      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
-    # Include the current file if we're parsing a nim file
-    let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
-    writeFile(outp, importStmt & content)
-    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
-            else: cmd
-    let c2 = c % quoteShell(outp)
-    rawMessage(conf, hintExecuting, c2)
-    if execShellCmd(c2) != status:
-      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+      var d = TDocumentor(gen)
+      var outp: AbsoluteFile
+      if filename.len == 0:
+        inc(d.id)
+        let nameOnly = splitFile(d.filename).name
+        let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
+        createDir(subdir)
+        outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
+      elif isAbsolute(filename):
+        outp = AbsoluteFile filename
+      else:
+        # Nim's convention: every path is relative to the file it was written in:
+        outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
+      # Include the current file if we're parsing a nim file
+      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
+      writeFile(outp, importStmt & content)
+      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+              else: cmd
+      let c2 = c % quoteShell(outp)
+      rawMessage(conf, hintExecuting, c2)
+      if execShellCmd(c2) != status:
+        rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
                                 outExt, RelativeDir"htmldocs", false)
