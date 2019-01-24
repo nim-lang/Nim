@@ -190,13 +190,13 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
     result = "???"
-    return  
+    return
   let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
   if optListFullPaths in conf.globalOptions:
     result = absPath
   else:
-    result = if absPath.len < relPath.len: absPath else: relPath
+    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+    result = if relPath.count("..") > 2: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
