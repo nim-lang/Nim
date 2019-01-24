@@ -1,22 +1,21 @@
 import macros
 
-
-#template expectNimNode(arg: NimNode): NimNode = arg
-
-#macro expectNimNode(arg: typed): NimNode =
-#  error("expressions needs to be of type NimNode", arg)
+# template expectNimNode(arg: NimNode): NimNode = arg
+# macro expectNimNode(arg: typed): NimNode =
+#   error("expressions needs to be of type NimNode", arg)
 
 proc expectNimNode[T](arg: T): NimNode = arg
 
-proc newTreeWithLineinfo*(kind: NimNodeKind; lineInfo: LineInfo; children: varargs[NimNode]): NimNode {.compileTime.} =
+proc newTreeWithLineinfo*(kind: NimNodeKind; lineinfo: LineInfo; children: varargs[NimNode]): NimNode {.compileTime.} =
   ## like ``macros.newTree``, just that the first argument is a node to take lineinfo from.
   # TODO lineinfo cannot be forwarded to new node.  I am forced to drop it here.
   result = newNimNode(kind, nil)
+  result.lineinfoObj = lineinfo
   result.add(children)
 
 # TODO restrict unquote to nimnode expressions (error message)
 
-const forwardLineinfo = false
+const forwardLineinfo = true
 
 proc newTreeExpr(stmtList, exprNode, unquoteIdent: NimNode): NimNode {.compileTime.} =
   # stmtList is a buffer to generate statements
@@ -26,7 +25,6 @@ proc newTreeExpr(stmtList, exprNode, unquoteIdent: NimNode): NimNode {.compileTi
     result = newCall(bindSym"ident", newLit(exprNode.strVal))
   elif exprNode.kind in nnkCallKinds and exprNode.len == 2 and exprNode[0].eqIdent unquoteIdent:
     result = newCall(bindSym"expectNimNode", exprNode[1])
-    echo result.lispRepr
   elif exprNode.kind == nnkSym:
     error("for quoting the ast needs to be untyped", exprNode)
   elif exprNode.kind == nnkCommentStmt:
@@ -46,6 +44,9 @@ macro quoteAst*(ast: untyped): untyped =
   ## Substitute for ``quote do`` but with ``uq`` for unquoting instead of backticks.
   result = newNimNode(nnkStmtListExpr)
   result.add result.newTreeExpr(ast, ident"uq")
+
+  echo "quoteAst:"
+  echo result.repr
 
 macro quoteAst*(unquoteIdent, ast: untyped): untyped =
   unquoteIdent.expectKind nnkIdent
@@ -83,10 +84,12 @@ macro foobar(arg: untyped): untyped =
   #result = quoteAst:
   #  echo uq(bindSym"foo")(123, "abc")
 
-  result = newTree(NimNodeKind(115), newTree(NimNodeKind(26), ident("echo"), newTree(
-    NimNodeKind(27), expectNimNode(bindSym"foo"), newLit(123), newLit("abc"))))
-
   echo result.treeRepr
+
+  # result = quoteAst:
+  #   var tmp = 1
+  #   for x in 0 ..< 100:
+  #     tmp *= 3
 
 let myVal = "Hallo Welt!"
 foobar(myVal)

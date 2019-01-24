@@ -489,13 +489,7 @@ proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
   $arg.lineInfoObj
 
-
 proc `lineInfoObj=`*(n: NimNode; lineinfo: LineInfo) {.magic: "NLineInfo".}
-
-proc setLine(arg: NimNode; line: int) {.magic: "NLineInfo".}
-proc setColumn(arg: NimNode; column: int) {.magic: "NLineInfo".}
-proc setFile(arg: NimNode; filename: string) {.magic: "NLineInfo".}
-
 
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
