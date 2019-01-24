@@ -1503,39 +1503,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       assert(n.kind == nkObjConstr)
       assert(n.len == 4)
       assert(n[1][0].sym.name.s == "filename")
-      let filename = n[1][1].strVal
+      var filename = n[1][1].strVal
+      if not isAbsolute(filename):
+         filename = parentDir(toFullPath(c.config, c.debug[pc])) / filename
       assert(n[2][0].sym.name.s == "line")
       let line = n[2][1].intVal
       assert(n[3][0].sym.name.s == "column")
       let column = n[3][1].intVal
-
-
-      proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-        result = newNodeIT(nkTupleConstr, n.info, n.typ)
-        let idx = expectIntLit(c, n.sons[1])
-        let useFullPaths = expectIntLit(c, n.sons[2])
-        let info = getInfoContext(c.config, idx)
-        var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-        filename.strVal = if useFullPaths != 0: toFullPath(c.config, info) else: toFilename(c.config, info)
-        var line = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
-        line.intVal = toLinenumber(info)
-        var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
-        column.intVal = toColumn(info)
-        result.add(filename)
-        result.add(line)
-        result.add(column)
-
-      n.
-      proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
-      proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
-
-      regs
-      decodeB(rkNode)
-      echo regs[rb].kind
-      debug(regs[rb].node)
-      regs[ra].node.info = regs[rb].node.info
+      regs[ra].node.info = newLineInfo(c.config, AbsoluteFile(filename), line, column)
     of opcNCopyLineInfo:
-      debug(regs[rb].node)
       regs[ra].node.info = regs[rb].node.info
     of opcEqIdent:
       decodeBC(rkInt)
