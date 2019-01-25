@@ -1,3 +1,20 @@
+============
+Contributing
+============
+
+.. contents::
+
+
+Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
+reviewed before it can be merged and the Continuous Integration should be green.
+
+The PR has to be approved (and is often merged too) by one "code owner", either
+by the code owner who is responsible for the subsystem the PR belongs to or by
+two core developers or by Araq.
+
+See `codeowners <codeowners.html>`_ for more details.
+
+
 Writing tests
 =============
 
@@ -83,6 +100,21 @@ list of these, see ``testament/categories.nim``, at the bottom.
 ::
 
   ./koch tests c lib
+
+To run a single test:
+
+::
+
+  ./koch tests c <category>/<name>
+
+E.g. ``./koch test run stdlib/thttpclient_ssl``
+
+For reproducible tests (to reproduce an environment more similar to the one
+run by Continuous Integration on travis/appveyor), you may want to disable your
+local configuration (eg in ``~/.config/nim/nim.cfg``) which may affect some
+tests; this can also be achieved by using
+``export XDG_CONFIG_HOME=pathtoAlternateConfig`` before running ``./koch``
+commands.
 
 Comparing tests
 ===============
