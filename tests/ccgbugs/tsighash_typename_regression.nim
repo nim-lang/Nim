@@ -1,3 +1,10 @@
+discard """
+output: '''
+123
+baz
+'''
+"""
+
 # bug #5147
 
 proc foo[T](t: T) =

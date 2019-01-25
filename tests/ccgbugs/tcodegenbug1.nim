@@ -8,7 +8,7 @@ obj = (inner: (kind: Just, id: 7))
 
 # bug #6960
 
-import future
+import sugar
 type
   Kind = enum None, Just, Huge
   Inner = object

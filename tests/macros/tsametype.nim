@@ -9,6 +9,7 @@ true
 false
 true
 false'''
+joinable: false
 """
 
 import macros

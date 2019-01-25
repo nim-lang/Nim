@@ -1,4 +1,8 @@
-
+discard """
+ccodecheck: "\\i !@('systemInit')"
+ccodecheck: "\\i !@('systemDatInit')"
+output: "hello"
+"""
 # bug  #2041: Macros need to be available for os:standalone!
 import macros
 

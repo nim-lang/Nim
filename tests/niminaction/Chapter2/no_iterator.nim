@@ -1,6 +1,6 @@
 discard """
-  line: 6
   errormsg: "type mismatch"
+  line: 6
 """
 
 for i in 5:

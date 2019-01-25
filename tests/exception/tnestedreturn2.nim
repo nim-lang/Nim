@@ -1,5 +1,4 @@
 discard """
-  file: "tnestedreturn2.nim"
   outputsub: "Error: unhandled exception: Problem [OSError]"
   exitcode: "1"
 """

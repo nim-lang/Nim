@@ -69,7 +69,7 @@ proc cacheTypeInst*(inst: PType) =
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
   if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
     return
-  gt.sym.typeInstCache.safeAdd(inst)
+  gt.sym.typeInstCache.add(inst)
 
 
 type
@@ -166,6 +166,36 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
 
   return n
 
+proc replaceObjBranches(cl: TReplTypeVars, n: PNode): PNode =
+  result = n
+  case n.kind
+  of nkNone..nkNilLit:
+    discard
+  of nkRecWhen:
+    var branch: PNode = nil              # the branch to take
+    for i in countup(0, sonsLen(n) - 1):
+      var it = n.sons[i]
+      if it == nil: illFormedAst(n, cl.c.config)
+      case it.kind
+      of nkElifBranch:
+        checkSonsLen(it, 2, cl.c.config)
+        var cond = it.sons[0]
+        var e = cl.c.semConstExpr(cl.c, cond)
+        if e.kind != nkIntLit:
+          internalError(cl.c.config, e.info, "ReplaceTypeVarsN: when condition not a bool")
+        if e.intVal != 0 and branch == nil: branch = it.sons[1]
+      of nkElse:
+        checkSonsLen(it, 1, cl.c.config)
+        if branch == nil: branch = it.sons[0]
+      else: illFormedAst(n, cl.c.config)
+    if branch != nil:
+      result = replaceObjBranches(cl, branch)
+    else:
+      result = newNodeI(nkRecList, n.info)
+  else:
+    for i in 0..<n.sonsLen:
+      n.sons[i] = replaceObjBranches(cl, n.sons[i])
+
 proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   if n == nil: return
   result = copyNode(n)
@@ -233,7 +263,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
 
   #result = PSym(idTableGet(cl.symMap, s))
   #if result == nil:
-  result = copySym(s, false)
+  result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -460,7 +490,12 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
-    localError(cl.c.config, cl.info, "cannot instantiate: '" & typeToString(t) & "'")
+    localError(
+      cl.c.config,
+      cl.info,
+      "cannot instantiate: '" &
+      typeToString(t, preferDesc) &
+      "'; Maybe generic arguments are missing?")
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
@@ -525,6 +560,14 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:
+          if result.sons[i].kind == tyGenericBody:
+            localError(
+              cl.c.config,
+              t.sym.info,
+              "cannot instantiate '" &
+              typeToString(result.sons[i], preferDesc) &
+              "' inside of type definition: '" &
+              t.owner.name.s & "'; Maybe generic arguments are missing?")
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
@@ -549,6 +592,16 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       else: discard
+    else:
+      # If this type doesn't refer to a generic type we may still want to run it
+      # trough replaceObjBranches in order to resolve any pending nkRecWhen nodes
+      result = t
+
+      # Slow path, we have some work to do
+      if result.n != nil and t.kind == tyObject:
+        # Invalidate the type size as we may alter its structure
+        result.size = -1
+        result.n = replaceObjBranches(cl, result.n)
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
   var i = 0

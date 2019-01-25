@@ -40,6 +40,7 @@ type
                     # already. See bug #3655
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
+    examples: string
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -118,7 +119,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
-                   conf.configVars, filename.string, {roSupportRawDirective},
+                   conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -143,28 +144,28 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    var d = TDocumentor(gen)
-    var outp: AbsoluteFile
-    if filename.len == 0:
-      inc(d.id)
-      let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
-      createDir(subdir)
-      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
-    elif isAbsolute(filename):
-      outp = AbsoluteFile filename
-    else:
-      # Nim's convention: every path is relative to the file it was written in:
-      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
-    # Include the current file if we're parsing a nim file
-    let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
-    writeFile(outp, importStmt & content)
-    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
-            else: cmd
-    let c2 = c % quoteShell(outp)
-    rawMessage(conf, hintExecuting, c2)
-    if execShellCmd(c2) != status:
-      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+      var d = TDocumentor(gen)
+      var outp: AbsoluteFile
+      if filename.len == 0:
+        inc(d.id)
+        let nameOnly = splitFile(d.filename).name
+        let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
+        createDir(subdir)
+        outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
+      elif isAbsolute(filename):
+        outp = AbsoluteFile filename
+      else:
+        # Nim's convention: every path is relative to the file it was written in:
+        outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
+      # Include the current file if we're parsing a nim file
+      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
+      writeFile(outp, importStmt & content)
+      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+              else: cmd
+      let c2 = c % quoteShell(outp)
+      rawMessage(conf, hintExecuting, c2)
+      if execShellCmd(c2) != status:
+        rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
                                 outExt, RelativeDir"htmldocs", false)
@@ -247,17 +248,29 @@ proc genComment(d: PDoc, n: PNode): string =
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
-proc genRecComment(d: PDoc, n: PNode): Rope =
+proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
   result = genComment(d, n).rope
   if result == nil:
-    if n.kind notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
+    if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
+                  nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn}:
+      # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in countup(0, len(n)-1):
-        result = genRecComment(d, n.sons[i])
+        result = genRecCommentAux(d, n.sons[i])
         if result != nil: return
   else:
     when defined(nimNoNilSeqs): n.comment = ""
     else: n.comment = nil
+
+proc genRecComment(d: PDoc, n: PNode): Rope =
+  if n == nil: return nil
+  result = genComment(d, n).rope
+  if result == nil:
+    if n.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                  nkMacroDef, nkTemplateDef, nkConverterDef}:
+      result = genRecCommentAux(d, n[bodyPos])
+    else:
+      result = genRecCommentAux(d, n)
 
 proc getPlainDocstring(n: PNode): string =
   ## Gets the plain text docstring of a node non destructively.
@@ -287,13 +300,17 @@ proc externalDep(d: PDoc; module: PSym): string =
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
 
-proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
+proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {};
+                           procLink: Rope) =
   var r: TSrcGen
   var literal = ""
   initTokRender(r, n, renderFlags)
   var kind = tkEof
+  var tokenPos = 0
+  var procTokenPos = 0
   while true:
     getNextTok(r, kind, literal)
+    inc tokenPos
     case kind
     of tkEof:
       break
@@ -301,6 +318,8 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
             [rope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh:
+      if kind in {tkProc, tkMethod, tkIterator, tkMacro, tkTemplate, tkFunc, tkConverter}:
+        procTokenPos = tokenPos
       dispA(d.conf, result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
             [rope(literal)])
     of tkOpr:
@@ -320,7 +339,11 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
       let s = getTokSym(r)
-      if s != nil and s.kind == skType and sfExported in s.flags and
+      # -2 because of the whitespace in between:
+      if procTokenPos == tokenPos-2 and procLink != nil:
+        dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
+              "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
+      elif s != nil and s.kind == skType and sfExported in s.flags and
           s.owner != nil and belongsToPackage(d.conf, s.owner) and
           d.target == outHtml:
         let external = externalDep(d, s.owner)
@@ -366,6 +389,14 @@ proc testExample(d: PDoc; ex: PNode) =
       "_examples" & $d.exampleCounter & ".nim"))
   #let nimcache = outp.changeFileExt"" & "_nimcache"
   renderModule(ex, d.filename, outp.string, conf = d.conf)
+  d.examples.add "import r\"" & outp.string & "\"\n"
+
+proc runAllExamples(d: PDoc) =
+  if d.examples.len == 0: return
+  let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
+  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
+      "_examples.nim"))
+  writeFile(outp, d.examples)
   let backend = if isDefined(d.conf, "js"): "js"
                 elif isDefined(d.conf, "cpp"): "cpp"
                 elif isDefined(d.conf, "objc"): "objc"
@@ -388,7 +419,11 @@ proc extractImports(n: PNode; result: PNode) =
   for i in 0..<n.safeLen: extractImports(n[i], result)
 
 proc prepareExamples(d: PDoc; n: PNode) =
+  var docComment = newTree(nkCommentStmt)
+  let loc = d.conf.toFileLineCol(n.info)
+  docComment.comment = "autogenerated by docgen from " & loc
   var runnableExamples = newTree(nkStmtList,
+      docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
   let imports = newTree(nkStmtList)
@@ -420,7 +455,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
       for b in body:
         if i > 0: dest.add "\n"
         inc i
-        nodeToHighlightedHtml(d, b, dest, {})
+        nodeToHighlightedHtml(d, b, dest, {}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
   for i in 0 ..< n.safeLen:
@@ -428,27 +463,6 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   getAllRunnableExamplesRec(d, n, n, dest)
-
-when false:
-  proc findDocComment(n: PNode): PNode =
-    if n == nil: return nil
-    if not isNil(n.comment) and startsWith(n.comment, "##"): return n
-    for i in countup(0, safeLen(n)-1):
-      result = findDocComment(n.sons[i])
-      if result != nil: return
-
-  proc extractDocComment*(s: PSym, d: PDoc): string =
-    let n = findDocComment(s.ast)
-    result = ""
-    if not n.isNil:
-      if not d.isNil:
-        var dummyHasToc: bool
-        renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
-                                     toLinenumber(n.info), toColumn(n.info),
-                                     dummyHasToc, d.options + {roSkipPounds}),
-                       result)
-      else:
-        result = n.comment.substr(2).replace("\n##", "\n").strip
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -460,7 +474,10 @@ proc isVisible(d: PDoc; n: PNode): bool =
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
-    result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    if optDocInternal in d.conf.globalOptions:
+      result = {sfFromGeneric, sfForward}*n.sym.flags == {}
+    else:
+      result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
@@ -541,16 +558,19 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## If you modify the output of this proc, please update the anchor generation
   ## section of ``doc/docgen.txt``.
   result = baseName
-  case k:
-  of skProc, skFunc: result.add(defaultParamSeparator)
-  of skMacro: result.add(".m" & defaultParamSeparator)
-  of skMethod: result.add(".e" & defaultParamSeparator)
-  of skIterator: result.add(".i" & defaultParamSeparator)
-  of skTemplate: result.add(".t" & defaultParamSeparator)
-  of skConverter: result.add(".c" & defaultParamSeparator)
+  case k
+  of skProc, skFunc: discard
+  of skMacro: result.add(".m")
+  of skMethod: result.add(".e")
+  of skIterator: result.add(".i")
+  of skTemplate: result.add(".t")
+  of skConverter: result.add(".c")
   else: discard
   if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
-    result.add(renderParamTypes(n[paramsPos]))
+    let params = renderParamTypes(n[paramsPos])
+    if params.len > 0:
+      result.add(defaultParamSeparator)
+      result.add(params)
 
 proc isCallable(n: PNode): bool =
   ## Returns true if `n` contains a callable node.
@@ -608,9 +628,6 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
-  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
-    renderDocComments, renderSyms})
-
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -622,6 +639,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.rope
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
+
+  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
+    renderDocComments, renderSyms}, symbolOrIdEncRope)
 
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
@@ -739,7 +759,6 @@ proc exportSym(d: PDoc; s: PSym) =
             rope changeFileExt(external, "html")])
 
 proc generateDoc*(d: PDoc, n, orig: PNode) =
-  if orig.info.fileIndex != n.info.fileIndex: return
   case n.kind
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
@@ -787,13 +806,13 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
 proc add(d: PDoc; j: JsonNode) =
   if j != nil: d.jArray.add j
 
-proc generateJson*(d: PDoc, n: PNode) =
+proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
   of nkCommentStmt:
-    if startsWith(n.comment, "##"):
-      let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped, "line": %n.info.line.int,
-               "col": %n.info.col }
+    if includeComments:
+      d.add %*{"comment": genComment(d, n)}
+    else:
+      add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
@@ -821,11 +840,11 @@ proc generateJson*(d: PDoc, n: PNode) =
                 succ(skType, ord(n.kind)-ord(nkTypeSection)))
   of nkStmtList:
     for i in countup(0, sonsLen(n) - 1):
-      generateJson(d, n.sons[i])
+      generateJson(d, n.sons[i], includeComments)
   of nkWhenStmt:
     # generate documentation for the first branch only:
     if not checkForFalse(n.sons[0].sons[0]):
-      generateJson(d, lastSon(n.sons[0]))
+      generateJson(d, lastSon(n.sons[0]), includeComments)
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
@@ -907,7 +926,7 @@ proc genOutFile(d: PDoc): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = "Module " & extractFilename(changeFileExt(d.filename, ""))
+    title = extractFilename(changeFileExt(d.filename, ""))
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -939,6 +958,7 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], dest.string)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
+  runAllExamples(d)
   var content = genOutFile(d)
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
@@ -951,8 +971,13 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
+  runAllExamples(d)
+  var modDesc: string
+  for desc in d.modDesc:
+    modDesc &= desc
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
+    "moduleDescription": modDesc,
     "entries": d.jArray}
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
@@ -962,7 +987,9 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
       write(f, $content)
       close(f)
     else:
-      discard "fixme: error report"
+      localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
+                 warnUser, "unable to open file \"" & d.destFile.string &
+                 "\" for writing")
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx, cache, conf)
@@ -980,7 +1007,7 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
 
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
-                     {roSupportRawDirective}, conf)
+                     {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)

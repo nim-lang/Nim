@@ -1,8 +1,14 @@
 discard """
   nimout: '''
-t8314.nim(8, 7) Hint: BEGIN [User]
-t8314.nim(19, 7) Hint: END [User]
+t8314.nim(14, 7) Hint: BEGIN [User]
+t8314.nim(25, 7) Hint: END [User]
   '''
+
+output: '''
+1
+1
+1
+'''
 """
 
 {.hint: "BEGIN".}

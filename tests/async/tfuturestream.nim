@@ -1,7 +1,5 @@
 discard """
-  file: "tfuturestream.nim"
-  exitcode: 0
-  output: '''
+output: '''
 0
 1
 2
@@ -19,7 +17,7 @@ var fs = newFutureStream[int]()
 proc alpha() {.async.} =
   for i in 0 .. 5:
     await fs.write(i)
-    await sleepAsync(1000)
+    await sleepAsync(200)
 
   echo("Done")
   fs.complete()

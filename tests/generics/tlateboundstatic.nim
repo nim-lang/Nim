@@ -1,5 +1,5 @@
 discard """
-  msg: "array[0..3, int]"
+  nimout: "array[0..3, int]"
 """
 
 type

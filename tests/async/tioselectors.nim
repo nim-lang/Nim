@@ -1,5 +1,4 @@
 discard """
-  file: "tioselectors.nim"
   output: "All tests passed!"
 """
 import selectors
@@ -163,9 +162,9 @@ elif not defined(windows):
 
     proc process_notification_test(): bool =
       var selector = newSelector[int]()
-      var process2 = startProcess("/bin/sleep", "", ["2"], nil,
+      var process2 = startProcess("sleep", "", ["2"], nil,
                            {poStdErrToStdOut, poUsePath})
-      discard startProcess("/bin/sleep", "", ["1"], nil,
+      discard startProcess("sleep", "", ["1"], nil,
                            {poStdErrToStdOut, poUsePath})
 
       selector.registerProcess(process2.processID, 0)

@@ -1,7 +1,7 @@
 discard """
   output: '''true true false yes
 false
-false
+true
 false
 true
 true
@@ -68,8 +68,8 @@ type SeqOrSet[E] = seq[E] or set[E]
 type SeqOfInt = seq[int]
 type SeqOrSetOfInt = SeqOrSet[int]
 
-# This prints "false", which seems less correct that (1) printing "true" or (2)
-# raising a compiler error.
+# This prints "true", as expected. Previously "false" was returned and that
+# seemed less correct that (1) printing "true" or (2) raising a compiler error.
 echo seq is SeqOrSet
 
 # This prints "false", as expected.

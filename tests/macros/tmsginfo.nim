@@ -1,6 +1,6 @@
 discard """
   nimout: '''tmsginfo.nim(21, 1) Warning: foo1 [User]
-tmsginfo.nim(22, 13) template/generic instantiation from here
+tmsginfo.nim(22, 13) template/generic instantiation of `foo2` from here
 tmsginfo.nim(15, 10) Warning: foo2 [User]
 tmsginfo.nim(23, 1) Hint: foo3 [User]
 tmsginfo.nim(19, 7) Hint: foo4 [User]

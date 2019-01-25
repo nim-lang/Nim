@@ -26,7 +26,8 @@ proc test(dir: string; fixup = false) =
         copyFile(produced, expected)
     else:
       echo "SUCCESS: files identical: ", produced
-  removeDir(dir / "htmldocs")
+  if failures == 0:
+    removeDir(dir / "htmldocs")
 
-test("nimdoc/testproject", false)
+test("nimdoc/testproject", defined(fixup))
 if failures > 0: quit($failures & " failures occurred.")

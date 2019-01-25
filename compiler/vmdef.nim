@@ -35,6 +35,10 @@ type
     opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
+    opcAsgnIntFromFloat32,    # int and float must be of the same byte size
+    opcAsgnIntFromFloat64,    # int and float must be of the same byte size
+    opcAsgnFloat32FromInt,    # int and float must be of the same byte size
+    opcAsgnFloat64FromInt,    # int and float must be of the same byte size
     opcAsgnComplex,
     opcNodeToReg,
 
@@ -69,7 +73,7 @@ type
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit, opcReset,
+    opcQuit,
     opcNarrowS, opcNarrowU,
 
     opcAddStrCh,
@@ -107,6 +111,7 @@ type
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
+    opcGetImplTransf
 
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
@@ -142,7 +147,8 @@ type
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
     opcToNarrowInt,
-    opcSymOwner
+    opcSymOwner,
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym

@@ -17,6 +17,7 @@ type
   TemplCtx = object
     owner, genSymOwner: PSym
     instLines: bool   # use the instantiation lines numbers
+    isDeclarative: bool
     mapping: TIdTable # every gensym'ed symbol needs to be mapped to some
                       # new symbol
     config: ConfigRef
@@ -36,29 +37,51 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   case templ.kind
   of nkSym:
     var s = templ.sym
-    if s.owner.id == c.owner.id:
+    if s.owner == nil or s.owner.id == c.owner.id:
       if s.kind == skParam and sfGenSym notin s.flags:
         handleParam actual.sons[s.position]
-      elif s.kind == skGenericParam or
-           s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam:
+      elif (s.owner != nil) and (s.kind == skGenericParam or
+           s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, false)
-          x.owner = c.genSymOwner
+          x = copySym(s)
+          # sem'check needs to set the owner properly later, see bug #9476
+          x.owner = nil # c.genSymOwner
+          #if x.kind == skParam and x.owner.kind == skModule:
+          #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
     else:
       result.add copyNode(c, templ, actual)
   of nkNone..nkIdent, nkType..nkNilLit: # atom
     result.add copyNode(c, templ, actual)
+  of nkCommentStmt:
+    # for the documentation generator we don't keep documentation comments
+    # in the AST that would confuse it (bug #9432), but only if we are not in a
+    # "declarative" context (bug #9235).
+    if c.isDeclarative:
+      var res = copyNode(c, templ, actual)
+      for i in countup(0, sonsLen(templ) - 1):
+        evalTemplateAux(templ.sons[i], actual, c, res)
+      result.add res
+    else:
+      result.add newNodeI(nkEmpty, templ.info)
   else:
+    var isDeclarative = false
+    if templ.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
+                      nkMacroDef, nkTemplateDef, nkConverterDef, nkTypeSection,
+                      nkVarSection, nkLetSection, nkConstSection} and
+        not c.isDeclarative:
+      c.isDeclarative = true
+      isDeclarative = true
     var res = copyNode(c, templ, actual)
     for i in countup(0, sonsLen(templ) - 1):
       evalTemplateAux(templ.sons[i], actual, c, res)
     result.add res
+    if isDeclarative: c.isDeclarative = false
 
 const
   errWrongNumberOfArguments = "wrong number of arguments"
@@ -153,6 +176,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   initIdTable(ctx.mapping)
 
   let body = tmpl.getBody
+  #echo "instantion of ", renderTree(body, {renderIds})
   if isAtom(body):
     result = newNodeI(nkPar, body.info)
     evalTemplateAux(body, args, ctx, result)
@@ -169,5 +193,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
+  #if ctx.debugActive:
+  #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
 

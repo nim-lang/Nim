@@ -4,9 +4,9 @@ template getScriptDir(): string =
   parentDir(instantiationInfo(-1, true).filename)
 
 const
-  relRes = slurp"../../readme.txt"
-  absRes = slurp(parentDir(parentDir(getScriptDir())) / "readme.txt")
+  relRes = slurp"./tslurp.nim"
+  absRes = slurp(getScriptDir() / "tslurp.nim")
 
-echo relRes
-echo absRes
-
+doAssert relRes.len > 200
+doAssert absRes.len > 200
+doAssert relRes == absRes

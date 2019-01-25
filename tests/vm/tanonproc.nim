@@ -4,7 +4,7 @@ discard """
 
 # bug #3561
 
-import macros, future, strutils
+import macros, sugar, strutils
 
 type
   Option[T] = ref object

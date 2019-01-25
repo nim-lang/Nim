@@ -1,10 +1,9 @@
 discard """
-  output: '''13
+output: '''
+13
 hello humans!
 13
 '''
-  file: "tasyncfile.nim"
-  exitcode: 0
 """
 import asyncfile, asyncdispatch, os
 
@@ -54,8 +53,7 @@ proc main() {.async.} =
 
   # Issue #7347
   block:
-    let appDir = getAppDir()
-    var file = openAsync(appDir & DirSep & "hello.txt")
+    var file = openAsync( parentDir(currentSourcePath) / "hello.txt")
     echo file.getFileSize()
     echo await file.readAll()
     echo file.getFilePos()

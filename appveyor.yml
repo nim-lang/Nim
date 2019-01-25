@@ -44,22 +44,6 @@ install:
 
 build_script:
   - bin\nim c koch
-  - koch boot -d:release
-  - koch nimble
-  - nim e tests/test_nimscript.nims
-  - nim c -o:bin/nimpretty.exe nimpretty/nimpretty.nim
-  - nim c -r nimpretty/tester.nim
-#  - nimble install zip -y
-#  - nimble install opengl -y
-#  - nimble install sdl1 -y
-#  - nimble install jester@#head -y
-  - nim c --taintMode:on -d:nimCoroutines --os:genode -d:posix --compileOnly tests/testament/tester
-  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
-
-test_script:
-  - tests\testament\tester --pedantic all -d:nimCoroutines
-  - nim c -r nimdoc\tester
-#  - koch csource
-#  - koch zip
+  - koch runCI
 
 deploy: off

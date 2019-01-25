@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nim's 'spawn'.
+## Implements Nim's `spawn <manual.html#parallel-amp-spawn>`_.
 
 when not compileOption("threads"):
   {.error: "Threadpool requires --threads:on option.".}

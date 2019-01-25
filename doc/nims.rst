@@ -6,16 +6,51 @@ Strictly speaking, ``NimScript`` is the subset of Nim that can be evaluated
 by Nim's builtin virtual machine (VM). This VM is used for Nim's compiletime
 function evaluation features.
 
-You can use a ``<myproject>.nims`` file that simply contains Nim code
-controlling the compilation process. For a directory wide
-configuration, use ``config.nims`` instead of ``<myproject>.nims``.
+The ``nim`` executable processes the ``.nims`` configuration files in
+the following directories (in this order; later files overwrite
+previous settings):
 
-The VM cannot deal with ``importc`` because the FFI is not
-available. So the stdlib modules using ``importc`` cannot be used with
-Nim's VM. However, at least the following modules are available:
+1) If environment variable ``XDG_CONFIG_HOME`` is defined,
+   ``$XDG_CONFIG_HOME/nim/config.nims`` or
+   ``~/.config/nim/config.nims`` (POSIX) or
+   ``%APPDATA%/nim/config.nims`` (Windows). This file can be skipped
+   with the ``--skipUserCfg`` command line option.
+2) ``$parentDir/config.nims`` where ``$parentDir`` stands for any
+   parent directory of the project file's path. These files can be
+   skipped with the ``--skipParentCfg`` command line option.
+3) ``$projectDir/config.nims`` where ``$projectDir`` stands for the
+   project's path. This file can be skipped with the ``--skipProjCfg``
+   command line option.
+4) A project can also have a project specific configuration file named
+   ``$project.nims`` that resides in the same directory as
+   ``$project.nim``. This file can be skipped with the same
+   ``--skipProjCfg`` command line option.
+
+Limitations
+=================================
+
+NimScript is subject to some limitations caused by the implementation of the VM
+(virtual machine):
+
+* Nim's FFI (foreign function interface) is not available in NimScript. This
+  means that any stdlib module which relies on ``importc`` can not be used in
+  the VM.
+
+* ``ptr`` operations are are hard to emulate with the symbolic representation
+  the VM uses. They are available and tested extensively but there are bugs left.
+
+* ``var T`` function arguments rely on ``ptr`` operations internally and might
+  also be problematic in some cases.
+
+* More than one level of `ref` is generally not supported (for example, the type 
+  `ref ref int`).
+
+* multimethods are not available.
+
+Given the above restrictions, at least the following modules are available:
 
 * `macros <macros.html>`_
-* `ospaths <ospaths.html>`_
+* `os <os.html>`_
 * `strutils <strutils.html>`_
 * `math <math.html>`_
 * `distros <distros.html>`_
@@ -74,22 +109,12 @@ In fact, as a convention the following tasks should be available:
 =========     ===================================================
 Task          Description
 =========     ===================================================
+``help``      List all the available NimScript tasks along with their docstrings.
 ``build``     Build the project with the required
               backend (``c``, ``cpp`` or ``js``).
 ``tests``     Runs the tests belonging to the project.
 ``bench``     Runs benchmarks belonging to the project.
 =========     ===================================================
-
-
-If the task runs an external command via ``exec`` it should afterwards call
-``setCommand "nop"`` to tell the Nim compiler that nothing else needs to be
-done:
-
-.. code-block:: nim
-
-  task tests, "test regular expressions":
-    exec "nim c -r tests"
-    setCommand "nop"
 
 
 Look at the module `distros <distros.html>`_ for some support of the

@@ -135,12 +135,16 @@ const
   WarningColor = fgYellow
   HintTitle    = "Hint: "
   HintColor    = fgGreen
+  # NOTE: currently line info line numbers start with 1,
+  # but column numbers start with 0, however most editors expect
+  # first column to be 1, so we need to +1 here
+  ColOffset*   = 1
 
 proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
 proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
 
-proc pushInfoContext*(conf: ConfigRef; info: TLineInfo) =
-  conf.m.msgContext.add(info)
+proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
+  conf.m.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
   setLen(conf.m.msgContext, len(conf.m.msgContext) - 1)
@@ -149,13 +153,16 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   let L = conf.m.msgContext.len
   let i = if index < 0: L + index else: index
   if i >=% L: result = unknownLineInfo()
-  else: result = conf.m.msgContext[i]
+  else: result = conf.m.msgContext[i].info
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     "???"
   else:
-    conf.m.fileInfos[fileIdx.int32].projPath.string
+    if optListFullPaths in conf.globalOptions:
+      conf.m.fileInfos[fileIdx.int32].fullPath.string
+    else:
+      conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil: result = "???"
@@ -190,10 +197,13 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
     result = "???"
-  elif optListFullPaths in conf.globalOptions:
-    result = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
+    return
+  let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
+  if optListFullPaths in conf.globalOptions:
+    result = absPath
   else:
-    result = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
+    result = if relPath.count("..") > 2: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
@@ -205,7 +215,9 @@ proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result = toFilename(conf, info) & ":" & $info.line
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
+  # consider calling `helpers.lineInfoToString` instead
+  result = toFilename(conf, info) & "(" & $info.line & ", " &
+    $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -340,20 +352,26 @@ proc exactEquals*(a, b: TLineInfo): bool =
 
 proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
+  const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
   for i in 0 ..< len(conf.m.msgContext):
-    if conf.m.msgContext[i] != lastinfo and conf.m.msgContext[i] != info:
+    let context = conf.m.msgContext[i]
+    if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
-        conf.structuredErrorHook(conf, conf.m.msgContext[i], instantiationFrom,
-                                  Severity.Error)
+        conf.structuredErrorHook(conf, context.info, instantiationFrom,
+                                 Severity.Error)
       else:
+        let message = if context.detail == "":
+          instantiationFrom
+        else:
+          instantiationOfFrom.format(context.detail)
         styledMsgWriteln(styleBright,
-                         PosFormat % [toMsgFilename(conf, conf.m.msgContext[i]),
-                                      coordToStr(conf.m.msgContext[i].line.int),
-                                      coordToStr(conf.m.msgContext[i].col+1)],
+                         PosFormat % [toMsgFilename(conf, context.info),
+                                      coordToStr(context.info.line.int),
+                                      coordToStr(context.info.col+ColOffset)],
                          resetStyle,
-                         instantiationFrom)
-    info = conf.m.msgContext[i]
+                         message)
+    info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
   msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
@@ -414,7 +432,7 @@ proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
 proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   if i.fileIndex.int32 < 0: return ""
 
-  if not optPreserveOrigSource(conf) and conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
+  if conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
       for line in lines(toFullPath(conf, i)):
         addSourceLine conf, i.fileIndex, line.string
@@ -437,7 +455,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
   result = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                        coordToStr(info.col+1)] &
+                        coordToStr(info.col+ColOffset)] &
            title &
            getMessageStr(msg, arg)
 
@@ -474,11 +492,8 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  # NOTE: currently line info line numbers start with 1,
-  # but column numbers start with 0, however most editors expect
-  # first column to be 1, so we need to +1 here
   let x = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                       coordToStr(info.col+1)]
+                       coordToStr(info.col+ColOffset)]
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:

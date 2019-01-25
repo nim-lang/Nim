@@ -19,9 +19,12 @@ proc `=`(lhs: var T, rhs: T) =
 proc `=destroy`(v: var T) =
     echo "destroy"
 
+proc use(x: T) = discard
+
 proc usedToBeBlock =
     var v1 : T
     var v2 : T = v1
+    use v1
 
 usedToBeBlock()
 

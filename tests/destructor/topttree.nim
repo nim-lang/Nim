@@ -90,6 +90,8 @@ proc write(t: opt[Tree]) =
     write stdout, it.data, "\n"
     write(it.ri)
 
+proc use(t: opt[Tree]) = discard
+
 proc main =
   var t: opt[Tree]
   insert t, 60.0
@@ -99,6 +101,7 @@ proc main =
   write t
   let copy = t
   write copy
+  use t
 
 main()
 echo allocCount, " ", deallocCount

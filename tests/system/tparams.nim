@@ -1,6 +1,8 @@
 discard """
+joinable: false
 """
 
+# not joinable because it executes itself with parameters
 import os
 import osproc
 import parseopt2
@@ -13,7 +15,6 @@ if argv == @[]:
   doAssert execShellCmd(getAppFilename() & " \"foo bar\" --aa:bar=a --a=c:d --ab -c --a[baz]:doo") == 0
 else:
   let f = toSeq(getopt())
-  echo f.repr
   doAssert f[0].kind == cmdArgument and f[0].key == "foo bar" and f[0].val == ""
   doAssert f[1].kind == cmdLongOption and f[1].key == "aa" and f[1].val == "bar=a"
   doAssert f[2].kind == cmdLongOption and f[2].key == "a=c" and f[2].val == "d"

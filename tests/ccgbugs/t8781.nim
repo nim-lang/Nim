@@ -18,7 +18,7 @@ type
     of false:
         region: float
 
-when isMainModule:
+when true:
   let r = 1.5
   let a = TypeOne(animatedU: true,
                   animated: false,

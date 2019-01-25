@@ -33,8 +33,6 @@ type
     root: Node[T]
     count: int
 
-{.deprecated: [TCritBitTree: CritBitTree].}
-
 proc len*[T](c: CritBitTree[T]): int =
   ## returns the number of elements in `c` in O(1).
   result = c.count
@@ -202,12 +200,6 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline,
   deprecatedGet.} =
   ## retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  get(c, key)
-
-proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} =
-  ## retrieves the value at ``c[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## Use ```[]``` instead.
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =

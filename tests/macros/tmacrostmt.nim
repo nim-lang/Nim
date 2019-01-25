@@ -94,7 +94,7 @@ proc fn3(x, y: int): bool =
   
 static:
   let fn1s = "proc fn1(x, y: int): int =\n  result = 2 * (x + y)\n"
-  let fn2s = "proc fn2(x, y: float): float =\n  result = (y + 2.0 * x) / (x - y)\n"
+  let fn2s = "proc fn2(x, y: float): float =\n  result = (y + 2 * x) / (x - y)\n"
   let fn3s = "proc fn3(x, y: int): bool =\n  result = ((x and 3) div 4 or x mod (y xor -1)) == 0 or not contains([1, 2], y)\n"
   doAssert fn1.repr_to_string == fn1s
   doAssert fn2.repr_to_string == fn2s

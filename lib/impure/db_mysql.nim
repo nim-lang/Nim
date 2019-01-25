@@ -96,7 +96,6 @@ type
                        ## column text on demand
     row: cstringArray
     len: int
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.

@@ -47,7 +47,7 @@ type
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
-    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]] # needs serialization!
+    methods*: seq[tuple[methods: seq[PSym], dispatcher: PSym]] # needs serialization!
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
@@ -63,6 +63,9 @@ type
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
     passes*: seq[TPass]
+    onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
+    onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
 
   TPassContext* = object of RootObj # the pass's context
   PPassContext* = ref TPassContext
@@ -77,6 +80,32 @@ type
                  isFrontend: bool]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
+
+when defined(nimfind):
+  template onUse*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
+    else:
+      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+
+  template onDef*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+
+  template onDefResolveForward*(info: TLineInfo; s: PSym) =
+    when compiles(c.c.graph):
+      if c.c.graph.onDefinitionResolveForward != nil:
+        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
+    else:
+      if c.graph.onDefinitionResolveForward != nil:
+        c.graph.onDefinitionResolveForward(c.graph, s, info)
+
+else:
+  template onUse*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()

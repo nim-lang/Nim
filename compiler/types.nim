@@ -107,20 +107,23 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
-  result = sym.owner.name.s & '.' & sym.name.s & '('
-  var n = sym.typ.n
-  for i in countup(1, sonsLen(n) - 1):
-    let p = n.sons[i]
-    if p.kind == nkSym:
-      add(result, p.sym.name.s)
-      add(result, ": ")
-      add(result, typeToString(p.sym.typ, prefer))
-      if i != sonsLen(n)-1: add(result, ", ")
-    else:
-      result.add renderTree(p)
-  add(result, ')')
-  if n.sons[0].typ != nil:
-    result.add(": " & typeToString(n.sons[0].typ, prefer))
+  assert sym != nil
+  result = sym.owner.name.s & '.' & sym.name.s
+  if sym.kind in routineKinds:
+    result.add '('
+    var n = sym.typ.n
+    for i in countup(1, sonsLen(n) - 1):
+      let p = n.sons[i]
+      if p.kind == nkSym:
+        add(result, p.sym.name.s)
+        add(result, ": ")
+        add(result, typeToString(p.sym.typ, prefer))
+        if i != sonsLen(n)-1: add(result, ", ")
+      else:
+        result.add renderTree(p)
+    add(result, ')')
+    if n.sons[0].typ != nil:
+      result.add(": " & typeToString(n.sons[0].typ, prefer))
   result.add "[declared in "
   result.add(conf$sym.info)
   result.add "]"
@@ -238,6 +241,7 @@ proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
+
   result = t.kind == tyObject and t.sons[0] == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
@@ -396,7 +400,7 @@ const
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
     "opt", "sink",
-    "lent", "varargs[$1]", "unused", "Error Type",
+    "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -405,7 +409,7 @@ const
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
-  tc.sons.safeAdd concrete
+  tc.sons.add concrete
   tc.flags.incl tfResolved
 
 # TODO: It would be a good idea to kill the special state of a resolved
@@ -428,7 +432,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif t.kind == tyAlias:
+    elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
       result = typeToString(t.sons[0])
     elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
@@ -452,11 +456,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = $t.n.intVal
       else:
         result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericBody, tyGenericInst, tyGenericInvocation:
+  of tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
+    add(result, ']')
+  of tyGenericBody:
+    result = typeToString(t.lastSon) & '['
+    for i in countup(0, sonsLen(t)-2):
+      if i > 0: add(result, ", ")
+      add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
   of tyTypeDesc:
     if t.sons[0].kind == tyNone: result = "typedesc"
@@ -526,6 +536,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     else:
       result = "array[" & typeToString(t.sons[0]) & ", " &
           typeToString(t.sons[1]) & ']'
+  of tyUncheckedArray:
+    result = "UncheckedArray[" & typeToString(t.sons[0]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
   of tyOpt:
@@ -606,7 +618,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-
 proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
@@ -638,6 +649,8 @@ proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = 0
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
@@ -695,6 +708,8 @@ proc lastOrd*(conf: ConfigRef; t: PType; fixedUnsigned = false): BiggestInt =
   of tyOrdinal:
     if t.len > 0: result = lastOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
+  of tyUncheckedArray:
+    result = high(BiggestInt)
   else:
     internalError(conf, "invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
@@ -749,7 +764,7 @@ type
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
-  TSameTypeClosure = object {.pure.}
+  TSameTypeClosure = object
     cmp: TDistinctCompare
     recCheck: int
     flags: TTypeCmpFlags
@@ -1030,7 +1045,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink,
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink, tyUncheckedArray,
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
@@ -1054,7 +1069,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyOptAsRef: result = false
+  of tyOptAsRef: result = false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1079,8 +1094,8 @@ proc inheritanceDiff*(a, b: PType): int =
   # | returns: +x iff `a` is the x'th direct subclass of `b`
   # | returns: `maxint` iff `a` and `b` are not compatible at all
   if a == b or a.kind == tyError or b.kind == tyError: return 0
-  assert a.kind == tyObject
-  assert b.kind == tyObject
+  assert a.kind in {tyObject} + skipPtrs
+  assert b.kind in {tyObject} + skipPtrs
   var x = a
   result = 0
   while x != nil:
@@ -1136,7 +1151,6 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): PType =
   if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, flags)
-    #if not result: debug(n.typ)
     if result == nil:
       case n.kind
       of nkNone..nkNilLit:
@@ -1170,6 +1184,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst}: return t
+    elif t.kind == tyLent and kind != skResult: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar, tyLent:
@@ -1210,7 +1225,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred, tyUncheckedArray:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
@@ -1252,7 +1267,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused, tyOptAsRef: result = t
+  of tyOptAsRef: result = t
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1260,194 +1275,24 @@ proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PTyp
   var marker = initIntSet()
   result = typeAllowedAux(marker, t, kind, flags)
 
-proc align(address, alignment: BiggestInt): BiggestInt =
-  result = (address + (alignment - 1)) and not (alignment - 1)
-
-const
-  szNonConcreteType* = -3
-  szIllegalRecursion* = -2
-  szUnknownSize* = -1
-
-proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt
-proc computeRecSizeAux(conf: ConfigRef; n: PNode, a, currOffset: var BiggestInt): BiggestInt =
-  var maxAlign, maxSize, b, res: BiggestInt
-  case n.kind
-  of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    result = computeRecSizeAux(conf, n.sons[0], a, currOffset)
-    maxSize = 0
-    maxAlign = 1
-    for i in countup(1, sonsLen(n) - 1):
-      case n.sons[i].kind
-      of nkOfBranch, nkElse:
-        res = computeRecSizeAux(conf, lastSon(n.sons[i]), b, currOffset)
-        if res < 0: return res
-        maxSize = max(maxSize, res)
-        maxAlign = max(maxAlign, b)
-      else:
-        return szIllegalRecursion
-    currOffset = align(currOffset, maxAlign) + maxSize
-    result = align(result, maxAlign) + maxSize
-    a = maxAlign
-  of nkRecList:
-    result = 0
-    maxAlign = 1
-    for i in countup(0, sonsLen(n) - 1):
-      res = computeRecSizeAux(conf, n.sons[i], b, currOffset)
-      if res < 0: return res
-      currOffset = align(currOffset, b) + res
-      result = align(result, b) + res
-      if b > maxAlign: maxAlign = b
-    a = maxAlign
-  of nkSym:
-    result = computeSizeAux(conf, n.sym.typ, a)
-    n.sym.offset = int(currOffset)
-  else:
-    a = 1
-    result = szNonConcreteType
-
-proc computeSizeAux(conf: ConfigRef; typ: PType, a: var BiggestInt): BiggestInt =
-  var res, maxAlign, length, currOffset: BiggestInt
-  if typ.size == szIllegalRecursion:
-    # we are already computing the size of the type
-    # --> illegal recursion in type
-    return szIllegalRecursion
-  if typ.size >= 0:
-    # size already computed
-    result = typ.size
-    a = typ.align
-    return
-  typ.size = szIllegalRecursion # mark as being computed
-  case typ.kind
-  of tyInt, tyUInt:
-    result = conf.target.intSize
-    a = result
-  of tyInt8, tyUInt8, tyBool, tyChar:
-    result = 1
-    a = result
-  of tyInt16, tyUInt16:
-    result = 2
-    a = result
-  of tyInt32, tyUInt32, tyFloat32:
-    result = 4
-    a = result
-  of tyInt64, tyUInt64, tyFloat64:
-    result = 8
-    a = result
-  of tyFloat128:
-    result = 16
-    a = result
-  of tyFloat:
-    result = conf.target.floatSize
-    a = result
-  of tyProc:
-    if typ.callConv == ccClosure: result = 2 * conf.target.ptrSize
-    else: result = conf.target.ptrSize
-    a = conf.target.ptrSize
-  of tyString:
-    if tfHasAsgn in typ.flags:
-      result = conf.target.ptrSize * 2
-    else:
-      result = conf.target.ptrSize
-  of tyNil:
-    result = conf.target.ptrSize
-    a = result
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
-    let base = typ.lastSon
-    if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
-      result = szIllegalRecursion
-    else:
-      if typ.kind == tySequence and tfHasAsgn in typ.flags:
-        result = conf.target.ptrSize * 2
-      else:
-        result = conf.target.ptrSize
-    a = result
-  of tyArray:
-    let elemSize = computeSizeAux(conf, typ.sons[1], a)
-    if elemSize < 0: return elemSize
-    result = lengthOrd(conf, typ.sons[0]) * elemSize
-  of tyEnum:
-    if firstOrd(conf, typ) < 0:
-      result = 4              # use signed int32
-    else:
-      length = lastOrd(conf, typ)   # BUGFIX: use lastOrd!
-      if length + 1 < `shl`(1, 8): result = 1
-      elif length + 1 < `shl`(1, 16): result = 2
-      elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
-      else: result = 8
-    a = result
-  of tySet:
-    if typ.sons[0].kind == tyGenericParam:
-      result = szUnknownSize
-    else:
-      length = lengthOrd(conf, typ.sons[0])
-      if length <= 8: result = 1
-      elif length <= 16: result = 2
-      elif length <= 32: result = 4
-      elif length <= 64: result = 8
-      elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
-      else: result = align(length, 8) div 8 + 1
-    a = result
-  of tyRange:
-    result = computeSizeAux(conf, typ.sons[0], a)
-  of tyTuple:
-    result = 0
-    maxAlign = 1
-    for i in countup(0, sonsLen(typ) - 1):
-      res = computeSizeAux(conf, typ.sons[i], a)
-      if res < 0: return res
-      maxAlign = max(maxAlign, a)
-      result = align(result, a) + res
-    result = align(result, maxAlign)
-    a = maxAlign
-  of tyObject:
-    if typ.sons[0] != nil:
-      result = computeSizeAux(conf, typ.sons[0].skipTypes(skipPtrs), a)
-      if result < 0: return
-      maxAlign = a
-    elif isObjectWithTypeFieldPredicate(typ):
-      result = conf.target.intSize
-      maxAlign = result
-    else:
-      result = 0
-      maxAlign = 1
-    currOffset = result
-    result = computeRecSizeAux(conf, typ.n, a, currOffset)
-    if result < 0: return
-    if a < maxAlign: a = maxAlign
-    result = align(result, a)
-  of tyInferred:
-    if typ.len > 1:
-      result = computeSizeAux(conf, typ.lastSon, a)
-  of tyGenericInst, tyDistinct, tyGenericBody, tyAlias, tySink:
-    result = computeSizeAux(conf, lastSon(typ), a)
-  of tyTypeClasses:
-    result = if typ.isResolvedUserTypeClass: computeSizeAux(conf, typ.lastSon, a)
-             else: szUnknownSize
-  of tyTypeDesc:
-    result = computeSizeAux(conf, typ.base, a)
-  of tyForward: return szIllegalRecursion
-  of tyStatic:
-    result = if typ.n != nil: computeSizeAux(conf, typ.lastSon, a)
-             else: szUnknownSize
-  else:
-    #internalError("computeSizeAux()")
-    result = szUnknownSize
-  typ.size = result
-  typ.align = int16(a)
+include sizealignoffsetimpl
 
 proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
-  var a: BiggestInt = 1
-  result = computeSizeAux(conf, typ, a)
+  computeSizeAlign(conf, typ)
+  result = typ.size
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
   assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
+proc getAlign*(conf: ConfigRef; typ: PType): BiggestInt =
+  computeSizeAlign(conf, typ)
+  result = typ.align
+
 proc getSize*(conf: ConfigRef; typ: PType): BiggestInt =
-  result = computeSize(conf, typ)
-  if result < 0: internalError(conf, "getSize: " & $typ.kind)
+  computeSizeAlign(conf, typ)
+  result = typ.size
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind

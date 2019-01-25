@@ -1,8 +1,5 @@
 discard """
-  file: "ttimes.nim"
   target: "c js"
-  output: '''[Suite] ttimes
-'''
 """
 
 import times, strutils, unittest
@@ -84,6 +81,15 @@ template runTimezoneTests() =
     # formatting timezone as 'Z' for UTC
     parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
         "2001-01-12T22:04:05Z", 11)
+  # timezone offset formats
+  parseTest("2001-01-12T15:04:05 +7", "yyyy-MM-dd'T'HH:mm:ss z",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07", "yyyy-MM-dd'T'HH:mm:ss zz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:00", "yyyy-MM-dd'T'HH:mm:ss zzz",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +07:30:59", "yyyy-MM-dd'T'HH:mm:ss zzzz",
+      "2001-01-12T07:33:06Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 
@@ -114,9 +120,9 @@ suite "ttimes":
   # Generate tests for multiple timezone files where available
   # Set the TZ env var for each test
   when defined(linux) or defined(macosx):
-    const tz_dir = "/usr/share/zoneinfo"
+    let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
-    
+
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
     for tz_fn in walkFiles(tz_dir & "/**/*"):
@@ -143,7 +149,7 @@ suite "ttimes":
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
       check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
-      
+
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
 
     test "issue #6520":
@@ -161,10 +167,10 @@ suite "ttimes":
       check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")      
+      putEnv("TZ", "Europe/Stockholm")
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
-      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
+      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
     test "datetime before epoch":
       check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
@@ -238,6 +244,17 @@ suite "ttimes":
     parseTestExcp("1", "uuuu")
     parseTestExcp("12345", "uuuu")
     parseTestExcp("-1 BC", "UUUU g")
+
+  test "incorrect inputs: invalid sign":
+    parseTestExcp("+1", "YYYY")
+    parseTestExcp("+1", "dd")
+    parseTestExcp("+1", "MM")
+    parseTestExcp("+1", "hh")
+    parseTestExcp("+1", "mm")
+    parseTestExcp("+1", "ss")
+
+  test "_ as a separator":
+    discard parse("2000_01_01", "YYYY'_'MM'_'dd")
 
   test "dynamic timezone":
     let tz = staticTz(seconds = -9000)

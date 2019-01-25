@@ -1,4 +1,8 @@
-# Hallo
+discard """
+action: compile
+"""
+
+# noted this seems to be an old test file designed for manual testing.
 
 import
   os, strutils, macros
@@ -7,7 +11,7 @@ type
   TMyEnum = enum
     meA, meB, meC, meD
 
-when isMainModule:
+when true:
   {.hint: "this is the main file".}
 
 proc fac[T](x: T): T =
@@ -80,5 +84,5 @@ for i in 2..6:
   for j in countdown(i+4, 2):
     echo(fac(i * j))
 
-when isMainModule:
+when true:
   {.hint: "this is the main file".}

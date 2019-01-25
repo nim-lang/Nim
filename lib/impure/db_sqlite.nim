@@ -31,7 +31,7 @@
 ##
 ## .. code-block:: Nim
 ##     import db_sqlite
-##     let db = open("mytest.db", nil, nil, nil)  # user, password, database name can be nil
+##     let db = open("mytest.db", "", "", "")  # user, password, database name can be empty
 ##     db.close()
 ##
 ## Creating a table
@@ -94,7 +94,6 @@ type
                        ## converted to nil.
   InstantRow* = Pstmt  ## a handle that can be used to get a row's column
                        ## text on demand
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
@@ -167,10 +166,12 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   var stmt = setupQuery(db, query, args)
   var L = (column_count(stmt))
   var result = newRow(L)
-  while step(stmt) == SQLITE_ROW:
-    setRow(stmt, result, L)
-    yield result
-  if finalize(stmt) != SQLITE_OK: dbError(db)
+  try:
+    while step(stmt) == SQLITE_ROW:
+      setRow(stmt, result, L)
+      yield result
+  finally:
+    if finalize(stmt) != SQLITE_OK: dbError(db)
 
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
@@ -178,9 +179,11 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
   var stmt = setupQuery(db, query, args)
-  while step(stmt) == SQLITE_ROW:
-    yield stmt
-  if finalize(stmt) != SQLITE_OK: dbError(db)
+  try:
+    while step(stmt) == SQLITE_ROW:
+      yield stmt
+  finally:
+    if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc toTypeKind(t: var DbType; x: int32) =
   case x
@@ -211,9 +214,11 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery,
   ## on demand using []. Returned handle is valid only within the iterator body.
   var stmt = setupQuery(db, query, args)
   setColumns(columns, stmt)
-  while step(stmt) == SQLITE_ROW:
-    yield stmt
-  if finalize(stmt) != SQLITE_OK: dbError(db)
+  try:
+    while step(stmt) == SQLITE_ROW:
+      yield stmt
+  finally:
+    if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
   ## returns text for given column of the row

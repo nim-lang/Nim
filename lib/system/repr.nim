@@ -127,7 +127,6 @@ type
       marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
-{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
   proc initReprClosure(cl: var ReprClosure) =
@@ -278,6 +277,8 @@ when not defined(useNimRtl):
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"
       else: add result, reprPointer(cast[PPointer](p)[])
+    of tyUncheckedArray:
+      add result, "[...]"
     else:
       add result, "(invalid data!)"
     inc(cl.recdepth)

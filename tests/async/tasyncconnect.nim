@@ -1,7 +1,6 @@
 discard """
-  file: "tasyncconnect.nim"
-  exitcode: 1
   outputsub: "Error: unhandled exception: Connection refused"
+  exitcode: 1
 """
 
 import

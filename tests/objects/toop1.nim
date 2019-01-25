@@ -1,5 +1,4 @@
 discard """
-  file: "toop1.nim"
   output: "34[]o 5"
 """
 # Test the stuff in the tutorial

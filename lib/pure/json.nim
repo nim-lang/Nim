@@ -134,8 +134,16 @@
 ##    j2["details"] = %* {"age":35, "pi":3.1415}
 ##    echo j2
 
+runnableExamples:
+  ## Note: for JObject, key ordering is preserved, unlike in some languages,
+  ## this is convenient for some use cases. Example:
+  type Foo = object
+    a1, a2, a0, a3, a4: int
+  doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
+
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
+  typetraits
 
 export
   tables.`$`
@@ -349,6 +357,25 @@ when false:
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
 
+proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+  ## Sets a field from a `JObject`.
+  assert(obj.kind == JObject)
+  obj.fields[key] = val
+
+#[
+Note: could use simply:
+proc `%`*(o: object|tuple): JsonNode
+but blocked by https://github.com/nim-lang/Nim/issues/10019
+]#
+proc `%`*(o: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  when isNamedTuple(type(o)):
+    result = newJObject()
+    for k, v in o.fieldPairs: result[k] = %v
+  else:
+    result = newJArray()
+    for a in o.fields: result.add(%a)
+
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   result = newJObject()
@@ -500,11 +527,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
-  ## Sets a field from a `JObject`.
-  assert(obj.kind == JObject)
-  obj.fields[key] = val
-
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
@@ -603,7 +625,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
-    of '\14'..'\31': result.add("\\u00" & $ord(c))
+    of '\14'..'\31': result.add("\\u00" & toHex(ord(c), 2))
     of '\\': result.add("\\\\")
     else: result.add(c)
 
@@ -1664,9 +1686,9 @@ when isMainModule:
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
-  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0020" # for #7887
+  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0014" # for #7887
   doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
-  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0020\"" # for #7887
+  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0014\"" # for #7887
 
   # Test with extra data
   when not defined(js):

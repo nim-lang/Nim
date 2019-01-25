@@ -1,6 +1,6 @@
 discard """
-  line: 13
   errormsg: "type mismatch"
+  line: 13
 """
 {.experimental: "notnil".}
 type

@@ -117,6 +117,7 @@ Output::
   {
     "orig": "docgen_sample.nim",
     "nimble": "",
+    "moduleDescription": "This module is a sample",
     "entries": [
       {
         "name": "helloWorld",
@@ -282,7 +283,7 @@ symbols in the `system module <system.html>`_.
 * ``const NimVersion = "0.0.0"`` **=>**
   `#NimVersion <system.html#NimVersion>`_
 * ``proc getTotalMem(): int {.rtl, raises: [], tags: [].}`` **=>**
-  `#getTotalMem, <system.html#getTotalMem,>`_
+  `#getTotalMem, <system.html#getTotalMem>`_
 * ``proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}`` **=>**
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**

@@ -100,7 +100,6 @@ else:
   include posix_other
 
 # There used to be this name in posix.nim a long time ago, not sure why!
-{.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when StatHasNanoseconds:
   proc st_atime*(s: Stat): Time {.inline.} =
@@ -822,6 +821,12 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>".}
+
+proc CMSG_LEN*(len: csize): csize {.
   importc, header: "<sys/socket.h>".}
 
 const

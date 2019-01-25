@@ -35,8 +35,6 @@ type
     dbSkipCurrent,
     dbQuiting,    # debugger wants to quit
     dbBreakpoints # debugger is only interested in breakpoints
-{.deprecated: [TStaticStr: StaticStr, TBreakpointFilename: BreakpointFilename,
-              TDbgState: DbgState].}
 
 var
   dbgUser: StaticStr    # buffer for user input; first command is ``step_into``

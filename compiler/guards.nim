@@ -70,7 +70,7 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
       n = n.sons[0]
       inc derefs
     of nkBracketExpr:
-      if isConstExpr(n.sons[1]) or isLet(n.sons[1]):
+      if isConstExpr(n.sons[1]) or isLet(n.sons[1]) or isConstExpr(n.sons[1].skipConv):
         n = n.sons[0]
       else: return
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
@@ -257,9 +257,9 @@ proc canon*(n: PNode; o: Operators): PNode =
     for i in 0 ..< n.len:
       result.sons[i] = canon(n.sons[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
-      n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +
+      n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
       someMax + someHigh + {mUnaryLt} + someSub + someLen + someDiv):
-    result = n.sym.ast.copyTree
+    result = n.sym.astdef.copyTree
   else:
     result = n
   case result.getMagic
@@ -395,8 +395,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     #   if a:
     #     ...
     # We make can easily replace 'a' by '2 < x' here:
-    if n.sym.ast != nil:
-      result = usefulFact(n.sym.ast, o)
+    if n.sym.astdef != nil:
+      result = usefulFact(n.sym.astdef, o)
   elif n.kind == nkStmtListExpr:
     result = usefulFact(n.lastSon, o)
 

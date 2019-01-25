@@ -116,9 +116,9 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
     var x = PSym(idTableGet(symMap, s))
     if x != nil:
       n.sym = x
-    elif s.owner.kind == skPackage:
+    elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, false)
+      x = copySym(s)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -146,9 +146,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
-    b = hloBody(c, b)
-    n.sons[bodyPos] = transformBody(c.graph, c.module, b, result)
-    #echo "code instantiated ", result.name.s
+    result.ast[bodyPos] = hloBody(c, b)
+    trackProc(c.graph, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
     dec c.inGenericInst
 
@@ -338,7 +337,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, false)
+  result = copySym(fn)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
@@ -348,7 +347,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let gp = n.sons[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
   n.sons[namePos] = newSymNode(result)
-  pushInfoContext(c.config, info)
+  pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
   # we need to compare both the generic types and the concrete types:
@@ -377,7 +376,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.safeAdd(entry)
+    fn.procInstCache.add(entry)
     c.generics.add(makeInstPair(fn, entry))
     if n.sons[pragmasPos].kind != nkEmpty:
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)

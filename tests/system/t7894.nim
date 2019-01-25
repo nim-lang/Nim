@@ -1,18 +1,25 @@
 discard """
+disabled: "travis"
+disabled: "appveyor"
+joinable: false
 """
 
-import os
+# CI integration servers are out of memory for this test
 
 const size = 250000000
-var saved = newSeq[seq[int8]]()
 
-for i in 0..22:
-  # one of these is 0.25GB.
-  #echo i
-  var x = newSeq[int8](size)
-  sleep(10)
-  saved.add(x)
+proc main() =
 
-for x in saved:
-  #echo x.len
-  doAssert x.len == size
+  var saved = newSeq[seq[int8]]()
+
+  for i in 0..22:
+    # one of these is 0.25GB.
+    #echo i
+    var x = newSeq[int8](size)
+    saved.add(x)
+
+  for x in saved:
+    #echo x.len
+    doAssert x.len == size
+
+main()

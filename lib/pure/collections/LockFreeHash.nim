@@ -49,13 +49,11 @@ when sizeof(int) == 4: # 32bit
     Raw = range[0..1073741823]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 32 bit platform
-  {.deprecated: [TRaw: Raw].}
 elif sizeof(int) == 8: # 64bit
   type
     Raw = range[0'i64..4611686018427387903'i64]
     ## The range of uint values that can be stored directly in a value slot
     ## when on a 64 bit platform
-  {.deprecated: [TRaw: Raw].}
 else:
   {.error: "unsupported platform".}
 
@@ -74,7 +72,6 @@ type
     copyDone: int
     next: PConcTable[K,V]
     data: EntryArr
-{.deprecated: [TEntry: Entry, TEntryArr: EntryArr].}
 
 proc setVal[K,V](table: var PConcTable[K,V], key: int, val: int,
   expVal: int, match: bool): int
@@ -544,7 +541,6 @@ when not defined(testing) and isMainModule:
     Data = tuple[k: string,v: TestObj]
     PDataArr = array[0..numTests-1, Data]
     Dict = PConcTable[string,TestObj]
-  {.deprecated: [TTestObj: TestObj, TData: Data].}
 
   var
     thr: array[0..numThreads-1, Thread[Dict]]

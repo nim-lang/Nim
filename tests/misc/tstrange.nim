@@ -1,8 +1,9 @@
 discard """
-  file: "tstrange.nim"
-  output: '''hallo40
+output: '''
+hallo40
 1
-2'''
+2
+'''
 """
 # test for extremely strange bug
 
@@ -25,4 +26,3 @@ write(stdout, ack(5, 4))
 let h=3
 for x in 0.. <h.int:
   echo x
-

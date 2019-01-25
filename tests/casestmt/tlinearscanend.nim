@@ -1,3 +1,6 @@
+discard """
+action: compile
+"""
 
 import strutils
 
@@ -21,4 +24,3 @@ of 21: echo "21"
 else:
   {.linearScanEnd.}
   echo "default"
-

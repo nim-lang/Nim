@@ -54,7 +54,7 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 proc genStringLiteralDataOnlyV2(m: BModule, s: string): Rope =
   result = getTempName(m)
   addf(m.s[cfsData], "static const struct {$n" &
-       "  NI cap; void* allocator; NIM_CHAR data[$2];$n" &
+       "  NI cap; void* allocator; NIM_CHAR data[$2+1];$n" &
        "} $1 = { $2, NIM_NIL, $3 };$n",
        [result, rope(len(s)), makeCString(s)])
 
@@ -69,7 +69,7 @@ proc genStringLiteralV2(m: BModule; n: PNode): Rope =
     addf(m.s[cfsData], "static const NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
           [result, rope(len(n.strVal)), pureLit])
   else:
-    result = m.tmpBase & rope(id)
+    result = m.tmpBase & rope(id+1)
 
 proc genStringLiteralV2Const(m: BModule; n: PNode): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)

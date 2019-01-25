@@ -13,7 +13,6 @@
 type
   Ticks = distinct int64
   Nanos = int64
-{.deprecated: [TTicks: Ticks, TNanos: Nanos].}
 
 when defined(windows):
 
@@ -38,7 +37,6 @@ elif defined(macosx):
         importc: "mach_timebase_info_data_t",
         header: "<mach/mach_time.h>".} = object
       numer, denom: int32
-  {.deprecated: [TMachTimebaseInfoData: MachTimebaseInfoData].}
 
   proc mach_absolute_time(): int64 {.importc, header: "<mach/mach.h>".}
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
@@ -51,7 +49,7 @@ elif defined(macosx):
   mach_timebase_info(timeBaseInfo)
 
   proc `-`(a, b: Ticks): Nanos =
-    result = (a.int64 - b.int64)  * timeBaseInfo.numer div timeBaseInfo.denom
+    result = (a.int64 - b.int64) * timeBaseInfo.numer div timeBaseInfo.denom
 
 elif defined(posixRealtime):
   type
@@ -61,7 +59,6 @@ elif defined(posixRealtime):
                final, pure.} = object ## struct timespec
       tv_sec: int  ## Seconds.
       tv_nsec: int ## Nanoseconds.
-  {.deprecated: [TClockid: Clockid, TTimeSpec: TimeSpec].}
 
   var
     CLOCK_REALTIME {.importc: "CLOCK_REALTIME", header: "<time.h>".}: Clockid
@@ -89,7 +86,7 @@ else:
                final, pure.} = object ## struct timeval
       tv_sec: Time  ## Seconds.
       tv_usec: clong ## Microseconds.
-  {.deprecated: [Ttimeval: Timeval].}
+
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 

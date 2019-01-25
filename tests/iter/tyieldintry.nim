@@ -403,7 +403,7 @@ block: # yield in blockexpr
 
   test(it, 1, 2, 3)
 
-block: #8851 
+block: #8851
   type
     Foo = ref object of RootObj
   template someFoo(): Foo =
@@ -440,4 +440,32 @@ block:
 
   test(it, 1, 2, 5)
 
+block: #9694 - yield in ObjConstr
+  type Foo = object
+    a, b: int
+
+  template yieldAndNum: int =
+    yield 1
+    2
+
+  iterator it(): int {.closure.} =
+    let a = Foo(a: 5, b: yieldAndNum())
+    checkpoint(a.b)
+
+  test(it, 1, 2)
+
+block: #9716
+  iterator it(): int {.closure.} =
+    var a = 0
+    for i in 1 .. 3:
+      var a: int # Make sure the "local" var is reset
+      var b: string # ditto
+      yield 1
+      a += 5
+      b &= "hello"
+      doAssert(a == 5)
+      doAssert(b == "hello")
+  test(it, 1, 1, 1)
+
 echo "ok"
+

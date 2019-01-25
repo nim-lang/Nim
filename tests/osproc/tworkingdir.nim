@@ -1,5 +1,4 @@
 discard """
-  file: "tworkingdir.nim"
   output: ""
 """
 

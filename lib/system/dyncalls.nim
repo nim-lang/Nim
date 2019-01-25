@@ -17,13 +17,6 @@
 const
   NilLibHandle: LibHandle = nil
 
-proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
-
-proc rawWrite(f: File, s: string) =
-  # we cannot throw an exception here!
-  discard c_fwrite(cstring(s), 1, s.len, f)
-
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
   stderr.rawWrite("could not load: ")
@@ -43,7 +36,7 @@ proc nimLoadLibraryError(path: string) =
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
   stderr.rawWrite("could not import: ")
-  stderr.write(name)
+  stderr.rawWrite(name)
   stderr.rawWrite("\n")
   quit(1)
 
@@ -86,7 +79,7 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        stderr.write(error)
+        stderr.rawWrite(error)
         stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
@@ -181,7 +174,7 @@ elif defined(nintendoswitch):
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     stderr.rawWrite("nimGetProAddr not implemented")
-    stderr.write(name)
+    stderr.rawWrite(name)
     stderr.rawWrite("\n")
     quit(1)
 

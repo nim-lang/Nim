@@ -12,7 +12,7 @@
 ## write your own.
 ##
 ## Format strings support the following variables which must be prefixed with
-## the dollar operator (``$``):
+## the dollar operator (``$``, see example below):
 ##
 ## ============  =======================
 ##   Operator     Output
@@ -43,6 +43,11 @@
 ##    warn("4 8 15 16 23 4-- Error")
 ##    error("922044:16 SYSTEM FAILURE")
 ##    fatal("SYSTEM FAILURE SYSTEM FAILURE")
+##    # Using the aformetioned operator
+##    var opL = newConsoleLogger(fmtStr = "$datetime :: ")
+##    addHandler(opL)
+##    info("Starting web server...")
+##    # Will print something like 2018-12-17T19:28:05 :: Starting web server...
 ##
 ## **Warning:** The global list of handlers is a thread var, this means that
 ## the handlers must be re-added in each thread.
@@ -80,6 +85,7 @@ type
 
   ConsoleLogger* = ref object of Logger ## logger that writes the messages to the
                                         ## console
+    useStderr*: bool ## will send logs into Stderr if set 
 
 when not defined(js):
   type
@@ -150,16 +156,20 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       {.emit: "console.log(`cln`);".}
     else:
       try:
-        writeLine(stdout, ln)
-        if level in {lvlError, lvlFatal}: flushFile(stdout)
+        var handle = stdout
+        if logger.useStderr:
+          handle = stderr 
+        writeLine(handle, ln)
+        if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr, useStderr=false): ConsoleLogger =
   ## Creates a new console logger. This logger logs to the console.
   new result
   result.fmtStr = fmtStr
   result.levelThreshold = levelThreshold
+  result.useStderr = useStderr
 
 when not defined(js):
   method log*(logger: FileLogger, level: Level, args: varargs[string, `$`]) =

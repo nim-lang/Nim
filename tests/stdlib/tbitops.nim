@@ -1,5 +1,4 @@
 discard """
-  file: "tbitops.nim"
   output: "OK"
 """
 import bitops
@@ -162,6 +161,63 @@ proc main() =
       doAssert( U32.rotateRightBits(32) == U32)
       doAssert( U64A.rotateLeftBits(64) == U64A)
       doAssert( U64A.rotateRightBits(64) == U64A)
+
+  block:
+    # mask operations
+    var v: uint8
+    v.setMask(0b1100_0000)
+    v.setMask(0b0000_1100)
+    doAssert(v == 0b1100_1100)
+    v.flipMask(0b0101_0101)
+    doAssert(v == 0b1001_1001)
+    v.clearMask(0b1000_1000)
+    doAssert(v == 0b0001_0001)
+    v.clearMask(0b0001_0001)
+    doAssert(v == 0b0000_0000)
+  block:
+    # single bit operations
+    var v: uint8
+    v.setBit(0)
+    doAssert v == 0x0000_0001
+    v.setBit(1)
+    doAssert v == 0b0000_0011
+    v.flipBit(7)
+    doAssert v == 0b1000_0011
+    v.clearBit(0)
+    doAssert v == 0b1000_0010
+    v.flipBit(1)
+    doAssert v == 0b1000_0000
+    doAssert v.testbit(7)
+    doAssert not v.testbit(6)
+  block:
+    # multi bit operations
+    var v: uint8
+    v.setBits(0, 1, 7)
+    doAssert v == 0b1000_0011
+    v.flipBits(2, 3)
+    doAssert v == 0b1000_1111
+    v.clearBits(7, 0, 1)
+    doAssert v == 0b0000_1100
+  block:
+    # signed
+    var v: int8
+    v.setBit(7)
+    doAssert v == -128
+  block:
+    var v: uint64
+    v.setBit(63)
+    doAssert v == 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000'u64
+  block:
+    # Test if RangeError is thrown if indexing out of range
+    try:
+      var v: uint32
+      var i = 32
+      v.setBit(i)
+      doAssert false
+    except RangeError:
+      discard
+    except:
+      doAssert false
 
   echo "OK"
 

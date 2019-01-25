@@ -74,7 +74,7 @@ proc propertyBind*[T](p1: var TProperty[T], p2: var TProperty[T]) =
 proc `->`[T](p1: var TProperty[T], p2: var TProperty[T]) =
   propertyBind(p2,p1)
 
-when isMainModule:
+when true:
   # Initial value testing
   var myProp = newProperty(5)
 

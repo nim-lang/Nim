@@ -59,8 +59,8 @@ when nimIncremental:
     let id = row[0]
     let fullhash = hashFileCached(conf, fileIdx, AbsoluteFile fullpath)
     if id.len == 0:
-      result = int incr.db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
-        fullpath, fullhash)
+      result = int incr.db.insertID(sql"insert into filenames(nimid, fullpath, fullhash) values (?, ?, ?)",
+        int(fileIdx), fullpath, fullhash)
     else:
       if row[1] != fullhash:
         incr.db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
@@ -102,6 +102,7 @@ when nimIncremental:
     db.exec(sql"""
       create table if not exists filenames(
         id integer primary key,
+        nimid integer not null,
         fullpath varchar(8000) not null,
         fullHash varchar(256) not null
       );

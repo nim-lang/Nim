@@ -125,6 +125,8 @@ macro `->`*(p, b: untyped): untyped =
 type ListComprehension = object
 var lc*: ListComprehension
 
+template `|`*(lc: ListComprehension, comp: untyped): untyped = lc
+
 macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
   ## List comprehension, returns a sequence. `comp` is the actual list
   ## comprehension, for example ``x | (x <- 1..10, x mod 2 == 0)``. `typ` is
@@ -140,8 +142,7 @@ macro `[]`*(lc: ListComprehension, comp, typ: untyped): untyped =
 
   expectLen(comp, 3)
   expectKind(comp, nnkInfix)
-  expectKind(comp[0], nnkIdent)
-  assert($comp[0].ident == "|")
+  assert($comp[0] == "|")
 
   result = newCall(
     newDotExpr(

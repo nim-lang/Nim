@@ -40,7 +40,6 @@ when someGcc and hasThreadSupport:
   type
     AtomType* = SomeNumber|pointer|ptr|char|bool
       ## Type Class representing valid types for use with atomic procs
-  {.deprecated: [TAtomType: AtomType].}
 
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: AtomMemModel): T {.
     importc: "__atomic_load_n", nodecl.}

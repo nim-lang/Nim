@@ -1,5 +1,4 @@
 discard """
-  file: "treraise.nim"
   outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
   exitcode: "1"
 """
@@ -19,6 +18,3 @@ except ESomething:
   echo("Error happened")
 except:
   raise
-
-
-

@@ -314,3 +314,49 @@ proc f() =
   if c == '\\':
     # escape char
     str &= c
+
+proc getKeyAndData(cursor: int, op: int):
+    tuple[key, data: string, success: bool] {.noInit.} =
+  var keyVal: string
+  var dataVal: string
+
+#!nimpretty off
+  when stuff:
+    echo "so nice"
+    echo "more"
+  else:
+     echo "misaligned"
+#!nimpretty on
+
+const test = r"C:\Users\-\Desktop\test.txt"
+
+proc abcdef*[T:not (tuple|object|string|cstring|char|ref|ptr|array|seq|distinct)]() =
+  # bug #9504
+  type T2 = a.type
+  discard
+
+proc fun() =
+  #[
+  this one here
+  ]#
+  discard
+
+proc fun2() =
+  ##[
+  foobar
+  ]##
+  discard
+
+#[
+foobar
+]#
+
+proc fun3() =
+  discard
+
+##[
+foobar
+]##
+
+# bug #9673
+discard `* `(1, 2)

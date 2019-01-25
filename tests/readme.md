@@ -10,7 +10,7 @@ execute the compiled binary, you need to specify a spec with an ``action`` key
 
 Each test can contain a spec in a ``discard """ ... """`` block.
 
-**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/tests/testament/specs.nim#L124) in the ``specs`` module for a full and reliable reference**
+**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L124) in the ``specs`` module for a full and reliable reference**
 
 ## action
 

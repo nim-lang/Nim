@@ -1,3 +1,13 @@
+discard """
+output: '''
+tdiscardable
+1
+1
+'''
+"""
+
+echo "tdiscardable"
+
 # Test the discardable pragma
 
 proc p(x, y: int): int {.discardable.} =
@@ -27,3 +37,11 @@ proc bar(b: int):int =
 
 echo foo(0)
 echo bar(0)
+
+# bug #9726
+
+proc foo: (proc: int) =
+  proc bar: int = 1
+  return bar
+
+discard foo()

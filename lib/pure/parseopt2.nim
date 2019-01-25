@@ -55,15 +55,6 @@ proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
 
   result.cmd = @cmdline
 
-proc initOptParser*(cmdline: string): OptParser {.rtl, deprecated.} =
-  ## Initalizes option parses with cmdline. Splits cmdline in on spaces
-  ## and calls initOptParser(openarray[string])
-  ## Do not use.
-  if cmdline == "": # backward compatibility
-    return initOptParser(@[])
-  else:
-    return initOptParser(cmdline.split)
-
 when not defined(createNimRtl):
   proc initOptParser*(): OptParser =
     ## Initializes option parser from current command line arguments.
@@ -112,10 +103,10 @@ proc next(p: var OptParser) =
     p.key = token
     p.val = ""
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1", deprecated.} =
-  ## Returns part of command line string that has not been parsed yet.
-  ## Do not use - does not correctly handle whitespace.
-  return p.cmd[p.pos..p.cmd.len-1].join(" ")
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1".} =
+  ## Returns the part of command line string that has not been parsed yet,
+  ## properly quoted.
+  return p.cmd[p.pos..p.cmd.len-1].quoteShellCommand
 
 type
   GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]

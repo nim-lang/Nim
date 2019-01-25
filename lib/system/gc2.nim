@@ -112,14 +112,6 @@ var
 when not defined(useNimRtl):
   instantiateForRegion(gch.region)
 
-template acquire(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    acquireSys(HeapLock)
-
-template release(gch: GcHeap) =
-  when hasThreadSupport and hasSharedHeap:
-    releaseSys(HeapLock)
-
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
 # reachable from them. However, when we are sweeping, they have to
@@ -204,10 +196,6 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
-  # we MUST access gch as a global here, because this crosses DLL boundaries!
-  discard
-
 proc nimGCref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
   markAsEscaped(cell)
@@ -240,13 +228,8 @@ template markGrey(x: PCell) =
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
-proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
-  ## adds 'p' to the cycle candidate set for the cycle collector. It is
-  ## necessary if you used the 'acyclic' pragma for optimization
-  ## purposes and need to break cycles manually.
-  discard
-
-template asgnRefImpl =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+  # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
   if src != nil:
@@ -255,12 +238,8 @@ template asgnRefImpl =
     markGrey(s)
   dest[] = src
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
-  # the code generator calls this proc!
-  asgnRefImpl()
-
-proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
-  asgnRefImpl()
+proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+  deprecated: "old compiler compat".} = asgnRef(dest, src)
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
   # unsureAsgnRef marks 'src' as grey only if dest is not on the
@@ -396,7 +375,6 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   result = newSeq(typ, len)
 
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
-  acquire(gch)
   collectCT(gch)
   var ol = usrToCell(old)
   sysAssert(ol.typ != nil, "growObj: 1")
@@ -420,7 +398,6 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   when useCellIds:
     inc gch.idGenerator
     res.id = gch.idGenerator
-  release(gch)
   result = cellToUsr(res)
   when defined(memProfiler): nimProfile(newsize-oldsize)
 
@@ -732,16 +709,10 @@ when withRealTime:
 
 when not defined(useNimRtl):
   proc GC_disable() =
-    when hasThreadSupport and hasSharedHeap:
-      discard atomicInc(gch.recGcLock, 1)
-    else:
-      inc(gch.recGcLock)
+    inc(gch.recGcLock)
   proc GC_enable() =
     if gch.recGcLock > 0:
-      when hasThreadSupport and hasSharedHeap:
-        discard atomicDec(gch.recGcLock, 1)
-      else:
-        dec(gch.recGcLock)
+      dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) =
     discard

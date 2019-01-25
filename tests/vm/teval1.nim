@@ -1,3 +1,8 @@
+
+discard """
+nimout: "##"
+"""
+
 import macros
 
 proc testProc: string {.compileTime.} =
@@ -14,9 +19,9 @@ when true:
 const
   x = testProc()
 
-echo "##", x, "##"
+doAssert x == ""
 
 # bug #1310
 static:
-    var i, j: set[int8] = {}
-    var k = i + j
+  var i, j: set[int8] = {}
+  var k = i + j

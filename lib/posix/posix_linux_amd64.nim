@@ -27,12 +27,9 @@ type
   DIR* {.importc: "DIR", header: "<dirent.h>",
           incompleteStruct.} = object
     ## A type representing a directory stream.
-{.deprecated: [TDIR: DIR].}
 
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
-
-{.deprecated: [TSocketHandle: SocketHandle].}
 
 # not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
 const SIG_HOLD* = cast[SigHandler](2)
@@ -375,29 +372,6 @@ type
                             ## context is active.
     # todo fpregds_mem
 
-{.deprecated: [TOff: Off, TPid: Pid, TGid: Gid, TMode: Mode, TDev: Dev,
-              TNlink: Nlink, TStack: Stack, TGroup: Group, TMqd: Mqd,
-              TPasswd: Passwd, TClock: Clock, TClockId: ClockId, TKey: Key,
-              TSem: Sem, Tpthread_attr: PthreadAttr, Ttimespec: Timespec,
-              Tdirent: Dirent, TGlob: Glob,
-              # Tflock: Flock, # Naming conflict if we drop the `T`
-              Ticonv: Iconv, Tlconv: Lconv, TMqAttr: MqAttr, Tblkcnt: Blkcnt,
-              Tblksize: Blksize, Tfsblkcnt: Fsblkcnt, Tfsfilcnt: Fsfilcnt,
-              Tid: Id, Tino: Ino, Tpthread_barrier: Pthread_barrier,
-              Tpthread_barrierattr: Pthread_barrierattr, Tpthread_cond: Pthread_cond,
-              TPthread_condattr: Pthread_condattr, Tpthread_key: Pthread_key,
-              Tpthread_mutex: Pthread_mutex, Tpthread_mutexattr: Pthread_mutexattr,
-              Tpthread_once: Pthread_once, Tpthread_rwlock: Pthread_rwlock,
-              Tpthread_rwlockattr: Pthread_rwlockattr, Tpthread_spinlock: Pthread_spinlock,
-              Tpthread: Pthread, Tsuseconds: Suseconds, Ttimer: Timer,
-              Tuid: Uid, Tuseconds: Useconds, Tutsname: Utsname, Tipc_perm: Ipc_perm,
-              TStat: Stat, TStatvfs: Statvfs,
-              Ttm: Tm, titimerspec: Itimerspec, Tsig_atomic: Sig_atomic, Tsigset: Sigset,
-              TsigEvent: SigEvent, TsigVal: SigVal, TSigaction: Sigaction,
-              TSigStack: SigStack, TsigInfo: SigInfo, Tnl_item: Nl_item,
-              Tnl_catd: Nl_catd, Tsched_param: Sched_param,
-              # TFdSet: FdSet, # Naming conflict if we drop the `T`
-              Tmcontext: Mcontext, Tucontext: Ucontext].}
 type
   Taiocb* {.importc: "struct aiocb", header: "<aio.h>",
             final, pure.} = object ## struct aiocb
@@ -586,13 +560,6 @@ type
     revents*: cshort ## The output event flags (see below).
 
   Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = culong
-
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    Tsockaddr_storage: Sockaddr_storage, Tsockaddr_in6: Sockaddr_in6,
-    Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, TIOVec: IOVec, TInPort: InPort, TInAddrT: InAddrT,
-    TIn6Addr: In6Addr, TInAddrScalar: InAddrScalar, TProtoent: Protoent].}
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable

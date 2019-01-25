@@ -1,5 +1,5 @@
 discard """
-  msg:    "int\nstring\nTBar[int]"
+  nimout:    "int\nstring\nTBar[int]"
   output: "int\nstring\nTBar[int]\nint\nrange 0..2(int)\nstring"
   disabled: true
 """
