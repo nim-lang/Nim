@@ -11,7 +11,7 @@
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 
 import
-  hashes, strutils, lexbase
+  strutils, lexbase
 
 # ------------------- scanner -------------------------------------------------
 

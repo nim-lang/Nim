@@ -17,8 +17,11 @@ import
 var useColors = true
 var backendLogging = true
 var simulate = false
+var verboseMegatest = false # very verbose but can be useful
+var verboseCommands = false
 
 const
+  testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
   Usage = """Usage:
@@ -34,6 +37,8 @@ Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
+  --verboseMegatest         log to stdout megatetest compilation
+  --verboseCommands         log to stdout info about commands being run
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
@@ -83,7 +88,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string): tuple[
+proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOption], input: string, onStdout: proc(line: string) = nil): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
@@ -101,14 +106,21 @@ proc execCmdEx2(command: string, args: openarray[string], options: set[ProcessOp
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result.output.string.add(line.string)
+      result.output.string.add("\n")
+      if onStdout != nil: onStdout(line.string)
     else:
-      result[1] = peekExitCode(p)
-      if result[1] != -1: break
+      result.exitCode = peekExitCode(p)
+      if result.exitCode != -1: break
   close(p)
 
-
+  if verboseCommands:
+    var command2 = command
+    if args.len > 0: command2.add " " & args.quoteShellCommand
+    echo (msg: "execCmdEx2",
+      command: command2,
+      options: options,
+      exitCode: result.exitCode)
 
 proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
@@ -517,8 +529,6 @@ else:
 
 include categories
 
-const testsDir = "tests" & DirSep
-
 proc main() =
   os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
@@ -533,6 +543,8 @@ proc main() =
   while p.kind == cmdLongoption:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
+    of "verbosemegatest": verboseMegatest = true
+    of "verbosecommands": verboseCommands = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
     of "targets":

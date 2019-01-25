@@ -332,12 +332,15 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
           parMessage(p, errIdentifierExpected, p.tok)
         break
       of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
+        let lineinfo = parLineinfo(p)
         var accm = ""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(p.lex.cache.getIdent(accm), p))
+        let node = newNodeI(nkIdent, lineinfo)
+        node.ident = p.lex.cache.getIdent(accm)
+        result.add(node)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
         result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
         getTok(p)
@@ -1916,7 +1919,7 @@ proc parseObject(p: var TParser): PNode =
   getTok(p)
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     # Deprecated since v0.20.0
-    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas")
+    parMessage(p, warnDeprecated, "type pragmas follow the type name; this form of writing pragmas is deprecated")
     addSon(result, parsePragma(p))
   else:
     addSon(result, p.emptyNode)
@@ -2008,7 +2011,7 @@ proc parseTypeDef(p: var TParser): PNode =
   if p.tok.tokType == tkBracketLe and p.validInd:
     if not noPragmaYet:
       # Deprecated since v0.20.0
-      parMessage(p, warnDeprecated, "pragma before generic parameter list")
+      parMessage(p, warnDeprecated, "pragma before generic parameter list is deprecated")
     genericParam = parseGenericParamList(p)
   else:
     genericParam = p.emptyNode

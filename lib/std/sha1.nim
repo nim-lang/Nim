@@ -7,7 +7,32 @@
 #    distribution, for details about the copyright.
 #
 
-## Note: Import ``std/sha1`` to use this module
+## **Note:** Import ``std/sha1`` to use this module
+##
+## SHA-1 (Secure Hash Algorithm 1) is a cryptographic hash function which
+## takes an input and produces a 160-bit (20-byte) hash value known as a
+## message digest.
+##
+## .. code-block::
+##    import std/sha1
+##
+##    let accessName = secureHash("John Doe")
+##    assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
+##
+## .. code-block::
+##    import std/sha1
+##
+##    let
+##      a = secureHashFile("myFile.nim")
+##      b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
+##
+##    if a == b:
+##      echo "Files match"
+##
+## **See also:**
+## * `base64 module<base64.html>`_ implements a base64 encoder and decoder
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 
 import strutils
 from endians import bigEndian32, bigEndian64
@@ -170,23 +195,61 @@ proc finalize(ctx: var Sha1State): Sha1Digest =
 # Public API
 
 proc secureHash*(str: string): SecureHash =
+  ## Generates a ``SecureHash`` from a ``str``.
+  ##
+  ## **See also:**
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
+  runnableExamples:
+    let hash = secureHash("Hello World")
+    assert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
   var state = newSha1State()
   state.update(str)
   SecureHash(state.finalize())
 
 proc secureHashFile*(filename: string): SecureHash =
+  ## Generates a ``SecureHash`` from a file.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
   secureHash(readFile(filename))
 
 proc `$`*(self: SecureHash): string =
+  ## Returns the string representation of a ``SecureHash``.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
+  runnableExamples:
+    let hash = secureHash("Hello World")
+    assert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
   result = ""
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
+  ## Converts a string ``hash`` to ``SecureHash``.
+  ##
+  ## **See also:**
+  ## * `secureHash proc <#secureHash,string>`_ for generating a ``SecureHash`` from a string
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
+  runnableExamples:
+    let
+      hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
+      secureHash = secureHash("Hello World")
+    assert secureHash == parseSecureHash(hashStr)
   for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
+  ## Checks if two ``SecureHash`` values are identical.
+  runnableExamples:
+    let
+      a = secureHash("Hello World")
+      b = secureHash("Goodbye World")
+      c = parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
+    assert a != b
+    assert a == c
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
 

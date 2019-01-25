@@ -154,12 +154,17 @@ proc computePackedObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, initialOf
       if result == szIllegalRecursion:
         break
   of nkSym:
+    var size = szUnknownSize
     if n.sym.bitsize == 0:
       computeSizeAlign(conf, n.sym.typ)
-      n.sym.offset = initialOffset.int
-      result = n.sym.offset + n.sym.typ.size
-    else:
+      size = n.sym.typ.size.int
+
+    if initialOffset == szUnknownSize or size == szUnknownSize:
+      n.sym.offset = szUnknownSize
       result = szUnknownSize
+    else:
+      n.sym.offset = int(initialOffset)
+      result = initialOffset + n.sym.typ.size
   else:
     result = szUnknownSize
 

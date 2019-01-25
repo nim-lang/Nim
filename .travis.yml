@@ -14,8 +14,9 @@ matrix:
     - os: osx
       env: NIM_COMPILE_TO_CPP=true
 
-  allow_failures:
-    - env: NIM_COMPILE_TO_CPP=true
+# To allow failures for a failing configuration, use something like:
+#  allow_failures:
+#    - env: NIM_COMPILE_TO_CPP=true
 #    - os: osx
 
 addons:
@@ -40,26 +41,11 @@ before_script:
   - sh build.sh
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
+  - echo PATH:${PATH}
+
 script:
   - nim c koch
-  - env NIM_COMPILE_TO_CPP=false ./koch boot
-  - ./koch boot -d:release
-  - ./koch nimble
-  - nim e tests/test_nimscript.nims
-  #- nimble install zip -y
-  #- nimble install opengl
-  #- nimble install sdl1
-  #- nimble install jester@#head -y
-  #- nimble install niminst
-  - nim c -d:nimCoroutines testament/tester
-  - testament/tester --pedantic all -d:nimCoroutines
-  - nim c -o:bin/nimpretty nimpretty/nimpretty.nim
-  - nim c -r nimpretty/tester.nim
-  - ./koch docs --git.commit:devel
-  - ./koch csource
-  - ./koch nimsuggest
-  - nim c -r nimsuggest/tester
-  - nim c -r nimdoc/tester
+  - ./koch runCI
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html

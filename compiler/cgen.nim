@@ -321,7 +321,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   else:
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(p.config, loc))
-    if loc.storage != OnStack:
+    if loc.storage != OnStack and containsGcRef:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info))
       # XXX: generated reset procs should not touch the m_type
@@ -1056,9 +1056,22 @@ proc genVarPrototype(m: BModule, n: PNode) =
       if sfVolatile in sym.flags: add(m.s[cfsVars], " volatile")
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
+const
+  frameDefines = """
+$1  define nimfr_(proc, file) \
+    TFrame FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
+
+$1  define nimfrs_(proc, file, slots, length) \
+    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+
+$1  define nimln_(n, file) \
+    FR_.line = n; FR_.filename = file;
+"""
+
 proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
-  addf(result, "#define NIM_NEW_MANGLING_RULES\L" &
-               "#define NIM_INTBITS $1\L", [
+  addf(result, "#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
   if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
@@ -1103,9 +1116,8 @@ proc genMainProc(m: BModule) =
       "}$N$N" &
       "void PreMain(void) {$N" &
       "\tvoid (*volatile inner)(void);$N" &
-      "$1" &
       "\tinner = PreMainInner;$N" &
-      "$4$5" &
+      "$1" &
       "\t(*inner)();$N" &
       "}$N$N"
 
@@ -1222,12 +1234,7 @@ proc genMainProc(m: BModule) =
     else: ropecg(m, "\t#initStackBottomWith((void *)&inner);$N")
   inc(m.labels)
   appcg(m, m.s[cfsProcs], PreMainBody, [
-    m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit,
-     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-       ropecg(m, "\t#initThreadVarsEmulation();$N")
-     else:
-       "".rope,
-     initStackBottomCall])
+    m.g.mainDatInit, m.g.breakpoints, m.g.otherModsInit])
 
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
@@ -1256,20 +1263,31 @@ proc getInitName(m: PSym): Rope =
 
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
+
 proc registerModuleToMain(g: BModuleList; m: BModule) =
+  if m.s[cfsDatInitProc].len > 0:
+    let datInit = m.module.getDatInitName
+    addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
+    addf(g.mainDatInit, "\t$1();$N", [datInit])
+
+  # Initialization of TLS and GC should be done in between
+  # systemDatInit and systemInit calls if any
+  if sfSystemModule in m.module.flags:
+    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+      add(g.mainDatInit, ropecg(m, "\t#initThreadVarsEmulation();$N"))
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+      add(g.mainDatInit, ropecg(m, "\t#initStackBottomWith((void *)&inner);$N"))
+
   if m.s[cfsInitProc].len > 0:
     let init = m.module.getInitName
     addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
     let initCall = "\t$1();$N" % [init]
     if sfMainModule in m.module.flags:
       add(g.mainModInit, initCall)
+    elif sfSystemModule in m.module.flags:
+      add(g.mainDatInit, initCall) # systemInit must called right after systemDatInit if any
     else:
       add(g.otherModsInit, initCall)
-
-  if m.s[cfsDatInitProc].len > 0:
-    let datInit = m.module.getDatInitName
-    addf(g.mainModProcs, "N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
-    addf(g.mainDatInit, "\t$1();$N", [datInit])
 
 proc genDatInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
@@ -1297,6 +1315,7 @@ proc genInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
   ## it means raising dependency on the symbols is too late as it will not propogate
   ## into other modules, only simple rope manipulations are allowed
+  appcg(m, m.s[cfsForwardTypes], frameDefines, [rope("#")])
 
   var moduleInitRequired = false
   let initname = getInitName(m.module)
@@ -1308,9 +1327,19 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
-  # Give this small function its own scope
-  addf(prc, "{$N", [])
-  block:
+  if m.initProc.gcFrameId > 0:
+    moduleInitRequired = true
+    add(prc, initGCFrame(m.initProc))
+
+  if m.initProc.s(cpsLocals).len > 0:
+    moduleInitRequired = true
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.initProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
+
+  if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
+    # Give this small function its own scope
+    addf(prc, "{$N", [])
     # Keep a bogus frame in case the code needs one
     add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 
@@ -1331,17 +1360,7 @@ proc genInitCode(m: BModule) =
       add(prc, genSectionStart(cpsStmts, m.config))
       add(prc, m.preInitProc.s(cpsStmts))
       add(prc, genSectionEnd(cpsStmts, m.config))
-  addf(prc, "}$N", [])
-
-  if m.initProc.gcFrameId > 0:
-    moduleInitRequired = true
-    add(prc, initGCFrame(m.initProc))
-
-  if m.initProc.s(cpsLocals).len > 0:
-    moduleInitRequired = true
-    add(prc, genSectionStart(cpsLocals, m.config))
-    add(prc, m.initProc.s(cpsLocals))
-    add(prc, genSectionEnd(cpsLocals, m.config))
+    addf(prc, "}$N", [])
 
   if m.initProc.s(cpsInit).len > 0 or m.initProc.s(cpsStmts).len > 0:
     moduleInitRequired = true

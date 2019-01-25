@@ -158,9 +158,13 @@ proc rand*[T](x: HSlice[T, T]): T =
   result = rand(state, x)
 
 proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
-  ## returns a random element from the openarray `a`.
+  ## Returns a random element from the openarray `a`.
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
+
+proc rand*[T: SomeInteger](t: typedesc[T]): T =
+  ## Returns a random integer in the range `low(T)..high(T)`.
+  result = cast[T](state.next)
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
@@ -175,27 +179,26 @@ proc sample*[T](a: openArray[T]): T =
   ## returns a random element from openArray ``a`` using non-thread-safe state.
   result = a[rand(a.low..a.high)]
 
-proc sample*[T, U](r: var Rand; a: openArray[T], w: openArray[U], n=1): seq[T] =
-  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
-  ## according to convertible-to-``float``, not necessarily normalized, and
-  ## non-negative weights ``w``.  Uses state in ``r``.  Must have sum ``w > 0.0``.
-  assert(w.len == a.len)
-  var cdf = newSeq[float](a.len)   # The *unnormalized* CDF
-  var tot = 0.0                    # Unnormalized is fine if we sample up to tot
-  for i, w in w:
-    assert(w >= 0)
-    tot += float(w)
-    cdf[i] = tot
-  assert(tot > 0.0)                # Need at least one non-zero weight
-  for i in 0 ..< n:
-    result.add(a[cdf.upperBound(r.rand(tot))])
+proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
+  ## Sample one element from openArray ``a`` when it has cumulative distribution
+  ## function (CDF) ``cdf`` (not necessarily normalized, any type of elements
+  ## convertible to ``float``). Uses state in ``r``. E.g.:
+  ##
+  ## .. code-block:: nim
+  ##   let val = [ "a", "b", "c", "d" ]  # some values
+  ##   var cnt = [1, 2, 3, 4]            # histogram of counts
+  ##   echo r.sample(val, cnt.cumsummed) # echo a sample
+  assert(cdf.len == a.len)              # Two basic sanity checks.
+  assert(float(cdf[^1]) > 0.0)
+  #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
+  #awfully expensive even in debugging modes.
+  let u = r.rand(float(cdf[^1]))
+  a[cdf.upperBound(U(u))]
 
-proc sample*[T, U](a: openArray[T], w: openArray[U], n=1): seq[T] =
-  ## Return a sample (with replacement) of size ``n`` from elements of ``a``
-  ## according to convertible-to-``float``, not necessarily normalized, and
-  ## non-negative weights ``w``.  Uses default non-thread-safe state.
-  state.sample(a, w, n)
-
+proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
+  ## Like ``sample(var Rand; openArray[T], openArray[U])``, but uses default
+  ## non-thread-safe state.
+  state.sample(a, cdf)
 
 proc initRand*(seed: int64): Rand =
   ## Creates a new ``Rand`` state from ``seed``.

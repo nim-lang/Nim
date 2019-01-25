@@ -92,6 +92,7 @@ proc commandJsonScript(graph: ModuleGraph) =
 
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
+    let conf = graph.config
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
@@ -100,6 +101,8 @@ when not defined(leanCompiler):
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph, toGeneratedFile(conf, conf.projectFull, ""))
 
 proc interactivePasses(graph: ModuleGraph) =
   initDefines(graph.config.symbols)

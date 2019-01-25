@@ -35,6 +35,7 @@ Usage:
   nimsuggest [options] projectfile.nim
 
 Options:
+  --autobind              automatically binds into a free port
   --port:PORT             port, by default 6000
   --address:HOST          binds to that address, by default ""
   --stdin                 read commands from stdin and write results to
@@ -49,6 +50,8 @@ Options:
                           '""" & DummyEof & """' for the tester
 
 The server then listens to the connection and takes line-based commands.
+
+If --autobind is used, the binded port number will be printed to stdout.
 
 In addition, all command line options of Nim that do not affect code generation
 are supported.
@@ -68,6 +71,7 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = defined(logging)
   gRefresh: bool
+  gAutoBind = false
 
   requests: Channel[string]
   results: Channel[Suggest]
@@ -306,9 +310,15 @@ proc replCmdline(x: ThreadParams) {.thread.} =
 
 proc replTcp(x: ThreadParams) {.thread.} =
   var server = newSocket()
-  server.bindAddr(x.port, x.address)
+  if gAutoBind:
+    let port = server.connectToNextFreePort(x.address)
+    server.listen()
+    echo port
+    stdout.flushFile()
+  else:
+    server.bindAddr(x.port, x.address)
+    server.listen()
   var inp = "".TaintedString
-  server.listen()
   while true:
     var stdoutSocket = newSocket()
     accept(server, stdoutSocket)
@@ -544,6 +554,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "help", "h":
         stdout.writeline(Usage)
         quit()
+      of "autobind":
+        gMode = mtcp
+        gAutoBind = true
       of "port":
         gPort = parseInt(p.val).Port
         gMode = mtcp

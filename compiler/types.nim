@@ -107,20 +107,23 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName): string =
-  result = sym.owner.name.s & '.' & sym.name.s & '('
-  var n = sym.typ.n
-  for i in countup(1, sonsLen(n) - 1):
-    let p = n.sons[i]
-    if p.kind == nkSym:
-      add(result, p.sym.name.s)
-      add(result, ": ")
-      add(result, typeToString(p.sym.typ, prefer))
-      if i != sonsLen(n)-1: add(result, ", ")
-    else:
-      result.add renderTree(p)
-  add(result, ')')
-  if n.sons[0].typ != nil:
-    result.add(": " & typeToString(n.sons[0].typ, prefer))
+  assert sym != nil
+  result = sym.owner.name.s & '.' & sym.name.s
+  if sym.kind in routineKinds:
+    result.add '('
+    var n = sym.typ.n
+    for i in countup(1, sonsLen(n) - 1):
+      let p = n.sons[i]
+      if p.kind == nkSym:
+        add(result, p.sym.name.s)
+        add(result, ": ")
+        add(result, typeToString(p.sym.typ, prefer))
+        if i != sonsLen(n)-1: add(result, ", ")
+      else:
+        result.add renderTree(p)
+    add(result, ')')
+    if n.sons[0].typ != nil:
+      result.add(": " & typeToString(n.sons[0].typ, prefer))
   result.add "[declared in "
   result.add(conf$sym.info)
   result.add "]"
@@ -429,7 +432,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif t.kind == tyAlias:
+    elif t.kind == tyAlias and t.sons[0].kind != tyAlias:
       result = typeToString(t.sons[0])
     elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
@@ -453,11 +456,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = $t.n.intVal
       else:
         result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericBody, tyGenericInst, tyGenericInvocation:
+  of tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
+    add(result, ']')
+  of tyGenericBody:
+    result = typeToString(t.lastSon) & '['
+    for i in countup(0, sonsLen(t)-2):
+      if i > 0: add(result, ", ")
+      add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
   of tyTypeDesc:
     if t.sons[0].kind == tyNone: result = "typedesc"
@@ -609,7 +618,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-
 proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
@@ -756,7 +764,7 @@ type
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
 
-  TSameTypeClosure = object {.pure.}
+  TSameTypeClosure = object
     cmp: TDistinctCompare
     recCheck: int
     flags: TTypeCmpFlags

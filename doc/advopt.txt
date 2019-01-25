@@ -18,9 +18,9 @@ Advanced commands:
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
-  --stdout                  output to stdout
+  --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
-  --listFullPaths           list full paths in messages
+  --listFullPaths:on|off    list full paths in messages
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
@@ -39,29 +39,28 @@ Advanced options:
   --nimcache:PATH           set the path used for generated files
   --header:FILE             the compiler should produce a .h file (FILE
                             is optional)
-  -c, --compileOnly         compile Nim files only; do not assemble or link
-  --noLinking               compile Nim and generated files but do not link
-  --noMain                  do not generate a main procedure
-  --genScript               generate a compile script (in the 'nimcache'
+  -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
+  --noLinking:on|off        compile Nim and generated files but do not link
+  --noMain:on|off           do not generate a main procedure
+  --genScript:on|off        generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
                             implies --compileOnly
-  --genDeps                 generate a '.deps' file containing the dependencies
+  --genDeps:on|off          generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
-  --debuginfo               enables debug information
+  --debuginfo:on|off        enables debug information
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
-  --genMapping              generate a mapping file containing
-                            (Nim, mangled) identifier pairs
   --project                 document the whole project (doc2)
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
+  --docInternal             also generate documentation for non-exported symbols
   --lineDir:on|off          generation of #line directive on|off
-  --embedsrc                embeds the original source code as comments
+  --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
   --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
@@ -78,11 +77,12 @@ Advanced options:
                             strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
-  --skipCfg                 do not read the general configuration file
-  --skipUserCfg             do not read the user's configuration file
-  --skipParentCfg           do not read the parent dirs' configuration files
-  --skipProjCfg             do not read the project's configuration file
-  --gc:refc|v2|markAndSweep|boehm|go|none|regions
+  --oldast:on|off           use old AST for backwards compatibility
+  --skipCfg:on|off          do not read the nim installation's configuration file
+  --skipUserCfg:on|off      do not read the user's configuration file
+  --skipParentCfg:on|off    do not read the parent dirs' configuration files
+  --skipProjCfg:on|off      do not read the project's configuration file
+  --gc:refc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
@@ -98,7 +98,8 @@ Advanced options:
                             symbol matching is fuzzy so
                             that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
-  --dynlibOverrideAll       makes the dynlib pragma have no effect
+  --dynlibOverrideAll
+                            disables the effects of the dynlib pragma
   --listCmd                 list the commands used to execute external programs
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
