@@ -354,7 +354,7 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
       typ.kind in {tySequence, tyString} and body.len == 0:
     discard "do not cache it yet"
     if kind == attachedSink:
-      echo "Not available yet ", typ.id, " ", c.config$info, " ", cast[int](typ)
+      echo "Not available yet ", typ.id, " ", g.config$info, " ", cast[int](typ)
   else:
     case kind
     of attachedAsgn: typ.assignment = result
