@@ -177,7 +177,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
 proc incRef(c: PCell) {.inline.} =
-  gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr " & c.repr)
+  gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
   # and not colorMask
   logCell("incRef", c)
@@ -193,8 +193,8 @@ proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   addZCT(gch.zct, c)
 
 proc decRef(c: PCell) {.inline.} =
-  gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr " & c.repr)
-  gcAssert(c.refcount >=% rcIncrement, "decRef: " & c.repr)
+  gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
+  gcAssert(c.refcount >=% rcIncrement, "decRef")
   c.refcount = c.refcount -% rcIncrement
   if c.refcount <% rcIncrement:
     rtlAddZCT(c)
