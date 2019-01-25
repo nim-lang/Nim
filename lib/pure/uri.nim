@@ -189,7 +189,7 @@ proc parseUri*(uri: string, result: var Uri) =
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
-  ## * `initUri proc <#initUri,>`_ for initializing a URI
+  ## * `initUri proc <#initUri>`_ for initializing a URI
   runnableExamples:
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)

@@ -93,25 +93,25 @@ type
 
   SinglyLinkedList*[T] = object ## A singly linked list.
     ##
-    ## Use `initSinglyLinkedList proc <#initSinglyLinkedList,>`_ to create
+    ## Use `initSinglyLinkedList proc <#initSinglyLinkedList>`_ to create
     ## a new empty list.
     head*, tail*: SinglyLinkedNode[T]
 
   DoublyLinkedList*[T] = object ## A doubly linked list.
     ##
-    ## Use `initDoublyLinkedList proc <#initDoublyLinkedList,>`_ to create
+    ## Use `initDoublyLinkedList proc <#initDoublyLinkedList>`_ to create
     ## a new empty list.
     head*, tail*: DoublyLinkedNode[T]
 
   SinglyLinkedRing*[T] = object ## A singly linked ring.
     ##
-    ## Use `initSinglyLinkedRing proc <#initSinglyLinkedRing,>`_ to create
+    ## Use `initSinglyLinkedRing proc <#initSinglyLinkedRing>`_ to create
     ## a new empty ring.
     head*, tail*: SinglyLinkedNode[T]
 
   DoublyLinkedRing*[T] = object ## A doubly linked ring.
     ##
-    ## Use `initDoublyLinkedRing proc <#initDoublyLinkedRing,>`_ to create
+    ## Use `initDoublyLinkedRing proc <#initDoublyLinkedRing>`_ to create
     ## a new empty ring.
     head*: DoublyLinkedNode[T]
 
