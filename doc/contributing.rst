@@ -1,5 +1,9 @@
+============
 Contributing
 ============
+
+.. contents::
+
 
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
@@ -120,7 +124,7 @@ To run a single test:
 ::
 
   ./koch tests c <category>/<name>
-  
+
 E.g. ``./koch test run stdlib/thttpclient_ssl``
 
 For reproducible tests (to reproduce an environment more similar to the one
