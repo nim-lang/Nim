@@ -160,7 +160,7 @@ proc processFile(pattern; filename: string; counter: var int) =
   var reallyReplace = true
   while i < buffer.len:
     let t = findBounds(buffer, pattern, matches, i)
-    if t.first < 0: break
+    if t.first < 0 or t.last < t.first: break
     inc(line, countLines(buffer, i, t.first-1))
 
     var wholeMatch = buffer.substr(t.first, t.last)
@@ -336,7 +336,7 @@ else:
     for f in items(filenames):
       walker(pegp, f, counter)
   else:
-    var reflags = {reStudy, reExtended}
+    var reflags = {reStudy}
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:

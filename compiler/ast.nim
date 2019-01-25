@@ -1091,6 +1091,13 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   when debugIds:
     registerId(result)
 
+proc astdef*(s: PSym): PNode =
+  # get only the definition (initializer) portion of the ast
+  if s.ast != nil and s.ast.kind == nkIdentDefs:
+    s.ast[2]
+  else:
+    s.ast
+
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or

@@ -119,7 +119,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
-                   conf.configVars, filename.string, {roSupportRawDirective},
+                   conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -144,28 +144,28 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    var d = TDocumentor(gen)
-    var outp: AbsoluteFile
-    if filename.len == 0:
-      inc(d.id)
-      let nameOnly = splitFile(d.filename).name
-      let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
-      createDir(subdir)
-      outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
-    elif isAbsolute(filename):
-      outp = AbsoluteFile filename
-    else:
-      # Nim's convention: every path is relative to the file it was written in:
-      outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
-    # Include the current file if we're parsing a nim file
-    let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
-    writeFile(outp, importStmt & content)
-    let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
-            else: cmd
-    let c2 = c % quoteShell(outp)
-    rawMessage(conf, hintExecuting, c2)
-    if execShellCmd(c2) != status:
-      rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+      var d = TDocumentor(gen)
+      var outp: AbsoluteFile
+      if filename.len == 0:
+        inc(d.id)
+        let nameOnly = splitFile(d.filename).name
+        let subdir = getNimcacheDir(conf) / RelativeDir(nameOnly)
+        createDir(subdir)
+        outp = subdir / RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
+      elif isAbsolute(filename):
+        outp = AbsoluteFile filename
+      else:
+        # Nim's convention: every path is relative to the file it was written in:
+        outp = splitFile(d.filename).dir.AbsoluteDir / RelativeFile(filename)
+      # Include the current file if we're parsing a nim file
+      let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename]
+      writeFile(outp, importStmt & content)
+      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+              else: cmd
+      let c2 = c % quoteShell(outp)
+      rawMessage(conf, hintExecuting, c2)
+      if execShellCmd(c2) != status:
+        rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
                                 outExt, RelativeDir"htmldocs", false)
@@ -464,7 +464,10 @@ proc isVisible(d: PDoc; n: PNode): bool =
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
-    result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    if optDocInternal in d.conf.globalOptions:
+      result = {sfFromGeneric, sfForward}*n.sym.flags == {}
+    else:
+      result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:
@@ -991,7 +994,7 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
 
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
-                     {roSupportRawDirective}, conf)
+                     {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)

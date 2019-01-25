@@ -418,7 +418,7 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
   ## to ``deallocHeap``.

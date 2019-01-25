@@ -38,6 +38,15 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
+proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+  ## Execute shell command. Add log folding on Travis CI.
+  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:start:" & desc.replace(" ", "")
+  exec(cmd, errorcode, additionalPath)
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:end:" & desc.replace(" ", "")
+
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
   # simulate a poor man's virtual environment
@@ -97,6 +106,7 @@ doc/nep1.rst
 doc/nims.rst
 doc/contributing.rst
 doc/codeowners.rst
+doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
@@ -122,7 +132,6 @@ lib/js/asyncjs.nim
 lib/pure/os.nim
 lib/pure/strutils.nim
 lib/pure/math.nim
-lib/pure/matchers.nim
 lib/std/editdistance.nim
 lib/std/wordwrap.nim
 lib/experimental/diff.nim
@@ -157,10 +166,8 @@ lib/impure/db_mysql.nim
 lib/impure/db_sqlite.nim
 lib/impure/db_odbc.nim
 lib/pure/db_common.nim
-lib/pure/httpserver.nim
 lib/pure/httpclient.nim
 lib/pure/smtp.nim
-lib/impure/ssl.nim
 lib/pure/ropes.nim
 lib/pure/unidecode/unidecode.nim
 lib/pure/xmlparser.nim
@@ -170,25 +177,20 @@ lib/pure/colors.nim
 lib/pure/mimetypes.nim
 lib/pure/json.nim
 lib/pure/base64.nim
-lib/pure/scgi.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
-lib/deprecated/pure/sockets.nim
-lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim
 lib/pure/collections/lists.nim
 lib/pure/collections/sharedlist.nim
 lib/pure/collections/sharedtables.nim
 lib/pure/collections/intsets.nim
-lib/pure/collections/queues.nim
 lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
 lib/pure/cookies.nim
 lib/pure/memfiles.nim
-lib/pure/subexes.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim
 lib/core/rlocks.nim
@@ -214,7 +216,6 @@ lib/pure/selectors.nim
 lib/pure/sugar.nim
 lib/pure/collections/chains.nim
 lib/pure/asyncfile.nim
-lib/deprecated/pure/ftpclient.nim
 lib/pure/asyncftpclient.nim
 lib/pure/lenientops.nim
 lib/pure/md5.nim
@@ -225,6 +226,7 @@ lib/pure/collections/heapqueue.nim
 lib/pure/fenv.nim
 lib/std/sha1.nim
 lib/std/varints.nim
+lib/std/time_t.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim

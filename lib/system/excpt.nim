@@ -220,11 +220,12 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     inc(i)
     it = it.prev
   var last = i-1
-  if s.len == 0:
-    s = newSeq[StackTraceEntry](i)
-  else:
-    last = s.len + i - 1
-    s.setLen(last+1)
+  when true: # not defined(gcDestructors):
+    if s.len == 0:
+      s = newSeq[StackTraceEntry](i)
+    else:
+      last = s.len + i - 1
+      s.setLen(last+1)
   it = f
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
@@ -347,24 +348,17 @@ proc raiseExceptionAux(e: ref Exception) =
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
   when defined(cpp) and not defined(noCppExceptions):
-    if e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
-    else:
-      pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+    pushCurrentException(e)
+    raiseCounter.inc
+    if raiseCounter == 0:
+      raiseCounter.inc # skip zero at overflow
+    e.raiseId = raiseCounter
+    {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
         pushCurrentException(e)
         c_longjmp(excHandler.context, 1)
-    elif e[] of OutOfMemError:
-      showErrorMessage(e.name)
-      quitOrDebug()
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
@@ -455,27 +449,21 @@ proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
   else:
     result = move(e.trace)
 
-when defined(nimRequiresNimFrame):
-  const nimCallDepthLimit {.intdefine.} = 2000
+const nimCallDepthLimit {.intdefine.} = 2000
 
-  proc callDepthLimitReached() {.noinline.} =
-    writeStackTrace()
-    showErrorMessage("Error: call depth limit reached in a debug build (" &
-        $nimCallDepthLimit & " function calls). You can change it with " &
-        "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-        "recursions instead.\n")
-    quitOrDebug()
+proc callDepthLimitReached() {.noinline.} =
+  writeStackTrace()
+  showErrorMessage("Error: call depth limit reached in a debug build (" &
+      $nimCallDepthLimit & " function calls). You can change it with " &
+      "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
+      "recursions instead.\n")
+  quitOrDebug()
 
-  proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
-    s.prev = framePtr
-    framePtr = s
-    if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
-else:
-  proc pushFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
-    # XXX only for backwards compatibility
-    s.prev = framePtr
-    framePtr = s
+proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
+  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  s.prev = framePtr
+  framePtr = s
+  if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
 when defined(endb):
   var
@@ -538,3 +526,8 @@ proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[SignalHandler](hook))
+
+when not defined(noSignalHandler) and not defined(useNimRtl):
+  proc unsetControlCHook() =
+    # proc to unset a hook set by setControlCHook
+    c_signal(SIGINT, signalHandler)

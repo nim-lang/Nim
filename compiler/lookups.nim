@@ -150,7 +150,7 @@ type
 
 proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
-  of skProc, skFunc, skMethod, skConverter, skIterator:
+  of routineKinds, skType:
     result = getProcHeader(conf, s)
   else:
     result = s.name.s
@@ -190,7 +190,7 @@ proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
     wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDecl*(c: PContext, sym: PSym) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 

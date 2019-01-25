@@ -1,3 +1,25 @@
+##[
+
+# This is now a header
+
+## Next header
+
+### And so on
+
+# More headers
+
+###### Up to level 6
+
+
+#. An enumeration
+#. Second idea here.
+
+More text.
+
+1. Other case value
+2. Second case.
+
+]##
 
 type
   SomeType* = enum
@@ -23,4 +45,6 @@ template bEnum*(): untyped =
 
   func someFunc*() =
     ## My someFunc.
+    ## Stuff in `quotes` here.
+    ## [Some link](https://nim-lang.org)
     discard

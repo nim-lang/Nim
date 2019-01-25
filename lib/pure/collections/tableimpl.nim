@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## An ``include`` file for the different table implementations.
+# An ``include`` file for the different table implementations.
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.

@@ -46,7 +46,7 @@ proc nimCharToStr(x: char): string {.compilerproc.} =
   result[0] = x
 
 proc isNimException(): bool {.asmNoStackFrame.} =
-  asm "return `lastJSError`.m_type;"
+  asm "return `lastJSError` && `lastJSError`.m_type;"
 
 proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)

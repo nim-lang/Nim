@@ -6,7 +6,6 @@ type
   TypeE* {.unchecked.} = array[0, int]#[!]#
 
 discard """
-disabled:true
 $nimsuggest --tester $file
 >highlight $1
 highlight;;skType;;2;;2;;5

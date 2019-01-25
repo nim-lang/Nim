@@ -1,7 +1,7 @@
 discard """
-  output: '''(Field0: 1, Field1: 1)
-(Field0: 2, Field1: 2)
-(Field0: 3, Field1: 3)
+  output: '''(1, 1)
+(2, 2)
+(3, 3)
 '''
 """
 

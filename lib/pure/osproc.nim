@@ -60,9 +60,6 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-const poUseShell* {.deprecated.} = poUsePath
-  ## Deprecated alias for poUsePath.
-
 proc execProcess*(command: string,
                   workingDir: string = "",
                   args: openArray[string] = [],
@@ -334,19 +331,6 @@ proc execProcesses*(cmds: openArray[string],
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
-
-proc select*(readfds: var seq[Process], timeout = 500): int
-  {.benign, deprecated.}
-  ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
-  ## Specify -1 for no timeout. Returns the number of processes that are
-  ## ready to read from. The processes that are ready to be read from are
-  ## removed from `readfds`.
-  ##
-  ## **Warning**: This function may give unexpected or completely wrong
-  ## results on Windows.
-  ##
-  ## **Deprecated since version 0.17.0**: This procedure isn't cross-platform
-  ## and so should not be used in newly written code.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
@@ -724,13 +708,6 @@ elif not defined(useNimRtl):
   proc isExitStatus(status: cint): bool =
     WIFEXITED(status) or WIFSIGNALED(status)
 
-  proc exitStatus(status: cint): cint =
-    if WIFSIGNALED(status):
-      # like the shell!
-      128 + WTERMSIG(status)
-    else:
-      WEXITSTATUS(status)
-
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
@@ -1054,7 +1031,7 @@ elif not defined(useNimRtl):
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1109,7 +1086,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
   else:
     import times
 
@@ -1142,7 +1119,7 @@ elif not defined(useNimRtl):
         s.tv_nsec = b.tv_nsec
 
       if p.exitFlag:
-        return exitStatus(p.exitStatus)
+        return exitStatusLikeShell(p.exitStatus)
 
       if timeout == -1:
         var status: cint = 1
@@ -1220,20 +1197,20 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = exitStatus(p.exitStatus)
+      result = exitStatusLikeShell(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
     if p.exitFlag:
-      return exitStatus(p.exitStatus)
+      return exitStatusLikeShell(p.exitStatus)
 
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
       if isExitStatus(status):
         p.exitFlag = true
         p.exitStatus = status
-        result = exitStatus(status)
+        result = exitStatusLikeShell(status)
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
@@ -1265,7 +1242,7 @@ elif not defined(useNimRtl):
   proc execCmd(command: string): int =
     when defined(linux):
       let tmp = csystem(command)
-      result = if tmp == -1: tmp else: exitStatus(tmp)
+      result = if tmp == -1: tmp else: exitStatusLikeShell(tmp)
     else:
       result = csystem(command)
 

@@ -12,6 +12,34 @@
 ## style-insensitive mode. An efficient string substitution operator  ``%``
 ## for the string table is also provided.
 
+runnableExamples:
+
+  var t = newStringTable()
+  t["name"] = "John"
+  t["city"] = "Monaco"
+  doAssert t.len == 2
+  doAssert t.hasKey "name"
+  doAssert "name" in t
+
+## String tables can be created from a table constructor:
+
+runnableExamples:
+  var t = {"name": "John", "city": "Monaco"}.newStringTable
+
+
+## When using the style insensitive mode ``modeStyleInsensitive``, 
+## all letters are compared case insensitively within the ASCII range 
+## and underscores are ignored.
+
+runnableExamples:
+
+  var x = newStringTable(modeStyleInsensitive)
+  x["first_name"] = "John"
+  x["LastName"] = "Doe"
+
+  doAssert x["firstName"] == "John"
+  doAssert x["last_name"] == "Doe"
+
 import
   hashes, strutils
 
@@ -214,6 +242,9 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
 proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
   rtlFunc, extern: "nstFormat".} =
   ## The `%` operator for string tables.
+  runnableExamples:
+    var t = {"name": "John", "city": "Monaco"}.newStringTable
+    doAssert "${name} lives in ${city}" % t == "John lives in Monaco"
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
   result = ""
