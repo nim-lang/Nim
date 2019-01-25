@@ -559,15 +559,18 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## section of ``doc/docgen.txt``.
   result = baseName
   case k:
-  of skProc, skFunc: result.add(defaultParamSeparator)
-  of skMacro: result.add(".m" & defaultParamSeparator)
-  of skMethod: result.add(".e" & defaultParamSeparator)
-  of skIterator: result.add(".i" & defaultParamSeparator)
-  of skTemplate: result.add(".t" & defaultParamSeparator)
-  of skConverter: result.add(".c" & defaultParamSeparator)
+  of skProc, skFunc: discard
+  of skMacro: result.add(".m")
+  of skMethod: result.add(".e")
+  of skIterator: result.add(".i")
+  of skTemplate: result.add(".t")
+  of skConverter: result.add(".c")
   else: discard
   if len(n) > paramsPos and n[paramsPos].kind == nkFormalParams:
-    result.add(renderParamTypes(n[paramsPos]))
+    let params = renderParamTypes(n[paramsPos])
+    if params.len > 0:
+      result.add(defaultParamSeparator)
+      result.add(params)
 
 proc isCallable(n: PNode): bool =
   ## Returns true if `n` contains a callable node.
