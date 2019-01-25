@@ -399,7 +399,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
           discard
         else:
           newbody.lastSon.typeInst = result
-    echo "adding ", typeToString(result), " for ", typeToString(newbody)
+    #echo "DESTROY: adding ", typeToString(result), " for ", typeToString(newbody)
     cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
@@ -430,7 +430,7 @@ proc eraseVoidParams*(t: PType) =
           inc pos
       setLen t.sons, pos
       setLen t.n.sons, pos
-      return
+      break
 
 proc skipIntLiteralParams*(t: PType) =
   for i in 0 ..< t.sonsLen:
@@ -559,9 +559,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       for i in countup(0, sonsLen(result) - 1):
         if result.sons[i] != nil:
           if result.sons[i].kind == tyGenericBody:
-            localError(
-              cl.c.config,
-              t.sym.info,
+            localError(cl.c.config, t.sym.info,
               "cannot instantiate '" &
               typeToString(result.sons[i], preferDesc) &
               "' inside of type definition: '" &
@@ -605,6 +603,7 @@ template typeBound(c, newty, oldty, field, info) =
   let opr = newty.field
   if opr != nil and sfFromGeneric notin opr.flags:
     # '=' needs to be instantiated for generics when the type is constructed:
+    #echo "DESTROY: instantiating ", astToStr(field), " for ", typeToString(oldty)
     newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =

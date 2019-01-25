@@ -220,11 +220,12 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     inc(i)
     it = it.prev
   var last = i-1
-  if s.len == 0:
-    s = newSeq[StackTraceEntry](i)
-  else:
-    last = s.len + i - 1
-    s.setLen(last+1)
+  when true: # not defined(gcDestructors):
+    if s.len == 0:
+      s = newSeq[StackTraceEntry](i)
+    else:
+      last = s.len + i - 1
+      s.setLen(last+1)
   it = f
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
