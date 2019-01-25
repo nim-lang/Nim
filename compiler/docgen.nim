@@ -300,13 +300,17 @@ proc externalDep(d: PDoc; module: PSym): string =
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
 
-proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
+proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {};
+                           procLink: Rope) =
   var r: TSrcGen
   var literal = ""
   initTokRender(r, n, renderFlags)
   var kind = tkEof
+  var tokenPos = 0
+  var procTokenPos = 0
   while true:
     getNextTok(r, kind, literal)
+    inc tokenPos
     case kind
     of tkEof:
       break
@@ -314,6 +318,8 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
             [rope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh:
+      if kind in {tkProc, tkMethod, tkIterator, tkMacro, tkTemplate, tkFunc, tkConverter}:
+        procTokenPos = tokenPos
       dispA(d.conf, result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
             [rope(literal)])
     of tkOpr:
@@ -333,7 +339,11 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
       let s = getTokSym(r)
-      if s != nil and s.kind == skType and sfExported in s.flags and
+      # -2 because of the whitespace in between:
+      if procTokenPos == tokenPos-2 and procLink != nil:
+        dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
+              "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
+      elif s != nil and s.kind == skType and sfExported in s.flags and
           s.owner != nil and belongsToPackage(d.conf, s.owner) and
           d.target == outHtml:
         let external = externalDep(d, s.owner)
@@ -445,7 +455,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
       for b in body:
         if i > 0: dest.add "\n"
         inc i
-        nodeToHighlightedHtml(d, b, dest, {})
+        nodeToHighlightedHtml(d, b, dest, {}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
   for i in 0 ..< n.safeLen:
@@ -615,9 +625,6 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
       break
     plainName.add(literal)
 
-  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
-    renderDocComments, renderSyms})
-
   inc(d.id)
   let
     plainNameRope = rope(xmltree.escape(plainName.strip))
@@ -629,6 +636,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     symbolOrId = d.newUniquePlainSymbol(complexSymbol)
     symbolOrIdRope = symbolOrId.rope
     symbolOrIdEncRope = encodeUrl(symbolOrId).rope
+
+  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
+    renderDocComments, renderSyms}, symbolOrIdEncRope)
 
   var seeSrcRope: Rope = nil
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
