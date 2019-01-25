@@ -132,3 +132,25 @@ block:
   var x = foo(y, 10, 15, [1, 2, 3])
   doAssert x == (20, 10, 15, 3)
 
+# #7609
+block:
+  type
+    Coord[N: static[int]] = tuple[col, row: range[0'i8 .. (N.int8-1)]]
+    Point[N: static[int]] = range[0'i16 .. N.int16 * N.int16 - 1]
+
+# https://github.com/nim-lang/Nim/issues/10339
+block:
+  type
+    MicroKernel = object
+      a: float
+      b: int
+
+  macro extractA(ukernel: static MicroKernel): untyped =
+    result = newLit ukernel.a
+
+  proc tFunc[ukernel: static MicroKernel]() =
+    const x = ukernel.extractA
+    doAssert x == 5.5
+
+  const uk = MicroKernel(a: 5.5, b: 1)
+  tFunc[uk]()

@@ -332,12 +332,15 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
           parMessage(p, errIdentifierExpected, p.tok)
         break
       of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
+        let lineinfo = parLineinfo(p)
         var accm = ""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(p.lex.cache.getIdent(accm), p))
+        let node = newNodeI(nkIdent, lineinfo)
+        node.ident = p.lex.cache.getIdent(accm)
+        result.add(node)
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
         result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
         getTok(p)

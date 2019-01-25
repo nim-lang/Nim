@@ -1013,7 +1013,7 @@ proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
   when defined(useDfa):
-    if s.kind == skFunc:
+    if s.name.s == "testp":
       dataflowAnalysis(s, body)
       when false: trackWrites(s, body)
 

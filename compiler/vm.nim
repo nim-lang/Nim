@@ -399,6 +399,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
+    of tyObject:
+      if srctyp.skipTypes(abstractRange).kind != tyObject:
+        internalError(c.config, "invalid object-to-object conversion")
+      # A object-to-object conversion is essentially a no-op
+      moveConst(dest, src)
     else:
       asgnComplex(dest, src)
 
@@ -1249,8 +1254,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
       else: c.setLenSeq(regs[ra].node, newLen, c.debug[pc])
-    of opcReset:
-      internalError(c.config, c.debug[pc], "too implement")
     of opcNarrowS:
       decodeB(rkInt)
       let min = -(1.BiggestInt shl (rb-1))

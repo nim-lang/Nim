@@ -52,6 +52,7 @@ xcuserdata/
 /run.json
 # for `nim doc foo.nim`
 /*.html
+lib/**/*.html
 #/testresults.html #covered by /*.html
 
 /testresults.json

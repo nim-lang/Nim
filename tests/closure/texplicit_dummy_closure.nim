@@ -1,3 +1,6 @@
+discard """
+  disabled: true
+"""
 
 # This is a regression of the new lambda lifting; detected by Aporia
 import asyncio, sockets

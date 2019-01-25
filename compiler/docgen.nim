@@ -464,7 +464,10 @@ proc isVisible(d: PDoc; n: PNode): bool =
     # we cannot generate code for forwarded symbols here as we have no
     # exception tracking information here. Instead we copy over the comment
     # from the proc header.
-    result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
+    if optDocInternal in d.conf.globalOptions:
+      result = {sfFromGeneric, sfForward}*n.sym.flags == {}
+    else:
+      result = {sfExported, sfFromGeneric, sfForward}*n.sym.flags == {sfExported}
     if result and containsOrIncl(d.emitted, n.sym.id):
       result = false
   elif n.kind == nkPragmaExpr:

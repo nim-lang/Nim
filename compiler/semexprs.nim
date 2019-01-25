@@ -24,15 +24,18 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
-  markUsed(c.config, n.info, s, c.graph.usageSym)
-  onUse(n.info, s)
+  let info = getCallLineInfo(n)
+  markUsed(c.config, info, s, c.graph.usageSym)
+  onUse(info, s)
+  # Note: This is n.info on purpose. It prevents template from creating an info
+  # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
   result = evalTemplate(n, s, getCurrOwner(c), c.config, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
   # XXX: A more elaborate line info rewrite might be needed
-  result.info = n.info
+  result.info = info
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
@@ -108,6 +111,8 @@ const
 
 proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
+  # We're interested in the inner type and not in the static tag
+  var src = src.skipTypes({tyStatic})
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
     if castDest.kind notin IntegralTypes+{tyRange}:
@@ -1082,8 +1087,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
-      markUsed(c.config, n.info, s, c.graph.usageSym)
-      onUse(n.info, s)
+      let info = getCallLineInfo(n)
+      markUsed(c.config, info, s, c.graph.usageSym)
+      onUse(info, s)
       result = symChoice(c, n, s, scClosed)
     else:
       result = semTemplateExpr(c, n, s, flags)
@@ -1169,9 +1175,10 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(n.info, s)
     result = newSymNode(s, n.info)
   else:
-    markUsed(c.config, n.info, s, c.graph.usageSym)
-    onUse(n.info, s)
-    result = newSymNode(s, n.info)
+    let info = getCallLineInfo(n)
+    markUsed(c.config, info, s, c.graph.usageSym)
+    onUse(info, s)
+    result = newSymNode(s, info)
 
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access

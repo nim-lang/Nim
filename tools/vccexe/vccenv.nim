@@ -16,7 +16,7 @@ type
     vs140 = (140, "VS140COMNTOOLS")  ## Visual Studio 2015
 
 const
-  vcvarsallRelativePath = joinPath("..", "..", "VC", "vcvarsall") ## Relative path from the COMNTOOLS path to the vcvarsall file.
+  vcvarsallRelativePath = joinPath("..", "..", "VC", "vcvarsall.bat") ## Relative path from the COMNTOOLS path to the vcvarsall file.
 
 proc vccEnvVcVarsAllPath*(version: VccEnvVersion = vsUndefined): string = 
   ## Returns the path to the VCC Developer Command Prompt executable for the specified VCC version.
@@ -39,9 +39,9 @@ proc vccEnvVcVarsAllPath*(version: VccEnvVersion = vsUndefined): string =
     for tryVersion in [vs140, vs120, vs110, vs100, vs90]:
       let tryPath = vccEnvVcVarsAllPath(tryVersion)
       if tryPath.len > 0:
-        result = tryPath
+        return tryPath
   else: # Specific version requested
     let key = $version
     let val = getEnv key
     if val.len > 0:
-      result = try: expandFilename(val & vcvarsallRelativePath) except OSError: ""
+      result = try: expandFilename(joinPath(val, vcvarsallRelativePath)) except OSError: ""
