@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 
-## Fast sumation functions
+## Fast sumation functions.
 
 
 func sumKbn*[T](x: openArray[T]): T =
@@ -35,17 +35,21 @@ func sumPairwise[T](x: openArray[T], i0, n: int): T =
     result = sumPairwise(x, i0, n2) + sumPairwise(x, i0 + n2, n - n2)
 
 func sumPairs*[T](x: openArray[T]): T =
-  ## Pairwise (cascade) summation of ``x[i0:i0+n-1]``, which O(log n) error growth
-  ## [vs O(n) for a simple loop] with negligible performance cost if
-  ## the base case is large enough.  See, e.g.:
-  ##        http://en.wikipedia.org/wiki/Pairwise_summation
-  ##        Higham, Nicholas J. (1993), "The accuracy of floating point
-  ##        summation", SIAM Journal on Scientific Computing 14 (4): 783–799.
+  ## Pairwise (cascade) summation of ``x[i0:i0+n-1]``, with O(log n) error growth
+  ## (vs O(n) for a simple loop) with negligible performance cost if
+  ## the base case is large enough.
+  ##
+  ## See, e.g.:
+  ## * http://en.wikipedia.org/wiki/Pairwise_summation
+  ##   Higham, Nicholas J. (1993), "The accuracy of floating point
+  ##   summation", SIAM Journal on Scientific Computing 14 (4): 783–799.
+  ##
   ## In fact, the root-mean-square error growth, assuming random roundoff
   ## errors, is only O(sqrt(log n)), which is nearly indistinguishable from O(1)
-  ## in practice.  See:
-  ##        Manfred Tasche and Hansmartin Zeuner, Handbook of
-  ##        Analytic-Computational Methods in Applied Mathematics (2000).
+  ## in practice. See:
+  ## * Manfred Tasche and Hansmartin Zeuner, Handbook of
+  ##   Analytic-Computational Methods in Applied Mathematics (2000).
+  ##
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
 
