@@ -558,7 +558,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## If you modify the output of this proc, please update the anchor generation
   ## section of ``doc/docgen.txt``.
   result = baseName
-  case k:
+  case k
   of skProc, skFunc: discard
   of skMacro: result.add(".m")
   of skMethod: result.add(".e")
