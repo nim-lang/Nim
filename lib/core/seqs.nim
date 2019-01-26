@@ -40,6 +40,7 @@ proc `=destroy`[T](s: var seq[T]) =
   var x = cast[ptr NimSeqV2[T]](addr s)
   var p = x.p
   if p != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       for i in 0..<x.len: `=destroy`(p.data[i])
     p.region.dealloc(p.region, p, payloadSize(p.cap))
@@ -47,6 +48,7 @@ proc `=destroy`[T](s: var seq[T]) =
     x.len = 0
 
 proc `=`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
 
@@ -109,6 +111,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
+  mixin `=destroy`
   sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
   when not supportsCopyMem(T):
     for i in countdown(x.len - 1, newLen - 1):
