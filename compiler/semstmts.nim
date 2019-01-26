@@ -671,7 +671,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           iter = iter.skipTypes({tyVar})
           mutable = true
         if sonsLen(n[0])-1 != sonsLen(iter):
-          localError(c.config, n[0].info, "required number of tuple variables: " & $sonsLen(iter) & "; given: " & $(sonsLen(n[0])-1))
+          localError(c.config, n[0].info, errWrongNumberOfVariables)
         for i in 0 ..< sonsLen(n[0])-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
@@ -705,7 +705,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           iter[i] = iter[i].skipTypes({tyVar})
           mutable = true
         if sonsLen(n[i])-1 != sonsLen(iter[i]):
-          localError(c.config, n[i].info, "required number of tuple variables: " & $sonsLen(iter[i]) & "; given: " & $(sonsLen(n[i])-1))
+          localError(c.config, n[i].info, errWrongNumberOfVariables)
         for j in 0 ..< sonsLen(n[i])-1:
           var v = symForVar(c, n[i][j])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
