@@ -6,6 +6,8 @@ output: '''
 123
 1
 113283
+@[(88, 99, 11), (88, 99, 11)]
+@[(7, 6, -28), (7, 6, -28)]
 '''
 """
 
@@ -19,4 +21,19 @@ for (a, b, c) in s:
 for i, (a, b, c) in s:
   echo i
   echo a, b, c
+
+var x = @[(1,2,3), (4,5,6)]
+
+for (a, b, c) in x.mitems:
+  a = 88
+  b = 99
+  c = 11
+echo x
+
+for i, (a, b, c) in x.mpairs:
+  a = 7
+  b = 6
+  c = -28
+echo x
+
 

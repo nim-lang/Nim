@@ -666,12 +666,20 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if iter.kind != tyTuple or length == 3:
     if length == 3:
       if n.sons[0].kind == nkVarTuple:
+        var mutable = false
+        if iter.kind == tyVar:
+          iter = iter.skipTypes({tyVar})
+          mutable = true
         if sonsLen(n[0])-1 != sonsLen(iter):
           localError(c.config, n[0].info, "required number of tuple variables: " & $sonsLen(iter) & "; given: " & $(sonsLen(n[0])-1))
         for i in 0 ..< sonsLen(n[0])-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-          v.typ = iter.sons[i]
+          if mutable:
+            v.typ = newTypeS(tyVar, c)
+            v.typ.sons.add iter[i]
+          else:
+            v.typ = iter.sons[i]
           n.sons[0][i] = newSymNode(v)
           if sfGenSym notin v.flags: addForVarDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
@@ -692,12 +700,20 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   else:
     for i in countup(0, length - 3):
       if n.sons[i].kind == nkVarTuple:
+        var mutable = false
+        if iter[i].kind == tyVar:
+          iter[i] = iter[i].skipTypes({tyVar})
+          mutable = true
         if sonsLen(n[i])-1 != sonsLen(iter[i]):
           localError(c.config, n[i].info, "required number of tuple variables: " & $sonsLen(iter[i]) & "; given: " & $(sonsLen(n[i])-1))
         for j in 0 ..< sonsLen(n[i])-1:
           var v = symForVar(c, n[i][j])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
-          v.typ = iter[i][j]
+          if mutable:
+            v.typ = newTypeS(tyVar, c)
+            v.typ.sons.add iter[i][j]
+          else:
+            v.typ = iter[i][j]
           n.sons[i][j] = newSymNode(v)
           if not isDiscardUnderscore(v): addForVarDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
