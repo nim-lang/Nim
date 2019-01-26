@@ -353,14 +353,10 @@ proc liftBody(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
   if g.config.selectedGC == gcDestructors and
       typ.kind in {tySequence, tyString} and body.len == 0:
     discard "do not cache it yet"
-    if kind == attachedSink:
-      echo "Not available yet ", typ.id, " ", g.config$info, " ", cast[int](typ)
   else:
     case kind
     of attachedAsgn: typ.assignment = result
-    of attachedSink:
-      typ.sink = result
-      echo "created ", result.id
+    of attachedSink: typ.sink = result
     of attachedDeepCopy: typ.deepCopy = result
     of attachedDestructor: typ.destructor = result
 

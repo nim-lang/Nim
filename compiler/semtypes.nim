@@ -1159,7 +1159,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     # compiler only checks for 'nil':
     if skipTypes(r, {tyGenericInst, tyAlias, tySink}).kind != tyVoid:
       if kind notin {skMacro, skTemplate} and r.kind in {tyStmt, tyExpr}:
-        localError(c.config, n.sons[0].info, "return type '" & typeToString(r) & 
+        localError(c.config, n.sons[0].info, "return type '" & typeToString(r) &
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
@@ -1582,6 +1582,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result.n = nil
         result.flags = {tfHasAsgn}
         semContainerArg(c, n, "seq", result)
+        if result.len > 0:
+          var base = result[0]
+          if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
+          if base.kind != tyGenericParam:
+            c.typesWithOps.add((s, result))
       else:
         result = semContainer(c, n, tySequence, "seq", prev)
         if c.config.selectedGc == gcDestructors:
@@ -1715,8 +1720,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   n.typ = result
   dec c.inTypeContext
   if c.inTypeContext == 0:
-    if $n == "var seq[StackTraceEntry]":
-      echo "begin ", n
+    #if $n == "var seq[StackTraceEntry]":
+    #  echo "begin ", n
     instAllTypeBoundOp(c, n.info)
 
 proc setMagicType(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
