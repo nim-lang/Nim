@@ -734,8 +734,6 @@ proc primarySuffix(p: var TParser, r: PNode,
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
   result = r
 
-  template somePar() =
-    if p.tok.strongSpaceA > 0: break
   # progress guaranteed
   while p.tok.indent < 0 or
        (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
@@ -759,19 +757,19 @@ proc primarySuffix(p: var TParser, r: PNode,
       result = parseGStrLit(p, result)
     of tkBracketLe:
       # progress guaranteed
-      somePar()
+      if p.tok.strongSpaceA > 0: break
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
       # progress guaranteed
-      somePar()
+      if p.tok.strongSpaceA > 0: break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
        tkOpr, tkDotDot, tkTypeClasses - {tkRef, tkPtr}:
-        # XXX: In type sections we allow the free application of the
-        # command syntax, with the exception of expressions such as
-        # `foo ref` or `foo ptr`. Unfortunately, these two are also
-        # used as infix operators for the memory regions feature and
-        # the current parsing rules don't play well here.
+      # XXX: In type sections we allow the free application of the
+      # command syntax, with the exception of expressions such as
+      # `foo ref` or `foo ptr`. Unfortunately, these two are also
+      # used as infix operators for the memory regions feature and
+      # the current parsing rules don't play well here.
       if p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot}):
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
@@ -779,19 +777,10 @@ proc primarySuffix(p: var TParser, r: PNode,
         result = newNodeP(nkCommand, p)
         addSon(result, a)
         var isFirstParam = true
-        when true:
-          # progress NOT guaranteed
-          p.hasProgress = false
-          addSon result, commandParam(p, isFirstParam, mode)
-          if not p.hasProgress: break
-        else:
-          while p.tok.tokType != tkEof:
-            let x = parseExpr(p)
-            addSon(result, x)
-            if p.tok.tokType != tkComma: break
-            getTok(p)
-            optInd(p, x)
-          result = postExprBlocks(p, result)
+        # progress NOT guaranteed
+        p.hasProgress = false
+        addSon result, commandParam(p, isFirstParam, mode)
+        if not p.hasProgress: break
       break
     else:
       break
