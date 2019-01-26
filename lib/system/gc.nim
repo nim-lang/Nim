@@ -105,6 +105,8 @@ template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
       echo "[GCASSERT] ", msg
+      when defined(logGC):
+        echo "[GCASSERT] statistics:\L", GC_getStatistics()
       GC_disable()
       writeStackTrace()
       #var x: ptr int
@@ -159,6 +161,10 @@ when defined(logGC):
       c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
                 msg, c, kind, typName, c.refcount shr rcShift, gch.gcThreadId)
 
+template logCell(msg: cstring, c: PCell) =
+  when defined(logGC):
+    writeCell(msg, c)
+
 template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
@@ -174,7 +180,7 @@ proc incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
   # and not colorMask
-  #writeCell("incRef", c)
+  logCell("incRef", c)
 
 proc nimGCref(p: pointer) {.compilerProc.} =
   # we keep it from being collected by pretending it's not even allocated:
@@ -192,6 +198,7 @@ proc decRef(c: PCell) {.inline.} =
   c.refcount = c.refcount -% rcIncrement
   if c.refcount <% rcIncrement:
     rtlAddZCT(c)
+  logCell("decRef", c)
 
 proc nimGCunref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
@@ -410,7 +417,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
   # its refcount is zero, so add it to the ZCT:
   addNewObjToZCT(res, gch)
-  when logGC: writeCell("new cell", res)
+  logCell("new cell", res)
   track("rawNewObj", res, size)
   gcTrace(res, csAllocated)
   when useCellIds:
@@ -455,7 +462,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   setFrameInfo(res)
   res.refcount = rcIncrement # refcount is 1
   sysAssert(isAllocatedPtr(gch.region, res), "newObj: 3")
-  when logGC: writeCell("new cell", res)
+  logCell("new cell", res)
   track("newObjRC1", res, size)
   gcTrace(res, csAllocated)
   when useCellIds:
@@ -493,9 +500,8 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   # This can be wrong for intermediate temps that are nevertheless on the
   # heap because of lambda lifting:
   #gcAssert(res.refcount shr rcShift <=% 1, "growObj: 4")
-  when logGC:
-    writeCell("growObj old cell", ol)
-    writeCell("growObj new cell", res)
+  logCell("growObj old cell", ol)
+  logCell("growObj new cell", res)
   gcTrace(ol, csZctFreed)
   gcTrace(res, csAllocated)
   track("growObj old", ol, 0)
@@ -547,7 +553,7 @@ proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   prepareDealloc(c)
   gcTrace(c, csCycFreed)
   track("cycle collector dealloc cell", c, 0)
-  when logGC: writeCell("cycle collector dealloc cell", c)
+  logCell("cycle collector dealloc cell", c)
   when reallyDealloc:
     sysAssert(allocInv(gch.region), "free cyclic cell")
     beforeDealloc(gch, c, "freeCyclicCell: stack trash")
@@ -616,7 +622,7 @@ proc doOperation(p: pointer, op: WalkOp) =
     #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
-    when logGC: writeCell("decref (from doOperation)", c)
+    logCell("decref (from doOperation)", c)
     track("waZctDecref", p, 0)
     decRef(c)
   of waPush:
@@ -704,7 +710,7 @@ proc collectZCT(gch: var GcHeap): bool =
       # as this might be too slow.
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**
-      when logGC: writeCell("zct dealloc cell", c)
+      logCell("zct dealloc cell", c)
       track("zct dealloc cell", c, 0)
       gcTrace(c, csZctFreed)
       # We are about to free the object, call the finalizer BEFORE its
@@ -858,6 +864,7 @@ when not defined(useNimRtl):
       for stack in items(gch.stack):
         result.add "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
     else:
+      result.add "[GC] stack bottom: " & gch.stack.bottom.repr
       result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
 {.pop.} # profiler: off, stackTrace: off
