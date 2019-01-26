@@ -3049,6 +3049,19 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+when defined(nimNewRoof):
+  iterator `..<`*[T](a, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+else:
+  iterator `..<`*[S, T](a: S, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+
 when not defined(JS):
   proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
   proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
@@ -3715,19 +3728,6 @@ template `..^`*(a, b: untyped): untyped =
 template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a .. (when b is BackwardsIndex: succ(b) else: pred(b))'.
   a .. (when b is BackwardsIndex: succ(b) else: pred(b))
-
-when defined(nimNewRoof):
-  iterator `..<`*[T](a, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
-else:
-  iterator `..<`*[S, T](a: S, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:

@@ -15,7 +15,7 @@ proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
-  NimSeqPayload {.core.}[T] = object
+  NimSeqPayload[T] = object
     cap: int
     region: Allocator
     data: UncheckedArray[T]
@@ -65,6 +65,7 @@ proc `=`[T](x: var seq[T]; y: seq[T]) =
         a.p.data[i] = b.p.data[i]
 
 proc `=sink`[T](x: var seq[T]; y: seq[T]) =
+  mixin `=destroy`
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:

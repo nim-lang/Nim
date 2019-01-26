@@ -168,7 +168,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: 
+    for it in n:
       it.sons[^1] = discardCheck(c, it.sons[^1], flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
@@ -1563,7 +1563,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
-        echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
+        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s
