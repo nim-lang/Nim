@@ -724,6 +724,14 @@ const
   tkTypeClasses = {tkRef, tkPtr, tkVar, tkStatic, tkType,
                    tkEnum, tkTuple, tkObject, tkProc}
 
+proc commandExpr(p: var TParser; r: PNode; mode: TPrimaryMode): PNode =
+  result = newNodeP(nkCommand, p)
+  addSon(result, r)
+  var isFirstParam = true
+  # progress NOT guaranteed
+  p.hasProgress = false
+  addSon result, commandParam(p, isFirstParam, mode)
+
 proc primarySuffix(p: var TParser, r: PNode,
                    baseIndent: int, mode: TPrimaryMode): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
@@ -747,6 +755,8 @@ proc primarySuffix(p: var TParser, r: PNode,
           result = newNodeP(nkCommand, p)
           result.addSon r
           result.addSon primary(p, pmNormal)
+        else:
+          result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
@@ -757,11 +767,15 @@ proc primarySuffix(p: var TParser, r: PNode,
       result = parseGStrLit(p, result)
     of tkBracketLe:
       # progress guaranteed
-      if p.tok.strongSpaceA > 0: break
+      if p.tok.strongSpaceA > 0:
+        result = commandExpr(p, result, mode)
+        break
       result = namedParams(p, result, nkBracketExpr, tkBracketRi)
     of tkCurlyLe:
       # progress guaranteed
-      if p.tok.strongSpaceA > 0: break
+      if p.tok.strongSpaceA > 0:
+        result = commandExpr(p, result, mode)
+        break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
        tkOpr, tkDotDot, tkTypeClasses - {tkRef, tkPtr}:
@@ -773,14 +787,7 @@ proc primarySuffix(p: var TParser, r: PNode,
       if p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot}):
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
-        let a = result
-        result = newNodeP(nkCommand, p)
-        addSon(result, a)
-        var isFirstParam = true
-        # progress NOT guaranteed
-        p.hasProgress = false
-        addSon result, commandParam(p, isFirstParam, mode)
-        if not p.hasProgress: break
+        result = commandExpr(p, result, mode)
       break
     else:
       break
