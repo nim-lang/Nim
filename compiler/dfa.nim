@@ -74,7 +74,7 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   while i <= last:
     if i in jumpTargets: result.add("L" & $i & ":\n")
     result.add "\t"
-    result.add $c[i].kind
+    result.add ($i & " " & $c[i].kind)
     result.add "\t"
     case c[i].kind
     of def, use:
@@ -540,13 +540,17 @@ proc genTry(c: var Con; n: PNode) =
     c.gen(fin.sons[0])
   doAssert(c.forks.len == oldLen)
 
+template genNoReturn(c: var Con; n: PNode) =
+  # leave the graph
+  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+
 proc genRaise(c: var Con; n: PNode) =
   genJoins(c, n)
   gen(c, n.sons[0])
   if c.inTryStmt > 0:
     c.tryStmtFixups.add c.gotoI(n)
   else:
-    c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+    genNoReturn(c, n)
 
 proc genImplicitReturn(c: var Con) =
   if c.owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter} and resultPos < c.owner.ast.len:
@@ -558,7 +562,7 @@ proc genReturn(c: var Con; n: PNode) =
     gen(c, n.sons[0])
   else:
     genImplicitReturn(c)
-  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
+  genNoReturn(c, n)
 
 const
   InterestingSyms = {skVar, skResult, skLet, skParam}
@@ -612,9 +616,6 @@ proc genMagic(c: var Con; n: PNode; m: TMagic) =
   of mNew, mNewFinalize:
     genDef(c, n[1])
     for i in 2..<n.len: gen(c, n[i])
-  of mExit:
-    genCall(c, n)
-    c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
   else:
     genCall(c, n)
 
@@ -639,6 +640,8 @@ proc gen(c: var Con; n: PNode) =
         genMagic(c, n, s.magic)
       else:
         genCall(c, n)
+      if sfNoReturn in n.sons[0].sym.flags:
+        genNoReturn(c, n)
     else:
       genCall(c, n)
   of nkCharLit..nkNilLit: discard
