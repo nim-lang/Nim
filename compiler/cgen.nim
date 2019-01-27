@@ -264,6 +264,12 @@ proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   if lfIndirect notin a.flags and mapType(conf, a.t) != ctArray:
     result = "(&" & result & ")"
 
+proc byRefLoc(p: BProc; a: TLoc): Rope =
+  result = a.r
+  if lfIndirect notin a.flags and mapType(p.config, a.t) != ctArray and not
+      p.module.compileToCpp:
+    result = "(&" & result & ")"
+
 proc rdCharLoc(a: TLoc): Rope =
   # read a location that may need a char-cast:
   result = rdLoc(a)
