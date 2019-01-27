@@ -709,7 +709,8 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   ## Similar to prettyprint available in Python json library or pprint
-  ## we can use in NIM as following
+  ## we can use in Nim as following
+  ##
   ## .. code-block:: Nim
   ##    import json
   ##    # initiate the synchornous http reuest client
@@ -730,7 +731,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ##      #send the request and store in repsonse
   ##      var response = client.request(url, httpmethod = HttpPost, body = $body)
   ##      #echo response.body
-  ##      let json_node =parseJson(`$`(response.body))
+  ##      let json_node =parseJson(``$``(response.body))
   ##      # without pretty print json, output looks like this
   ##      echo json_node[0]["data"][0]
   ##      #{"figi":"BBG000BLNNH6","name":"INTL BUSINESS MACHINES CORP","ticker":"IBM","exchCode":"US","compositeFIGI":"BBG000BLNNH6","uniqueID":"EQ0010080100001000","securityType":"Common Stock","marketSector":"Equity","shareClassFIGI":"BBG001S5S399","uniqueIDFutOpt":" ","securityType2":"Common Stock","securityDescription":"IBM"}
