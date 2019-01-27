@@ -313,7 +313,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   if result != nil and eqFlags*result.flags == eqFlags*t.flags:
     when defined(reportCacheHits):
-      echo "Generic instantiation cached ", typeToString(result)
+      echo "Generic instantiation cached ", typeToString(result), " for ", typeToString(t)
     return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
@@ -329,7 +329,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
+    if result != nil and eqFlags*result.flags == eqFlags*t.flags:
+      when defined(reportCacheHits):
+        echo "Generic instantiation cached ", typeToString(result), " for ",
+          typeToString(t), " header ", typeToString(header)
+      return
   else:
     header = instCopyType(cl, t)
 
@@ -399,7 +403,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
           discard
         else:
           newbody.lastSon.typeInst = result
-    #echo "DESTROY: adding ", typeToString(result), " for ", typeToString(newbody)
+    # DESTROY: adding object|opt for opt[topttree.Tree]
+    # sigmatch: Formal opt[=destroy.T] real opt[topttree.Tree]
+    # adding myseq for myseq[system.int]
+    # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
+    #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
     cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:

@@ -1586,7 +1586,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           var base = result[0]
           if base.kind in {tyGenericInst, tyAlias, tySink}: base = lastSon(base)
           if base.kind != tyGenericParam:
-            c.typesWithOps.add((s, result))
+            c.typesWithOps.add((result, result))
       else:
         result = semContainer(c, n, tySequence, "seq", prev)
         if c.config.selectedGc == gcDestructors:

@@ -265,8 +265,8 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
-    echo "this one ", op.id
-    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
+    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+      "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -274,6 +274,12 @@ template genOp(opr, opname, ri) =
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
+  when false:
+    if t.kind != tyString:
+      echo "this one ", c.graph.config$dest.info, " for ", typeToString(t, preferDesc)
+      debug t.sink.typ.sons[2]
+      echo t.sink.id, " owner ", t.id
+      quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
 
