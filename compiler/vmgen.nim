@@ -1431,7 +1431,11 @@ proc checkCanEval(c: PCtx; n: PNode) =
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
-    cannotEval(c, n)
+    if sfGlobal notin s.flags:
+      globalError(c.config, n.info, "compiletime symbol '" & n.renderTree &
+        "' needs to be global" )
+    else:
+      cannotEval(c, n)
   elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(c, n)
