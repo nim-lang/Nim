@@ -5,7 +5,7 @@ discard """
 """
 
 import events
-import sockets
+import net
 import strutils
 import os
 

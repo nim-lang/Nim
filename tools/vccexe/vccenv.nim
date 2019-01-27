@@ -39,7 +39,7 @@ proc vccEnvVcVarsAllPath*(version: VccEnvVersion = vsUndefined): string =
     for tryVersion in [vs140, vs120, vs110, vs100, vs90]:
       let tryPath = vccEnvVcVarsAllPath(tryVersion)
       if tryPath.len > 0:
-        result = tryPath
+        return tryPath
   else: # Specific version requested
     let key = $version
     let val = getEnv key

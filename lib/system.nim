@@ -3463,7 +3463,7 @@ when not defined(JS): #and not defined(nimscript):
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
-    when not defined(useNimRtl):
+    when not defined(noSignalHandler) and not defined(useNimRtl):
       proc unsetControlCHook*()
         ## reverts a call to setControlCHook
 

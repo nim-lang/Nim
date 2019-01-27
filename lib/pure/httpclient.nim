@@ -17,6 +17,7 @@
 ## ``http://google.com``:
 ##
 ## .. code-block:: Nim
+##   import httpClient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
 ##
@@ -24,6 +25,7 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
+##   import httpClient
 ##   var client = newAsyncHttpClient()
 ##   echo await client.getContent("http://google.com")
 ##

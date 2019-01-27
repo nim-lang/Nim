@@ -1015,8 +1015,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
-    markUsed(c.config, info, paramType.sym, c.graph.usageSym)
-    onUse(info, paramType.sym)
+    markUsed(c.config, paramType.sym.info, paramType.sym, c.graph.usageSym)
+    onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
       paramType.sym.kind = skType
@@ -1474,7 +1474,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
 
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
-  of nkEmpty: discard
+  of nkEmpty: result = n.typ
   of nkTypeOfExpr:
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)

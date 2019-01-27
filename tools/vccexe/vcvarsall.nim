@@ -10,7 +10,6 @@ import strtabs, strutils, os, osproc
 const
   comSpecEnvKey = "ComSpec" ## Environment Variable that specifies the command-line application path in Windows
                             ## Usually set to cmd.exe
-  vcvarsallDefaultPath = "vcvarsall.bat"
 
 type
   VccArch* = enum ## The VCC compile target architectures
@@ -48,11 +47,10 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
   ## verbose
   ##   Echo the command-line passed on to the system to load the VCC environment. Defaults to `false`.
 
-  var vccvarsallpath = path
-  # Assume that default executable is in current directory or in PATH
   if path == "":
-    vccvarsallpath = vcvarsallDefaultPath
+    return nil
   
+  let vccvarsallpath = path
   var args: seq[string] = @[]
   
   let archStr: string = $arch

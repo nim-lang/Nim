@@ -1674,7 +1674,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
         curFd = fdPerDomain[ord(domain)]
         if curFd == osInvalidSocket.AsyncFD:
           try:
-            curFd = newAsyncNativeSocket(domain, sockType, protocol)
+            curFd = createAsyncNativeSocket(domain, sockType, protocol)
           except:
             freeAddrInfo(addrInfo)
             closeUnusedFds()
@@ -1805,47 +1805,6 @@ proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
       result.add(value)
     else:
       break
-
-proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
-  ## Reads a line of data from ``socket``. Returned future will complete once
-  ## a full line is read or an error occurs.
-  ##
-  ## If a full line is read ``\r\L`` is not
-  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
-  ## will be set to it.
-  ##
-  ## If the socket is disconnected, ``line`` will be set to ``""``.
-  ##
-  ## If the socket is disconnected in the middle of a line (before ``\r\L``
-  ## is read) then line will be set to ``""``.
-  ## The partial line **will be lost**.
-  ##
-  ## **Warning**: This assumes that lines are delimited by ``\r\L``.
-  ##
-  ## **Note**: This procedure is mostly used for testing. You likely want to
-  ## use ``asyncnet.recvLine`` instead.
-  ##
-  ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
-
-  template addNLIfEmpty(): typed =
-    if result.len == 0:
-      result.add("\c\L")
-
-  result = ""
-  var c = ""
-  while true:
-    c = await recv(socket, 1)
-    if c.len == 0:
-      return ""
-    if c == "\r":
-      c = await recv(socket, 1)
-      assert c == "\l"
-      addNLIfEmpty()
-      return
-    elif c == "\L":
-      addNLIfEmpty()
-      return
-    add(result, c)
 
 proc callSoon*(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.

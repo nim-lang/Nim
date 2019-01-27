@@ -456,11 +456,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = $t.n.intVal
       else:
         result = "int literal(" & $t.n.intVal & ")"
-  of tyGenericBody, tyGenericInst, tyGenericInvocation:
+  of tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
     for i in countup(1, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
       if i > 1: add(result, ", ")
       add(result, typeToString(t.sons[i], preferGenericArg))
+    add(result, ']')
+  of tyGenericBody:
+    result = typeToString(t.lastSon) & '['
+    for i in countup(0, sonsLen(t)-2):
+      if i > 0: add(result, ", ")
+      add(result, typeToString(t.sons[i], preferTypeName))
     add(result, ']')
   of tyTypeDesc:
     if t.sons[0].kind == tyNone: result = "typedesc"
@@ -611,7 +617,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   else:
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
-
 
 proc firstOrd*(conf: ConfigRef; t: PType): BiggestInt =
   case t.kind
