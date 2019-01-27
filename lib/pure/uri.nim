@@ -33,8 +33,7 @@
 ##    import uri
 ##    let res = parseUri("sftp://127.0.0.1:4343")
 ##    if isAbsolute(res):
-##      echo "Connect to port: " & res.port
-##      # --> Connect to port: 4343
+##      assert res.port == "4343"
 ##    else:
 ##      echo "Wrong format"
 
@@ -343,7 +342,7 @@ proc combine*(uris: varargs[Uri]): Uri =
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html"))
+    let foo = combine([parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html")])
     assert foo.hostname == "nim-lang.org"
     assert foo.path == "/install.html"
   result = uris[0]
