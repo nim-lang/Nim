@@ -156,6 +156,8 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 
       if result[0].kind == nkCall and result[0].len == 6 and result[0][0].kind == nkSym and result[0][0].sym.name.s == "stackTraceImpl" and result[1].kind == nkReturnStmt:
         result[0].info = info
+        # aparently it is not the lineinfo from the call that is in effect.
+        result.info = info
 
     if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
       result.lastSon.info = info
