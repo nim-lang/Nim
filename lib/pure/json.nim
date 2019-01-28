@@ -1328,6 +1328,12 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
       let obj = getType(typeSym[1])
       result = processType(newIdentNode(typeName), obj, jsonNode, true)
+    of "range":
+      let typeNode = typeSym
+      # Deduce the base type from one of the endpoints
+      let baseType = getType(typeNode[1])
+
+      result = createConstructor(baseType, jsonNode)
     of "seq":
       let seqT = typeSym[1]
       let forLoopI = genSym(nskForVar, "i")
@@ -1721,3 +1727,21 @@ when isMainModule:
       foo = js.to Foo
 
     doAssert(foo.b == "abc")
+
+  # Generate constructors for range[T] types
+  block:
+    type
+      Q1 = range[0..10]
+      Q2 = range[0'i8..10'i8]
+      Q3 = range[0'u16..10'u16]
+      X = object
+        m1: Q1
+        m2: Q2
+        m3: Q3
+
+    let
+      obj = X(m1: 1, m2: 2'i8, m3: 3'u16)
+      jsonObj = %obj
+      desObj = to(jsonObj, type(obj))
+
+    doAssert(desObj == obj)
