@@ -73,7 +73,7 @@ proc `=`(x: var string, y: string) =
     # we can shallow copy literals:
     a.p = b.p
   else:
-    let region = if a.p.region != nil: a.p.region else: getLocalAllocator()
+    let region = if a.p != nil and a.p.region != nil: a.p.region else: getLocalAllocator()
     # we have to allocate the 'cap' here, consider
     # 'let y = newStringOfCap(); var x = y'
     # on the other hand... These get turned into moves now.
