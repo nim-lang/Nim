@@ -1327,16 +1327,6 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
-  if m.initProc.gcFrameId > 0:
-    moduleInitRequired = true
-    add(prc, initGCFrame(m.initProc))
-
-  if m.initProc.s(cpsLocals).len > 0:
-    moduleInitRequired = true
-    add(prc, genSectionStart(cpsLocals, m.config))
-    add(prc, m.initProc.s(cpsLocals))
-    add(prc, genSectionEnd(cpsLocals, m.config))
-
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
     # Give this small function its own scope
     addf(prc, "{$N", [])
@@ -1361,6 +1351,19 @@ proc genInitCode(m: BModule) =
       add(prc, m.preInitProc.s(cpsStmts))
       add(prc, genSectionEnd(cpsStmts, m.config))
     addf(prc, "}$N", [])
+
+  # add new scope for following code, because old vcc compiler need variable
+  # be defined at the top of the block
+  addf(prc, "{$N", [])
+  if m.initProc.gcFrameId > 0:
+    moduleInitRequired = true
+    add(prc, initGCFrame(m.initProc))
+
+  if m.initProc.s(cpsLocals).len > 0:
+    moduleInitRequired = true
+    add(prc, genSectionStart(cpsLocals, m.config))
+    add(prc, m.initProc.s(cpsLocals))
+    add(prc, genSectionEnd(cpsLocals, m.config))
 
   if m.initProc.s(cpsInit).len > 0 or m.initProc.s(cpsStmts).len > 0:
     moduleInitRequired = true
@@ -1388,6 +1391,7 @@ proc genInitCode(m: BModule) =
   if m.initProc.gcFrameId > 0:
     moduleInitRequired = true
     add(prc, deinitGCFrame(m.initProc))
+  addf(prc, "}$N", [])
 
   addf(prc, "}$N$N", [])
 
