@@ -326,8 +326,14 @@ proc genWhile(c: PCtx; n: PNode) =
       c.patch(L2)
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
+  let oldRegisterCount = c.prc.maxSlots
   withBlock(n.sons[0].sym):
     c.gen(n.sons[1], dest)
+
+  for i in oldRegisterCount ..< c.prc.maxSlots:
+    if c.prc.slots[i].kind in {slotFixedVar, slotFixedLet}:
+      c.prc.slots[i] = (inUse: false, kind: slotEmpty)
+
   c.clearDest(n, dest)
 
 proc genBreak(c: PCtx; n: PNode) =

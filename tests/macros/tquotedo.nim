@@ -4,6 +4,7 @@ output: '''
 Hallo Welt
 Hallo Welt
 1
+()
 '''
 """
 
@@ -34,3 +35,17 @@ macro t(): untyped =
 t()
 
 echo tp()
+
+
+# https://github.com/nim-lang/Nim/issues/9866
+type
+  # Foo = int # works
+  Foo = object # fails
+
+macro dispatchGen(): untyped =
+  var shOpt: Foo
+  result = quote do:
+    let baz = `shOpt`
+    echo `shOpt`
+
+dispatchGen()

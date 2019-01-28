@@ -203,7 +203,7 @@ proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
     result = absPath
   else:
     let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if absPath.len < relPath.len: absPath else: relPath
+    result = if relPath.count("..") > 2: absPath else: relPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
@@ -432,7 +432,7 @@ proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
 proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
   if i.fileIndex.int32 < 0: return ""
 
-  if not optPreserveOrigSource(conf) and conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
+  if conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
       for line in lines(toFullPath(conf, i)):
         addSourceLine conf, i.fileIndex, line.string

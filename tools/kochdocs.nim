@@ -38,6 +38,15 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
+proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+  ## Execute shell command. Add log folding on Travis CI.
+  # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:start:" & desc.replace(" ", "")
+  exec(cmd, errorcode, additionalPath)
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:end:" & desc.replace(" ", "")
+
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
   # simulate a poor man's virtual environment
@@ -97,6 +106,7 @@ doc/nep1.rst
 doc/nims.rst
 doc/contributing.rst
 doc/codeowners.rst
+doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
@@ -169,8 +179,6 @@ lib/pure/json.nim
 lib/pure/base64.nim
 lib/impure/nre.nim
 lib/impure/nre/private/util.nim
-lib/deprecated/pure/sockets.nim
-lib/deprecated/pure/asyncio.nim
 lib/pure/collections/tables.nim
 lib/pure/collections/sets.nim
 lib/pure/collections/lists.nim

@@ -1,4 +1,4 @@
-import genpacket_enet, sockets, md5, enet
+import genpacket_enet, nativesockets, net, md5, enet
 defPacketImports()
 
 type

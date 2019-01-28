@@ -6922,7 +6922,7 @@ statement as seen in stack backtraces:
   template myassert*(cond: untyped, msg = "") =
     if not cond:
       # change run-time line information of the 'raise' statement:
-      {.line: InstantiationInfo().}:
+      {.line: instantiationInfo().}:
         raise newException(EAssertionFailed, msg)
 
 If the ``line`` pragma is used with a parameter, the parameter needs be a

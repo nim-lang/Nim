@@ -1316,7 +1316,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
       result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
       subtypeCheck()
-      if result <= isConvertible: result = isNone
+      if result <= isIntConv: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
         result = isNilConversion
     elif a.kind == tyNil: result = f.allowsNil

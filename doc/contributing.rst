@@ -1,5 +1,9 @@
+============
 Contributing
 ============
+
+.. contents::
+
 
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
@@ -60,16 +64,17 @@ Compiler
 --------
 
 The tests for the compiler use a testing tool called ``testament``. They are all
-located in ``tests/`` (eg: ``tests/destructor/tdestructor3.nim``).
+located in ``tests/`` (e.g.: ``tests/destructor/tdestructor3.nim``).
 Each test has its own file. All test files are prefixed with ``t``. If you want
 to create a file for import into another test only, use the prefix ``m``.
 
 At the beginning of every test is the expected behavior of the test.
 Possible keys are:
 
-- output: The expected output, most likely via ``echo``
+- cmd: A compilation command template e.g. "nim $target --threads:on $options $file"
+- output: The expected output (stdout + stderr), most likely via ``echo``
 - exitcode: Exit code of the test (via ``exit(number)``)
-- errormsg: The expected error message
+- errormsg: The expected compiler error message
 - file: The file the errormsg was produced at
 - line: The line the errormsg was produced at
 
@@ -115,6 +120,13 @@ list of these, see ``testament/categories.nim``, at the bottom.
 
   ./koch tests c lib
 
+To run a single test:
+
+::
+
+  ./koch tests c <category>/<name>
+
+E.g. ``./koch test run stdlib/thttpclient_ssl``
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on travis/appveyor), you may want to disable your
@@ -397,6 +409,26 @@ Code reviews
 1. Whenever possible, use github's new 'Suggested change' in code reviews, which
    saves time explaining the change or applying it; see also
    https://forum.nim-lang.org/t/4317
+
+2. When reviewing large diffs that may involve code moving around, github's interface
+   doesn't help much as it doesn't highlight moves. Instead you can use something
+   like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
+
+   .. code-block:: sh
+
+      git fetch origin pull/10431/head && git checkout FETCH_HEAD
+      git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+
+3. In addition, you can view github-like diffs locally to identify what was changed
+   within a code block using `diff-highlight` or `diff-so-fancy`, eg:
+
+   .. code-block:: sh
+
+      # put this in ~/.gitconfig:
+      [core]
+        pager = "diff-so-fancy | less -R" # or: use: `diff-highlight`
+
+
 
 .. include:: docstyle.rst
 

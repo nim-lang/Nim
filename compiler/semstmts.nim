@@ -279,7 +279,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     for i in 1..last:
       var it = n.sons[i]
       let j = it.len-1
-      it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
+      if not endsInNoReturn(it.sons[j]):
+        it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
 proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
@@ -432,7 +433,6 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
-  var hasCompileTime = false
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
@@ -440,11 +440,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
     var length = sonsLen(a)
-    var typ: PType
+
+    var typ: PType = nil
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
-    else:
-      typ = nil
+
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
@@ -556,13 +556,12 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else: v.typ = tup
         b.sons[j] = newSymNode(v)
       checkNilable(c, v)
-      if sfCompileTime in v.flags: hasCompileTime = true
+      if sfCompileTime in v.flags:
+        var x = newNodeI(result.kind, v.info)
+        addSon(x, result[i])
+        vm.setupCompileTimeVar(c.module, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
-  if hasCompileTime:
-    vm.setupCompileTimeVar(c.module, c.graph, result)
-    # handled by the VM codegen:
-    #c.graph.recordStmt(c.graph, c.module, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -583,9 +582,19 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def == nil:
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
+
+    if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+      # prevent the all too common 'const x = int' bug:
+      localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
+      def.typ = errorType(c)
+
     # check type compatibility between def.typ and typ:
     if typ != nil:
-      def = fitRemoveHiddenConv(c, typ, def)
+      if typ.isMetaType:
+        def = inferWithMetatype(c, typ, def)
+        typ = def.typ
+      else:
+        def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
     if typ == nil:

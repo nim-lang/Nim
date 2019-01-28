@@ -399,6 +399,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
+    of tyObject:
+      if srctyp.skipTypes(abstractRange).kind != tyObject:
+        internalError(c.config, "invalid object-to-object conversion")
+      # A object-to-object conversion is essentially a no-op
+      moveConst(dest, src)
     else:
       asgnComplex(dest, src)
 
@@ -929,7 +934,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
       decodeB(rkNode)
-      let a = regs[rb].node
+      var a = regs[rb].node
+      if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
