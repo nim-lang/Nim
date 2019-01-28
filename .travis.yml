@@ -42,6 +42,7 @@ before_script:
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
+  - set +e   # prevents breaking after_failure
 
 script:
   - nim c koch
@@ -59,3 +60,6 @@ deploy:                         # https://nim-lang.github.io/Nim
   keep-history: false
   on:
     branch: devel
+
+# Extract failed tests
+after_failure: nim c -r tools/ci_testresults.nim
