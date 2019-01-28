@@ -144,7 +144,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.info = info
     if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
       result.lastSon.info = info
-    when false:
+    when true:
       # this hack is required to
       var x = result
       while x.kind == nkStmtListExpr: x = x.lastSon
@@ -196,4 +196,3 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
-
