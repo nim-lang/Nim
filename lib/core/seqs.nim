@@ -53,7 +53,7 @@ proc `=`[T](x: var seq[T]; y: seq[T]) =
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
 
   if a.p == b.p: return
-  `=destroy`(a)
+  `=destroy`(x)
   a.len = b.len
   if b.p != nil:
     a.p = cast[type(a.p)](alloc(payloadSize(a.len)))
@@ -69,8 +69,7 @@ proc `=sink`[T](x: var seq[T]; y: seq[T]) =
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:
-    # XXX this must be 'x' here!
-    `=destroy`(a)
+    `=destroy`(x)
   a.len = b.len
   a.p = b.p
 

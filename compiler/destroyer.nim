@@ -242,7 +242,10 @@ proc patchHead(n: PNode) =
 
 proc patchHead(s: PSym) =
   if sfFromGeneric in s.flags:
-    patchHead(s.ast[bodyPos])
+    # do not patch the builtin type bound operators for seqs:
+    let dest = s.typ.sons[1].skipTypes(abstractVar)
+    if dest.kind != tySequence:
+      patchHead(s.ast[bodyPos])
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
