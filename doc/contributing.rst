@@ -400,7 +400,7 @@ Code reviews
 
 2. When reviewing large diffs that may involve code moving around, github's interface
    doesn't help much as it doesn't highlight moves. Instead you can use something
-   like this, see visual results [here](https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196):
+   like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
 
    .. code-block:: sh
 
