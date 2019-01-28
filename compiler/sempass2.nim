@@ -353,6 +353,8 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
 
   var branches = 1
   var hasFinally = false
+
+  # Collect the exceptions caught by the except branches
   for i in 1 ..< n.len:
     let b = n.sons[i]
     let blen = sonsLen(b)
@@ -368,12 +370,18 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
           else:
             assert(b.sons[j].kind == nkType)
             catches(tracked, b.sons[j].typ)
+    else:
+      assert b.kind == nkFinally
+  # Add any other exception raised in the except bodies
+  for i in 1 ..< n.len:
+    let b = n.sons[i]
+    let blen = sonsLen(b)
+    if b.kind == nkExceptBranch:
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
       for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i])
     else:
-      assert b.kind == nkFinally
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
       hasFinally = true

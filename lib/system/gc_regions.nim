@@ -257,14 +257,14 @@ proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
-template withScratchRegion*(body: untyped) =
+when false:
   let obs = obstackPtr()
   try:
     body
   finally:
     setObstackPtr(obs)
 
-when false:
+template withScratchRegion*(body: untyped) =
   var scratch: MemRegion
   let oldRegion = tlRegion
   tlRegion = scratch

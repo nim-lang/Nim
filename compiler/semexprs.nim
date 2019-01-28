@@ -1291,7 +1291,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if ty.sons[0] == nil: break
       ty = skipTypes(ty.sons[0], skipPtrs)
     if f != nil:
-      if fieldVisible(c, f):
+      let visibilityCheckNeeded =
+        if n[1].kind == nkSym and n[1].sym == f:
+          false # field lookup was done already, likely by hygienic template or bindSym
+        else: true
+      if not visibilityCheckNeeded or fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
         markUsed(c.config, n.sons[1].info, f, c.graph.usageSym)
         onUse(n.sons[1].info, f)

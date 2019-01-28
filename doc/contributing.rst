@@ -1,5 +1,9 @@
+============
 Contributing
 ============
+
+.. contents::
+
 
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
@@ -67,9 +71,10 @@ to create a file for import into another test only, use the prefix ``m``.
 At the beginning of every test is the expected behavior of the test.
 Possible keys are:
 
-- output: The expected output, most likely via ``echo``
+- cmd: A compilation command template e.g. "nim $target --threads:on $options $file"
+- output: The expected output (stdout + stderr), most likely via ``echo``
 - exitcode: Exit code of the test (via ``exit(number)``)
-- errormsg: The expected error message
+- errormsg: The expected compiler error message
 - file: The file the errormsg was produced at
 - line: The line the errormsg was produced at
 
@@ -120,7 +125,7 @@ To run a single test:
 ::
 
   ./koch tests c <category>/<name>
-  
+
 E.g. ``./koch test run stdlib/thttpclient_ssl``
 
 For reproducible tests (to reproduce an environment more similar to the one
