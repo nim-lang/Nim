@@ -51,15 +51,12 @@ proc `=destroy`(s: var string) =
   a.len = 0
   a.p = nil
 
-template lose(a) =
-  frees(a)
-
 proc `=sink`(x: var string, y: string) =
   var a = cast[ptr NimStringV2](addr x)
   var b = cast[ptr NimStringV2](unsafeAddr y)
   # we hope this is optimized away for not yet alive objects:
   if unlikely(a.p == b.p): return
-  lose(a)
+  frees(a)
   a.len = b.len
   a.p = b.p
 
@@ -67,7 +64,7 @@ proc `=`(x: var string, y: string) =
   var a = cast[ptr NimStringV2](addr x)
   var b = cast[ptr NimStringV2](unsafeAddr y)
   if unlikely(a.p == b.p): return
-  lose(a)
+  frees(a)
   a.len = b.len
   if isLiteral(b):
     # we can shallow copy literals:
