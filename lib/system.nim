@@ -3566,7 +3566,7 @@ when not defined(JS): #and not defined(nimscript):
       var res = TaintedString(newStringOfCap(80))
       while f.readLine(res): yield res
 
-    iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
+    iterator lines*(f: File = stdin): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.
       ##
       ## The trailing newline character(s) are removed from the iterated lines.
