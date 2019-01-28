@@ -69,6 +69,7 @@ proc `=sink`[T](x: var seq[T]; y: seq[T]) =
   var a = cast[ptr NimSeqV2[T]](addr x)
   var b = cast[ptr NimSeqV2[T]](unsafeAddr y)
   if a.p != nil and a.p != b.p:
+    # XXX this must be 'x' here!
     `=destroy`(a)
   a.len = b.len
   a.p = b.p

@@ -136,6 +136,7 @@ proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inlin
   if src.len > 0:
     # also copy the \0 terminator:
     copyMem(unsafeAddr dest.p.data[dest.len], unsafeAddr src.p.data[0], src.len+1)
+    inc dest.len, src.len
 
 proc appendChar(dest: var NimStringV2; c: char) {.compilerproc, inline.} =
   dest.p.data[dest.len] = c
