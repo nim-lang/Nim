@@ -363,7 +363,7 @@ proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil and x.elems == 0
 
 proc assign*(dest: var IntSet, src: IntSet) =
   ## Copies `src` to `dest`.
-  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet,>`_.
+  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet>`_.
   runnableExamples:
     var
       a = initIntSet()

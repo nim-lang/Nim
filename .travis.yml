@@ -42,9 +42,12 @@ before_script:
   - cd ..
   - export PATH=$(pwd)/bin${PATH:+:$PATH}
   - echo PATH:${PATH}
+  - set +e   # prevents breaking after_failure
 
 script:
+  - echo "travis_fold:start:nim_c_koch"
   - nim c koch
+  - echo "travis_fold:end:nim_c_koch"
   - ./koch runCI
 
 before_deploy:
@@ -59,3 +62,6 @@ deploy:                         # https://nim-lang.github.io/Nim
   keep-history: false
   on:
     branch: devel
+
+# Extract failed tests
+after_failure: nim c -r tools/ci_testresults.nim

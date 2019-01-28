@@ -1,5 +1,6 @@
 system.echo#[!]#
 system.once
+system.`$` 1
 
 discard """
 $nimsuggest --tester $file
@@ -9,4 +10,5 @@ highlight;;skProc;;1;;7;;4
 highlight;;skTemplate;;2;;7;;4
 highlight;;skTemplate;;2;;7;;4
 highlight;;skTemplate;;2;;7;;4
+highlight;;skProc;;3;;8;;1
 """

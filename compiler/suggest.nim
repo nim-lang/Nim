@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches, lineinfos, pathutils
-from wordrecg import wDeprecated, wError
+from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -109,7 +109,11 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
         result.qualifiedPath.add(ow2.origModuleName)
       if ow != nil:
         result.qualifiedPath.add(ow.origModuleName)
-    result.qualifiedPath.add(s.name.s)
+    if s.name.s[0] in OpChars + {'[', '{', '('} or
+       s.name.id in ord(wAddr)..ord(wYield):
+      result.qualifiedPath.add('`' & s.name.s & '`')
+    else:
+      result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
       result.forth = typeToString(s.typ)
