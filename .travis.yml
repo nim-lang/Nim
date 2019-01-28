@@ -45,7 +45,9 @@ before_script:
   - set +e   # prevents breaking after_failure
 
 script:
+  - echo "travis_fold:start:nim_c_koch"
   - nim c koch
+  - echo "travis_fold:end:nim_c_koch"
   - ./koch runCI
 
 before_deploy:

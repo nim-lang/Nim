@@ -42,10 +42,10 @@ proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath =
   ## Execute shell command. Add log folding on Travis CI.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   if existsEnv("TRAVIS"):
-    echo "travis_fold:start:" & desc.replace(" ", "")
+    echo "travis_fold:start:" & desc.replace(" ", "_")
   exec(cmd, errorcode, additionalPath)
   if existsEnv("TRAVIS"):
-    echo "travis_fold:end:" & desc.replace(" ", "")
+    echo "travis_fold:end:" & desc.replace(" ", "_")
 
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
@@ -68,6 +68,11 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
   let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
+
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
+  let output = outputDir / input.splitFile.name.exe
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  execFold(desc, cmd)
 
 const
   pdf = """
