@@ -3049,6 +3049,19 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+when defined(nimNewRoof):
+  iterator `..<`*[T](a, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+else:
+  iterator `..<`*[S, T](a: S, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+
 when not defined(JS):
   proc likelyProc(val: bool): bool {.importc: "likely", nodecl, nosideeffect.}
   proc unlikelyProc(val: bool): bool {.importc: "unlikely", nodecl, nosideeffect.}
@@ -3144,7 +3157,7 @@ when not defined(JS): #and not defined(nimscript):
   # ----------------- IO Part ------------------------------------------------
   type
     CFile {.importc: "FILE", header: "<stdio.h>",
-            final, incompletestruct.} = object
+            incompletestruct.} = object
     File* = ptr CFile ## The type representing a file handle.
 
     FileMode* = enum           ## The file mode when opening a file.
@@ -3392,6 +3405,10 @@ when not defined(JS): #and not defined(nimscript):
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 
+  when defined(gcDestructors) and not defined(nimscript):
+    include "core/strs"
+    include "core/seqs"
+
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -3482,10 +3499,6 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
-
-    when defined(gcDestructors):
-      include "core/strs"
-      include "core/seqs"
 
     when hostOS == "standalone":
       include "system/embedded"
@@ -3715,19 +3728,6 @@ template `..^`*(a, b: untyped): untyped =
 template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a .. (when b is BackwardsIndex: succ(b) else: pred(b))'.
   a .. (when b is BackwardsIndex: succ(b) else: pred(b))
-
-when defined(nimNewRoof):
-  iterator `..<`*[T](a, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
-else:
-  iterator `..<`*[S, T](a: S, b: T): T =
-    var i = T(a)
-    while i < b:
-      yield i
-      inc i
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:

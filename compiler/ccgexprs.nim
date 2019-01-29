@@ -460,7 +460,7 @@ proc binaryStmtAddr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   if d.k != locNone: internalError(p.config, e.info, "binaryStmtAddr")
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  lineCg(p, cpsStmts, frmt, addrLoc(p.config, a), rdLoc(b))
+  lineCg(p, cpsStmts, frmt, byRefLoc(p, a), rdLoc(b))
 
 proc unaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -1028,7 +1028,7 @@ proc gcUsage(conf: ConfigRef; n: PNode) =
 
 proc strLoc(p: BProc; d: TLoc): Rope =
   if p.config.selectedGc == gcDestructors:
-    result = addrLoc(p.config, d)
+    result = byRefLoc(p, d)
   else:
     result = rdLoc(d)
 
@@ -1110,7 +1110,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
                         strLoc(p, dest), rdLoc(a)))
   if p.config.selectedGC == gcDestructors:
     linefmt(p, cpsStmts, "#prepareAdd($1, $2$3);$n",
-            addrLoc(p.config, dest), lens, rope(L))
+            byRefLoc(p, dest), lens, rope(L))
   else:
     initLoc(call, locCall, e, OnHeap)
     call.r = ropecg(p.module, "#resizeString($1, $2$3)", [rdLoc(dest), lens, rope(L)])
