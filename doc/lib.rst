@@ -92,7 +92,7 @@ Collections and algorithms
   The underlying implementation uses a ``seq``.
 
 * `heapqueue <heapqueue.html>`_
-  This module implements Heap queue (a.k.a. priority queue) algorithm.
+  Implementation of a heap data structure that can be used as a priority queue.
 
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.

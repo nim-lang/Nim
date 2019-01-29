@@ -139,7 +139,7 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
     of def:
       if c.g[pc].sym == s:
         # the path lead to a redefinition of 's' --> abandon it.
-        return pc
+        return high(int) 
       inc pc
     of use:
       if c.g[pc].sym == s:
@@ -150,14 +150,16 @@ proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      let variantA = isLastRead(s, c, pc+1, pc)
+      var variantA = isLastRead(s, c, pc+1, pc)
       if variantA < 0: return -1
       let variantB = isLastRead(s, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
-      pc = variantA+1
+      elif variantA == high(int): 
+        variantA = variantB
+      pc = variantA
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc
+      if dest == comesFrom: return pc + 1
       inc pc
   return pc
 
