@@ -3,7 +3,6 @@ discard """
 """
 import bitops
 
-
 proc main() =
   const U8 = 0b0011_0010'u8
   const I8 = 0b0011_0010'i8
@@ -79,25 +78,6 @@ proc main() =
   doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
   doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
 
-  static :
-    # test bitopts at compile time with vm
-    doAssert( U8.fastLog2 == 5)
-    doAssert( I8.fastLog2 == 5)
-    doAssert( U8.countLeadingZeroBits == 2)
-    doAssert( I8.countLeadingZeroBits == 2)
-    doAssert( U8.countTrailingZeroBits == 1)
-    doAssert( I8.countTrailingZeroBits == 1)
-    doAssert( U8.firstSetBit == 2)
-    doAssert( I8.firstSetBit == 2)
-    doAssert( U8.parityBits == 1)
-    doAssert( I8.parityBits == 1)
-    doAssert( U8.countSetBits == 3)
-    doAssert( I8.countSetBits == 3)
-    doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
-    doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
-
-
-
   template test_undefined_impl(ffunc: untyped; expected: int; is_static: bool) =
     doAssert( ffunc(0'u8) == expected)
     doAssert( ffunc(0'i8) == expected)
@@ -141,26 +121,6 @@ proc main() =
     doAssert( U32.rotateRightBits(32) == U32)
     doAssert( U64A.rotateLeftBits(64) == U64A)
     doAssert( U64A.rotateRightBits(64) == U64A)
-
-    static:    # check for undefined behavior with rotate by zero.
-      doAssert( U8.rotateLeftBits(0) == U8)
-      doAssert( U8.rotateRightBits(0) == U8)
-      doAssert( U16.rotateLeftBits(0) == U16)
-      doAssert( U16.rotateRightBits(0) == U16)
-      doAssert( U32.rotateLeftBits(0) == U32)
-      doAssert( U32.rotateRightBits(0) == U32)
-      doAssert( U64A.rotateLeftBits(0) == U64A)
-      doAssert( U64A.rotateRightBits(0) == U64A)
-
-      # check for undefined behavior with rotate by integer width.
-      doAssert( U8.rotateLeftBits(8) == U8)
-      doAssert( U8.rotateRightBits(8) == U8)
-      doAssert( U16.rotateLeftBits(16) == U16)
-      doAssert( U16.rotateRightBits(16) == U16)
-      doAssert( U32.rotateLeftBits(32) == U32)
-      doAssert( U32.rotateRightBits(32) == U32)
-      doAssert( U64A.rotateLeftBits(64) == U64A)
-      doAssert( U64A.rotateRightBits(64) == U64A)
 
   block:
     # mask operations
@@ -222,3 +182,6 @@ proc main() =
   echo "OK"
 
 main()
+static:
+  # test everything on vm as well
+  main()

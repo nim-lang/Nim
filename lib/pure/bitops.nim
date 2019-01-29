@@ -328,6 +328,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return -1
   when nimvm:
+    # TODO: here is a bug on the vm
     when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
     else:                result = fastlog2_nim(x.uint64)
   else:
