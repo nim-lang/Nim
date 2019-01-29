@@ -12,7 +12,7 @@
 
 {.deadCodeElim: on.}  # dce option deprecated
 
-when defined(Posix):
+when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 var
