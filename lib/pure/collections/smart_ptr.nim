@@ -14,6 +14,7 @@ type
     val: ptr tuple[value: T, allocator: Allocator]
 
 proc `=destroy`*[T](p: var UniquePtr[T]) =
+  mixin `=destroy`
   if p.val != nil:
     `=destroy`(p.val[])
     p.val.allocator.dealloc(p.val.allocator, p.val, sizeof(p.val[]))
@@ -58,6 +59,7 @@ type
     val: ptr tuple[value: T, atomicCounter: int, allocator: Allocator]
 
 proc `=destroy`*[T](p: var SharedPtr[T]) =
+  mixin `=destroy`
   if p.val != nil:
     let c = atomicDec(p.val[].atomicCounter)
     if c == 0:
