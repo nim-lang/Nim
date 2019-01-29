@@ -447,7 +447,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
-      let debug = a.sons[length-1].kind == nkIdent and a.sons[length-1].ident.s == "mooboo"
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
         localError(c.config, def.info, "cannot assign macro symbol to variable here. Forgot to invoke the macro with '()'?")
