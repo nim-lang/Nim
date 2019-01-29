@@ -35,7 +35,6 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
       assert osErrorMsg(OSErrorCode(0)) == ""
       assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
       assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"
-      assert osErrorMsg(OSErrorCode(-1)) == "Unknown error -1"
 
   result = ""
   when defined(nimscript):
