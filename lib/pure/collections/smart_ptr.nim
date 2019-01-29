@@ -35,7 +35,7 @@ proc newUniquePtr*[T](val: sink T): UniquePtr[T] =
   result.val.allocator = a
 
 converter convertUniquePtrToObj*[T](p: UniquePtr[T]): var T {.inline.} =
-  result = p.val.value
+  p.val.value
 
 proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
   p.val == nil
@@ -89,7 +89,7 @@ proc newSharedPtr*[T](val: sink T): SharedPtr[T] =
   result.val.allocator = a
 
 converter convertSharedPtrToObj*[T](p: SharedPtr[T]): var T {.inline.} =
-  result = p.val.value
+  p.val.value
 
 proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
   p.val == nil
@@ -115,7 +115,7 @@ proc newConstPtr*[T](val: sink T): ConstPtr[T] =
   ConstPtr[T](newSharedPtr(val))
 
 converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
-  result = p.val.value
+  p.val.value
 
 proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
   p.val == nil
