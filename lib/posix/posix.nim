@@ -672,13 +672,14 @@ type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
     ru_nsignals*, ru_nvcsw*, ru_nivcsw*: clong        # switching activity
 
 proc wait4*(pid: Pid, status: ptr cint, options: cint, rusage: ptr Rusage): Pid
-  {.importc, header: "<sys/wait.h>", discardable.}
+  {.importc, header: "<sys/wait.h>".}
 
 const
   RUSAGE_SELF* = cint(0)
   RUSAGE_CHILDREN* = cint(-1)
   RUSAGE_THREAD* = cint(1)    # This one is less std; Linux, BSD agree though.
 
+# This can only fail if `who` is invalid or `rusage` ptr is invalid.
 proc getrusage*(who: cint, rusage: ptr Rusage): cint
   {.importc, header: "<sys/resource.h>", discardable.}
 
