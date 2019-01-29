@@ -2024,7 +2024,7 @@ template `>%`*(x, y: untyped): untyped = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
 
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
+proc `$`*(x: uint | int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
