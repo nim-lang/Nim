@@ -71,7 +71,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     endBlock(p)
     # check with the boolean if the initializing code for the tuple should be ran
     lineCg(p, cpsStmts, "if ($1)$n", hcrCond)
-    p.blocks[startBlock(p)].label = "// init tuple".rope
+    startBlock(p)
   defer:
     if forHcr:
       # end the block where the tuple gets initialized
@@ -87,7 +87,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     if forHcr:
       # reopen the guarding of code with nim_hcr_do_init_
       lineCg(p, cpsStmts, "if (nim_hcr_do_init_)$n")
-      p.blocks[startBlock(p)].label = "// nim_hcr_do_init_".rope
+      startBlock(p)
 
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
@@ -367,12 +367,12 @@ proc genSingleVar(p: BProc, a: PNode) =
     endBlock(targetProc)
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
-    p.blocks[startBlock(targetProc)].label = "// hcrRegisterGlobal".rope
+    startBlock(targetProc)
   defer:
     if forHcr:
       endBlock(targetProc)
       lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_)$n")
-      p.blocks[startBlock(targetProc)].label = "// nim_hcr_do_init_".rope
+      startBlock(targetProc)
   
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)

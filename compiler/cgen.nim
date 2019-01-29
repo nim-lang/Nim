@@ -1749,7 +1749,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
       else:
         if not stmtShouldExecute:
           line(p, cpsStmts, "if (nim_hcr_do_init_)\n")
-          p.blocks[startBlock(p)].label = "// nim_hcr_do_init_".rope
+          startBlock(p)
           inGuardedBlock = true
 
       genStmts(p, stmt)
