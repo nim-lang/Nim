@@ -246,7 +246,7 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
-    renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
+    renderRstToOut(d[], parseRst(n.comment, toFullPath(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
