@@ -163,7 +163,7 @@ proc bundleNimsuggest() =
   nimCompile("nimsuggest/nimsuggest.nim", options = "-d:release")
 
 proc buildVccTool() =
-  nimCompile("tools/vccexe/vccexe.nim")
+  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim")
 
 proc bundleWinTools() =
   # TODO: consider building under `bin` instead of `.`
@@ -208,10 +208,10 @@ proc buildTool(toolname, args: string) =
 
 proc buildTools() =
   bundleNimsuggest()
-  nimCompile("tools/nimgrep.nim", options = "-d:release")
+  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
-  nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
-  nimCompile("tools/nimfind.nim", options = "-d:release")
+  nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim", options = "-d:release")
+  nimCompileFold("Compile nimfind", "tools/nimfind.nim", options = "-d:release")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
