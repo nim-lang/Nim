@@ -76,21 +76,21 @@ the context.
 A Nim `program`:idx: consists of one or more text `source files`:idx: containing
 Nim code. It is processed by a Nim `compiler`:idx: into an `executable`:idx:.
 The nature of this executable depends on the compiler implementation; it may,
-for example, be a native binary or JavaScript source code. A Nim program can
-contain Nim code that will be executed at `compile time`:idx:, such as constant
-expressions, macro definitions, and Nim procedures used by macro definitions.
-Typically, the bulk of a Nim program's code is compiled into the executable and
-executed at `runtime`:idx:. Only a subset of the Nim language is supported at
-compile time, but it is a substantial subset. See `Restrictions on
+for example, be a native binary or JavaScript source code. In addition to the
+code that is compiled into the executable and executed at `runtime`:idx:,
+a Nim program can contain Nim code that will be executed at `compile time`:idx:.
+This can include constant expressions, macro definitions, and Nim procedures 
+used by macro definitions. Most of the Nim language is supported at
+compile time, but there are some restrictions -- see `Restrictions on
 Compile-Time Execution <restrictions-on-compile-time-execution>`_ for details.
 
 The compiler parses Nim source code into an internal data structure called the
 `abstract syntax tree`:idx: (`AST`:idx). Then, before executing the code or
 processing it into the executable, it transforms the AST through `semantic
-analysis`:idx:. This adds considerable semantic information to the AST, such as
-expression types, identifier meanings, and in some cases expression values. An
-error detected during semantic analysis is called a `static error`:idx:. Errors
-mentioned in this manual are static errors when not otherwise specified.
+analysis`:idx:. This adds semantic information such as expression types,
+identifier meanings, and in some cases expression values. An error detected
+during semantic analysis is called a `static error`:idx:. Errors described in
+this manual are static errors when not otherwise specified.
 
 An error detected during code execution (whether at compile time or at runtime)
 is a `checked execution error`:idx:. The method for reporting such errors is via
@@ -98,10 +98,10 @@ is a `checked execution error`:idx:. The method for reporting such errors is via
 provides a means to disable these `execution-time checks`:idx:. See the section
 pragmas_ for details.
 
-Whether a checked execution error results in an exception or in a fatal error 
-is implementation specific. Thus the following program is invalid; even
-though it purports to catch the `IndexError` from an out-of-bounds array access,
-the compiler may instead choose to allow execution to die with a fatal error.
+Whether a checked execution error results in an exception or in a fatal error is
+implementation specific. Thus the following program is invalid; even though the
+code purports to catch the `IndexError` from an out-of-bounds array access, the
+compiler may instead choose to allow execution to die with a fatal error.
 
 .. code-block:: nim
   var a: array[0..1, char]
@@ -119,8 +119,8 @@ language features are used and if no execution-time checks are disabled.
 A `constant expression`:idx: is an expression whose value can be computed during
 semantic analysis of the code in which it appears. It is never an l-value and
 never has side effects. Constant expressions are not limited to the capabilities
-of semantic analysis, such as constant folding; they can use the substantial
-subset of the Nim language that is supported at compile time. Since constant
+of semantic analysis, such as constant folding; they can use all Nim language
+features that are supported for compile-time execution. Since constant
 expressions can be used as an input to semantic analysis (such as for defining
 array bounds), this flexibility requires the compiler to interleave semantic
 analysis and compile-time code execution.
@@ -713,30 +713,32 @@ A `constant`:idx: is a symbol that is bound to the value of a `constant
 expression`. This is an expression whose value can be computed during
 semantic analysis of the code in which it appears. However, constant 
 expressions are not limited to the capabilities of semantic analysis; they
-can use the substantial subset of the Nim language that is supported for
+can use all Nim language features that are supported for
 compile-time execution. Compile-time execution is interleaved with semantic
 analysis as necessary. A constant's value cannot change after it is first 
 computed.
 
-A constant expression must be composed of the following elements:
+Constant expressions can only depend on the following values and operations
+that are either built into the language or available during compilation of 
+the constant expression:
 
 * literals
+* built-in operators
 * previously declared constants and compile-time variables
 * previously declared macros and templates
 * previously declared procedures that have no side effects beyond 
   possibly modifying compile-time variables
-* operators representing such procedures
-* code blocks that can internally use all Nim features supported at
-  compile time (the next section below), but that cannot
-  refer to any external values beyond those listed above
 
-Constant expressions must adhere to the restrictions on compile-time 
-execution described in `Restrictions on
-Compile-Time Execution <restrictions-on-compile-time-execution>`_.
+A constant expression can contain code blocks that may internally use all Nim
+features supported at compile time (as detailed in the next section below), 
+but that cannot refer to any external values beyond those listed above.
 
-For example, the following code echoes the beginning of the Fibonacci 
-series **at compile time**. This is a demonstration of flexibility in
-defining constants, not a recommended style for solving this problem!
+The ability to access and modify compile-time variables adds flexibility to
+constant expressions that may be surprising to those coming from other
+statically typed languages. For example, the following code echoes the beginning
+of the Fibonacci series **at compile time**. (This is a demonstration of
+flexibility in defining constants, not a recommended style for solving this
+problem!)
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -760,11 +762,9 @@ defining constants, not a recommended style for solving this problem!
 
   const display_fib = block:
     const f2 = next_fib()
-    var result = fmt"Fibonacci sequence: {f0}, {f1}, {f2}, "
-    for i in 0..10:
-      if i > 0:
-        add(result, ", ")
-      add(result, $next_fib())
+    var result = fmt"Fibonacci sequence: {f0}, {f1}, {f2}"
+    for i in 3..12:
+      add(result, fmt", {next_fib()}")
     result
 
   static:
@@ -779,8 +779,8 @@ language features:
 
 * methods
 * closure iterators
-* ``cast``
-* ``ptr``s or ``ref``s
+* the ``cast`` operator
+* reference (pointer) types
 * the FFI
 
 Some or all of these restrictions are likely to be lifted over time.
@@ -923,8 +923,8 @@ lowest and highest value of the type:
 to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
 NaN does not belong to any subrange of floating point types.
 Assigning any other value to a variable of type ``Subrange`` is a
-checked execution error (or static error if it can be statically
-determined). Assignments from the base type to one of its subrange types
+checked execution error (or static error if it can be determined during
+semantic analysis). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
 A subrange type has the same size as its base type (``int`` in the
@@ -1223,9 +1223,9 @@ tuples, objects and sets belong to the structured types.
 
 Array and sequence types
 ------------------------
-Arrays are a homogeneous type, meaning that each element in the array
-has the same type. Arrays always have a fixed length which is known during
-semantic analysis (except for open arrays). They can be indexed by any ordinal type.
+Arrays are a homogeneous type, meaning that each element in the array has the
+same type. Arrays always have a fixed length specified as a constant expression
+(except for open arrays). They can be indexed by any ordinal type.
 A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``. The element type of this array expression is
@@ -1430,10 +1430,10 @@ can also be defined with indentation instead of ``[]``:
       name: string   # a person consists of a name
       age: natural   # and an age
 
-Objects provide many features that tuples do not. Object provide inheritance
-and information hiding. Objects have access to their type during execution, so that
-the ``of`` operator can be used to determine the object's type. The ``of`` operator
-is similar to the ``instanceof`` operator in Java.
+Objects provide many features that tuples do not. Object provide inheritance and
+information hiding. Objects have access to their type during execution, so that
+the ``of`` operator can be used to determine the object's type. The ``of``
+operator is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
   type
@@ -1528,8 +1528,8 @@ In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. For an object
 branch switch ``system.reset`` has to be used. Also, when the fields of a
-particular branch are specified during object construction, the correct value
-for the discriminator must be available for semantic analysis.
+particular branch are specified during object construction, the corresponding
+discriminator value must be specified as a constant expression.
 
 Package level objects
 ---------------------
@@ -2842,7 +2842,7 @@ For non ordinal types it is not possible to list every possible value and so
 these always require an ``else`` part.
 
 Because case statements are checked for exhaustiveness during semantic analysis, 
-the value in every ``of`` branch must be computable during analysis. 
+the value in every ``of`` branch must be a constant expression. 
 This restriction also allows the compiler to generate more performant code.
 
 As a special semantic extension, an expression in an ``of`` branch of a case
@@ -4207,8 +4207,8 @@ The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
-that terminates the whole process. Exceptions that indicate any other execution error
-that can be caught inherit from ``system.CatchableError``
+that terminates the whole process. Exceptions that indicate any other execution
+error that can be caught inherit from ``system.CatchableError``
 (which is a subtype of ``Exception``).
 
 
@@ -4445,8 +4445,9 @@ a `type variable`:idx:.
 Is operator
 -----------
 
-The ``is`` operator checks for type equivalence during semantic analysis. It is
-therefore very useful for type specialization within generic code:
+The ``is`` operator is evaluated during semantic analysis to check for type 
+equivalence. It is therefore very useful for type specialization within generic 
+code:
 
 .. code-block:: nim
   type
@@ -5741,8 +5742,7 @@ static[T]
 
 **Note**: static[T] is still in development.
 
-As their name suggests, static parameters must be computable during 
-semantic analysis:
+As their name suggests, static parameters must be constant expressions:
 
 .. code-block:: nim
 
@@ -5754,8 +5754,7 @@ semantic analysis:
                           # regex, stored in a global variable
 
   precompiledRegex(paramStr(1)) # Error, command-line options
-                                # are not computable during 
-                                # semantic analysis
+                                # are not constant expressions
 
 
 For the purposes of code generation, all static params are treated as
@@ -5779,11 +5778,11 @@ Static params can also appear in the signatures of generic types:
 
 Please note that ``static T`` is just a syntactic convenience for the underlying
 generic type ``static[T]``. The type param can be omitted to obtain the type
-class of all values computable during semantic analysis. A more specific type
-class can be created by instantiating ``static`` with another type class.
+class of all constant expressions. A more specific type class can be created by
+instantiating ``static`` with another type class.
 
-You can force the evaluation of a certain expression during semantic analysis by
-coercing it to a corresponding ``static`` type:
+You can force an expression to be evaluated at compile time as a constant
+expression by coercing it to a corresponding ``static`` type:
 
 .. code-block:: nim
   import math
@@ -6960,8 +6959,8 @@ structure:
 
 pure pragma
 -----------
-An object type can be marked with the ``pure`` pragma so that its type
-field which is used for execution-time type identification is omitted. This used to be
+An object type can be marked with the ``pure`` pragma so that its type field
+which is used for execution-time type identification is omitted. This used to be
 necessary for binary compatibility with other compiled languages.
 
 An enum type can be marked as ``pure``. Then access of its fields always
