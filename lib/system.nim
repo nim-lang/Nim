@@ -4407,7 +4407,7 @@ template doAssertRaises*(exception: typedesc, code: untyped): typed =
       wrong = true
     except exception:
       discard
-    except Exception as exc:
+    except Exception:
       raiseAssert(astToStr(exception) &
                   " wasn't raised, another error was raised instead by:\n"&
                   astToStr(code))
