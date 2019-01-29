@@ -58,29 +58,33 @@ proc genVarTuple(p: BProc, n: PNode) =
       genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
       return
 
-  var hcrCond: Rope
-  var hcrGlobals: seq[tuple[loc: TLoc, tp: Rope]]
   # check only the first son
-  let s0 = n.sons[0].sym
-  let forHcr = p.hcrOn and sfThread notin s0.flags and ({lfNoDecl, lfHeader} * s0.loc.flags == {})
+  var forHcr = treatGlobalDifferentlyForHCR(p.module, n.sons[0].sym)
+  let hcrCond = if forHcr: getTempName(p.module) else: nil
+  var hcrGlobals: seq[tuple[loc: TLoc, tp: Rope]]
+  # determine if the tuple is constructed at top-level scope or inside of a block (if/while/block)
+  let isGlobalInBlock = forHcr and p.blocks.len > 2
+  # do not close and reopen blocks if this is a 'global' but inside of a block (if/while/block)
+  forHcr = forHcr and not isGlobalInBlock
 
   if forHcr:
     endBlock(p)
     # check with the boolean if the initializing code for the tuple should be ran
-    hcrCond = getTempName(p.module)
     lineCg(p, cpsStmts, "if ($1)$n", hcrCond)
     p.blocks[startBlock(p)].label = "// init tuple".rope
   defer:
     if forHcr:
       # end the block where the tuple gets initialized
       endBlock(p)
+    if forHcr or isGlobalInBlock:
       # insert the registration of the globals for the different parts of the tuple at the
       # start of the current scope (after they have been iterated) and init a boolean to
       # check if any of them is newly introduced and the initializing code has to be ran
       lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", hcrCond)
       for curr in hcrGlobals:
         lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-               hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, s0), curr.tp)
+               hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n.sons[0].sym), curr.tp)
+    if forHcr:
       # reopen the guarding of code with nim_hcr_do_init_
       lineCg(p, cpsStmts, "if (nim_hcr_do_init_)$n")
       p.blocks[startBlock(p)].label = "// nim_hcr_do_init_".rope
@@ -109,7 +113,8 @@ proc genVarTuple(p: BProc, n: PNode) =
       if t.n.sons[i].kind != nkSym: internalError(p.config, n.info, "genVarTuple")
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n.sons[i].sym)]
     putLocIntoDest(p, v.loc, field)
-    hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
+    if forHcr or isGlobalInBlock:
+      hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false)
 

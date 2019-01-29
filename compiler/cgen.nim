@@ -453,8 +453,8 @@ include ccgthreadvars
 proc varInDynamicLib(m: BModule, sym: PSym)
 
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
-  return m.hcrOn and sfThread notin s.flags and #s.owner.kind == skModule and
-      ({lfNoDecl, lfHeader} * s.loc.flags == {}) and s.loc.k == locGlobalVar
+  return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and #s.owner.kind == skModule and
+      ({lfNoDecl, lfHeader} * s.loc.flags == {}) # and s.loc.k == locGlobalVar
 
 proc assignGlobalVar(p: BProc, n: PNode) =
   let s = n.sym
@@ -495,7 +495,7 @@ proc assignGlobalVar(p: BProc, n: PNode) =
     if treatGlobalDifferentlyForHCR(p.module, s):
       # no need to pass a valid marker here because right after this a second call to
       # hcrRegisterGlobal will be placed and it will update it with a marker properly
-      lineCg(p, cpsStmts, "hcrRegisterGlobal($3, \"$1\", sizeof($2), NULL, (void**)&$1);$n",
+      lineCg(p, cpsLocals, "hcrRegisterGlobal($3, \"$1\", sizeof($2), NULL, (void**)&$1);$n",
              s.loc.r, rdLoc(s.loc), getModuleDllPath(p.module, s))
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
