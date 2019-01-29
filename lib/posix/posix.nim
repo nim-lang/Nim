@@ -664,7 +664,7 @@ proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
   importc, header: "<sys/wait.h>".}
 
 type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
-               pure, final.} = object
+               bycopy.} = object
   ru_utime*, ru_stime*: Timeval                       # User and system time
   ru_maxrss*, ru_ixrss*, ru_idrss*, ru_isrss*,        # memory sizes
     ru_minflt*, ru_majflt*, ru_nswap*,                # paging activity
