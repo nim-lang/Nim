@@ -866,7 +866,8 @@ when not defined(useNimRtl):
     else:
       # this caused memory leaks, see #10488 ; find a way without `repr`
       # maybe using a local copy of strutils.toHex or snprintf
-      # result.add "[GC] stack bottom: " & gch.stack.bottom.repr
+      when defined(logGC):
+        result.add "[GC] stack bottom: " & gch.stack.bottom.repr
       result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
 {.pop.} # profiler: off, stackTrace: off
