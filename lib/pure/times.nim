@@ -224,9 +224,6 @@ elif defined(posix):
     cpuClockId
       {.importc: "CLOCK_THREAD_CPUTIME_ID", header: "<time.h>".}: Clockid
 
-  proc gettimeofday(tp: var Timeval, unused: pointer = nil)
-      {.importc: "gettimeofday", header: "<sys/time.h>".}
-
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
     when not defined(valgrind_workaround_10121):
@@ -1110,12 +1107,6 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     let nanos = convert(Milliseconds, Nanoseconds,
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
-  # I'm not entirely certain if freebsd needs to use `gettimeofday`.
-  elif defined(macosx) or defined(freebsd):
-    var a: Timeval
-    gettimeofday(a)
-    result = initTime(a.tv_sec.int64,
-                      convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(realTimeClockId, ts)
@@ -2449,9 +2440,10 @@ when not defined(JS):
       ##
       ## ``getTime`` should generally be prefered over this proc.
       when defined(posix):
-        var a: Timeval
-        gettimeofday(a)
-        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+        var ts: Timespec
+        discard clock_gettime(realTimeClockId, ts)
+        result = toBiggestFloat(ts.tv_sec.int64) +
+          toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
       elif defined(windows):
         var f: winlean.FILETIME
         getSystemTimeAsFileTime(f)
