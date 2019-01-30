@@ -715,6 +715,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
 
     when defined(windows):
       var objfiles = objfiles.replace(r"\", r"\\")
+      exefile = objfiles.replace(r"\", r"\\")
 
     var commands: string
     commands = commands % ["builddll", builddll,
