@@ -1498,6 +1498,21 @@ proc genInitCode(m: BModule) =
     appcg(m, m.s[cfsTypeInit1], "static #TNimType $1[$2];$n",
           [m.nimTypesName, rope(m.nimTypes)])
 
+  if m.hcrOn:
+    addf(prc, "\tint* nim_hcr_dummy_ = 0;$n" &
+              "\tNIM_BOOL nim_hcr_do_init_ = " &
+                  "hcrRegisterGlobal($1, \"module_initialized_\", 1, NULL, (void**)&nim_hcr_dummy_);$n",
+      [getModuleDllPath(m, m.module)])
+
+  template writeSection(thing: untyped, section: TCProcSection, addHcrGuards = false) =
+    if m.thing.s(section).len > 0:
+      moduleInitRequired = true
+      if addHcrGuards: add(prc, "\tif (nim_hcr_do_init_) {\n\n")
+      add(prc, genSectionStart(section, m.config))
+      add(prc, m.thing.s(section))
+      add(prc, genSectionEnd(section, m.config))
+      if addHcrGuards: add(prc, "\n\t} // nim_hcr_do_init_\n")
+
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
     # Give this small function its own scope
     addf(prc, "{$N", [])
@@ -1516,11 +1531,7 @@ proc genInitCode(m: BModule) =
     moduleInitRequired = true
     add(prc, initGCFrame(m.initProc))
 
-  if m.initProc.s(cpsLocals).len > 0:
-    moduleInitRequired = true
-    add(prc, genSectionStart(cpsLocals, m.config))
-    add(prc, m.initProc.s(cpsLocals))
-    add(prc, genSectionEnd(cpsLocals, m.config))
+  writeSection(initProc, cpsLocals)
 
   if m.initProc.s(cpsInit).len > 0 or m.initProc.s(cpsStmts).len > 0:
     moduleInitRequired = true
