@@ -712,17 +712,29 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile, objfiles: string): s
     var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
       linkTmpl = CC[conf.cCompiler].linkTmpl
-    result = quoteShell(result % ["builddll", builddll,
+
+    when defined(windows):
+      var objfiles = objfiles.replace(r"\", r"\\")
+
+    var commands: string
+    commands = commands % ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
-        "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
-    result.add ' '
-    addf(result, linkTmpl, ["builddll", builddll,
+        "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string]
+    commands.add ' '
+    addf(commands, linkTmpl, ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
         "lib", quoteShell(conf.libpath)])
+
+    when defined(windows):
+      let commandFile = getNimcacheDir(conf) / RelativeFile(splitFile(projectFile).name & "_commands")
+      writeFile(commandFile, commands)
+      result = result & " @" & quoteShell(commandFile)
+    else:
+      result &= quoteShell(commands)
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
   try:
