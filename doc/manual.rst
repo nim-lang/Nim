@@ -251,7 +251,7 @@ Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
-Note that this rule also appies for keywords, meaning that ``notin`` is
+Note that this rule also applies to keywords, meaning that ``notin`` is
 the same as ``notIn`` and ``not_in`` (all-lowercase version (``notin``, ``isnot``)
 is the preferred way of writing keywords).
 
