@@ -130,9 +130,9 @@
 ##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
-##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
-##    j2["details"] = %* {"age":35, "pi":3.1415}
-##    echo j2
+##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
+##   j2["details"] = %* {"age":35, "pi":3.1415}
+##   echo j2
 
 runnableExamples:
   ## Note: for JObject, key ordering is preserved, unlike in some languages,
@@ -708,49 +708,25 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
 proc pretty*(node: JsonNode, indent = 2): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
-  ## Similar to prettyprint available in Python json library or pprint
-  ## we can use in Nim as following
+  ##
+  ## Similar to prettyprint in Python.
+  ##
+  ## **Examples:**
   ##
   ## .. code-block:: Nim
-  ##    import json
-  ##    # initiate the synchornous http reuest client
-  ##    var client = newHttpClient()
-  ##    # define the url
-  ##       var url = "https://api.openfigi.com/v2/mapping/"
-  ##       # create the open figi query string
-  ##       var body = %*[{
-  ##           "idType": "ID_ISIN", 
-  ##           "idValue": "US4592001014"
-  ##       }]
-  ##      # create the headers required for API request
-  ##      client.headers= newHttpHeaders({
-  ##          "Content-Type": "application/json",     
-  ##          "X-OPENFIGI-APIKEY": "CREATE YOUR KEY AND PASS HERE",
-  ##          "Cache-Control": "no-cache"
-  ##          })
-  ##      #send the request and store in repsonse
-  ##      var response = client.request(url, httpmethod = HttpPost, body = $body)
-  ##      #echo response.body
-  ##      let json_node =parseJson(``$``(response.body))
-  ##      # without pretty print json, output looks like this
-  ##      echo json_node[0]["data"][0]
-  ##      #{"figi":"BBG000BLNNH6","name":"INTL BUSINESS MACHINES CORP","ticker":"IBM","exchCode":"US","compositeFIGI":"BBG000BLNNH6","uniqueID":"EQ0010080100001000","securityType":"Common Stock","marketSector":"Equity","shareClassFIGI":"BBG001S5S399","uniqueIDFutOpt":" ","securityType2":"Common Stock","securityDescription":"IBM"}
-  ##      # with pretty print json, output looks like this
-  ##      echo json_node[0]["data"][0].pretty()
-  ##      #{
-  ##      #"figi": "BBG000BLNNH6",
-  ##      #"name": "INTL BUSINESS MACHINES CORP",
-  ##      #"ticker": "IBM",
-  ##      #"exchCode": "US",
-  ##      #"compositeFIGI": "BBG000BLNNH6",
-  ##      #"uniqueID": "EQ0010080100001000",
-  ##      #"securityType": "Common Stock",
-  ##      #"marketSector": "Equity",
-  ##      #"shareClassFIGI": "BBG001S5S399",
-  ##      #"uniqueIDFutOpt": " ",
-  ##      #"securityType2": "Common Stock",
-  ##      #"securityDescription": "IBM"
-  ##      #}
+  ##   let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
+  ##               "details": {"age":35, "pi":3.1415}}
+  ##   echo pretty(j)
+  ##   # {
+  ##   #   "name": "Isaac",
+  ##   #   "books": [
+  ##   #     "Robot Dreams"
+  ##   #   ],
+  ##   #   "details": {
+  ##   #     "age": 35,
+  ##   #     "pi": 3.1415
+  ##   #   }
+  ##   # }
   result = ""
   toPretty(result, node, indent)
 
