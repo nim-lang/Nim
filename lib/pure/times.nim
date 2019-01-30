@@ -2449,9 +2449,10 @@ when not defined(JS):
       ##
       ## ``getTime`` should generally be prefered over this proc.
       when defined(posix):
-        var a: Timeval
-        gettimeofday(a)
-        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+        var ts: Timespec
+        discard clock_gettime(realTimeClockId, ts)
+        result = toBiggestFloat(ts.tv_sec.int64) +
+          toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
       elif defined(windows):
         var f: winlean.FILETIME
         getSystemTimeAsFileTime(f)
