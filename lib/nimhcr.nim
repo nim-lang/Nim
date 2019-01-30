@@ -111,14 +111,6 @@
 ##   - build speed with and without hot code reloading - difference should be small
 ##   - runtime degradation of HCR-enabled code - important!!!
 ## - ARM support for the trampolines
-## - pdb paths on Windows should be fixed (related to copying .dll files)
-##   - absolute hardcoded path to .pdb is the same even for a copied .dll
-##   - if a debugger is attached - rebuilding will fail since .pdb files are locked
-##   - resources to look into:
-##     https://github.com/fungos/cr
-##     https://github.com/crosire/blink
-##     https://ourmachinery.com/post/little-machines-working-together-part-2/
-##     http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
 ## - investigate:
 ##   - rethink the closure iterators
 ##     - ability to keep old versions of dynamic libraries alive

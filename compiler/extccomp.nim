@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils
+  lineinfos, std / sha1, streams, pathutils, sequtils, random
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -735,6 +735,42 @@ proc getLinkCmd(conf: ConfigRef; projectfile: AbsoluteFile,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
         "lib", quoteShell(conf.libpath)])
+    # On windows the debug information for binaries is emitted in a separate .pdb
+    # file and the binaries (.dll and .exe) contain a full path to that .pdb file.
+    # This is a problem for hot code reloading because even when we copy the .dll
+    # and load the copy so the build process may overwrite the original .dll on
+    # the disk (windows locks the files of running binaries) the copy still points
+    # to the original .pdb (and a simple copy of the .pdb won't help). This is a
+    # problem when a debugger is attached to the program we are hot-reloading.
+    # This problem is nonexistent on Unix since there by default debug symbols
+    # are embedded in the binaries so loading a copy of a .so will be fine. There
+    # is the '/Z7' flag for the MSVC compiler to embed the debug info of source
+    # files into their respective .obj files but the linker still produces a .pdb
+    # when a final .dll or .exe is linked so the debug info isn't embedded.
+    # There is also the issue that even when a .dll is unloaded the debugger
+    # still keeps the .pdb for that .dll locked. This is a major problem and
+    # because of this we cannot just alternate between 2 names for a .pdb file
+    # when rebuilding a .dll - instead we need to accumulate differently named
+    # .pdb files in the nimcache folder - this is the easiest and most reliable
+    # way of being able to debug and rebuild the program at the same time. This
+    # is accomplished using the /PDB:<filename> flag (there also exists the
+    # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
+    # atleast 5-10mb big and will quickly accumulate. There is a hacky solution:
+    # we could try to delete all .pdb files with a pattern and swallow exceptions.
+    # 
+    # links about .pdb files and hot code reloading:
+    # https://ourmachinery.com/post/dll-hot-reloading-in-theory-and-practice/
+    # https://ourmachinery.com/post/little-machines-working-together-part-2/
+    # https://github.com/fungos/cr
+    # https://fungos.github.io/blog/2017/11/20/cr.h-a-simple-c-hot-reload-header-only-library/
+    # on forcing the debugger to unlock a locked .pdb of an unloaded library:
+    # https://blog.molecular-matters.com/2017/05/09/deleting-pdb-files-locked-by-visual-studio/
+    # and a bit about the .pdb format in case that is ever needed:
+    # https://github.com/crosire/blink
+    # http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
+    if conf.hcrOn and conf.cCompiler == ccVcc:
+      randomize()
+      result.add " /link /PDB:" & projectfile.string & "." & $rand(high(int)) & ".pdb"
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
   try:
@@ -851,8 +887,13 @@ proc callCCompiler*(conf: ConfigRef; projectfile: AbsoluteFile) =
         # we pass each object file as if it is the project file - a .dll will be created for each such
         # object file in the nimcache directory, and only in the case of the main project file will
         # there be probably an executable (if the project is such) which will be copied out of the nimcache
-        let objFile = getObjFilePath(conf, x).AbsoluteFile
-        add(cmds, getLinkCmd(conf, objFile, objfiles & " " & quoteShell(objFile.string), idx != mainFileIdx))
+        let objFile = getObjFilePath(conf, x)
+        add(cmds, getLinkCmd(conf, objFile.AbsoluteFile, objfiles & " " & quoteShell(objFile), idx != mainFileIdx))
+        # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
+        # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
+        if conf.cCompiler == ccVcc:
+          for pdb in walkFiles(objFile & ".*.pdb"):
+            discard tryRemoveFile(pdb)
       # execute link commands in parallel - output will be a bit different
       # if it fails than that from execLinkCmd() but that doesn't matter
       prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
