@@ -25,17 +25,20 @@ proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
 proc `=sink`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.inline.} =
   if dest.val != src.val:
     if dest.val != nil:
-      dest.val = src.val
+      `=destroy`(dest)
+    dest.val = src.val
 
 proc newUniquePtr*[T](val: sink T): UniquePtr[T] =
   let a = getSharedAllocator()
   result.val = cast[type(result.val)](a.alloc(a, sizeof(result.val[])))
   if AllocatorFlag.ZerosMem notin a.flags:
-    reset(result.val[])
+    zeroMem(result.val, sizeof(result.val[]))
   result.val.value = val
   result.val.allocator = a
 
 converter convertUniquePtrToObj*[T](p: UniquePtr[T]): var T {.inline.} =
+  when compileOption("boundChecks"):
+    assert(p.val != nil, "deferencing nil unique pointer")
   p.val.value
 
 proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
@@ -43,8 +46,7 @@ proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
 
 proc get*[T](p: UniquePtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
-    if p.val == nil:
-      raise newException(ValueError, "deferencing nil unique pointer")
+    assert(p.val != nil, "deferencing nil unique pointer")
   p.val.value
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
@@ -85,12 +87,14 @@ proc newSharedPtr*[T](val: sink T): SharedPtr[T] =
   let a = getSharedAllocator()
   result.val = cast[type(result.val)](a.alloc(a, sizeof(result.val[])))
   if AllocatorFlag.ZerosMem notin a.flags:
-    reset(result.val[])  
+    zeroMem(result.val, sizeof(result.val[]))
   result.val.value = val
   result.val.atomicCounter = 1
   result.val.allocator = a
 
 converter convertSharedPtrToObj*[T](p: SharedPtr[T]): var T {.inline.} =
+  when compileOption("boundChecks"):
+    doAssert(p.val != nil, "deferencing nil shared pointer")
   p.val.value
 
 proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
@@ -98,8 +102,7 @@ proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
 
 proc get*[T](p: SharedPtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
-    if p.val == nil:
-      raise newException(ValueError, "deferencing nil shared pointer")
+    doAssert(p.val != nil, "deferencing nil shared pointer")
   p.val.value
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
@@ -120,12 +123,13 @@ converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
   p.val.value
 
 proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
+  when compileOption("boundChecks"):
+    doAssert(p.val != nil, "deferencing nil const pointer")
   p.val == nil
 
 proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
   when compileOption("boundChecks"):
-    if p.val == nil:
-      raise newException(ValueError, "deferencing nil const pointer")
+    doAssert(p.val != nil, "deferencing nil const pointer")
   p.val.value
 
 proc `$`*[T](p: ConstPtr[T]): string {.inline.} =
