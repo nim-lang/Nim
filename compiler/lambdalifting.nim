@@ -336,7 +336,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   let fieldType = if c.graph.config.selectedGc == gcDestructors:
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
-                    c.getEnvTypeForOwner(dest, info)
+                    c.getEnvTypeForOwner(dep, info)
   if refObj == fieldType:
     localError(c.graph.config, dep.info, "internal error: invalid up reference computed")
 
