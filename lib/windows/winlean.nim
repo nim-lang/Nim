@@ -896,7 +896,7 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.gcsafe, stdcall.}
+                      stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
 var inet_ntop_real: inet_ntop_proc = nil
 
