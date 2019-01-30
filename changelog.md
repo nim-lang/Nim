@@ -124,6 +124,8 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `xmltree.toXmlAttributes`.
 
+- Added `Rusage`, `getrusage`, `wait4` to posix interface.
+
 
 ### Library changes
 

@@ -2505,6 +2505,11 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
     if f.kind == tyVar: f = f.lastSon
+  #if c.config.selectedGC == gcDestructors and f.kind == tySequence:
+  # use the canonical type to access the =sink and =destroy etc.
+  #  f = c.graph.sysTypes[tySequence]
+  #echo "YUP_---------Formal ", typeToString(f, preferDesc), " real ", typeToString(t, preferDesc), " ", f.id, " ", t.id
+
   if typeRel(m, f, t) == isNone:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:
