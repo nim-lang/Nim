@@ -46,8 +46,8 @@ and ``a ^* b`` is short for ``(a (b a)*)?``. Example::
 
   arrayConstructor = '[' expr ^* ',' ']'
 
-Other parts of Nim - like scoping rules or execution semantics are only
-described in the, more easily comprehensible, informal manner for now.
+Other parts of Nim, like scoping rules or execution semantics, are 
+described informally.
 
 
 
@@ -76,17 +76,19 @@ the context.
 A Nim `program`:idx: consists of one or more text `source files`:idx: containing
 Nim code. It is processed by a Nim `compiler`:idx: into an `executable`:idx:.
 The nature of this executable depends on the compiler implementation; it may,
-for example, be a native binary or JavaScript source code. In addition to the
-code that is compiled into the executable and executed at `runtime`:idx:,
-a Nim program can contain Nim code that will be executed at `compile time`:idx:.
-This can include constant expressions, macro definitions, and Nim procedures 
-used by macro definitions. Most of the Nim language is supported at
-compile time, but there are some restrictions -- see `Restrictions on
-Compile-Time Execution <restrictions-on-compile-time-execution>`_ for details.
+for example, be a native binary or JavaScript source code.
+
+In a typical Nim program, most of the code is compiled into the executable for
+execution at `runtime`:idx:. However, some of the code may be executed at
+`compile time`:idx:. This can include constant expressions, macro definitions,
+and Nim procedures used by macro definitions. Most of the Nim language is
+supported at compile time, but there are some restrictions -- see `Restrictions
+on Compile-Time Execution <#restrictions-on-compileminustime-execution>`_ for
+details.
 
 The compiler parses Nim source code into an internal data structure called the
-`abstract syntax tree`:idx: (`AST`:idx). Then, before executing the code or
-processing it into the executable, it transforms the AST through `semantic
+`abstract syntax tree`:idx: (`AST`:idx:). Then, before executing the code or
+compiling it into the executable, it transforms the AST through `semantic
 analysis`:idx:. This adds semantic information such as expression types,
 identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
@@ -128,11 +130,9 @@ analysis and compile-time code execution.
 It is mostly accurate to picture semantic analysis proceeding top to bottom and
 left to right in the source code, with compile-time code execution interleaved
 when necessary to compute values that are required for subsequent semantic
-analysis. We saw just above that this interleaving is necessary for handling
-constant expressions. We will see much later in this document that macro
-invocation not only requires this interleaving, but also creates a situation
-where semantic analyis does not entirely proceed top to bottom and left to
-right.
+analysis. We will see much later in this document that macro invocation not only
+requires this interleaving, but also creates a situation where semantic analyis
+does not entirely proceed top to bottom and left to right.
 
 
 Lexical Analysis
@@ -709,8 +709,8 @@ Rationale: Consistency with overloaded assignment or assignment-like operations,
 Constants and Constant Expressions
 ==================================
 
-A `constant`:idx: is a symbol that is bound to the value of a `constant
-expression`. This is an expression whose value can be computed during
+A `constant`:idx: is a symbol that is bound to the value of a constant
+expression. This is an expression whose value can be computed during
 semantic analysis of the code in which it appears. However, constant 
 expressions are not limited to the capabilities of semantic analysis; they
 can use all Nim language features that are supported for
@@ -718,9 +718,9 @@ compile-time execution. Compile-time execution is interleaved with semantic
 analysis as necessary. A constant's value cannot change after it is first 
 computed.
 
-Constant expressions can only depend on the following values and operations
-that are either built into the language or available during compilation of 
-the constant expression:
+Constant expressions are restricted to depend only on the following categories
+of values and operations, because these are either built into the language or
+declared and evaluated before semantic analysis of the constant expression:
 
 * literals
 * built-in operators
@@ -730,8 +730,12 @@ the constant expression:
   possibly modifying compile-time variables
 
 A constant expression can contain code blocks that may internally use all Nim
-features supported at compile time (as detailed in the next section below), 
-but that cannot refer to any external values beyond those listed above.
+features supported at compile time (as detailed in the next section below).
+Within such a code block, it is possible to declare variables and then later
+read and update them, or declare variables and pass them to procedures that
+modify them. However, the code in such a block must still adhere to the
+retrictions listed above for referencing values and operations outside the
+block.
 
 The ability to access and modify compile-time variables adds flexibility to
 constant expressions that may be surprising to those coming from other
@@ -774,7 +778,7 @@ problem!)
 Restrictions on Compile-Time Execution
 ======================================
 
-Nim code that will be executed at compile-time cannot use the following
+Nim code that will be executed at compile time cannot use the following
 language features:
 
 * methods
@@ -910,8 +914,8 @@ For further details, see `Convertible relation
 Subrange types
 --------------
 A subrange type is a range of values from an ordinal or floating point type (the base
-type). To define a subrange type, one must specify it's limiting values: the
-lowest and highest value of the type:
+type). To define a subrange type, one must specify its limiting values -- the
+lowest and highest value of the type. For example:
 
 .. code-block:: nim
   type
@@ -1543,8 +1547,8 @@ contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
 not yet know the size of the object. To complete an incomplete object
 the ``package`` pragma has to be used. ``package`` implies ``byref``.
 
-As long as a type ``T`` is incomplete ``sizeof(T)`` or "execution-time type
-information" for ``T`` is not available.
+As long as a type ``T`` is incomplete, neither ``sizeof(T)`` nor execution-time
+type information for ``T`` is available.
 
 
 Example:
@@ -2363,6 +2367,10 @@ In a call ``p(args)`` the routine ``p`` that matches best is selected. If
 multiple routines match equally well, the ambiguity is reported during
 semantic analysis.
 
+Every arg in args needs to match. There are multiple different categories how an
+argument can match. Let ``f`` be the formal parameter's type and ``a`` the type
+of the argument.
+
 1. Exact match: ``a`` and ``f`` are of the same type.
 2. Literal match: ``a`` is an integer literal of value ``v``
    and ``f`` is a signed or unsigned integer type and ``v`` is in ``f``'s
@@ -2764,7 +2772,7 @@ Even some code that has side effects is permitted in a static block:
 
 There are limitations on what Nim code can be executed at compile time;
 see `Restrictions on Compile-Time Execution 
-<#restrictions-on-compile-time-execution>`_ for details.
+<#restrictions-on-compileminustime-execution>`_ for details.
 It's a static error if the compiler cannot execute the block at compile
 time.
 
@@ -3767,7 +3775,7 @@ Invocation of a multi-method cannot be ambiguous: collide 2 is preferred over
 collide 1 because the resolution works from left to right.
 In the example ``Unit, Thing`` is preferred over ``Thing, Unit``.
 
-**Note**: Compile time execution is not (yet) supported for methods.
+**Note**: Compile-time execution is not (yet) supported for methods.
 
 
 Inhibit dynamic method resolution via procCall
@@ -5443,7 +5451,7 @@ chance to convert it into a sequence.
 Macros
 ======
 
-A macro is a special function that is executed at compile-time.
+A macro is a special function that is executed at compile time.
 Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
 transformations on it and return the transformed AST. The
@@ -5452,8 +5460,8 @@ invocation would have been replaced by its result in the source
 code. This can be used to implement `domain specific
 languages`:idx:.
 
-Macro invocation leads to a case where semantic analyis does **not** entirely
-proceed top to bottom and left to right. The compiler must 
+Macro invocation is a case where semantic analyis does **not** entirely proceed
+top to bottom and left to right. The compiler must 
 
 * perform semantic analysis through the end of the macro invocation,
 * execute the macro body,
@@ -6869,7 +6877,7 @@ pragma block can be used:
 compileTime pragma
 ------------------
 The ``compileTime`` pragma is used to mark a proc or variable to be used only
-during compile-time execution. No code will be generated for it. Compile time
+during compile-time execution. No code will be generated for it. Compile-time
 procs are useful as helpers for macros. Since version 0.12.0 of the language, a
 proc that uses ``system.NimNode`` within its parameter types is implicitly
 declared ``compileTime``:
@@ -8331,11 +8339,11 @@ Example:
   echo formatFloat(pi(5000))
 
 
-The parallel statement is the preferred mechanism to introduce parallelism
-in a Nim program. A subset of the Nim language is valid within a
-``parallel`` section. This subset is checked to be free of data races during
-semantic analysis. A sophisticated `disjoint checker`:idx: ensures that no data
-races are possible even though shared memory is extensively supported!
+The parallel statement is the preferred mechanism to introduce parallelism in a
+Nim program. A subset of the Nim language is valid within a ``parallel``
+section. This subset is checked during semantic analysis to be free of data
+races. A sophisticated `disjoint checker`:idx: ensures that no data races are
+possible even though shared memory is extensively supported!
 
 The subset is in fact the full language with the following
 restrictions / changes:
@@ -8368,7 +8376,7 @@ pragmas:
 2) Every access of a guarded memory location needs to happen in an
    appropriate `locks`:idx: statement.
 3) Locks and routines can be annotated with `lock levels`:idx: to allow
-   potential deadlocks to be detected during static analysis.
+   potential deadlocks to be detected during semantic analysis.
 
 
 Guards and the locks section
