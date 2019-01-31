@@ -251,6 +251,10 @@ Another advantage is that it frees the programmer from remembering
 the exact spelling of an identifier. The exception with respect to the first
 letter allows common code like ``var foo: Foo`` to be parsed unambiguously.
 
+Note that this rule also applies to keywords, meaning that ``notin`` is
+the same as ``notIn`` and ``not_in`` (all-lowercase version (``notin``, ``isnot``)
+is the preferred way of writing keywords).
+
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.

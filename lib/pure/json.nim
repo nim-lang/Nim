@@ -130,9 +130,9 @@
 ##       { "name": "Susan", "age": herAge }
 ##     ]
 ##
-##    var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
-##    j2["details"] = %* {"age":35, "pi":3.1415}
-##    echo j2
+##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
+##   j2["details"] = %* {"age":35, "pi":3.1415}
+##   echo j2
 
 runnableExamples:
   ## Note: for JObject, key ordering is preserved, unlike in some languages,
@@ -708,6 +708,22 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
 proc pretty*(node: JsonNode, indent = 2): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
+  ##
+  ## Similar to prettyprint in Python.
+  runnableExamples:
+    let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
+                "details": {"age":35, "pi":3.1415}}
+    doAssert pretty(j) == """
+{
+  "name": "Isaac",
+  "books": [
+    "Robot Dreams"
+  ],
+  "details": {
+    "age": 35,
+    "pi": 3.1415
+  }
+}"""
   result = ""
   toPretty(result, node, indent)
 

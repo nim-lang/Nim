@@ -320,17 +320,30 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
 
+proc getEnvTypeForOwnerUp(c: var DetectionPass; owner: PSym;
+                          info: TLineInfo): PType =
+  var r = c.getEnvTypeForOwner(owner, info)
+  result = newType(tyPtr, owner)
+  rawAddSon(result, r.base)
+
 proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   let refObj = c.getEnvTypeForOwner(dest, info) # getHiddenParam(dest).typ
   let obj = refObj.lastSon
-  let fieldType = c.getEnvTypeForOwner(dep, info) #getHiddenParam(dep).typ
+  # The assumption here is that gcDestructors means we cannot deal
+  # with cycles properly, so it's better to produce a weak ref (=ptr) here.
+  # This seems to be generally correct but since it's a bit risky it's only
+  # enabled for gcDestructors.
+  let fieldType = if c.graph.config.selectedGc == gcDestructors:
+                    c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
+                  else:
+                    c.getEnvTypeForOwner(dep, info)
   if refObj == fieldType:
     localError(c.graph.config, dep.info, "internal error: invalid up reference computed")
 
   let upIdent = getIdent(c.graph.cache, upName)
   let upField = lookupInRecord(obj.n, upIdent)
   if upField != nil:
-    if upField.typ != fieldType:
+    if upField.typ.base != fieldType.base:
       localError(c.graph.config, dep.info, "internal error: up references do not agree")
   else:
     let result = newSym(skField, upIdent, obj.owner, obj.owner.info)
@@ -555,7 +568,7 @@ proc rawClosureCreation(owner: PSym;
   let upField = lookupInRecord(env.typ.lastSon.n, getIdent(d.graph.cache, upName))
   if upField != nil:
     let up = getUpViaParam(d.graph, owner)
-    if up != nil and upField.typ == up.typ:
+    if up != nil and upField.typ.base == up.typ.base:
       result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
                  up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
@@ -586,7 +599,7 @@ proc closureCreationForIter(iter: PNode;
   let upField = lookupInRecord(v.typ.lastSon.n, getIdent(d.graph.cache, upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c)
-    if u.typ == upField.typ:
+    if u.typ.base == upField.typ.base:
       result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
                  u, iter.info))
     else:
