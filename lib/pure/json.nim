@@ -710,23 +710,20 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ## on multiple lines.
   ##
   ## Similar to prettyprint in Python.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block:: Nim
-  ##   let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
-  ##               "details": {"age":35, "pi":3.1415}}
-  ##   echo pretty(j)
-  ##   # {
-  ##   #   "name": "Isaac",
-  ##   #   "books": [
-  ##   #     "Robot Dreams"
-  ##   #   ],
-  ##   #   "details": {
-  ##   #     "age": 35,
-  ##   #     "pi": 3.1415
-  ##   #   }
-  ##   # }
+  runnableExamples:
+    let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
+                "details": {"age":35, "pi":3.1415}}
+    doAssert pretty(j) == """
+{
+  "name": "Isaac",
+  "books": [
+    "Robot Dreams"
+  ],
+  "details": {
+    "age": 35,
+    "pi": 3.1415
+  }
+}"""
   result = ""
   toPretty(result, node, indent)
 
