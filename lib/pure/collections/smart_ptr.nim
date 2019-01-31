@@ -28,13 +28,12 @@ proc `=sink`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.inline.} =
       `=destroy`(dest)
     dest.val = src.val
 
-proc newUniquePtr*[T](val: sink T): UniquePtr[T] =
-  let a = getSharedAllocator()
-  result.val = cast[type(result.val)](a.alloc(a, sizeof(result.val[])))
-  if AllocatorFlag.ZerosMem notin a.flags:
+proc newUniquePtr*[T](val: sink T, allocator = getLocalAllocator()): UniquePtr[T] =
+  result.val = cast[type(result.val)](allocator.alloc(allocator, sizeof(result.val[])))
+  if AllocatorFlag.ZerosMem notin allocator.flags:
     zeroMem(result.val, sizeof(result.val[]))
   result.val.value = val
-  result.val.allocator = a
+  result.val.allocator = allocator
 
 converter convertUniquePtrToObj*[T](p: UniquePtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
@@ -83,14 +82,13 @@ proc `=`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) =
       discard atomicInc(src.val[].atomicCounter)
       dest.val = src.val
 
-proc newSharedPtr*[T](val: sink T): SharedPtr[T] =
-  let a = getSharedAllocator()
-  result.val = cast[type(result.val)](a.alloc(a, sizeof(result.val[])))
-  if AllocatorFlag.ZerosMem notin a.flags:
+proc newSharedPtr*[T](val: sink T, allocator = getLocalAllocator()): SharedPtr[T] =
+  result.val = cast[type(result.val)](allocator.alloc(allocator, sizeof(result.val[])))
+  if AllocatorFlag.ZerosMem notin allocator.flags:
     zeroMem(result.val, sizeof(result.val[]))
   result.val.value = val
   result.val.atomicCounter = 1
-  result.val.allocator = a
+  result.val.allocator = allocator
 
 converter convertSharedPtrToObj*[T](p: SharedPtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
@@ -116,8 +114,8 @@ type
     ## distinct version of referencing counting smart pointer SharedPtr[T], 
     ## which doesn't allow mutating underlying object
 
-proc newConstPtr*[T](val: sink T): ConstPtr[T] =
-  ConstPtr[T](newSharedPtr(val))
+proc newConstPtr*[T](val: sink T, allocator = getLocalAllocator()): ConstPtr[T] =
+  ConstPtr[T](newSharedPtr(val), allocator)
 
 converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
   p.val.value
@@ -143,9 +141,9 @@ when isMainModule:
     var a1: UniquePtr[float]
     let a2 = newUniquePtr(0)
     check: 
-      $a1 == "ConstPtr[float](nil)"
+      $a1 == "UniquePtr[float](nil)"
       a1.isNil == true
-      $a2 == "ConstPtr[int](0)"
+      $a2 == "UniquePtr[int](0)"
       a2.isNil == false
 
   test "SharedPtr[T] test":      
