@@ -140,3 +140,9 @@ compileReloadExecute() # versions are: 4 2 2
 
 update 0
 compileReloadExecute() # versions are: 5 2 2
+
+# final update so there are no git modifications left after everything
+# (the last versions are like the first files without a version suffix)
+update 0
+update 1
+update 2
