@@ -1264,9 +1264,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNarrowU:
       decodeB(rkInt)
       regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
-    of opcSpreadSignBit:
-      decodeBImm(rkInt)
-      regs[ra].intVal = ashr(regs[rb].intVal shl imm, imm)
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node

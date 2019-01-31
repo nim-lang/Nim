@@ -75,7 +75,6 @@ type
     opcSubStr, opcParseFloat, opcConv, opcCast,
     opcQuit,
     opcNarrowS, opcNarrowU,
-    opcSpreadSignBit, # if 32 bit convert 0x0000000080000000 -> 0xffffffff80000000 to make intVal negative
 
     opcAddStrCh,
     opcAddStrStr,
