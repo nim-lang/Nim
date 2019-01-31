@@ -578,11 +578,9 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
 
-    var def = semConstExpr(c, a.sons[length-1])
-    if def == nil:
-      localError(c.config, a.sons[length-1].info, errConstExprExpected)
-      continue
-
+    # do not evaluate the node here since the type compatibility check below may
+    # add a converter
+    var def = semExprWithType(c, a[^1])
     if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
       localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
@@ -597,7 +595,10 @@ proc semConst(c: PContext, n: PNode): PNode =
         def = fitRemoveHiddenConv(c, typ, def)
     else:
       typ = def.typ
-    if typ == nil:
+
+    # evaluate the node
+    def = semConstExpr(c, def)
+    if def == nil:
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
