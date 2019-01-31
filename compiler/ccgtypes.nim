@@ -906,7 +906,6 @@ proc isNonReloadable(m: BModule, prc: PSym): bool =
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   var
     rettype, params: Rope
-  genCLineDir(result, prc.info, m.config)
   # using static is needed for inline procs
   if lfExportLib in prc.loc.flags:
     if isHeaderFile in m.flags:

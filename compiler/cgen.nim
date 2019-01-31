@@ -994,7 +994,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         header.add(" __attribute__((naked))")
       if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((noreturn))")
-    add(m.s[cfsProcHeaders], ropecg(m, "$1;$n", header))
+    add(m.s[cfsProcHeaders], ropecg(m, "$1;$N", header))
 
 # TODO: figure out how to rename this - it DOES generate a forward declaration
 proc genProcNoForward(m: BModule, prc: PSym) =
