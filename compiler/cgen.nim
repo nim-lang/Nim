@@ -453,8 +453,10 @@ include ccgthreadvars
 proc varInDynamicLib(m: BModule, sym: PSym)
 
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
-  return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and #s.owner.kind == skModule and
-      ({lfNoDecl, lfHeader} * s.loc.flags == {}) # and s.loc.k == locGlobalVar
+  return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and
+      ({lfNoDecl, lfHeader} * s.loc.flags == {})
+      # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
+      # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode) =
   let s = n.sym
@@ -489,14 +491,6 @@ proc assignGlobalVar(p: BProc, n: PNode) =
         decl = (s.cgDeclFrmt & ";$n") % [td, s.loc.r]
       add(p.module.s[cfsVars], decl)
   if p.withinLoop > 0:
-    # Here we "register" ("initialize") the so called "global" (out of a
-    # function but inside of a block from the main scope) so that it can be
-    # "reset" after that, and a redundant hcrRegisterGlobal() call will follow
-    if treatGlobalDifferentlyForHCR(p.module, s):
-      # no need to pass a valid marker here because right after this a second call to
-      # hcrRegisterGlobal will be placed and it will update it with a marker properly
-      lineCg(p, cpsLocals, "hcrRegisterGlobal($3, \"$1\", sizeof($2), NULL, (void**)&$1);$n",
-             s.loc.r, rdLoc(s.loc), getModuleDllPath(p.module, s))
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
   if p.module.module.options * {optStackTrace, optEndb} ==
