@@ -1,15 +1,52 @@
 discard """
 output: '''
 main: HELLO!
+main: hasAnyModuleChanged? true
+main: before
+   0: after
+main: after
+              The answer is: 1000
+main: hasAnyModuleChanged? false
+              The answer is: 1000
+main: hasAnyModuleChanged? true
+   0: before
+main: before
+   1: print me once!
+   1: 1
+   1: 2
+   1: 3
+   1: 4
+   1: 5
+   1: 5
+   1: 5
+   1: Type1.a:42
+1
+bar
+   0: after - improved!
+main: after
+              The answer is: 110
+main: hasAnyModuleChanged? true
+   0: before - improved!
+main: before
+   2: random string
+1
+bar
+   0: after - clojure iterator: 0
+   0: after - clojure iterator: 1
+main: after
+              The answer is: 9
+main: hasAnyModuleChanged? true
+   2: before!
+main: before
+   2: after!
+   0: after - clojure iterator! after reload! does it remember? :2
+   0: after - clojure iterator! after reload! does it remember? :3
+main: after
+              The answer is: 1000
+main: hasAnyModuleChanged? true
 main: before
 main: after
-43
-main: before
-main: after
-44
-main: before
-main: after
-45
+              The answer is: 42
 '''
 """
 
@@ -84,13 +121,13 @@ afterCodeReload:
 echo "main: HELLO!"
 
 update 0
-compileReloadExecute() # versions are: 1 0 0
+compileReloadExecute() # versions are: 1 - -
 
 compileReloadExecute() # no change
 
 update 0
 update 1
-compileReloadExecute() # versions are: 2 1 0
+compileReloadExecute() # versions are: 2 1 -
 
 update 0
 update 2
