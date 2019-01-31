@@ -990,7 +990,28 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mAshrI: genBinaryABCnarrow(c, n, dest, opcAshrInt)
   of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
-  of mBitxorI: genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
+  of mBitxorI:
+    if n.typ.kind in {tyInt, tyInt8, tyInt16, tyInt32, tyInt64}:
+      let bitsize =
+        case n.typ.kind
+        of tyInt:  c.config.target.intSize * 8
+        of tyInt8:   8
+        of tyInt16: 16
+        of tyInt32: 32
+        else: 64 # tyInt64
+
+      let freeBits = sizeof(BiggestInt) * 8 - bitsize
+      if dest < 0: dest = c.getTemp(n[0].typ)
+      let tmp = c.getTemp(n.typ)
+      let arg1 = c.genx(n.sons[1])
+      let arg2 = c.genx(n.sons[2])
+      c.gABC(n, opcBitxorInt, tmp, arg1, arg2)
+      c.gABI(n, opcSpreadSignBit, dest, tmp, freeBits)
+      c.freeTemp(tmp)
+      c.freeTemp(arg1)
+      c.freeTemp(arg2)
+    else:
+      genBinaryABCnarrowU(c, n, dest, opcBitxorInt)
   of mAddU: genBinaryABCnarrowU(c, n, dest, opcAddu)
   of mSubU: genBinaryABCnarrowU(c, n, dest, opcSubu)
   of mMulU: genBinaryABCnarrowU(c, n, dest, opcMulu)
