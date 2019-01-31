@@ -552,6 +552,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
 
 proc semTemplateDef(c: PContext, n: PNode): PNode =
+  # TODO: special case `notin` and `!=` to use lineinfo from invocation
   var s: PSym
   if isTopLevel(c):
     s = semIdentVis(c, skTemplate, n.sons[0], {sfExported})
