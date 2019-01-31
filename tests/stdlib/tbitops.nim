@@ -1,4 +1,5 @@
 discard """
+  nimout: "OK"
   output: "OK"
 """
 import bitops
@@ -167,19 +168,20 @@ proc main() =
     var v: uint64
     v.setBit(63)
     doAssert v == 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000'u64
-  block:
-    # Test if RangeError is thrown if indexing out of range
-    try:
-      var v: uint32
-      var i = 32
-      v.setBit(i)
-      doAssert false
-    except RangeError:
-      discard
-    except:
-      doAssert false
 
   echo "OK"
+
+block: # not ready for vm because exception is compile error
+  try:
+    var v: uint32
+    var i = 32
+    v.setBit(i)
+    doAssert false
+  except RangeError:
+    discard
+  except:
+    doAssert false
+
 
 main()
 static:
