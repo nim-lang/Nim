@@ -938,16 +938,94 @@ type
     once*: bool
     passive*: bool
 
-proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
-proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
-proc getElementById*(id: cstring): Element {.importc: "document.getElementById", nodecl.}
-proc appendChild*(n, child: Node) {.importcpp.}
-proc removeChild*(n, child: Node) {.importcpp.}
-proc replaceChild*(n, newNode, oldNode: Node) {.importcpp.}
-proc insertBefore*(n, newNode, before: Node) {.importcpp.}
-proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
-proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
-proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
+proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
+proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
+proc class*(n: Node): cstring {.importcpp: "#.className", nodecl.}
+proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
+
+proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
+proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
+
+proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
+
+when defined(nodejs):
+  # we provide a dummy DOM for nodejs for testing purposes
+  proc len*(x: Node): int = x.childNodes.len
+  proc `[]`*(x: Node; idx: int): Element =
+    assert idx >= 0 and idx < x.childNodes.len
+    result = cast[Element](x.childNodes[idx])
+
+  var document* = Document(nodeType: DocumentNode)
+
+  proc getElem(x: Element; id: cstring): Element =
+    if x.id == id: return x
+    for i in 0..<x.len:
+      result = getElem(x[i], id)
+      if result != nil: return result
+
+  proc getElementById*(doc: Document; id: cstring): Element =
+    getElem(doc.body, id)
+  proc getElementById*(id: cstring): Element = document.getElementById(id)
+
+  proc appendChild*(parent, n: Node) =
+    n.parentNode = parent
+    parent.childNodes.add n
+
+  proc replaceChild*(parent, newNode, oldNode: Node) =
+    newNode.parentNode = parent
+    oldNode.parentNode = nil
+    var i = 0
+    while i < parent.len:
+      if Node(parent[i]) == oldNode:
+        parent.childNodes[i] = newNode
+        return
+      inc i
+    doAssert false, "old node not in node list"
+
+  proc removeChild*(parent, child: Node) =
+    child.parentNode = nil
+    var i = 0
+    while i < parent.len:
+      if Node(parent[i]) == child:
+        parent.childNodes.delete(i)
+        return
+      inc i
+    doAssert false, "old node not in node list"
+
+  proc insertBefore*(parent, newNode, before: Node) =
+    appendChild(parent, newNode)
+    var i = 0
+    while i < parent.len-1:
+      if Node(parent[i]) == before:
+        for j in countdown(parent.len-1, i-1):
+          parent.childNodes[j] = parent.childNodes[j-1]
+        parent.childNodes[i-1] = newNode
+        return
+      inc i
+    #doAssert false, "before not in node list"
+
+  proc createElement*(d: Document, identifier: cstring): Element =
+    new(result)
+    result.nodeName = identifier
+    result.nodeType = NodeType.ElementNode
+
+  proc createTextNode*(d: Document, identifier: cstring): Node =
+    new(result)
+    result.nodeName = "#text"
+    result.nodeValue = identifier
+    result.nodeType = NodeType.TextNode
+
+else:
+  proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
+  proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
+  proc getElementById*(id: cstring): Element {.importc: "document.getElementById", nodecl.}
+  proc appendChild*(n, child: Node) {.importcpp.}
+  proc removeChild*(n, child: Node) {.importcpp.}
+  proc replaceChild*(n, newNode, oldNode: Node) {.importcpp.}
+  proc insertBefore*(n, newNode, before: Node) {.importcpp.}
+  proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
+  proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
+  proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
 
 proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
 proc clearTimeout*(t: Timeout) {.importc, nodecl.}
@@ -1126,17 +1204,6 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
-
-
-proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
-proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
-proc class*(n: Node): cstring {.importcpp: "#.className", nodecl.}
-proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
-
-proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
-proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
-
-proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
 proc getElementsByClass*(n: Node; name: cstring): seq[Node] {.
   importcpp: "#.getElementsByClassName(#)", nodecl.}
