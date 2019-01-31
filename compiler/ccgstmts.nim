@@ -364,8 +364,9 @@ proc genSingleVar(p: BProc, a: PNode) =
   # for the module so we can have globals and top-level code be interleaved and still
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
-    # do not close blocks for if (nim_hcr_do_init_) for locals with a global pragma
-    if v.owner.kind == skModule:
+    # do not close blocks for if (nim_hcr_do_init_) for locals (and globals!)
+    # with a global pragma since they go in the preInitProc where we put no such guards
+    if v.owner.kind == skModule and sfPure notin v.flags:
       endBlock(targetProc)
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
@@ -373,8 +374,9 @@ proc genSingleVar(p: BProc, a: PNode) =
   defer:
     if forHcr:
       endBlock(targetProc)
-      # do not reopen blocks for if (nim_hcr_do_init_) for locals with a global pragma
-      if v.owner.kind == skModule:
+      # do not reopen blocks for if (nim_hcr_do_init_) for locals (and globals!)
+      # with a global pragma since they go in the preInitProc where we put no such guards
+      if v.owner.kind == skModule and sfPure notin v.flags:
         lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_)$n")
         startBlock(targetProc)
   
