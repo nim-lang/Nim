@@ -626,7 +626,7 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
 
-    when hasAlloc and not defined(testNimHcr):
+    when declared(nimRegisterGlobalMarker):
       nimRegisterGlobalMarker(hcrMarkGlobals)
 
   else:
