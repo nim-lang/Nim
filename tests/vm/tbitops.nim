@@ -37,21 +37,3 @@ for i in 0..<xx.len:
   doAssert(z_xor == res_xor[i], $i & ": " & $res_xor[i] & "  " & $z_xor)
   doAssert(z_and == res_and[i], $i & ": " & $res_and[i] & "  " & $z_and)
   doAssert(z_or == res_or[i], $i & ": " & $res_or[i] & "  " & $z_or)
-
-#---------------------------------------------------------------------
-
-const x2 = [1'i32,  -1, 10, -35, 35, -10, 20, -30, 31]
-const y2 = [1'i32,  1, 10, 11, 11, 10, 20, 7, 7]
-
-const res_shl = block:
-  var tmp: seq[int64]
-  for i in 0..<x2.len:
-    tmp.add(int64(x2[i] shl y2[i]))
-  tmp
-
-let xx2 = x2
-let yy2 = y2
-
-for i in 0..<xx2.len:
-  let z_shl = int64(xx2[i] shl yy2[i])
-  doAssert(z_shl == res_shl[i], $i & ": " & $res_shl[i] & "  " & $z_shl)
