@@ -33,8 +33,8 @@ install:
   - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
   - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
   - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
-  - IF "%PLATFORM%" == "x64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
-    ELSE ( copy C:\OpenSSL-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win32\libssl32.dll %CD%\BIN\libssl32.dll )
+  - IF "%PLATFORM%" == "x64" ( copy C:\OpenSSL-v111-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-v111-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-v111-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-v111-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
+    ELSE ( copy C:\OpenSSL-v111-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-v111-Win32\libssl32.dll %CD%\BIN\libssl32.dll )
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
