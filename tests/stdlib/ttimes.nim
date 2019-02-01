@@ -495,3 +495,96 @@ suite "ttimes":
     check getDayOfWeek(21, mSep, 1970) == dMon
     check getDayOfWeek(01, mJan, 2000) == dSat
     check getDayOfWeek(01, mJan, 2021) == dFri
+
+  test "between - simple":
+    let x = initDateTime(10, mJan, 2018, 13, 00, 00)
+    let y = initDateTime(11, mJan, 2018, 12, 00, 00)
+    doAssert x + between(x, y) == y
+
+  test "between - dst start":
+    usingTimezone("Europe/Stockholm"):
+      let x = initDateTime(25, mMar, 2018, 00, 00, 00)
+      let y = initDateTime(25, mMar, 2018, 04, 00, 00)
+      doAssert x + between(x, y) == y
+
+  test "between - empty interval":
+    let x = now()
+    let y = x
+    doAssert x + between(x, y) == y
+
+  test "between - dst end":
+    usingTimezone("Europe/Stockholm"):
+      let x = initDateTime(27, mOct, 2018, 02, 00, 00)
+      let y = initDateTime(28, mOct, 2018, 01, 00, 00)
+      doAssert x + between(x, y) == y
+
+  test "between - long day":
+    usingTimezone("Europe/Stockholm"):
+      # This day is 25 hours long in Europe/Stockholm
+      let x = initDateTime(28, mOct, 2018, 00, 30, 00)
+      let y = initDateTime(29, mOct, 2018, 00, 00, 00)
+      doAssert between(x, y) == 24.hours + 30.minutes
+      doAssert x + between(x, y) == y
+
+  test "between - offset change edge case":
+    # This test case is important because in this case
+    # `x + between(x.utc, y.utc) == y` is not true, which is very rare.
+    usingTimezone("America/Belem"):
+      let x = initDateTime(24, mOct, 1987, 00, 00, 00)
+      let y = initDateTime(26, mOct, 1987, 23, 00, 00)
+      doAssert x + between(x, y) == y
+      doAssert y + between(y, x) == x
+
+  test "between - all units":
+    let x = initDateTime(1, mJan, 2000, 00, 00, 00, utc())
+    let ti = initTimeInterval(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    let y = x + ti
+    doAssert between(x, y) == ti
+    doAssert between(y, x) == -ti
+
+  test "between - monthday overflow":
+      let x = initDateTime(31, mJan, 2001, 00, 00, 00, utc())
+      let y = initDateTime(1, mMar, 2001, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+  test "between - misc":
+    block:
+      let x = initDateTime(31, mDec, 2000, 12, 00, 00, utc())
+      let y = initDateTime(01, mJan, 2001, 00, 00, 00, utc())
+      doAssert between(x, y) == 12.hours
+
+    block:
+      let x = initDateTime(31, mDec, 2000, 12, 00, 00, utc())
+      let y = initDateTime(02, mJan, 2001, 00, 00, 00, utc())
+      doAssert between(x, y) == 1.days + 12.hours
+
+    block:
+      let x = initDateTime(31, mDec, 1995, 00, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(01, mDec, 1995, 00, 00, 00, utc())
+      let y = initDateTime(31, mJan, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(31, mJan, 2000, 00, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 2000, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(01, mJan, 1995, 12, 00, 00, utc())
+      let y = initDateTime(01, mFeb, 1995, 00, 00, 00, utc())
+      doAssert between(x, y) == 4.weeks + 2.days + 12.hours
+
+    block:
+      let x = initDateTime(31, mJan, 1995, 00, 00, 00, utc())
+      let y = initDateTime(10, mFeb, 1995, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+
+    block:
+      let x = initDateTime(31, mJan, 1995, 00, 00, 00, utc())
+      let y = initDateTime(10, mMar, 1995, 00, 00, 00, utc())
+      doAssert x + between(x, y) == y
+      doAssert between(x, y) == 1.months + 1.weeks
