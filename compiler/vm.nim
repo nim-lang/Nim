@@ -1264,7 +1264,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNarrowU:
       decodeB(rkInt)
       regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
-    of opcSpreadSignBit:
+    of opcSignExtend:
       # like opcNarrowS, but no out of range possible
       decodeB(rkInt)
       let imm = 64 - rb
