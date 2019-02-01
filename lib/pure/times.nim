@@ -2404,10 +2404,12 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   result.years = days div 365
   result.days = days mod 365
 
-proc toTimeInterval*(time: Time): TimeInterval =
-  ## Converts a Time to a TimeInterval.
+proc toTimeInterval*(time: Time): TimeInterval
+    {.deprecated: "Use `between` instead".} =
+  ## Converts a Time to a TimeInterval. To be used when diffing times.
   ##
-  ## To be used when diffing times. Consider using `between` instead.
+  ## **Deprecated since version 0.20.0:** Use the `between proc
+  ## <#between,DateTime,DateTime>`_ instead.
   runnableExamples:
     let a = fromUnix(10)
     let b = fromUnix(1_500_000_000)
