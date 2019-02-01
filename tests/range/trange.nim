@@ -105,3 +105,8 @@ block tcolors:
       return rgb(red(a) +! red(b), green(a) +! green(b), blue(a) +! blue(b))
 
     rgb(34, 55, 255)
+
+block:
+  let r1 = {-10 .. -1}
+  doAssert(-4 in r1)
+  doAssert(4 notin r1)

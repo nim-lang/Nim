@@ -2197,7 +2197,15 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:
-      typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
+      # The original type is too wide so we cut it down here.
+      # The available range is evenly divided in two halves if the inferred type
+      # is signed.
+      if typ.kind in {tyInt..tyInt64}:
+        let lowerB = -(MaxSetElements div 2)
+        let upperB = (MaxSetElements div 2) - 1
+        typ = makeRangeType(c, lowerB, upperB, n.info)
+      else:
+        typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1):
       var m: PNode
