@@ -961,7 +961,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
   of mEqProc, mEqRef, mEqUntracedRef:
     genBinaryABC(c, n, dest, opcEqRef)
-  of mXor: genBinaryABCnarrowU(c, n, dest, opcXor)
+  of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
   of mUnaryMinusI, mUnaryMinusI64:
     genUnaryABC(c, n, dest, opcUnaryMinusInt)
@@ -970,7 +970,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mUnaryPlusI, mUnaryPlusF64: gen(c, n.sons[1], dest)
   of mBitnotI:
     genUnaryABC(c, n, dest, opcBitnotInt)
-    genNarrowU(c, n, dest)
+    #genNarrowU modified, do not narrow signed types
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
+      c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
   of mToFloat, mToBiggestFloat, mToInt,
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
