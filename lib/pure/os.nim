@@ -425,8 +425,9 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
   ## * `/ proc <#/,string,string>`_
   ## * `parentDir proc <#parentDir,string>`_
   runnableExamples:
-    assert "a/b/c" /../ "d/e" == "a/b/d/e"
-    assert "a" /../ "d/e" == "a/d/e"
+    when defined(posix):
+      assert "a/b/c" /../ "d/e" == "a/b/d/e"
+      assert "a" /../ "d/e" == "a/d/e"
 
   let sepPos = parentDirPos(head)
   if sepPos >= 0:
