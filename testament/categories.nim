@@ -10,6 +10,8 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
+import important_packages
+
 const
   specialCategories = [
     "assert",
@@ -448,7 +450,7 @@ if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
   #packageDir = nimbleDir / "pkgs" # not used
-  packageIndex = nimbleDir / "packages.json"
+  packageIndex = nimbleDir / "packages_official.json"
 
 proc waitForExitEx(p: Process): int =
   var outp = outputStream(p)
@@ -463,7 +465,7 @@ proc waitForExitEx(p: Process): int =
 
 proc getPackageDir(package: string): string =
   ## TODO - Replace this with dom's version comparison magic.
-  var commandOutput = execCmdEx("nimble path $#" % package)
+  let commandOutput = execCmdEx("nimble path $#" % package)
   if commandOutput.exitCode != QuitSuccess:
     return ""
   else:
@@ -471,20 +473,26 @@ proc getPackageDir(package: string): string =
 
 iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
   let packageList = parseFile(packageIndex)
-  for package in packageList.items():
-    let
-      name = package["name"].str
-      url = package["url"].str
-      isCorePackage = "nim-lang" in normalize(url)
-    case filter:
-    of pfCoreOnly:
-      if isCorePackage:
-        yield (name, url)
-    of pfExtraOnly:
-      if not isCorePackage:
-        yield (name, url)
-    of pfAll:
-      yield (name, url)
+  for package in packageList.items:
+    if package.hasKey("url"):
+      let name = package["name"].str
+      if name notin ["nimble", "compiler"]:
+        let url = package["url"].str
+        case filter
+        of pfCoreOnly:
+          if "nim-lang" in normalize(url):
+            yield (name, url)
+        of pfExtraOnly:
+          if name in important_packages.packages:
+            yield (name, url)
+        of pfAll:
+          yield (name, url)
+
+proc makeSupTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.startTime = epochTime()
 
 proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
   if nimbleExe == "":
@@ -495,31 +503,30 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
     echo("[Warning] - Cannot run nimble tests: Nimble update failed.")
     return
 
-  let packageFileTest = makeTest("PackageFileParsed", "", cat)
+  let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   try:
     for name, url in listPackages(filter):
-      var test = makeTest(name, "", cat)
-      echo(url)
-      let
-        installProcess = startProcess(nimbleExe, "", ["install", "-y", name])
-        installStatus = waitForExitEx(installProcess)
+      var test = makeSupTest(url, "", cat)
+      let buildPath = "pkgstemp" / name
+      let installProcess = startProcess("git", "", ["clone", url, buildPath])
+      let installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
         r.addResult(test, targetC, "", "", reInstallFailed)
-        continue
-
-      let
-        buildPath = getPackageDir(name).strip
-        buildProcess = startProcess(nimbleExe, buildPath, ["build"])
-        buildStatus = waitForExitEx(buildProcess)
-      buildProcess.close
-      if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "", reBuildFailed)
-      r.addResult(test, targetC, "", "", reSuccess)
+      else:
+        let buildProcess = startProcess(nimbleExe, buildPath, ["test"])
+        let buildStatus = waitForExitEx(buildProcess)
+        buildProcess.close
+        if buildStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "", reBuildFailed)
+        else:
+          r.addResult(test, targetC, "", "", reSuccess)
     r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
     r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
+  finally:
+    removeDir("pkgstemp")
 
 
 # ----------------------------------------------------------------------------
