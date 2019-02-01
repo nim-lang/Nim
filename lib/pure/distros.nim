@@ -232,7 +232,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
   elif defined(haiku):
     result = ("pkgman install " & p, true)
   else:
-    result = ("brew install " & p, false)
+    result = ("brew install " & p, true)
 
 proc foreignDep*(foreignPackageName: string) =
   ## Registers 'foreignPackageName' to the internal list of foreign deps.
