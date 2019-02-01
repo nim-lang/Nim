@@ -167,9 +167,9 @@ type
     options*: seq[OptionElement]
     selectedOptions*: seq[OptionElement]
     clientWidth*, clientHeight*: int
-    contentEditable*: string
+    contentEditable*: cstring
     isContentEditable*: bool
-    dir*: string
+    dir*: cstring
     offsetHeight*: int
     offsetWidth*: int
     offsetLeft*: int
