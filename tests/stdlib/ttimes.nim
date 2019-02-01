@@ -115,6 +115,13 @@ template runTimezoneTests() =
     check toTime(parsedJan).toUnix == 1451962800
     check toTime(parsedJul).toUnix == 1467342000
 
+template usingTimezone(tz: string, body: untyped) =
+  when defined(linux) or defined(macosx):
+    let oldZone = getEnv("TZ")
+    putEnv("TZ", tz)
+    body
+    putEnv("TZ", oldZone)
+
 suite "ttimes":
 
   # Generate tests for multiple timezone files where available
@@ -123,37 +130,47 @@ suite "ttimes":
     let tz_dir = getEnv("TZDIR", "/usr/share/zoneinfo")
     const f = "yyyy-MM-dd HH:mm zzz"
 
-    let orig_tz = getEnv("TZ")
     var tz_cnt = 0
-    for tz_fn in walkFiles(tz_dir & "/**/*"):
-      if symlinkExists(tz_fn) or tz_fn.endsWith(".tab") or
-          tz_fn.endsWith(".list"):
+    for timezone in walkFiles(tz_dir & "/**/*"):
+      if symlinkExists(timezone) or timezone.endsWith(".tab") or
+          timezone.endsWith(".list"):
         continue
 
-      test "test for " & tz_fn:
-        tz_cnt.inc
-        putEnv("TZ", tz_fn)
-        runTimezoneTests()
+      usingTimezone(timezone):
+        test "test for " & timezone:
+          tz_cnt.inc
+          runTimezoneTests()
 
     test "enough timezone files tested":
       check tz_cnt > 10
 
-    test "dst handling":
-      putEnv("TZ", "Europe/Stockholm")
-      # In case of an impossible time, the time is moved to after the impossible time period
-      check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) == "2017-03-26 03:30 +02:00"
+  else:
+    # not on Linux or macosx: run in the local timezone only
+    test "parseTest":
+      runTimezoneTests()
+
+  test "dst handling":
+    usingTimezone("Europe/Stockholm"):
+      # In case of an impossible time, the time is moved to after the
+      # impossible time period
+      check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) ==
+        "2017-03-26 03:30 +02:00"
       # In case of an ambiguous time, the earlier time is choosen
-      check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) == "2017-10-29 02:00 +02:00"
+      check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) ==
+        "2017-10-29 02:00 +02:00"
       # These are just dates on either side of the dst switch
-      check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) == "2017-10-29 01:00 +02:00"
+      check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) ==
+        "2017-10-29 01:00 +02:00"
       check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
-      check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
+      check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) ==
+        "2017-10-29 03:01 +01:00"
       check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
 
-      check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
+      check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) ==
+        "2017-10-21 01:00 +02:00"
 
-    test "issue #6520":
-      putEnv("TZ", "Europe/Stockholm")
+  test "issue #6520":
+    usingTimezone("Europe/Stockholm"):
       var local = fromUnix(1469275200).local
       var utc = fromUnix(1469275200).utc
 
@@ -161,35 +178,28 @@ suite "ttimes":
       local.utcOffset = 0
       check claimedOffset == utc.toTime - local.toTime
 
-    test "issue #5704":
-      putEnv("TZ", "Asia/Seoul")
-      let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
+  test "issue #5704":
+    usingTimezone("Asia/Seoul"):
+      let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime -
+        parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
       check diff == initDuration(seconds = 2208986872)
 
-    test "issue #6465":
-      putEnv("TZ", "Europe/Stockholm")
+  test "issue #6465":
+    usingTimezone("Europe/Stockholm"):
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
       check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"
 
-    test "datetime before epoch":
-      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
-
-    test "adding/subtracting time across dst":
-      putenv("TZ", "Europe/Stockholm")
-
+  test "adding/subtracting time across dst":
+    usingTimezone("Europe/Stockholm"):
       let dt1 = initDateTime(26, mMar, 2017, 03, 00, 00)
       check $(dt1 - 1.seconds) == "2017-03-26T01:59:59+01:00"
 
       var dt2 = initDateTime(29, mOct, 2017, 02, 59, 59)
       check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00+01:00"
 
-    putEnv("TZ", orig_tz)
-
-  else:
-    # not on Linux or macosx: run in the local timezone only
-    test "parseTest":
-      runTimezoneTests()
+  test "datetime before epoch":
+    check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52Z"
 
   test "incorrect inputs: empty string":
     parseTestExcp("", "yyyy-MM-dd")
