@@ -1106,6 +1106,18 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
 
+proc parseHexBin*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuParseHexBin".} =
+  ## Parses a hexadecimal binary string value contained in `s`.
+  ##
+  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
+  ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
+  ## within `s` are ignored.
+  var binStr = ""
+  for i in 0..len(s)-1:
+      binStr &= toBin(parseHexInt($s[i])-int('0'), 4)
+  result = binStr
+
 proc generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
   result = ""
