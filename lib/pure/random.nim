@@ -165,9 +165,13 @@ proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T: SomeInteger | enum](r: var Rand; t: typedesc[T]): T =
+proc rand*[T: SomeInteger](r: var Rand; t: typedesc[T]): T =
   ## Returns a random element in the range `low(T)..high(T)`.
   result = cast[T](r.next)
+
+proc rand*[T: enum](r: var Rand; t: typedesc[T]): T =
+  ## Returns a random element in the range `low(T)..high(T)`.
+  result = T(rand(r, ord(high(T))))
 
 proc rand*[T: SomeInteger | enum](t: typedesc[T]): T =
   ## Returns a random element in the range `low(T)..high(T)`.
