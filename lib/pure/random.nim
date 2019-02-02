@@ -151,7 +151,10 @@ proc rand*(max: float): float {.benign.} =
 
 proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b`.
-  result = T(rand(r, x.b - x.a)) + x.a
+  when T is enum:
+    result = T(rand(r, x.b.ord - x.a.ord) + x.a.ord)
+  else:
+    result = T(rand(r, x.b - x.a)) + x.a
 
 proc rand*[T](x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b`.
@@ -162,9 +165,13 @@ proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(r, a.low..a.high)]
 
-proc rand*[T: SomeInteger](t: typedesc[T]): T =
-  ## Returns a random integer in the range `low(T)..high(T)`.
-  result = cast[T](state.next)
+proc rand*[T: SomeInteger | enum](r: var Rand; t: typedesc[T]): T =
+  ## Returns a random element in the range `low(T)..high(T)`.
+  result = cast[T](r.next)
+
+proc rand*[T: SomeInteger | enum](t: typedesc[T]): T =
+  ## Returns a random element in the range `low(T)..high(T)`.
+  result = rand(state, t)
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## returns a random element from the openarray `a`.
