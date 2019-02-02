@@ -360,7 +360,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool =
   if conf.symbols.hasKey(symbol):
-    result = conf.symbols[symbol] != "false"
+    result = true
   elif cmpIgnoreStyle(symbol, CPU[conf.target.targetCPU].name) == 0:
     result = true
   elif cmpIgnoreStyle(symbol, platform.OS[conf.target.targetOS].name) == 0:
