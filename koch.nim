@@ -373,9 +373,10 @@ proc winReleaseArch(arch: string) =
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
-    nimexec "c --cpu:$# koch" % cpu
-    kochExec "boot -d:release --cpu:$#" % cpu
-    kochExec "--latest zip -d:release"
+    inFold "winrelease koch":
+      nimexec "c --cpu:$# koch" % cpu
+    kochExecFold("winrelease boot", "boot -d:release --cpu:$#" % cpu)
+    kochExecFold("winrelease zip", "--latest zip -d:release")
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -384,13 +385,16 @@ proc winRelease*() =
   # anymore!
   # Build -docs file:
   when true:
-    buildDocs(gaCode)
+    inFold "winrelease buildDocs":
+      buildDocs(gaCode)
     withDir "web/upload/" & VersionAsString:
-      exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
+      inFold "winrelease zipdocs":
+        exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
     overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
                   "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
-    csource("-d:release")
+    inFold "winrelease csource":
+      csource("-d:release")
   when sizeof(pointer) == 4:
     winReleaseArch "32"
   when sizeof(pointer) == 8:
