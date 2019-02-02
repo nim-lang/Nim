@@ -1537,3 +1537,57 @@ proc getProjectPath*(): string = discard
   ## Returns the path to the currently compiling project, not to
   ## be confused with ``system.currentSourcePath`` which returns
   ## the path of the current module.
+
+macro importInterpImpl(a: static string): untyped =
+  result = quote do: import `a`
+
+macro importInterpImpl(path: static string, body: untyped): untyped =
+  case body.kind
+  of nnkIdent:
+    result = quote do: import `path` as `body`
+  of nnkStmtList:
+    result = newNimNode(nnkFromStmt, body)
+    result.add newLit path
+    for ai in body[0]:
+      # can be extended later to: `import "foo": [bar as bar2, baz as baz2]`
+      result.add ai
+  else:
+    error("Wrong node kind " & $body.kind, body)
+
+macro importInterpImpl(a: static openArray[string]): untyped =
+  result = newStmtList()
+  for ai in a: result.add quote do: import `ai`
+
+macro importInterpImpl(paths: static openArray[string], body: untyped): untyped =
+  result = newStmtList()
+  if body.kind == nnkStmtList and body[0].kind == nnkNilLit:
+    for ai in paths: result.add quote do: from `ai` import nil
+  else:
+    error "wrong import syntax, got: " & treeRepr(body)
+
+template importInterp*(a: varargs[untyped]): untyped =
+  ##[
+  Flexible import syntax, allowing to import a path computed at compile time
+  from an expression, instead of standard import which requires a litteral.
+  
+  .. code-block:: nim
+  # import from a path expression:
+  const path = getSomePath()
+  importInterp path
+
+  # same as above:
+  importInterp getSomePath()
+
+  # same, but with alias syntax (`pathAlias` is a symbol, not a string):
+  importInterp path, pathAlias
+
+  # same, but with partial import:
+  importInterp path: [foo1, foo2]
+
+  # import from multiple paths at once (can be any compile time expression):
+  importInterp ["os", "strutils"]
+
+  # same but requiring qualified imports:
+  importInterp ["os", "strutils"]: nil
+  ]##
+  importInterpImpl(a)
