@@ -3015,6 +3015,16 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError())
 
+proc getCurrentPkgDirImpl(dir: string): string =
+  for dir2 in parentDirs(dir, fromRoot = false, inclusive = false):
+    for kind, path in walkDir(dir2, relative = true):
+      if kind == pcFile and path.endsWith ".nimble":
+        when defined(nimscript): return dir2
+        else: return normalizedPath dir2
+
+template getCurrentPkgDir*(dir = instantiationInfo(-1, true).filename): string =
+  ## Returns the path to the closest enclosing nimble package dir
+  getCurrentPkgDirImpl(dir)
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"

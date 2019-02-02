@@ -26,6 +26,7 @@ Raises
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
+import "$nim/compiler/unittest_light"
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -333,3 +334,9 @@ block ospaths:
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
+
+block getCurrentPkgDir:
+  const dir = currentSourcePath.parentDir / "nimblepkg"
+  static:
+    assertEquals getCurrentPkgDir(dir / "baz/tbaz.nim"), dir
+    assertEquals getCurrentPkgDir(dir / "baz"), dir
