@@ -215,8 +215,8 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   sampleImpl(r, a, cdf)
 
 template msample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): var T =
-  # Like ``sample(var Rand; openArray[T], openArray[U])``, but returns a
-  # modifiable element
+  ## Like ``sample(var Rand; openArray[T], openArray[U])``, but returns a
+  ## modifiable element
   sampleImpl(r, a, cdf)
 
 proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
