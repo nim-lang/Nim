@@ -7851,6 +7851,7 @@ pragma             description
 =================  ============================================
 `intdefine`:idx:   Reads in a build-time define as an integer
 `strdefine`:idx:   Reads in a build-time define as a string
+`booldefine`:idx:  Reads in a build-time define as a bool
 =================  ============================================
 
 .. code-block:: nim
@@ -7858,13 +7859,14 @@ pragma             description
    echo FooBar
 
 ::
-   nim c -d:FooBar=42 foobar.c
+   nim c -d:FooBar=42 foobar.nim
 
 In the above example, providing the -d flag causes the symbol
 ``FooBar`` to be overwritten at compile time, printing out 42. If the
 ``-d:FooBar=42`` were to be omitted, the default value of 5 would be
-used.
+used. To see if a value was provided, `defined(FooBar)` can be used.
 
+The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
 Custom annotations
 ------------------
