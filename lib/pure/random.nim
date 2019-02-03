@@ -304,8 +304,4 @@ when isMainModule:
     # don't use causes integer overflow
     doAssert compiles(random[int](low(int) .. high(int)))
 
-    var b = [0]
-    inc msample(b)
-    doAssert b[0] == 1
-
   main()
