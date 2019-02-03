@@ -309,10 +309,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.listen()
 
   while true:
-    # TODO: Causes compiler crash.
-    #var (address, client) = await server.socket.acceptAddr()
-    var fut = await server.socket.acceptAddr()
-    asyncCheck processClient(server, fut.client, fut.address, callback)
+    var (address, client) = await server.socket.acceptAddr()
+    asyncCheck processClient(server, client, address, callback)
     #echo(f.isNil)
     #echo(f.repr)
 
