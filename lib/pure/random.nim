@@ -178,7 +178,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## returns a random element from openArray ``a`` using state in ``r``.
   sampleImpl(r, a)
 
-template msample*[T](r: var Rand; a: openArray[T]): var T =
+proc msample*[T](r: var Rand; a: var openArray[T]): var T =
   ## returns a modifiable random element from openArray ``a`` using state in
   ## ``r``.
   sampleImpl(r, a)
@@ -190,7 +190,7 @@ proc sample*[T](a: openArray[T]): T =
   ## returns a random element from openArray ``a`` using non-thread-safe state.
   sampleImpl(a)
 
-template msample*[T](a: openArray[T]): var T =
+proc msample*[T](a: var openArray[T]): var T =
   ## returns a modifiable random element from openArray ``a`` using
   ## non-thread-safe state.
   sampleImpl(a)
@@ -214,7 +214,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ##   echo r.sample(val, cnt.cumsummed) # echo a sample
   sampleImpl(r, a, cdf)
 
-template msample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): var T =
+proc msample*[T, U](r: var Rand; a: var openArray[T], cdf: openArray[U]): var T =
   ## Like ``sample(var Rand; openArray[T], openArray[U])``, but returns a
   ## modifiable element
   sampleImpl(r, a, cdf)
@@ -224,7 +224,7 @@ proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
   ## non-thread-safe state.
   state.sample(a, cdf)
 
-template msample*[T, U](a: openArray[T], cdf: openArray[U]): var T =
+proc msample*[T, U](a: var openArray[T], cdf: openArray[U]): var T =
   ## Like ``msample(var Rand; openArray[T], openArray[U])``, but uses default
   ## non-thread-safe state.
   state.msample(a, cdf)
@@ -303,5 +303,9 @@ when isMainModule:
 
     # don't use causes integer overflow
     doAssert compiles(random[int](low(int) .. high(int)))
+
+    var b = [0]
+    inc msample(b)
+    doAssert b[0] == 1
 
   main()
