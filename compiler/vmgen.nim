@@ -83,9 +83,12 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     elif opc < firstABxInstr:
       result.addf("\t$#\tr$#, r$#, r$#", opc.toStr, x.regA,
                   x.regB, x.regC)
-    elif opc in relativeJumps:
+    elif opc in relativeJumps + {opcTry}:
       result.addf("\t$#\tr$#, L$#", opc.toStr, x.regA,
                   i+x.regBx-wordExcess)
+    elif opc in {opcExcept}:
+      let idx = x.regBx-wordExcess
+      result.addf("\t$#\t$#, $#", opc.toStr, x.regA, $idx)
     elif opc in {opcLdConst, opcAsgnConst}:
       let idx = x.regBx-wordExcess
       result.addf("\t$#\tr$#, $# ($#)", opc.toStr, x.regA,
@@ -480,10 +483,13 @@ proc genType(c: PCtx; typ: PType): int =
 proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   if dest < 0 and not isEmptyType(n.typ): dest = getTemp(c, n.typ)
   var endings: seq[TPosition] = @[]
-  let elsePos = c.xjmp(n, opcTry, 0)
+  let ehPos = c.xjmp(n, opcTry, 0)
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
-  c.patch(elsePos)
+  # Add a jump past the exception handling code
+  endings.add(c.xjmp(n, opcJmp, 0))
+  # This signals where the body ends and where the exception handling begins
+  c.patch(ehPos)
   for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.kind != nkFinally:
@@ -499,14 +505,14 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
         c.gABx(it, opcExcept, 0, 0)
       c.gen(it.lastSon, dest)
       c.clearDest(n, dest)
-      if i < sonsLen(n)-1:
+      if i < sonsLen(n):
         endings.add(c.xjmp(it, opcJmp, 0))
       c.patch(endExcept)
-  for endPos in endings: c.patch(endPos)
   let fin = lastSon(n)
   # we always generate an 'opcFinally' as that pops the safepoint
-  # from the stack
+  # from the stack if no exception is raised in the body.
   c.gABx(fin, opcFinally, 0, 0)
+  for endPos in endings: c.patch(endPos)
   if fin.kind == nkFinally:
     c.gen(fin.sons[0])
     c.clearDest(n, dest)
@@ -2207,9 +2213,9 @@ proc genProc(c: PCtx; s: PSym): int =
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
     s.offset = c.prc.maxSlots
-    #if s.name.s == "calc":
-    #  echo renderTree(body)
-    #  c.echoCode(result)
+    # if s.name.s == "fun1":
+    #   echo renderTree(body)
+    #   c.echoCode(result)
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
