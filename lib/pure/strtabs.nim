@@ -117,7 +117,7 @@ proc mustRehash(length, counter: int): bool =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+  result = (h + 1) and maxHash
 
 proc rawGet(t: StringTableRef, key: string): int =
   var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
