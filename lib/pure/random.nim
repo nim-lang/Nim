@@ -171,13 +171,37 @@ proc rand*[T](a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since v0.20.0:** use ``sample`` instead.
   result = a[rand(a.low..a.high)]
 
+template sampleImpl[T](r: var Rand; a: openArray[T]): T =
+  a[r.rand(a.low..a.high)]
+
 proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## returns a random element from openArray ``a`` using state in ``r``.
-  result = a[r.rand(a.low..a.high)]
+  sampleImpl(r, a)
+
+template msample*[T](r: var Rand; a: openArray[T]): var T =
+  ## returns a modifiable random element from openArray ``a`` using state in
+  ## ``r``.
+  sampleImpl(r, a)
+
+template sampleImpl[T](a: openArray[T]): T =
+  a[rand(a.low..a.high)]
 
 proc sample*[T](a: openArray[T]): T =
   ## returns a random element from openArray ``a`` using non-thread-safe state.
-  result = a[rand(a.low..a.high)]
+  sampleImpl(a)
+
+template msample*[T](a: openArray[T]): var T =
+  ## returns a modifiable random element from openArray ``a`` using
+  ## non-thread-safe state.
+  sampleImpl(a)
+
+template sampleImpl[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
+  assert(cdf.len == a.len)              # Two basic sanity checks.
+  assert(float(cdf[^1]) > 0.0)
+  #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
+  #awfully expensive even in debugging modes.
+  let u = r.rand(float(cdf[^1]))
+  a[cdf.upperBound(U(u))]
 
 proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ## Sample one element from openArray ``a`` when it has cumulative distribution
@@ -188,17 +212,22 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ##   let val = [ "a", "b", "c", "d" ]  # some values
   ##   var cnt = [1, 2, 3, 4]            # histogram of counts
   ##   echo r.sample(val, cnt.cumsummed) # echo a sample
-  assert(cdf.len == a.len)              # Two basic sanity checks.
-  assert(float(cdf[^1]) > 0.0)
-  #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
-  #awfully expensive even in debugging modes.
-  let u = r.rand(float(cdf[^1]))
-  a[cdf.upperBound(U(u))]
+  sampleImpl(r, a, cdf)
+
+template msample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): var T =
+  # Like ``sample(var Rand; openArray[T], openArray[U])``, but returns a
+  # modifiable element
+  sampleImpl(r, a, cdf)
 
 proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
   ## Like ``sample(var Rand; openArray[T], openArray[U])``, but uses default
   ## non-thread-safe state.
   state.sample(a, cdf)
+
+template msample*[T, U](a: openArray[T], cdf: openArray[U]): var T =
+  ## Like ``msample(var Rand; openArray[T], openArray[U])``, but uses default
+  ## non-thread-safe state.
+  state.msample(a, cdf)
 
 proc initRand*(seed: int64): Rand =
   ## Creates a new ``Rand`` state from ``seed``.
