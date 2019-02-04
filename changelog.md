@@ -27,6 +27,9 @@
 - `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
   tree from the symbol declaration instead of just the initializer portion.
 
+- ``os.parentDir`` and ``os.parentDirs`` had bugs that were fixed in #10545, see details there
+
+
 
 #### Breaking changes in the standard library
 

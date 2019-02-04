@@ -303,34 +303,6 @@ proc parentDirPos(path: string): int =
     if path[i] in {DirSep, AltSep}: return i
   result = -1
 
-proc parentDir*(path: string): string {.
-  noSideEffect, rtl, extern: "nos$1".} =
-  ## Returns the parent directory of `path`.
-  ##
-  ## This is the same as ``splitPath(path).head`` when ``path`` doesn't end
-  ## in a dir separator.
-  ## The remainder can be obtained with `lastPathPart(path) proc
-  ## <#lastPathPart,string>`_.
-  ##
-  ## See also:
-  ## * `relativePath proc <#relativePath,string,string>`_
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `tailDir proc <#tailDir,string>`_
-  ## * `parentDirs iterator <#parentDirs.i,string>`_
-  runnableExamples:
-    assert parentDir("") == ""
-    when defined(posix):
-      assert parentDir("/usr/local/bin") == "/usr/local"
-      assert parentDir("foo/bar/") == "foo"
-      assert parentDir("./foo") == "."
-      assert parentDir("/foo") == ""
-
-  let sepPos = parentDirPos(path)
-  if sepPos >= 0:
-    result = substr(path, 0, sepPos-1)
-  else:
-    result = ""
-
 proc tailDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the tail part of `path`.
@@ -364,58 +336,6 @@ proc isRootDir*(path: string): bool {.
     assert not isRootDir("a/b/c")
 
   result = parentDirPos(path) < 0
-
-iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
-  ## Walks over all parent directories of a given `path`.
-  ##
-  ## If `fromRoot` is true (default: false), the traversal will start from
-  ## the file system root diretory.
-  ## If `inclusive` is true (default), the original argument will be included
-  ## in the traversal.
-  ##
-  ## Relative paths won't be expanded by this iterator. Instead, it will traverse
-  ## only the directories appearing in the relative path.
-  ##
-  ## See also:
-  ## * `parentDir proc <#parentDir,string>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   let g = "a/b/c"
-  ##
-  ##   for p in g.parentDirs:
-  ##     echo p
-  ##   # a/b/c
-  ##   # a/b
-  ##   # a
-  ##
-  ##   for p in g.parentDirs(fromRoot=true):
-  ##     echo p
-  ##   # a/
-  ##   # a/b/
-  ##   # a/b/c
-  ##
-  ##   for p in g.parentDirs(inclusive=false):
-  ##     echo p
-  ##   # a/b
-  ##   # a
-
-  if not fromRoot:
-    var current = path
-    if inclusive: yield path
-    while true:
-      if current.isRootDir: break
-      current = current.parentDir
-      yield current
-  else:
-    for i in countup(0, path.len - 2): # ignore the last /
-      # deal with non-normalized paths such as /foo//bar//baz
-      if path[i] in {DirSep, AltSep} and
-          (i == 0 or path[i-1] notin {DirSep, AltSep}):
-        yield path.substr(0, i)
-
-    if inclusive: yield path
 
 proc `/../`*(head, tail: string): string {.noSideEffect.} =
   ## The same as ``parentDir(head) / tail``, unless there is no parent
@@ -468,7 +388,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
-  ## `dir` does not end in `DirSep <#DirSep>`_.
+  ## `dir` does not end in `DirSep <#DirSep>`_ unless it is absolute.
   ## `extension` includes the leading dot.
   ##
   ## If `path` has no extension, `ext` is the empty string.
@@ -522,6 +442,9 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
     result.name = substr(path, sepPos+1, dotPos-1)
     result.ext = substr(path, dotPos)
 
+  # goo/foo//bar.txt => (goo/foo, bar, .txt)
+  normalizePathEnd(result.dir)
+
 proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`.
@@ -560,7 +483,7 @@ proc lastPathPart*(path: string): string {.
     assert lastPathPart("foo/bar/") == "bar"
     assert lastPathPart("foo/bar") == "bar"
 
-  let path = path.normalizePathEnd(trailingSep = false)
+  let path = path.normalizePathEnd
   result = extractFilename(path)
 
 proc changeFileExt*(filename, ext: string): string {.
@@ -665,6 +588,101 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
     result = path[0] == '$'
   elif defined(posix):
     result = path[0] == '/'
+
+proc parentDir*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Returns the parent directory of `path`.
+  ##
+  ## Conventions below derive from analogy with the shell:
+  ##   * an absolute path remains absolute
+  ##   * trailing ``.`` and ``/`` are resolved before taking the parent dir
+  ## It returns empty when attempting to take parent of ``.`` or ``..``
+  ## to indicate it is invalid and distinguish from ``.``
+  ##
+  ## The remainder can be obtained with `lastPathPart(path) proc
+  ## <#lastPathPart,string>`_.
+  ##
+  ## See also:
+  ## * `relativePath proc <#relativePath,string,string>`_
+  ## * `splitPath proc <#splitPath,string>`_
+  ## * `tailDir proc <#tailDir,string>`_
+  ## * `parentDirs iterator <#parentDirs.i,string>`_
+  runnableExamples:
+    assert parentDir("") == ""
+    when defined(posix):
+      assert parentDir("/usr/local/bin") == "/usr/local"
+      assert parentDir("foo//bar/") == "foo"
+      assert parentDir("foo") == "."
+      assert parentDir("/foo") == "/"
+      assert parentDir(".") == ""
+  if path == "": return ""
+  result = path
+  while true:
+    normalizePathEnd(result)
+    let (dir, name, ext) = splitFile(result)
+    if name == "..":
+      if isAbsolute(dir):
+        return dir
+      return ""
+    if name == ".":
+      result = dir
+      continue
+    if dir == "" and name != "":
+      return "."
+    return dir
+
+iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
+  ## Walks over all parent directories of a given `path`.
+  ##
+  ## If `fromRoot` is true (default: false), the traversal will start from
+  ## the file system root diretory.
+  ## If `inclusive` is true (default), the original argument will be included
+  ## in the traversal.
+  ##
+  ## Relative paths won't be expanded by this iterator. Instead, it will traverse
+  ## only the directories appearing in the relative path.
+  ##
+  ## See also:
+  ## * `parentDir proc <#parentDir,string>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   let g = "a/b/c"
+  ##
+  ##   for p in g.parentDirs:
+  ##     echo p
+  ##   # a/b/c
+  ##   # a/b
+  ##   # a
+  ##
+  ##   for p in g.parentDirs(fromRoot=true):
+  ##     echo p
+  ##   # a/
+  ##   # a/b/
+  ##   # a/b/c
+  ##
+  ##   for p in g.parentDirs(inclusive=false):
+  ##     echo p
+  ##   # a/b
+  ##   # a
+
+  var path = path.normalizePathEnd
+  if not fromRoot:
+    if inclusive: yield path
+    var current = path
+    while true:
+      if current.isRootDir: break
+      current = current.parentDir
+      yield current
+  else:
+    for i in countup(0, path.len - 2): # ignore the last /
+      # deal with non-normalized paths such as /foo//bar//baz
+      if path[i] in {DirSep, AltSep} and
+          (i == 0 or path[i-1] notin {DirSep, AltSep}):
+        yield path.substr(0, i).normalizePathEnd
+
+    if inclusive: yield path
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
