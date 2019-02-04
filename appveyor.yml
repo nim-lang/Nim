@@ -27,7 +27,7 @@ environment:
     #   platform: x86
 
     - allow_failures:
-      - NIM_TEST_PACKAGES: true
+      NIM_TEST_PACKAGES: true
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
