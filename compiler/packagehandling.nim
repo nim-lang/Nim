@@ -7,13 +7,21 @@
 #    distribution, for details about the copyright.
 #
 
+iterator myParentDirs(p: string): string =
+  # XXX os's parentDirs is stupid (multiple yields) and triggers an old bug...
+  var current = p
+  while true:
+    current = current.parentDir
+    if current.len == 0: break
+    yield current
+
 proc resetPackageCache*(conf: ConfigRef) =
   conf.packageCache = newPackageCache()
 
 proc getPackageName*(conf: ConfigRef; path: string): string =
   var parents = 0
   block packageSearch:
-    for d in parentDirs(path, inclusive=false):
+    for d in myParentDirs(path):
       if conf.packageCache.hasKey(d):
         #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
         return conf.packageCache[d]
@@ -27,7 +35,7 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
   # we also store if we didn't find anything:
   when not defined(nimNoNilSeqs):
     if result.isNil: result = ""
-  for d in parentDirs(path, inclusive=false):
+  for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
     conf.packageCache[d] = result
     dec parents
