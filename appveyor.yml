@@ -26,8 +26,9 @@ environment:
     #   SQLITE_ARCHIVE: sqlite-dll-win32-x86-3160200.zip
     #   platform: x86
 
-    - allow_failures:
-      - NIM_TEST_PACKAGES: "true"
+matrix:
+  allow_failures:
+  - NIM_TEST_PACKAGES: true
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
