@@ -26,6 +26,7 @@ Raises
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
+import "$nim/compiler/unittest_light"
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -240,16 +241,23 @@ block splitFile:
 
 # execShellCmd is tested in tosproc
 
-block ospaths:
-  doAssert unixToNativePath("") == ""
-  doAssert unixToNativePath(".") == $CurDir
-  doAssert unixToNativePath("..") == $ParDir
+block isAbsolute:
+  doAssert not isAbsolute("")
+  doAssert not isAbsolute(".")
+  doAssert not isAbsolute("..")
+  doAssert not isAbsolute("abc")
+  doAssert not isAbsolute(".foo")
   doAssert isAbsolute(unixToNativePath("/"))
   doAssert isAbsolute(unixToNativePath("/", "a"))
   doAssert isAbsolute(unixToNativePath("/a"))
   doAssert isAbsolute(unixToNativePath("/a", "a"))
   doAssert isAbsolute(unixToNativePath("/a/b"))
   doAssert isAbsolute(unixToNativePath("/a/b", "a"))
+
+block ospaths:
+  doAssert unixToNativePath("") == ""
+  doAssert unixToNativePath(".") == $CurDir
+  doAssert unixToNativePath("..") == $ParDir
   doAssert unixToNativePath("a/b") == joinPath("a", "b")
 
   when defined(macos):
@@ -333,3 +341,98 @@ block ospaths:
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
+
+block parentDir:
+  doAssert parentDir("") == ""
+
+  let paths = [
+    ("/usr/local/bin", "/usr/local"),
+    ("foo/bar.nim", "foo"),
+    ("foo//bar.nim", "foo"),
+    ("foo//bar//", "foo"),
+    ("foo///bar", "foo"),
+    ("foo///bar/.", "foo"),
+    ("./foo///bar", "./foo"),
+    (".//foo///bar", ".//foo"),
+    ("/.//foo///bar", "/.//foo"),
+    ("foo/bar//a/./.", "foo/bar"),
+    ("/a/bar", "/a"),
+    ("/bar", "/"),
+
+    # same as in shell, `cd ..` returns `.` when pwd = "foo"; "." is not same as empty
+    # see https://github.com/nim-lang/Nim/pull/10018#issuecomment-447996816
+    ("a/./.", "."),
+    ("./bar", "."),
+    (".//bar", "."),
+    ("bar", "."),
+
+    (".git", "."),
+    (".git.bak1", "."),
+
+    # absolute remains absolute
+    ("/", "/"),
+    ("/.", "/"),
+    ("/..", "/"),
+    ("/./", "/"),
+
+    # return empty when no parent possible
+    ("", ""),
+    (".", ""),
+    ("./", ""),
+    ("..", ""),
+    ("../", ""),
+    ("../..", ""),
+
+    # regression tests
+
+    # fix #8734 (bug 2)
+    ("a/b//", "a"),
+    ("a/b/", "a"),
+
+    # fix #8734 (bug 3)
+    ("/", "/"),
+
+    # fix #8734 (bug 4)
+    ("/a.txt", "/"),
+  ]
+  var numErrors = 0
+  for a in paths:
+    let path = unixToNativePath a[0]
+    let expected = unixToNativePath a[1]
+    if parentDir(path) != expected:
+      echo ("parentDir error:", a[0], a[1], path, expected, parentDir(path))
+      numErrors.inc
+  doAssert numErrors == 0 # delays the assert to see all errors first
+
+import sequtils
+
+block parentDirs:
+  template test(iter: untyped, expected: seq[string]): untyped =
+    let lhs = toSeq(iter)
+    let rhs = expected.mapIt(it.unixToNativePath)
+    assertEquals lhs, rhs
+
+  # fromRoot=false, inclusive=true
+  test parentDirs("a/b/c".unixToNativePath), @["a/b/c", "a/b", "a"]
+  test parentDirs("/a/b/c".unixToNativePath), @["/a/b/c", "/a/b", "/a", "/"]
+  test parentDirs("//a/b//c//".unixToNativePath), @["//a/b//c", "//a/b", "//a", "/"]
+  test parentDirs("/".unixToNativePath), @["/"]
+  test parentDirs("".unixToNativePath), @[""]
+
+  # fromRoot=true
+  test parentDirs("a/b/c".unixToNativePath, fromRoot=true), @["a", "a/b", "a/b/c"]
+  test parentDirs("a//b//c/".unixToNativePath, fromRoot=true), @["a", "a//b", "a//b//c"]
+  test parentDirs("/a/b".unixToNativePath, fromRoot=true), @["/", "/a", "/a/b"]
+
+  # inclusive=false
+  test parentDirs("/a/b".unixToNativePath, inclusive=false), @["/a", "/"]
+  test parentDirs("/a//b//".unixToNativePath, inclusive=false), @["/a", "/"]
+  test parentDirs("/a/b//".unixToNativePath, inclusive=false), @["/a", "/"]
+  test parentDirs("".unixToNativePath, inclusive=false), seq[string](@[])
+
+  # fromRoot=true, inclusive=false
+  test parentDirs("/a/b/c/".unixToNativePath, fromRoot=true, inclusive=false), @["/", "/a", "/a/b"]
+
+  # regression test
+  # fix #8353
+  test parentDirs("/a/b".unixToNativePath), @["/a/b", "/a", "/"]
