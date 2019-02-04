@@ -471,7 +471,8 @@ proc getPackageDir(package: string): string =
   else:
     result = commandOutput[0].string
 
-iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
+iterator listPackages(filter: PackageFilter): tuple[name, url, cmd: string] =
+  const defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for package in packageList.items:
     if package.hasKey("url"):
@@ -481,12 +482,12 @@ iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
         case filter
         of pfCoreOnly:
           if "nim-lang" in normalize(url):
-            yield (name, url)
+            yield (name, url, defaultCmd)
         of pfExtraOnly:
-          if name in important_packages.packages:
-            yield (name, url)
+          for n, cmd, commit in important_packages.packages.items:
+            if name == n: yield (name, url, cmd)
         of pfAll:
-          yield (name, url)
+          yield (name, url, defaultCmd)
 
 proc makeSupTest(test, options: string, cat: Category): TTest =
   result.cat = cat
@@ -504,8 +505,9 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
     return
 
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
+  var keepDir = false
   try:
-    for name, url in listPackages(filter):
+    for name, url, cmd in listPackages(filter):
       var test = makeSupTest(url, "", cat)
       let buildPath = "pkgstemp" / name
       let installProcess = startProcess("git", "", ["clone", url, buildPath])
@@ -513,12 +515,15 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
       installProcess.close
       if installStatus != QuitSuccess:
         r.addResult(test, targetC, "", "", reInstallFailed)
+        keepDir = true
       else:
-        let buildProcess = startProcess(nimbleExe, buildPath, ["test"])
+        let cmdArgs = parseCmdLine(cmd)
+        let buildProcess = startProcess(cmdArgs[0], buildPath, cmdArgs[1..^1])
         let buildStatus = waitForExitEx(buildProcess)
         buildProcess.close
         if buildStatus != QuitSuccess:
           r.addResult(test, targetC, "", "", reBuildFailed)
+          keepDir = true
         else:
           r.addResult(test, targetC, "", "", reSuccess)
     r.addResult(packageFileTest, targetC, "", "", reSuccess)
@@ -526,7 +531,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
     r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
   finally:
-    removeDir("pkgstemp")
+    if not keepDir: removeDir("pkgstemp")
 
 
 # ----------------------------------------------------------------------------
