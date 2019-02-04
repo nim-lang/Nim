@@ -229,6 +229,10 @@ elif defined(posix):
     when not defined(valgrind_workaround_10121):
       tzset()
 
+  when defined(macosx):
+    proc gettimeofday(tp: var Timeval, unused: pointer = nil)
+      {.importc: "gettimeofday", header: "<sys/time.h>".}
+
 elif defined(windows):
   import winlean, std/time_t
 
@@ -1107,6 +1111,11 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     let nanos = convert(Milliseconds, Nanoseconds,
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
+  elif defined(macosx):
+    var a: Timeval
+    gettimeofday(a)
+    result = initTime(a.tv_sec.int64,
+                      convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(realTimeClockId, ts)
@@ -2451,7 +2460,11 @@ when not defined(JS):
       ## on the hardware/OS).
       ##
       ## ``getTime`` should generally be prefered over this proc.
-      when defined(posix):
+      when defined(macosx):
+        var a: Timeval
+        gettimeofday(a)
+        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+      elif defined(posix):
         var ts: Timespec
         discard clock_gettime(realTimeClockId, ts)
         result = toBiggestFloat(ts.tv_sec.int64) +
