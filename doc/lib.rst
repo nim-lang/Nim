@@ -254,9 +254,6 @@ Math libraries
 Internet Protocols and Support
 ------------------------------
 
-* `cgi <cgi.html>`_
-  This module implements helpers for CGI applications.
-
 * `browsers <browsers.html>`_
   This module implements procs for opening URLs with the user's default
   browser.
@@ -267,9 +264,6 @@ Internet Protocols and Support
 
 * `smtp <smtp.html>`_
   This module implement a simple SMTP client.
-
-* `cookies <cookies.html>`_
-  This module contains helper procs for parsing and generating cookies.
 
 * `mimetypes <mimetypes.html>`_
   This module implements a mimetypes database.

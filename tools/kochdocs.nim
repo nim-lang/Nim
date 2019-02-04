@@ -166,7 +166,6 @@ lib/pure/parsecsv.nim
 lib/pure/parsesql.nim
 lib/pure/streams.nim
 lib/pure/terminal.nim
-lib/pure/cgi.nim
 lib/pure/unicode.nim
 lib/pure/strmisc.nim
 lib/pure/htmlgen.nim
@@ -200,7 +199,6 @@ lib/pure/collections/deques.nim
 lib/pure/encodings.nim
 lib/pure/collections/sequtils.nim
 lib/pure/collections/rtarrays.nim
-lib/pure/cookies.nim
 lib/pure/memfiles.nim
 lib/pure/collections/critbits.nim
 lib/core/locks.nim

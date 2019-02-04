@@ -1,7 +1,7 @@
 # Copyright (C) 2012 Dominik Picheta
 # MIT License - Look at license.txt for details.
 import parseutils, strtabs, strutils, tables, net, mimetypes, asyncdispatch, os
-from cgi import decodeUrl
+from uri import decodeUrl
 
 const
   useHttpBeast* = false # not defined(windows) and not defined(useStdLib)

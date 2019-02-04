@@ -1,4 +1,4 @@
-import uri, cgi, tables, logging, strutils, re, options
+import uri, tables, logging, strutils, re, options
 
 import jester/private/utils
 
@@ -90,7 +90,7 @@ proc params*(req: Request): Table[string, string] =
     let query = req.req.url.query
 
   try:
-    for key, val in cgi.decodeData(query):
+    for key, val in uri.decodeData(query):
       result[key] = val
   except CgiError:
     logging.warn("Incorrect query. Got: $1" % [query])

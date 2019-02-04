@@ -8,7 +8,7 @@ import net, strtabs, re, tables, parseutils, os, strutils, uri,
 import jester/private/[errorpages, utils]
 import jester/[request, patterns]
 
-from cgi import decodeData, decodeUrl, CgiError
+from uri import decodeData, decodeUrl, CgiError
 
 export request
 export strtabs
@@ -292,7 +292,7 @@ proc handleFileRequest(
   # Find static file.
   # TODO: Caching.
   let path = normalizedPath(
-    jes.settings.staticDir / cgi.decodeUrl(req.pathInfo)
+    jes.settings.staticDir / uri.decodeUrl(req.pathInfo)
   )
 
   # Verify that this isn't outside our static` dir.

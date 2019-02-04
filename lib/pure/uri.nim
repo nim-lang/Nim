@@ -37,7 +37,8 @@
 ##    else:
 ##      echo "Wrong format"
 
-import strutils, parseutils
+import strutils, parseutils, os, strtabs
+
 type
   Url* = distinct string
 
@@ -45,6 +46,13 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
+
+  CgiError* = object of IOError  ## exception that is raised if a CGI error occurs
+  RequestMethod* = enum  ## the used request method
+    methodNone,          ## no REQUEST_METHOD environment variable
+    methodPost,          ## query uses the POST method
+    methodGet            ## query uses the GET method
+
 
 proc encodeUrl*(s: string, usePlus=true): string =
   ## Encodes a URL according to RFC3986.
@@ -462,6 +470,107 @@ proc `$`*(u: Uri): string =
   if u.anchor.len > 0:
     result.add("#")
     result.add(u.anchor)
+
+
+proc cgiError*(msg: string) {.noreturn.} =
+  ## raises an ECgi exception with message `msg`.
+  var e: ref CgiError
+  new(e)
+  e.msg = msg
+  raise e
+
+proc handleHexChar(c: char, x: var int) {.inline.} =
+  case c
+  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
+  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
+  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
+  else: assert(false)
+
+proc getEncodedData(allowedMethods: set[RequestMethod]): string =
+  case getEnv("REQUEST_METHOD").string
+  of "POST":
+    if methodPost notin allowedMethods:
+      cgiError("'REQUEST_METHOD' 'POST' is not supported")
+    var L = parseInt(getEnv("CONTENT_LENGTH").string)
+    result = newString(L)
+    if readBuffer(stdin, addr(result[0]), L) != L:
+      cgiError("cannot read from stdin")
+  of "GET":
+    if methodGet notin allowedMethods:
+      cgiError("'REQUEST_METHOD' 'GET' is not supported")
+    result = getEnv("QUERY_STRING").string
+  else:
+    if methodNone notin allowedMethods:
+      cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
+
+
+iterator decodeData*(data: string): tuple[key, value: TaintedString] =
+  ## Reads and decodes CGI data and yields the (name, value) pairs the
+  ## data consists of.
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while i < data.len:
+    setLen(name, 0) # reuse memory
+    while i < data.len:
+      case data[i]
+      of '%':
+        var x = 0
+        handleHexChar(data[i+1], x)
+        handleHexChar(data[i+2], x)
+        inc(i, 2)
+        add(name, chr(x))
+      of '+': add(name, ' ')
+      of '=', '&': break
+      else: add(name, data[i])
+      inc(i)
+    if i >= data.len or data[i] != '=': cgiError("'=' expected")
+    inc(i) # skip '='
+    setLen(value, 0) # reuse memory
+    while i < data.len:
+      case data[i]
+      of '%':
+        var x = 0
+        if i+2 < data.len:
+          handleHexChar(data[i+1], x)
+          handleHexChar(data[i+2], x)
+        inc(i, 2)
+        add(value, chr(x))
+      of '+': add(value, ' ')
+      of '&', '\0': break
+      else: add(value, data[i])
+      inc(i)
+    yield (name.TaintedString, value.TaintedString)
+    if i < data.len:
+      if data[i] == '&': inc(i)
+      else: cgiError("'&' expected")
+
+iterator decodeData*(allowedMethods: set[RequestMethod] =
+       {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
+  ## Reads and decodes CGI data and yields the (name, value) pairs the
+  ## data consists of. If the client does not use a method listed in the
+  ## `allowedMethods` set, an `ECgi` exception is raised.
+  let data = getEncodedData(allowedMethods)
+  for key, value in decodeData(data):
+    yield (key, value)
+
+
+proc readData*(allowedMethods: set[RequestMethod] =
+               {methodNone, methodPost, methodGet}): StringTableRef =
+  ## Read CGI data. If the client does not use a method listed in the
+  ## `allowedMethods` set, an `ECgi` exception is raised.
+  result = newStringTable()
+  for name, value in decodeData(allowedMethods):
+    result[name.string] = value.string
+
+proc readData*(data: string): StringTableRef =
+  ## Read CGI data from a string.
+  result = newStringTable()
+  for name, value in decodeData(data):
+    result[name.string] = value.string
+
+
 
 when isMainModule:
   block:

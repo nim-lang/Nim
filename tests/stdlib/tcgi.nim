@@ -1,5 +1,5 @@
 import unittest
-import cgi, strtabs
+import uri, strtabs
 
 suite "Test cgi module":
   const queryString = "foo=bar&фу=бар&checked=✓&list=1,2,3&with_space=text%20with%20space"
