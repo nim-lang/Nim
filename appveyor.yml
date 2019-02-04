@@ -5,9 +5,6 @@ cache:
 - sqlite-dll-win64-x64-3160200.zip
 # - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
 
-matrix:
-  fast_finish: true
-
 environment:
   matrix:
     - NIM_TEST_PACKAGES: false
@@ -26,8 +23,10 @@ environment:
     #   SQLITE_ARCHIVE: sqlite-dll-win32-x86-3160200.zip
     #   platform: x86
 
-    - allow_failures:
-      NIM_TEST_PACKAGES: true
+matrix:
+  allow_failures:
+    - NIM_TEST_PACKAGES: true
+  fast_finish: true
 
 install:
   - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
