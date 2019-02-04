@@ -9,6 +9,14 @@ matrix:
   fast_finish: true
 
 environment:
+  NIM_TEST_PACKAGES: false
+  NIM_TEST_PACKAGES: true
+
+matrix:
+  allow_failures:
+    - NIM_TEST_PACKAGES: true
+
+environment:
   matrix:
     - MINGW_DIR: mingw64
       MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
