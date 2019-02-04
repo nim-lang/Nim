@@ -594,10 +594,9 @@ proc parentDir*(path: string): string {.
   ## Returns the parent directory of `path`.
   ##
   ## Conventions below derive from analogy with the shell:
-  ##   * an absolute path remains absolute
   ##   * trailing ``.`` and ``/`` are resolved before taking the parent dir
   ## It returns empty when attempting to take parent of ``.`` or ``..``
-  ## to indicate it is invalid and distinguish from ``.``
+  ## to indicate it is invalid (and different from ``.``)
   ##
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
@@ -615,11 +614,15 @@ proc parentDir*(path: string): string {.
       assert parentDir("foo") == "."
       assert parentDir("/foo") == "/"
       assert parentDir(".") == ""
+  const parentDirOfRootIsEmpty = true # still controversial
   if path == "": return ""
   result = path
   while true:
     normalizePathEnd(result)
     let (dir, name, ext) = splitFile(result)
+    when parentDirOfRootIsEmpty:
+      if name == ".." or (name.len == 0 and ext.len == 0): return ""
+
     if name == "..":
       if isAbsolute(dir):
         return dir
