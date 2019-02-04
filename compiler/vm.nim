@@ -486,7 +486,8 @@ const
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
-  var savedPC = pc
+  # Used to keep track of where the execution is resumed.
+  var savedPC = -1
   var savedFrame: PStackFrame
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
@@ -1168,14 +1169,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # Pop the last safepoint introduced by a opcTry. This opcode is only
       # executed _iff_ no exception was raised in the body of the `try`
       # statement hence the need to pop the safepoint here.
-      doAssert(savedPC == 0)
+      doAssert(savedPC < 0)
       tos.popSafePoint()
     of opcFinallyEnd:
       # The control flow may not resume at the next instruction since we may be
       # raising an exception or performing a cleanup.
-      if savedPC != 0:
+      if not savedPC < 0:
         pc = savedPC - 1
-        savedPC = 0
+        savedPC = -1
         if tos != savedFrame:
           tos = savedFrame
           move(regs, tos.slots)
@@ -1193,7 +1194,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       case jumpTo.why:
       of ExceptionGotoHandler:
         # Jump to the handler, do nothing when the `finally` block ends.
-        savedPC = 0
+        savedPC = -1
         pc = jumpTo.where - 1
         if tos != frame:
           tos = frame
@@ -1201,7 +1202,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of ExceptionGotoFinally:
         # Jump to the `finally` block first then re-jump here to continue the
         # traversal of the exception chain
-        # savedPC = 0
         savedPC = pc
         savedFrame = tos
         pc = jumpTo.where - 1
