@@ -9,8 +9,9 @@ matrix:
   fast_finish: true
 
 environment:
-  NIM_TEST_PACKAGES: false
-  NIM_TEST_PACKAGES: true
+  matrix:
+    - NIM_TEST_PACKAGES: false
+    - NIM_TEST_PACKAGES: true
 
 matrix:
   allow_failures:
