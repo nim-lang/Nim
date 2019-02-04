@@ -644,29 +644,14 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ##
   ## See also:
   ## * `parentDir proc <#parentDir,string>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   let g = "a/b/c"
-  ##
-  ##   for p in g.parentDirs:
-  ##     echo p
-  ##   # a/b/c
-  ##   # a/b
-  ##   # a
-  ##
-  ##   for p in g.parentDirs(fromRoot=true):
-  ##     echo p
-  ##   # a/
-  ##   # a/b/
-  ##   # a/b/c
-  ##
-  ##   for p in g.parentDirs(inclusive=false):
-  ##     echo p
-  ##   # a/b
-  ##   # a
-
+  runnableExamples:
+    import sequtils
+    let g = "a/b/c"
+    when defined(posix):
+      assert toSeq(g.parentDirs) == @["a/b/c", "a/b", "a"]
+      assert toSeq(g.parentDirs(fromRoot=true)) == @["a", "a/b", "a/b/c"]
+      assert toSeq(g.parentDirs(inclusive=false)) == @["a/b", "a"]
+      assert toSeq("/a//b/".parentDirs) == @["/a//b", "/a", "/"]
   var path = path.normalizePathEnd
   if not fromRoot:
     if inclusive: yield path
