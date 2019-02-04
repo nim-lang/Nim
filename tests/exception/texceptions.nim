@@ -78,16 +78,6 @@ block: #10417
 # Make sure the VM handles the exceptions correctly
 block:
   proc fun1(): seq[int] =
-    var p = 0
-    proc moo() = raise newException(ValueError, "ee")
-    proc qoo() =
-      try: moo()
-      finally: inc p
-    try: qoo()
-    except:
-      doAssert("ee" == getCurrentExceptionMsg())
-      result.add(p)
-    finally: result.add(21)
     try:
       try:
         raise newException(ValueError, "xx")
