@@ -1,6 +1,6 @@
 discard """
-  errormsg: "request to generate code for .compileTime proc: newSeq"
-  line: 21
+  errormsg: "cannot evaluate {.compileTime.} proc 'newSeq' at runtime"
+  file: "system.nim"
 """
 
 type

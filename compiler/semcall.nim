@@ -506,6 +506,9 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
   result.typ = finalCallee.typ.sons[0]
   updateDefaultParams(result)
+  if c.inStaticContext == 0 and sfCompileTime in result[0].sym.flags:
+    localError(c.config, n.info, "cannot evaluate {.compileTime.} proc '" &
+      result[0].sym.name.s & "' at runtime")
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;

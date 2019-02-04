@@ -2302,9 +2302,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skProc, skConverter, skIterator, skFunc:
       #if sym.kind == skIterator:
       #  echo renderTree(sym.getBody, {renderIds})
-      if sfCompileTime in sym.flags:
-        localError(p.config, n.info, "request to generate code for .compileTime proc: " &
-           sym.name.s)
       genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)

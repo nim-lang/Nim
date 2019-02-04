@@ -1119,7 +1119,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skVar, skLet, skResult, skForVar:
     if s.magic == mNimvm:
       localError(c.config, n.info, "illegal context for 'nimvm' magic")
-
+    if c.inStaticContext == 0 and sfCompileTime in s.flags:
+        localError(c.config, n.info, "{.compileTime.} variable '" &
+          s.name.s & "' cannot be used at runtime")
     markUsed(c.config, n.info, s, c.graph.usageSym)
     onUse(n.info, s)
     result = newSymNode(s, n.info)
