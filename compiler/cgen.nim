@@ -46,6 +46,10 @@ when options.hasTinyCBackend:
 
 # implementation
 
+proc writeCFile(m: BModule, file: AbsoluteFile, r: Rope)
+  if not writeRope(r, file):
+    rawMessage(m.config, errCannotOpenFile, file.string)
+
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
@@ -1546,8 +1550,7 @@ proc writeHeader(m: BModule) =
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
   if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
-  if not writeRope(result, m.filename):
-    rawMessage(m.config, errCannotOpenFile, m.filename.string)
+  writeCFile(m, m.filename, result)
 
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
@@ -1584,14 +1587,12 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
           echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
         else:
           echo "new file ", cfile.cname.string
-      if not writeRope(code, cfile.cname):
-        rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
+      writeCFile(m, cfile.cname, code)
       return
     if fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
       result = false
   else:
-    if not writeRope(code, cfile.cname):
-      rawMessage(m.config, errCannotOpenFile, cfile.cname.string)
+    writeCFile(m, cfile.cname, code)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1629,8 +1630,7 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if code != nil:
-      if not writeRope(code, cfile):
-        rawMessage(m.config, errCannotOpenFile, cfile.string)
+      writeCFile(m, cfile, code)
       addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
@@ -1651,8 +1651,7 @@ proc updateCachedModule(m: BModule) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if code != nil:
-      if not writeRope(code, cfile):
-        rawMessage(m.config, errCannotOpenFile, cfile.string)
+      writeCFile(m, cfile, code)
       addFileToCompile(m.config, cf)
   else:
     if sfMainModule notin m.module.flags:
