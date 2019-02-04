@@ -249,13 +249,13 @@ block absolutePath:
 block splitFile:
   doAssert splitFile("") == ("", "", "")
   doAssert splitFile("abc/") == ("abc", "", "")
-  doAssert splitFile("/") == ("/", "", "")
+  doAssert splitFile("/") == ("/".unixToNativePath, "", "")
   doAssert splitFile("./abc") == (".", "abc", "")
   doAssert splitFile(".txt") == ("", ".txt", "")
   doAssert splitFile("abc/.txt") == ("abc", ".txt", "")
   doAssert splitFile("abc") == ("", "abc", "")
   doAssert splitFile("abc.txt") == ("", "abc", ".txt")
-  doAssert splitFile("/abc.txt") == ("/", "abc", ".txt")
+  doAssert splitFile("/abc.txt") == ("/".unixToNativePath, "abc", ".txt")
   doAssert splitFile("/foo/abc.txt") == ("/foo", "abc", ".txt")
   doAssert splitFile("/foo/abc.txt.gz") == ("/foo", "abc.txt", ".gz")
   doAssert splitFile(".") == ("", ".", "")
@@ -426,7 +426,8 @@ block tailDir:
   let examples = [
     ("/usr/local/bin", "usr/local/bin"),
     ("usr/local/bin", "local/bin"),
-    # todo: fix
+
+    # issue #8395; todo: fix
     # ("//usr//local//bin//", "usr//local//bin//"),
     # ("usr//local//bin//", "local/bin//"),
   ]
