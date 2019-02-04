@@ -3870,7 +3870,14 @@ First class iterators
 There are 2 kinds of iterators in Nim: *inline* and *closure* iterators.
 An `inline iterator`:idx: is an iterator that's always inlined by the compiler
 leading to zero overhead for the abstraction, but may result in a heavy
-increase in code size. Inline iterators are second class citizens;
+increase in code size.
+
+Caution: the body of a for loop over an inline iterator is inlined into
+each ``yield`` statement appearing in the iterator code,
+so ideally the code should be refactored to contain a single yield when possible
+to avoid code bloat.
+
+Inline iterators are second class citizens;
 They can be passed as parameters only to other inlining code facilities like
 templates, macros and other inline iterators.
 
