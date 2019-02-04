@@ -28,6 +28,30 @@ Raises
 import os, strutils, pathnorm
 import "$nim/compiler/unittest_light"
 
+template runTestCases*(msg: string, examples, body: untyped): bool =
+  ##[
+  Runs body on each example (input, expected).
+  Takes care of calling unixToNativePath.
+  Returns true on success.
+  ]##
+  runnableExamples:
+    const examples = [("foo", "foobar"), ("foo2", "foo2bar")]
+    doAssert runTestCases("identity", examples, it & "bar")
+    doAssert not runTestCases("intentional failure", examples, it & "baz")
+
+  block:
+    var numErrors = 0
+    for i, a in examples:
+      let it {.inject.} = unixToNativePath a[0]
+      let expected = unixToNativePath a[1]
+      let actual = body
+      if actual != expected:
+        if msg != "":
+          echo (message: msg, index: i, example: a, inputNative: it, expectedNative: expected, actual: actual)
+        numErrors.inc
+    # the caller can see all the errors for all test cases when working on a proc
+    numErrors == 0
+
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
   let dirs = @["some", "created", "test", "dirs"]
@@ -343,9 +367,7 @@ block ospaths:
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
 
 block parentDir:
-  doAssert parentDir("") == ""
-
-  let paths = [
+  let examples = [
     ("/usr/local/bin", "/usr/local"),
     ("foo/bar.nim", "foo"),
     ("foo//bar.nim", "foo"),
@@ -395,16 +417,21 @@ block parentDir:
     # fix #8734 (bug 4)
     ("/a.txt", "/"),
   ]
-  var numErrors = 0
-  for a in paths:
-    let path = unixToNativePath a[0]
-    let expected = unixToNativePath a[1]
-    if parentDir(path) != expected:
-      echo ("parentDir error:", a[0], a[1], path, expected, parentDir(path))
-      numErrors.inc
-  doAssert numErrors == 0 # delays the assert to see all errors first
+
+  doAssert runTestCases("parentDir", examples, parentDir(it))
 
 import sequtils
+
+block tailDir:
+  let examples = [
+    ("/usr/local/bin", "usr/local/bin"),
+    ("usr/local/bin", "local/bin"),
+    # todo: fix
+    # ("//usr//local//bin//", "usr//local//bin//"),
+    # ("usr//local//bin//", "local/bin//"),
+  ]
+
+  doAssert runTestCases("tailDir", examples, tailDir(it))
 
 block parentDirs:
   template test(iter: untyped, expected: seq[string]): untyped =
