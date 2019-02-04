@@ -644,6 +644,7 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ##
   ## Relative paths won't be expanded by this iterator. Instead, it will traverse
   ## only the directories appearing in the relative path.
+  ## Caveat: current implementation involves multiple yields, causing code bloat.
   ##
   ## See also:
   ## * `parentDir proc <#parentDir,string>`_
