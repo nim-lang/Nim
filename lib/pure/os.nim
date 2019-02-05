@@ -634,6 +634,22 @@ proc parentDir*(path: string): string {.
       return "."
     return dir
 
+type Queue[T] = object
+  ## a simple priority queue implementation
+  data: seq[T]
+  first: int
+
+proc empty[T](q: Queue[T]): bool = q.first >= q.data.len
+
+proc pushBack[T](q: var Queue[T], a: T) =
+  q.data.add a
+
+proc popFront[T](q: var Queue[T]): T =
+  # TODO: use a resizable ring buffer if performance is needed
+  assert q.first < q.data.len
+  result = q.data[q.first]
+  q.first.inc
+
 iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## Walks over all parent directories of a given `path`.
   ##
@@ -644,7 +660,6 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ##
   ## Relative paths won't be expanded by this iterator. Instead, it will traverse
   ## only the directories appearing in the relative path.
-  ## Caveat: current implementation involves multiple yields, causing code bloat.
   ##
   ## See also:
   ## * `parentDir proc <#parentDir,string>`_
@@ -657,21 +672,28 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
       assert toSeq(g.parentDirs(inclusive=false)) == @["a/b", "a"]
       assert toSeq("/a//b/".parentDirs) == @["/a//b", "/a", "/"]
   var path = path.normalizePathEnd
-  if not fromRoot:
-    if inclusive: yield path
-    var current = path
-    while true:
-      if current.isRootDir: break
-      current = current.parentDir
-      yield current
-  else:
-    for i in countup(0, path.len - 2): # ignore the last /
-      # deal with non-normalized paths such as /foo//bar//baz
-      if path[i] in {DirSep, AltSep} and
-          (i == 0 or path[i-1] notin {DirSep, AltSep}):
-        yield path.substr(0, i).normalizePathEnd
-
-    if inclusive: yield path
+  var queue: Queue[string]
+  if not fromRoot and inclusive: queue.pushBack path
+  var i = 0
+  while true:
+    if not queue.empty:
+      yield popFront(queue)
+    if not fromRoot:
+      if path.isRootDir: break
+      path = path.parentDir
+      queue.pushBack path
+    else:
+      while i < path.len - 1: # ignore the last /
+        # deal with non-normalized paths such as /foo//bar//baz
+        if path[i] in {DirSep, AltSep} and (i == 0 or path[i-1] notin {DirSep, AltSep}):
+          queue.pushBack path.substr(0, i).normalizePathEnd
+          i.inc
+          break
+        i.inc
+      if i == path.len - 1 and inclusive:
+        queue.pushBack path
+        i.inc
+      elif queue.empty: break # no work remaining
 
 proc unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -3056,3 +3078,13 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+  block queueTest:
+    var queue: Queue[int]
+    var ret: seq[int]
+    queue.pushBack 3
+    ret.add queue.popFront
+    for a in 10..13: queue.pushBack a
+    while not queue.empty:
+      ret.add queue.popFront
+    doAssert ret == @[3, 10, 11, 12, 13]

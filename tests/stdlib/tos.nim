@@ -470,3 +470,4 @@ block parentDirs:
   # regression test
   # fix #8353
   test parentDirs("/a/b".unixToNativePath), @["/a/b", "/a", "/"]
+
