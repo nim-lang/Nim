@@ -15,6 +15,8 @@ discard """
 
 [Suite] test suite
 
+[Suite] check with msg
+
 [Suite] test name filtering
 
 '''
@@ -45,6 +47,10 @@ test "unittest typedescs":
 test "unittest multiple requires":
   require(true)
   require(true)
+  require true, "foo"
+  require:
+    (true, "foo")
+    true
 
 
 import math, random
@@ -140,6 +146,16 @@ suite "test suite":
         let b = SomeType(value: 10)
 
         check(a == b)
+
+suite "check with msg":
+    test "test":
+        check true
+        check(1 == 1, "foo1")
+        check 2 == 1+1, "foo2"
+        check:
+          true
+          (int is int, "foo3")
+          ([1][0] == 1, "foo4")
 
 when defined(testing):
   suite "test name filtering":

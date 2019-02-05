@@ -572,7 +572,13 @@ template skip* =
   testStatusIMPL = SKIPPED
   checkpoints = @[]
 
-macro check*(conditions: untyped): untyped =
+proc formatCheckpoint(lineinfo: string, callLit: string, msg: string) =
+  var msg2 = lineinfo & ": Check failed: " & callLit
+  if msg.len > 0:
+    msg2.add " " & msg
+  checkpoint(msg2)
+
+macro check*(conditions: untyped, msg = ""): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
@@ -583,12 +589,14 @@ macro check*(conditions: untyped): untyped =
   ##  import strutils
   ##
   ##  check("AKB48".toLowerAscii() == "akb48")
+  ##  check 1 == 1, "some additional context"
   ##
   ##  let teams = {'A', 'K', 'B', '4', '8'}
   ##
   ##  check:
   ##    "AKB48".toLowerAscii() == "akb48"
   ##    'C' in teams
+  ##    (foo() < 32, "some additional msg")
   let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
@@ -638,7 +646,6 @@ macro check*(conditions: untyped): untyped =
 
   case checked.kind
   of nnkCallKinds:
-
     let (assigns, check, printOuts) = inspectArgs(checked)
     let lineinfo = newStrLitNode(checked.lineinfo)
     let callLit = checked.toStrLit
@@ -646,7 +653,7 @@ macro check*(conditions: untyped): untyped =
       block:
         `assigns`
         if not `check`:
-          checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
+          formatCheckpoint(`lineinfo`, `callLit`, `msg`)
           `printOuts`
           fail()
 
@@ -656,23 +663,26 @@ macro check*(conditions: untyped): untyped =
       if node.kind != nnkCommentStmt:
         result.add(newCall(!"check", node))
 
+  of nnkPar:
+    doAssert checked.len == 2, repr(checked)
+    result = newCall(!"check", checked[0], checked[1])
   else:
     let lineinfo = newStrLitNode(checked.lineinfo)
     let callLit = checked.toStrLit
 
     result = quote do:
       if not `checked`:
-        checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
+        formatCheckpoint(`lineinfo`, `callLit`, `msg`)
         fail()
 
-template require*(conditions: untyped) =
+template require*(conditions: untyped, msg = "") =
   ## Same as `check` except any failed test causes the program to quit
   ## immediately. Any teardown statements are not executed and the failed
   ## test output is not generated.
   let savedAbortOnError = abortOnError
   block:
     abortOnError = true
-    check conditions
+    check(conditions, msg)
   abortOnError = savedAbortOnError
 
 macro expect*(exceptions: varargs[typed], body: untyped): untyped =
