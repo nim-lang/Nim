@@ -196,3 +196,4 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
+
