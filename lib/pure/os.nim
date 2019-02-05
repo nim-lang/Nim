@@ -593,10 +593,8 @@ proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
-  ## Conventions below derive from analogy with the shell:
-  ##   * trailing ``.`` and ``/`` are resolved before taking the parent dir
-  ## It returns empty when attempting to take parent of ``.`` or ``..``
-  ## to indicate it is invalid (and different from ``.``)
+  ## Trailing ``.`` and ``/`` are resolved before taking the parent dir, see
+  ## examples below for corner cases.
   ##
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
@@ -610,23 +608,17 @@ proc parentDir*(path: string): string {.
     assert parentDir("") == ""
     when defined(posix):
       assert parentDir("/usr/local/bin") == "/usr/local"
-      assert parentDir("foo//bar/") == "foo"
+      assert parentDir("foo//bar//.") == "foo"
       assert parentDir("foo") == "."
       assert parentDir("/foo") == "/"
       assert parentDir(".") == ""
-  const parentDirOfRootIsEmpty = true # still controversial
+      assert parentDir("/") == ""
   if path == "": return ""
   result = path
   while true:
     normalizePathEnd(result)
     let (dir, name, ext) = splitFile(result)
-    when parentDirOfRootIsEmpty:
-      if name == ".." or (name.len == 0 and ext.len == 0): return ""
-
-    if name == "..":
-      if isAbsolute(dir):
-        return dir
-      return ""
+    if name == ".." or (name.len == 0 and ext.len == 0): return ""
     if name == ".":
       result = dir
       continue
