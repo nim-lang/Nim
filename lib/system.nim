@@ -4180,7 +4180,7 @@ when defined(cpp) and appType != "lib" and
       echo trace & "Error: unhandled exception: " & ex.msg &
                    " [" & $ex.name & "]\n"
     else:
-      stderr.write trace & "Error: unhandled exception: " & ex.msg &
+      cstderr.rawWrite trace & "Error: unhandled exception: " & ex.msg &
                    " [" & $ex.name & "]\n"
     quit 1
 
