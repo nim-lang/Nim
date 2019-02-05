@@ -150,6 +150,8 @@ suite "test suite":
 suite "check with msg":
     test "test":
         check true
+        check(true)
+        check (true)
         check(1 == 1, "foo1")
         check 2 == 1+1, "foo2"
         check:

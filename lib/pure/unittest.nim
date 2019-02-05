@@ -663,17 +663,17 @@ macro check*(conditions: untyped, msg = ""): untyped =
       if node.kind != nnkCommentStmt:
         result.add(newCall(!"check", node))
 
-  of nnkPar:
-    doAssert checked.len == 2, repr(checked)
-    result = newCall(!"check", checked[0], checked[1])
   else:
-    let lineinfo = newStrLitNode(checked.lineinfo)
-    let callLit = checked.toStrLit
+    if checked.kind == nnkPar and checked.len == 2:
+      result = newCall(!"check", checked[0], checked[1])
+    else:
+      let lineinfo = newStrLitNode(checked.lineinfo)
+      let callLit = checked.toStrLit
 
-    result = quote do:
-      if not `checked`:
-        formatCheckpoint(`lineinfo`, `callLit`, `msg`)
-        fail()
+      result = quote do:
+        if not `checked`:
+          formatCheckpoint(`lineinfo`, `callLit`, `msg`)
+          fail()
 
 template require*(conditions: untyped, msg = "") =
   ## Same as `check` except any failed test causes the program to quit
