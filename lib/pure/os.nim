@@ -425,8 +425,9 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
   ## * `/ proc <#/,string,string>`_
   ## * `parentDir proc <#parentDir,string>`_
   runnableExamples:
-    assert "a/b/c" /../ "d/e" == "a/b/d/e"
-    assert "a" /../ "d/e" == "a/d/e"
+    when defined(posix):
+      assert "a/b/c" /../ "d/e" == "a/b/d/e"
+      assert "a" /../ "d/e" == "a/d/e"
 
   let sepPos = parentDirPos(head)
   if sepPos >= 0:
@@ -1251,9 +1252,10 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
   ## * `normalizedPath proc <#normalizedPath,string>`_ for a version which returns
   ##   a new string
   runnableExamples:
-    var a = "a///b//..//c///d"
-    a.normalizePath()
-    assert a == "a/c/d"
+    when defined(posix):
+      var a = "a///b//..//c///d"
+      a.normalizePath()
+      assert a == "a/c/d"
 
   path = pathnorm.normalizePath(path)
   when false:
@@ -1290,7 +1292,8 @@ proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noN
   ## * `absolutePath proc <#absolutePath,string>`_
   ## * `normalizePath proc <#normalizePath,string>`_ for the in-place version
   runnableExamples:
-    assert normalizedPath("a///b//..//c///d") == "a/c/d"
+    when defined(posix):
+      assert normalizedPath("a///b//..//c///d") == "a/c/d"
   result = pathnorm.normalizePath(path)
 
 when defined(Windows) and not weirdTarget:

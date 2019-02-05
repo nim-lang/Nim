@@ -264,6 +264,9 @@ proc processRequest(
   if "upgrade" in request.headers.getOrDefault("connection"):
     return false
 
+  # The request has been served, from this point on returning `true` means the
+  # connection will not be closed and will be kept in the connection pool.
+
   # Persistent connections
   if (request.protocol == HttpVer11 and
       cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
@@ -273,7 +276,7 @@ proc processRequest(
     # header states otherwise.
     # In HTTP 1.0 we assume that the connection should not be persistent.
     # Unless the connection header states otherwise.
-    discard
+    return true
   else:
     request.client.close()
     return false
@@ -309,10 +312,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.listen()
 
   while true:
-    # TODO: Causes compiler crash.
-    #var (address, client) = await server.socket.acceptAddr()
-    var fut = await server.socket.acceptAddr()
-    asyncCheck processClient(server, fut.client, fut.address, callback)
+    var (address, client) = await server.socket.acceptAddr()
+    asyncCheck processClient(server, client, address, callback)
     #echo(f.isNil)
     #echo(f.repr)
 
