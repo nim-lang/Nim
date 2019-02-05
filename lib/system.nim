@@ -3448,7 +3448,7 @@ proc `$`*[T](x: openarray[T]): string =
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
-  when defined(nimscript) or defined(js):
+  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
     cstderr.rawWrite(errormsg)
