@@ -26,13 +26,13 @@ Raises
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
-import "$nim/compiler/unittest_light"
 
 template runTestCases*(msg: string, examples, body: untyped): bool =
   ##[
   Runs body on each example (input, expected).
   Takes care of calling unixToNativePath.
   Returns true on success.
+  An empty `msg` will disable printing the debug message.
   ]##
   block:
     var numErrors = 0
@@ -428,7 +428,7 @@ block parentDirs:
   template test(iter: untyped, expected: seq[string]): untyped =
     let lhs = toSeq(iter)
     let rhs = expected.mapIt(it.unixToNativePath)
-    assertEquals lhs, rhs
+    doAssert lhs == rhs, $(lhs: lhs, rhs: rhs)
 
   # fromRoot=false, inclusive=true
   test parentDirs("a/b/c".unixToNativePath), @["a/b/c", "a/b", "a"]
@@ -458,4 +458,4 @@ block parentDirs:
 block runTestCasesTest:
   const examples = [("foo", "foobar"), ("foo2", "foo2bar")]
   doAssert runTestCases("identity", examples, it & "bar")
-  doAssert not runTestCases("intentional failure", examples, it & "baz")
+  doAssert not runTestCases("", examples, it & "baz")
