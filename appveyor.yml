@@ -18,8 +18,8 @@ environment:
     - NIM_TEST_PACKAGES: false
 
 matrix:
-  allow_failures:
-    - NIM_TEST_PACKAGES: true
+  #allow_failures:
+  #  - NIM_TEST_PACKAGES: true
   fast_finish: true
 
 install:

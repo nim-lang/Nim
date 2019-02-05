@@ -8,11 +8,11 @@ var packages*: seq[tuple[name, cmd, version: string]] = @[]
 pkg "karax"
 pkg "cligen"
 pkg "glob"
-pkg "regex"
+#pkg "regex"
 pkg "freeimage", "nim c freeimage.nim"
 pkg "zero_functional"
 pkg "nimpy", "nim c nimpy.nim"
-pkg "nimongo", "nimble test_ci"
+#pkg "nimongo", "nimble test_ci"
 pkg "inim"
 
 pkg "sdl1", "nim c src/sdl.nim"
