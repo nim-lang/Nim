@@ -142,23 +142,6 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:
     result = res
     result.info = info
-
-    # these pattern matches are over specialized for the
-    # implementation in the compiler.  A proper solution requires that
-    # the pattern is evaluated befor the template is
-    # instantiated. From here it is not possible to distinguish if the
-    # node comes from the template instanciation for the template
-    # argument.
-
-    if result.kind == nkStmtList and result.len == 2:
-      if result[1].kind == nkPrefix and result[1].len == 2 and result[1][1].kind == nkPar and result[1][1].len == 1 and result[1][1][0].kind == nkInfix:
-        result[1][1][0].info = info
-
-      if result[0].kind == nkCall and result[0].len == 6 and result[0][0].kind == nkSym and result[0][0].sym.name.s == "stackTraceImpl" and result[1].kind == nkReturnStmt:
-        result[0].info = info
-        # aparently it is not the lineinfo from the call that is in effect.
-        result.info = info
-
     if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
       result.lastSon.info = info
     when false:
@@ -203,9 +186,9 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                   renderTree(result, {renderNoComments}))
   else:
     result = copyNode(body)
-    #ctx.instLines = body.kind notin {nkStmtList, nkStmtListExpr,
-    #                                 nkBlockStmt, nkBlockExpr}
-    #if ctx.instLines: result.info = n.info
+    ctx.instLines = sfCallSideLineinfo in tmpl.flags
+    if ctx.instLines:
+      result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
