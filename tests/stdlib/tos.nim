@@ -362,6 +362,12 @@ block ospaths:
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
 
 block parentDir:
+  # list of test cases for `parentDir` with format: `(input, expected)`.
+  # `runTestCases` takes each test case prints helpful debug info for all
+  # violations of:
+  # `parentDir(unixToNativePath(input)) == unixToNativePath(expected)`
+  # and returns true if no violation occurs. This allows seeing errors on
+  # all test cases at once instead of just the 1st error, saving debugging time.
   let examples = [
     ("/usr/local/bin", "/usr/local"),
     ("foo/bar.nim", "foo"),
@@ -413,6 +419,7 @@ block parentDir:
 import sequtils
 
 block tailDir:
+  # list of test cases for `tailDir` with format: `(input, expected)`.
   let examples = [
     ("/usr/local/bin", "usr/local/bin"),
     ("usr/local/bin", "local/bin"),
