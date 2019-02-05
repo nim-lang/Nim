@@ -325,11 +325,8 @@ when not defined(useNimRtl):
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
-      echo "too large thread local storage size requested ",
-           "(", nimThreadVarsSize(), "/", sizeof(ThreadLocalStorage), "). ",
-           "Use -d:\"nimTlsSize=", nimThreadVarsSize(),
-           "\" to preallocate sufficient storage."
-
+      c_fprintf(cstderr, """too large thread local storage size requested,
+use -d:\"nimTlsSize=X\" to setup even more or stop using unittest.nim""")
       quit 1
 
   when hasSharedHeap and not defined(boehmgc) and not defined(gogc) and not defined(nogc):
