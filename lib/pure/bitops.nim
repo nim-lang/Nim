@@ -32,6 +32,18 @@ const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
 
+template forwardImpl(impl, arg) {.dirty.} =
+  when sizeof(x) <= 4:
+    when x is SomeSignedInt:
+      impl(cast[uint32](x.int32))
+    else:
+      impl(x.uint32)
+  else:
+    when x is SomeSignedInt:
+      impl(cast[uint64](x.int64))
+    else:
+      impl(x.uint64)
+
 # #### Pure Nim version ####
 
 proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
@@ -185,8 +197,7 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when nimvm:
-    when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
-    else:                result = countSetBits_nim(x.uint64)
+    result = forwardImpl(countSetBits_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_popcount(x.cuint).int
@@ -216,8 +227,7 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    when sizeof(x) <= 4: result = parity_impl(x.uint32)
-    else:                result = parity_impl(x.uint64)
+    result = forwardImpl(parity_impl, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
@@ -235,8 +245,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
     when noUndefined:
       if x == 0:
         return 0
-    when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
-    else:                result = firstSetBit_nim(x.uint64)
+    result = forwardImpl(firstSetBit_nim, x)
   else:
     when noUndefined and not useGCC_builtins:
       if x == 0:
@@ -270,8 +279,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return -1
   when nimvm:
-    when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
-    else:                result = fastlog2_nim(x.uint64)
+    result = forwardImpl(fastlog2_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = 31 - builtin_clz(x.uint32).int
@@ -302,8 +310,7 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return 0
   when nimvm:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
+    result = sizeof(x)*8 - 1 - forwardImpl(fastlog2_nim, x)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_clz(x.uint32).int - (32 - sizeof(x)*8)
