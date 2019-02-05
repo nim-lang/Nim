@@ -221,7 +221,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(diag & "\n")
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
-        " suppressed; compile with --showAllMismatches:on to see them\n")
+        "suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const

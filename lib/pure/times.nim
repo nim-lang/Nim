@@ -229,6 +229,10 @@ elif defined(posix):
     when not defined(valgrind_workaround_10121):
       tzset()
 
+  when defined(macosx):
+    proc gettimeofday(tp: var Timeval, unused: pointer = nil)
+      {.importc: "gettimeofday", header: "<sys/time.h>".}
+
 elif defined(windows):
   import winlean, std/time_t
 
@@ -1107,6 +1111,11 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     let nanos = convert(Milliseconds, Nanoseconds,
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
+  elif defined(macosx):
+    var a: Timeval
+    gettimeofday(a)
+    result = initTime(a.tv_sec.int64,
+                      convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(realTimeClockId, ts)
@@ -2360,26 +2369,38 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
     doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
   $time.local
 
-proc countLeapYears*(yearSpan: int): int =
+proc countLeapYears*(yearSpan: int): int
+    {.deprecated.} =
   ## Returns the number of leap years spanned by a given number of years.
   ##
   ## **Note:** For leap years, start date is assumed to be 1 AD.
   ## counts the number of leap years up to January 1st of a given year.
   ## Keep in mind that if specified year is a leap year, the leap day
   ## has not happened before January 1st of that year.
+  ##
+  ## **Deprecated since v0.20.0**.
   (yearSpan - 1) div 4 - (yearSpan - 1) div 100 + (yearSpan - 1) div 400
 
-proc countDays*(yearSpan: int): int =
+proc countDays*(yearSpan: int): int
+    {.deprecated.} =
   ## Returns the number of days spanned by a given number of years.
+  ##
+  ## **Deprecated since v0.20.0**.
   (yearSpan - 1) * 365 + countLeapYears(yearSpan)
 
-proc countYears*(daySpan: int): int =
+proc countYears*(daySpan: int): int
+    {.deprecated.} =
   ## Returns the number of years spanned by a given number of days.
+  ##
+  ## **Deprecated since v0.20.0**.
   ((daySpan - countLeapYears(daySpan div 365)) div 365)
 
-proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
+proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int]
+    {.deprecated.} =
   ## Returns the number of years spanned by a given number of days and the
   ## remainder as days.
+  ##
+  ## **Deprecated since v0.20.0**.
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
@@ -2439,7 +2460,11 @@ when not defined(JS):
       ## on the hardware/OS).
       ##
       ## ``getTime`` should generally be prefered over this proc.
-      when defined(posix):
+      when defined(macosx):
+        var a: Timeval
+        gettimeofday(a)
+        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
+      elif defined(posix):
         var ts: Timespec
         discard clock_gettime(realTimeClockId, ts)
         result = toBiggestFloat(ts.tv_sec.int64) +
