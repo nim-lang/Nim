@@ -34,11 +34,6 @@ template runTestCases*(msg: string, examples, body: untyped): bool =
   Takes care of calling unixToNativePath.
   Returns true on success.
   ]##
-  runnableExamples:
-    const examples = [("foo", "foobar"), ("foo2", "foo2bar")]
-    doAssert runTestCases("identity", examples, it & "bar")
-    doAssert not runTestCases("intentional failure", examples, it & "baz")
-
   block:
     var numErrors = 0
     for i, a in examples:
@@ -470,3 +465,8 @@ block parentDirs:
   # regression test
   # fix #8353
   test parentDirs("/a/b".unixToNativePath), @["/a/b", "/a", "/"]
+
+block runTestCasesTest:
+  const examples = [("foo", "foobar"), ("foo2", "foo2bar")]
+  doAssert runTestCases("identity", examples, it & "bar")
+  doAssert not runTestCases("intentional failure", examples, it & "baz")
