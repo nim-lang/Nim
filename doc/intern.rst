@@ -67,8 +67,8 @@ Coding Guidelines
 * Max line length is 80 characters.
 * Provide spaces around binary operators if that enhances readability.
 * Use a space after a colon, but not before it.
-* Start types with a capital ``T``, unless they are pointers/references which
-  start with ``P``.
+* [deprecated] Start types with a capital ``T``, unless they are
+  pointers/references which start with ``P``.
 
 See also the `API naming design <apis.html>`_ document.
 
