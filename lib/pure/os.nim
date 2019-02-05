@@ -388,7 +388,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
-  ## `dir` does not end in `DirSep <#DirSep>`_ unless it is absolute.
+  ## `dir` does not end in `DirSep <#DirSep>`_ unless it is the root directory.
   ## `extension` includes the leading dot.
   ##
   ## If `path` has no extension, `ext` is the empty string.
