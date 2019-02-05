@@ -382,23 +382,8 @@ block parentDir:
     ("./bar", "."),
     (".//bar", "."),
     ("bar", "."),
-
     (".git", "."),
     (".git.bak1", "."),
-
-    # with parentDirOfRootIsEmpty=false
-    # ("/", "/"),
-    # ("/.", "/"),
-    # ("/..", "/"),
-    # ("/./", "/"),
-    # fix #8734 (bug 3)
-    # ("/", "/"),
-
-    # with parentDirOfRootIsEmpty=true
-    ("/", ""),
-    ("/.", ""),
-    ("/..", ""),
-    ("/./", ""),
 
     # return empty when no parent possible
     ("", ""),
@@ -407,13 +392,17 @@ block parentDir:
     ("..", ""),
     ("../", ""),
     ("../..", ""),
+    # parent of root is empty
+    ("/", ""),
+    ("/.", ""),
+    ("/..", ""),
+    ("/./", ""),
 
     # regression tests
 
     # fix #8734 (bug 2)
     ("a/b//", "a"),
     ("a/b/", "a"),
-
 
     # fix #8734 (bug 4)
     ("/a.txt", "/"),
