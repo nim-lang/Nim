@@ -125,6 +125,9 @@ proc c_fprintf(f: CFileStar, frmt: cstring): cint {.
 proc c_printf(frmt: cstring): cint {.
   importc: "printf", header: "<stdio.h>", varargs, discardable.}
 
+proc c_fputs(c: cstring, f: CFileStar): cint {.
+  importc: "fputs", header: "<stdio.h>", discardable.}
+
 proc c_sprintf(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
