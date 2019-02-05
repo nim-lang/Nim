@@ -232,7 +232,10 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
-    if s.id notin a.init:
+    if sfNoInit in s.flags:
+      # If the variable is explicitly marked as .noinit. do not emit any error
+      a.init.add s.id
+    elif s.id notin a.init:
       if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
         message(a.config, n.info, warnProveInit, s.name.s)
       else:
