@@ -62,6 +62,8 @@ Advanced options:
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
+  --cgenPostprocessCmd:cmd  if nonempty, run a post-process command on generated files
+                            for example: `clang-format -i $#`
   --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off

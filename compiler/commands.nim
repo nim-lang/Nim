@@ -568,6 +568,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "passl", "l":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}: extccomp.addLinkOptionCmd(conf, arg)
+  of "cgenpostprocesscmd":
+    expectArg(conf, switch, arg, pass, info)
+    conf.cgenPostprocessCmd = arg
   of "cincludes":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}: conf.cIncludes.add processPath(conf, arg, info)

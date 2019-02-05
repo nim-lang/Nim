@@ -236,6 +236,7 @@ type
                                   # we compiled (*)
     linkOptionsCmd*: string
     compileOptionsCmd*: seq[string]
+    cgenPostprocessCmd*: string   # postprocess generated C/C++ files
     linkOptions*: string          # (*)
     compileOptions*: string       # (*)
     ccompilerpath*: string

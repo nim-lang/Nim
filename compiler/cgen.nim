@@ -46,9 +46,16 @@ when options.hasTinyCBackend:
 
 # implementation
 
-proc writeCFile(m: BModule, file: AbsoluteFile, r: Rope)
+proc writeCCFile(m: BModule, file: AbsoluteFile, r: Rope) =
   if not writeRope(r, file):
     rawMessage(m.config, errCannotOpenFile, file.string)
+  let cgenPostprocessCmd = m.config.cgenPostprocessCmd
+  if cgenPostprocessCmd != "":
+    let cmd = strutils.`%`(cgenPostprocessCmd, [file.string.quoteShell])
+    let ret = execShellCmd(cmd)
+    if ret != 0:
+      rawMessage(m.config, errGenerated, "writeCCFile: postprocessing failed: " &
+        $(cmd: cmd, nimCgenPostprocessCmd: cgenPostprocessCmd))
 
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
@@ -1550,7 +1557,7 @@ proc writeHeader(m: BModule) =
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
   if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
-  writeCFile(m, m.filename, result)
+  writeCCFile(m, m.filename, result)
 
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
@@ -1587,12 +1594,12 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
           echo "diff ", cfile.cname.string, ".backup ", cfile.cname.string
         else:
           echo "new file ", cfile.cname.string
-      writeCFile(m, cfile.cname, code)
+      writeCCFile(m, cfile.cname, code)
       return
     if fileExists(cfile.obj) and os.fileNewer(cfile.obj.string, cfile.cname.string):
       result = false
   else:
-    writeCFile(m, cfile.cname, code)
+    writeCCFile(m, cfile.cname, code)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1630,7 +1637,7 @@ proc writeModule(m: BModule, pending: bool) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if code != nil:
-      writeCFile(m, cfile, code)
+      writeCCFile(m, cfile, code)
       addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
@@ -1651,7 +1658,7 @@ proc updateCachedModule(m: BModule) =
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     if code != nil:
-      writeCFile(m, cfile, code)
+      writeCCFile(m, cfile, code)
       addFileToCompile(m.config, cf)
   else:
     if sfMainModule notin m.module.flags:
