@@ -4,7 +4,7 @@ test for vmops.nim
 import os
 import math
 import strutils
-import stdtest/specialpaths
+import "$nim/testament/lib/stdtest/specialpaths"
 
 template forceConst(a: untyped): untyped =
   ## Force evaluation at CT, useful for example here:
@@ -15,6 +15,8 @@ template forceConst(a: untyped): untyped =
   ##    `callFoo(a, getBar2())`
   const ret = a
   ret
+
+const tempFile = buildDir / "D20190206T151011.txt"
 
 static:
   # TODO: add more tests
@@ -36,12 +38,10 @@ static:
     doAssert getEnv(key) == val
 
   block: # std/io, std/os
-    let file = buildDir / "D20190206T151011.txt"
-    let content = "this is " & file
-    writeFile file, content
-    let content2 = readFile file
-    doAssert content == content2, $(content, content2)
-    removeFile file
+    let content = "this is " & tempFile
+    writeFile tempFile, content
+    let content2 = readFile tempFile
+    doAssert content == content2, $(tempFile, content, content2)
 
   block: # arcsin
     # sanity check (we probably don't need to test for all ops)
@@ -54,3 +54,6 @@ block:
   doAssert getCurrentCompilerExe() == forceConst(getCurrentCompilerExe())
   if false: #pending #9176
     doAssert gorgeEx("unexistant") == forceConst(gorgeEx("unexistant"))
+
+block: # cleanup
+  if existsFile tempFile: removeFile tempFile

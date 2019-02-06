@@ -13,13 +13,10 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename, removeFile
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 
-#[
-todo:
-give a CT error if `registerCallback` is called on something that doesn't exit,
-to avoid regressions like #10588
-]#
+# caution: no error given if `registerCallback` is called on something that
+# doesn't exit; this can cause regressions like #10588
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -119,7 +116,6 @@ proc registerAdditionalOps*(c: PCtx) =
   when defined(nimcore):
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
-    wrap1svoid(removeFile, osop)
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
