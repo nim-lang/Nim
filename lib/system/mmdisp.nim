@@ -62,7 +62,7 @@ const
 
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
-  echo("out of memory")
+  cstderr.rawWrite("out of memory")
   quit(1)
 
 when defined(boehmgc):
