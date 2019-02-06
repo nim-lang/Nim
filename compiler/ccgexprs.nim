@@ -1123,7 +1123,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #    seq = (typeof seq) incrSeq(&seq->Sup, sizeof(x));
   #    seq->data[seq->len-1] = x;
   let seqAppendPattern = if not p.module.compileToCpp:
-                           "($2) #incrSeqV3(&($1)->Sup, $3)"
+                           "($2) #incrSeqV3((TGenericSeq*)($1), $3)"
                          else:
                            "($2) #incrSeqV3($1, $3)"
   var a, b, dest, tmpL, call: TLoc
