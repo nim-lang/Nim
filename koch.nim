@@ -74,7 +74,7 @@ template withDir(dir, body) =
     setCurrentDir(dir)
     body
   finally:
-    setCurrentdir(old)
+    setCurrentDir(old)
 
 proc tryExec(cmd: string): bool =
   echo(cmd)
@@ -109,6 +109,11 @@ proc bundleNimbleSrc(latest: bool) =
     withDir("dist/nimble"):
       exec("git checkout -f stable")
       exec("git pull")
+
+proc bundleC2nim() =
+  if not dirExists("dist/c2nim/.git"):
+    exec("git clone https://github.com/nim-lang/c2nim.git dist/c2nim")
+  nimCompile("dist/c2nim/c2nim", options = "--noNimblePath --path:.")
 
 proc bundleNimbleExe(latest: bool) =
   bundleNimbleSrc(latest)
@@ -160,6 +165,7 @@ proc bundleWinTools() =
   buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
   nimexec("c -o:bin/nimgrep.exe tools/nimgrep.nim")
+  bundleC2nim()
   when false:
     # not yet a tool worth including
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
@@ -548,6 +554,7 @@ when isMainModule:
         else: buildTools(existsDir(".git") or latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
+      of "c2nim": bundleC2nim()
       else: showHelp()
       break
     of cmdEnd: break
