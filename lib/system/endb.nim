@@ -76,30 +76,30 @@ proc `==`(a, b: StaticStr): bool =
 proc `==`(a: StaticStr, b: cstring): bool =
   result = c_strcmp(unsafeAddr a.data, b) == 0
 
-proc write(f: CFileStar, s: cstring) = c_fputs(s, f)
-proc writeLine(f: CFileStar, s: cstring) =
+proc write(f: CFilePtr, s: cstring) = c_fputs(s, f)
+proc writeLine(f: CFilePtr, s: cstring) =
   c_fputs(s, f)
   c_fputs("\n", f)
 
-proc write(f: CFileStar, s: StaticStr) =
+proc write(f: CFilePtr, s: StaticStr) =
   write(f, cstring(unsafeAddr s.data))
 
-proc write(f: CFileStar, i: int) =
+proc write(f: CFilePtr, i: int) =
   when sizeof(int) == 8:
     discard c_fprintf(f, "%lld", i)
   else:
     discard c_fprintf(f, "%ld", i)
 
-proc close(f: CFileStar): cint {.
+proc close(f: CFilePtr): cint {.
   importc: "fclose", header: "<stdio.h>", discardable.}
 
-proc c_fgetc(stream: CFileStar): cint {.
+proc c_fgetc(stream: CFilePtr): cint {.
   importc: "fgetc", header: "<stdio.h>".}
-proc c_ungetc(c: cint, f: CFileStar): cint {.
+proc c_ungetc(c: cint, f: CFilePtr): cint {.
   importc: "ungetc", header: "<stdio.h>", discardable.}
 
 var
-  cstdin* {.importc: "stdin", header: "<stdio.h>".}: CFileStar
+  cstdin* {.importc: "stdin", header: "<stdio.h>".}: CFilePtr
 
 proc listBreakPoints() =
   write(cstdout, EndbBeg)
@@ -117,8 +117,8 @@ proc listBreakPoints() =
       write(cstdout, "\n")
   write(cstdout, EndbEnd)
 
-proc openAppend(filename: cstring): CFileStar =
-  proc fopen(filename, mode: cstring): CFileStar {.importc: "fopen", header: "<stdio.h>".}
+proc openAppend(filename: cstring): CFilePtr =
+  proc fopen(filename, mode: cstring): CFilePtr {.importc: "fopen", header: "<stdio.h>".}
 
   result = fopen(filename, "ab")
   if result != nil:
@@ -135,12 +135,12 @@ proc dbgRepr(p: pointer, typ: PNimType): string =
   # dec(recGcLock)
   deinitReprClosure(cl)
 
-proc writeVariable(stream: CFileStar, slot: VarSlot) =
+proc writeVariable(stream: CFilePtr, slot: VarSlot) =
   write(stream, slot.name)
   write(stream, " = ")
   writeLine(stream, dbgRepr(slot.address, slot.typ))
 
-proc listFrame(stream: CFileStar, f: PFrame) =
+proc listFrame(stream: CFilePtr, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
@@ -149,7 +149,7 @@ proc listFrame(stream: CFileStar, f: PFrame) =
     writeLine(stream, getLocal(f, i).name)
   write(stream, EndbEnd)
 
-proc listLocals(stream: CFileStar, f: PFrame) =
+proc listLocals(stream: CFilePtr, f: PFrame) =
   write(stream, EndbBeg)
   write(stream, "| Frame (")
   write(stream, f.len)
@@ -158,7 +158,7 @@ proc listLocals(stream: CFileStar, f: PFrame) =
     writeVariable(stream, getLocal(f, i))
   write(stream, EndbEnd)
 
-proc listGlobals(stream: CFileStar) =
+proc listGlobals(stream: CFilePtr) =
   write(stream, EndbBeg)
   write(stream, "| Globals:\n")
   for i in 0 .. getGlobalLen()-1:
@@ -302,7 +302,7 @@ proc breakpointToggle(s: cstring, start: int) =
     if not b.isNil: b.flip
     else: debugOut("[Warning] unknown breakpoint ")
 
-proc dbgEvaluate(stream: CFileStar, s: cstring, start: int, f: PFrame) =
+proc dbgEvaluate(stream: CFilePtr, s: cstring, start: int, f: PFrame) =
   var dbgTemp: StaticStr
   var i = scanWord(s, dbgTemp, start)
   while s[i] in {' ', '\t'}: inc(i)
@@ -348,7 +348,7 @@ proc dbgStackFrame(s: cstring, start: int, currFrame: PFrame) =
     listFrame(stream, currFrame)
     close(stream)
 
-proc readLine(f: CFileStar, line: var StaticStr): bool =
+proc readLine(f: CFilePtr, line: var StaticStr): bool =
   while true:
     var c = c_fgetc(f)
     if c < 0'i32:
