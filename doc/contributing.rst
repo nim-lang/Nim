@@ -26,7 +26,7 @@ There are 3 types of tests:
 2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
    ``nimble test`` also typially runs these in external nimble packages.
 
-3. testament tests, eg: tests/stdlib/tos.nim (only used for Nim repo).
+3. testament tests, eg: ``tests/stdlib/tos.nim`` (only used for Nim repo).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -118,7 +118,7 @@ list of these, see ``testament/categories.nim``, at the bottom.
 
 ::
 
-  ./koch tests c lib # compiles/runs stdlib modules, including ``isMainModule`` tests
+  ./koch tests c lib # compiles/runs stdlib modules, including `isMainModule` tests
   ./koch tests c megatest # runs a set of tests that can be combined into 1
 
 To run a single test:

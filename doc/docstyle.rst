@@ -27,7 +27,7 @@ Code samples are encouraged, and should follow the general RST syntax:
 
   ## The `universe` module computes the answer to life, the universe, and everything.
   ##
-  ## .. code-block:: Nim
+  ## .. code-block::
   ##  doAssert computeAnswerString() == 42
 
 
@@ -62,7 +62,7 @@ Whenever an example of usage would be helpful to the user, you should include on
     ## Adds three `int8` values, treating them as unsigned and
     ## truncating the result.
     ##
-    ## .. code-block:: nim
+    ## .. code-block::
     ##  # things that aren't suitable for a `runnableExamples` go in code-block:
     ##  echo execCmdEx("git pull")
     ##  drawOnScreen()
