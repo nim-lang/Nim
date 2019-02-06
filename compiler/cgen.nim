@@ -668,7 +668,7 @@ proc cgsym(m: BModule, name: string): Rope =
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
     # we're picky here for the system module too:
-    rawMessage(m.config, errGenerated, "system module needs: " & name)
+    internalError(m.config, "system module needs: " & name)
   result = sym.loc.r
 
 proc generateHeaders(m: BModule) =
