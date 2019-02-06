@@ -1462,97 +1462,108 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
 
 proc between*(startDt, endDt: DateTime): TimeInterval =
   ## Gives the difference between ``startDt`` and ``endDt`` as a
-  ## ``TimeInterval``.
+  ## ``TimeInterval``. The following guarantees about the result is given:
   ##
-  ## **Warning:** This proc currently gives very few guarantees about the
-  ## result. ``a + between(a, b) == b`` is **not** true in general
-  ## (it's always true when UTC is used however). Neither is it guaranteed that
-  ## all components in the result will have the same sign. The behavior of this
-  ## proc might change in the future.
+  ## - All fields will have the same sign.
+  ## - If `startDt.timezone == endDt.timezone`, it is guaranteed that
+  ##   `startDt + between(startDt, endDt) == endDt`.
+  ## - If `startDt.timezone != endDt.timezone`, then the result will be
+  ##   equivalent to `between(startDt.utc, endDt.utc)`.
   runnableExamples:
     var a = initDateTime(25, mMar, 2015, 12, 0, 0, utc())
     var b = initDateTime(1, mApr, 2017, 15, 0, 15, utc())
-    var ti = initTimeInterval(years = 2, days = 7, hours = 3, seconds = 15)
+    var ti = initTimeInterval(years = 2, weeks = 1, hours = 3, seconds = 15)
     doAssert between(a, b) == ti
     doAssert between(a, b) == -between(b, a)
 
-  var startDt = startDt.utc()
-  var endDt = endDt.utc()
-
-  if endDt == startDt:
-    return initTimeInterval()
+  if startDt.timezone != endDt.timezone:
+    return between(startDt.utc, endDt.utc)
   elif endDt < startDt:
     return -between(endDt, startDt)
 
-  var coeffs: array[FixedTimeUnit, int64] = unitWeights
-  var timeParts: array[FixedTimeUnit, int]
-  for unit in Nanoseconds..Weeks:
-    timeParts[unit] = 0
+  type Date = tuple[year, month, monthday: int]
+  var startDate: Date = (startDt.year, startDt.month.ord, startDt.monthday)
+  var endDate: Date = (endDt.year, endDt.month.ord, endDt.monthday)
 
-  for unit in Seconds..Days:
-    coeffs[unit] = coeffs[unit] div unitWeights[Seconds]
-
-  var startTimepart = initTime(
-    nanosecond = startDt.nanosecond,
-    unix = startDt.hour * coeffs[Hours] + startDt.minute * coeffs[Minutes] +
-    startDt.second
-  )
-  var endTimepart = initTime(
-    nanosecond = endDt.nanosecond,
-    unix = endDt.hour * coeffs[Hours] + endDt.minute * coeffs[Minutes] +
-    endDt.second
-  )
-  # We wand timeParts for Seconds..Hours be positive, so we'll borrow one day
-  if endTimepart < startTimepart:
-    timeParts[Days] = -1
-
-  let diffTime = endTimepart - startTimepart
-  timeParts[Seconds] = diffTime.seconds.int()
-  #Nanoseconds - preliminary count
-  timeParts[Nanoseconds] = diffTime.nanoseconds
-  for unit in countdown(Milliseconds, Microseconds):
-    timeParts[unit] += timeParts[Nanoseconds] div coeffs[unit].int()
-    timeParts[Nanoseconds] -= timeParts[unit] * coeffs[unit].int()
-
-  #Counting Seconds .. Hours - final, Days - preliminary
-  for unit in countdown(Days, Minutes):
-    timeParts[unit] += timeParts[Seconds] div coeffs[unit].int()
-    # Here is accounted the borrowed day
-    timeParts[Seconds] -= timeParts[unit] * coeffs[unit].int()
-
-  # Set Nanoseconds .. Hours in result
-  result.nanoseconds = timeParts[Nanoseconds]
-  result.microseconds = timeParts[Microseconds]
-  result.milliseconds = timeParts[Milliseconds]
-  result.seconds = timeParts[Seconds]
-  result.minutes = timeParts[Minutes]
-  result.hours = timeParts[Hours]
-
-  #Days
-  if endDt.monthday.int + timeParts[Days] < startDt.monthday.int():
-    if endDt.month > 1.Month:
-      endDt.month -= 1.Month
+  # Subtract one day from endDate if time of day is earlier than startDay
+  # The subtracted day will be counted by fixed units (hour and lower)
+  # at the end of this proc
+  if (endDt.hour, endDt.minute, endDt.second, endDt.nanosecond) <
+      (startDt.hour, startDt.minute, startDt.second, startDt.nanosecond):
+    if endDate.month == 1 and endDate.monthday == 1:
+      endDate.year.dec
+      endDate.monthday = 31
+      endDate.month = 12
+    elif endDate.monthday == 1:
+      endDate.month.dec
+      endDate.monthday = getDaysInMonth(endDate.month.Month, endDate.year)
     else:
-      endDt.month = 12.Month
-      endDt.year -= 1
-    timeParts[Days] += endDt.monthday.int() + getDaysInMonth(
-      endDt.month, endDt.year) - startDt.monthday.int()
-  else:
-    timeParts[Days] += endDt.monthday.int() -
-      startDt.monthday.int()
-
-  result.days = timeParts[Days]
-
-  #Months
-  if endDt.month < startDt.month:
-    result.months = endDt.month.int() + 12 - startDt.month.int()
-    endDt.year -= 1
-  else:
-    result.months = endDt.month.int() -
-      startDt.month.int()
+      endDate.monthday.dec
 
   # Years
-  result.years = endDt.year - startDt.year
+  result.years.inc endDate.year - startDate.year - 1
+  if (startDate.month, startDate.monthday) <= (endDate.month, endDate.monthday):
+    result.years.inc
+  startDate.year.inc result.years
+
+  # Months
+  if startDate.year < endDate.year:
+    result.months.inc 12 - startDate.month # Move to dec
+    if endDate.month != 1 or (startDate.monthday <= endDate.monthday):
+      result.months.inc
+      startDate.year = endDate.year
+      startDate.month = 1
+    else:
+      startDate.month = 12
+  if startDate.year == endDate.year:
+    if (startDate.monthday <= endDate.monthday):
+      result.months.inc endDate.month - startDate.month
+      startDate.month = endDate.month
+    elif endDate.month != 1:
+      let month = endDate.month - 1
+      let daysInMonth = getDaysInMonth(month.Month, startDate.year)
+      if daysInMonth < startDate.monthday:
+        if startDate.monthday - daysInMonth < endDate.monthday:
+          result.months.inc endDate.month - startDate.month - 1
+          startDate.month = endDate.month
+          startDate.monthday = startDate.monthday - daysInMonth
+        else:
+          result.months.inc endDate.month - startDate.month - 2
+          startDate.month = endDate.month - 2
+      else:
+        result.months.inc endDate.month - startDate.month - 1
+        startDate.month = endDate.month - 1
+
+  # Days
+  # This means that start = dec and end = jan
+  if startDate.year < endDate.year:
+    result.days.inc 31 - startDate.monthday + endDate.monthday
+    startDate = endDate
+  else:
+    while startDate.month < endDate.month:
+      let daysInMonth = getDaysInMonth(startDate.month.Month, startDate.year)
+      result.days.inc daysInMonth - startDate.monthday + 1
+      startDate.month.inc
+      startDate.monthday = 1
+    result.days.inc endDate.monthday - startDate.monthday
+    result.weeks = result.days div 7
+    result.days = result.days mod 7
+    startDate = endDate
+
+  # Handle hours, minutes, seconds, milliseconds, microseconds and nanoseconds
+  let newStartDt = initDateTime(startDate.monthday, startDate.month.Month,
+    startDate.year, startDt.hour, startDt.minute, startDt.second,
+    startDt.nanosecond, startDt.timezone)
+  let dur = endDt - newStartDt
+  let parts = toParts(dur)
+  # There can still be a full day in `parts` since `Duration` and `TimeInterval`
+  # models days differently.
+  result.hours = parts[Hours].int + parts[Days].int * 24
+  result.minutes = parts[Minutes].int
+  result.seconds = parts[Seconds].int
+  result.milliseconds = parts[Milliseconds].int
+  result.microseconds = parts[Microseconds].int
+  result.nanoseconds = parts[Nanoseconds].int
 
 proc `+`*(time: Time, interval: TimeInterval): Time =
   ## Adds `interval` to `time`.
@@ -2405,10 +2416,12 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int]
   result.years = days div 365
   result.days = days mod 365
 
-proc toTimeInterval*(time: Time): TimeInterval =
-  ## Converts a Time to a TimeInterval.
+proc toTimeInterval*(time: Time): TimeInterval
+    {.deprecated: "Use `between` instead".} =
+  ## Converts a Time to a TimeInterval. To be used when diffing times.
   ##
-  ## To be used when diffing times. Consider using `between` instead.
+  ## **Deprecated since version 0.20.0:** Use the `between proc
+  ## <#between,DateTime,DateTime>`_ instead.
   runnableExamples:
     let a = fromUnix(10)
     let b = fromUnix(1_500_000_000)
