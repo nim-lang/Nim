@@ -405,16 +405,17 @@ proc winRelease*() =
 template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
-  nimexec "cc --opt:speed testament/tester"
-  # Since tests take a long time (on my machine), and we want to defy Murhpys
-  # law - lets make sure the compiler really is freshly compiled!
-  nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
-  let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
-  let success = tryExec tester & " " & (args|"all")
+  ## Run tests and get html results; eg:
+  ## `args=""` will default to `all`
+  ## `args="--nim:pathto/nim_temp pcat megatest"` will customize the compiler
+  ##
+  ## This can also be used:
+  ## `nim c -r testament/tester --nim:pathto/nim_temp pcat megatest`
+  let tester = "testament/tester".exe
+  let success = tryExec("nim c -d:release -r testament/tester " & (args|"all"))
   if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
-    exec tester & " html"
-  if not success:
-    quit("tests failed", QuitFailure)
+    doAssert tryExec(tester & " html")
+  doAssert success, "tests failed"
 
 proc temp(args: string) =
   proc splitArgs(a: string): (string, string) =
@@ -544,7 +545,7 @@ proc testUnixInstall(cmdLineRest: string) =
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
       execCleanPath("./koch tests cat megatest", destDir / "bin")
     else:
-      echo "Version check: failure"
+      doAssert false, "Version check: failure: " & $output
   finally:
     setCurrentDir oldCurrentDir
 
