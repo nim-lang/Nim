@@ -259,6 +259,11 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
+proc echoBinSafeImpl(args: openArray[string]) {.importc.}
+
+proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+  echoBinSafeImpl(args)
+
 when defined(nimUncheckedArrayTyp):
   type
     UncheckedArray*{.magic: "UncheckedArray".}[T]

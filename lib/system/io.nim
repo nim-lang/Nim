@@ -542,7 +542,7 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
-  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+  proc echoBinSafeImpl(args: openArray[string]) {.exportc.} =
     # flockfile deadlocks some versions of Android 5.x.x
     when not defined(windows) and not defined(android) and not defined(nintendoswitch):
       proc flockfile(f: File) {.importc, noDecl.}
