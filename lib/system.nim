@@ -1630,7 +1630,9 @@ else:
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
-      echo "[SYSASSERT] ", msg
+      cstderr.rawWrite "[SYSASSERT] "
+      cstderr.rawWrite msg
+      cstderr.rawWrite "\n"
       quit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)

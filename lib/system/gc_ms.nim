@@ -88,7 +88,8 @@ when not defined(useNimRtl):
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
-      echo "[GCASSERT] ", msg
+      cstderr.rawWrite "[GCASSERT] "
+      cstderr.rawWrite msg
       quit 1
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
