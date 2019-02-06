@@ -1035,6 +1035,7 @@ proc clearTimeout*(t: Timeout) {.importc, nodecl.}
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 
 # Window "methods"
@@ -1134,6 +1135,7 @@ proc replace*(loc: Location, s: cstring)
 proc back*(h: History)
 proc forward*(h: History)
 proc go*(h: History, pagesToJump: int)
+proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
