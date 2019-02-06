@@ -46,7 +46,7 @@ type
                                  ## accessible so that a stream implementation
                                  ## can override them.
     closeImpl*: proc (s: Stream)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+      {.nimcall, raises: [Exception, IOError, OSError], tags: [ReadIOEffect, WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
       {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int)
