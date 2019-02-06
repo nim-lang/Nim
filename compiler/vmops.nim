@@ -13,7 +13,13 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename, removeFile
+
+#[
+todo:
+give a CT error if `registerCallback` is called on something that doesn't exit,
+to avoid regressions like #10588
+]#
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -23,6 +29,9 @@ template osop(op) {.dirty.} =
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
+
+template ioop(op) {.dirty.} =
+  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
 
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
@@ -110,11 +119,12 @@ proc registerAdditionalOps*(c: PCtx) =
   when defined(nimcore):
     wrap2s(getEnv, osop)
     wrap1s(existsEnv, osop)
+    wrap1svoid(removeFile, osop)
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
-    wrap2svoid(writeFile, systemop)
-    wrap1s(readFile, systemop)
+    wrap2svoid(writeFile, ioop)
+    wrap1s(readFile, ioop)
     systemop getCurrentExceptionMsg
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))

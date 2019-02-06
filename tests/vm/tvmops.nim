@@ -4,6 +4,7 @@ test for vmops.nim
 import os
 import math
 import strutils
+import stdtest/specialpaths
 
 template forceConst(a: untyped): untyped =
   ## Force evaluation at CT, useful for example here:
@@ -27,14 +28,22 @@ static:
     let output3 = gorge(nim & " --version")
     doAssert output3.contains "Nim Compiler"
 
-  block:
+  block: # putEnv, existsEnv, getEnv
     const key = "D20181210T175037"
     const val = "foo"
     putEnv(key, val)
     doAssert existsEnv(key)
     doAssert getEnv(key) == val
 
-  block:
+  block: # std/io, std/os
+    let file = buildDir / "D20190206T151011.txt"
+    let content = "this is " & file
+    writeFile file, content
+    let content2 = readFile file
+    doAssert content == content2, $(content, content2)
+    removeFile file
+
+  block: # arcsin
     # sanity check (we probably don't need to test for all ops)
     const a1 = arcsin 0.3
     let a2 = arcsin 0.3
