@@ -120,7 +120,9 @@ doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
+# todo: auto-generate this list using `walkDirRec` + a blacklist
   doc = """
+lib/system/io.nim
 lib/system.nim
 lib/system/nimscript.nim
 lib/deprecated/pure/ospaths.nim
