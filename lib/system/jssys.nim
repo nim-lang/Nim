@@ -159,8 +159,8 @@ proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
 proc raiseRangeError() {.compilerproc, noreturn.} =
   raise newException(RangeError, "value out of range")
 
-proc raiseIndexError[T](i, a, b: T) {.compilerproc, noreturn.} =
-  raise newException(IndexError, formatErrorIndexBound(i, a, b))
+proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
+  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
