@@ -32,7 +32,7 @@ doc/*.html
 doc/*.pdf
 doc/*.idx
 /web/upload
-build/*
+/build/*
 bin/*
 
 # iOS specific wildcards.
@@ -52,6 +52,7 @@ xcuserdata/
 /run.json
 # for `nim doc foo.nim`
 /*.html
+lib/**/*.html
 #/testresults.html #covered by /*.html
 
 /testresults.json
@@ -71,3 +72,7 @@ test.txt
 tweeter.db
 tweeter_test.db
 megatest.nim
+
+/outputExpected.txt
+/outputGotten.txt
+

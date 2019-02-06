@@ -11,10 +11,10 @@ Can't access 6
 Can't access 6
 10
 11
-Can't access 6
+0
 10
 11
-Can't access 6
+0
 10
 11
 Can't access 6
@@ -85,7 +85,7 @@ block:
   except KeyError:
     echo "Can't access 6"
   echo x[5]
-  x[5] += 1
+  x.inc 5, 1
   var c = x[5]
   echo c
 
@@ -97,7 +97,7 @@ block:
   except KeyError:
     echo "Can't access 6"
   echo x[5]
-  x[5] += 1
+  x.inc 5, 1
   var c = x[5]
   echo c
 

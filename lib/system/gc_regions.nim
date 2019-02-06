@@ -23,6 +23,21 @@ when defined(nimphpext):
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     efree(p)
 
+elif defined(useMalloc):
+  proc roundup(x, v: int): int {.inline.} =
+    result = (x + (v-1)) and not (v-1)
+  proc emalloc(size: int): pointer {.importc: "malloc", header: "<stdlib.h>".}
+  proc efree(mem: pointer) {.importc: "free", header: "<stdlib.h>".}
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    efree(p)
+
 else:
   include osalloc
 
@@ -108,6 +123,8 @@ template `+!`(p: pointer, s: int): pointer =
 template `-!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) -% s)
 
+const nimMinHeapPages {.intdefine.} = 4
+
 proc allocSlowPath(r: var MemRegion; size: int) =
   # we need to ensure that the underlying linked list
   # stays small. Say we want to grab 16GB of RAM with some
@@ -116,9 +133,8 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   # 8MB, 16MB, 32MB, 64MB, 128MB, 512MB, 1GB, 2GB, 4GB, 8GB,
   # 16GB --> list contains only 20 elements! That's reasonable.
   if (r.totalSize and 1) == 0:
-    r.nextChunkSize =
-      if r.totalSize < 64 * 1024: PageSize*4
-      else: r.nextChunkSize*2
+    r.nextChunkSize = if r.totalSize < 64 * 1024: PageSize*nimMinHeapPages
+                      else: r.nextChunkSize*2
   var s = roundup(size+sizeof(BaseChunk), PageSize)
   var fresh: Chunk
   if s > r.nextChunkSize:
@@ -179,6 +195,19 @@ proc runFinalizers(c: Chunk) =
       (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
     it = it.nextFinal
 
+proc runFinalizers(c: Chunk; newbump: pointer) =
+  var it = c.head
+  var prev: ptr ObjHeader = nil
+  while it != nil:
+    let nxt = it.nextFinal
+    if it >= newbump:
+      if it.typ != nil and it.typ.finalizer != nil:
+        (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
+    elif prev != nil:
+      prev.nextFinal = nil
+    prev = it
+    it = nxt
+
 proc dealloc(r: var MemRegion; p: pointer; size: int) =
   let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
   if it.typ != nil and it.typ.finalizer != nil:
@@ -221,16 +250,15 @@ template computeRemaining(r): untyped =
 
 proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   # free everything after 'sp':
-  if sp.current.next != nil:
+  if sp.current != nil and sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
     when false:
       # better leak this memory than be sorry:
       for i in 0..high(r.freeLists): r.freeLists[i] = nil
       r.holes = nil
-  #else:
-  #  deallocAll(r, r.head)
-  #  r.head = nil
+  if r.tail != nil: runFinalizers(r.tail, sp.bump)
+
   r.bump = sp.bump
   r.tail = sp.current
   r.remaining = sp.remaining
@@ -240,6 +268,13 @@ proc setObstackPtr*(sp: StackPtr) = tlRegion.setObstackPtr(sp)
 proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
+
+when false:
+  let obs = obstackPtr()
+  try:
+    body
+  finally:
+    setObstackPtr(obs)
 
 template withScratchRegion*(body: untyped) =
   var scratch: MemRegion

@@ -391,6 +391,29 @@ type
 
 assert sizeof(Bar) == 12
 
+# bug #10082
+type
+  A = int8        # change to int16 and get sizeof(C)==6
+  B = int16
+  C = object {.packed.}
+    d {.bitsize:  1.}: A
+    e {.bitsize:  7.}: A
+    f {.bitsize: 16.}: B
+
+assert sizeof(C) == 3
+
+
+type
+  MixedBitsize = object {.packed.}
+    a: uint32
+    b {.bitsize:  8.}: uint8
+    c {.bitsize:  1.}: uint8
+    d {.bitsize:  7.}: uint8
+    e {.bitsize: 16.}: uint16
+    f: uint32
+
+doAssert sizeof(MixedBitsize) == 12
+
 if failed:
   quit("FAIL")
 else:

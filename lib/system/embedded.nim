@@ -40,6 +40,7 @@ proc reraiseException() {.compilerRtl.} =
 
 proc writeStackTrace() = discard
 
+proc unsetControlCHook() = discard
 proc setControlCHook(hook: proc () {.noconv.}) = discard
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =

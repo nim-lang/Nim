@@ -75,14 +75,54 @@
 ##      waitFor(main())
 
 
-import asyncdispatch, asyncnet, strutils, parseutils, os, times
-
-from ftpclient import FtpBaseObj, ReplyError, FtpEvent
+import asyncdispatch, asyncnet, nativesockets, strutils, parseutils, os, times
 from net import BufferSize
 
 type
-  AsyncFtpClientObj* = FtpBaseObj[AsyncSocket]
-  AsyncFtpClient* = ref AsyncFtpClientObj
+  AsyncFtpClient* = ref object
+    csock*: AsyncSocket
+    dsock*: AsyncSocket
+    user*, pass*: string
+    address*: string
+    port*: Port
+    jobInProgress*: bool
+    job*: FTPJob
+    dsockConnected*: bool
+
+  FTPJobType* = enum
+    JRetrText, JRetr, JStore
+
+  FtpJob = ref object
+    prc: proc (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
+    case typ*: FTPJobType
+    of JRetrText:
+      lines: string
+    of JRetr, JStore:
+      file: File
+      filename: string
+      total: BiggestInt # In bytes.
+      progress: BiggestInt # In bytes.
+      oneSecond: BiggestInt # Bytes transferred in one second.
+      lastProgressReport: float # Time
+      toStore: string # Data left to upload (Only used with async)
+
+  FTPEventType* = enum
+    EvTransferProgress, EvLines, EvRetr, EvStore
+
+  FTPEvent* = object ## Event
+    filename*: string
+    case typ*: FTPEventType
+    of EvLines:
+      lines*: string ## Lines that have been transferred.
+    of EvRetr, EvStore: ## Retr/Store operation finished.
+      nil
+    of EvTransferProgress:
+      bytesTotal*: BiggestInt     ## Bytes total.
+      bytesFinished*: BiggestInt  ## Bytes transferred.
+      speed*: BiggestInt          ## Speed in bytes/s
+      currentJob*: FTPJobType     ## The current job being performed.
+
+  ReplyError* = object of IOError
 
   ProgressChangedProc* =
     proc (total, progress: BiggestInt, speed: float):
@@ -183,7 +223,7 @@ proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
   ## Returns a list of filenames in the given directory. If ``dir`` is "",
   ## the current directory is used. If ``async`` is true, this
   ## function will return immediately and it will be your job to
-  ## use asyncio's ``poll`` to progress this operation.
+  ## use asyncdispatch's ``poll`` to progress this operation.
   await ftp.pasv()
 
   assertReply(await(ftp.send("NLST " & dir.normalizePathSep)), ["125", "150"])

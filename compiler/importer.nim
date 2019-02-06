@@ -162,9 +162,9 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         localError(c.config, n.info, "A module cannot import itself")
     if sfDeprecated in result.flags:
       if result.constraint != nil:
-        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
+        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
       else:
-        message(c.config, n.info, warnDeprecated, result.name.s)
+        message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
     suggestSym(c.config, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)

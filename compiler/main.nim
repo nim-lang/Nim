@@ -92,6 +92,7 @@ proc commandJsonScript(graph: ModuleGraph) =
 
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
+    let conf = graph.config
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
@@ -100,6 +101,8 @@ when not defined(leanCompiler):
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph, toGeneratedFile(conf, conf.projectFull, ""))
 
 proc interactivePasses(graph: ModuleGraph) =
   initDefines(graph.config.symbols)
@@ -167,6 +170,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
@@ -283,6 +287,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
         (key: "out", val: %conf.outFile.string),
+        (key: "nimcache", val: %getNimcacheDir(conf).string),
         (key: "hints", val: hints),
         (key: "warnings", val: warnings),
       ]

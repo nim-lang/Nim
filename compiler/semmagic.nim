@@ -129,14 +129,15 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
-  case trait.sym.name.s
+  let s = trait.sym.name.s
+  case s
   of "or", "|":
     return typeWithSonsResult(tyOr, @[operand, operand2])
   of "and":
     return typeWithSonsResult(tyAnd, @[operand, operand2])
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
-  of "name":
+  of "name", "$":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info
@@ -160,7 +161,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
-    localError(c.config, traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
@@ -409,4 +410,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mNewFinalize:
+    # Make sure the finalizer procedure refers to a procedure
+    if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
+      localError(c.config, n.info, "finalizer must be a direct reference to a procedure")
+    result = n
   else: result = n

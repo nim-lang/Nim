@@ -63,8 +63,8 @@ compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 -ffast-math ",
-    optSize: " -Os -ffast-math ",
+    optSpeed: " -O3 ",
+    optSize: " -Os ",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -88,8 +88,8 @@ compiler nintendoSwitchGCC:
   result = (
     name: "switch_gcc",
     objExt: "o",
-    optSpeed: " -O3 -ffast-math ",
-    optSize: " -Os -ffast-math ",
+    optSpeed: " -O3 ",
+    optSize: " -Os ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
     compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",

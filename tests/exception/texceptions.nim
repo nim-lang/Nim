@@ -64,3 +64,13 @@ proc return_in_except =
 try: return_in_except()
 except: echo "RECOVER"
 
+block: #10417
+  proc moo() {.noreturn.} = discard
+
+  let bar =
+    try:
+      1
+    except:
+      moo()
+
+  doAssert(bar == 1)

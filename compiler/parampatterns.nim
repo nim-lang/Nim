@@ -115,20 +115,19 @@ proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
   else:
     patternError(p, conf)
 
-proc semNodeKindConstraints*(p: PNode; conf: ConfigRef): PNode =
+proc semNodeKindConstraints*(n: PNode; conf: ConfigRef; start: Natural): PNode =
   ## does semantic checking for a node kind pattern and compiles it into an
   ## efficient internal format.
-  assert p.kind == nkCurlyExpr
-  result = newNodeI(nkStrLit, p.info)
+  result = newNodeI(nkStrLit, n.info)
   result.strVal = newStringOfCap(10)
   result.strVal.add(chr(aqNone.ord))
-  if p.len >= 2:
-    for i in 1..<p.len:
-      compileConstraints(p.sons[i], result.strVal, conf)
+  if n.len >= 2:
+    for i in start..<n.len:
+      compileConstraints(n[i], result.strVal, conf)
     if result.strVal.len > MaxStackSize-1:
-      internalError(conf, p.info, "parameter pattern too complex")
+      internalError(conf, n.info, "parameter pattern too complex")
   else:
-    patternError(p, conf)
+    patternError(n, conf)
   result.strVal.add(ppEof)
 
 type

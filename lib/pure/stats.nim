@@ -224,7 +224,7 @@ proc standardDeviation*[T](x: openArray[T]): float =
   result = rs.standardDeviation()
 
 proc standardDeviationS*[T](x: openArray[T]): float =
-  ## computes the sanple standardDeviation of `x`
+  ## computes the sample standardDeviation of `x`
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviationS()

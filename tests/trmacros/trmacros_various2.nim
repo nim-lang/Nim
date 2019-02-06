@@ -77,3 +77,13 @@ block tstar:
 
   # check that it's been optimized properly:
   doAssert calls == 1
+
+# bug #7524
+template in_to_out(typIn, typOut: typedesc) =
+  proc to_out(x: typIn{lit}): typOut = result = ord(x)
+
+# Generating the proc via template doesn't work
+in_to_out(char, int)
+
+# This works
+proc to_out2(x: char{lit}): int = result = ord(x)

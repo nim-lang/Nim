@@ -1,8 +1,17 @@
 ---
 name: Feature request
-about: You want to suggest a new feature? Use this template.
+about: Do you want to suggest a new feature? Use this template.
 
 ---
+
+<!---
+Notice there is now a separate repository for the detailed RFCs and proposals:
+https://github.com/nim-lang/RFCs
+
+If you have a simple feature request, you can post it here using this template,
+but bear in mind that adding new features to the language is currently a low priority.
+-->
+
 
 ### Summary
 <!--- Short summary of your proposed feature -->
@@ -18,6 +27,6 @@ about: You want to suggest a new feature? Use this template.
 
 ### Additional Information
 <!--- For Example:
-   A link to a project where the issue is relevant.
-   A link to a related issue or discussion.
-   -->
+* A link to a project where the issue is relevant.
+* A link to a related issue or discussion.
+-->

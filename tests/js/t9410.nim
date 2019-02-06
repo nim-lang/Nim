@@ -1,13 +1,3 @@
-template doAssert(exp: untyped) =
-  when defined(echot9410):
-    let r = exp
-    echo $(instantiationInfo().line) & ":\n  " & astToStr(exp) & "\n  was " & repr(r)
-    when not defined(noassertt9410):
-      system.doAssert r
-  else:
-    when not defined(noassertt9410):
-      system.doAssert exp
-
 template tests =
   block:
     var i = 0
@@ -428,6 +418,33 @@ template tests =
 
     let xptr2 = cast[type(xptr)](p2)
     doAssert xptr == xptr2
+  
+  block: # var types
+    block t10202:
+      type Point = object
+        x: float
+        y: float
+
+      var points: seq[Point]
+
+      points.add(Point(x:1, y:2))
+
+      for i, p in points.mpairs:
+        p.x += 1
+
+      doAssert points[0].x == 2
+    
+    block:
+      var ints = @[1, 2, 3]
+      for i, val in mpairs ints:
+        val *= 10
+      doAssert ints == @[10, 20, 30]
+    
+    block:
+      var seqOfSeqs = @[@[1, 2], @[3, 4]]
+      for i, val in mpairs seqOfSeqs:
+        val[0] *= 10
+      doAssert seqOfSeqs == @[@[10, 2], @[30, 4]]
 
   when false:
     block: # openarray

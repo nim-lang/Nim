@@ -10,30 +10,13 @@
 ## This module defines compile-time reflection procs for
 ## working with types
 
-proc name*(t: typedesc): string {.magic: "TypeTrait".}
-  ## Returns the name of the given type.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##
-  ##   import typetraits
-  ##
-  ##   proc `$`*(T: typedesc): string = name(T)
-  ##
-  ##   template test(x): typed =
-  ##     echo "type: ", type(x), ", value: ", x
-  ##
-  ##   test 42
-  ##   # --> type: int, value: 42
-  ##   test "Foo"
-  ##   # --> type: string, value: Foo
-  ##   test(@['A','B'])
-  ##   # --> type: seq[char], value: @[A, B]
+include "system/helpers" # for `isNamedTuple`
 
-proc `$`*(t: typedesc): string =
-  ## An alias for `name`.
-  name(t)
+export system.`$`
+export isNamedTuple
+
+proc name*(t: typedesc): string {.magic: "TypeTrait".}
+  ## Alias for system.`$`(t) since Nim v0.20.0.
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
   ## Returns the arity of the given type. This is the number of "type" components or
@@ -64,4 +47,22 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 
 
 when isMainModule:
-  doAssert $type(42) == "int"
+  static:
+    doAssert $type(42) == "int"
+    doAssert int.name == "int"
+
+  const a1 = name(int)
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a1 == "int"
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a1 = name(t)
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a1 == "int"
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
