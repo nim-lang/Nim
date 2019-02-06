@@ -71,7 +71,7 @@ proc close*(s: Stream) =
   if not isNil(s.closeImpl): s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
-  ## checks if more data can be read from `f`. Returns true if all data has
+  ## checks if more data can be read from `s`. Returns true if all data has
   ## been read.
   result = s.atEndImpl(s)
 
@@ -263,7 +263,7 @@ proc peekStr*(s: Stream, length: int): TaintedString =
   var L = peekData(s, cstring(result), length)
   if L != length: setLen(result.string, L)
 
-proc readLine*(s: Stream, line: var TaintedString): bool =
+proc readLine*(s: Stream, line: var TaintedString, delimiters = {'\n', '\l'}): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ## A line of text may be delimited by ``LF`` or ``CRLF``.
@@ -271,17 +271,14 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
   line.string.setLen(0)
-  while true:
-    var c = readChar(s)
-    if c == '\c':
-      c = readChar(s)
-      break
-    elif c == '\L': break
-    elif c == '\0':
-      if line.len > 0: break
-      else: return false
-    line.string.add(c)
   result = true
+  var c: char
+  while result:
+    c = readChar(s)
+    if c in delimiters: break
+    elif c == '\0' and s.atEnd():
+      result = false
+    line.string.add(c)
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## peeks a line of text from the stream `s` into `line`. `line` must not be
