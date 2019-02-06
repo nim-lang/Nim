@@ -39,13 +39,14 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 
+template rejectEmptyNode(n: PNode) =
+  # No matter what a nkEmpty node is not what we want here
+  if n.kind == nkEmpty: illFormedAst(n, c.config)
+
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  rejectEmptyNode(n)
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
-  #if result.kind == nkEmpty and result.typ.isNil:
-    # do not produce another redundant error message:
-    #raiseRecoverableError("")
-  #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
@@ -59,10 +60,10 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-  if result.isNil or result.kind == nkEmpty:
+  if result.kind == nkEmpty:
     # do not produce another redundant error message:
-    #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
@@ -72,7 +73,8 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  result = semExpr(c, n, flags)
+  rejectEmptyNode(n)
+  result = semExpr(c, n, flags+{efWantValue})
   if result.kind == nkEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
