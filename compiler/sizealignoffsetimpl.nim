@@ -230,7 +230,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       return
 
     # recursive tuplers are not allowed and should be detected in the frontend
-    if base.kind == tyTuple:
+    if base.skipTypes(skipPtrs).kind == tyTuple:
       computeSizeAlign(conf, base)
       if base.size < 0:
         typ.size = base.size
@@ -325,9 +325,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         headerSize = szUnknownSize
         headerAlign = szUncomputedSize
       else:
-        var st = typ.sons[0]
-        while st.kind in skipPtrs:
-          st = st.sons[^1]
+        let st = typ.sons[0].skipTypes(skipPtrs)
         computeSizeAlign(conf, st)
         if st.size == szIllegalRecursion:
           typ.size = st.size
