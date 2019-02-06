@@ -23,3 +23,18 @@ checkType(voidProc(), "void")
 checkType(intProc(10, 20.0), "int")
 checkType(voidProc, "procTy")
 checkProcType(voidProc)
+
+# bug #10548
+block:
+  var c {.compileTime.} = 0
+
+  macro meshImpl(arg: typed): untyped =
+    inc c
+    result = arg
+
+  type
+    Blub = int32
+    Mesh = meshImpl(Club)
+    Club = Blub
+
+  static: doAssert(c == 1)
