@@ -1013,9 +1013,9 @@ when not defined(windows) and not weirdTarget:
     else: result = S_ISLNK(rawInfo.st_mode)
 
 const
-  ExeExts* = ## Platform specific file extension for executables.
+  ExeExts* = when defined(windows): ["exe", "cmd", "bat"] else: [""] ## \
+    ## Platform specific file extension for executables.
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
-    when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
 proc findExe*(exe: string, followSymlinks: bool = true;
               extensions: openarray[string]=ExeExts): string {.

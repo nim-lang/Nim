@@ -2014,7 +2014,7 @@ proc parseTypeDef(p: var TParser): PNode =
   #|             indAndComment? / identVisDot genericParamList? pragma '=' optInd typeDefAux
   #|             indAndComment?
   result = newNodeP(nkTypeDef, p)
-  var identifier = identWithPragma(p, {withDot, withExportDoc}))
+  var identifier = identWithPragma(p, {withDot, withExportDoc})
   var identPragma = identifier
   var pragma: PNode
   var genericParam: PNode
