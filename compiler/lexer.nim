@@ -618,7 +618,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
-proc handleHexChar(L: var TLexer, xi: var int; position: range[1..4]) =
+proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
   template invalid() =
     lexMessage(L, errGenerated,
       "expected a hex digit, but found: " & L.buf[L.bufpos] &
@@ -635,8 +635,9 @@ proc handleHexChar(L: var TLexer, xi: var int; position: range[1..4]) =
     xi = (xi shl 4) or (ord(L.buf[L.bufpos]) - ord('A') + 10)
     inc(L.bufpos)
   of '"', '\'':
-    if position == 1: invalid()
+    if position <= 1: invalid()
     # do not progress the bufpos here.
+    if position == 0: inc(L.bufpos)
   else:
     invalid()
     # Need to progress for `nim check`
@@ -745,7 +746,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
       var start = L.bufpos
       while L.buf[L.bufpos] != '}':
-        handleHexChar(L, xi, 1)
+        handleHexChar(L, xi, 0)
       if start == L.bufpos:
         lexMessage(L, errGenerated,
           "Unicode codepoint cannot be empty")
