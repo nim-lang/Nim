@@ -320,6 +320,10 @@ gSomeReady.initSemaphore()
 proc slave(w: ptr Worker) {.thread.} =
   isSlave = true
   while true:
+    if w.shutdown:
+      w.shutdown = false
+      atomicDec currentPoolSize
+      break
     when declared(atomicStoreN):
       atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
     else:
@@ -340,9 +344,6 @@ proc slave(w: ptr Worker) {.thread.} =
       dec numSlavesRunning
 
     if w.q.len != 0: w.cleanFlowVars
-    if w.shutdown:
-      w.shutdown = false
-      atomicDec currentPoolSize
 
 proc distinguishedSlave(w: ptr Worker) {.thread.} =
   while true:
