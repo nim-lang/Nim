@@ -122,6 +122,7 @@ doc/manual/var_t_return.rst
 
   doc = """
 lib/system.nim
+lib/system/io.nim
 lib/system/nimscript.nim
 lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
