@@ -4,3 +4,4 @@ switch("path", "$nim/testament/lib") # so we can `import stdtest/foo` in this di
 ## Indifidual tests can override this if needed to test for these options.
 switch("colors", "off")
 switch("listFullPaths", "off")
+switch("excessiveStackTrace", "off")
