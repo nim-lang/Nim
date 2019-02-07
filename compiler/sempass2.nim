@@ -721,11 +721,17 @@ proc track(tracked: PEffects, n: PNode) =
   of nkSym:
     useVar(tracked, n)
   of nkRaiseStmt:
-    n.sons[0].info = n.info
-    #throws(tracked.exc, n.sons[0])
-    addEffect(tracked, n.sons[0], useLineInfo=false)
-    for i in 0 ..< safeLen(n):
-      track(tracked, n.sons[i])
+    if n[0].kind != nkEmpty:
+      n.sons[0].info = n.info
+      #throws(tracked.exc, n.sons[0])
+      addEffect(tracked, n.sons[0], useLineInfo=false)
+      for i in 0 ..< safeLen(n):
+        track(tracked, n.sons[i])
+    else:
+      # A `raise` with no arguments means we're going to re-raise the exception
+      # being handled or, if outside of an `except` block, a `ReraiseError`.
+      # Here we add a `Exception` tag in order to cover both the cases.
+      addEffect(tracked, createRaise(tracked.graph, n))
   of nkCallKinds:
     if getConstExpr(tracked.owner_module, n, tracked.graph) != nil:
       return
