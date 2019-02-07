@@ -1075,6 +1075,7 @@ proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc onpopstate*(w: Window, ev: Event)
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
@@ -1206,6 +1207,8 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 proc getElementsByClass*(n: Node; name: cstring): seq[Node] {.
   importcpp: "#.getElementsByClassName(#)", nodecl.}
