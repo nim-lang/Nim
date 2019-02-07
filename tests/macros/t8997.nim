@@ -1,6 +1,6 @@
 discard """
-  line: 24
   errormsg: "illformed AST: "
+  line: 24
 """
 
 import macros
