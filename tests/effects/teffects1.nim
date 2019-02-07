@@ -1,10 +1,10 @@
 discard """
   errormsg: "can raise an unlisted exception: ref IOError"
-  file: "system.nim"
+  file: "io.nim"
 """
 
 type
-  TObj = object {.pure, inheritable.}
+  TObj {.pure, inheritable.} = object
   TObjB = object of TObj
     a, b, c: string
 

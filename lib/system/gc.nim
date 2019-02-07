@@ -104,9 +104,11 @@ when not defined(useNimRtl):
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
-      echo "[GCASSERT] ", msg
+      cstderr.rawWrite "[GCASSERT] "
+      cstderr.rawWrite msg
       when defined(logGC):
-        echo "[GCASSERT] statistics:\L", GC_getStatistics()
+        cstderr.rawWrite "[GCASSERT] statistics:\L"
+        cstderr.rawWrite GC_getStatistics()
       GC_disable()
       writeStackTrace()
       #var x: ptr int

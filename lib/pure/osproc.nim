@@ -126,7 +126,7 @@ proc startCmd*(command: string, options: set[ProcessOption] = {
   ## Deprecated - use `startProcess` directly.
   result = startProcess(command=command, options=options + {poEvalCommand})
 
-proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
+proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [WriteIOEffect].}
   ## When the process has finished executing, cleanup related handles.
   ##
   ## **Warning:** If the process has not finished executing, this will forcibly

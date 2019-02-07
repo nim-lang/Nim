@@ -1630,7 +1630,9 @@ else:
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
-      echo "[SYSASSERT] ", msg
+      cstderr.rawWrite "[SYSASSERT] "
+      cstderr.rawWrite msg
+      cstderr.rawWrite "\n"
       quit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
@@ -3153,257 +3155,45 @@ when not defined(JS): #and not defined(nimscript):
         strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
       {.pop.}
 
+  when not defined(nimscript):
+    include "system/ansi_c"
+    include "system/memory"
 
-  # ----------------- IO Part ------------------------------------------------
-  type
-    CFile {.importc: "FILE", header: "<stdio.h>",
-            incompletestruct.} = object
-    File* = ptr CFile ## The type representing a file handle.
-
-    FileMode* = enum           ## The file mode when opening a file.
-      fmRead,                   ## Open the file for read access only.
-      fmWrite,                  ## Open the file for write access only.
-                                ## If the file does not exist, it will be
-                                ## created. Existing files will be cleared!
-      fmReadWrite,              ## Open the file for read and write access.
-                                ## If the file does not exist, it will be
-                                ## created. Existing files will be cleared!
-      fmReadWriteExisting,      ## Open the file for read and write access.
-                                ## If the file does not exist, it will not be
-                                ## created. The existing file will not be cleared.
-      fmAppend                  ## Open the file for writing only; append data
-                                ## at the end.
-
-    FileHandle* = cint ## type that represents an OS file handle; this is
-                       ## useful for low-level file access
-
-  include "system/ansi_c"
-  include "system/memory"
-
-  proc zeroMem(p: pointer, size: Natural) =
-    nimZeroMem(p, size)
-    when declared(memTrackerOp):
-      memTrackerOp("zeroMem", p, size)
-  proc copyMem(dest, source: pointer, size: Natural) =
-    nimCopyMem(dest, source, size)
-    when declared(memTrackerOp):
-      memTrackerOp("copyMem", dest, size)
-  proc moveMem(dest, source: pointer, size: Natural) =
-    c_memmove(dest, source, size)
-    when declared(memTrackerOp):
-      memTrackerOp("moveMem", dest, size)
-  proc equalMem(a, b: pointer, size: Natural): bool =
-    nimCmpMem(a, b, size) == 0
+    proc zeroMem(p: pointer, size: Natural) =
+      nimZeroMem(p, size)
+      when declared(memTrackerOp):
+        memTrackerOp("zeroMem", p, size)
+    proc copyMem(dest, source: pointer, size: Natural) =
+      nimCopyMem(dest, source, size)
+      when declared(memTrackerOp):
+        memTrackerOp("copyMem", dest, size)
+    proc moveMem(dest, source: pointer, size: Natural) =
+      c_memmove(dest, source, size)
+      when declared(memTrackerOp):
+        memTrackerOp("moveMem", dest, size)
+    proc equalMem(a, b: pointer, size: Natural): bool =
+      nimCmpMem(a, b, size) == 0
 
   proc cmp(x, y: string): int =
-    when nimvm:
+    when defined(nimscript):
       if x < y: result = -1
       elif x > y: result = 1
       else: result = 0
     else:
-      let minlen = min(x.len, y.len)
-      result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
-      if result == 0:
-        result = x.len - y.len
-
-  when defined(nimscript):
-    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
-      ## Opens a file named `filename` for reading, calls `readAll
-      ## <#readAll>`_ and closes the file afterwards. Returns the string.
-      ## Raises an IO exception in case of an error. If # you need to call
-      ## this inside a compile time macro you can use `staticRead
-      ## <#staticRead>`_.
-
-    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
-      ## Opens a file named `filename` for writing. Then writes the
-      ## `content` completely to the file and closes the file afterwards.
-      ## Raises an IO exception in case of an error.
+      when nimvm:
+        if x < y: result = -1
+        elif x > y: result = 1
+        else: result = 0
+      else:
+        let minlen = min(x.len, y.len)
+        result = int(nimCmpMem(x.cstring, y.cstring, minlen.csize))
+        if result == 0:
+          result = x.len - y.len
 
   when not defined(nimscript) and hostOS != "standalone":
-
-    # text file handling:
-    var
-      stdin* {.importc: "stdin", header: "<stdio.h>".}: File
-        ## The standard input stream.
-      stdout* {.importc: "stdout", header: "<stdio.h>".}: File
-        ## The standard output stream.
-      stderr* {.importc: "stderr", header: "<stdio.h>".}: File
-        ## The standard error stream.
-
-    when defined(windows):
-      # work-around C's sucking abstraction:
-      # BUGFIX: stdin and stdout should be binary files!
-      proc c_setmode(handle, mode: cint) {.
-        importc: when defined(bcc): "setmode" else: "_setmode",
-        header: "<io.h>".}
-      var
-        O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
-
-      # we use binary mode on Windows:
-      c_setmode(c_fileno(stdin), O_BINARY)
-      c_setmode(c_fileno(stdout), O_BINARY)
-      c_setmode(c_fileno(stderr), O_BINARY)
-
     when defined(endb):
       proc endbStep()
 
-    when defined(useStdoutAsStdmsg):
-      template stdmsg*: File = stdout
-    else:
-      template stdmsg*: File = stderr
-        ## Template which expands to either stdout or stderr depending on
-        ## `useStdoutAsStdmsg` compile-time switch.
-
-    proc open*(f: var File, filename: string,
-               mode: FileMode = fmRead, bufSize: int = -1): bool {.tags: [],
-               raises: [], benign.}
-      ## Opens a file named `filename` with given `mode`.
-      ##
-      ## Default mode is readonly. Returns true iff the file could be opened.
-      ## This throws no exception if the file could not be opened.
-
-    proc open*(f: var File, filehandle: FileHandle,
-               mode: FileMode = fmRead): bool {.tags: [], raises: [],
-               benign.}
-      ## Creates a ``File`` from a `filehandle` with given `mode`.
-      ##
-      ## Default mode is readonly. Returns true iff the file could be opened.
-
-    proc open*(filename: string,
-               mode: FileMode = fmRead, bufSize: int = -1): File =
-      ## Opens a file named `filename` with given `mode`.
-      ##
-      ## Default mode is readonly. Raises an ``IOError`` if the file
-      ## could not be opened.
-      if not open(result, filename, mode, bufSize):
-        sysFatal(IOError, "cannot open: ", filename)
-
-    proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
-      tags: [], benign.}
-      ## reopens the file `f` with given `filename` and `mode`. This
-      ## is often used to redirect the `stdin`, `stdout` or `stderr`
-      ## file variables.
-      ##
-      ## Default mode is readonly. Returns true iff the file could be reopened.
-
-    proc setStdIoUnbuffered*() {.tags: [], benign.}
-      ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
-
-    proc close*(f: File) {.tags: [], gcsafe.}
-      ## Closes the file.
-
-    proc endOfFile*(f: File): bool {.tags: [], benign.}
-      ## Returns true iff `f` is at the end.
-
-    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
-      ## Reads a single character from the stream `f`. Should not be used in
-      ## performance sensitive code.
-
-    proc flushFile*(f: File) {.tags: [WriteIOEffect].}
-      ## Flushes `f`'s buffer.
-
-    proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.}
-      ## Reads all data from the stream `file`.
-      ##
-      ## Raises an IO exception in case of an error. It is an error if the
-      ## current file position is not at the beginning of the file.
-
-    proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
-      ## Opens a file named `filename` for reading.
-      ##
-      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
-      ## Returns the string.  Raises an IO exception in case of an error. If
-      ## you need to call this inside a compile time macro you can use
-      ## `staticRead <#staticRead>`_.
-
-    proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
-      ## Opens a file named `filename` for writing. Then writes the
-      ## `content` completely to the file and closes the file afterwards.
-      ## Raises an IO exception in case of an error.
-
-    proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.}
-    proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.}
-      ## Writes a value to the file `f`. May throw an IO exception.
-
-    proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
-      ## reads a line of text from the file `f`. May throw an IO exception.
-      ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
-      ## character(s) are not part of the returned string.
-
-    proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
-                  benign.}
-      ## reads a line of text from the file `f` into `line`. May throw an IO
-      ## exception.
-      ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
-      ## character(s) are not part of the returned string. Returns ``false``
-      ## if the end of the file has been reached, ``true`` otherwise. If
-      ## ``false`` is returned `line` contains no new data.
-
-    proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
-                             tags: [WriteIOEffect], benign.}
-      ## writes the values `x` to `f` and then writes "\\n".
-      ## May throw an IO exception.
-
-    proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
-      ## retrieves the file size (in bytes) of `f`.
-
-    proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
-      tags: [ReadIOEffect], benign.}
-      ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-      ## the actual number of bytes that have been read which may be less than
-      ## `len` (if not as many bytes are remaining), but not greater.
-
-    proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
-      tags: [ReadIOEffect], benign.}
-      ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
-      ## the actual number of bytes that have been read which may be less than
-      ## `len` (if not as many bytes are remaining), but not greater.
-      ##
-      ## **Warning:** The buffer `a` must be pre-allocated. This can be done
-      ## using, for example, ``newString``.
-
-    proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
-      tags: [ReadIOEffect], benign.}
-      ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
-      ## the actual number of bytes that have been read which may be less than
-      ## `len` (if not as many bytes are remaining), but not greater.
-
-    proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
-      tags: [WriteIOEffect], benign.}
-      ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-      ## the number of actual written bytes, which may be less than `len` in case
-      ## of an error.
-
-    proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
-      tags: [WriteIOEffect], benign.}
-      ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
-      ## the number of actual written bytes, which may be less than `len` in case
-      ## of an error.
-
-    proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
-      tags: [WriteIOEffect], benign.}
-      ## writes the bytes of buffer pointed to by the parameter `buffer` to the
-      ## file `f`. Returns the number of actual written bytes, which may be less
-      ## than `len` in case of an error.
-
-    proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.}
-      ## sets the position of the file pointer that is used for read/write
-      ## operations. The file's first byte has the index zero.
-
-    proc getFilePos*(f: File): int64 {.benign.}
-      ## retrieves the current position of the file pointer that is used to
-      ## read from the file `f`. The file's first byte has the index zero.
-
-    proc getFileHandle*(f: File): FileHandle
-      ## returns the OS file handle of the file ``f``. This is only useful for
-      ## platform specific programming.
 
   when defined(gcDestructors) and not defined(nimscript):
     include "core/strs"
@@ -3553,47 +3343,8 @@ when not defined(JS): #and not defined(nimscript):
     {.pop.}
     when hasAlloc: include "system/strmantle"
 
-    when hostOS != "standalone": include "system/sysio"
     when hasThreadSupport:
       when hostOS != "standalone": include "system/channels"
-  else:
-    include "system/sysio"
-
-  when not defined(nimscript) and hostOS != "standalone":
-    iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
-      ## Iterates over any line in the file named `filename`.
-      ##
-      ## If the file does not exist `IOError` is raised. The trailing newline
-      ## character(s) are removed from the iterated lines. Example:
-      ##
-      ## .. code-block:: nim
-      ##   import strutils
-      ##
-      ##   proc transformLetters(filename: string) =
-      ##     var buffer = ""
-      ##     for line in filename.lines:
-      ##       buffer.add(line.replace("a", "0") & '\x0A')
-      ##     writeFile(filename, buffer)
-      var f = open(filename, bufSize=8000)
-      defer: close(f)
-      var res = TaintedString(newStringOfCap(80))
-      while f.readLine(res): yield res
-
-    iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
-      ## Iterate over any line in the file `f`.
-      ##
-      ## The trailing newline character(s) are removed from the iterated lines.
-      ## Example:
-      ##
-      ## .. code-block:: nim
-      ##   proc countZeros(filename: File): tuple[lines, zeros: int] =
-      ##     for line in filename.lines:
-      ##       for letter in line:
-      ##         if letter == '0':
-      ##           result.zeros += 1
-      ##       result.lines += 1
-      var res = TaintedString(newStringOfCap(80))
-      while f.readLine(res): yield res
 
   when not defined(nimscript) and hasAlloc:
     when not defined(gcDestructors):
@@ -3684,9 +3435,6 @@ elif defined(JS):
       if x < y: return -1
       return 1
 
-  when defined(nimffi):
-    include "system/sysio"
-
 when not defined(nimNoArrayToString):
   proc `$`*[T, IDX](x: array[IDX, T]): string =
     ## generic ``$`` operator for arrays that is lifted from the components
@@ -3702,7 +3450,11 @@ proc `$`*[T](x: openarray[T]): string =
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
-  echo(errormsg)
+  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
+    echo errormsg
+  else:
+    cstderr.rawWrite(errormsg)
+    cstderr.rawWrite("\n")
   quit(errorcode)
 
 {.pop.} # checks
@@ -4430,7 +4182,7 @@ when defined(cpp) and appType != "lib" and
       echo trace & "Error: unhandled exception: " & ex.msg &
                    " [" & $ex.name & "]\n"
     else:
-      stderr.write trace & "Error: unhandled exception: " & ex.msg &
+      cstderr.rawWrite trace & "Error: unhandled exception: " & ex.msg &
                    " [" & $ex.name & "]\n"
     quit 1
 
@@ -4479,3 +4231,9 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".} =
     doAssert $(type(42)) == "int"
     doAssert $(type("Foo")) == "string"
     static: doAssert $(type(@['A', 'B'])) == "seq[char]"
+
+import system/widestrs
+export widestrs
+
+import system/io
+export io

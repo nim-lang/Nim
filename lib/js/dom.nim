@@ -1035,6 +1035,7 @@ proc clearTimeout*(t: Timeout) {.importc, nodecl.}
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 
 # Window "methods"
@@ -1074,6 +1075,7 @@ proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
+proc onpopstate*(w: Window, ev: Event)
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
@@ -1134,6 +1136,7 @@ proc replace*(loc: Location, s: cstring)
 proc back*(h: History)
 proc forward*(h: History)
 proc go*(h: History, pagesToJump: int)
+proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
@@ -1204,6 +1207,8 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 proc getElementsByClass*(n: Node; name: cstring): seq[Node] {.
   importcpp: "#.getElementsByClassName(#)", nodecl.}
