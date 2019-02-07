@@ -195,7 +195,7 @@ proc docComment(p: var TParser; d: PNode) =
         assert decl.kind == nkExportDoc
         assert decl.len == 3
         if decl[2].kind == nkEmpty:
-          decl[2] = newNodeP(nkCommentStmt, p)
+          decl[2] = newNodeP(nkStrLit, p)
         when defined(nimpretty):
           if p.tok.commentOffsetB > p.tok.commentOffsetA:
             add decl[2].strVal, fileSection(p.lex.config, p.lex.fileIdx,
@@ -1751,7 +1751,9 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.strVal = p.tok.literal
+  var s = newNodeP(nkStrLit, p)
+  s.strVal = p.tok.literal
+  result.add s
   getTok(p)
 
 type

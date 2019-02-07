@@ -197,7 +197,7 @@ proc copyValue(src: PNode): PNode =
   of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit, nkCommentStmt: result.strVal = src.strVal
+  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
@@ -1302,7 +1302,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit, nkCommentStmt} and idx <% src.len:
+      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
@@ -1310,14 +1310,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
-      if dest.kind notin {nkEmpty..nkNilLit, nkCommentStmt} and idx <% dest.len:
+      if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
         dest.sons[idx] = regs[rc].node
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit, nkCommentStmt}:
+      if u.kind notin {nkEmpty..nkNilLit}:
         u.add(regs[rc].node)
       else:
         stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
@@ -1326,7 +1326,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit, nkCommentStmt}:
+      if u.kind notin {nkEmpty..nkNilLit}:
         # XXX can be optimized:
         for i in 0..<x.len: u.add(x.sons[i])
       else:
@@ -1415,7 +1415,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       case a.kind
-      of {nkStrLit..nkTripleStrLit, nkCommentStmt}:
+      of nkStrLit..nkTripleStrLit:
         regs[ra].node.strVal = a.strVal
       of nkIdent:
         regs[ra].node.strVal = a.ident.s
@@ -1618,7 +1618,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node
-      if dest.kind in {nkStrLit..nkTripleStrLit, nkCommentStmt} and
+      if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
       else:

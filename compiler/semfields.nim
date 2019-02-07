@@ -23,7 +23,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     result = newNode(nkEmpty)
     return
   case n.kind
-  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit, nkCommentStmt: result = n
+  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)

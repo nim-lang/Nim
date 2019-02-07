@@ -605,7 +605,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       else:
         result = newSymNodeTypeDesc(s, n.info)
     else: discard
-  of nkCharLit..nkNilLit, nkCommentStmt:
+  of nkCharLit..nkNilLit:
     result = copyNode(n)
   of nkIfExpr:
     result = getConstIfExpr(m, n, g)

@@ -318,7 +318,7 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
-      of nkStrLit..nkTripleStrLit, nkCommentStmt:
+      of nkStrLit..nkTripleStrLit:
         addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
@@ -396,7 +396,7 @@ proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
       of nkFloatLit, nkFloat32Lit, nkFloat64Lit:
         addf(result, ",$N$1\"floatVal\": $2",
             [istr, rope(n.floatVal.toStrMaxPrecision)])
-      of nkStrLit..nkTripleStrLit, nkCommentStmt:
+      of nkStrLit..nkTripleStrLit:
         addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         let s = n.sym
