@@ -412,7 +412,7 @@ proc tests(args: string) =
   ## This can also be used:
   ## `nim c -r testament/tester --nim:pathto/nim_temp pcat megatest`
   let tester = "testament/tester".exe
-  let success = tryExec("nim c -d:release -r testament/tester " & (args|"all"))
+  let success = tryExec(findNim() & " c -d:release -r testament/tester " & (args|"all"))
   if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
     doAssert tryExec(tester & " html")
   doAssert success, "tests failed"
