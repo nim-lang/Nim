@@ -551,6 +551,94 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
 
+proc isForwardingTemplate(n: PNode): int =
+  ## This function should determine if a template is mainly a
+  ## decorative forwarding of a procedure call, or something more
+  ## complex. A forwarding template should have callsite line
+  ## informatio where more complex macros should have line
+  ## informaition from the actual macro implementation. The idea is to
+  ## do a flow analysis and see if the template expands into more than
+  ## a single function call. This analysis is done before symbol
+  ## resolution. There is no way to know if a dot expression is just
+  ## an acces to a member of an object or a complex function call.
+  ## Since this function is just heuristically done the dot expression
+  ## is assumed to be just access to a member, not a function
+  ## call. Returns a value of at least 2 if the template is not
+  ## considered a forwarding template.
+
+  case n.kind
+  of nkLiterals, nkCommentStmt, nkNone, nkEmpty, nkIdent, nkSym, nkNilLit,
+     nkType, nkBindStmt, nkMixinStmt, nkTypeSection, nkPragmaBlock,
+     nkPragmaExpr, nkPragma, nkBreakStmt, nkCallStrLit, nkPostfix,
+     nkOpenSymChoice, nkBind:
+    return 0
+  of nkCall, nkCommand, nkDotCall:
+    result = 1
+    for child in n:
+      result += isForwardingTemplate(child)
+      if result >= 2:
+        return
+  of nkReturnStmt:
+    return isForwardingTemplate(n[0])
+  of nkForStmt, nkParForStmt, nkWhileStmt, nkProcDef, nkFuncDef, nkMethodDef,
+     nkConverterDef, nkMacroDef, nkTemplateDef, nkIteratorDef, nkClosure,
+     nkLambda, nkImportStmt:
+    # When any of these node kinds are seen the scan is immediately
+    # aborted as no forwarding template. The return value can really
+    # be any value > 1.
+    return 2
+  of nkStmtList, nkStmtListExpr, nkDiscardStmt, nkVarSection, nkLetSection,
+     nkConstSection, nkPar, nkAccQuoted, nkAsgn, nkDefer, nkCurly, nkBracket,
+     nkStaticStmt, nkTableConstr, nkExprColonExpr, nkInfix, nkPrefix,
+     nkRaiseStmt, nkYieldStmt, nkBracketExpr, nkDotExpr, nkCast, nkBlockStmt,
+     nkBlockExpr, nkExprEqExpr, nkOfBranch, nkRefTy, nkPtrTy, nkHiddenStdConv,
+     nkTupleConstr:
+    # nkInfix and nkPrefix has been listed here, since operators and
+    # most of the time just primitive operatiors, for example in if
+    # conditions ( a < b ). Therefore it is not counted as a function
+    # call.
+    for child in n:
+      result += isForwardingTemplate(child)
+      if result >= 2:
+        return
+  of nkObjConstr:
+    for i in 1 ..< n.len:
+      result += isForwardingTemplate(n[i][1])
+      if result >= 2:
+        return
+  of nkIfStmt, nkIfExpr, nkWhenStmt:
+    # if when and case statements are branching statements. So a
+    # single function call is allowed to be in all of the braches and
+    # the entire expression can still be considered as a forwarding
+    # template.
+    for child in n:
+      result = max(result, isForwardingTemplate(child[^1]))
+      if result >= 2:
+        return
+  of nkCaseStmt:
+    for i in 1 ..< n.len:
+      result = max(result, isForwardingTemplate(n[i][^1]))
+      if result >= 2:
+        return
+  of nkTryStmt:
+    let bodyResult = isForwardingTemplate(n[0])
+    if bodyResult >= 2:
+      return bodyResult
+    var branchResult = 0
+    for i in 1 ..< n.len:
+      branchResult = max(branchResult, isForwardingTemplate(n[i][^1]))
+      if bodyResult + branchResult >= 2:
+        return bodyResult + branchResult
+    return bodyResult + branchResult
+  of nkIdentDefs:
+    result = (n.len - 2) * isForwardingTemplate(n[^1])
+  of nkConstDef:
+    result = isForwardingTemplate(n[1])
+  else:
+    # There are currently uncovered cases. For now they are assumend
+    # to be too complex for a forwarding template.
+    return 1337
+
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
   if isTopLevel(c):
@@ -559,8 +647,13 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   else:
     s = semIdentVis(c, skTemplate, n.sons[0], {})
 
-  if s.owner != nil and s.owner.name.s == "system" and s.name.s in ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]:
-    incl(s.flags, sfCallSideLineinfo)
+
+  let x = isForwardingTemplate(n[^1])
+  if x < 2:
+    incl(s.flags, sfCallsiteLineinfo)
+
+  #if s.owner != nil and s.owner.name.s == "system" and s.name.s in ["!=", ">=", ">", "incl", "excl", "in", "notin", "isnot"]:
+  #  echo s, ": ", s.flags.contains sfCallsiteLineinfo
 
   styleCheckDef(c.config, s)
   onDef(n[0].info, s)
