@@ -608,6 +608,24 @@ proc toCover(c: PContext, t: PType): BiggestInt =
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
+
+proc formatMissingEnums(n: PNode): string =
+  var coveredCases = initIntSet()
+  for i in 1 ..< n.len:
+    let ofBranch = n[i]
+    for j in 0 ..< ofBranch.len - 1:
+      let child = ofBranch[j]
+      if child.kind == nkIntLit:
+        coveredCases.incl(child.intVal.int)
+      elif child.kind == nkRange:
+        for k in child[0].intVal.int .. child[1].intVal.int:
+          coveredCases.incl k
+  for child in n[0].typ.n.sons:
+    if child.sym.position notin coveredCases:
+      result.add child.sym.name.s
+      result.add ", "
+  result.setLen result.len - 2 # remove last comma
+
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
@@ -644,7 +662,11 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     delSon(b, sonsLen(b) - 1)
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != toCover(c, a.sons[0].typ):
-    localError(c.config, a.info, "not all cases are covered")
+    if a.sons[0].typ.kind == tyEnum:
+      localError(c.config, a.info, "not all cases are covered, missing: " &
+        formatMissingEnums(a))
+    else:
+      localError(c.config, a.info, "not all cases are covered")
   addSon(father, a)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
