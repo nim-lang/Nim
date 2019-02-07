@@ -873,6 +873,24 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if chckCovered:
     if covered == toCover(c, n.sons[0].typ):
       hasElse = true
+    elif n[0].typ.kind == tyEnum:
+      var coveredCases = initIntSet()
+      for i in 1 ..< n.len:
+        let ofBranch = n[i]
+        for j in 0 ..< ofBranch.len - 1:
+          let child = ofBranch[j]
+          if child.kind == nkIntLit:
+            coveredCases.incl(child.intVal.int)
+          elif child.kind == nkRange:
+            for k in child[0].intVal.int .. child[1].intVal.int:
+              coveredCases.incl k
+      var missing = ""
+      for child in n[0].typ.n.sons:
+        if child.sym.position notin coveredCases:
+          missing.add child.sym.name.s
+          missing.add ", "
+      missing.setLen missing.len - 2 # remove last comma
+      localError(c.config, n.info, "not all cases are covered, missing: " & missing)
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
