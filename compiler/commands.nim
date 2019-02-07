@@ -201,6 +201,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.notes, n)
     incl(conf.mainPackageNotes, n)
     incl(conf.enableNotes, n)
+    incl(conf.foreignPackageNotes, n)
   of "off":
     excl(conf.notes, n)
     excl(conf.mainPackageNotes, n)
