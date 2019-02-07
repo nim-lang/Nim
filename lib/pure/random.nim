@@ -25,9 +25,9 @@
 ##
 ##   import random
 ##
-##   # Initializes the default random number generator
-##   # Without a call to randomize(), the same results will occur every time
-##   # these examples are run
+##   # Call randomize() once to initialize the default random number generator
+##   # If this is not called, the same results will occur every time these
+##   # examples are run
 ##   randomize()
 ##
 ##   # Pick a number between 0 and 100
@@ -56,9 +56,11 @@
 ## use the default generator. Those procs are **not** thread-safe.
 ##
 ## Note that the default generator always starts in the same state.
-## The `randomize proc<#randomize,>`_ can be called to initialize the default
-## generator with a seed based on the current time. If ``randomize`` is not
-## called, then the default generator will always produce the same results.
+## The `randomize proc<#randomize>`_ can be called to initialize the default
+## generator with a seed based on the current time, and it only needs to be
+## called once before the first usage of procs from this module. If
+## ``randomize`` is not called, then the default generator will always produce
+## the same results.
 ##
 ## Generators that are independent of the default one can be created with the
 ## `initRand proc<#initRand,int64>`_.
@@ -72,6 +74,9 @@
 ## * `mersenne module<mersenne.html>`_ for the Mersenne Twister random number
 ##   generator
 ## * `stats module<stats.html>`_ for statistical analysis
+## * `list of cryptographic and hashing modules
+##   <lib.html#pure-libraries-cryptography-and-hashing>`_
+##   in the standard library
 
 import algorithm                    #For upperBound
 
@@ -95,7 +100,7 @@ type
     ## The module contains a default Rand state for convenience.
     ## It corresponds to the default random number generator's state.
     ## The default Rand state always starts with the same values, but the
-    ## `randomize proc<#randomize,>`_ can be used to seed the default generator
+    ## `randomize proc<#randomize>`_ can be used to seed the default generator
     ## with a value based on the current time.
     ##
     ## Many procs have two variations: one that takes in a Rand parameter and
@@ -122,7 +127,7 @@ proc next*(r: var Rand): uint64 =
   ## See also:
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
-    var r = initRand(5)
+    var r = initRand(123)
     let x = r.next()
   let s0 = r.a0
   var s1 = r.a1
@@ -141,7 +146,7 @@ proc skipRandomNumbers*(s: var Rand) =
   ## See also:
   ## * `next proc<#next,Rand>`_
   runnableExamples:
-    var r = initRand(5)
+    var r = initRand(123)
     r.skipRandomNumbers()
   when defined(JS):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
@@ -197,7 +202,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    var r = initRand(5)
+    var r = initRand(123)
     let x = r.rand(100)
   if max == 0: return
   while true:
@@ -208,7 +213,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the sequence of random
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -235,7 +240,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    var r = initRand(5)
+    var r = initRand(123)
     let x = r.rand(1.0)
   let x = next(r)
   when defined(JS):
@@ -247,7 +252,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
 proc rand*(max: float): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max`.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the sequence of random
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -274,7 +279,7 @@ proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    var r = initRand(5)
+    var r = initRand(123)
     let i = r.rand(1..6)
     let f = r.rand(2.0..4.0)
   result = T(rand(r, x.b - x.a)) + x.a
@@ -282,7 +287,7 @@ proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
 proc rand*[T](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the sequence of random
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -301,13 +306,13 @@ proc rand*[T](x: HSlice[T, T]): T =
 
 proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](Rand, openArray)<#sample,Rand,openArray[T]>`_ instead.
+  ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the sequence of random
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -337,14 +342,14 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ##   cumulative distribution function
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
-    var r = initRand(5)
+    var r = initRand(123)
     let pick = r.sample(marbles)
   result = a[r.rand(a.low..a.high)]
 
 proc sample*[T](a: openArray[T]): T =
   ## Returns a random element from ``a``.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the order of outcomes
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -381,7 +386,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
 
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     let count = [1, 6, 8, 3, 4]
-    var r = initRand(5)
+    var r = initRand(123)
     let pick = r.sample(marbles, count.cumsummed)
   assert(cdf.len == a.len)              # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
@@ -399,7 +404,7 @@ proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
   ## <#sample,Rand,openArray[T],openArray[U]>`_.
   ## See that proc's documentation for more details.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the order of outcomes
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -429,12 +434,12 @@ proc initRand*(seed: int64): Rand =
   ## See also:
   ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
   ##   random number generator
-  ## * `randomize proc<#randomize,>`_ that initializes the default random
+  ## * `randomize proc<#randomize>`_ that initializes the default random
   ##   number generator using the current time
   runnableExamples:
     from times import getTime, toUnix, nanosecond
 
-    var r1 = initRand(5)
+    var r1 = initRand(123)
 
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
@@ -450,11 +455,11 @@ proc randomize*(seed: int64) {.benign.} =
   ##
   ## See also:
   ## * `initRand proc<#initRand,int64>`_
-  ## * `randomize proc<#randomize,>`_ that uses the current time instead
+  ## * `randomize proc<#randomize>`_ that uses the current time instead
   runnableExamples:
     from times import getTime, toUnix, nanosecond
 
-    randomize(5)
+    randomize(123)
 
     let now = getTime()
     randomize(now.toUnix * 1_000_000_000 + now.nanosecond)
@@ -468,7 +473,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
   ##   random number generator
   runnableExamples:
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
-    var r = initRand(5)
+    var r = initRand(123)
     r.shuffle(cards)
   for i in countdown(x.high, 1):
     let j = r.rand(i)
@@ -477,7 +482,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
 proc shuffle*[T](x: var openArray[T]) =
   ## Shuffles a sequence of elements in-place.
   ##
-  ## If `randomize<#randomize,>`_ has not been called, the order of outcomes
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
   ## This proc uses the default random number generator. Thus, it is **not**
@@ -496,6 +501,10 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the default random number generator with a value based on
     ## the current time.
+    ##
+    ## This proc only needs to be called once, and it should be called before
+    ## the first usage of procs from this module that use the default random
+    ## number generator.
     ##
     ## **Note:** Does not work for NimScript.
     ##
