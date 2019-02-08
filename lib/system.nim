@@ -904,37 +904,51 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when not defined(JS):
-  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
-  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-    ## zero extends a smaller integer type to ``int64``. This treats `x` as
-    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect, deprecated.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
-  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
-  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # integer calculations:
 proc `+`*(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
@@ -1144,46 +1158,53 @@ proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
 type
   IntMax32 = int|int8|int16|int32
 
-proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
-proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect.}
+proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect, deprecated.}
+proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and adds them. The result is truncated to
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `-%`*(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
-proc `-%`*(x, y: int64): int64 {.magic: "SubU", noSideEffect.}
+proc `-%`*(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect, deprecated.}
+proc `-%`*(x, y: int64): int64 {.magic: "SubU", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `*%`*(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
-proc `*%`*(x, y: int64): int64 {.magic: "MulU", noSideEffect.}
+proc `*%`*(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect, deprecated.}
+proc `*%`*(x, y: int64): int64 {.magic: "MulU", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and multiplies them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `/%`*(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
-proc `/%`*(x, y: int64): int64 {.magic: "DivU", noSideEffect.}
+proc `/%`*(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect, deprecated.}
+proc `/%`*(x, y: int64): int64 {.magic: "DivU", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `%%`*(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
-proc `%%`*(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
+proc `%%`*(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect, deprecated.}
+proc `%%`*(x, y: int64): int64 {.magic: "ModU", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
   ## No overflow errors are possible.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
+proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect, deprecated.}
+proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) <= unsigned(y)``.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
+proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect, deprecated.}
+proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect, deprecated.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # unsigned integer operations:
 proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
@@ -2002,13 +2023,15 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
-template `>=%`*(x, y: untyped): untyped = y <=% x
+template `>=%`*(x, y: untyped): untyped {.deprecated.} = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) >= unsigned(y)``.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-template `>%`*(x, y: untyped): untyped = y <% x
+template `>%`*(x, y: untyped): untyped {.deprecated.} = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
+  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
