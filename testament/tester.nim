@@ -42,7 +42,7 @@ Options:
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
-  --nim:path                use a particular nim executable (default: compiler/nim)
+  --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
@@ -537,6 +537,7 @@ proc main() =
   var optPrintResults = false
   var optFailing = false
   var targetsStr = ""
+  var isMainProcess = true
 
   var p = initOptParser()
   p.next()
@@ -620,6 +621,7 @@ proc main() =
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
     # are covered by the 'megatest' category.
+    isMainProcess = false
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
@@ -644,6 +646,8 @@ proc main() =
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
       r.skipped, " failed: ", failed
     quit(QuitFailure)
+  if isMainProcess:
+    echo "Used ", compilerPrefix, " to run the tests. Use --nim to override."
 
 if paramCount() == 0:
   quit Usage

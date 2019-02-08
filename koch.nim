@@ -412,13 +412,8 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   nimexec "cc --opt:speed testament/tester"
-  # Since tests take a long time (on my machine), and we want to defy Murhpys
-  # law - lets make sure the compiler really is freshly compiled!
-  nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
   let tester = quoteShell(getCurrentDir() / "testament/tester".exe)
   let success = tryExec tester & " " & (args|"all")
-  if not existsEnv("TRAVIS") and not existsEnv("APPVEYOR"):
-    exec tester & " html"
   if not success:
     quit("tests failed", QuitFailure)
 
