@@ -124,13 +124,14 @@ proc endBlock(p: BProc, blockEnd: Rope) =
 
 proc endBlock(p: BProc) =
   let topBlock = p.blocks.len - 1
-  var blockEnd = if p.blocks[topBlock].label != nil:
-      ropecg(p.module, "} $1: ;$n", p.blocks[topBlock].label)
-    else:
-      ~"}$n"
   let frameLen = p.blocks[topBlock].frameLen
+  var blockEnd: Rope
   if frameLen > 0:
     blockEnd.addf("FR_.len-=$1;$n", [frameLen.rope])
+  if p.blocks[topBlock].label != nil:
+    blockEnd.addf("} $1: ;$n", [p.blocks[topBlock].label])
+  else:
+    blockEnd.addf("}$n", [])
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =

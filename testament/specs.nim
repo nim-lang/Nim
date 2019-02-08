@@ -9,7 +9,7 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-var compilerPrefix* = "compiler" / "nim"  # XXX Change this, it's wrong.
+var compilerPrefix* = "nim"
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
