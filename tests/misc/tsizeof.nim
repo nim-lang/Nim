@@ -414,13 +414,6 @@ type
 
 doAssert sizeof(MixedBitsize) == 12
 
-if failed:
-  quit("FAIL")
-else:
-  echo "OK"
-
-
-
 ##########################################
 # bug #9794
 ##########################################
@@ -434,9 +427,16 @@ type
 
   Pod2 = tuple[v: imported_double, seed: int32]
 
-testAlign(Pod)
-testSize(Pod)
-testAlign(Pod2)
-testSize(Pod2)
-doAssert sizeof(Pod) == sizeof(Pod2)
-doAssert alignof(Pod) == alignof(Pod2)
+proc foobar() =
+  testAlign(Pod)
+  testSize(Pod)
+  testAlign(Pod2)
+  testSize(Pod2)
+  doAssert sizeof(Pod) == sizeof(Pod2)
+  doAssert alignof(Pod) == alignof(Pod2)
+foobar()
+
+if failed:
+  quit("FAIL")
+else:
+  echo "OK"
