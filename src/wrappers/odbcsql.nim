@@ -830,7 +830,7 @@ proc SQLStatistics*(hstmt: SqlHStmt, CatalogName: PSQLCHAR,
 proc SQLErr*(henv: SqlHEnv, hdbc: SqlHDBC, hstmt: SqlHStmt,
               szSqlState, pfNativeError, szErrorMsg: PSQLCHAR,
               cbErrorMsgMax: TSqlSmallInt,
-              pcbErrorMsg: PSQLINTEGER): TSqlSmallInt {.
+              pcbErrorMsg: PSQLSMALLINT): TSqlSmallInt {.
                     dynlib: odbclib, importc: "SQLError".}
 
 {.pop.}
