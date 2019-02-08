@@ -154,13 +154,13 @@ proc processBody(node, retFutureSym: NimNode,
                 newCommand, node)
 
   of nnkVarSection, nnkLetSection:
-    case node[0][2].kind
+    case node[0][^1].kind
     of nnkCommand:
-      if node[0][2][0].kind == nnkIdent and node[0][2][0].eqIdent("await"):
+      if node[0][^1][0].kind == nnkIdent and node[0][^1][0].eqIdent("await"):
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
-        result.createVar("future" & node[0][0].strVal, node[0][2][1],
-          newVarSection[0][2], newVarSection, node)
+        result.createVar("future" & node[0][0].strVal, node[0][^1][1],
+          newVarSection[0][^1], newVarSection, node)
     else: discard
   of nnkAsgn:
     case node[1].kind
@@ -244,6 +244,12 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   let futureVarIdents = getFutureVarIdents(prc.params)
 
   var outerProcBody = newNimNode(nnkStmtList, prc.body)
+
+  # Extract the documentation comment from the original procedure declaration.
+  # Note that we're not removing it from the body in order not to make this
+  # transformation even more complex.
+  if prc.body.len > 1 and prc.body[0].kind == nnkCommentStmt:
+    outerProcBody.add(prc.body[0])
 
   # -> var retFuture = newFuture[T]()
   var retFutureSym = genSym(nskVar, "retFuture")
@@ -361,11 +367,11 @@ proc stripAwait(node: NimNode): NimNode =
       # foo await x
       node[1][0] = emptyNoopSym
   of nnkVarSection, nnkLetSection:
-    case node[0][2].kind
+    case node[0][^1].kind
     of nnkCommand:
-      if node[0][2][0].kind == nnkIdent and node[0][2][0].eqIdent("await"):
+      if node[0][^1][0].kind == nnkIdent and node[0][^1][0].eqIdent("await"):
         # var x = await y
-        node[0][2][0] = emptyNoopSym
+        node[0][^1][0] = emptyNoopSym
     else: discard
   of nnkAsgn:
     case node[1].kind

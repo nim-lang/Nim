@@ -18,6 +18,7 @@ type
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
     deallocAll*: proc (a: Allocator) {.nimcall.}
     flags*: set[AllocatorFlag]
+    name*: cstring
     allocCount: int
     deallocCount: int
 
@@ -40,6 +41,7 @@ proc getLocalAllocator*(): Allocator =
       result = system.realloc(p, newSize)
     result.deallocAll = nil
     result.flags = {ThreadLocal}
+    result.name = "nim_local"
     localAllocator = result
 
 proc setLocalAllocator*(a: Allocator) =

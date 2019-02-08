@@ -165,7 +165,6 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     of tySet:
       if mapSetType(conf, base) == ctArray: result = ctPtrToArray
       else: result = ctPtr
-    # XXX for some reason this breaks the pegs module
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
@@ -1041,6 +1040,8 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       else: internalError(m.config, n.info, "genObjectFields(nkRecCase)")
   of nkSym:
     var field = n.sym
+    # Do not produce code for void types
+    if isEmptyType(field.typ): return
     if field.bitsize == 0:
       if field.loc.r == nil: fillObjectFields(m, typ)
       if field.loc.t == nil:

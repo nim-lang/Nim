@@ -46,6 +46,8 @@ const
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
   
+  vcvarsallDefaultPath = "vcvarsall.bat"
+
   helpText = """
 +-----------------------------------------------------------------+
 |         Microsoft C/C++ compiler wrapper for Nim                |
@@ -158,6 +160,10 @@ when isMainModule:
     vccversionValue = vccUndefined
     vcvarsallArg = discoverVccVcVarsAllPath()
 
+  if vcvarsallArg == "":
+    # Assume that default executable is in current directory or in PATH
+    vcvarsallArg = findExe(vcvarsallDefaultPath)
+
   if printPathArg:
     var head = $vccversionValue
     if head.len < 1:
@@ -180,9 +186,16 @@ when isMainModule:
 
   if not noCommandArg:
     # Run VCC command with the VCC process environment
-    let vccProcess = startProcess(
-        commandArg,
-        args = clArgs,
-        options = vccOptions
-      )
-    quit vccProcess.waitForExit()
+    try:
+      let vccProcess = startProcess(
+          commandArg,
+          args = clArgs,
+          options = vccOptions
+        )
+      quit vccProcess.waitForExit()
+    except:
+      if vcvarsallArg.len != 0:
+        echo "Hint: using " & vcvarsallArg
+      else:
+        echo "Hint: vcvarsall.bat was not found"
+      raise

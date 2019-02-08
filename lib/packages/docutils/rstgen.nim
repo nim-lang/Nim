@@ -1134,11 +1134,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTripleEmphasis:
     renderAux(d, n, "<strong><em>$1</em></strong>",
                     "\\textbf{emph{$1}}", result)
-  of rnInterpretedText:
-    renderAux(d, n, "<cite>$1</cite>", "\\emph{$1}", result)
   of rnIdx:
     renderIndexTerm(d, n, result)
-  of rnInlineLiteral:
+  of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
       "\\texttt{$1}", result)

@@ -151,7 +151,7 @@ proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
 
 proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
   ## compares two Nim symbols
-  ## **Deprecated since version 0.18.1**; Use ```==`(NimNode,NimNode)`` instead.
+  ## **Deprecated since version 0.18.1**; Use ``==(NimNode, NimNode)`` instead.
 
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
@@ -377,7 +377,9 @@ proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
-  ## writes an error message at compile time
+  ## writes an error message at compile time. The optional ``n: NimNode``
+  ## parameter is used as the source for file and line number information in
+  ## the compilation error message.
 
 proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
@@ -1038,8 +1040,8 @@ proc newProc*(name = newEmptyNode(); params: openArray[NimNode] = [newEmptyNode(
     name,
     newEmptyNode(),
     newEmptyNode(),
-    newNimNode(nnkFormalParams).add(params), ##params
-    newEmptyNode(),  ## pragmas
+    newNimNode(nnkFormalParams).add(params),
+    newEmptyNode(),  # pragmas
     newEmptyNode(),
     body)
 
@@ -1402,12 +1404,19 @@ proc customPragmaNode(n: NimNode): NimNode =
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
+    elif impl.kind == nnkIdentDefs and impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
     else:
-      return typ.getImpl()[0][1]
+      let timpl = typ.getImpl()
+      if timpl.len>0 and timpl[0].len>1:
+        return timpl[0][1]
+      else:
+        return timpl
 
   if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
     let name = $(if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
-    var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
+    let typInst = getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])
+    var typDef = getImpl(if typInst.kind == nnkVarTy: typInst[0] else: typInst)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       let typ = typDef[2]
@@ -1492,9 +1501,18 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
-      return p[1]
-
-  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
+      if p.len == 2:
+        result = p[1]
+      else:
+        let def = p[0].getImpl[3]
+        result = newTree(nnkPar)
+        for i in 1..<p.len:
+          let key = def[i][0]
+          let val = p[i]
+          result.add newTree(nnkExprColonExpr, key, val)
+      break
+  if result.kind == nnkEmpty:
+    error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 
 when not defined(booting):

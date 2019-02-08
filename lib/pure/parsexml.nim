@@ -147,7 +147,7 @@ an HTML document contains.
 ]##
 
 import
-  hashes, strutils, lexbase, streams, unicode
+  strutils, lexbase, streams, unicode
 
 # the parser treats ``<br />`` as ``<br></br>``
 

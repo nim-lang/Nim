@@ -65,7 +65,7 @@ const
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "'$1' is never read",
     warnXmightNotBeenInit: "'$1' might not have been initialized",
-    warnDeprecated: "$1 is deprecated",
+    warnDeprecated: "$1",
     warnConfigDeprecated: "config file '$1' is deprecated",
     warnSmallLshouldNotBeUsed: "'l' should not be used as an identifier; may look like '1' (one)",
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",
@@ -171,7 +171,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
-    hintProcessing, hintPattern, hintExecuting, hintLinking}
+    hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const
   NotesVerbosity* = computeNotesVerbosity()

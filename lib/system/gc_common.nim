@@ -418,7 +418,7 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
   ## to ``deallocHeap``.
@@ -457,7 +457,7 @@ proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
     globalMarkers[globalMarkersLen] = markerProc
     inc globalMarkersLen
   else:
-    echo "[GC] cannot register global variable; too many global variables"
+    cstderr.rawWrite("[GC] cannot register global variable; too many global variables")
     quit 1
 
 proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
@@ -465,5 +465,5 @@ proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.}
     threadLocalMarkers[threadLocalMarkersLen] = markerProc
     inc threadLocalMarkersLen
   else:
-    echo "[GC] cannot register thread local variable; too many thread local variables"
+    cstderr.rawWrite("[GC] cannot register thread local variable; too many thread local variables")
     quit 1

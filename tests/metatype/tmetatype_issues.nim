@@ -1,7 +1,7 @@
 discard """
 output:'''
 void
-(Field0: "string", Field1: "string")
+("string", "string")
 1 mod 7
 @[2, 2, 2, 2, 2]
 impl 2 called
@@ -9,6 +9,7 @@ asd
 Foo
 Bar
 '''
+joinable: false
 """
 
 import typetraits, macros

@@ -12,7 +12,7 @@ type
 proc makeObj(): TTestObj =
   result.x = "Hello"
 
-for i in 1 .. 1_000_000:
+for i in 1 .. 100_000:
   when defined(gcMarkAndSweep) or defined(boehmgc):
     GC_fullcollect()
   var obj = makeObj()

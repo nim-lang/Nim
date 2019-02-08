@@ -655,7 +655,7 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
-    mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf
 
@@ -1087,6 +1087,13 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   when debugIds:
     registerId(result)
 
+proc astdef*(s: PSym): PNode =
+  # get only the definition (initializer) portion of the ast
+  if s.ast != nil and s.ast.kind == nkIdentDefs:
+    s.ast[2]
+  else:
+    s.ast
+
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1345,7 +1352,6 @@ proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
-  result.id = getID()
   when debugIds: registerId(result)
   result.flags = s.flags
   result.magic = s.magic

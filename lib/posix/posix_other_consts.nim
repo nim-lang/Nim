@@ -302,6 +302,7 @@ var IF_NAMESIZE* {.importc: "IF_NAMESIZE", header: "<net/if.h>".}: cint
 var IPPROTO_IP* {.importc: "IPPROTO_IP", header: "<netinet/in.h>".}: cint
 var IPPROTO_IPV6* {.importc: "IPPROTO_IPV6", header: "<netinet/in.h>".}: cint
 var IPPROTO_ICMP* {.importc: "IPPROTO_ICMP", header: "<netinet/in.h>".}: cint
+var IPPROTO_ICMPV6* {.importc: "IPPROTO_ICMPV6", header: "<netinet/in.h>".}: cint
 var IPPROTO_RAW* {.importc: "IPPROTO_RAW", header: "<netinet/in.h>".}: cint
 var IPPROTO_TCP* {.importc: "IPPROTO_TCP", header: "<netinet/in.h>".}: cint
 var IPPROTO_UDP* {.importc: "IPPROTO_UDP", header: "<netinet/in.h>".}: cint

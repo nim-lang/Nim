@@ -132,61 +132,36 @@ type
     emptyNode: PNode
     otherRead: PNode
 
-
-proc isHarmlessVar*(s: PSym; c: Con): bool =
-  # 's' is harmless if it used only once and its
-  # definition/usage are not split by any labels:
-  #
-  # let s = foo()
-  # while true:
-  #   a[i] = s
-  #
-  # produces:
-  #
-  # def s
-  # L1:
-  #   use s
-  # goto L1
-  #
-  # let s = foo()
-  # if cond:
-  #   a[i] = s
-  # else:
-  #   a[j] = s
-  #
-  # produces:
-  #
-  # def s
-  # fork L2
-  # use s
-  # goto L3
-  # L2:
-  # use s
-  # L3
-  #
-  # So this analysis is for now overly conservative, but correct.
-  var defsite = -1
-  var usages = 0
-  for i in 0..<c.g.len:
-    case c.g[i].kind
+proc isLastRead(s: PSym; c: var Con; pc, comesFrom: int): int =
+  var pc = pc
+  while pc < c.g.len:
+    case c.g[pc].kind
     of def:
-      if c.g[i].sym == s:
-        if defsite < 0: defsite = i
-        else: return false
+      if c.g[pc].sym == s:
+        # the path lead to a redefinition of 's' --> abandon it.
+        return high(int) 
+      inc pc
     of use:
-      if c.g[i].sym == s:
-        if defsite < 0: return false
-        for j in defsite .. i:
-          # not within the same basic block?
-          if j in c.jumpTargets: return false
-        # if we want to die after the first 'use':
-        if usages > 1: return false
-        inc usages
-    #of useWithinCall:
-    #  if c.g[i].sym == s: return false
-    of goto, fork:
-      discard "we do not perform an abstract interpretation yet"
-  result = usages <= 1
+      if c.g[pc].sym == s:
+        c.otherRead = c.g[pc].n
+        return -1
+      inc pc
+    of goto:
+      pc = pc + c.g[pc].dest
+    of fork:
+      # every branch must lead to the last read of the location:
+      var variantA = isLastRead(s, c, pc+1, pc)
+      if variantA < 0: return -1
+      let variantB = isLastRead(s, c, pc + c.g[pc].dest, pc)
+      if variantB < 0: return -1
+      elif variantA == high(int): 
+        variantA = variantB
+      pc = variantA
+    of InstrKind.join:
+      let dest = pc + c.g[pc].dest
+      if dest == comesFrom: return pc + 1
+      inc pc
+  return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
@@ -195,59 +170,52 @@ proc isLastRead(n: PNode; c: var Con): bool =
   var instr = -1
   for i in 0..<c.g.len:
     if c.g[i].n == n:
-      if instr < 0: instr = i
-      else:
-        # eh, we found two positions that belong to 'n'?
-        # better return 'false' then:
-        return false
+      if instr < 0:
+        instr = i
+        break
+
   if instr < 0: return false
   # we go through all paths beginning from 'instr+1' and need to
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
-  let s = n.sym
-  var pcs: seq[int] = @[instr+1]
-  var takenGotos: IntSet
-  var takenForks = initIntSet()
-  while pcs.len > 0:
-    var pc = pcs.pop
+  when true:
+    result = isLastRead(n.sym, c, instr+1, -1) >= 0
+  else:
+    let s = n.sym
+    var pcs: seq[int] = @[instr+1]
+    var takenGotos: IntSet
+    var takenForks = initIntSet()
+    while pcs.len > 0:
+      var pc = pcs.pop
 
-    takenGotos = initIntSet()
-    while pc < c.g.len:
-      case c.g[pc].kind
-      of def:
-        if c.g[pc].sym == s:
-          # the path lead to a redefinition of 's' --> abandon it.
-          when false:
-            # Too complex thinking ahead: In reality it is enough to find
-            # the 'def x' here on the current path to make the 'use x' valid.
-            # but for this the definition needs to dominate the usage:
-            var dominates = true
-            for j in pc+1 .. instr:
-              # not within the same basic block?
-              if c.g[j].kind in {goto, fork} and (j + c.g[j].dest) in (pc+1 .. instr):
-                #if j in c.jumpTargets:
-                dominates = false
-            if dominates: break
-          break
-        inc pc
-      of use:
-        if c.g[pc].sym == s:
-          c.otherRead = c.g[pc].n
-          return false
-        inc pc
-      of goto:
-        # we must leave endless loops eventually:
-        if not takenGotos.containsOrIncl(pc):
-          pc = pc + c.g[pc].dest
-        else:
+      takenGotos = initIntSet()
+      while pc < c.g.len:
+        case c.g[pc].kind
+        of def:
+          if c.g[pc].sym == s:
+            # the path lead to a redefinition of 's' --> abandon it.
+            break
           inc pc
-      of fork:
-        # we follow the next instruction but push the dest onto our "work" stack:
-        if not takenForks.containsOrIncl(pc):
-          pcs.add pc + c.g[pc].dest
-        inc pc
-  #echo c.graph.config $ n.info, " last read here!"
-  return true
+        of use:
+          if c.g[pc].sym == s:
+            c.otherRead = c.g[pc].n
+            return false
+          inc pc
+        of goto:
+          # we must leave endless loops eventually:
+          if not takenGotos.containsOrIncl(pc):
+            pc = pc + c.g[pc].dest
+          else:
+            inc pc
+        of fork:
+          # we follow the next instruction but push the dest onto our "work" stack:
+          if not takenForks.containsOrIncl(pc):
+            pcs.add pc + c.g[pc].dest
+          inc pc
+        of InstrKind.join:
+          inc pc
+    #echo c.graph.config $ n.info, " last read here!"
+    return true
 
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
@@ -276,7 +244,10 @@ proc patchHead(n: PNode) =
 
 proc patchHead(s: PSym) =
   if sfFromGeneric in s.flags:
-    patchHead(s.ast[bodyPos])
+    # do not patch the builtin type bound operators for seqs:
+    let dest = s.typ.sons[1].skipTypes(abstractVar)
+    if dest.kind != tySequence:
+      patchHead(s.ast[bodyPos])
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
@@ -299,7 +270,8 @@ template genOp(opr, opname, ri) =
     globalError(c.graph.config, dest.info, "internal error: '" & opname &
       "' operator not found for type " & typeToString(t))
   elif op.ast[genericParamsPos].kind != nkEmpty:
-    globalError(c.graph.config, dest.info, "internal error: '" & opname & "' operator is generic")
+    globalError(c.graph.config, dest.info, "internal error: '" & opname &
+      "' operator is generic")
   patchHead op
   if sfError in op.flags: checkForErrorPragma(c, t, ri, opname)
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
@@ -307,6 +279,12 @@ template genOp(opr, opname, ri) =
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genSink(c: Con; t: PType; dest, ri: PNode): PNode =
+  when false:
+    if t.kind != tyString:
+      echo "this one ", c.graph.config$dest.info, " for ", typeToString(t, preferDesc)
+      debug t.sink.typ.sons[2]
+      echo t.sink.id, " owner ", t.id
+      quit 1
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink", ri)
 
