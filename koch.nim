@@ -89,7 +89,7 @@ template withDir(dir, body) =
     setCurrentDir(dir)
     body
   finally:
-    setCurrentdir(old)
+    setCurrentDir(old)
 
 let origDir = getCurrentDir()
 setCurrentDir(getAppDir())
@@ -128,6 +128,11 @@ proc bundleNimbleSrc(latest: bool) =
       exec("git checkout -f stable")
       exec("git pull")
 
+proc bundleC2nim() =
+  if not dirExists("dist/c2nim/.git"):
+    exec("git clone https://github.com/nim-lang/c2nim.git dist/c2nim")
+  nimCompile("dist/c2nim/c2nim", options = "--noNimblePath --path:.")
+
 proc bundleNimbleExe(latest: bool) =
   bundleNimbleSrc(latest)
   # installer.ini expects it under $nim/bin
@@ -163,7 +168,7 @@ proc bundleNimsuggest() =
   nimCompile("nimsuggest/nimsuggest.nim", options = "-d:release")
 
 proc buildVccTool() =
-  nimCompile("tools/vccexe/vccexe.nim")
+  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim")
 
 proc bundleWinTools() =
   # TODO: consider building under `bin` instead of `.`
@@ -172,6 +177,7 @@ proc bundleWinTools() =
   buildVccTool()
   nimCompile("tools/nimgrab.nim", options = "-d:ssl")
   nimCompile("tools/nimgrep.nim")
+  bundleC2nim()
   when false:
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim", options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui")
@@ -208,10 +214,10 @@ proc buildTool(toolname, args: string) =
 
 proc buildTools() =
   bundleNimsuggest()
-  nimCompile("tools/nimgrep.nim", options = "-d:release")
+  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim", options = "-d:release")
   when defined(windows): buildVccTool()
-  nimCompile("nimpretty/nimpretty.nim", options = "-d:release")
-  nimCompile("tools/nimfind.nim", options = "-d:release")
+  nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim", options = "-d:release")
+  nimCompileFold("Compile nimfind", "tools/nimfind.nim", options = "-d:release")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest)
@@ -373,9 +379,10 @@ proc winReleaseArch(arch: string) =
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
-    nimexec "c --cpu:$# koch" % cpu
-    kochExec "boot -d:release --cpu:$#" % cpu
-    kochExec "--latest zip -d:release"
+    inFold "winrelease koch":
+      nimexec "c --cpu:$# koch" % cpu
+    kochExecFold("winrelease boot", "boot -d:release --cpu:$#" % cpu)
+    kochExecFold("winrelease zip", "--latest zip -d:release")
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
@@ -384,13 +391,16 @@ proc winRelease*() =
   # anymore!
   # Build -docs file:
   when true:
-    buildDocs(gaCode)
+    inFold "winrelease buildDocs":
+      buildDocs(gaCode)
     withDir "web/upload/" & VersionAsString:
-      exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
+      inFold "winrelease zipdocs":
+        exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
     overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
                   "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
-    csource("-d:release")
+    inFold "winrelease csource":
+      csource("-d:release")
   when sizeof(pointer) == 4:
     winReleaseArch "32"
   when sizeof(pointer) == 8:
@@ -617,6 +627,7 @@ when isMainModule:
         buildNimble(isLatest())
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
+      of "c2nim": bundleC2nim()
       else: showHelp()
       break
     of cmdEnd: break

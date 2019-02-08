@@ -45,17 +45,22 @@ type
                                  ## here shouldn't be used directly. They are
                                  ## accessible so that a stream implementation
                                  ## can override them.
-    closeImpl*: proc (s: Stream) {.nimcall, tags: [], gcsafe.}
-    atEndImpl*: proc (s: Stream): bool {.nimcall, tags: [], gcsafe.}
-    setPositionImpl*: proc (s: Stream, pos: int) {.nimcall, tags: [], gcsafe.}
-    getPositionImpl*: proc (s: Stream): int {.nimcall, tags: [], gcsafe.}
-    readDataImpl*: proc (s: Stream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
-    peekDataImpl*: proc (s: Stream, buffer: pointer,
-                         bufLen: int): int {.nimcall, tags: [ReadIOEffect], gcsafe.}
-    writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int) {.nimcall,
-      tags: [WriteIOEffect], gcsafe.}
-    flushImpl*: proc (s: Stream) {.nimcall, tags: [WriteIOEffect], gcsafe.}
+    closeImpl*: proc (s: Stream)
+      {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+    atEndImpl*: proc (s: Stream): bool
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    setPositionImpl*: proc (s: Stream, pos: int)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    getPositionImpl*: proc (s: Stream): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+    readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+    writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+    flushImpl*: proc (s: Stream)
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
 proc flush*(s: Stream) =
   ## flushes the buffers that the stream `s` might use.
@@ -64,10 +69,6 @@ proc flush*(s: Stream) =
 proc close*(s: Stream) =
   ## closes the stream `s`.
   if not isNil(s.closeImpl): s.closeImpl(s)
-
-proc close*(s, unused: Stream) {.deprecated.} =
-  ## closes the stream `s`.
-  s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
   ## checks if more data can be read from `f`. Returns true if all data has
@@ -107,12 +108,6 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   result = s.peekDataImpl(s, buffer, bufLen)
 
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
-  ## low level proc that writes an untyped `buffer` of `bufLen` size
-  ## to the stream `s`.
-  s.writeDataImpl(s, buffer, bufLen)
-
-proc writeData*(s, unused: Stream, buffer: pointer,
-                bufLen: int) {.deprecated.} =
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)

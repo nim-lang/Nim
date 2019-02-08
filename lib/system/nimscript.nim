@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+## To learn about scripting in Nim see `NimScript<nims.html>`_
 
 # Nim's configuration system now uses Nim for scripting. This module provides
 # a few things that are required for this to work.

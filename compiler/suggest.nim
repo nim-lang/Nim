@@ -32,8 +32,8 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches, lineinfos, pathutils
-from wordrecg import wDeprecated, wError
+import algorithm, prefixmatches, lineinfos, pathutils, parseutils
+from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -81,6 +81,38 @@ proc cmpSuggestions(a, b: Suggest): int =
   # independent of hashing order:
   result = cmp(a.name[], b.name[])
 
+proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int =
+  let
+    line = sourceLine(conf, info)
+    column = toColumn(info)
+
+  proc isOpeningBacktick(col: int): bool =
+    if col >= 0 and col < line.len:
+      if line[col] == '`':
+        not isOpeningBacktick(col - 1)
+      else:
+        isOpeningBacktick(col - 1)
+    else:
+      false
+
+  if column > line.len:
+    result = 0
+  elif column > 0 and line[column - 1] == '`' and isOpeningBacktick(column - 1):
+    result = skipUntil(line, '`', column)
+    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+      result = 0
+  elif ident[0] in linter.Letters and ident[^1] != '=':
+    result = identLen(line, column)
+    if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
+      result = 0
+  else:
+    result = skipWhile(line, OpChars + {'[', '(', '{', ']', ')', '}'}, column)
+    if ident[^1] == '=' and ident[0] in linter.Letters:
+      if line[column..column + result - 1] != "=":
+        result = 0
+    elif line[column..column + result - 1] != ident:
+      result = 0
+
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
                   inTypeContext: bool; scope: int): Suggest =
@@ -88,7 +120,6 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
   result.section = section
   result.quality = quality
   result.isGlobal = sfGlobal in s.flags
-  result.tokenLen = s.name.s.len
   result.prefix = prefix
   result.contextFits = inTypeContext == (s.kind in {skType, skGenericParam})
   result.scope = scope
@@ -109,7 +140,11 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
         result.qualifiedPath.add(ow2.origModuleName)
       if ow != nil:
         result.qualifiedPath.add(ow.origModuleName)
-    result.qualifiedPath.add(s.name.s)
+    if s.name.s[0] in OpChars + {'[', '{', '('} or
+       s.name.id in ord(wAddr)..ord(wYield):
+      result.qualifiedPath.add('`' & s.name.s & '`')
+    else:
+      result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
       result.forth = typeToString(s.typ)
@@ -122,6 +157,10 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
   result.version = conf.suggestVersion
+  result.tokenLen = if section != ideHighlight:
+                      s.name.s.len
+                    else:
+                      getTokenLenFromSource(conf, s.name.s, infox)
 
 proc `$`*(suggest: Suggest): string =
   result = $suggest.section

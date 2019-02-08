@@ -114,7 +114,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     try:
       result =
         pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
-          .replace(" ")
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal

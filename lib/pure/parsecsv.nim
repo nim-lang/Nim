@@ -255,6 +255,12 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
 
   var col = 0 # current column
   let oldpos = my.bufpos
+  # skip initial empty lines #8365
+  while true:
+    case my.buf[my.bufpos]
+    of '\c': my.bufpos = handleCR(my, my.bufpos)
+    of '\l': my.bufpos = handleLF(my, my.bufpos)
+    else: break
   while my.buf[my.bufpos] != '\0':
     let oldlen = my.row.len
     if oldlen < col+1:
@@ -354,7 +360,7 @@ when isMainModule:
   import os
   import strutils
   block: # Tests for reading the header row
-    let content = "One,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
+    let content = "\nOne,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
     writeFile("temp.csv", content)
 
     var p: CsvParser

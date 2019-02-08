@@ -1295,7 +1295,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
 
   if result != -1:
     data.setLen(result)
-    address = $inet_ntoa(sockAddress.sin_addr)
+    address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
     port = ntohs(sockAddress.sin_port).Port
   else:
     raiseOSError(osLastError())

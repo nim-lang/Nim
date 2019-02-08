@@ -221,7 +221,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(diag & "\n")
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
-        " suppressed; compile with --showAllMismatches:on to see them\n")
+        "suppressed; compile with --showAllMismatches:on to see them\n")
   result = (prefer, candidates)
 
 const
@@ -464,7 +464,7 @@ proc updateDefaultParams(call: PNode) =
 
 proc getCallLineInfo(n: PNode): TLineInfo =
   case n.kind
-  of nkBracketExpr, nkCall, nkCommand: getCallLineInfo(n.sons[0])
+  of nkAccQuoted, nkBracketExpr, nkCall, nkCommand: getCallLineInfo(n.sons[0])
   of nkDotExpr: getCallLineInfo(n.sons[1])
   else: n.info
 

@@ -168,7 +168,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or
       (not hasElse and efInTypeof notin flags):
-    for it in n: 
+    for it in n:
       it.sons[^1] = discardCheck(c, it.sons[^1], flags)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
@@ -1129,6 +1129,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner(c)
+      # If the right hand side expression was a macro call we replace it with
+      # its evaluated result here so that we don't execute it once again in the
+      # final pass
+      if a[2].kind in nkCallKinds:
+        a[2] = newNodeIT(nkType, a[2].info, t)
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
@@ -1563,6 +1568,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if obj.kind in {tyObject, tyDistinct, tySequence, tyString} and sameType(obj, objB):
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
+        #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
         if opr[].isNil:
           opr[] = s

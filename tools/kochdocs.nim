@@ -25,7 +25,6 @@ proc findNim*(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
   if additionalPath.len > 0:
@@ -38,14 +37,20 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
 
+template inFold*(desc, body) =
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:start:" & desc.replace(" ", "_")
+
+  body
+
+  if existsEnv("TRAVIS"):
+    echo "travis_fold:end:" & desc.replace(" ", "_")
+
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding on Travis CI.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:start:" & desc.replace(" ", "")
-  exec(cmd, errorcode, additionalPath)
-  if existsEnv("TRAVIS"):
-    echo "travis_fold:end:" & desc.replace(" ", "")
+  inFold(desc):
+    exec(cmd, errorcode, additionalPath)
 
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =
@@ -68,6 +73,11 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
   let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
+
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
+  let output = outputDir / input.splitFile.name.exe
+  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  execFold(desc, cmd)
 
 const
   pdf = """
@@ -112,6 +122,7 @@ doc/manual/var_t_return.rst
 
   doc = """
 lib/system.nim
+lib/system/io.nim
 lib/system/nimscript.nim
 lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim

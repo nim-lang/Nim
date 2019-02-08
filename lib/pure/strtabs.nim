@@ -28,7 +28,7 @@ runnableExamples:
 
 
 ## When using the style insensitive mode ``modeStyleInsensitive``, 
-## all letters are compared case insensitively within the ASCII range 
+## all letters are compared case insensitively within the ASCII range
 ## and underscores are ignored.
 
 runnableExamples:
@@ -117,7 +117,7 @@ proc mustRehash(length, counter: int): bool =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+  result = (h + 1) and maxHash
 
 proc rawGet(t: StringTableRef, key: string): int =
   var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
@@ -271,6 +271,32 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
     else:
       add(result, f[i])
       inc(i)
+
+proc del*(t: StringTableRef, key: string) =
+  ## Removes `key` from `t`.
+  # Impl adapted from `tableimpl.delImplIdx`
+  var i = rawGet(t, key)
+  let msk = high(t.data)
+  if i >= 0:
+    dec(t.counter)
+    block outer:
+      while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+        var j = i         # The correctness of this depends on (h+1) in nextTry,
+        var r = j         # though may be adaptable to other simple sequences.
+        t.data[i].hasValue = false              # mark current EMPTY
+        t.data[i].key = ""
+        t.data[i].val = ""
+        while true:
+          i = (i + 1) and msk      # increment mod table size
+          if not t.data[i].hasValue:   # end of collision cluster; So all done
+            break outer
+          r = t.myhash(t.data[i].key) and msk    # "home" location of key@i
+          if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+            break
+        when defined(js):
+          t.data[j] = t.data[i]
+        else:
+          shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 
 proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
   ## The `$` operator for string tables.

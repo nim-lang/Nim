@@ -1,5 +1,5 @@
 discard """
-  errormsg: "index out of bounds: (a:0) <= (i:2) <= (b:1) "
+  errormsg: "index out of bounds: (a: 0) <= (i: 2) <= (b: 1) "
   line: 18
 """
 

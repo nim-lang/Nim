@@ -62,6 +62,9 @@ template wrap2svoid(op, modop) {.dirty.} =
     op(getString(a, 0), getString(a, 1))
   modop op
 
+template ioop(op) {.dirty.} =
+  registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
+
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
                else: a.currentException.sons[3].skipColon.strVal)
@@ -113,8 +116,8 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2svoid(putEnv, osop)
     wrap1s(dirExists, osop)
     wrap1s(fileExists, osop)
-    wrap2svoid(writeFile, systemop)
-    wrap1s(readFile, systemop)
+    wrap2svoid(writeFile, ioop)
+    wrap1s(readFile, ioop)
     systemop getCurrentExceptionMsg
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))

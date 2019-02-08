@@ -15,7 +15,7 @@ import
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
-import system/helpers2
+import system/indexerrors
 
 proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
@@ -569,10 +569,20 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           try:
             result = newIntNodeT(g.config.symbols[s.name.s].parseInt, n, g)
           except ValueError:
-            localError(g.config, n.info, "expression is not an integer literal")
+            localError(g.config, s.info,
+              "{.intdefine.} const was set to an invalid integer: '" &
+                g.config.symbols[s.name.s] & "'")
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+      of mBoolDefine:
+        if isDefined(g.config, s.name.s):
+          try:
+            result = newIntNodeT(g.config.symbols[s.name.s].parseBool.int, n, g)
+          except ValueError:
+            localError(g.config, s.info,
+              "{.booldefine.} const was set to an invalid bool: '" &
+                g.config.symbols[s.name.s] & "'")
       else:
         result = copyTree(s.ast)
     of skProc, skFunc, skMethod:

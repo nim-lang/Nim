@@ -166,3 +166,12 @@ seq4 =
 var ii = 1
 let arr2 = [newMySeq(2, 5.0), if i > 1: newMySeq(3, 1.0) else: newMySeq(0, 0.0)]
 var seqOfSeq2 = @[newMySeq(2, 5.0), newMySeq(3, 1.0)]
+
+
+## issue #10462
+proc myfuncLoop(x: int): MySeqNonCopyable =
+  for i in 0..<x:
+    var cc = newMySeq(i, 5.0)
+    result = cc
+
+discard myfuncLoop(3)
