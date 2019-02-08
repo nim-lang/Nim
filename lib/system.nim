@@ -4166,26 +4166,6 @@ template doAssertRaises*(exception: typedesc, code: untyped): typed =
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
-when defined(cpp) and appType != "lib" and
-    not defined(js) and not defined(nimscript) and
-    hostOS != "standalone" and not defined(noCppExceptions):
-  proc setTerminate(handler: proc() {.noconv.})
-    {.importc: "std::set_terminate", header: "<exception>".}
-  setTerminate proc() {.noconv.} =
-    # Remove ourself as a handler, reinstalling the default handler.
-    setTerminate(nil)
-
-    let ex = getCurrentException()
-    let trace = ex.getStackTrace()
-    when defined(genode):
-      # stderr not available by default, use the LOG session
-      echo trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
-    else:
-      cstderr.rawWrite trace & "Error: unhandled exception: " & ex.msg &
-                   " [" & $ex.name & "]\n"
-    quit 1
-
 when not defined(js):
   proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
     magic: "Slice".}
