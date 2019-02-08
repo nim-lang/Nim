@@ -78,6 +78,8 @@ for j, y in stepIt(2.0, -0.0375 * 4, 107 div 4):
     if c != e:
       errors += 1
     row.add(c)
-  echo row
+
+  # Printing aparently makes the test fail when joined.
+  # echo row
 
 doAssert errors < 10, "total errors: " & $errors
