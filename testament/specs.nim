@@ -9,7 +9,7 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-var compilerPrefix* = "nim"
+var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
