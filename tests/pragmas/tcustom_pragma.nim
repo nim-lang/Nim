@@ -61,6 +61,11 @@ block: # A bit more advanced case
 
     assert hasCustomPragma(type(s.field), defaultValue)
 
+  proc foo(s: var MySerializable) =
+    static: assert(s.a.getCustomPragmaVal(defaultValue) == 5)
+
+  foo(s)
+
 block: # ref types
   type
     Node = object of RootObj

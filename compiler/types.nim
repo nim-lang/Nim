@@ -124,7 +124,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     add(result, ')')
     if n.sons[0].typ != nil:
       result.add(": " & typeToString(n.sons[0].typ, prefer))
-  result.add "[declared in "
+  result.add " [declared in "
   result.add(conf$sym.info)
   result.add "]"
 

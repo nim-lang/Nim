@@ -72,6 +72,37 @@ type
     Unload = "unload",
     Wheel = "wheel"
 
+  PerformanceMemory* {.importc.} = ref object
+    jsHeapSizeLimit*: float
+    totalJSHeapSize*: float
+    usedJSHeapSize*: float
+
+  PerformanceTiming* {.importc.} = ref object
+    connectStart*: float
+    domComplete*: float
+    domContentLoadedEventEnd*: float
+    domContentLoadedEventStart*: float
+    domInteractive*: float
+    domLoading*: float
+    domainLookupEnd*: float
+    domainLookupStart*: float
+    fetchStart*: float
+    loadEventEnd*: float
+    loadEventStart*: float
+    navigationStart*: float
+    redirectEnd*: float
+    redirectStart*: float
+    requestStart*: float
+    responseEnd*: float
+    responseStart*: float
+    secureConnectionStart*: float
+    unloadEventEnd*: float
+    unloadEventStart*: float
+
+  Performance* {.importc.} = ref object
+    memory*: PerformanceMemory
+    timing*: PerformanceTiming
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -80,12 +111,15 @@ type
     location*: Location
     closed*: bool
     defaultStatus*: cstring
+    devicePixelRatio*: float
     innerHeight*, innerWidth*: int
     locationbar*: ref LocationBar
     menubar*: ref MenuBar
     name*: cstring
     outerHeight*, outerWidth*: int
     pageXOffset*, pageYOffset*: int
+    scrollX*: float
+    scrollY*: float
     personalbar*: ref PersonalBar
     scrollbars*: ref ScrollBars
     statusbar*: ref StatusBar
@@ -93,6 +127,8 @@ type
     toolbar*: ref ToolBar
     frames*: seq[Frame]
     screen*: Screen
+    performance*: Performance
+    onpopstate*: proc (event: Event)
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -1035,6 +1071,7 @@ proc clearTimeout*(t: Timeout) {.importc, nodecl.}
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 
 # Window "methods"
@@ -1134,6 +1171,7 @@ proc replace*(loc: Location, s: cstring)
 proc back*(h: History)
 proc forward*(h: History)
 proc go*(h: History, pagesToJump: int)
+proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
@@ -1204,6 +1242,8 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 proc getElementsByClass*(n: Node; name: cstring): seq[Node] {.
   importcpp: "#.getElementsByClassName(#)", nodecl.}

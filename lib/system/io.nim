@@ -1,19 +1,60 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2013 Andreas Rumpf
+#        (c) Copyright 2019 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
+include inclrtl
 
-# Nim's standard IO library. It contains high-performance
-# routines for reading and writing data to (buffered) files or
-# TTYs.
+# ----------------- IO Part ------------------------------------------------
+type
+  CFile {.importc: "FILE", header: "<stdio.h>",
+          incompletestruct.} = object
+  File* = ptr CFile ## The type representing a file handle.
 
-{.push debugger:off .} # the user does not want to trace a part
-                       # of the standard library!
+  FileMode* = enum           ## The file mode when opening a file.
+    fmRead,                   ## Open the file for read access only.
+    fmWrite,                  ## Open the file for write access only.
+                              ## If the file does not exist, it will be
+                              ## created. Existing files will be cleared!
+    fmReadWrite,              ## Open the file for read and write access.
+                              ## If the file does not exist, it will be
+                              ## created. Existing files will be cleared!
+    fmReadWriteExisting,      ## Open the file for read and write access.
+                              ## If the file does not exist, it will not be
+                              ## created. The existing file will not be cleared.
+    fmAppend                  ## Open the file for writing only; append data
+                              ## at the end.
+
+  FileHandle* = cint ## type that represents an OS file handle; this is
+                      ## useful for low-level file access
+
+# text file handling:
+when not defined(nimscript) and not defined(js):
+  var
+    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+      ## The standard input stream.
+    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+      ## The standard output stream.
+    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+      ## The standard error stream.
+
+when defined(useStdoutAsStdmsg):
+  template stdmsg*: File = stdout
+else:
+  template stdmsg*: File = stderr
+    ## Template which expands to either stdout or stderr depending on
+    ## `useStdoutAsStdmsg` compile-time switch.
+
+when defined(windows):
+  proc c_fileno(f: File): cint {.
+    importc: "_fileno", header: "<stdio.h>".}
+else:
+  proc c_fileno(f: File): cint {.
+    importc: "fileno", header: "<fcntl.h>".}
 
 when defined(windows):
   proc c_fdopen(filehandle: cint, mode: cstring): File {.
@@ -68,6 +109,12 @@ proc c_ferror(f: File): cint {.
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
 
+proc c_fprintf(f: File, frmt: cstring): cint {.
+  importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
+
+template sysFatal(exc, msg) =
+  raise newException(exc, msg)
+
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
@@ -91,34 +138,63 @@ proc checkErr(f: File) =
     quit(1)
 
 {.push stackTrace:off, profiler:off.}
-proc readBuffer(f: File, buffer: pointer, len: Natural): int =
+proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
+  tags: [ReadIOEffect], benign.} =
+  ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
+  ## the actual number of bytes that have been read which may be less than
+  ## `len` (if not as many bytes are remaining), but not greater.
   result = c_fread(buffer, 1, len, f)
   if result != len: checkErr(f)
 
-proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
+proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
+  tags: [ReadIOEffect], benign.} =
+  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+  ## the actual number of bytes that have been read which may be less than
+  ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
 
-proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
+proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
+  tags: [ReadIOEffect], benign.} =
+  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+  ## the actual number of bytes that have been read which may be less than
+  ## `len` (if not as many bytes are remaining), but not greater.
+  ##
+  ## **Warning:** The buffer `a` must be pre-allocated. This can be done
+  ## using, for example, ``newString``.
   if (start + len) > len(a):
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
 
-proc write(f: File, c: cstring) =
+proc write*(f: File, c: cstring) {.tags: [WriteIOEffect], benign.} =
+  ## Writes a value to the file `f`. May throw an IO exception.
   discard c_fputs(c, f)
   checkErr(f)
 
-proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
+proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
+  tags: [WriteIOEffect], benign.} =
+  ## writes the bytes of buffer pointed to by the parameter `buffer` to the
+  ## file `f`. Returns the number of actual written bytes, which may be less
+  ## than `len` in case of an error.
   result = c_fwrite(buffer, 1, len, f)
   checkErr(f)
 
-proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr UncheckedArray[int8]](a)
-  result = writeBuffer(f, addr(x[int(start)]), len)
-proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
+proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
+  tags: [WriteIOEffect], benign.} =
+  ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+  ## the number of actual written bytes, which may be less than `len` in case
+  ## of an error.
   var x = cast[ptr UncheckedArray[int8]](a)
   result = writeBuffer(f, addr(x[int(start)]), len)
 
-proc write(f: File, s: string) =
+proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
+  tags: [WriteIOEffect], benign.} =
+  ## writes the bytes of ``a[start..start+len-1]`` to the file `f`. Returns
+  ## the number of actual written bytes, which may be less than `len` in case
+  ## of an error.
+  var x = cast[ptr UncheckedArray[int8]](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
+
+proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
   if writeBuffer(f, cstring(s), s.len) != s.len:
     raiseEIO("cannot write string to file")
 {.pop.}
@@ -141,21 +217,40 @@ else:
 const
   BufSize = 4000
 
-proc close*(f: File) =
+proc close*(f: File) {.tags: [], gcsafe.} =
+  ## Closes the file.
   if not f.isNil:
     discard c_fclose(f)
 
-proc readChar(f: File): char =
+proc readChar*(f: File): char {.tags: [ReadIOEffect].} =
+  ## Reads a single character from the stream `f`. Should not be used in
+  ## performance sensitive code.
   let x = c_fgetc(f)
   if x < 0:
     checkErr(f)
     raiseEOF()
   result = char(x)
 
-proc flushFile*(f: File) = discard c_fflush(f)
-proc getFileHandle*(f: File): FileHandle = c_fileno(f)
+proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
+  ## Flushes `f`'s buffer.
+  discard c_fflush(f)
 
-proc readLine(f: File, line: var TaintedString): bool =
+proc getFileHandle*(f: File): FileHandle =
+  ## returns the OS file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  c_fileno(f)
+
+proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
+              benign.} =
+  ## reads a line of text from the file `f` into `line`. May throw an IO
+  ## exception.
+  ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
+  ## character(s) are not part of the returned string. Returns ``false``
+  ## if the end of the file has been reached, ``true`` otherwise. If
+  ## ``false`` is returned `line` contains no new data.
+  proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
+    importc: "memchr", header: "<string.h>".}
+
   var pos = 0
 
   # Use the currently reserved space for a first try
@@ -165,7 +260,8 @@ proc readLine(f: File, line: var TaintedString): bool =
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    nimSetMem(addr line.string[pos], '\L'.ord, sp)
+    for i in 0..<sp: line.string[pos+i] = '\L'
+
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
@@ -191,32 +287,37 @@ proc readLine(f: File, line: var TaintedString): bool =
     sp = 128 # read in 128 bytes at a time
     line.string.setLen(pos+sp)
 
-proc readLine(f: File): TaintedString =
+proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.} =
+  ## reads a line of text from the file `f`. May throw an IO exception.
+  ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
+  ## character(s) are not part of the returned string.
   result = TaintedString(newStringOfCap(80))
   if not readLine(f, result): raiseEOF()
 
-proc write(f: File, i: int) =
+proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.} =
   when sizeof(int) == 8:
     if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
     if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
-proc write(f: File, i: BiggestInt) =
+proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], benign.} =
   when sizeof(BiggestInt) == 8:
     if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
     if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
-proc write(f: File, b: bool) =
+proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   if b: write(f, "true")
   else: write(f, "false")
-proc write(f: File, r: float32) =
+proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
   if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
-proc write(f: File, r: BiggestFloat) =
+proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
   if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
 
-proc write(f: File, c: char) = discard c_putc(cint(c), f)
-proc write(f: File, a: varargs[string, `$`]) =
+proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
+  discard c_putc(cint(c), f)
+
+proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.} =
   for x in items(a): write(f, x)
 
 proc readAllBuffer(file: File): string =
@@ -240,7 +341,8 @@ proc rawFileSize(file: File): int64 =
   result = c_ftell(file)
   discard c_fseek(file, oldPos, 0)
 
-proc endOfFile(f: File): bool =
+proc endOfFile*(f: File): bool {.tags: [], benign.} =
+  ## Returns true iff `f` is at the end.
   var c = c_fgetc(f)
   discard c_ungetc(c, f)
   return c < 0'i32
@@ -263,7 +365,12 @@ proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
 
-proc readAll(file: File): TaintedString =
+proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
+  ## Reads all data from the stream `file`.
+  ##
+  ## Raises an IO exception in case of an error. It is an error if the
+  ## current file position is not at the beginning of the file.
+
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
   when declared(stdin):
@@ -280,18 +387,15 @@ proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
     write(f, i)
   write(f, "\n")
 
-proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
+proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
+                          tags: [WriteIOEffect], benign.} =
+  ## writes the values `x` to `f` and then writes "\\n".
+  ## May throw an IO exception.
   for i in items(x):
     write(f, i)
   write(f, "\n")
 
-when declared(stdout):
-  proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
-  proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
-
 # interface to the C procs:
-
-include "system/widestrs"
 
 when defined(windows) and not defined(useWinAnsi):
   when defined(cpp):
@@ -356,9 +460,14 @@ when defined(posix) and not defined(nimscript):
   proc c_fstat(a1: cint, a2: var Stat): cint {.
     importc: "fstat", header: "<sys/stat.h>".}
 
-proc open(f: var File, filename: string,
+
+proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool =
+          bufSize: int = -1): bool  {.tags: [], raises: [], benign.} =
+  ## Opens a file named `filename` with given `mode`.
+  ##
+  ## Default mode is readonly. Returns true iff the file could be opened.
+  ## This throws no exception if the file could not be opened.
   var p: pointer = fopen(filename, FormatOpen[mode])
   if p != nil:
     when defined(posix) and not defined(nimscript):
@@ -377,49 +486,55 @@ proc open(f: var File, filename: string,
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
 
-proc reopen(f: File, filename: string, mode: FileMode = fmRead): bool =
+proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
+  tags: [], benign.} =
+  ## reopens the file `f` with given `filename` and `mode`. This
+  ## is often used to redirect the `stdin`, `stdout` or `stderr`
+  ## file variables.
+  ##
+  ## Default mode is readonly. Returns true iff the file could be reopened.
   var p: pointer = freopen(filename, FormatOpen[mode], f)
   result = p != nil
 
-proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
+proc open*(f: var File, filehandle: FileHandle,
+           mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
+  ## Creates a ``File`` from a `filehandle` with given `mode`.
+  ##
+  ## Default mode is readonly. Returns true iff the file could be opened.
+
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
-proc setFilePos(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) =
+proc open*(filename: string,
+            mode: FileMode = fmRead, bufSize: int = -1): File =
+  ## Opens a file named `filename` with given `mode`.
+  ##
+  ## Default mode is readonly. Raises an ``IOError`` if the file
+  ## could not be opened.
+  if not open(result, filename, mode, bufSize):
+    sysFatal(IOError, "cannot open: " & filename)
+
+proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.} =
+  ## sets the position of the file pointer that is used for read/write
+  ## operations. The file's first byte has the index zero.
   if c_fseek(f, pos, cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
-proc getFilePos(f: File): int64 =
+proc getFilePos*(f: File): int64 {.benign.} =
+  ## retrieves the current position of the file pointer that is used to
+  ## read from the file `f`. The file's first byte has the index zero.
   result = c_ftell(f)
   if result < 0: raiseEIO("cannot retrieve file position")
 
-proc getFileSize(f: File): int64 =
+proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
+  ## retrieves the file size (in bytes) of `f`.
   var oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
 
-proc readFile(filename: string): TaintedString =
-  var f: File
-  if open(f, filename):
-    try:
-      result = readAll(f).TaintedString
-    finally:
-      close(f)
-  else:
-    sysFatal(IOError, "cannot open: ", filename)
-
-proc writeFile(filename, content: string) =
-  var f: File
-  if open(f, filename, fmWrite):
-    try:
-      f.write(content)
-    finally:
-      close(f)
-  else:
-    sysFatal(IOError, "cannot open: ", filename)
-
-proc setStdIoUnbuffered() =
+proc setStdIoUnbuffered*() {.tags: [], benign.} =
+  ## Configures `stdin`, `stdout` and `stderr` to be unbuffered.
   when declared(stdout):
     discard c_setvbuf(stdout, nil, IONBF, 0)
   when declared(stderr):
@@ -429,6 +544,9 @@ proc setStdIoUnbuffered() =
 
 when declared(stdout):
   when defined(windows) and compileOption("threads"):
+    const insideRLocksModule = false
+    include "system/syslocks"
+
     var echoLock: SysLock
     initSysLock echoLock
 
@@ -450,4 +568,81 @@ when declared(stdout):
     when defined(windows) and compileOption("threads"):
       releaseSys echoLock
 
-{.pop.}
+
+when defined(windows) and not defined(nimscript):
+  # work-around C's sucking abstraction:
+  # BUGFIX: stdin and stdout should be binary files!
+  proc c_setmode(handle, mode: cint) {.
+    importc: when defined(bcc): "setmode" else: "_setmode",
+    header: "<io.h>".}
+  var
+    O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
+
+  # we use binary mode on Windows:
+  c_setmode(c_fileno(stdin), O_BINARY)
+  c_setmode(c_fileno(stdout), O_BINARY)
+  c_setmode(c_fileno(stderr), O_BINARY)
+
+
+proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
+  ## Opens a file named `filename` for reading, calls `readAll
+  ## <#readAll>`_ and closes the file afterwards. Returns the string.
+  ## Raises an IO exception in case of an error. If # you need to call
+  ## this inside a compile time macro you can use `staticRead
+  ## <#staticRead>`_.
+  var f: File
+  if open(f, filename):
+    try:
+      result = readAll(f).TaintedString
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: " & filename)
+
+proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
+  ## Opens a file named `filename` for writing. Then writes the
+  ## `content` completely to the file and closes the file afterwards.
+  ## Raises an IO exception in case of an error.
+  var f: File
+  if open(f, filename, fmWrite):
+    try:
+      f.write(content)
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: " & filename)
+
+iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
+  ## Iterates over any line in the file named `filename`.
+  ##
+  ## If the file does not exist `IOError` is raised. The trailing newline
+  ## character(s) are removed from the iterated lines. Example:
+  ##
+  ## .. code-block:: nim
+  ##   import strutils
+  ##
+  ##   proc transformLetters(filename: string) =
+  ##     var buffer = ""
+  ##     for line in filename.lines:
+  ##       buffer.add(line.replace("a", "0") & '\x0A')
+  ##     writeFile(filename, buffer)
+  var f = open(filename, bufSize=8000)
+  defer: close(f)
+  var res = TaintedString(newStringOfCap(80))
+  while f.readLine(res): yield res
+
+iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
+  ## Iterate over any line in the file `f`.
+  ##
+  ## The trailing newline character(s) are removed from the iterated lines.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   proc countZeros(filename: File): tuple[lines, zeros: int] =
+  ##     for line in filename.lines:
+  ##       for letter in line:
+  ##         if letter == '0':
+  ##           result.zeros += 1
+  ##       result.lines += 1
+  var res = TaintedString(newStringOfCap(80))
+  while f.readLine(res): yield res

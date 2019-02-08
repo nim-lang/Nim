@@ -1129,6 +1129,11 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         #debug s.typ
       s.ast = a
       popOwner(c)
+      # If the right hand side expression was a macro call we replace it with
+      # its evaluated result here so that we don't execute it once again in the
+      # final pass
+      if a[2].kind in nkCallKinds:
+        a[2] = newNodeIT(nkType, a[2].info, t)
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
