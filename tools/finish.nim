@@ -8,6 +8,9 @@ const
   mingw = "mingw$1-6.3.0.7z" % arch
   url = r"https://nim-lang.org/download/" & mingw
 
+var
+  interactive = true
+
 type
   DownloadResult = enum
     Failure,
@@ -51,6 +54,9 @@ when defined(windows):
 
   proc askBool(m: string): bool =
     stdout.write m
+    if not interactive:
+      stdout.writeLine "y (non-interactive mode)"
+      return true
     while true:
       try:
         let answer = stdin.readLine().normalize
@@ -67,6 +73,9 @@ when defined(windows):
   proc askNumber(m: string; a, b: int): int =
     stdout.write m
     stdout.write " [" & $a & ".." & $b & "] "
+    if not interactive:
+      stdout.writeLine $a & " (non-interactive mode)"
+      return a
     while true:
       let answer = stdin.readLine()
       try:
@@ -291,4 +300,6 @@ when isMainModule:
   when defined(testdownload):
     discard downloadMingw()
   else:
+    if "-y" in commandLineParams():
+      interactive = false
     main()
