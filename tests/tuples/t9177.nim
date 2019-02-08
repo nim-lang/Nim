@@ -1,5 +1,6 @@
 discard """
   action: run
+  disabled: true
 """
 
 block:
