@@ -914,6 +914,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
         let hoisted = hoistParamsUsedInDefault(c, call, hoistedParams, call[i])
         if hoisted != nil: call[i] = hoisted
       result = newTree(nkStmtListExpr, hoistedParams, call).PTransNode
+      PNode(result).typ = call.typ
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
   of nkDerefExpr, nkHiddenDeref:
