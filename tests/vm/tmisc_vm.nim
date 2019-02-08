@@ -49,3 +49,23 @@ static:
     echo "caught Defect"
   except ValueError:
     echo "caught ValueError"
+
+# bug #10538
+
+block:
+  proc fun1(): seq[int] =
+    try:
+      try:
+        result.add(1)
+        return
+      except:
+        result.add(-1)
+      finally:
+        result.add(2)
+    finally:
+      result.add(3)
+    result.add(4)
+
+  let x1 = fun1()
+  const x2 = fun1()
+  doAssert(x1 == x2)
