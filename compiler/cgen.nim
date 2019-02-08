@@ -1437,6 +1437,10 @@ proc genDatInitCode(m: BModule) =
   var prc = "$1 N_NIMCALL(void, $2)(void) {$N" %
     [rope(if m.hcrOn: "N_LIB_EXPORT" else: "N_LIB_PRIVATE"), getDatInitName(m)]
 
+  # we don't want to break into such init code - could happen if a line
+  # directive from a function written by the user spills after itself
+  genCLineDir(prc, "generated_not_to_break_here", 999999, m.config)
+
   for i in cfsTypeInit1..cfsDynLibInit:
     if m.s[i].len != 0:
       moduleDatInitRequired = true
