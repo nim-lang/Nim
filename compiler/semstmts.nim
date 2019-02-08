@@ -874,8 +874,8 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if covered == toCover(c, n.sons[0].typ):
       hasElse = true
     elif n.sons[0].typ.kind == tyEnum:
-      localError(c.config, n.info, "not all cases are covered, missing: " &
-        formatMissingEnums(n))
+      localError(c.config, n.info, "not all cases are covered; missing: {$1}" %
+                 formatMissingEnums(n))
     else:
       localError(c.config, n.info, "not all cases are covered")
   closeScope(c)

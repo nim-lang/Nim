@@ -622,9 +622,9 @@ proc formatMissingEnums(n: PNode): string =
           coveredCases.incl k
   for child in n[0].typ.n.sons:
     if child.sym.position notin coveredCases:
+      if result.len > 0:
+        result.add ", "
       result.add child.sym.name.s
-      result.add ", "
-  result.setLen result.len - 2 # remove last comma
 
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
@@ -663,7 +663,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     semRecordNodeAux(c, lastSon(n.sons[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != toCover(c, a.sons[0].typ):
     if a.sons[0].typ.kind == tyEnum:
-      localError(c.config, a.info, "not all cases are covered, missing: " &
+      localError(c.config, a.info, "not all cases are covered; missing: {$1}" %
         formatMissingEnums(a))
     else:
       localError(c.config, a.info, "not all cases are covered")
