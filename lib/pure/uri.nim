@@ -486,89 +486,89 @@ proc handleHexChar(c: char, x: var int) {.inline.} =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: assert(false)
 
-proc getEncodedData(allowedMethods: set[RequestMethod]): string =
-  case getEnv("REQUEST_METHOD").string
-  of "POST":
-    if methodPost notin allowedMethods:
-      cgiError("'REQUEST_METHOD' 'POST' is not supported")
-    var L = parseInt(getEnv("CONTENT_LENGTH").string)
-    result = newString(L)
-    if readBuffer(stdin, addr(result[0]), L) != L:
-      cgiError("cannot read from stdin")
-  of "GET":
-    if methodGet notin allowedMethods:
-      cgiError("'REQUEST_METHOD' 'GET' is not supported")
-    result = getEnv("QUERY_STRING").string
-  else:
-    if methodNone notin allowedMethods:
-      cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
+when not defined(nimscript):
+  proc getEncodedData(allowedMethods: set[RequestMethod]): string =
+    case getEnv("REQUEST_METHOD").string
+    of "POST":
+      if methodPost notin allowedMethods:
+        cgiError("'REQUEST_METHOD' 'POST' is not supported")
+      var L = parseInt(getEnv("CONTENT_LENGTH").string)
+      result = newString(L)
+      if readBuffer(stdin, addr(result[0]), L) != L:
+        cgiError("cannot read from stdin")
+    of "GET":
+      if methodGet notin allowedMethods:
+        cgiError("'REQUEST_METHOD' 'GET' is not supported")
+      result = getEnv("QUERY_STRING").string
+    else:
+      if methodNone notin allowedMethods:
+        cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: TaintedString] =
-  ## Reads and decodes CGI data and yields the (name, value) pairs the
-  ## data consists of.
-  var i = 0
-  var name = ""
-  var value = ""
-  # decode everything in one pass:
-  while i < data.len:
-    setLen(name, 0) # reuse memory
+  iterator decodeData*(data: string): tuple[key, value: TaintedString] =
+    ## Reads and decodes CGI data and yields the (name, value) pairs the
+    ## data consists of.
+    var i = 0
+    var name = ""
+    var value = ""
+    # decode everything in one pass:
     while i < data.len:
-      case data[i]
-      of '%':
-        var x = 0
-        handleHexChar(data[i+1], x)
-        handleHexChar(data[i+2], x)
-        inc(i, 2)
-        add(name, chr(x))
-      of '+': add(name, ' ')
-      of '=', '&': break
-      else: add(name, data[i])
-      inc(i)
-    if i >= data.len or data[i] != '=': cgiError("'=' expected")
-    inc(i) # skip '='
-    setLen(value, 0) # reuse memory
-    while i < data.len:
-      case data[i]
-      of '%':
-        var x = 0
-        if i+2 < data.len:
+      setLen(name, 0) # reuse memory
+      while i < data.len:
+        case data[i]
+        of '%':
+          var x = 0
           handleHexChar(data[i+1], x)
           handleHexChar(data[i+2], x)
-        inc(i, 2)
-        add(value, chr(x))
-      of '+': add(value, ' ')
-      of '&', '\0': break
-      else: add(value, data[i])
-      inc(i)
-    yield (name.TaintedString, value.TaintedString)
-    if i < data.len:
-      if data[i] == '&': inc(i)
-      else: cgiError("'&' expected")
+          inc(i, 2)
+          add(name, chr(x))
+        of '+': add(name, ' ')
+        of '=', '&': break
+        else: add(name, data[i])
+        inc(i)
+      if i >= data.len or data[i] != '=': cgiError("'=' expected")
+      inc(i) # skip '='
+      setLen(value, 0) # reuse memory
+      while i < data.len:
+        case data[i]
+        of '%':
+          var x = 0
+          if i+2 < data.len:
+            handleHexChar(data[i+1], x)
+            handleHexChar(data[i+2], x)
+          inc(i, 2)
+          add(value, chr(x))
+        of '+': add(value, ' ')
+        of '&', '\0': break
+        else: add(value, data[i])
+        inc(i)
+      yield (name.TaintedString, value.TaintedString)
+      if i < data.len:
+        if data[i] == '&': inc(i)
+        else: cgiError("'&' expected")
 
-iterator decodeData*(allowedMethods: set[RequestMethod] =
-       {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
-  ## Reads and decodes CGI data and yields the (name, value) pairs the
-  ## data consists of. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
-  let data = getEncodedData(allowedMethods)
-  for key, value in decodeData(data):
-    yield (key, value)
+  iterator decodeData*(allowedMethods: set[RequestMethod] =
+        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
+    ## Reads and decodes CGI data and yields the (name, value) pairs the
+    ## data consists of. If the client does not use a method listed in the
+    ## `allowedMethods` set, an `ECgi` exception is raised.
+    let data = getEncodedData(allowedMethods)
+    for key, value in decodeData(data):
+      yield (key, value)
 
+  proc readData*(allowedMethods: set[RequestMethod] =
+                {methodNone, methodPost, methodGet}): StringTableRef =
+    ## Read CGI data. If the client does not use a method listed in the
+    ## `allowedMethods` set, an `ECgi` exception is raised.
+    result = newStringTable()
+    for name, value in decodeData(allowedMethods):
+      result[name.string] = value.string
 
-proc readData*(allowedMethods: set[RequestMethod] =
-               {methodNone, methodPost, methodGet}): StringTableRef =
-  ## Read CGI data. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
-  result = newStringTable()
-  for name, value in decodeData(allowedMethods):
-    result[name.string] = value.string
-
-proc readData*(data: string): StringTableRef =
-  ## Read CGI data from a string.
-  result = newStringTable()
-  for name, value in decodeData(data):
-    result[name.string] = value.string
+  proc readData*(data: string): StringTableRef =
+    ## Read CGI data from a string.
+    result = newStringTable()
+    for name, value in decodeData(data):
+      result[name.string] = value.string
 
 
 

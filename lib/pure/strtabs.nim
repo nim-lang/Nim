@@ -27,7 +27,7 @@ runnableExamples:
   var t = {"name": "John", "city": "Monaco"}.newStringTable
 
 
-## When using the style insensitive mode ``modeStyleInsensitive``, 
+## When using the style insensitive mode ``modeStyleInsensitive``,
 ## all letters are compared case insensitively within the ASCII range
 ## and underscores are ignored.
 
@@ -193,7 +193,9 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   when defined(js):
     result = ""
   else:
-    if useEnvironment in flags: result = os.getEnv(key).string
+    when not defined(nimscript):
+      if useEnvironment in flags: result = os.getEnv(key).string
+      else: result = ""
     else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
