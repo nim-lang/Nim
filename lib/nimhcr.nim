@@ -430,7 +430,7 @@ when defined(createNimHcr):
     let getHashProc = cast[proc (): cstring {.nimcall.}](
       checkedSymAddr(lib, "HcrGetSigHash"))
     modules[name].hash = $getHashProc()
-    hashToModuleMap.add(modules[name].hash, name)
+    hashToModuleMap[modules[name].hash] = name
 
     # Remove handlers for this module if reloading - they will be re-registered.
     # In order for them to be re-registered we need to de-register all globals
@@ -522,8 +522,8 @@ when defined(createNimHcr):
     currentModule = root
 
   proc hcrHasModuleChanged*(moduleHash: string): bool {.nimhcr.} =
-      let module = hashToModuleMap[moduleHash]
-      return modules[module].lastModification < getLastModificationTime(module)
+    let module = hashToModuleMap[moduleHash]
+    return modules[module].lastModification < getLastModificationTime(module)
   
   proc hcrReloadNeeded*(): bool {.nimhcr.} =
     for hash, _ in hashToModuleMap:
