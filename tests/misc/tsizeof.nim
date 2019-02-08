@@ -279,6 +279,11 @@ testinstance:
     InheritanceC {.objectconfig.} = object of InheritanceB
       c: char
 
+    # from issue 4763
+    GenericObject[T] = object
+      a: int32
+      b: T
+
     #Float128Test = object
     #  a: byte
     #  b: float128
@@ -298,6 +303,7 @@ testinstance:
     var f : PaddingAfterBranch
     var g : RecursiveStuff
     var ro : RootObj
+    var go : GenericObject[int64]
 
     var
       e1: Enum1
@@ -311,7 +317,7 @@ testinstance:
 
     testAlign(SimpleAlignment)
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
 
     when not defined(cpp):
       type
