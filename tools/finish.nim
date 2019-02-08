@@ -41,13 +41,19 @@ proc downloadMingw(): DownloadResult =
   if cmd.len > 0:
     if execShellCmd(cmd) != 0:
       echo "download failed! ", cmd
-      openDefaultBrowser(url)
-      result = Manual
+      if interactive:
+        openDefaultBrowser(url)
+        result = Manual
+      else:
+        result = Failure
     else:
       if unzip(): result = Success
   else:
-    openDefaultBrowser(url)
-    result = Manual
+    if interactive:
+      openDefaultBrowser(url)
+      result = Manual
+    else:
+      result = Failure
 
 when defined(windows):
   import registry
