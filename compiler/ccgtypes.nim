@@ -165,7 +165,6 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
     of tySet:
       if mapSetType(conf, base) == ctArray: result = ctPtrToArray
       else: result = ctPtr
-    # XXX for some reason this breaks the pegs module
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
