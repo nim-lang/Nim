@@ -72,6 +72,37 @@ type
     Unload = "unload",
     Wheel = "wheel"
 
+  PerformanceMemory* {.importc.} = ref object
+    jsHeapSizeLimit*: float
+    totalJSHeapSize*: float
+    usedJSHeapSize*: float
+
+  PerformanceTiming* {.importc.} = ref object
+    connectStart*: float
+    domComplete*: float
+    domContentLoadedEventEnd*: float
+    domContentLoadedEventStart*: float
+    domInteractive*: float
+    domLoading*: float
+    domainLookupEnd*: float
+    domainLookupStart*: float
+    fetchStart*: float
+    loadEventEnd*: float
+    loadEventStart*: float
+    navigationStart*: float
+    redirectEnd*: float
+    redirectStart*: float
+    requestStart*: float
+    responseEnd*: float
+    responseStart*: float
+    secureConnectionStart*: float
+    unloadEventEnd*: float
+    unloadEventStart*: float
+
+  Performance* {.importc.} = ref object
+    memory*: PerformanceMemory
+    timing*: PerformanceTiming
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -80,12 +111,15 @@ type
     location*: Location
     closed*: bool
     defaultStatus*: cstring
+    devicePixelRatio*: float
     innerHeight*, innerWidth*: int
     locationbar*: ref LocationBar
     menubar*: ref MenuBar
     name*: cstring
     outerHeight*, outerWidth*: int
     pageXOffset*, pageYOffset*: int
+    scrollX*: float
+    scrollY*: float
     personalbar*: ref PersonalBar
     scrollbars*: ref ScrollBars
     statusbar*: ref StatusBar
@@ -93,6 +127,8 @@ type
     toolbar*: ref ToolBar
     frames*: seq[Frame]
     screen*: Screen
+    performance*: Performance
+    onpopstate*: proc (event: Event)
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -1075,7 +1111,6 @@ proc setTimeout*(w: Window, function: proc (), pause: int): ref Interval
 proc stop*(w: Window)
 proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
 proc cancelAnimationFrame*(w: Window, id: int)
-proc onpopstate*(w: Window, ev: Event)
 
 # Node "methods"
 proc appendData*(n: Node, data: cstring)
