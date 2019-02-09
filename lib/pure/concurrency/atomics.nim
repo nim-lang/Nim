@@ -375,4 +375,7 @@ proc `+=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
 proc `-=`*[T: SomeInteger](location: var Atomic[T]; value: T) {.inline.} =
   ## Atomically decrements the atomic integer by some `value`.
   discard location.fetchSub(value)
-  
+
+proc `=`*[T](to: var Atomic[T]; rhs: Atomic[T]) {.error.}
+
+proc `=sink`*[T](to: var Atomic[T]; rhs: Atomic[T]) {.error.}
