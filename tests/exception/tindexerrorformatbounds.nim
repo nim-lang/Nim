@@ -11,7 +11,7 @@ block:
     discard s[0..999]
   except IndexError:
     let msg = getCurrentExceptionMsg()
-    let expected = "(i: $#) <= (n: $#)" % [$len(s), $(len(s)-1)]
+    let expected = "index $# not in 0 .. $#" % [$len(s), $(len(s)-1)]
     doAssert msg.contains expected, $(msg, expected)
 
 block:
@@ -19,13 +19,13 @@ block:
     discard paramStr(999)
   except IndexError:
     let msg = getCurrentExceptionMsg()
-    let expected = "(i: 999) <= (n: 0)"
-    doAssert msg.contains expected
+    let expected = "index 999 not in 0 .. 0"
+    doAssert msg.contains expected, $(msg, expected)
 
 block:
   const nim = getCurrentCompilerExe()
   for i in 1..4:
     let (outp, errC) = execCmdEx("$# e tests/exception/testindexerroroutput.nims test$#" % [nim, $i])
-    let expected = "(i: 3) <= (n: 2)"
+    let expected = "index 3 not in 0 .. 2"
     doAssert errC != 0
     doAssert outp.contains expected, $(outp, errC, expected, i)
