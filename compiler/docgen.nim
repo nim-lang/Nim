@@ -81,7 +81,8 @@ template declareClosures =
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
     of mwUnsupportedLanguage: k = warnLanguageXNotSupported
     of mwUnsupportedField: k = warnFieldXNotSupported
-    globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
+    {.gcsafe.}:
+      globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
   proc docgenFindFile(s: string): string {.procvar, gcsafe.} =
     result = options.findFile(conf, s).string

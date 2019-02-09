@@ -244,7 +244,7 @@ type
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure, gcsafe.}
+    writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string

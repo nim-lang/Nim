@@ -324,14 +324,15 @@ proc log*(s: string) {.procvar.} =
     f.writeLine(s)
     close(f)
 
-proc quit(conf: ConfigRef; msg: TMsgKind) =
+proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
   if defined(debug) or msg == errInternal or hintStackTrace in conf.notes:
-    if stackTraceAvailable() and isNil(conf.writelnHook):
-      writeStackTrace()
-    else:
-      styledMsgWriteln(fgRed, "No stack traceback available\n" &
-          "To create a stacktrace, rerun compilation with ./koch temp " &
-          conf.command & " <file>")
+    {.gcsafe.}:
+      if stackTraceAvailable() and isNil(conf.writelnHook):
+        writeStackTrace()
+      else:
+        styledMsgWriteln(fgRed, "No stack traceback available\n" &
+            "To create a stacktrace, rerun compilation with ./koch temp " &
+            conf.command & " <file>")
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
