@@ -601,6 +601,12 @@ proc p(n: PNode; c: var Con): PNode =
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
       nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     result = n
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = copyNode(n)
+    # Destination type
+    result.add n[0]
+    # Analyse the inner expression
+    result.add p(n[1], c)
   else:
     result = copyNode(n)
     recurse(n, result)
