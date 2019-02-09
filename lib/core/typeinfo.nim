@@ -20,7 +20,7 @@
 include "system/inclrtl.nim"
 include "system/hti.nim"
 
-import system/helpers2
+import system/indexerrors
 
 {.pop.}
 

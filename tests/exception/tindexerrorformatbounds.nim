@@ -1,6 +1,4 @@
-import os
-import strutils
-
+import os, osproc, strutils
 
 const characters = "abcdefghijklmnopqrstuvwxyz"
 var s: string
@@ -13,40 +11,21 @@ block:
     discard s[0..999]
   except IndexError:
     let msg = getCurrentExceptionMsg()
-    let expected = "(i:$#) <= (n:$#)" % [$len(s), $(len(s)-1)]
-    doAssert msg.contains expected
+    let expected = "(i: $#) <= (n: $#)" % [$len(s), $(len(s)-1)]
+    doAssert msg.contains expected, $(msg, expected)
 
 block:
   try:
     discard paramStr(999)
   except IndexError:
     let msg = getCurrentExceptionMsg()
-    let expected = "(i:999) <= (n:0)"
+    let expected = "(i: 999) <= (n: 0)"
     doAssert msg.contains expected
 
-static:
+block:
   const nim = getCurrentCompilerExe()
-
-  block:
-    let ret = gorgeEx(nim & " e testindexerroroutput.nims test1")
-    let expected = "(i:3) <= (n:2)"
-    doAssert ret.exitCode != 0
-    doAssert ret.output.contains expected
-
-  block:
-    let ret = gorgeEx(nim & " e testindexerroroutput.nims test2")
-    let expected = "(i:3) <= (n:2)"
-    doAssert ret.exitCode != 0
-    doAssert ret.output.contains expected
-
-  block:
-    let ret = gorgeEx(nim & " e testindexerroroutput.nims test3")
-    let expected = "(i:3) <= (n:2)"
-    doAssert ret.exitCode != 0
-    doAssert ret.output.contains expected
-
-  block:
-    let ret = gorgeEx(nim & " e testindexerroroutput.nims test4")
-    let expected = "(i:3) <= (n:2)"
-    doAssert ret.exitCode != 0
-    doAssert ret.output.contains expected
+  for i in 1..4:
+    let (outp, errC) = execCmdEx("$# e tests/exception/testindexerroroutput.nims test$#" % [nim, $i])
+    let expected = "(i: 3) <= (n: 2)"
+    doAssert errC != 0
+    doAssert outp.contains expected, $(outp, errC, expected, i)

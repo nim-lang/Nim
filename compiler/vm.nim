@@ -11,7 +11,7 @@
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
 import ast except getstr
-import system/helpers2
+import system/indexerrors
 
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,

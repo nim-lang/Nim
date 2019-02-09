@@ -47,7 +47,7 @@
 include "system/inclrtl"
 
 import
-  strutils, pathnorm, system/helpers2
+  strutils, pathnorm, system/indexerrors
 
 const weirdTarget = defined(nimscript) or defined(js)
 

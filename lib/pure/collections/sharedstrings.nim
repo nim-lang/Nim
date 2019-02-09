@@ -12,7 +12,7 @@
 type
   UncheckedCharArray = UncheckedArray[char]
 
-import system/helpers2
+import system/indexerrors
 
 type
   Buffer = ptr object

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import system/helpers2
+import system/indexerrors
 
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
