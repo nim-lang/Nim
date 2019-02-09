@@ -3,7 +3,7 @@ discard """
   line: 33
   file: "tcaseexpr1.nim"
 
-  errormsg: "not all cases are covered"
+  errormsg: "not all cases are covered; missing: {C}"
   line: 27
   file: "tcaseexpr1.nim"
 """
