@@ -244,9 +244,9 @@ type
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure.}
+    writelnHook*: proc (output: string) {.closure, gcsafe.}
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
-                                severity: Severity) {.closure.}
+                                severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
 template depConfigFields*(fn) {.dirty.} =

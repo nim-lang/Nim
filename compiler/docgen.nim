@@ -67,7 +67,7 @@ proc attachToType(d: PDoc; p: PSym): PSym =
 
 template declareClosures =
   proc compilerMsgHandler(filename: string, line, col: int,
-                          msgKind: rst.MsgKind, arg: string) {.procvar.} =
+                          msgKind: rst.MsgKind, arg: string) {.procvar, gcsafe.} =
     # translate msg kind:
     var k: TMsgKind
     case msgKind
@@ -83,7 +83,7 @@ template declareClosures =
     of mwUnsupportedField: k = warnFieldXNotSupported
     globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
-  proc docgenFindFile(s: string): string {.procvar.} =
+  proc docgenFindFile(s: string): string {.procvar, gcsafe.} =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
