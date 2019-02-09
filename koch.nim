@@ -467,34 +467,33 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  when false:
-    for pkg in "zip opengl sdl1 jester@#head niminst".split:
-      exec "nimble install -y" & pkg
+  if getEnv("NIM_TEST_PACKAGES", "false") == "true":
+    execFold("Test selected Nimble packages", "nim c -r testament/tester cat nimble-extra")
+  else:
+    buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 
-  buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+    ## run tests
+    execFold("Test nimscript", "nim e tests/test_nimscript.nims")
+    when defined(windows):
+      # note: will be over-written below
+      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester")
 
-  ## run tests
-  execFold("Test nimscript", "nim e tests/test_nimscript.nims")
-  when defined(windows):
-    # note: will be over-written below
-    execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/tester")
+    # main bottleneck here
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines")
 
-  # main bottleneck here
-  execFold("Run tester", "nim c -r -d:nimCoroutines testament/tester --pedantic all -d:nimCoroutines")
+    execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
+    execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
+    when defined(posix):
+      execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
 
-  execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
-  execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
-  when defined(posix):
-    execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
-
-  ## remaining actions
-  when defined(posix):
-    kochExecFold("Docs", "docs --git.commit:devel")
-    kochExecFold("C sources", "csource")
-  elif defined(windows):
-    when false:
-      kochExec "csource"
-      kochExec "zip"
+    ## remaining actions
+    when defined(posix):
+      kochExecFold("Docs", "docs --git.commit:devel")
+      kochExecFold("C sources", "csource")
+    elif defined(windows):
+      when false:
+        kochExec "csource"
+        kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
