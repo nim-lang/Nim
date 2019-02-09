@@ -1456,7 +1456,7 @@ proc customPragmaNode(n: NimNode): NimNode =
                 if varName.kind == nnkPostfix:
                   # This is a public field. We are skipping the postfix *
                   varName = varName[1]
-                if eqIdent(varName.strVal, name):
+                if eqIdent($varName, name):
                   return varNode[1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
