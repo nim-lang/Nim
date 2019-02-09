@@ -583,6 +583,14 @@ proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
+
+proc getChunk[T](a: T, nSplits: int, index: int): T =
+  doAssert (index >= 0 and index < nSplits), $(index, nSplits, a.len)
+  # not the optimal split but good enough for this use case
+  let blockSize = a.len div nSplits
+  let indexMax = if index < nSplits - 1: (index+1)*blockSize else: a.len
+  a[index*blockSize ..< indexMax]
+
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returs a list of tests that have problems
   var specs: seq[TSpec] = @[]
@@ -606,62 +614,70 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     echo s
     return
 
-  var megatest: string
   #[
   TODO(minor):
   get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
+  put outputGotten.txt, outputGotten.txt, megatestFile there too
   delete upon completion, maybe
   ]#
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
-  for i, runSpec in specs:
-    let file = runSpec.file
-    let file2 = outDir / ("megatest_" & $i & ".nim")
-    # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
-    createDir(file2.parentDir)
-    writeFile(file2, code)
-    megatest.add "import " & quoted(file2) & "\n"
-    megatest.add "import " & quoted(file) & "\n"
+  let nSplits = 2
+    # adjust once more tests are added to avoid using too much memory, which
+    # causes some travis instances to fail during link time
+  for j in 0..<nSplits:
+    var megatest: string
+    let specsj = getChunk(specs, nSplits, j)
+    let megatestFile = "megatest$#.nim" % [$j]
+    var megatestExe = absolutePath(megatestFile.changeFileExt ExeExt)
+    echo (megatestFile: megatestFile, j: j, nSplits: nSplits, specsLen: specs.len, blockLen: specsj.len)
+    for i, runSpec in specsj:
+      let file = runSpec.file
+      let file2 = outDir / ("megatest_sub_" & $i & ".nim")
+      # `include` didn't work with `trecmod2.nim`, so using `import`
+      let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
+      createDir(file2.parentDir)
+      writeFile(file2, code)
+      megatest.add "import " & quoted(file2) & "\n"
+      megatest.add "import " & quoted(file) & "\n"
 
-  writeFile("megatest.nim", megatest)
+    writeFile(megatestFile, megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "megatest.nim"]
-  proc onStdout(line: string) = echo line
-  var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
-    onStdout = if verboseMegatest: onStdout else: nil)
-  if exitCode != 0:
-    echo buf
-    quit("megatest compilation failed")
+    let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", megatestFile]
+    proc onStdout(line: string) = echo line
+    var (buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, options = {poStdErrToStdOut, poUsePath}, input = "",
+      onStdout = if verboseMegatest: onStdout else: nil)
+    if exitCode != 0:
+      echo buf
+      quit("megatest compilation failed")
 
-  # Could also use onStdout here.
-  (buf, exitCode) = execCmdEx("./megatest")
-  if exitCode != 0:
-    echo buf
-    quit("megatest execution failed")
+    # Could also use onStdout here.
+    (buf, exitCode) = execCmdEx(megatestExe)
+    if exitCode != 0:
+      echo buf
+      quit("megatest execution failed")
 
-  norm buf
-  writeFile("outputGotten.txt", buf)
-  var outputExpected = ""
-  for i, runSpec in specs:
-    outputExpected.add marker & runSpec.file & "\n"
-    outputExpected.add runSpec.output.strip
-    outputExpected.add '\n'
-  norm outputExpected
+    norm buf
+    writeFile("outputGotten.txt", buf)
+    var outputExpected = ""
+    for i, runSpec in specsj:
+      outputExpected.add marker & runSpec.file & "\n"
+      outputExpected.add runSpec.output.strip
+      outputExpected.add '\n'
+    norm outputExpected
 
-  if buf != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
-    echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
-    quit 1
-  else:
-    echo "output OK"
-    removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
-  #testSpec r, makeTest("megatest", options, cat)
+    if buf != outputExpected:
+      writeFile("outputExpected.txt", outputExpected)
+      discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+      echo "output different!"
+      # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
+      quit 1
+    else:
+      echo "output OK"
+      removeFile("outputGotten.txt")
+      removeFile(megatestFile)
+    #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------
 
