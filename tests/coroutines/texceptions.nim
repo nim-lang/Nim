@@ -1,5 +1,6 @@
 discard """
   target: "c"
+  disabled: true
 """
 
 import coro
