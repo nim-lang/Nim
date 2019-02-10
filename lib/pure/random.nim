@@ -125,10 +125,17 @@ proc next*(r: var Rand): uint64 =
   ## Computes a random ``uint64`` number using the given state.
   ##
   ## See also:
+  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer between zero and
+  ##   a given upper bound
+  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
+  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
-    var r = initRand(123)
-    let x = r.next()
+    var r = initRand(2019)
+    doAssert r.next() == 138_744_656_611_299'u64
+    doAssert r.next() == 979_810_537_855_049_344'u64
+    doAssert r.next() == 3_628_232_584_225_300_704'u64
   let s0 = r.a0
   var s1 = r.a1
   result = s0 + s1
@@ -143,11 +150,46 @@ proc skipRandomNumbers*(s: var Rand) =
   ## be used to generate 2^64 non-overlapping subsequences for parallel
   ## computations.
   ##
+  ## When multiple threads are generating random numbers, each thread must
+  ## own the `Rand<#Rand>`_ state it is using so that the thread can safely
+  ## obtain random numbers. However, if each thread creates its own Rand state,
+  ## the subsequences of random numbers that each thread generates may overlap,
+  ## even if the provided seeds are unique. This is more likely to happen as the
+  ## number of threads and amount of random numbers generated increases.
+  ##
+  ## If many threads will generate random numbers concurrently, it is better to
+  ## create a single Rand state and pass it to each thread. After passing the
+  ## Rand state to a thread, call this proc before passing it to the next one.
+  ## By using the Rand state this way, the subsequences of random numbers
+  ## generated in each thread will never overlap as long as no thread generates
+  ## more than 2^64 random numbers.
+  ##
+  ## The following example below demonstrates this pattern:
+  ##
+  ## .. code-block::
+  ##   # Compile this example with --threads:on
+  ##   import random
+  ##   import threadpool
+  ##
+  ##   const spawns = 4
+  ##   const numbers = 100000
+  ##
+  ##   proc randomSum(rand: Rand): int =
+  ##     var r = rand
+  ##     for i in 1..numbers:
+  ##       result += rand(1..10)
+  ##
+  ##   var r = initRand(2019)
+  ##   var vals: array[spawns, FlowVar[int]]
+  ##   for val in vals.mitems:
+  ##     val = spawn(randomSum(r))
+  ##     r.skipRandomNumbers()
+  ##
+  ##   for val in vals:
+  ##     echo ^val
+  ##
   ## See also:
   ## * `next proc<#next,Rand>`_
-  runnableExamples:
-    var r = initRand(123)
-    r.skipRandomNumbers()
   when defined(JS):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
   else:
@@ -203,7 +245,9 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
     var r = initRand(123)
-    let x = r.rand(100)
+    doAssert r.rand(100) == 0
+    doAssert r.rand(100) == 96
+    doAssert r.rand(100) == 66
   if max == 0: return
   while true:
     let x = next(r)
@@ -226,7 +270,10 @@ proc rand*(max: int): int {.benign.} =
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    let x = rand(100)
+    randomize(123)
+    doAssert rand(100) == 0
+    doAssert rand(100) == 96
+    doAssert rand(100) == 66
   rand(state, max)
 
 proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
@@ -240,8 +287,9 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    var r = initRand(123)
-    let x = r.rand(1.0)
+    var r = initRand(234)
+    let f = r.rand(1.0)
+    ## f = 8.717181376738381e-07
   let x = next(r)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -265,7 +313,9 @@ proc rand*(max: float): float {.benign.} =
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    let x = rand(1.0)
+    randomize(234)
+    let f = rand(1.0)
+    ## f = 8.717181376738381e-07
   rand(state, max)
 
 proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
@@ -279,9 +329,10 @@ proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    var r = initRand(123)
-    let i = r.rand(1..6)
-    let f = r.rand(2.0..4.0)
+    var r = initRand(345)
+    doAssert r.rand(1..6) == 4
+    doAssert r.rand(1..6) == 4
+    doAssert r.rand(1..6) == 6
   result = T(rand(r, x.b - x.a)) + x.a
 
 proc rand*[T](x: HSlice[T, T]): T =
@@ -300,8 +351,10 @@ proc rand*[T](x: HSlice[T, T]): T =
   ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer type
   runnableExamples:
-    let i = rand(1..6)
-    let f = rand(2.0..4.0)
+    randomize(345)
+    doAssert rand(1..6) == 4
+    doAssert rand(1..6) == 4
+    doAssert rand(1..6) == 6
   result = rand(state, x)
 
 proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
@@ -323,8 +376,13 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   runnableExamples:
-    let i = rand(int8)
-    let u = rand(uint32)
+    randomize(567)
+    doAssert rand(int8) == 55
+    doAssert rand(int8) == -42
+    doAssert rand(int8) == 43
+    doAssert rand(uint32) == 578980729'u32
+    doAssert rand(uint32) == 4052940463'u32
+    doAssert rand(uint32) == 2163872389'u32
   result = cast[T](state.next)
 
 proc rand*[T](a: openArray[T]): T {.deprecated.} =
@@ -342,8 +400,10 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ##   cumulative distribution function
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
-    var r = initRand(123)
-    let pick = r.sample(marbles)
+    var r = initRand(456)
+    doAssert r.sample(marbles) == "blue"
+    doAssert r.sample(marbles) == "yellow"
+    doAssert r.sample(marbles) == "red"
   result = a[r.rand(a.low..a.high)]
 
 proc sample*[T](a: openArray[T]): T =
@@ -361,7 +421,10 @@ proc sample*[T](a: openArray[T]): T =
   ##   cumulative distribution function
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
-    let pick = sample(marbles)
+    randomize(456)
+    doAssert sample(marbles) == "blue"
+    doAssert sample(marbles) == "yellow"
+    doAssert sample(marbles) == "red"
   result = a[rand(a.low..a.high)]
 
 proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
@@ -386,8 +449,11 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
 
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     let count = [1, 6, 8, 3, 4]
-    var r = initRand(123)
-    let pick = r.sample(marbles, count.cumsummed)
+    let cdf = count.cumsummed
+    var r = initRand(789)
+    doAssert r.sample(marbles, cdf) == "red"
+    doAssert r.sample(marbles, cdf) == "green"
+    doAssert r.sample(marbles, cdf) == "blue"
   assert(cdf.len == a.len)              # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
@@ -419,17 +485,21 @@ proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
 
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     let count = [1, 6, 8, 3, 4]
-    let pick = sample(marbles, count.cumsummed)
+    let cdf = count.cumsummed
+    randomize(789)
+    doAssert sample(marbles, cdf) == "red"
+    doAssert sample(marbles, cdf) == "green"
+    doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand<#Rand>`_ state using the given seed.
   ##
+  ## `seed` must not be zero. Providing a specific seed will produce
+  ## the same results for that seed each time.
+  ##
   ## The resulting state is independent of the default random number
   ## generator's state.
-  ##
-  ## Providing a specific seed will produce the same results for that
-  ## seed each time.
   ##
   ## See also:
   ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
@@ -450,8 +520,8 @@ proc initRand*(seed: int64): Rand =
 proc randomize*(seed: int64) {.benign.} =
   ## Initializes the default random number generator with the given seed.
   ##
-  ## Providing a specific seed will produce the same results for that
-  ## seed each time.
+  ## `seed` must not be zero. Providing a specific seed will produce
+  ## the same results for that seed each time.
   ##
   ## See also:
   ## * `initRand proc<#initRand,int64>`_
@@ -473,8 +543,9 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
   ##   random number generator
   runnableExamples:
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
-    var r = initRand(123)
+    var r = initRand(678)
     r.shuffle(cards)
+    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   for i in countdown(x.high, 1):
     let j = r.rand(i)
     swap(x[i], x[j])
@@ -492,7 +563,9 @@ proc shuffle*[T](x: var openArray[T]) =
   ## * `shuffle proc<#shuffle,Rand,openArray[T]>`_ that uses a provided state
   runnableExamples:
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
+    randomize(678)
     shuffle(cards)
+    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
 when not defined(nimscript):
