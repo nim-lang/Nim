@@ -7,12 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
-## Channel support for threads. **Note**: This is part of the system module.
-## Do not import it directly. To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## Channel support for threads.
+##
+## **Note**: This is part of the system module. Do not import it directly.
+## To activate thread support compile with the ``--threads:on`` command line switch.
+##
+## **Note:** Channels are designed for the ``Thread`` type. They are unstable when
+## used with ``spawn``
 ##
 ## **Note:** The current implementation of message passing does
 ## not work with cyclic data structures.
+##
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
 
