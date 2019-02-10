@@ -492,8 +492,7 @@ proc addEscaped*(result: var string, s: string) =
     of '>': result.add("&gt;")
     of '&': result.add("&amp;")
     of '"': result.add("&quot;")
-    of '\'': result.add("&#x27;")
-    of '/': result.add("&#x2F;")
+    of '\'': result.add("&apos;")
     else: result.add(c)
 
 proc escape*(s: string): string =
@@ -508,8 +507,7 @@ proc escape*(s: string): string =
   ##  ``>``          ``&gt;``
   ##  ``&``          ``&amp;``
   ##  ``"``          ``&quot;``
-  ##  ``'``          ``&#x27;``
-  ##  ``/``          ``&#x2F;``
+  ##  ``'``          ``&apos;``
   ## ------------    -------------------
   ##
   ## You can also use `addEscaped proc <#addEscaped,string,string>`_.
