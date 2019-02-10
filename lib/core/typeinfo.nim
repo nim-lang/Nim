@@ -8,12 +8,19 @@
 #
 
 ## This module implements an interface to Nim's `runtime type information`:idx:
-## (`RTTI`:idx:).
-## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe!
+## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
+## what this module allows you to do.
 ##
-## See the `marshal <marshal.html>`_ module for what this module allows you
-## to do.
+## Note that even though ``Any`` and its operations hide the nasty low level
+## details from its clients, it remains inherently unsafe! Also, Nim's 
+## runtime type information will evolve and may eventually be deprecated.
+## As an alternative approach to programmatically understanding and
+## manipulating types, consider using the `macros <macros.html>`_ package to
+## work with the types' AST representation at compile time. See, for example,
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## approach to storing arbitrary types at runtime, consider using generics.
+##
+## 
 
 {.push hints: off.}
 
