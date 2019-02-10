@@ -1429,7 +1429,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC
-      case rc:
+      case rc
       of 0:
         # getType opcode:
         ensureKind(rkNode)
@@ -1471,7 +1471,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       let a = regs[rb].node
       case a.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         regs[ra].node.strVal = a.strVal
       of nkCommentStmt:
         regs[ra].node.strVal = a.comment
@@ -1573,7 +1573,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var bStrVal: cstring = nil
       # extract strVal from argument ``a``
       case aNode.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         aStrVal = aNode.strVal.cstring
       of nkIdent:
         aStrVal = aNode.ident.s.cstring
@@ -1585,7 +1585,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         discard
       # extract strVal from argument ``b``
       case bNode.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         bStrVal = bNode.strVal.cstring
       of nkIdent:
         bStrVal = bNode.ident.s.cstring
@@ -1598,7 +1598,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # set result
       regs[ra].intVal =
         if aStrVal != nil and bStrVal != nil:
-          ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+          ord(idents.cmpIgnoreStyle(aStrVal, bStrVal, high(int)) == 0)
         else:
           0
 
@@ -1948,6 +1948,7 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
+  if g.config.errorCounter > 0: return n
   let n = transformExpr(g, module, n, noDestructors = true)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
