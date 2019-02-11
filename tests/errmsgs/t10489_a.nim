@@ -6,4 +6,4 @@ line: 9
 macro m(body: untyped): untyped =
   body
 
-let x = m
+let x1 = m

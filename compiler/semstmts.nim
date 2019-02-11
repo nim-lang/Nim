@@ -587,7 +587,10 @@ proc semConst(c: PContext, n: PNode): PNode =
       localError(c.config, a.sons[length-1].info, errConstExprExpected)
       continue
 
-    if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
+    if def.typ.kind == tyProc and def.kind == nkSym and def.sym.kind == skMacro:
+        localError(c.config, def.info, "cannot assign macro symbol to constant here. Forgot to invoke the macro with '()'?")
+        def.typ = errorType(c)
+    elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
       # prevent the all too common 'const x = int' bug:
       localError(c.config, def.info, "'typedesc' metatype is not valid here; typed '=' instead of ':'?")
       def.typ = errorType(c)
