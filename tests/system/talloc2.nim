@@ -41,4 +41,7 @@ proc test3 =
     test2(n)
     n = n div 2
 
-test3()
+
+when sizeof(int) >= 8:
+  # no point to test this on system with smaller address space
+  test3()

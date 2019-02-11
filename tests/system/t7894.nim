@@ -22,4 +22,5 @@ proc main() =
     #echo x.len
     doAssert x.len == size
 
-main()
+when sizeof(int) == 8:
+  main()
