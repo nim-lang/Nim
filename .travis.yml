@@ -1,7 +1,7 @@
 sudo: false
 language: c
 
-dist: trusty
+dist: xenial
 
 matrix:
   include:
