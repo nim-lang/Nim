@@ -4,63 +4,17 @@
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
-when defined(Nimdoc): # only for proper documentation:
+when defined(macos):
   const
-    CurDir* = '.'
-      ## The constant character used by the operating system to refer to the
-      ## current directory.
-      ##
-      ## For example: `'.'` for POSIX or `':'` for the classic Macintosh.
-
-    ParDir* = ".."
-      ## The constant string used by the operating system to refer to the
-      ## parent directory.
-      ##
-      ## For example: `".."` for POSIX or `"::"` for the classic Macintosh.
-
-    DirSep* = '/'
-      ## The character used by the operating system to separate pathname
-      ## components, for example: `'/'` for POSIX, `':'` for the classic
-      ## Macintosh, and `'\\'` on Windows.
-
-    AltSep* = '/'
-      ## An alternative character used by the operating system to separate
-      ## pathname components, or the same as `DirSep <#DirSep>`_ if only one separator
-      ## character exists. This is set to `'/'` on Windows systems
-      ## where `DirSep <#DirSep>`_ is a backslash (`'\\'`).
-
-    PathSep* = ':'
-      ## The character conventionally used by the operating system to separate
-      ## search patch components (as in PATH), such as `':'` for POSIX
-      ## or `';'` for Windows.
-
-    FileSystemCaseSensitive* = true
-      ## True if the file system is case sensitive, false otherwise. Used by
-      ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
-
-    ExeExt* = ""
-      ## The file extension of native executables. For example:
-      ## `""` for POSIX, `"exe"` on Windows (without a dot).
-
-    ScriptExt* = ""
-      ## The file extension of a script file. For example: `""` for POSIX,
-      ## `"bat"` on Windows.
-
-    DynlibFormat* = "lib$1.so"
-      ## The format string to turn a filename into a `DLL`:idx: file (also
-      ## called `shared object`:idx: on some operating systems).
-
-elif defined(macos):
-  const
-    CurDir* = ':'
-    ParDir* = "::"
-    DirSep* = ':'
-    AltSep* = Dirsep
-    PathSep* = ','
-    FileSystemCaseSensitive* = false
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "$1.dylib"
+    CurDirImpl = ':'
+    ParDirImpl = "::"
+    DirSepImpl = ':'
+    AltSepImpl = DirSepImpl
+    PathSepImpl = ','
+    FileSystemCaseSensitiveImpl = false
+    ExeExtImpl = ""
+    ScriptExtImpl = ""
+    DynlibFormatImpl = "$1.dylib"
 
   #  MacOS paths
   #  ===========
@@ -83,48 +37,93 @@ elif defined(macos):
   #  grandparent etc.
 elif doslikeFileSystem:
   const
-    CurDir* = '.'
-    ParDir* = ".."
-    DirSep* = '\\' # separator within paths
-    AltSep* = '/'
-    PathSep* = ';' # separator between paths
-    FileSystemCaseSensitive* = false
-    ExeExt* = "exe"
-    ScriptExt* = "bat"
-    DynlibFormat* = "$1.dll"
+    CurDirImpl = '.'
+    ParDirImpl = ".."
+    DirSepImpl = '\\' # separator within paths
+    AltSepImpl = '/'
+    PathSepImpl = ';' # separator between paths
+    FileSystemCaseSensitiveImpl = false
+    ExeExtImpl = "exe"
+    ScriptExtImpl = "bat"
+    DynlibFormatImpl = "$1.dll"
 elif defined(PalmOS) or defined(MorphOS):
   const
-    DirSep* = '/'
-    AltSep* = Dirsep
-    PathSep* = ';'
-    ParDir* = ".."
-    FileSystemCaseSensitive* = false
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "$1.prc"
+    DirSepImpl = '/'
+    AltSepImpl = DirSepImpl
+    PathSepImpl = ';'
+    ParDirImpl = ".."
+    FileSystemCaseSensitiveImpl = false
+    ExeExtImpl = ""
+    ScriptExtImpl = ""
+    DynlibFormatImpl = "$1.prc"
 elif defined(RISCOS):
   const
-    DirSep* = '.'
-    AltSep* = '.'
-    ParDir* = ".." # is this correct?
-    PathSep* = ','
-    FileSystemCaseSensitive* = true
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = "lib$1.so"
+    DirSepImpl = '.'
+    AltSepImpl = '.'
+    ParDirImpl = ".." # is this correct?
+    PathSepImpl = ','
+    FileSystemCaseSensitiveImpl = true
+    ExeExtImpl = ""
+    ScriptExtImpl = ""
+    DynlibFormatImpl = "lib$1.so"
 else: # UNIX-like operating system
   const
-    CurDir* = '.'
-    ParDir* = ".."
-    DirSep* = '/'
-    AltSep* = DirSep
-    PathSep* = ':'
-    FileSystemCaseSensitive* = when defined(macosx): false else: true
-    ExeExt* = ""
-    ScriptExt* = ""
-    DynlibFormat* = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
+    CurDirImpl = '.'
+    ParDirImpl = ".."
+    DirSepImpl = '/'
+    AltSepImpl = DirSepImpl
+    PathSepImpl = ':'
+    FileSystemCaseSensitiveImpl = when defined(macosx): false else: true
+    ExeExtImpl = ""
+    ScriptExtImpl = ""
+    DynlibFormatImpl = when defined(macosx): "lib$1.dylib" else: "lib$1.so"
 
+# for proper documentation:
 const
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
     ## for example, the `'.'` in ``os.nim``.
+
+  CurDir* = CurDirImpl
+    ## The constant character used by the operating system to refer to the
+    ## current directory.
+    ##
+    ## For example: `'.'` for POSIX or `':'` for the classic Macintosh.
+
+  ParDir* = ParDirImpl
+    ## The constant string used by the operating system to refer to the
+    ## parent directory.
+    ##
+    ## For example: `".."` for POSIX or `"::"` for the classic Macintosh.
+
+  DirSep* = DirSepImpl
+    ## The character used by the operating system to separate pathname
+    ## components, for example: `'/'` for POSIX, `':'` for the classic
+    ## Macintosh, and `'\\'` on Windows.
+
+  AltSep* = AltSepImpl
+    ## An alternative character used by the operating system to separate
+    ## pathname components, or the same as `DirSep <#DirSep>`_ if only one separator
+    ## character exists. This is set to `'/'` on Windows systems
+    ## where `DirSep <#DirSep>`_ is a backslash (`'\\'`).
+
+  PathSep* = PathSepImpl
+    ## The character conventionally used by the operating system to separate
+    ## search patch components (as in PATH), such as `':'` for POSIX
+    ## or `';'` for Windows.
+
+  FileSystemCaseSensitive* = FileSystemCaseSensitiveImpl
+    ## True if the file system is case sensitive, false otherwise. Used by
+    ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
+
+  ExeExt* = ExeExtImpl
+    ## The file extension of native executables. For example:
+    ## `""` for POSIX, `"exe"` on Windows (without a dot).
+
+  ScriptExt* = ScriptExtImpl
+    ## The file extension of a script file. For example: `""` for POSIX,
+    ## `"bat"` on Windows.
+
+  DynlibFormat* = DynlibFormatImpl
+    ## The format string to turn a filename into a `DLL`:idx: file (also
+    ## called `shared object`:idx: on some operating systems).
