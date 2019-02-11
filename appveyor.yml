@@ -6,20 +6,29 @@ cache:
 # - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
 
 environment:
-  MINGW_DIR: mingw64
-  MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
-  MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
-  SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
-  SQLITE_ARCHIVE: sqlite-dll-win64-x64-3160200.zip
+  MINGW_URL64: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
+  MINGW_ARCHIVE64: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+  SQLITE_URL64: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
+  SQLITE_ARCHIVE64: sqlite-dll-win64-x64-3160200.zip
+
+  MINGW_URL32: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/4.9.2/threads-win32/dwarf/i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z/download
+  MINGW_ARCHIVE32: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+  SQLITE_URL32: http://www.sqlite.org/2017/sqlite-dll-win32-x86-3160200.zip
+  SQLITE_ARCHIVE32: sqlite-dll-win32-x86-3160200.zip
+
   platform: x64
 
   matrix:
     - NIM_TEST_PACKAGES: true
+      NIM_BITS: 64
     - NIM_TEST_PACKAGES: false
+      NIM_BITS: 64
+    - NIM_TEST_PACKAGES: false
+      NIM_BITS: 32
 
 matrix:
-  #allow_failures:
-  #  - NIM_TEST_PACKAGES: true
+  allow_failures:
+    - NIM_BITS: 32
   fast_finish: true
 
 install:
@@ -27,18 +36,18 @@ install:
   - MKDIR %CD%\DIST
   - MKDIR %CD%\DIST\PCRE
   - nuget install pcre -Verbosity quiet -Version 8.33.0.1 -OutputDirectory %CD%\DIST\PCRE
-  - IF not exist "%SQLITE_ARCHIVE%" appveyor DownloadFile "%SQLITE_URL%" -FileName "%SQLITE_ARCHIVE%"
-  - 7z x -y "%SQLITE_ARCHIVE%" -o"%CD%\DIST"> nul
-  - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
-  - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
-  - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
-  - IF "%PLATFORM%" == "x64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
+  - IF not exist "%SQLITE_ARCHIVE%%NIM_BITS%" appveyor DownloadFile "%SQLITE_URL%%NIM_BITS%" -FileName "%SQLITE_ARCHIVE%%NIM_BITS%%NIM_BITS%"
+  - 7z x -y "%SQLITE_ARCHIVE%%NIM_BITS%" -o"%CD%\DIST"> nul
+  - IF not exist "%MINGW_ARCHIVE%%NIM_BITS%" appveyor DownloadFile "%MINGW_URL%%NIM_BITS%" -FileName "%MINGW_ARCHIVE%%NIM_BITS%"
+  - 7z x -y "%MINGW_ARCHIVE%%NIM_BITS%" -o"%CD%\DIST"> nul
+  - SET PATH=%CD%\DIST\mingw%NIM_BITS%\BIN;%CD%\BIN;%PATH%
+  - IF "%NIM_BITS%" == "64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
     ELSE ( copy C:\OpenSSL-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win32\libssl32.dll %CD%\BIN\libssl32.dll )
-  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
-  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
+  - IF "%NIM_BITS%" == "64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
+  - IF "%NIM_BITS%" == "64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
   - cd csources
-  - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
+  - IF "%NIM_BITS%" == "64" ( build64.bat ) else ( build.bat )
   - cd ..
 
 build_script:
