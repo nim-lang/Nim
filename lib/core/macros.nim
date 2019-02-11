@@ -12,6 +12,10 @@ include "system/helpers"
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
+##
+## See also:
+## * `macros tutorial <https://nim-lang.github.io/Nim/tut3.html>`_
+## * `macros section in Nim manual <https://nim-lang.github.io/Nim/manual.html#macros>`_
 
 ## .. include:: ../../doc/astspec.txt
 
