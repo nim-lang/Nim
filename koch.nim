@@ -542,7 +542,7 @@ proc testUnixInstall(cmdLineRest: string) =
       execCleanPath("./koch --latest tools")
       # check the tests work:
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
-      execCleanPath("./koch tests cat megatest", destDir / "bin")
+      execCleanPath("./koch tests --nim:./bin/nim cat megatest", destDir / "bin")
     else:
       echo "Version check: failure"
   finally:
