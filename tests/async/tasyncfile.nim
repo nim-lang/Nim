@@ -58,4 +58,17 @@ proc main() {.async.} =
     echo await file.readAll()
     echo file.getFilePos()
 
+  # IndexError when reading past EOF
+  block:
+    removeFile(fn)
+    var file = openAsync(fn, fmWrite)
+    await file.write("test1\n")
+    await file.write("test2\n")
+    file.close()
+    file = openAsync(fn, fmRead)
+    doAssert((await file.readLine()) == "test1")
+    doAssert((await file.readLine()) == "test2")
+    doAssertRaises(EOFError):
+      discard await file.readLine()
+
 waitFor main()

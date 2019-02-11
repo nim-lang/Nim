@@ -300,14 +300,18 @@ proc readLine*(f: AsyncFile): Future[string] {.async.} =
   ## Reads a single line from the specified file asynchronously.
   result = ""
   while true:
-    var c = await read(f, 1)
+    let c = await read(f, 1)
+    if c.len == 0:
+      # EOF
+      raise newException(EOFError, "EOF reached")
     if c[0] == '\c':
-      c = await read(f, 1)
+      # Found a CR, eat the NL
+      discard await read(f, 1)
       break
-    if c[0] == '\L' or c == "":
+    if c[0] == '\L':
+      # Found a NL
       break
-    else:
-      result.add(c)
+    result.add(c)
 
 proc getFilePos*(f: AsyncFile): int64 =
   ## Retrieves the current position of the file pointer that is
