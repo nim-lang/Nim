@@ -1158,53 +1158,46 @@ proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
 type
   IntMax32 = int|int8|int16|int32
 
-proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect, deprecated.}
-proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect, deprecated.}
+proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
+proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect.}
   ## treats `x` and `y` as unsigned and adds them. The result is truncated to
   ## fit into the result. This implements modulo arithmetic. No overflow
   ## errors are possible.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `-%`*(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect, deprecated.}
-proc `-%`*(x, y: int64): int64 {.magic: "SubU", noSideEffect, deprecated.}
+proc `-%`*(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
+proc `-%`*(x, y: int64): int64 {.magic: "SubU", noSideEffect.}
   ## treats `x` and `y` as unsigned and subtracts them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `*%`*(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect, deprecated.}
-proc `*%`*(x, y: int64): int64 {.magic: "MulU", noSideEffect, deprecated.}
+proc `*%`*(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
+proc `*%`*(x, y: int64): int64 {.magic: "MulU", noSideEffect.}
   ## treats `x` and `y` as unsigned and multiplies them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `/%`*(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect, deprecated.}
-proc `/%`*(x, y: int64): int64 {.magic: "DivU", noSideEffect, deprecated.}
+proc `/%`*(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
+proc `/%`*(x, y: int64): int64 {.magic: "DivU", noSideEffect.}
   ## treats `x` and `y` as unsigned and divides them. The result is
   ## truncated to fit into the result. This implements modulo arithmetic.
   ## No overflow errors are possible.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `%%`*(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect, deprecated.}
-proc `%%`*(x, y: int64): int64 {.magic: "ModU", noSideEffect, deprecated.}
+proc `%%`*(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
+proc `%%`*(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
   ## treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic.
   ## No overflow errors are possible.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect, deprecated.}
-proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect, deprecated.}
+proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
+proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) <= unsigned(y)``.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect, deprecated.}
-proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect, deprecated.}
+proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
+proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # unsigned integer operations:
 proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
@@ -2023,15 +2016,13 @@ when not defined(js) and not defined(booting) and defined(nimTrMacros):
     # unnecessary slow down in this case.
     swap(cast[ptr pointer](addr arr[a])[], cast[ptr pointer](addr arr[b])[])
 
-template `>=%`*(x, y: untyped): untyped {.deprecated.} = y <=% x
+template `>=%`*(x, y: untyped): untyped = y <=% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) >= unsigned(y)``.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-template `>%`*(x, y: untyped): untyped {.deprecated.} = y <% x
+template `>%`*(x, y: untyped): untyped = y <% x
   ## treats `x` and `y` as unsigned and compares them.
   ## Returns true iff ``unsigned(x) > unsigned(y)``.
-  ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
