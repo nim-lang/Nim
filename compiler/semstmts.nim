@@ -446,7 +446,16 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       typ = semTypeNode(c, a.sons[length-2], nil)
 
     var def: PNode = c.graph.emptyNode
+    var compileTimeLet = false
     if a.sons[length-1].kind != nkEmpty:
+      if a.sons[0].kind == nkPragmaExpr:
+        let pragmas = a.sons[0].sons[1]
+        for p in pragmas:
+          if p.kind == nkIdent and
+             whichKeyword(considerQuotedIdent(c,p)) == wCompileTime:
+            inc c.inStaticContext
+            compileTimeLet = true
+            break
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
@@ -472,7 +481,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
     else:
       if symkind == skLet: localError(c.config, a.info, errLetNeedsInit)
-
+    if compileTimeLet: dec c.inStaticContext
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
