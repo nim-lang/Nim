@@ -48,6 +48,7 @@ Options:
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messagescoloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
+  --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
 """ % resultsFile
 
 type
@@ -545,6 +546,7 @@ proc main() =
   var optFailing = false
   var targetsStr = ""
   var isMainProcess = true
+  var skipFrom = ""
 
   var p = initOptParser()
   p.next()
@@ -580,6 +582,8 @@ proc main() =
         backendLogging = false
       else:
         quit Usage
+    of "skipfrom":
+      skipFrom = p.val.string
     else:
       quit Usage
     p.next()
@@ -597,6 +601,9 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
+
+    if skipFrom.len > 0:
+      myself &= " " & quoteShell("--skipFrom:" & skipFrom)
 
     var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
@@ -617,13 +624,13 @@ proc main() =
     if simulate:
       for i, cati in cats:
         progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
     else:
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = true)
   of "pcat":
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
@@ -631,7 +638,7 @@ proc main() =
     isMainProcess = false
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir, skipFrom, runJoinableTests = false)
   of "r", "run":
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})
