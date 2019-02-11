@@ -12,7 +12,7 @@
 ## module, but can also be used in its own right.
 
 import
-  strutils, lexbase, streams, unicode
+  strutils, lexbase, unicode, streams
 
 type
   JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
@@ -62,7 +62,7 @@ type
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
-  JsonParser* = object of BaseLexer ## the parser object.
+  JsonParser* = object of BaseLexerRT ## the parser object.
     a*: string
     tok*: TokKind
     kind: JsonEventKind
@@ -70,6 +70,18 @@ type
     state: seq[ParserState]
     filename: string
     rawStringLiterals: bool
+
+  # equivalent to JsonParser, but usable at compile time
+  JsonParserCT* = object of BaseLexerCT ## the parser object.
+    a*: string
+    tok*: TokKind
+    kind: JsonEventKind
+    err: JsonError
+    state: seq[ParserState]
+    filename: string
+    rawStringLiterals: bool
+
+  AnyJsonParser* = JsonParser | JsonParserCT
 
   JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
                                         ## JSON kind is incorrect.
@@ -114,49 +126,63 @@ proc open*(my: var JsonParser, input: Stream, filename: string;
   my.a = ""
   my.rawStringLiterals = rawStringLiterals
 
-proc close*(my: var JsonParser) {.inline.} =
-  ## closes the parser `my` and its associated input stream.
-  lexbase.close(my)
+proc open*(my: var JsonParserCT, input: string, filename: string;
+           rawStringLiterals = false) =
+  ## initializes the parser with an input string. `Filename` is only used
+  ## for nice error messages. If `rawStringLiterals` is true, string literals
+  ## are kepts with their surrounding quotes and escape sequences in them are
+  ## left untouched too.
+  lexbase.open(my, input)
+  my.filename = filename
+  my.state = @[stateStart]
+  my.kind = jsonError
+  my.a = ""
+  my.rawStringLiterals = rawStringLiterals
 
-proc str*(my: JsonParser): string {.inline.} =
+proc close*(my: var AnyJsonParser) {.inline.} =
+  ## closes the parser `my` and its associated input stream.
+  when AnyJsonParser is JsonParser:
+    lexbase.close(my)
+
+proc str*(my: AnyJsonParser): string {.inline.} =
   ## returns the character data for the events: ``jsonInt``, ``jsonFloat``,
   ## ``jsonString``
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
-proc getInt*(my: JsonParser): BiggestInt {.inline.} =
+proc getInt*(my: AnyJsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: ``jsonInt``
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
-proc getFloat*(my: JsonParser): float {.inline.} =
+proc getFloat*(my: AnyJsonParser): float {.inline.} =
   ## returns the number for the event: ``jsonFloat``
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
-proc kind*(my: JsonParser): JsonEventKind {.inline.} =
+proc kind*(my: AnyJsonParser): JsonEventKind {.inline.} =
   ## returns the current event type for the JSON parser
   return my.kind
 
-proc getColumn*(my: JsonParser): int {.inline.} =
+proc getColumn*(my: AnyJsonParser): int {.inline.} =
   ## get the current column the parser has arrived at.
   result = getColNumber(my, my.bufpos)
 
-proc getLine*(my: JsonParser): int {.inline.} =
+proc getLine*(my: AnyJsonParser): int {.inline.} =
   ## get the current line the parser has arrived at.
   result = my.lineNumber
 
-proc getFilename*(my: JsonParser): string {.inline.} =
+proc getFilename*(my: AnyJsonParser): string {.inline.} =
   ## get the filename of the file that the parser processes.
   result = my.filename
 
-proc errorMsg*(my: JsonParser): string =
+proc errorMsg*(my: AnyJsonParser): string =
   ## returns a helpful error message for the event ``jsonError``
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
 
-proc errorMsgExpected*(my: JsonParser, e: string): string =
+proc errorMsgExpected*(my: AnyJsonParser, e: string): string =
   ## returns an error message "`e` expected" in the same format as the
   ## other error messages
   result = "$1($2, $3) Error: $4" % [
@@ -179,7 +205,7 @@ proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
     else:
       return -1
 
-proc parseString(my: var JsonParser): TokKind =
+proc parseString(my: var AnyJsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
   var buf = my.buf
@@ -266,7 +292,7 @@ proc parseString(my: var JsonParser): TokKind =
       inc(pos)
   my.bufpos = pos # store back
 
-proc skip(my: var JsonParser) =
+proc skip(my: var AnyJsonParser) =
   var pos = my.bufpos
   var buf = my.buf
   while true:
@@ -324,7 +350,7 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
-proc parseNumber(my: var JsonParser) =
+proc parseNumber(my: var AnyJsonParser) =
   var pos = my.bufpos
   var buf = my.buf
   if buf[pos] == '-':
@@ -355,7 +381,7 @@ proc parseNumber(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc parseName(my: var JsonParser) =
+proc parseName(my: var AnyJsonParser) =
   var pos = my.bufpos
   var buf = my.buf
   if buf[pos] in IdentStartChars:
@@ -364,7 +390,7 @@ proc parseName(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok*(my: var JsonParser): TokKind =
+proc getTok*(my: var AnyJsonParser): TokKind =
   setLen(my.a, 0)
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
@@ -409,7 +435,7 @@ proc getTok*(my: var JsonParser): TokKind =
   my.tok = result
 
 
-proc next*(my: var JsonParser) =
+proc next*(my: var AnyJsonParser) =
   ## retrieves the first/next event. This controls the parser.
   var tk = getTok(my)
   var i = my.state.len-1
@@ -526,10 +552,10 @@ proc next*(my: var JsonParser) =
       my.kind = jsonError
       my.err = errExprExpected
 
-proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
+proc raiseParseErr*(p: AnyJsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
   raise newException(JsonParsingError, errorMsgExpected(p, msg))
 
-proc eat*(p: var JsonParser, tok: TokKind) =
+proc eat*(p: var AnyJsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])

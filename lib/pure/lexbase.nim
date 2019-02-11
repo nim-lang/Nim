@@ -25,7 +25,7 @@ const
 #
 
 type
-  BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
+  BaseLexerRT* = object of RootObj ## the base lexer. Inherit your lexer from
                                  ## this object.
     bufpos*: int              ## the current position within the buffer
     when defined(js):         ## the buffer itself
@@ -40,14 +40,36 @@ type
     offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
     refillChars: set[char]
 
+  BaseLexerCT* = object of RootObj ## the base lexer at compile time using
+                                   ## a string as input.
+    bufpos*: int              ## the current position within the buffer
+    buf*: string
+    bufLen*: int              ## length of buffer in characters
+    input: string            ## the input stream
+    lineNumber*: int          ## the current line number
+    sentinel: int
+    lineStart: int            # index of last line start in buffer
+    offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
+    refillChars: set[char]
+
+  BaseLexer* = BaseLexerCT | BaseLexerRT
+
 const
   chrSize = sizeof(char)
 
+proc readData(input: var string, buf: var string, start, stop: int): int =
+  ## `readData` for our " `FakeStream` " used by BaseLexerCT. Performs copy
+  ## of data!
+  let m = min(stop, input.len)
+  result = m - start
+  buf[start ..< m] = input[start ..< m]
+
 proc close*(L: var BaseLexer) =
   ## closes the base lexer. This closes `L`'s associated stream too.
-  when not defined(js):
-    dealloc(L.buf)
-  close(L.input)
+  when BaseLexer is BaseLexerRT:
+    when not defined(js):
+      dealloc(L.buf)
+    close(L.input)
 
 proc fillBuffer(L: var BaseLexer) =
   var
@@ -61,13 +83,16 @@ proc fillBuffer(L: var BaseLexer) =
   toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
-    when defined(js):
+    when defined(js) or BaseLexer is BaseLexerCT:
       for i in 0 ..< toCopy: L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:
       # "moveMem" handles overlapping regions
       moveMem(L.buf, addr L.buf[L.sentinel + 1], toCopy * chrSize)
-  charsRead = readData(L.input, addr(L.buf[toCopy]),
-                       (L.sentinel + 1) * chrSize) div chrSize
+  when BaseLexer is BaseLexerRT:
+    charsRead = readData(L.input, addr(L.buf[toCopy]),
+                         (L.sentinel + 1) * chrSize) div chrSize
+  else:
+    charsRead = readData(L.input, L.buf, toCopy, L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -87,13 +112,16 @@ proc fillBuffer(L: var BaseLexer) =
         # double the buffer's size and try again:
         oldBufLen = L.bufLen
         L.bufLen = L.bufLen * 2
-        when defined(js):
+        when defined(js) or BaseLexer is BaseLexerCT:
           L.buf.setLen(L.bufLen)
         else:
           L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
         assert(L.bufLen - oldBufLen == oldBufLen)
-        charsRead = readData(L.input, addr(L.buf[oldBufLen]),
-                             oldBufLen * chrSize) div chrSize
+        when BaseLexer is BaseLexerRT:
+          charsRead = readData(L.input, addr(L.buf[oldBufLen]),
+                               oldBufLen * chrSize) div chrSize
+        else:
+          charsRead = readData(L.input, L.buf, oldBufLen, oldBufLen * 2)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
@@ -140,7 +168,7 @@ proc skipUtf8Bom(L: var BaseLexer) =
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
 
-proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
+proc open*(L: var BaseLexerRT, input: Stream, bufLen: int = 8192;
            refillChars: set[char] = NewLines) =
   ## inits the BaseLexer with a stream to read from.
   assert(bufLen > 0)
@@ -154,6 +182,22 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
     L.buf = newString(bufLen)
   else:
     L.buf = cast[cstring](alloc(bufLen * chrSize))
+  L.sentinel = bufLen - 1
+  L.lineStart = 0
+  L.lineNumber = 1            # lines start at 1
+  fillBuffer(L)
+  skipUtf8Bom(L)
+
+proc open*(L: var BaseLexerCT, input: string, bufLen: int = 8192;
+           refillChars: set[char] = NewLines) =
+  ## inits the BaseLexerCT with a string as a " `FakeStream` ".
+  assert(bufLen > 0)
+  L.input = input
+  L.bufpos = 0
+  L.offsetBase = 0
+  L.bufLen = bufLen
+  L.refillChars = refillChars
+  L.buf = newString(bufLen)
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1

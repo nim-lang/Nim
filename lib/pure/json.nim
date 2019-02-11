@@ -808,7 +808,7 @@ iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   for key, val in mpairs(node.fields):
     yield (key, val)
 
-proc parseJson(p: var JsonParser): JsonNode =
+proc parseJson(p: var AnyJsonParser): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -870,6 +870,19 @@ when not defined(js):
     finally:
       p.close()
 
+  proc staticParseJson*(s: string, filename: string = ""): JsonNode =
+    ## Parses JSON at compile time from a string `s` into a `JsonNode`.
+    ## `filename` is only needed for nice error messages.
+    ## If `s` contains extra data, it will raise `JsonParsingError`.
+    var p: JsonParserCT
+    p.open(s, filename)
+    try:
+      discard getTok(p) # read first token
+      result = p.parseJson()
+      eat(p, tkEof) # check if there is no extra data
+    finally:
+      p.close()
+
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
     ## If `buffer` contains extra data, it will raise `JsonParsingError`.
@@ -882,6 +895,13 @@ when not defined(js):
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
     result = parseJson(stream, filename)
+
+  proc staticParseFile*(filename: static string): JsonNode =
+    ## Parses `file` into a `JsonNode` at compile time.
+    ## If `file` contains extra data, it will raise `JsonParsingError`.
+    const data = staticRead(filename)
+    result = parseJson(data)
+
 else:
   from math import `mod`
   type
