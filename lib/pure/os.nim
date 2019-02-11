@@ -591,10 +591,8 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1".} =
 
 proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Returns the parent directory of `path`.
-  ##
-  ## Trailing ``.`` and ``/`` are resolved before taking the parent dir, see
-  ## examples below for corner cases.
+  ## Returns the (normalized) parent directory of `path`, see examples for
+  ## edge cases.
   ##
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
@@ -611,20 +609,15 @@ proc parentDir*(path: string): string {.
       assert parentDir("foo//bar//.") == "foo"
       assert parentDir("foo") == "."
       assert parentDir("/foo") == "/"
-      assert parentDir(".") == ""
+      assert parentDir(".") == ".."
       assert parentDir("/") == ""
-  if path == "": return ""
-  result = path
-  while true:
-    normalizePathEnd(result)
-    let (dir, name, ext) = splitFile(result)
-    if name == ".." or (name.len == 0 and ext.len == 0): return ""
-    if name == ".":
-      result = dir
-      continue
-    if dir == "" and name != "":
-      return "."
-    return dir
+  if path == "":
+    result =  ""
+  else:
+    result = normalizePath(path / "..")
+    if result.isAbsolute and result.contains "..":
+      # `/..` is invalid
+      result = ""
 
 iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## Walks over all parent directories of a given `path`.
@@ -647,8 +640,8 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
       assert toSeq(g.parentDirs) == @["a/b/c", "a/b", "a"]
       assert toSeq(g.parentDirs(fromRoot=true)) == @["a", "a/b", "a/b/c"]
       assert toSeq(g.parentDirs(inclusive=false)) == @["a/b", "a"]
-      assert toSeq("/a//b/".parentDirs) == @["/a//b", "/a", "/"]
-  var path = path.normalizePathEnd
+      assert toSeq("/a//b/".parentDirs) == @["/a/b", "/a", "/"]
+  var path = path.normalizePath
   if not fromRoot:
     if inclusive: yield path
     var current = path

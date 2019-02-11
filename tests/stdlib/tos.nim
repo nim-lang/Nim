@@ -375,9 +375,9 @@ block parentDir:
     ("foo//bar//", "foo"),
     ("foo///bar", "foo"),
     ("foo///bar/.", "foo"),
-    ("./foo///bar", "./foo"),
-    (".//foo///bar", ".//foo"),
-    ("/.//foo///bar", "/.//foo"),
+    ("./foo///bar", "foo"),
+    (".//foo///bar", "foo"),
+    ("/.//foo///bar", "/foo"),
     ("foo/bar//a/./.", "foo/bar"),
     ("/a/bar", "/a"),
     ("/bar", "/"),
@@ -391,21 +391,21 @@ block parentDir:
     (".git", "."),
     (".git.bak1", "."),
 
+    (".", ".."),
+    ("./", ".."),
+    ("..", "../.."),
+    ("../", "../.."),
+
     # return empty when no parent possible
     ("", ""),
-    (".", ""),
-    ("./", ""),
-    ("..", ""),
-    ("../", ""),
-    ("../..", ""),
+
     # parent of root is empty
     ("/", ""),
     ("/.", ""),
     ("/..", ""),
     ("/./", ""),
 
-    # regression tests
-
+    # regression tests:
     # fix #8734 (bug 2)
     ("a/b//", "a"),
     ("a/b/", "a"),
@@ -440,13 +440,13 @@ block parentDirs:
   # fromRoot=false, inclusive=true
   test parentDirs("a/b/c".unixToNativePath), @["a/b/c", "a/b", "a"]
   test parentDirs("/a/b/c".unixToNativePath), @["/a/b/c", "/a/b", "/a", "/"]
-  test parentDirs("//a/b//c//".unixToNativePath), @["//a/b//c", "//a/b", "//a", "/"]
+  test parentDirs("//a/b//c//".unixToNativePath), @["/a/b/c", "/a/b", "/a", "/"]
   test parentDirs("/".unixToNativePath), @["/"]
   test parentDirs("".unixToNativePath), @[""]
 
   # fromRoot=true
   test parentDirs("a/b/c".unixToNativePath, fromRoot=true), @["a", "a/b", "a/b/c"]
-  test parentDirs("a//b//c/".unixToNativePath, fromRoot=true), @["a", "a//b", "a//b//c"]
+  test parentDirs("a//b//c/".unixToNativePath, fromRoot=true), @["a", "a/b", "a/b/c"]
   test parentDirs("/a/b".unixToNativePath, fromRoot=true), @["/", "/a", "/a/b"]
 
   # inclusive=false
