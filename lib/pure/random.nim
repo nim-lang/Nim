@@ -513,6 +513,7 @@ proc initRand*(seed: int64): Rand =
 
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
+  doAssert seed != 0 # 0 causes `rand(int)` to always return 0 for example.
   result.a0 = ui(seed shr 16)
   result.a1 = ui(seed and 0xffff)
   discard next(result)
