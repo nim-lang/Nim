@@ -440,7 +440,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
     var length = sonsLen(a)
-
     var typ: PType = nil
     if a.sons[length-2].kind != nkEmpty:
       typ = semTypeNode(c, a.sons[length-2], nil)
@@ -449,13 +448,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var compileTimeLet = false
     if a.sons[length-1].kind != nkEmpty:
       if a.sons[0].kind == nkPragmaExpr:
-        let pragmas = a.sons[0].sons[1]
-        for p in pragmas:
-          if p.kind == nkIdent and
-             whichKeyword(considerQuotedIdent(c,p)) == wCompileTime:
-            inc c.inStaticContext
-            compileTimeLet = true
-            break
+        var v = semIdentDef(c,a.sons[0],symKind)
+        if sfCompileTime in v.flags:
+          compileTimeLet = true
+          inc c.inStaticContext
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
