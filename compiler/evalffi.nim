@@ -103,7 +103,7 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.TType =
 proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI =
   case cc
   of ccDefault: result = DEFAULT_ABI
-  of ccStdCall: result = when defined(windows): STDCALL else: DEFAULT_ABI
+  of ccStdCall: result = when defined(windows) and defined(x86): STDCALL else: DEFAULT_ABI
   of ccCDecl: result = DEFAULT_ABI
   else:
     globalError(conf, info, "cannot map calling convention to FFI")
