@@ -520,7 +520,7 @@ proc mainCommand(graph: ModuleGraph) =
   # do not stop after the first error:
   conf.errorMax = high(int)
   # do not print errors, but log them
-  conf.writelnHook = proc (s: string) = log(s)
+  conf.writelnHook = myLog
   conf.structuredErrorHook = nil
 
   # compile the project before showing any input so that we already
@@ -661,7 +661,7 @@ else:
       # do not stop after the first error:
       conf.errorMax = high(int)
       # do not print errors, but log them
-      conf.writelnHook = proc (s: string) = log(s)
+      conf.writelnHook = myLog
       conf.structuredErrorHook = nil
 
       # compile the project before showing any input so that we already
