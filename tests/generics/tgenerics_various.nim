@@ -242,3 +242,14 @@ block tvarargs_vs_generics:
   withDirectType "string"
   withOpenArray "string"
   withVarargs "string"
+
+block:
+  type
+    Que[T] {.gcsafe.} = object
+      x: T
+
+  proc `=`[T](q: var Que[T]; x: Que[T]) =
+    discard
+
+  var x: Que[int]
+  doAssert(x.x == 0)

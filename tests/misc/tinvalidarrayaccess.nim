@@ -1,14 +1,14 @@
 discard """
-  errormsg: "index out of bounds: (a: 0) <= (i: 2) <= (b: 1) "
+  errormsg: "index 2 not in 0 .. 1"
   line: 18
 """
-
 block:
   try:
     let a = @[1,2]
     echo a[3]
   except Exception as e:
-    doAssert e.msg == "index out of bounds: (i:3) <= (n:1) "
+    doAssert e.msg == "index 3 not in 0 .. 1"
+      # note: this is not being tested, because the CT error happens before
 
 block:
   type TTestArr = array[0..1, int16]

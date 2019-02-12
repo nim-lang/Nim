@@ -22,7 +22,7 @@ import custom_pragma
 block: # A bit more advanced case
   type
     Subfield {.defaultValue: "catman".} = object
-      c* {.serializationKey: "cc".}: float
+      `c`* {.serializationKey: "cc".}: float
 
     MySerializable = object
       a {.serializationKey"asdf", defaultValue: 5.} : int

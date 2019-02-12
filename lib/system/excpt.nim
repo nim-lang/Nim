@@ -469,6 +469,24 @@ when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
 
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    else:
+      writeToStdErr currException.getStackTrace() & "Error: unhandled exception: " &
+              currException.msg & " [" & $currException.name & "]\n"
+    quit 1
+
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =

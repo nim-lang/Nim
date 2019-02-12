@@ -15,7 +15,7 @@ const
   errXExpectsTypeOrValue = "'$1' expects a type or value"
   errVarForOutParamNeededX = "for a 'var' type a variable needs to be passed; but '$1' is immutable"
   errXStackEscape = "address of '$1' may not escape its stack frame"
-  errExprHasNoAddress = "expression has no address; maybe use 'unsafeAddr'"
+  errExprHasNoAddress = "expression has no address"
   errCannotInterpretNodeX = "cannot evaluate '$1'"
   errNamedExprExpected = "named expression expected"
   errNamedExprNotAllowed = "named expression not allowed here"

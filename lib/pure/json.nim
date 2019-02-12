@@ -143,7 +143,7 @@ runnableExamples:
 
 import
   hashes, tables, strutils, lexbase, streams, unicode, macros, parsejson,
-  typetraits
+  typetraits, options
 
 export
   tables.`$`
@@ -343,6 +343,16 @@ proc `%`*[T](elements: openArray[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
   result = newJArray()
   for elem in elements: result.add(%elem)
+
+proc `%`*[T](table: Table[string, T]|OrderedTable[string, T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new ``JObject JsonNode``.
+  result = newJObject()
+  for k, v in table: result[k] = %v
+
+proc `%`*[T](opt: Option[T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new ``JNull JsonNode``
+  ## if ``opt`` is empty, otherwise it delegates to the underlying value.
+  if opt.isSome: %opt.get else: newJNull()
 
 when false:
   # For 'consistency' we could do this, but that only pushes people further

@@ -572,10 +572,14 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   assert n.kind == nkEffectList
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
-proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
+proc isTrival(caller: PNode): bool {.inline.} =
+  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil}
+
+proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)
   let op = a.typ
-  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit:
+  # assume indirect calls are taken here:
+  if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
     internalAssert tracked.config, op.n.sons[0].kind == nkEffectList
     var effectList = op.n.sons[0]
     var s = n.skipConv
@@ -773,7 +777,7 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]

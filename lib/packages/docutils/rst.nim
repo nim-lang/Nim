@@ -777,7 +777,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   add(lb, n)
   result = newRstNode(rnCodeBlock)
   add(result, args)
-  add(result, nil)
+  add(result, PRstNode(nil))
   add(result, lb)
 
 proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
@@ -1537,7 +1537,7 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
     popInd(p)
     add(result, content)
   else:
-    add(result, nil)
+    add(result, PRstNode(nil))
 
 proc parseDirBody(p: var RstParser, contentParser: SectionParser): PRstNode =
   if indFollows(p):
