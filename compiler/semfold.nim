@@ -465,7 +465,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     else:
       result = a
       result.typ = n.typ
-  of tyOpenArray, tyVarargs, tyProc:
+  of tyOpenArray, tyVarargs, tyProc, tyPointer:
     discard
   else:
     result = a
