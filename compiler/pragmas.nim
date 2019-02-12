@@ -803,12 +803,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
-        if not isPowerOfTwo(size) or size <= 0 or size > 8:
-          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
-        else:
+        case size
+        of 1, 2, 4, 8:
           sym.typ.size = size
-          # TODO, this is not correct
-          sym.typ.align = int16(size)
+          if size == 8 and c.config.target.targetCPU == cpuI386:
+            sym.typ.align = 4
+          else:
+            sym.typ.align = int16(size)
+        else:
+          localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)

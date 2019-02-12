@@ -495,7 +495,7 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
-  elif s.kind in {skType, skVar, skLet}:
+  elif s.kind in {skType, skVar, skLet} and s.ast[0].kind == nkPragmaExpr:
     # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
     result = s.ast[0][1]
   doAssert result == nil or result.kind == nkPragma

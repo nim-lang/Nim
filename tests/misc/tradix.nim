@@ -246,6 +246,9 @@ proc main() =
     r: PRadixNode = nil
   for x in items(numbers):
     echo testOrIncl(r, x)
-  for x in elements(r): echo(x)
+  for x in elements(r):
+    # ByteAddress being defined as a signed integer cases trouble
+    # exactly here
+    echo(cast[uint](x))
 
 main()
