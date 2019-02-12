@@ -473,7 +473,7 @@ type
   Style* = enum          ## different styles for text output
     styleBright = 1,     ## bright text
     styleDim,            ## dim text
-    styleItalic,         ## italic (or reverse on terminals not supporting)
+#    styleItalic,         ## italic (or reverse on terminals not supporting)
     styleUnderscore,     ## underscored text
     styleBlink,          ## blinking/bold text
     styleBlinkRapid,     ## rapid blinking/bold text (not widely supported)
