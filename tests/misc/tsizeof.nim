@@ -279,6 +279,11 @@ testinstance:
     InheritanceC {.objectconfig.} = object of InheritanceB
       c: char
 
+    # from issue 4763
+    GenericObject[T] = object
+      a: int32
+      b: T
+
     #Float128Test = object
     #  a: byte
     #  b: float128
@@ -298,6 +303,7 @@ testinstance:
     var f : PaddingAfterBranch
     var g : RecursiveStuff
     var ro : RootObj
+    var go : GenericObject[int64]
 
     var
       e1: Enum1
@@ -311,7 +317,7 @@ testinstance:
 
     testAlign(SimpleAlignment)
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
 
     when not defined(cpp):
       type
@@ -413,6 +419,28 @@ type
     f: uint32
 
 doAssert sizeof(MixedBitsize) == 12
+
+##########################################
+# bug #9794
+##########################################
+
+type
+  imported_double {.importc: "double".} = object
+
+  Pod = object
+    v* : imported_double
+    seed*: int32
+
+  Pod2 = tuple[v: imported_double, seed: int32]
+
+proc foobar() =
+  testAlign(Pod)
+  testSize(Pod)
+  testAlign(Pod2)
+  testSize(Pod2)
+  doAssert sizeof(Pod) == sizeof(Pod2)
+  doAssert alignof(Pod) == alignof(Pod2)
+foobar()
 
 if failed:
   quit("FAIL")

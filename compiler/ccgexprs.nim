@@ -1997,6 +1997,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSizeOf:
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
     putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+  of mAlignOf:
+    let t = e.sons[1].typ.skipTypes({tyTypeDesc})
+    if not p.module.compileToCpp:
+      p.module.includeHeader("<stdalign.h>")
+    putIntoDest(p, d, e, "((NI)alignof($1))" % [getTypeDesc(p.module, t)])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
