@@ -18,7 +18,7 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
-  hasFFI* = defined(useFFI)
+  hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
@@ -129,7 +129,7 @@ type
     caseStmtMacros,
     codeReordering,
     compiletimeFFI,
-      ## This requires building nim with `-d:useFFI`
+      ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
 

@@ -34,7 +34,7 @@ bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
 bootSwitch(usedNativeStacktrace,
   defined(nativeStackTrace) and nativeStackTraceSupported,
   "-d:nativeStackTrace")
-bootSwitch(usedFFI, hasFFI, "-d:useFFI")
+bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
   TCmdLinePass* = enum
