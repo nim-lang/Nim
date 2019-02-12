@@ -230,12 +230,8 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
   if c.slots[r].kind in {slotSomeTemp..slotTempComplex}:
-    when not defined(nim_vm_freeTemp_skip):
-      c.slots[r].inUse = false
-      # c.slots[r].kind = slotEmpty # CHECKME; fixes D20190104T041114 but would that cause too many new registers?
-    else:
-      # echo2 "skipping c.slots[r].inUse = false", r
-      echo "skipping c.slots[r].inUse = false ", r
+    # this seems to cause https://github.com/nim-lang/Nim/issues/10647
+    c.slots[r].inUse = false
 
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
@@ -1546,7 +1542,7 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
-    if allowFFI in c.config.features:
+    if compiletimeFFI in c.config.features:
       c.globals.add(importcSymbol(c.config, s))
       s.position = c.globals.len
     else:

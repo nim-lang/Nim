@@ -227,7 +227,6 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
-  # echo2 n.kind, dest.kind
   case n.kind
   of nkStrLit..nkTripleStrLit:
     dest.kind = rkNode
@@ -1082,8 +1081,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif sfImportc in prc.flags:
-        if allowFFI notin c.config.features:
-          globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `allowFFI`")
+        if compiletimeFFI notin c.config.features:
+          globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:

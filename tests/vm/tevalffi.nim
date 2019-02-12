@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --experimental:allowFFI $file"
+  cmd: "nim c --experimental:compiletimeFFI $file"
   nimout: '''
 foo
 foo:100
