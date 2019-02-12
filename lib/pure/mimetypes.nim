@@ -9,6 +9,8 @@
 
 ## This module implements a mimetypes database
 import strtabs
+from strutils import startsWith, toLowerAscii, strip
+
 type
   MimeDB* = object
     mimes: StringTableRef
@@ -1878,37 +1880,53 @@ const mimes* = {
   "~": "application/x-trash"
 }
 
-from strutils import startsWith
 
-proc newMimetypes*(): MimeDB =
+func newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
   result.mimes = mimes.newStringTable()
 
-proc getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
+func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
   ## could not be found. ``ext`` can start with an optional dot which is ignored.
+  ## ``ext`` is lowercased before querying ``mimedb``.
   if ext.startsWith("."):
-    result = mimedb.mimes.getOrDefault(ext.substr(1))
+    result = mimedb.mimes.getOrDefault(ext.toLowerAscii.substr(1))
   else:
-    result = mimedb.mimes.getOrDefault(ext)
+    result = mimedb.mimes.getOrDefault(ext.toLowerAscii())
   if result == "":
     return default
 
-proc getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
+func getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
   ## Gets extension which corresponds to ``mimetype``. Returns ``default`` if
   ## ``mimetype`` could not be found. Extensions are returned without the
-  ## leading dot.
+  ## leading dot. ``mimetype`` is lowercased before querying ``mimedb``.
   result = default
+  let mimeLowered = mimetype.toLowerAscii()
   for e, m in mimedb.mimes:
-    if m == mimetype:
+    if m == mimeLowered:
       result = e
 
-proc register*(mimedb: var MimeDB, ext: string, mimetype: string) =
+func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## Adds ``mimetype`` to the ``mimedb``.
-  mimedb.mimes[ext] = mimetype
+  ## ``mimetype`` and ``ext`` are lowercased before registering on ``mimedb``.
+  assert ext.strip.len > 0, "ext argument can not be empty string"
+  assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
+  mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
 
-when isMainModule:
+runnableExamples:
   var m = newMimetypes()
   assert m.getMimetype("mp4") == "video/mp4"
   assert m.getExt("text/html") == "html"
+  ## Values can be uppercase too.
+  assert m.getMimetype("MP4") == "video/mp4"
+  assert m.getExt("TEXT/HTML") == "html"
+  ## If values are invalid then ``default`` is returned.
+  assert m.getMimetype("INVALID") == "text/plain"
+  assert m.getExt("INVALID/NONEXISTENT") == "txt"
+  assert m.getMimetype("") == "text/plain"
+  assert m.getExt("") == "txt"
+  ## Register new Mimetypes.
+  m.register(ext="fakext", mimetype="text/fakelang")
+  assert m.getMimetype("fakext") == "text/fakelang"
+  assert m.getMimetype("FaKeXT") == "text/fakelang"
