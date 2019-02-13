@@ -299,9 +299,8 @@ proc boot(args: string) =
     var extraOption = ""
     if i == 0:
       extraOption.add " --skipUserCfg --skipParentCfg"
-        # Note(D20190115T162028:here): the configs are skipped for bootstrap
+        # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
-        # fixes #10030.
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
@@ -542,7 +541,7 @@ proc testUnixInstall(cmdLineRest: string) =
       execCleanPath("./koch --latest tools")
       # check the tests work:
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
-      execCleanPath("./koch tests cat megatest", destDir / "bin")
+      execCleanPath("./koch tests --nim:./bin/nim cat megatest", destDir / "bin")
     else:
       echo "Version check: failure"
   finally:
