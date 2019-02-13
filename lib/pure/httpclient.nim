@@ -479,17 +479,18 @@ proc redirection(status: string): bool =
     if status.startsWith(i):
       return true
 
-proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
-  result = headers.getOrDefault"Location"
-  if result == "": httpError("location header expected")
+proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
+  let newLocation = headers.getOrDefault"Location"
+  if newLocation == "": httpError("location header expected")
   # Relative URLs. (Not part of the spec, but soon will be.)
-  let r = parseUri(result)
-  if r.hostname == "" and r.path != "":
-    var parsed = parseUri(lastURL)
-    parsed.path = r.path
-    parsed.query = r.query
-    parsed.anchor = r.anchor
-    result = $parsed
+  let parsedLocation = parseUri(newLocation)
+  if parsedLocation.hostname == "" and parsedLocation.path != "":
+    result = lastURL
+    result.path = parsedLocation.path
+    result.query = parsedLocation.query
+    result.anchor = parsedLocation.anchor
+  else:
+    result = parsedLocation
 
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
@@ -914,14 +915,12 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
-proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
+proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
                 httpMethod: string, body = "",
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
-  let requestUrl = parseUri(url)
-
-  if requestUrl.scheme == "":
+  if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
   when client is AsyncHttpClient:
@@ -930,14 +929,14 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
       await client.parseBodyFut
       client.parseBodyFut = nil
 
-  await newConnection(client, requestUrl)
+  await newConnection(client, url)
 
   let effectiveHeaders = client.headers.override(headers)
 
   if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
     effectiveHeaders["User-Agent"] = client.userAgent
 
-  var headersString = generateHeaders(requestUrl, httpMethod,
+  var headersString = generateHeaders(url, httpMethod,
                                       effectiveHeaders, body, client.proxy)
 
   await client.socket.send(headersString)
@@ -948,8 +947,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 client.getBody
   result = await parseResponse(client, getBody)
 
-proc request*(client: HttpClient | AsyncHttpClient, url: string,
-              httpMethod: string, body = "",
+proc request*(client: HttpClient | AsyncHttpClient, url: Uri,
+              httpMethod: string | HttpMethod = HttpGET, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
@@ -961,32 +960,32 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
-  result = await client.requestAux(url, httpMethod, body, headers)
+  result = await client.requestAux(url, $httpMethod, body, headers)
 
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       # Guarantee method for HTTP 307: see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-      var meth = if result.status == "307": httpMethod else: "GET"
+      var meth = if result.status == "307": $httpMethod else: "GET"
       result = await client.requestAux(redirectTo, meth, body, headers)
       lastURL = redirectTo
 
-
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
-              httpMethod = HttpGET, body = "",
+              httpMethod: string | HttpMethod = HttpGET, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
-  ## using the method specified.
+  ## using the custom method string specified by ``httpMethod``.
   ##
   ## Connection will be kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
   ## connection can be closed by using the ``close`` procedure.
   ##
-  ## When a request is made to a different hostname, the current connection will
-  ## be closed.
-  result = await request(client, url, $httpMethod, body, headers)
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``client.maxRedirects``.
+  let parsedUrl = parseUri(url)
+  result = await client.request(parsedUrl, httpMethod, body, headers)
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
   ## Returns the content of a response as a string.
