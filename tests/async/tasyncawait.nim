@@ -26,6 +26,10 @@ proc launchSwarm(port: Port) {.async.} =
 proc readMessages(client: AsyncFD) {.async.} =
   # wrapping the AsyncFd into a AsyncSocket object
   var sockObj = newAsyncSocket(client)
+  var (ipaddr, port) = sockObj.getPeerAddr()
+  doAssert ipaddr == "127.0.0.1"
+  (ipaddr, port) = sockObj.getLocalAddr()
+  doAssert ipaddr == "127.0.0.1"
   while true:
     var line = await recvLine(sockObj)
     if line == "":
