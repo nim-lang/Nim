@@ -588,7 +588,15 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if prefer != preferExported:
       result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
-    result = if tfIterator in t.flags: "iterator " else: "proc "
+    result = if tfIterator in t.flags: "iterator "
+             elif t.owner != nil:
+               case t.owner.kind
+               of skTemplate: "template "
+               of skMacro: "macro "
+               of skConverter: "converter "
+               else: "proc "
+            else:
+              "proc "
     if tfUnresolved in t.flags: result.add "[*missing parameters*]"
     result.add "("
     for i in countup(1, sonsLen(t) - 1):
