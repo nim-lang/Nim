@@ -25,7 +25,10 @@ when defined(linux):
 proc c_exp(a: float64): float64 {.importc: "exp", header: "<math.h>".}
 
 proc c_printf(frmt: cstring): cint {.importc: "printf", header: "<stdio.h>", varargs, discardable.}
-proc c_snprintf*(buffer: pointer, buf_size: uint, format: cstring): cint {.importc: "snprintf", header: "<stdio.h>", varargs .}
+
+const snprintfName = when defined(windows): "_snprintf" else: "snprintf"
+proc c_snprintf*(buffer: pointer, buf_size: uint, format: cstring): cint {.importc: snprintfName, header: "<stdio.h>", varargs .}
+
 proc c_malloc(size:uint):pointer {.importc:"malloc", header: "<stdlib.h>".}
 proc c_free(p: pointer) {.importc:"free", header: "<stdlib.h>".}
 
