@@ -1183,9 +1183,10 @@ proc contains*(c: ClassList, class: cstring): bool
 proc toggle*(c: ClassList, class: cstring)
 
 # Style "methods"
-proc getPropertyValue*(s: Style, attr: cstring, caseSensitive=false): cstring
-proc removeProperty*(s: Style, attr: cstring, caseSensitive=false)
-proc setProperty*(s: Style, attr, value: cstring, caseSensitive=false)
+proc getPropertyValue*(s: Style, property : cstring): cstring
+proc removeProperty*(s: Style, property : cstring)
+proc setProperty*(s: Style, property , value: cstring, priority="") #The following values are accepted:"important",keyword undefined, ""
+proc getPropertyPriority*(s: Style, property: cstring): cstring #"important" or ""
 
 # Event "methods"
 proc preventDefault*(ev: Event)
@@ -1267,7 +1268,9 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
-proc scrollLeft*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
+proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
+proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}
 proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
