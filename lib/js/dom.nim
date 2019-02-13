@@ -1271,6 +1271,7 @@ proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
 proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
 proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
 proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}
+proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
