@@ -1183,9 +1183,9 @@ proc contains*(c: ClassList, class: cstring): bool
 proc toggle*(c: ClassList, class: cstring)
 
 # Style "methods"
-proc getAttribute*(s: Style, attr: cstring, caseSensitive=false): cstring
-proc removeAttribute*(s: Style, attr: cstring, caseSensitive=false)
-proc setAttribute*(s: Style, attr, value: cstring, caseSensitive=false)
+proc getPropertyValue*(s: Style, attr: cstring, caseSensitive=false): cstring
+proc removeProperty*(s: Style, attr: cstring, caseSensitive=false)
+proc setProperty*(s: Style, attr, value: cstring, caseSensitive=false)
 
 # Event "methods"
 proc preventDefault*(ev: Event)
@@ -1267,6 +1267,7 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc scrollLeft*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
 proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}

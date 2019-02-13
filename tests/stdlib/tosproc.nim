@@ -48,10 +48,10 @@ when defined(case_testfile): # compiled test file for child process
 else:
 
   import os, osproc, strutils, posix
+  const nim = getCurrentCompilerExe()
 
   block execShellCmdTest:
     ## first, compile child program
-    const nim = getCurrentCompilerExe()
     const sourcePath = currentSourcePath()
     let output = buildDir / "D20190111T024543".addFileExt(ExeExt)
     let cmd = "$# c -o:$# -d:release -d:case_testfile $#" % [nim, output,
@@ -71,14 +71,10 @@ else:
     runTest("exitnow_139", 139)
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
-    runTest("exit_array", 1)
-    when defined(posix): # on windows, -1073741571
-      runTest("exit_recursion", SIGSEGV.int + 128) # bug #10273: was returning 0
-      assertEquals exitStatusLikeShell(SIGSEGV), SIGSEGV + 128.cint
 
   block execProcessTest:
     let dir = parentDir(currentSourcePath())
-    let (outp, err) = execCmdEx("nim c " & quoteShell(dir / "osproctest.nim"))
+    let (outp, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
     doAssert err == 0
     let exePath = dir / addFileExt("osproctest", ExeExt)
     let outStr1 = execProcess(exePath, workingDir = dir, args = ["foo",
