@@ -241,7 +241,7 @@ proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
 
   # deprecated as of 0.18.1
   message(c.config, n.info, warnDeprecated,
-          "use {.experimental: \"codeReordering.\".} instead; " &
+          "use {.experimental: \"codeReordering\".} instead; " &
           (if flag == sfNoForward: "{.noForward.}" else: "{.reorder.}") & " is deprecated")
 
 proc processCallConv(c: PContext, n: PNode) =
