@@ -448,10 +448,13 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var compileTimeLet = false
     if a.sons[length-1].kind != nkEmpty:
       if a.sons[0].kind == nkPragmaExpr:
-        var v = semIdentDef(c,a.sons[0],symKind)
-        if sfCompileTime in v.flags:
-          compileTimeLet = true
-          inc c.inStaticContext
+        let pragmas = a.sons[0].sons[1]
+        for p in pragmas:
+          if p.kind == nkIdent and
+             whichKeyword(considerQuotedIdent(c,p)) == wCompileTime:
+            inc c.inStaticContext
+            compileTimeLet = true
+            break
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
         # prevent the all too common 'var x = int' bug:
