@@ -16,7 +16,7 @@ import
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf
 
-include system/indexerrors
+#include system/indexerrors
 
 when not defined(leanCompiler):
   import semparallel
