@@ -457,19 +457,22 @@ proc xtemp(cmd: string) =
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI:", cmd
-
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
-
+  when defined(posix): # appveyor (on windows) didn't run this
+    kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
-  # steps to boot with -d:nimHasLibFFI
+  ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
-  execFold("nimble install libffi", "nimble install -y libffi")
 
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
+  const libffi = when defined(windows):
+    # pending https://github.com/Araq/libffi/pull/2
+    "https://github.com/timotheecour/libffi@#43b223875b4839b37dffba6528a2eb10d9e43fbf"
+  else:
+    "libffi"
+  execFold("nimble install libffi", "nimble install -y " & libffi)
   kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
