@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-import system/indexerrors
-
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
