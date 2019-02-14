@@ -963,37 +963,51 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   for i in 1..client.maxRedirects:
     let statusCode = result.code
 
-    if statusCode in {Http301, Http302, Http303, Http307, Http308}:
-      let redirectTo = getNewLocation(lastURL, result.headers)
-      var redirectMethod: HttpMethod
-      var redirectBody: string
+    if statusCode notin {Http301, Http302, Http303, Http307, Http308}:
+      break
 
-      # For more informations about the redirect methods see:
-      # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-      case statusCode
-      of Http301, Http302, Http303:
-        # The method is changed to GET unless it is GET or HEAD (RFC2616)
-        if httpMethod notin {HttpGet, HttpHead}:
-          redirectMethod = HttpGet
-        else:
-          redirectMethod = httpMethod
-        # The body is stripped away
-        redirectBody = ""
-        # Delete any header value associated with the body
+    let redirectTo = getNewLocation(lastURL, result.headers)
+    var redirectMethod: HttpMethod
+    var redirectBody: string
+
+    # For more informations about the redirect methods see:
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+    case statusCode
+    of Http301, Http302, Http303:
+      # The method is changed to GET unless it is GET or HEAD (RFC2616)
+      if httpMethod notin {HttpGet, HttpHead}:
+        redirectMethod = HttpGet
+      else:
+        redirectMethod = httpMethod
+      # The body is stripped away
+      redirectBody = ""
+      # Delete any header value associated with the body
+      if headers != nil:
         headers.del("Content-Length")
         headers.del("Content-Type")
         headers.del("Transfer-Encoding")
-      of Http307, Http308:
-        # The method and the body are unchanged
-        redirectMethod = httpMethod
-        redirectBody = body
-      else:
-        # Unreachable
-        doAssert(false)
+    of Http307, Http308:
+      # The method and the body are unchanged
+      redirectMethod = httpMethod
+      redirectBody = body
+    else:
+      # Unreachable
+      doAssert(false)
 
-      result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
-                                       headers)
-      lastURL = redirectTo
+    # Check if the redirection is to the same domain or a sub-domain (foo.com
+    # -> sub.foo.com)
+    if redirectTo.hostname != lastURL.hostname and
+      not redirectTo.hostname.endsWith("." & lastURL.hostname):
+      # Perform some cleanup of the header values
+      if headers != nil:
+        # Delete the Host header
+        headers.del("Host")
+        # Do not send any sensitive info to a unknown host
+        headers.del("Authorization")
+
+    result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
+                                     headers)
+    lastURL = redirectTo
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
               httpMethod: string, body = "",
