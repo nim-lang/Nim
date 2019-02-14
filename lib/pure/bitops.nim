@@ -285,7 +285,7 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    result = forwardImpl(parity_impl, x)
+    assert(false) # implemented as vmop
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
@@ -300,10 +300,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## otherwise result is undefined.
   # GCC builtin 'builtin_ffs' already handle zero input.
   when nimvm:
-    when noUndefined:
-      if x == 0:
-        return 0
-    result = forwardImpl(firstSetBit_nim, x)
+    assert(false) # implemented as vmop
   else:
     when noUndefined and not useGCC_builtins:
       if x == 0:
@@ -385,7 +382,7 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     if x == 0:
       return 0
   when nimvm:
-    result = firstSetBit(x) - 1
+    assert(false) # implemented as vmop
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_ctz(x.uint32).int

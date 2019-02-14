@@ -27,6 +27,9 @@ template systemop(op) {.dirty.} =
 template macrosop(op) {.dirty.} =
   registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
 
+template bitopsop(op) {.dirty.} =
+  registerCallback(c, "stdlib.bitops.*." & astToStr(op), `op Wrapper`)
+
 template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getFloat(a, 0)))
@@ -61,6 +64,11 @@ template wrap2svoid(op, modop) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     op(getString(a, 0), getString(a, 1))
   modop op
+
+template wrapSomeInt_bitops(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getInt(a, 0)))
+  bitopsop op
 
 template ioop(op) {.dirty.} =
   registerCallback(c, "stdlib.io." & astToStr(op), `op Wrapper`)
@@ -105,6 +113,14 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
+
+  wrapSomeInt_bitops(parityBits)
+  wrapSomeInt_bitops(countTrailingZeroBits)
+  wrapSomeInt_bitops(firstSetBit)
+  # wrapping fastLog2, countLeadingZeroBits, countSetBits the same way causes trouble.
+  # countLeadingZeroBits depends on the integer type
+  # countSetBits doesn't work on i32 because on the vm int32 has 32 extra sign bits
+  # fastLog2 doesn't work in tbitops there is an assert on a negative value.
 
   proc `mod Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, `mod`(getFloat(a, 0), getFloat(a, 1)))
