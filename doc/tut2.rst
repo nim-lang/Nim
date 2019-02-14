@@ -40,18 +40,16 @@ and more efficient code. In particular, preferring composition over inheritance
 is often the better design.
 
 
-Objects
--------
+Inheritance
+-----------
 
-Like tuples, objects are a means to pack different values together in a
-structured way. However, objects provide many features that tuples do not:
-They provide inheritance and information hiding. Because objects encapsulate
-data, the ``T()`` object constructor should only be used internally and the
-programmer should provide a proc to initialize the object (this is called
-a *constructor*).
-
-Objects have access to their type at runtime. There is an
-``of`` operator that can be used to check the object's type:
+Inheritance in Nim is entirely optional. To enable inheritance with
+runtime type information the object needs to inherit from
+``RootObj``.  This can be done directly, or indirectly by
+inheriting from an object that inherits from ``RootObj``.  Usually
+types with inheritance are also marked as ``ref`` types even though
+this isn't strictly enforced. To check at runtime if an object is of a certain
+type, the ``of`` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -70,11 +68,6 @@ Objects have access to their type at runtime. There is an
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
-
-Object fields that should be visible from outside the defining module have to
-be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. New object types can only be defined within a type
-section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``RootObj``
