@@ -224,7 +224,7 @@ proc execProcesses*(cmds: openArray[string],
                     beforeRunEvent: proc(idx: int) = nil,
                     afterRunEvent: proc(idx: int, p: Process) = nil): int
                     {.rtl, extern: "nosp$1",
-                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect]} =
+                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest (absolute) return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
