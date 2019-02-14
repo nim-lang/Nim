@@ -492,11 +492,10 @@ proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   else:
     result = parsedLocation
 
-proc generateHeaders(requestUrl: Uri, httpMethod: string,
+proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  let upperMethod = httpMethod.toUpperAscii()
-  result = upperMethod
+  result = $httpMethod
   result.add ' '
 
   if proxy.isNil or requestUrl.scheme == "https":
@@ -525,8 +524,8 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  const requiresBody = ["POST", "PUT", "PATCH"]
-  let needsContentLength = body.len > 0 or upperMethod in requiresBody
+  const requiresBody = {HttpPost, HttpPut, HttpPatch}
+  let needsContentLength = body.len > 0 or httpMethod in requiresBody
   if needsContentLength and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
@@ -886,7 +885,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
         connectUrl.hostname = url.hostname
         connectUrl.port = if url.port != "": url.port else: "443"
 
-        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
+        let proxyHeaderString = generateHeaders(connectUrl, HttpConnect, newHttpHeaders(), "", client.proxy)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
 
@@ -916,7 +915,7 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
     result[k] = vs
 
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
-                httpMethod: string, body = "",
+                httpMethod: HttpMethod, body = "",
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
@@ -943,7 +942,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if body != "":
     await client.socket.send(body)
 
-  let getBody = httpMethod.toLowerAscii() notin ["head", "connect"] and
+  let getBody = httpMethod notin {HttpHead, HttpConnect} and
                 client.getBody
   result = await parseResponse(client, getBody)
 
@@ -964,14 +963,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
     let parsedUrl = parseUri(url)
   else:
     let parsedUrl = url
-  result = await client.requestAux(parsedUrl, $httpMethod, body, headers)
+  result = await client.requestAux(parsedUrl, httpMethod, body, headers)
 
   var lastURL = parsedUrl
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      # Guarantee method for HTTP 307: see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-      var meth = if result.status == "307": $httpMethod else: "GET"
+      # Guarantee method for HTTP 307 and 308: see
+      # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+      var meth = if result.status in ["307", "308"]: httpMethod else: HttpGet
       result = await client.requestAux(redirectTo, meth, body, headers)
       lastURL = redirectTo
 
