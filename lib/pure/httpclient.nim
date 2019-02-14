@@ -473,12 +473,6 @@ proc format(p: MultipartData): tuple[contentType, body: string] =
     result.body.add("--" & bound & "\c\L" & s)
   result.body.add("--" & bound & "--\c\L")
 
-proc redirection(status: string): bool =
-  const redirectionNRs = ["301", "302", "303", "307", "308"]
-  for i in items(redirectionNRs):
-    if status.startsWith(i):
-      return true
-
 proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   let newLocation = headers.getOrDefault"Location"
   if newLocation == "": httpError("location header expected")
