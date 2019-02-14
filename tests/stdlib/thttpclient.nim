@@ -15,7 +15,7 @@ const manualTests = false
 
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
-  var resp = await client.request("http://example.com/")
+  var resp = await client.request("http://example.com/", "GET")
   doAssert(resp.code.is2xx)
   var body = await resp.body
   body = await resp.body # Test caching
@@ -68,7 +68,7 @@ proc asyncTest() {.async.} =
 
 proc syncTest() =
   var client = newHttpClient()
-  var resp = client.request("http://example.com/")
+  var resp = client.request("http://example.com/", "GET")
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
 

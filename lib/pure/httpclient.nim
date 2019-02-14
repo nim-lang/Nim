@@ -947,8 +947,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
                 client.getBody
   result = await parseResponse(client, getBody)
 
-proc request*(client: HttpClient | AsyncHttpClient, url: Uri,
-              httpMethod: string | HttpMethod = HttpGET, body = "",
+proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
+              httpMethod = HttpGET, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
@@ -960,9 +960,13 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
-  result = await client.requestAux(url, $httpMethod, body, headers)
+  when url is string:
+    let parsedUrl = parseUri(url)
+  else:
+    let parsedUrl = url
+  result = await client.requestAux(parsedUrl, $httpMethod, body, headers)
 
-  var lastURL = url
+  var lastURL = parsedUrl
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
@@ -971,21 +975,13 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri,
       result = await client.requestAux(redirectTo, meth, body, headers)
       lastURL = redirectTo
 
-proc request*(client: HttpClient | AsyncHttpClient, url: string,
-              httpMethod: string | HttpMethod = HttpGET, body = "",
+proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
+              httpMethod: string, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
-              {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a request
-  ## using the custom method string specified by ``httpMethod``.
-  ##
-  ## Connection will be kept alive. Further requests on the same ``client`` to
-  ## the same hostname will not require a new connection to be made. The
-  ## connection can be closed by using the ``close`` procedure.
-  ##
-  ## This procedure will follow redirects up to a maximum number of redirects
-  ## specified in ``client.maxRedirects``.
-  let parsedUrl = parseUri(url)
-  result = await client.request(parsedUrl, httpMethod, body, headers)
+              {.multisync, deprecated.} =
+  ## Deprecated version of ``request`` where ``httpMethod`` is a string.
+  result = await client.request(url, parseEnum[HttpMethod](httpMethod), body,
+                                headers)
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
   ## Returns the content of a response as a string.
