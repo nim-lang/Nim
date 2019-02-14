@@ -870,37 +870,34 @@ when not defined(js):
     finally:
       p.close()
 
-  proc staticParseJson*(s: string, filename: string = ""): JsonNode =
-    ## Parses JSON at compile time from a string `s` into a `JsonNode`.
-    ## `filename` is only needed for nice error messages.
-    ## If `s` contains extra data, it will raise `JsonParsingError`.
-    var p: JsonParserCT
-    p.open(s, filename)
-    try:
-      discard getTok(p) # read first token
-      result = p.parseJson()
-      eat(p, tkEof) # check if there is no extra data
-    finally:
-      p.close()
-
-  proc parseJson*(buffer: string): JsonNode =
-    ## Parses JSON from `buffer`.
-    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
-    result = parseJson(newStringStream(buffer), "input")
-
   proc parseFile*(filename: string): JsonNode =
-    ## Parses `file` into a `JsonNode`.
-    ## If `file` contains extra data, it will raise `JsonParsingError`.
+    ## Parses `filename` into a `JsonNode`.
+    ## If `filename` contains extra data, it will raise `JsonParsingError`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
     result = parseJson(stream, filename)
 
-  proc staticParseFile*(filename: static string): JsonNode =
-    ## Parses `file` into a `JsonNode` at compile time.
-    ## If `file` contains extra data, it will raise `JsonParsingError`.
+  proc parseFile*(filename: static string): JsonNode =
+    ## Parses `filename` into a `JsonNode` at compile time.
     const data = staticRead(filename)
     result = parseJson(data)
+
+  proc parseJson*(buffer: string): JsonNode =
+    ## Parses JSON from `buffer`. Either `buffer` is a string at runtime or
+    ## compile time.
+    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
+    when nimvm:
+      var p: JsonParserCT
+      p.open(buffer, filename = "")
+      try:
+        discard getTok(p) # read first token
+        result = parseJson(p)
+        eat(p, tkEof) # check if there is no extra data
+      finally:
+        p.close()
+    else:
+      result = parseJson(newStringStream(buffer), "input")
 
 else:
   from math import `mod`

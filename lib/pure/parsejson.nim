@@ -62,7 +62,7 @@ type
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
-  JsonParser* = object of BaseLexerRT ## the parser object.
+  JsonParser* = object of BaseLexer ## the parser object.
     a*: string
     tok*: TokKind
     kind: JsonEventKind
@@ -71,8 +71,7 @@ type
     filename: string
     rawStringLiterals: bool
 
-  # equivalent to JsonParser, but usable at compile time
-  JsonParserCT* = object of BaseLexerCT ## the parser object.
+  JsonParserCT* = object of BaseLexerCT
     a*: string
     tok*: TokKind
     kind: JsonEventKind
@@ -113,7 +112,7 @@ const
     "{", "}", "[", "]", ":", ","
   ]
 
-proc open*(my: var JsonParser, input: Stream, filename: string;
+proc open*(my: var AnyJsonParser, input: Stream | string, filename: string;
            rawStringLiterals = false) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. If `rawStringLiterals` is true, string literals
@@ -126,22 +125,9 @@ proc open*(my: var JsonParser, input: Stream, filename: string;
   my.a = ""
   my.rawStringLiterals = rawStringLiterals
 
-proc open*(my: var JsonParserCT, input: string, filename: string;
-           rawStringLiterals = false) =
-  ## initializes the parser with an input string. `Filename` is only used
-  ## for nice error messages. If `rawStringLiterals` is true, string literals
-  ## are kepts with their surrounding quotes and escape sequences in them are
-  ## left untouched too.
-  lexbase.open(my, input)
-  my.filename = filename
-  my.state = @[stateStart]
-  my.kind = jsonError
-  my.a = ""
-  my.rawStringLiterals = rawStringLiterals
-
 proc close*(my: var AnyJsonParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
-  when AnyJsonParser is JsonParser:
+  when type(AnyJsonParser) is JsonParser:
     lexbase.close(my)
 
 proc str*(my: AnyJsonParser): string {.inline.} =

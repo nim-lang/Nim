@@ -10,7 +10,7 @@ const jj = """
 }
 """
 
-var jData {.compileTime.} = staticParseJson(jj)
+var jData {.compileTime.} = parseJson(jj)
 #const jdata = staticParseJson(jj) # <- does *not* work!
 
 static:
