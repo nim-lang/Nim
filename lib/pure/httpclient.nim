@@ -967,12 +967,37 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
 
   var lastURL = parsedUrl
   for i in 1..client.maxRedirects:
-    if result.status.redirection():
+    let statusCode = result.code
+
+    if statusCode in {Http301, Http302, Http303, Http307, Http308}:
       let redirectTo = getNewLocation(lastURL, result.headers)
-      # Guarantee method for HTTP 307 and 308: see
+      var redirectMethod: HttpMethod
+      var redirectBody: string
+
+      # For more informations about the redirect methods see:
       # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-      var meth = if result.status in ["307", "308"]: httpMethod else: HttpGet
-      result = await client.requestAux(redirectTo, meth, body, headers)
+      case statusCode
+      of Http301, Http302, Http303:
+        # The method is changed to GET unless it is GET or HEAD (RFC2616)
+        if httpMethod notin {HttpGet, HttpHead}:
+          redirectMethod = HttpGet
+        else:
+          redirectMethod = httpMethod
+        # The body is stripped away
+        redirectBody = ""
+        # Delete any header value associated with the body
+        headers.del("Content-Length")
+        headers.del("Content-Type")
+      of Http307, Http308:
+        # The method and the body are unchanged
+        redirectMethod = httpMethod
+        redirectBody = body
+      else:
+        # Unreachable
+        doAssert(false)
+
+      result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
+                                       headers)
       lastURL = redirectTo
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
