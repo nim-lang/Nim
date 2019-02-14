@@ -1149,7 +1149,7 @@ template isIndirect(x: PSym): bool =
   let v = x
   ({sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
-    {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
+    {sfImportc, sfExportc} * v.flags == {} and
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
@@ -1235,7 +1235,7 @@ proc genProcForSymIfNeeded(p: PProc, s: PSym) =
 
 proc genCopyForParamIfNeeded(p: PProc, n: PNode) =
   let s = n.sym
-  if p.prc == s.owner or needsNoCopy(p, n): 
+  if p.prc == s.owner or needsNoCopy(p, n):
     return
   var owner = p.up
   while true:
@@ -1597,8 +1597,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError(p.config, "createVar: " & $t.kind)
     result = nil
 
-template returnType: untyped =
-  ~""
+template returnType: untyped = ~""
 
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
