@@ -486,10 +486,10 @@ proc getNewLocation(lastURL: Uri, headers: HttpHeaders): Uri =
   else:
     result = parsedLocation
 
-proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod,
+proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = $httpMethod
+  result = httpMethod
   result.add ' '
 
   if proxy.isNil or requestUrl.scheme == "https":
@@ -518,7 +518,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: HttpMethod,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  const requiresBody = {HttpPost, HttpPut, HttpPatch}
+  const requiresBody = ["POST", "PUT", "PATCH"]
   let needsContentLength = body.len > 0 or httpMethod in requiresBody
   if needsContentLength and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
@@ -879,7 +879,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
         connectUrl.hostname = url.hostname
         connectUrl.port = if url.port != "": url.port else: "443"
 
-        let proxyHeaderString = generateHeaders(connectUrl, HttpConnect, newHttpHeaders(), "", client.proxy)
+        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
 
@@ -909,7 +909,7 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
     result[k] = vs
 
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
-                httpMethod: HttpMethod, body = "",
+                httpMethod: string, body = "",
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
@@ -936,12 +936,12 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if body != "":
     await client.socket.send(body)
 
-  let getBody = httpMethod notin {HttpHead, HttpConnect} and
+  let getBody = httpMethod notin ["HEAD", "CONNECT"] and
                 client.getBody
   result = await parseResponse(client, getBody)
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
-              httpMethod = HttpGET, body = "",
+              httpMethod: HttpMethod | string = "GET", body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
@@ -957,6 +957,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
     let parsedUrl = parseUri(url)
   else:
     let parsedUrl = url
+  # Make the method name uppercase
+  let httpMethod = ($httpMethod).toUpperAscii()
+
   result = await client.requestAux(parsedUrl, httpMethod, body, headers)
 
   var lastURL = parsedUrl
@@ -967,16 +970,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       break
 
     let redirectTo = getNewLocation(lastURL, result.headers)
-    var redirectMethod: HttpMethod
-    var redirectBody: string
+    var redirectMethod, redirectBody: string
 
     # For more informations about the redirect methods see:
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
     case statusCode
     of Http301, Http302, Http303:
       # The method is changed to GET unless it is GET or HEAD (RFC2616)
-      if httpMethod notin {HttpGet, HttpHead}:
-        redirectMethod = HttpGet
+      if httpMethod notin ["GET", "HEAD"]:
+        redirectMethod = "GET"
       else:
         redirectMethod = httpMethod
       # The body is stripped away
@@ -1008,14 +1010,6 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
     result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
                                      headers)
     lastURL = redirectTo
-
-proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
-              httpMethod: string, body = "",
-              headers: HttpHeaders = nil): Future[Response | AsyncResponse]
-              {.multisync, deprecated.} =
-  ## Deprecated version of ``request`` where ``httpMethod`` is a string.
-  result = await client.request(url, parseEnum[HttpMethod](httpMethod), body,
-                                headers)
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
   ## Returns the content of a response as a string.
@@ -1080,7 +1074,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a POST request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPOST, xb, headers)
+  result = await client.request(url, HttpPOST, xb, headers)
 
 proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
@@ -1096,7 +1090,7 @@ proc put*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a PUT request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPUT, xb, headers)
+  result = await client.request(url, HttpPUT, xb, headers)
 
 proc putContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
@@ -1112,7 +1106,7 @@ proc patch*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## Connects to the hostname specified by the URL and performs a PATCH request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
-  result = await client.request(url, $HttpPATCH, xb, headers)
+  result = await client.request(url, HttpPATCH, xb, headers)
 
 proc patchContent*(client: HttpClient | AsyncHttpClient, url: string,
                   body = "",
