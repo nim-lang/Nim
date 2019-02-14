@@ -1449,8 +1449,8 @@ structure with a name is the object type. An object is a value type,
 which means that when an object is assigned to a new variable all its
 components are copied as well.
 
-Each object type ``T`` has a constructor ``T(field: value, ...)``
-where all of its fields can be initialized.  Unspecified fields will
+Each object type ``Foo`` has a constructor ``Foo(field: value, ...)``
+where all of its fields can be initialized. Unspecified fields will
 get their default value.
 
 .. code-block:: nim
@@ -1509,7 +1509,7 @@ used here.
 
 
 Like the object type the notation ``t.field`` is used to access a
-tuple's field. Another notation that is not avaiable for objects is
+tuple's field. Another notation that is not available for objects is
 ``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
 integer.
 
@@ -1595,8 +1595,8 @@ variables! For example:
   echo badname
   echo badext
 
-Unlike objects, fields of tuples never need to be exported, they are
-always public.
+Fields of tuples are always public, they don't need to be explicity
+marked to be exported, unlike for example fields in an object type.
 
 Reference and pointer types
 ---------------------------
