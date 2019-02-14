@@ -86,7 +86,11 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
         result.add dirSep
       result.add substr(x, b[0], b[1])
       inc state, 2
-  if result == "" and x != "": result = "."
+  if result == "":
+    if x == "":
+      result = "/"
+    else:
+      result = "."
 
 proc normalizePath*(path: string; dirSep = DirSep): string =
   ## Example:
