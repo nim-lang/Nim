@@ -15,6 +15,8 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 
+from bitops import parityBits, countTrailingZeroBits, firstSetBit
+
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
 

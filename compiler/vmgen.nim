@@ -1898,14 +1898,11 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
 proc genProc*(c: PCtx; s: PSym): int
 
 proc matches(s: PSym; x: string): bool =
-  let y = x.split('.')
   var s = s
-  var L = y.len-1
-  while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
+  for it in x.rsplit('.'):
+    if s == nil or (it.cmpIgnoreStyle(s.name.s) != 0 and it != "*"):
       return false
     s = s.owner
-    dec L
   result = true
 
 proc matches(s: PSym; y: varargs[string]): bool =
