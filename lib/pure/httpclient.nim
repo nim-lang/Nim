@@ -988,6 +988,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         # Delete any header value associated with the body
         headers.del("Content-Length")
         headers.del("Content-Type")
+        headers.del("Transfer-Encoding")
       of Http307, Http308:
         # The method and the body are unchanged
         redirectMethod = httpMethod
