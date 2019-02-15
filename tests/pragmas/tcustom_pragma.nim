@@ -233,3 +233,9 @@ block:
   doAssert ps.first == ps[0] and ps.first == "one"
   doAssert ps.second == ps[1] and ps.second == 2
   doAssert ps.third == ps[2] and ps.third == 3.0
+
+# pragma with implicit&explicit generic types
+block:
+  template fooBar[T](x: T; c: static[int] = 42; m: char) {.pragma.}
+  var e {.fooBar("foo", 123, 'u').}: int
+  doAssert(hasCustomPragma(e, fooBar))
