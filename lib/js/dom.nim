@@ -1183,10 +1183,10 @@ proc contains*(c: ClassList, class: cstring): bool
 proc toggle*(c: ClassList, class: cstring)
 
 # Style "methods"
-proc getPropertyValue*(s: Style, property : cstring): cstring
-proc removeProperty*(s: Style, property : cstring)
-proc setProperty*(s: Style, property , value: cstring, priority="") #The following values are accepted:"important",keyword undefined, ""
-proc getPropertyPriority*(s: Style, property: cstring): cstring #"important" or ""
+proc getPropertyValue*(s: Style, property: cstring): cstring
+proc removeProperty*(s: Style, property: cstring)
+proc setProperty*(s: Style, property, value: cstring, priority = "")
+proc getPropertyPriority*(s: Style, property: cstring): cstring
 
 # Event "methods"
 proc preventDefault*(ev: Event)
