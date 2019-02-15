@@ -1906,6 +1906,7 @@ func getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
   for e, m in mimedb.mimes:
     if m == mimeLowered:
       result = e
+      break
 
 func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## Adds ``mimetype`` to the ``mimedb``.
