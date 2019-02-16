@@ -296,20 +296,20 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
   return retFuture
 
-## proc readLine*(f: AsyncFile): Future[string] {.async.} =
-##   ## Reads a single line from the specified file asynchronously.
-##   result = ""
-##   while true:
-##     var c = await read(f, 1)
-##     if c[0] == '\c':
-##       c = await read(f, 1)
-##       break
-##     if c[0] == '\L' or c == "":
-##       break
-##     else:
-##       result.add(c)
-
 proc readLine*(f: AsyncFile): Future[string] {.async.} =
+   ## Reads a single line from the specified file asynchronously.
+   result = ""
+   while true:
+     var c = await read(f, 1)
+     if c[0] == '\c':
+       c = await read(f, 1)
+       break
+     if c[0] == '\L' or c == "":
+       break
+     else:
+       result.add(c)
+
+proc readLn*(f: AsyncFile): Future[string] {.async.} =
   ## Reads a single line from the specified file asynchronously and
   ## let the user deal with the carriage return and new line.
   result = ""
