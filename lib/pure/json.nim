@@ -817,7 +817,11 @@ proc parseJson(p: var JsonParser): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    try:
+      result = newJInt(parseBiggestInt(p.a))
+    except ValueError:
+      # Overflow - parse as float instead
+      result = newJFloat(parseFloat(p.a))
     discard getTok(p)
   of tkFloat:
     result = newJFloat(parseFloat(p.a))
@@ -1771,3 +1775,13 @@ when isMainModule:
       desObj = to(jsonObj, type(obj))
 
     doAssert(desObj == obj)
+
+  # Parse large float
+  block:
+    type
+      Obj = object
+        field: float
+
+    let foo = parseJson("{\"field\": 9223372036854777856}").to(Obj)
+    doAssert foo.field == 9223372036854777856'f64
+
