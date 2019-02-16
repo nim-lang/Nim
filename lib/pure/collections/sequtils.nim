@@ -388,10 +388,17 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
     assert f1 == @["red", "black"]
     assert f2 == @["yellow"]
 
-  result = newSeq[T]()
+  var size = s.len div 4 + 1
+  var cnt = 0
+  result = newSeq[T](size)
   for i in 0 ..< s.len:
     if pred(s[i]):
-      result.add(s[i])
+      result[cnt] = s[i]
+      inc cnt
+      if cnt == size:
+        size = 2 * size
+        result.setLen(size)
+  result.setLen(cnt)
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
