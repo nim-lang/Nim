@@ -511,7 +511,7 @@ func isSorted*[T](a: openArray[T],
                  order = SortOrder.Ascending): bool =
   ## Checks to see whether ``a`` is already sorted in ``order``
   ## using ``cmp`` for the comparison. Parameters identical
-  ## to ``sort``.
+  ## to ``sort``. Requires O(n) time.
   ##
   ## **See also:**
   ## * `isSorted proc<#isSorted,openArray[T]>`_
