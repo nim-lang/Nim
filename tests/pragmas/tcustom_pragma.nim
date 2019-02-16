@@ -239,3 +239,4 @@ block:
   template fooBar[T](x: T; c: static[int] = 42; m: char) {.pragma.}
   var e {.fooBar("foo", 123, 'u').}: int
   doAssert(hasCustomPragma(e, fooBar))
+  doAssert(getCustomPragmaVal(e, fooBar).c == 123)
