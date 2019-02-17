@@ -10,6 +10,8 @@
 ## This module implements a `reStructuredText`:idx: parser. A large
 ## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
 ## also supported.
+##
+## **Note:** Import ``packages/docutils/rst`` to use this module
 
 import
   os, strutils, rstast
