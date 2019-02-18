@@ -143,7 +143,8 @@ template get(t: StringTableRef, key: string) =
     else:
       raise newException(KeyError, "key not found")
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.rtlFunc, extern: "nstPut".}
+proc `[]=`*(t: StringTableRef, key, val: string) {.
+  rtlFunc, extern: "nstPut", noSideEffect.}
 
 proc newStringTable*(mode: StringTableMode): StringTableRef {.
   rtlFunc, extern: "nst$1".} =
@@ -271,7 +272,8 @@ proc enlarge(t: StringTableRef) =
     if t.data[i].hasValue: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
-proc `[]=`*(t: StringTableRef, key, val: string) {.rtlFunc, extern: "nstPut".} =
+proc `[]=`*(t: StringTableRef, key, val: string) {.
+  rtlFunc, extern: "nstPut", noSideEffect.} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
