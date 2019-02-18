@@ -7,7 +7,7 @@ only be an ordinal type of a certain size, namely:
   * ``enum``
 
 For signed integers the set's base type is defined to be in the
-range ``0 .. MaxSetElements-1`` where ``MaxSetElements`` currently always
+range ``0 .. MaxSetElements-1`` where ``MaxSetElements`` is currently always
 2^16.
 
 or equivalent. The reason is that sets are implemented as high
