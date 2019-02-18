@@ -1,10 +1,5 @@
 version: '{build}'
 
-cache:
-- x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
-- sqlite-dll-win64-x64-3160200.zip
-# - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
-
 environment:
   MINGW_DIR: mingw64
   MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
@@ -18,6 +13,11 @@ environment:
   matrix:
     - NIM_TEST_PACKAGES: true
     - NIM_TEST_PACKAGES: false
+
+cache:
+    - '%MINGW_ARCHIVE%'
+    - '%SQLITE_ARCHIVE%'
+    - '%OPENBLAS_ARCHIVE%'
 
 matrix:
   #allow_failures:
