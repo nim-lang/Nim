@@ -9,6 +9,11 @@
 
 ## This module implements an advanced facility for executing OS processes
 ## and process communication.
+##
+## **See also:**
+## * `os module <os.html>`_
+## * `streams module <streams.html>`_
+## * `memfiles module <memfiles.html>`_
 
 include "system/inclrtl"
 
@@ -26,20 +31,21 @@ when defined(linux):
   import linux
 
 type
-  ProcessOption* = enum ## options that can be passed `startProcess`
-    poEchoCmd,           ## echo the command before execution
+  ProcessOption* = enum ## Options that can be passed to `startProcess proc
+    ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
+    poEchoCmd,           ## Echo the command before execution.
     poUsePath,           ## Asks system to search for executable using PATH environment
                          ## variable.
                          ## On Windows, this is the default.
     poEvalCommand,       ## Pass `command` directly to the shell, without quoting.
                          ## Use it only if `command` comes from trusted source.
-    poStdErrToStdOut,    ## merge stdout and stderr to the stdout stream
-    poParentStreams,     ## use the parent's streams
-    poInteractive,       ## optimize the buffer handling for responsiveness for
+    poStdErrToStdOut,    ## Merge stdout and stderr to the stdout stream.
+    poParentStreams,     ## Use the parent's streams.
+    poInteractive,       ## Optimize the buffer handling for responsiveness for
                          ## UI applications. Currently this only affects
                          ## Windows: Named pipes are used so that you can peek
                          ## at the process' output streams.
-    poDemon              ## Windows: The program creates no Window.
+    poDaemon             ## Windows: The program creates no Window.
                          ## Unix: Start the program as a demon. This is still
                          ## work in progress!
 
@@ -57,7 +63,7 @@ type
     exitFlag: bool
     options: set[ProcessOption]
 
-  Process* = ref ProcessObj ## represents an operating system process
+  Process* = ref ProcessObj ## Represents an operating system process.
 
 
 proc execProcess*(command: string,
@@ -72,23 +78,41 @@ proc execProcess*(command: string,
                                                   RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
-  ## WARNING: this function uses poEvalCommand by default for backward compatibility.
+  ##
+  ## **WARNING:** This function uses `poEvalCommand` by default for backward
+  ## compatibility.
   ## Make sure to pass options explicitly.
   ##
-  ## .. code-block:: Nim
+  ## See also:
+  ## * `startProcess proc
+  ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
+  ## * `execProcesses proc <#execProcesses,openArray[string],proc(int),proc(int,Process)>`_
+  ## * `execCmd proc <#execCmd,string>`_
   ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
   ##  let outp = execProcess("nim c -r mytestfile.nim")
   ##  # Note: outp may have an interleave of text from the nim compile
   ##  # and any output from mytestfile when it runs
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect,
   ReadIOEffect, RootEffect].}
-  ## Executes ``command`` and returns its error code. Standard input, output,
-  ## error streams are inherited from the calling process. This operation
-  ## is also often called `system`:idx:.
+  ## Executes ``command`` and returns its error code.
+  ##
+  ## Standard input, output, error streams are inherited from the calling process.
+  ## This operation is also often called `system`:idx:.
+  ##
+  ## See also:
+  ## * `execCmdEx proc <#execCmdEx,string,set[ProcessOption]>`_
+  ## * `startProcess proc
+  ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
+  ## * `execProcess proc
+  ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
-  ##
   ##  let errC = execCmd("nim c -r mytestfile.nim")
 
 proc startProcess*(command: string,
@@ -100,14 +124,16 @@ proc startProcess*(command: string,
               RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
-  ## is used. `args` are the command line arguments that are passed to the
+  ## is used (default). `args` are the command line arguments that are passed to the
   ## process. On many operating systems, the first command line argument is the
-  ## name of the executable. `args` should not contain this argument!
+  ## name of the executable. `args` should *not* contain this argument!
   ## `env` is the environment that will be passed to the process.
-  ## If ``env == nil`` the environment is inherited of
+  ## If ``env == nil`` (default) the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
-  ## to `startProcess`. See the documentation of ``ProcessOption`` for the
-  ## meaning of these flags. You need to `close` the process when done.
+  ## to `startProcess`. See the documentation of `ProcessOption<#ProcessOption>`_
+  ## for the meaning of these flags.
+  ##
+  ## You need to `close <#close,Process>`_ the process when done.
   ##
   ## Note that you can't pass any `args` if you use the option
   ## ``poEvalCommand``, which invokes the system shell to run the specified
@@ -119,102 +145,154 @@ proc startProcess*(command: string,
   ##
   ## Return value: The newly created process object. Nil is never returned,
   ## but ``OSError`` is raised in case of an error.
-
-proc startCmd*(command: string, options: set[ProcessOption] = {
-               poStdErrToStdOut, poUsePath}): Process {.
-               tags: [ExecIOEffect, ReadEnvEffect, RootEffect], deprecated.} =
-  ## Deprecated - use `startProcess` directly.
-  result = startProcess(command=command, options=options + {poEvalCommand})
+  ##
+  ## See also:
+  ## * `execProcesses proc <#execProcesses,openArray[string],proc(int),proc(int,Process)>`_
+  ## * `execProcess proc
+  ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
+  ## * `execCmd proc <#execCmd,string>`_
 
 proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [WriteIOEffect].}
   ## When the process has finished executing, cleanup related handles.
   ##
-  ## **Warning:** If the process has not finished executing, this will forcibly
+  ## **WARNING:** If the process has not finished executing, this will forcibly
   ## terminate the process. Doing so may result in zombie processes and
   ## `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
 
 proc suspend*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Suspends the process `p`.
+  ##
+  ## See also:
+  ## * `resume proc <#resume,Process>`_
+  ## * `terminate proc <#terminate,Process>`_
+  ## * `kill proc <#kill,Process>`_
+
 
 proc resume*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Resumes the process `p`.
+  ##
+  ## See also:
+  ## * `suspend proc <#suspend,Process>`_
+  ## * `terminate proc <#terminate,Process>`_
+  ## * `kill proc <#kill,Process>`_
 
 proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
-  ## Stop the process `p`. On Posix OSes the procedure sends ``SIGTERM``
-  ## to the process. On Windows the Win32 API function ``TerminateProcess()``
+  ## Stop the process `p`.
+  ##
+  ## On Posix OSes the procedure sends ``SIGTERM`` to the process.
+  ## On Windows the Win32 API function ``TerminateProcess()``
   ## is called to stop the process.
+  ##
+  ## See also:
+  ## * `suspend proc <#suspend,Process>`_
+  ## * `resume proc <#resume,Process>`_
+  ## * `kill proc <#kill,Process>`_
 
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
-  ## Kill the process `p`. On Posix OSes the procedure sends ``SIGKILL`` to
-  ## the process. On Windows ``kill()`` is simply an alias for ``terminate()``.
+  ## Kill the process `p`.
+  ##
+  ## On Posix OSes the procedure sends ``SIGKILL`` to the process.
+  ## On Windows ``kill`` is simply an alias for `terminate() <#terminate,Process>`_.
+  ##
+  ## See also:
+  ## * `suspend proc <#suspend,Process>`_
+  ## * `resume proc <#resume,Process>`_
+  ## * `terminate proc <#terminate,Process>`_
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true iff the process `p` is still running. Returns immediately.
 
 proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
-  ## returns `p`'s process ID. See also ``os.getCurrentProcessId()``.
+  ## Returns `p`'s process ID.
+  ##
+  ## See also:
+  ## * `os.getCurrentProcessId proc <os.html#getCurrentProcessId>`_
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   extern: "nosp$1", tags: [].}
-  ## waits for the process to finish and returns `p`'s error code.
+  ## Waits for the process to finish and returns `p`'s error code.
   ##
-  ## **Warning**: Be careful when using waitForExit for processes created without
-  ## poParentStreams because they may fill output buffers, causing deadlock.
+  ## **WARNING**: Be careful when using `waitForExit` for processes created without
+  ## `poParentStreams` because they may fill output buffers, causing deadlock.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
 
 proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
-  ## return -1 if the process is still running. Otherwise the process' exit code
+  ## Return `-1` if the process is still running. Otherwise the process' exit code.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
 
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s input stream for writing to.
+  ## Returns ``p``'s input stream for writing to.
   ##
-  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## **WARNING**: The returned `Stream` should not be closed manually as it
   ## is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `outputStream proc <#outputStream,Process>`_
+  ## * `errorStream proc <#errorStream,Process>`_
 
 proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s output stream for reading from.
+  ## Returns ``p``'s output stream for reading from.
   ##
-  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## **WARNING**: The returned `Stream` should not be closed manually as it
   ## is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `inputStream proc <#inputStream,Process>`_
+  ## * `errorStream proc <#errorStream,Process>`_
 
 proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## returns ``p``'s error stream for reading from.
+  ## Returns ``p``'s error stream for reading from.
   ##
-  ## **Warning**: The returned `Stream` should not be closed manually as it
+  ## **WARNING**: The returned `Stream` should not be closed manually as it
   ## is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `inputStream proc <#inputStream,Process>`_
+  ## * `outputStream proc <#outputStream,Process>`_
 
 proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
-  ## returns ``p``'s input file handle for writing to.
+  ## Returns ``p``'s input file handle for writing to.
   ##
-  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## **WARNING**: The returned `FileHandle` should not be closed manually as
   ## it is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `outputHandle proc <#outputHandle,Process>`_
+  ## * `errorHandle proc <#errorHandle,Process>`_
   result = p.inHandle
 
 proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
-  ## returns ``p``'s output file handle for reading from.
+  ## Returns ``p``'s output file handle for reading from.
   ##
-  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## **WARNING**: The returned `FileHandle` should not be closed manually as
   ## it is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `inputHandle proc <#inputHandle,Process>`_
+  ## * `errorHandle proc <#errorHandle,Process>`_
   result = p.outHandle
 
 proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
-  ## returns ``p``'s error file handle for reading from.
+  ## Returns ``p``'s error file handle for reading from.
   ##
-  ## **Warning**: The returned `FileHandle` should not be closed manually as
+  ## **WARNING**: The returned `FileHandle` should not be closed manually as
   ## it is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `inputHandle proc <#inputHandle,Process>`_
+  ## * `outputHandle proc <#outputHandle,Process>`_
   result = p.errHandle
 
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
-  ## returns the numer of the processors/cores the machine has.
+  ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   result = cpuinfo.countProcessors()
 
@@ -225,9 +303,11 @@ proc execProcesses*(cmds: openArray[string],
                     afterRunEvent: proc(idx: int, p: Process) = nil): int
                     {.rtl, extern: "nosp$1",
                     tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
-  ## executes the commands `cmds` in parallel. Creates `n` processes
-  ## that execute in parallel. The highest (absolute) return value of all processes
-  ## is returned. Runs `beforeRunEvent` before running each command.
+  ## Executes the commands `cmds` in parallel.
+  ## Creates `n` processes that execute in parallel.
+  ##
+  ## The highest (absolute) return value of all processes is returned.
+  ## Runs `beforeRunEvent` before running each command.
 
   assert n > 0
   if n > 1:
@@ -546,7 +626,7 @@ when defined(Windows) and not defined(useNimRtl):
         else: newWideCString(e.str, e.len)
       var wwd = newWideCString(wd)
       var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
-      if poDemon in options: flags = flags or CREATE_NO_WINDOW
+      if poDaemon in options: flags = flags or CREATE_NO_WINDOW
       success = winlean.createProcessW(nil, tmp, nil, nil, 1, flags,
         ee, wwd, si, procInfo)
     else:
@@ -851,12 +931,12 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      if poDemon in data.options:
+      if poDaemon in data.options:
         chck posix_spawnattr_setpgroup(attr, 0'i32)
 
       var flags = POSIX_SPAWN_USEVFORK or
                   POSIX_SPAWN_SETSIGMASK
-      if poDemon in data.options:
+      if poDaemon in data.options:
         flags = flags or POSIX_SPAWN_SETPGROUP
       chck posix_spawnattr_setflags(attr, flags)
 
@@ -1294,12 +1374,21 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
-  ## a convenience proc that runs the `command`, grabs all its output and
+  ## A convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   ##
-  ## .. code-block:: Nim
+  ## See also:
+  ## * `execCmd proc <#execCmd,string>`_
+  ## * `startProcess proc
+  ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
+  ## * `execProcess proc
+  ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
+
   var p = startProcess(command, options=options + {poEvalCommand})
   var outp = outputStream(p)
 
@@ -1318,4 +1407,3 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
       result[1] = peekExitCode(p)
       if result[1] != -1: break
   close(p)
-
