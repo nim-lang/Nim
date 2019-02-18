@@ -1136,7 +1136,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       # its evaluated result here so that we don't execute it once again in the
       # final pass
       if a[2].kind in nkCallKinds:
-        a[2] = newNodeIT(nkType, a[2].info, t)
+        incl a[2].flags, nfSem # bug #10548
     if sfExportc in s.flags and s.typ.kind == tyAlias:
       localError(c.config, name.info, "{.exportc.} not allowed for type aliases")
     let aa = a.sons[2]
@@ -1191,24 +1191,27 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
-      while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
-        x = x.lastSon
-      if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
-          s.typ.kind notin {tyObject, tyEnum}:
-        # type aliases are hard:
-        var t = semTypeNode(c, x, nil)
-        assert t != nil
-        if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
-          if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
-            assignType(s.typ, t)
-            s.typ.id = t.id
-          elif t.kind in {tyObject, tyEnum, tyDistinct}:
-            assert s.typ != nil
-            assignType(s.typ, t)
-            s.typ.id = t.id     # same id
-      checkConstructedType(c.config, s.info, s.typ)
-      if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
-        checkForMetaFields(c, s.typ.n)
+      if x.kind in nkCallKinds and nfSem in x.flags:
+        discard "already semchecked, see line marked with bug #10548"
+      else:
+        while x.kind in {nkStmtList, nkStmtListExpr} and x.len > 0:
+          x = x.lastSon
+        if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
+            s.typ.kind notin {tyObject, tyEnum}:
+          # type aliases are hard:
+          var t = semTypeNode(c, x, nil)
+          assert t != nil
+          if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
+            if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
+              assignType(s.typ, t)
+              s.typ.id = t.id
+            elif t.kind in {tyObject, tyEnum, tyDistinct}:
+              assert s.typ != nil
+              assignType(s.typ, t)
+              s.typ.id = t.id     # same id
+        checkConstructedType(c.config, s.info, s.typ)
+        if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
+          checkForMetaFields(c, s.typ.n)
   instAllTypeBoundOp(c, n.info)
 
 
