@@ -904,37 +904,51 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 # built-in operators
 
 when not defined(JS):
-  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect.}
+  proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
-  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze*(x: int16): int {.magic: "Ze16ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect.}
+  proc ze64*(x: int8): int64 {.magic: "Ze8ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect.}
-    ## zero extends a smaller integer type to ``int64``. This treats `x` as
-    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect.}
+  proc ze64*(x: int16): int64 {.magic: "Ze16ToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
-  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int32): int64 {.magic: "Ze32ToI64", noSideEffect, deprecated.}
+    ## zero extends a smaller integer type to ``int64``. This treats `x` as
+    ## unsigned.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc ze64*(x: int): int64 {.magic: "ZeIToI64", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
-  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect.}
+  proc toU8*(x: int): int8 {.magic: "ToU8", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
-  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU16*(x: int): int16 {.magic: "ToU16", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
-  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect.}
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
+
+  proc toU32*(x: int64): int32 {.magic: "ToU32", noSideEffect, deprecated.}
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
+    ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
 
 # integer calculations:
 proc `+`*(x: int): int {.magic: "UnaryPlusI", noSideEffect.}
@@ -3877,7 +3891,7 @@ when false:
     macro payload: typed {.gensym.} = blk
     payload()
 
-when hasAlloc:
+when hasAlloc or defined(nimscript):
   proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len

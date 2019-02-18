@@ -166,6 +166,18 @@ proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
     raiseOSError(osLastError())
   result = newAsyncSocket(fd, domain, sockType, protocol, buffered)
 
+proc getLocalAddr*(socket: AsyncSocket): (string, Port) =
+  ## Get the socket's local address and port number.
+  ##
+  ## This is high-level interface for `getsockname`:idx:.
+  getLocalAddr(socket.fd, socket.domain)
+
+proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
+  ## Get the socket's peer address and port number.
+  ##
+  ## This is high-level interface for `getpeername`:idx:.
+  getPeerAddr(socket.fd, socket.domain)
+
 proc newAsyncSocket*(domain, sockType, protocol: cint,
     buffered = true): AsyncSocket =
   ## Creates a new asynchronous socket.
