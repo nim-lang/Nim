@@ -291,13 +291,14 @@ proc boot(args: string) =
                       hostOs & "_" & hostCpu
 
   let nimStart = findStartNim()
-  copyExe(nimStart, 0.thVersion)
   for i in 0..2:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
+    var nimi = i.thVersion
     if i == 0:
+      nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
@@ -307,8 +308,9 @@ proc boot(args: string) =
       if version.startsWith "Nim Compiler Version 0.19.0":
         extraOption.add " -d:nimBoostrapCsources0_19_0"
         # remove this when csources get updated
-    exec i.thVersion & " $# $# $# --nimcache:$# compiler" / "nim.nim" %
-      [bootOptions, extraOption, args, smartNimcache]
+
+    exec "$# $# $# $# --nimcache:$# compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, args, smartNimcache]
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
       echo "executables are equal: SUCCESS!"
