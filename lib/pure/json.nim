@@ -879,7 +879,9 @@ when not defined(js):
     result = parseJson(stream, filename)
 
   proc parseFile*(filename: static string): JsonNode =
-    ## Parses `filename` into a `JsonNode` at compile time.
+    ## Parses `filename` into a `JsonNode` at compile time if called in
+    ## a static context, otherwise defaults to `parseFile` above using
+    ## a FileStream at runtime.
     when nimvm:
       const data = staticRead(filename)
       result = parseJson(data)
