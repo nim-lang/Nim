@@ -719,26 +719,34 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
+  var callNode: PNode
+
   if n.kind == nkIdent:
-    result = newTree(nkCall, n)
+    # pragma -> pragma()
+    callNode = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
-    result = newTree(nkCall, n[0], n[1])
+    callNode = newTree(nkCall, n[0], n[1])
   elif n.kind in nkPragmaCallKinds:
-    result = n
+    callNode = n
   else:
     invalidPragma(c, n)
     return n
 
-  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {efNoUndeclared})
+  let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
+
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
-  else:
-    result = r
-    if n.kind == nkIdent:
-      result = result[0]
-    elif n.kind == nkExprColonExpr:
-      result.kind = n.kind # pragma(arg) -> pragma: arg
+    return n
+
+  result = r
+  # Transform the nkCall node back to its original form if possible
+  if n.kind == nkIdent and r.len == 1:
+    # pragma() -> pragma
+    result = result[0]
+  elif n.kind == nkExprColonExpr and r.len == 2:
+    # pragma(arg) -> pragma: arg
+    result.kind = n.kind
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords, comesFromPush: bool) : bool =

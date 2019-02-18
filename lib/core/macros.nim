@@ -1515,7 +1515,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       else:
         let def = p[0].getImpl[3]
         result = newTree(nnkPar)
-        for i in 1..<p.len:
+        for i in 1 ..< def.len:
           let key = def[i][0]
           let val = p[i]
           result.add newTree(nnkExprColonExpr, key, val)
