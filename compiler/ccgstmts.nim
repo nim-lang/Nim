@@ -68,7 +68,6 @@ proc genVarTuple(p: BProc, n: PNode) =
   forHcr = forHcr and not isGlobalInBlock
 
   if forHcr:
-    if p.blocks.len > 0: endBlock(p)
     # check with the boolean if the initializing code for the tuple should be ran
     lineCg(p, cpsStmts, "if ($1)$n", hcrCond)
     startBlock(p)
@@ -84,10 +83,6 @@ proc genVarTuple(p: BProc, n: PNode) =
       for curr in hcrGlobals:
         lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
                hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n.sons[0].sym), curr.tp)
-    if forHcr:
-      # reopen the guarding of code with nim_hcr_do_init_
-      lineCg(p, cpsStmts, "if (nim_hcr_do_init_)$n")
-      startBlock(p)
 
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
@@ -352,7 +347,7 @@ proc genSingleVar(p: BProc, a: PNode) =
   # register the so called "global" so it can be used later on. There is no need to close
   # and reopen of if (nim_hcr_do_init_) blocks because we are in one already anyway.
   var forHcr = treatGlobalDifferentlyForHCR(p.module, v)
-  if forHcr and targetProc.blocks.len > 2 and v.owner.kind == skModule:
+  if forHcr and targetProc.blocks.len > 3 and v.owner.kind == skModule:
     # put it in the locals section - mainly because of loops which
     # use the var in a call to resetLoc() in the statements section
     lineCg(targetProc, cpsLocals, "hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1);$n",
@@ -364,22 +359,13 @@ proc genSingleVar(p: BProc, a: PNode) =
   # for the module so we can have globals and top-level code be interleaved and still
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
-    # do not close blocks for if (nim_hcr_do_init_) for locals (and globals!)
-    # with a global pragma since they go in the preInitProc where we put no such guards
-    if v.owner.kind == skModule and sfPure notin v.flags and targetProc.blocks.len > 0:
-      endBlock(targetProc)
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
            v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc)
     startBlock(targetProc)
   defer:
     if forHcr:
       endBlock(targetProc)
-      # do not reopen blocks for if (nim_hcr_do_init_) for locals (and globals!)
-      # with a global pragma since they go in the preInitProc where we put no such guards
-      if v.owner.kind == skModule and sfPure notin v.flags:
-        lineCg(targetProc, cpsStmts, "if (nim_hcr_do_init_)$n")
-        startBlock(targetProc)
-  
+
   if a.sons[2].kind != nkEmpty:
     genLineDir(targetProc, a)
     loadInto(targetProc, a.sons[0], a.sons[2], v.loc)

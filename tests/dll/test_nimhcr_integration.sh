@@ -9,6 +9,8 @@ NIM_FLAGS="--forceBuild --hotCodeReloading:on -d:debug --debugInfo --nimcache:ni
 
 $NIM c --outdir:"." ../../lib/nimrtl.nim
 $NIM c --outdir:"." ../../lib/nimhcr.nim
+
+echo ===== Compiling HCR Integration Test =====
 $NIM $NIM_FLAGS c nimhcr_integration.nim
 
 export LD_LIBRARY_PATH=$(pwd):$LD_LIBRARY_PATH

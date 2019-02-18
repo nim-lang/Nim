@@ -1735,6 +1735,25 @@ when false:
     readMergeInfo(getCFile(m), m)
     result = m
 
+proc addHcrInitGuards(p: BProc, stmt: PNode, inInitGuard: var bool) =
+  if stmt.kind == nkStmtList:
+    for child in stmt:
+      addHcrInitGuards(p, child, inInitGuard)
+  else:
+    let stmtShouldExecute = stmt.kind in {nkVarSection, nkLetSection} or
+                            nfExecuteOnReload in stmt.flags
+    if inInitGuard:
+      if stmtShouldExecute:
+        endBlock(p)
+        inInitGuard = false
+    else:
+      if not stmtShouldExecute:
+        line(p, cpsStmts, "if (nim_hcr_do_init_)\n")
+        startBlock(p)
+        inInitGuard = true
+
+    genStmts(p, stmt)
+
 proc myProcess(b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil: return
@@ -1744,21 +1763,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
   let transformed_n = transformStmt(m.g.graph, m.module, n)
-  if m.hcrOn and transformed_n.kind == nkStmtList:
-    let p = m.initProc
-    for stmt in transformed_n:
-      let stmtShouldExecute = nfExecuteOnReload in stmt.flags
-      if m.inHcrInitGuard:
-        if stmtShouldExecute:
-          endBlock(p)
-          m.inHcrInitGuard = false
-      else:
-        if not stmtShouldExecute:
-          line(p, cpsStmts, "if (nim_hcr_do_init_)\n")
-          startBlock(p)
-          m.inHcrInitGuard = true
-
-      genStmts(p, stmt)
+  if m.hcrOn:
+    addHcrInitGuards(m.initProc, transformed_n, m.inHcrInitGuard)
   else:
     genStmts(m.initProc, transformed_n)
 
