@@ -324,35 +324,54 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
+proc substrEq(s: cstring, pos: int, substr: string): bool =
+  ## copy of strutils.substrEq, because that function isn't exported.
+  var i = 0
+  var length = substr.len
+  while i < length and s[pos+i] == substr[i]:
+    inc i
+  return i == length
+
 proc parseNumber(my: var JsonParser) =
   var pos = my.bufpos
   var buf = my.buf
   if buf[pos] == '-':
     add(my.a, '-')
     inc(pos)
-  if buf[pos] == '.':
-    add(my.a, "0.")
-    inc(pos)
+  if buf[pos] in {'I', 'i', 'N', 'n'}:
+    if substrEq(buf, pos, "Infinity"):
+      add(my.a, "inf") # parseFloat expects inf not Infinitiy
+      inc(pos, 8)
+    if substrEq(buf, pos, "inf"):
+      add(my.a, "inf")
+      inc(pos, 3)
+    elif substrEq(buf, pos, "NaN") or substrEq(buf, pos, "nan"):
+      add(my.a, "nan")
+      inc(pos, 3)
   else:
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
-      inc(pos)
     if buf[pos] == '.':
-      add(my.a, '.')
+      add(my.a, "0.")
       inc(pos)
-  # digits after the dot:
-  while buf[pos] in Digits:
-    add(my.a, buf[pos])
-    inc(pos)
-  if buf[pos] in {'E', 'e'}:
-    add(my.a, buf[pos])
-    inc(pos)
-    if buf[pos] in {'+', '-'}:
-      add(my.a, buf[pos])
-      inc(pos)
+    else:
+      while buf[pos] in Digits:
+        add(my.a, buf[pos])
+        inc(pos)
+      if buf[pos] == '.':
+        add(my.a, '.')
+        inc(pos)
+    # digits after the dot:
     while buf[pos] in Digits:
       add(my.a, buf[pos])
       inc(pos)
+    if buf[pos] in {'E', 'e'}:
+      add(my.a, buf[pos])
+      inc(pos)
+      if buf[pos] in {'+', '-'}:
+        add(my.a, buf[pos])
+        inc(pos)
+      while buf[pos] in Digits:
+        add(my.a, buf[pos])
+        inc(pos)
   my.bufpos = pos
 
 proc parseName(my: var JsonParser) =
@@ -370,7 +389,7 @@ proc getTok*(my: var JsonParser): TokKind =
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9':
     parseNumber(my)
-    if {'.', 'e', 'E'} in my.a:
+    if {'.', 'e', 'E', 'n', 'i'} in my.a:
       result = tkFloat
     else:
       result = tkInt
@@ -402,6 +421,12 @@ proc getTok*(my: var JsonParser): TokKind =
     of "null": result = tkNull
     of "true": result = tkTrue
     of "false": result = tkFalse
+    of "NaN":  result = tkFloat
+    of "Infinity":
+      my.a = "inf"
+      result = tkFloat
+    of "inf":
+      result = tkFloat
     else: result = tkError
   else:
     inc(my.bufpos)

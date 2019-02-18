@@ -411,6 +411,21 @@ when true:
     doAssert dataDeser.f == 6
     doAssert dataDeser.i == 9.9'f32
 
+  block:
+    type
+      SpecialFloats = object
+        a,b,c: float
+
+    let data = """
+      {"a": NaN, "b": -Infinity, "c": Infinity}
+    """
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, SpecialFloats)
+
+    doAssert dataDeser.a != dataDeser.a # is NaN
+    doAssert dataDeser.b == -Inf
+    doAssert dataDeser.c == Inf
+
   # deserialize directly into a table
   block:
     let s = """{"a": 1, "b": 2}"""
