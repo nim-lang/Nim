@@ -880,8 +880,12 @@ when not defined(js):
 
   proc parseFile*(filename: static string): JsonNode =
     ## Parses `filename` into a `JsonNode` at compile time.
-    const data = staticRead(filename)
-    result = parseJson(data)
+    when nimvm:
+      const data = staticRead(filename)
+      result = parseJson(data)
+    else:
+      let fname = filename
+      result = parseFile(fname)
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`. Either `buffer` is a string at runtime or
